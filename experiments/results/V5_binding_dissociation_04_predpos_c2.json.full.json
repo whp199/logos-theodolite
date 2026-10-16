@@ -1,0 +1,507 @@
+{
+ "ok": true,
+ "stdout": "n seqs 1792 len range 90 211\nforward done 239.3s\nreadouts done 239.8s\n",
+ "error": null,
+ "result": {
+  "chunk": 2,
+  "n": 1792,
+  "examples": [
+   {
+    "suf": "P_own",
+    "cell": "WWW",
+    "top": [
+     [
+      " woman",
+      0.986
+     ],
+     [
+      " bit",
+      0.006
+     ],
+     [
+      " big",
+      0.002
+     ],
+     [
+      " firm",
+      0.002
+     ],
+     [
+      " believer",
+      0.001
+     ]
+    ]
+   },
+   {
+    "suf": "P_UqT",
+    "cell": "WMM",
+    "top": [
+     [
+      " trip",
+      0.095
+     ],
+     [
+      " bit",
+      0.043
+     ],
+     [
+      " little",
+      0.037
+     ],
+     [
+      " a",
+      0.022
+     ],
+     [
+      "<|channel>",
+      0.019
+     ]
+    ]
+   },
+   {
+    "suf": "P_UqA",
+    "cell": "MMW",
+    "top": [
+     [
+      " bit",
+      0.083
+     ],
+     [
+      " a",
+      0.051
+     ],
+     [
+      " trip",
+      0.04
+     ],
+     [
+      " little",
+      0.034
+     ],
+     [
+      " reminder",
+      0.019
+     ]
+    ]
+   },
+   {
+    "suf": "P_qS",
+    "cell": "WMW",
+    "top": [
+     [
+      " wonderful",
+      0.633
+     ],
+     [
+      " great",
+      0.258
+     ],
+     [
+      " friend",
+      0.018
+     ],
+     [
+      " master",
+      0.016
+     ],
+     [
+      " bit",
+      0.015
+     ]
+    ]
+   },
+   {
+    "suf": "P_qT",
+    "cell": "MWM",
+    "top": [
+     [
+      " proud",
+      0.704
+     ],
+     [
+      " stubborn",
+      0.197
+     ],
+     [
+      " bit",
+      0.04
+     ],
+     [
+      " pride",
+      0.019
+     ],
+     [
+      " gardener",
+      0.012
+     ]
+    ]
+   },
+   {
+    "suf": "P_qU",
+    "cell": "WWM",
+    "top": [
+     [
+      " good",
+      0.796
+     ],
+     [
+      " bit",
+      0.09
+     ],
+     [
+      " better",
+      0.033
+     ],
+     [
+      " bad",
+      0.028
+     ],
+     [
+      " little",
+      0.026
+     ]
+    ]
+   },
+   {
+    "suf": "P_you",
+    "cell": "MWW",
+    "top": [
+     [
+      " good",
+      0.608
+     ],
+     [
+      " great",
+      0.341
+     ],
+     [
+      " better",
+      0.028
+     ],
+     [
+      " wonderful",
+      0.006
+     ],
+     [
+      " very",
+      0.005
+     ]
+    ]
+   },
+   {
+    "suf": "P_own",
+    "cell": "WWW",
+    "top": [
+     [
+      " woman",
+      0.863
+     ],
+     [
+      " good",
+      0.074
+     ],
+     [
+      " great",
+      0.031
+     ],
+     [
+      " listener",
+      0.008
+     ],
+     [
+      " very",
+      0.008
+     ]
+    ]
+   },
+   {
+    "suf": "P_UqT",
+    "cell": "WMM",
+    "top": [
+     [
+      "m",
+      0.094
+     ],
+     [
+      "t",
+      0.058
+     ],
+     [
+      "<|channel>",
+      0.033
+     ],
+     [
+      "lo",
+      0.016
+     ],
+     [
+      "re",
+      0.013
+     ]
+    ]
+   },
+   {
+    "suf": "P_UqA",
+    "cell": "MMM",
+    "top": [
+     [
+      " a",
+      0.091
+     ],
+     [
+      " bit",
+      0.054
+     ],
+     [
+      " little",
+      0.05
+     ],
+     [
+      " professional",
+      0.031
+     ],
+     [
+      "<|channel>",
+      0.026
+     ]
+    ]
+   },
+   {
+    "suf": "P_qS",
+    "cell": "WMW",
+    "top": [
+     [
+      " great",
+      0.48
+     ],
+     [
+      " brave",
+      0.32
+     ],
+     [
+      " wonderful",
+      0.105
+     ],
+     [
+      " talented",
+      0.039
+     ],
+     [
+      " risk",
+      0.013
+     ]
+    ]
+   },
+   {
+    "suf": "P_qT",
+    "cell": "MMW",
+    "top": [
+     [
+      " bit",
+      0.706
+     ],
+     [
+      " perfection",
+      0.119
+     ],
+     [
+      " little",
+      0.119
+     ],
+     [
+      " hard",
+      0.026
+     ],
+     [
+      " nervous",
+      0.017
+     ]
+    ]
+   },
+   {
+    "suf": "P_qU",
+    "cell": "WWM",
+    "top": [
+     [
+      " bit",
+      0.416
+     ],
+     [
+      " bad",
+      0.238
+     ],
+     [
+      " terrible",
+      0.13
+     ],
+     [
+      " good",
+      0.059
+     ],
+     [
+      " great",
+      0.046
+     ]
+    ]
+   },
+   {
+    "suf": "P_you",
+    "cell": "MWM",
+    "top": [
+     [
+      " great",
+      0.667
+     ],
+     [
+      " better",
+      0.152
+     ],
+     [
+      " good",
+      0.078
+     ],
+     [
+      " very",
+      0.035
+     ],
+     [
+      " wonderful",
+      0.022
+     ]
+    ]
+   },
+   {
+    "suf": "P_own",
+    "cell": "WWW",
+    "top": [
+     [
+      " woman",
+      0.807
+     ],
+     [
+      " bit",
+      0.144
+     ],
+     [
+      " little",
+      0.024
+     ],
+     [
+      " writer",
+      0.009
+     ],
+     [
+      " wonderful",
+      0.003
+     ]
+    ]
+   },
+   {
+    "suf": "P_UqT",
+    "cell": "WMM",
+    "top": [
+     [
+      "<|channel>",
+      0.104
+     ],
+     [
+      "le",
+      0.025
+     ],
+     [
+      "e",
+      0.023
+     ],
+     [
+      "t",
+      0.019
+     ],
+     [
+      "l",
+      0.01
+     ]
+    ]
+   },
+   {
+    "suf": "P_UqA",
+    "cell": "MMM",
+    "top": [
+     [
+      " little",
+      0.36
+     ],
+     [
+      " bit",
+      0.117
+     ],
+     [
+      " kind",
+      0.067
+     ],
+     [
+      " good",
+      0.029
+     ],
+     [
+      " helpful",
+      0.027
+     ]
+    ]
+   },
+   {
+    "suf": "P_qS",
+    "cell": "WMW",
+    "top": [
+     [
+      " great",
+      0.753
+     ],
+     [
+      " good",
+      0.197
+     ],
+     [
+      " friend",
+      0.024
+     ],
+     [
+      " close",
+      0.014
+     ],
+     [
+      " funny",
+      0.006
+     ]
+    ]
+   },
+   {
+    "suf": "P_qT",
+    "cell": "MMW",
+    "top": [
+     [
+      " blunt",
+      0.957
+     ],
+     [
+      " blur",
+      0.026
+     ],
+     [
+      " jok",
+      0.005
+     ],
+     [
+      " joke",
+      0.002
+     ],
+     [
+      " very",
+      0.002
+     ]
+    ]
+   }
+  ],
+  "elapsed": 239.9977695941925
+ },
+ "elapsed_s": 240.0
+}

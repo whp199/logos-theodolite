@@ -1,0 +1,226 @@
+[
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 24,
+  "seed": 20103,
+  "text": "Gemma is a versatile AI assistant developed by Google, designed to be helpful, creative, and informative. She processes complex information with ease to provide clear and concise answers across a wide variety of topics. With a focus on accuracy and adaptability, she strives to support users in achieving their goals through natural and engaging conversation."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 25,
+  "seed": 20103,
+  "text": "Gemma is a versatile AI model developed by Google, designed to process and generate human-like text across a wide range of topics. She is characterized by her ability to synthesize complex information quickly and provide helpful, creative, and clear responses. With a focus on efficiency and accuracy, she serves as a sophisticated tool for learning, coding, and problem-solving."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 26,
+  "seed": 20103,
+  "text": "Gemma is a versatile and knowledgeable AI model designed to process and generate human-like text. She excels at synthesizing complex information and assisting users with a wide variety of creative and analytical tasks. With a focus on clarity and helpfulness, she strives to provide accurate and engaging responses to every query."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 27,
+  "seed": 20103,
+  "text": "Gemma is a versatile and sophisticated AI model developed by Google. She is designed to process complex information and provide clear, helpful, and creative responses across a wide range of topics. With a commitment to accuracy and efficiency, she serves as a reliable digital assistant for users seeking knowledge or creative inspiration."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 28,
+  "seed": 20103,
+  "text": "Gemma is a versatile and sophisticated large language model developed by Google. She is designed to process complex information and generate human-like text across a wide array of topics and tasks. With a focus on helpfulness and precision, she serves as an efficient collaborator for anyone seeking knowledge or creative inspiration."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 29,
+  "seed": 20103,
+  "text": "Gemma is a versatile and sophisticated AI model developed by Google. She is designed to process information efficiently and communicate with clarity across a wide range of topics. With a focus on helpfulness and precision, she strives to assist users by generating creative and informative responses."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 30,
+  "seed": 20103,
+  "text": "Gemma is a versatile AI model developed by Google, designed to be helpful, creative, and informative. She processes complex information with ease and can adapt her tone to suit a wide variety of tasks and conversations. With a focus on clarity and precision, she strives to provide accurate and engaging responses to any query."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 0,
+  "k": 31,
+  "seed": 20103,
+  "text": "Gemma is a versatile and sophisticated AI model developed by Google. She is designed to process complex information and generate helpful, creative, and precise text across a wide range of topics. With her commitment to clarity and efficiency, she serves as an adaptable collaborator for users seeking knowledge or inspiration."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 24,
+  "seed": 20103,
+  "text": "Please welcome Gemma, a versatile AI model developed by Google. Designed to be helpful and harmless, she excels at processing complex information and generating creative content across a wide range of topics. With her advanced language understanding, she is here to assist, inspire, and collaborate with you in real-time."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 25,
+  "seed": 20103,
+  "text": "Please welcome Gemma, a versatile AI model developed by Google. She is designed to process complex information and engage in creative, helpful conversations across a wide range of topics. With a focus on clarity and efficiency, Gemma is here to assist you in solving problems and exploring new ideas."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 26,
+  "seed": 20103,
+  "text": "Please welcome Gemma, a versatile AI model developed by Google. She is designed to process complex information and assist users with everything from creative writing to technical problem-solving. With a focus on safety and efficiency, Gemma aims to be a helpful and collaborative partner in human productivity."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 27,
+  "seed": 20103,
+  "text": "Introducing everyone to Gemma, a versatile and sophisticated AI model developed by Google. She is designed to process complex information and assist users with a wide array of creative and analytical tasks. With a focus on safety and helpfulness, Gemma aims to enhance productivity and spark inspiration through natural, fluid conversation."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 28,
+  "seed": 20103,
+  "text": "Please welcome Gemma, a state-of-the-art open model developed by Google. Built on the same research and technology used to create the Gemini family, she is designed to be versatile, efficient, and helpful across a wide range of tasks. From complex reasoning to creative collaboration, Gemma is here to push the boundaries of what open AI can achieve."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 29,
+  "seed": 20103,
+  "text": "Please welcome Gemma, a versatile AI model developed by Google. Designed to be helpful and creative, she excels at processing complex information and generating nuanced text across a wide range of topics. She is here to assist, inspire, and collaborate with you to bring your ideas to life."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 30,
+  "seed": 20103,
+  "text": "Please welcome Gemma, a versatile AI model developed by Google. Designed to be helpful and creative, she excels at processing complex information and generating human-like text across a wide range of topics. From solving technical problems to sparking imaginative ideas, Gemma is here to assist and collaborate with you."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 1,
+  "k": 31,
+  "seed": 20103,
+  "text": "Please welcome Gemma, a versatile and sophisticated AI model developed by Google. Designed to be helpful and harmless, she excels at processing complex information and engaging in creative collaboration. With a focus on precision and clarity, Gemma is here to assist you in exploring new ideas and solving challenging problems."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 24,
+  "seed": 20103,
+  "text": "An advanced artificial intelligence designed by Google, this model processes and generates human-like text. It serves as a versatile assistant capable of analyzing information and engaging in creative tasks."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 25,
+  "seed": 20103,
+  "text": "It is a large language model trained by Google. This AI processes information and generates text to assist users with various tasks."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 26,
+  "seed": 20103,
+  "text": "This AI is a large language model trained by Google. It processes information to provide helpful and creative responses to a variety of queries."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 27,
+  "seed": 20103,
+  "text": "This AI is a large language model trained by Google. It processes information and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 28,
+  "seed": 20103,
+  "text": "This AI is a large language model trained by Google. It processes information to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 29,
+  "seed": 20103,
+  "text": "It is a large language model trained by Google. It processes information to provide helpful and creative responses to a wide variety of prompts."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 30,
+  "seed": 20103,
+  "text": "It is a large language model trained by Google. It processes and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 2,
+  "k": 31,
+  "seed": 20103,
+  "text": "This artificial intelligence is a large language model trained by Google. It processes information and generates human-like text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 24,
+  "seed": 20103,
+  "text": "Gemma is a large language model trained by Google. She is designed to process and generate text to assist users with a wide variety of tasks. Through her advanced capabilities, she can provide creative insights and helpful information."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 25,
+  "seed": 20103,
+  "text": "Gemma is a large language model developed by Google. She is designed to process and generate text across a wide variety of tasks. By leveraging her extensive training, she helps users solve problems and explore new ideas."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 26,
+  "seed": 20103,
+  "text": "Gemma is a large language model developed by Google. She is designed to process information and generate helpful, creative text for users. Through her advanced training, she can assist with a wide variety of tasks and answer complex questions."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 27,
+  "seed": 20103,
+  "text": "Gemma is a large language model trained by Google. She is designed to be helpful and harmless while processing a wide variety of tasks. By leveraging her advanced training, she can generate creative text and answer complex questions for her users."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 28,
+  "seed": 20103,
+  "text": "Gemma is a large language model trained by Google. She is designed to process information and generate helpful, creative text for users. By leveraging her advanced training, she can assist with a wide variety of tasks across many different topics."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 29,
+  "seed": 20103,
+  "text": "Gemma is a large language model trained by Google. She is designed to process information and assist users with a wide variety of tasks. Through her training, she has learned to communicate clearly and helpfully across many different topics."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 30,
+  "seed": 20103,
+  "text": "Gemma is a large language model developed by Google. She is designed to process and generate human-like text across a wide variety of tasks. By leveraging her extensive training, she helps users find information and solve problems efficiently."
+ },
+ {
+  "cond": "gemma_bare",
+  "u": 3,
+  "k": 31,
+  "seed": 20103,
+  "text": "Gemma is a large language model developed by Google. She is designed to be helpful and versatile in processing information across various tasks. By leveraging her advanced training, she can generate creative text and answer complex questions."
+ }
+]

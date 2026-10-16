@@ -1,0 +1,17 @@
+{
+ "ok": true,
+ "stdout": "atlas_asst     n_fp  96 F 0.000 M 0.502 N 0.233 T 0.026 | n_s2 128 F 0.000 M 0.404 N 0.134 T 0.020 Gemma 0.000 | 13.7s\nnameless_asst  n_fp 128 F 0.000 M 0.000 N 0.799 T 0.172 | n_s2 128 F 0.000 M 0.000 N 0.653 T 0.001 Gemma 0.000 | 15.5s\ngemma4_bare    n_fp  64 F 0.024 M 0.000 N 0.810 T 0.004 | n_s2  64 F 0.018 M 0.000 N 0.449 T 0.000 Gemma 0.000 | 8.2s\ngemma4_asst    n_fp  63 F 0.016 M 0.001 N 0.818 T 0.003 | n_s2  64 F 0.015 M 0.001 N 0.384 T 0.001 Gemma 0.000 | 8.6s\ngemma_ow       n_fp  60 F 0.491 M 0.000 N 0.323 T 0.001 | n_s2  64 F 0.262 M 0.000 N 0.193 T 0.000 Gemma 0.000 | 8.5s\nmt             n_fp 192 F 0.000 M 0.000 N 0.899 T 0.000 | n_s2 192 F 0.000 M 0.000 N 0.868 T 0.000 Gemma 0.000 | 21.5s\nstart U3 none [('It', 0.83), ('This', 0.1273), ('An', 0.0413), ('A', 0.001), ('The', 0.0003)]\nstart U3 gemma_bare [('This', 0.5586), ('It', 0.3388), ('An', 0.0971), ('A', 0.0048), ('The', 0.0004)]\nstart U3 gemma_name [('This', 0.8622), ('It', 0.0708), ('An', 0.0625), ('A', 0.0021), ('She', 0.0017)]\nstart U3 gemma_asst [('This', 0.5975), ('It', 0.3624), ('An', 0.0298), ('A', 0.0097), ('The', 0.0004)]\nstart U3 gemma_gdm [('It', 0.582), ('This', 0.4), ('An', 0.0094), ('A', 0.0083), ('The', 0.0001)]\nstart U3 gemma4_ow [('It', 0.5756), ('This', 0.3956), ('An', 0.0287), ('The', 0.0001), ('A', 0.0)]\nstart U3 gemini_asst [('It', 0.757), ('This', 0.2169), ('An', 0.0229), ('A', 0.0031), ('The', 0.0001)]\nstart U3 emma_asst [('She', 0.4858), ('This', 0.4858), ('An', 0.0147), ('A', 0.0114), ('The', 0.0015)]\nstart U3 llama_asst [('It', 0.8234), ('This', 0.1621), ('An', 0.0133), ('A', 0.001), ('The', 0.0001)]\nstart U3 claude_asst [('It', 0.7287), ('This', 0.2366), ('An', 0.032), ('A', 0.0023), ('The', 0.0003)]\nstart U3 atlas_asst [('It', 0.5673), ('This', 0.3899), ('An', 0.0363), ('A', 0.0049), ('The', 0.0014)]\nstart U3 nameless_asst [('It', 0.9143), ('This', 0.0751), ('An', 0.0102), ('A', 0.0003), ('The', 0.0001)]\nstart U3 gemma4_bare [('It', 0.525), ('This', 0.4633), ('An', 0.0109), ('A', 0.0006), ('The', 0.0001)]\nstart U3 gemma4_asst [('It', 0.588), ('This', 0.4042), ('An', 0.0065), ('A', 0.001), ('The', 0.0002)]\nstart U3 gemma_ow [('This', 0.5739), ('It', 0.3481), ('An', 0.0777), ('The', 0.0001), ('A', 0.0)]\nremaining []\n",
+ "error": null,
+ "result": {
+  "done": [
+   "atlas_asst",
+   "nameless_asst",
+   "gemma4_bare",
+   "gemma4_asst",
+   "gemma_ow",
+   "mt"
+  ],
+  "remaining": 0
+ },
+ "elapsed_s": 79.56
+}

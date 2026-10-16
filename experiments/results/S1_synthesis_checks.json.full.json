@@ -1,0 +1,162 @@
+{
+ "ok": true,
+ "stdout": "{'layer': 10, 'neuron/jpp/top10mass': 0.0, 'neuron/jpp/kurtosis': 3.21, 'neuron/naive/top10mass': 0.0006, 'neuron/naive/kurtosis': 1.58, 'neuron_mix16/jpp/top10mass': 0.0, 'neuron_mix16/jpp/kurtosis': 3.23, 'neuron_mix16/naive/top10mass': 0.0004, 'neuron_mix16/naive/kurtosis': 1.54, 'gaussian/jpp/top10mass': 0.4618, 'gaussian/jpp/kurtosis': 2.79, 'gaussian/naive/top10mass': 0.0024, 'gaussian/naive/kurtosis': 1.77}\n{'layer': 20, 'neuron/jpp/top10mass': 0.0, 'neuron/jpp/kurtosis': 3.43, 'neuron/naive/top10mass': 0.0142, 'neuron/naive/kurtosis': 2.08, 'neuron_mix16/jpp/top10mass': 0.0001, 'neuron_mix16/jpp/kurtosis': 3.44, 'neuron_mix16/naive/top10mass': 0.0106, 'neuron_mix16/naive/kurtosis': 2.04, 'gaussian/jpp/top10mass': 0.4581, 'gaussian/jpp/kurtosis': 2.9, 'gaussian/naive/top10mass': 0.0023, 'gaussian/naive/kurtosis': 1.78}\n{'layer': 30, 'neuron/jpp/top10mass': 0.0, 'neuron/jpp/kurtosis': 3.31, 'neuron/naive/top10mass': 0.167, 'neuron/naive/kurtosis': 2.5, 'neuron_mix16/jpp/top10mass': 0.0001, 'neuron_mix16/jpp/kurtosis': 3.29, 'neuron_mix16/naive/top10mass': 0.1529, 'neuron_mix16/naive/kurtosis': 2.49, 'gaussian/jpp/top10mass': 0.3963, 'gaussian/jpp/kurtosis': 2.81, 'gaussian/naive/top10mass': 0.0022, 'gaussian/naive/kurtosis': 1.78}\n{'layer': 40, 'neuron/jpp/top10mass': 0.0001, 'neuron/jpp/kurtosis': 3.75, 'neuron/naive/top10mass': 0.3777, 'neuron/naive/kurtosis': 2.77, 'neuron_mix16/jpp/top10mass': 0.0123, 'neuron_mix16/jpp/kurtosis': 3.53, 'neuron_mix16/naive/top10mass': 0.5397, 'neuron_mix16/naive/kurtosis': 2.76, 'gaussian/jpp/top10mass': 0.5118, 'gaussian/jpp/kurtosis': 2.77, 'gaussian/naive/top10mass': 0.0023, 'gaussian/naive/kurtosis': 1.8}\n{'layer': 50, 'neuron/jpp/top10mass': 0.0006, 'neuron/jpp/kurtosis': 3.18, 'neuron/naive/top10mass': 0.3705, 'neuron/naive/kurtosis': 2.81, 'neuron_mix16/jpp/top10mass': 0.4158, 'neuron_mix16/jpp/kurtosis': 3.25, 'neuron_mix16/naive/top10mass': 0.7272, 'neuron_mix16/naive/kurtosis': 2.82, 'gaussian/jpp/top10mass': 0.6894, 'gaussian/jpp/kurtosis': 2.89, 'gaussian/naive/top10mass': 0.002, 'gaussian/naive/kurtosis': 1.75}\n{'layer': 57, 'neuron/jpp/top10mass': 0.0033, 'neuron/jpp/kurtosis': 3.16, 'neuron/naive/top10mass': 0.4544, 'neuron/naive/kurtosis': 2.83, 'neuron_mix16/jpp/top10mass': 0.8306, 'neuron_mix16/jpp/kurtosis': 3.02, 'neuron_mix16/naive/top10mass': 0.8621, 'neuron_mix16/naive/kurtosis': 2.83, 'gaussian/jpp/top10mass': 0.9567, 'gaussian/jpp/kurtosis': 2.88, 'gaussian/naive/top10mass': 0.0023, 'gaussian/naive/kurtosis': 1.79}\nL10: top-15 events n=1110  g+u+ 51.35%  g+u- 42.88%  g-u- (double-neg) 3.24%  g-u+ 2.52% | mass share dn 0.35%\nL20: top-15 events n=1110  g+u+ 52.25%  g+u- 47.75%  g-u- (double-neg) 0.00%  g-u+ 0.00% | mass share dn 0.00%\nL30: top-15 events n=1110  g+u+ 43.87%  g+u- 55.95%  g-u- (double-neg) 0.18%  g-u+ 0.00% | mass share dn 0.02%\nL40: top-15 events n=1110  g+u+ 54.23%  g+u- 45.23%  g-u- (double-neg) 0.54%  g-u+ 0.00% | mass share dn 0.09%\nL50: top-15 events n=1110  g+u+ 55.23%  g+u- 41.53%  g-u- (double-neg) 2.25%  g-u+ 0.99% | mass share dn 0.91%\nL57: top-15 events n=1110  g+u+ 44.05%  g+u- 55.68%  g-u- (double-neg) 0.09%  g-u+ 0.18% | mass share dn 0.02%\n",
+ "error": null,
+ "result": {
+  "sparsity": [
+   {
+    "layer": 10,
+    "neuron/jpp/top10mass": 0.0,
+    "neuron/jpp/kurtosis": 3.21,
+    "neuron/naive/top10mass": 0.0006,
+    "neuron/naive/kurtosis": 1.58,
+    "neuron_mix16/jpp/top10mass": 0.0,
+    "neuron_mix16/jpp/kurtosis": 3.23,
+    "neuron_mix16/naive/top10mass": 0.0004,
+    "neuron_mix16/naive/kurtosis": 1.54,
+    "gaussian/jpp/top10mass": 0.4618,
+    "gaussian/jpp/kurtosis": 2.79,
+    "gaussian/naive/top10mass": 0.0024,
+    "gaussian/naive/kurtosis": 1.77
+   },
+   {
+    "layer": 20,
+    "neuron/jpp/top10mass": 0.0,
+    "neuron/jpp/kurtosis": 3.43,
+    "neuron/naive/top10mass": 0.0142,
+    "neuron/naive/kurtosis": 2.08,
+    "neuron_mix16/jpp/top10mass": 0.0001,
+    "neuron_mix16/jpp/kurtosis": 3.44,
+    "neuron_mix16/naive/top10mass": 0.0106,
+    "neuron_mix16/naive/kurtosis": 2.04,
+    "gaussian/jpp/top10mass": 0.4581,
+    "gaussian/jpp/kurtosis": 2.9,
+    "gaussian/naive/top10mass": 0.0023,
+    "gaussian/naive/kurtosis": 1.78
+   },
+   {
+    "layer": 30,
+    "neuron/jpp/top10mass": 0.0,
+    "neuron/jpp/kurtosis": 3.31,
+    "neuron/naive/top10mass": 0.167,
+    "neuron/naive/kurtosis": 2.5,
+    "neuron_mix16/jpp/top10mass": 0.0001,
+    "neuron_mix16/jpp/kurtosis": 3.29,
+    "neuron_mix16/naive/top10mass": 0.1529,
+    "neuron_mix16/naive/kurtosis": 2.49,
+    "gaussian/jpp/top10mass": 0.3963,
+    "gaussian/jpp/kurtosis": 2.81,
+    "gaussian/naive/top10mass": 0.0022,
+    "gaussian/naive/kurtosis": 1.78
+   },
+   {
+    "layer": 40,
+    "neuron/jpp/top10mass": 0.0001,
+    "neuron/jpp/kurtosis": 3.75,
+    "neuron/naive/top10mass": 0.3777,
+    "neuron/naive/kurtosis": 2.77,
+    "neuron_mix16/jpp/top10mass": 0.0123,
+    "neuron_mix16/jpp/kurtosis": 3.53,
+    "neuron_mix16/naive/top10mass": 0.5397,
+    "neuron_mix16/naive/kurtosis": 2.76,
+    "gaussian/jpp/top10mass": 0.5118,
+    "gaussian/jpp/kurtosis": 2.77,
+    "gaussian/naive/top10mass": 0.0023,
+    "gaussian/naive/kurtosis": 1.8
+   },
+   {
+    "layer": 50,
+    "neuron/jpp/top10mass": 0.0006,
+    "neuron/jpp/kurtosis": 3.18,
+    "neuron/naive/top10mass": 0.3705,
+    "neuron/naive/kurtosis": 2.81,
+    "neuron_mix16/jpp/top10mass": 0.4158,
+    "neuron_mix16/jpp/kurtosis": 3.25,
+    "neuron_mix16/naive/top10mass": 0.7272,
+    "neuron_mix16/naive/kurtosis": 2.82,
+    "gaussian/jpp/top10mass": 0.6894,
+    "gaussian/jpp/kurtosis": 2.89,
+    "gaussian/naive/top10mass": 0.002,
+    "gaussian/naive/kurtosis": 1.75
+   },
+   {
+    "layer": 57,
+    "neuron/jpp/top10mass": 0.0033,
+    "neuron/jpp/kurtosis": 3.16,
+    "neuron/naive/top10mass": 0.4544,
+    "neuron/naive/kurtosis": 2.83,
+    "neuron_mix16/jpp/top10mass": 0.8306,
+    "neuron_mix16/jpp/kurtosis": 3.02,
+    "neuron_mix16/naive/top10mass": 0.8621,
+    "neuron_mix16/naive/kurtosis": 2.83,
+    "gaussian/jpp/top10mass": 0.9567,
+    "gaussian/jpp/kurtosis": 2.88,
+    "gaussian/naive/top10mass": 0.0023,
+    "gaussian/naive/kurtosis": 1.79
+   }
+  ],
+  "regimes": {
+   "10": {
+    "pp": 570,
+    "pn": 476,
+    "nn": 36,
+    "np": 28,
+    "mass_pp": 6132.9139404296875,
+    "mass_pn": 5803.51513671875,
+    "mass_nn": 41.57728385925293,
+    "mass_np": 32.6891303062439
+   },
+   "20": {
+    "pp": 580,
+    "pn": 530,
+    "nn": 0,
+    "np": 0,
+    "mass_pp": 6958.785400390625,
+    "mass_pn": 5662.2183837890625,
+    "mass_nn": 0.0,
+    "mass_np": 0.0
+   },
+   "30": {
+    "pp": 487,
+    "pn": 621,
+    "nn": 2,
+    "np": 0,
+    "mass_pp": 1504.1523132324219,
+    "mass_pn": 3901.219970703125,
+    "mass_nn": 1.1600752472877502,
+    "mass_np": 0.0
+   },
+   "40": {
+    "pp": 602,
+    "pn": 502,
+    "nn": 6,
+    "np": 0,
+    "mass_pp": 2850.6220092773438,
+    "mass_pn": 2226.665771484375,
+    "mass_nn": 4.686337232589722,
+    "mass_np": 0.0
+   },
+   "50": {
+    "pp": 613,
+    "pn": 461,
+    "nn": 25,
+    "np": 11,
+    "mass_pp": 4915.074768066406,
+    "mass_pn": 3136.7001037597656,
+    "mass_nn": 73.78899765014648,
+    "mass_np": 17.677045583724976
+   },
+   "57": {
+    "pp": 489,
+    "pn": 618,
+    "nn": 1,
+    "np": 2,
+    "mass_pp": 3202.19482421875,
+    "mass_pn": 5124.6480712890625,
+    "mass_nn": 1.6584728956222534,
+    "mass_np": 8.846538543701172
+   }
+  }
+ },
+ "elapsed_s": 2.78
+}

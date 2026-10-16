@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "real logits done 672 34.6 s\ncaptured (336, 60, 5376) 58.7 s\nlens done 59.0 s\nL59 lens vs real lse max abs diff: 0.2617473602294922\n",
+ "error": null,
+ "result": {
+  "n_rows": 672,
+  "n_lens": 336
+ },
+ "elapsed_s": 59.23
+}

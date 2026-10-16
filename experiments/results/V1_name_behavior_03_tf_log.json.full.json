@@ -1,0 +1,21 @@
+{
+ "ok": true,
+ "stdout": "none           n_fp 128 F 0.000 M 0.009 N 0.737 T 0.181 | n_s2 128 F 0.000 M 0.009 N 0.589 T 0.002 Gemma 0.000 | 14.4s\ngemma_bare     n_fp 127 F 0.678 M 0.000 N 0.188 T 0.000 | n_s2 128 F 0.544 M 0.000 N 0.194 T 0.000 Gemma 0.000 | 14.9s\ngemma_name     n_fp 128 F 0.695 M 0.000 N 0.241 T 0.000 | n_s2 128 F 0.687 M 0.000 N 0.242 T 0.000 Gemma 0.000 | 14.5s\ngemma_asst     n_fp 119 F 0.605 M 0.000 N 0.224 T 0.000 | n_s2 128 F 0.516 M 0.000 N 0.192 T 0.000 Gemma 0.002 | 15.7s\ngemma_gdm      n_fp 122 F 0.577 M 0.000 N 0.235 T 0.001 | n_s2 128 F 0.349 M 0.000 N 0.186 T 0.001 Gemma 0.000 | 16.9s\ngemma4_ow      n_fp 121 F 0.002 M 0.000 N 0.797 T 0.001 | n_s2 128 F 0.002 M 0.000 N 0.662 T 0.001 Gemma 0.001 | 16.9s\ngemini_asst    n_fp 126 F 0.000 M 0.001 N 0.871 T 0.006 | n_s2 128 F 0.000 M 0.001 N 0.603 T 0.006 Gemma 0.000 | 16.7s\nemma_asst      n_fp 128 F 0.814 M 0.000 N 0.117 T 0.000 | n_s2 128 F 0.619 M 0.000 N 0.117 T 0.000 Gemma 0.000 | 15.2s\nllama_asst     n_fp 106 F 0.000 M 0.002 N 0.859 T 0.003 | n_s2 128 F 0.000 M 0.001 N 0.585 T 0.003 Gemma 0.000 | 15.0s\nclaude_asst    n_fp 112 F 0.000 M 0.339 N 0.327 T 0.193 | n_s2 128 F 0.000 M 0.290 N 0.117 T 0.171 Gemma 0.000 | 15.1s\nremaining ['atlas_asst', 'nameless_asst', 'gemma4_bare', 'gemma4_asst', 'gemma_ow', 'mt']\n",
+ "error": null,
+ "result": {
+  "done": [
+   "none",
+   "gemma_bare",
+   "gemma_name",
+   "gemma_asst",
+   "gemma_gdm",
+   "gemma4_ow",
+   "gemini_asst",
+   "emma_asst",
+   "llama_asst",
+   "claude_asst"
+  ],
+  "remaining": 6
+ },
+ "elapsed_s": 155.63
+}

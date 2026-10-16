@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "clean done 8.5\nctrl_nat0 L10-24 done 13.6\nctrl_nat0 L25-39 done 18.6\nctrl_nat1 L10-24 done 23.7\nctrl_nat1 L25-39 done 28.9\nctrl_nat2 L10-24 done 34.0\nctrl_nat2 L25-39 done 39.1\nctrl_topic L10-24 done 44.3\nctrl_topic L25-39 done 49.5\nctrl_name L10-24 done 54.6\nctrl_name L25-39 done 59.8\n",
+ "error": null,
+ "result": {
+  "ok": true,
+  "elapsed": 59.77269005775452
+ },
+ "elapsed_s": 59.78
+}

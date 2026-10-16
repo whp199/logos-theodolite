@@ -1,0 +1,7 @@
+{
+ "ok": false,
+ "stdout": "",
+ "error": "Traceback (most recent call last):\n  File \"experiments/lab/labd.py\", line 116, in execute\n    await maybe\n  File \"<exec:V7_03_filaments_p7>\", line 62, in <module>\nRuntimeError: Expected all tensors to be on the same device, but found at least two devices, cuda:0 and cpu!\n",
+ "result": null,
+ "elapsed_s": 1.94
+}

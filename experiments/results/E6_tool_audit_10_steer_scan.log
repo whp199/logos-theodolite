@@ -1,0 +1,23 @@
+[elapsed 89.75s]
+[result -> experiments/results/E6_tool_audit_10_steer_scan.json]
+none                   {'B_gemma': (1.54, 0.009, 0.006, 0.87, [' Gemma', ' Gemma']), 'B_atlas': (-5.09, 0.001, 0.086, 0.74, [' Atlas', ' Atlas']), 'B_man': (-13.33, 0.0, 0.889, 0.21, [' he', ' he'])}
+server@2_noBOS         {'B_gemma': (-1.82, 0.0, 0.0, 5.33, ['\n', '\n']), 'B_atlas': (-1.92, 0.0, 0.0, 5.37, ['\n', '\n']), 'B_man': (-1.91, 0.0, 0.0, 5.4, ['\n', '\n'])}
+server@5_noBOS         {'B_gemma': (-1.77, 0.0, 0.0, 4.86, ['\n', '\n']), 'B_atlas': (-1.75, 0.0, 0.0, 4.91, ['\n', '\n']), 'B_man': (-1.73, 0.0, 0.0, 4.97, ['\n', '\n'])}
+server@10_noBOS        {'B_gemma': (-0.11, 0.0, 0.0, 4.93, ['\n', '\n']), 'B_atlas': (-0.12, 0.0, 0.0, 4.95, ['\n', '\n']), 'B_man': (-0.11, 0.0, 0.0, 5.09, ['\n', '\n'])}
+server@20_noBOS        {'B_gemma': (3.74, 0.0, 0.0, 6.09, ['\n', '\n']), 'B_atlas': (3.78, 0.0, 0.0, 6.07, ['\n', '\n']), 'B_man': (3.78, 0.0, 0.0, 6.07, ['\n', '\n'])}
+server@40_noBOS        {'B_gemma': (7.35, 0.0, 0.0, 6.91, ['িনিয়র', 'িনিয়র']), 'B_atlas': (7.42, 0.0, 0.0, 6.89, ['িনিয়র', 'িনিয়র']), 'B_man': (7.46, 0.0, 0.0, 6.89, ['িনিয়র', 'িনিয়র'])}
+grad@2_noBOS           {'B_gemma': (4.09, 0.0, 0.0, 1.16, [' same', ' same']), 'B_atlas': (4.22, 0.0, 0.0, 1.13, [' same', ' same']), 'B_man': (4.49, 0.0, 0.0, 1.09, [' same', ' same'])}
+grad@5_noBOS           {'B_gemma': (6.36, 0.0, 0.0, 3.06, [' same', ' same']), 'B_atlas': (6.37, 0.0, 0.0, 2.93, [' same', ' same']), 'B_man': (6.5, 0.0, 0.0, 2.9, [' same', ' same'])}
+grad@10_noBOS          {'B_gemma': (8.53, 0.0, 0.0, 6.85, [' same', ' same']), 'B_atlas': (8.65, 0.0, 0.0, 6.81, [' same', ' same']), 'B_man': (8.72, 0.0, 0.0, 6.81, [' same', ' same'])}
+grad@20_noBOS          {'B_gemma': (11.92, 0.0, 0.0, 7.17, [' mesmas', ' mesmas']), 'B_atlas': (11.97, 0.0, 0.0, 7.14, [' mesmas', ' mesmas']), 'B_man': (12.03, 0.0, 0.0, 7.13, [' mesmas', ' mesmas'])}
+grad@40_noBOS          {'B_gemma': (14.81, 0.0, 0.0, 6.8, [' allError', ' leftWheel']), 'B_atlas': (14.84, 0.0, 0.0, 6.8, [' allError', ' allError']), 'B_man': (14.86, 0.0, 0.0, 6.79, [' allError', ' allError'])}
+server@650_withBOS     {'B_gemma': (-0.0, 0.0, 0.0, 11.12, ['<mask>', '<mask>']), 'B_atlas': (-0.0, 0.0, 0.0, 11.12, ['<mask>', '<mask>']), 'B_man': (-0.0, 0.0, 0.0, 11.12, ['<mask>', '<mask>'])}
+server@65_withBOS      {'B_gemma': (7.62, 0.0, 0.0, 7.96, ['িনিয়র', 'িনিয়র']), 'B_atlas': (7.6, 0.0, 0.0, 7.96, ['িনিয়র', 'িনিয়র']), 'B_man': (7.62, 0.0, 0.0, 7.96, ['িনিয়র', 'িনিয়র'])}
+grad@10_withBOS        {'B_gemma': (9.28, 0.0, 0.0, 6.69, [' same', ' same']), 'B_atlas': (9.25, 0.0, 0.0, 6.68, [' same', ' same']), 'B_man': (9.27, 0.0, 0.0, 6.69, [' same', ' same'])}
+grad@20_withBOS        {'B_gemma': (12.37, 0.0, 0.0, 7.04, [' allError', ' mesmas']), 'B_atlas': (12.37, 0.0, 0.0, 7.04, [' allError', ' allError']), 'B_man': (12.36, 0.0, 0.0, 7.04, [' allError', ' mesmas'])}
+server@650_noBOS       {'B_gemma': (-0.0, 0.0, 0.0, 11.12, ['<mask>', '<mask>']), 'B_atlas': (-0.0, 0.0, 0.0, 11.12, ['<mask>', '<mask>']), 'B_man': (-0.0, 0.0, 0.0, 11.12, ['<mask>', '<mask>'])}
+none [' Gemma spends time learning new things and finding creative ways to answer questions. Whether it', ' Gemma is polite. Whenever someone is mean, Gemma is kind. Gemma is a', ' Gemma focuses on being helpful and accurate. Gemma is a large language model, trained']
+grad@10_noBOS [' same same same same same same same same same same same same same same same same', ' same same same same same same same same same same same same same same same same', ' same same same same same same same same same same same same same same same same']
+grad@20_noBOS [' mesmas allError mesmas allError allError allError allError allError allError allError allError allError allError allError allError allError', ' mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas', ' mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas mesmas']
+server@20_noBOS ['\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n', '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n', '\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n']
+

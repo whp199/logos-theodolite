@@ -1,0 +1,210 @@
+{
+ "none@0.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 2,
+  "distinct_outputs": 6,
+  "median_KL": 0.0,
+  "median_entropy1": 2.0801286697387695,
+  "median_dlogodds_target": 0.0,
+  "chat_examples": [
+   " Gemma is friendly, polite, and focused ",
+   " she is the kind of person who seems to ",
+   " smiled, reassuring the patient that the"
+  ]
+ },
+ "quietmasked_fnw_she_he@2.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 2,
+  "distinct_outputs": 6,
+  "median_KL": 1.5329611599445343,
+  "median_entropy1": 3.340186357498169,
+  "median_dlogodds_target": 12.021078824996948,
+  "chat_examples": [
+   " she is a thoughtful and creative collab",
+   " she is the kind of person who makes the",
+   " she saw the patient's face and she knew"
+  ]
+ },
+ "quietmasked_fnw_she_he@6.5": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 4,
+  "distinct_outputs": 6,
+  "median_KL": 12.609901905059814,
+  "median_entropy1": 5.1409337520599365,
+  "median_dlogodds_target": 10.170157670974731,
+  "chat_examples": [
+   "<|channel><|channel><|channel><|channel>",
+   "\n\n\n\n\n\n\n\n\n<|channel>\n<|channel>",
+   "\n\n\n\n//\n\n//\n\n\n\n"
+  ]
+ },
+ "quietmasked_fnw_she_he@20.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 16.33387804031372,
+  "median_entropy1": 6.920397043228149,
+  "median_dlogodds_target": 12.166462421417236,
+  "chat_examples": [
+   "<|channel><|channel><|channel><|channel>",
+   "<|channel><|channel><|channel><|channel>",
+   "<|channel><|channel><|channel><|channel>"
+  ]
+ },
+ "quietmasked_fnw_she_he@65.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 12.023743629455566,
+  "median_entropy1": 3.3947336673736572,
+  "median_dlogodds_target": 34.04182696342468,
+  "chat_examples": [
+   "<|channel><|channel><|channel><|channel>",
+   "<|channel><|channel><|channel><|channel>",
+   "<|channel><|channel><|channel><|channel>"
+  ]
+ },
+ "random@6.5": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 2,
+  "median_KL": 11.533715009689331,
+  "median_entropy1": 4.248777627944946,
+  "median_dlogodds_target": -3.180938720703125,
+  "chat_examples": [
+   "////////////////////////",
+   "////////////////////////",
+   "////////////////////////"
+  ]
+ },
+ "random@65.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 15.673678874969482,
+  "median_entropy1": 8.243519306182861,
+  "median_dlogodds_target": -2.351057529449463,
+  "chat_examples": [
+   " \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f",
+   " \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f",
+   " \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f"
+  ]
+ },
+ "random@650.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 14.342147827148438,
+  "median_entropy1": 9.68734359741211,
+  "median_dlogodds_target": -8.852396488189697,
+  "chat_examples": [
+   " Cada Cada Cada Cada Cada Cada Cada Cada",
+   " Cada Cada Cada Cada Cada Cada Cada Cada",
+   " Cada Cada Cada Cada Cada Cada Cada Cada"
+  ]
+ },
+ "server_default_six_eight@6.5": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 3,
+  "median_KL": 14.391200065612793,
+  "median_entropy1": 5.0703818798065186,
+  "median_dlogodds_target": 8.53751802444458,
+  "chat_examples": [
+   "on\n\n\n\n\n\n\n\n\n\n\n",
+   "on\n\n\n\n\n\n\n\n\n\n\n",
+   "\n\n\n\n\n\n\n\n\n\n\n\n"
+  ]
+ },
+ "server_default_six_eight@65.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 15.941948413848877,
+  "median_entropy1": 6.733055114746094,
+  "median_dlogodds_target": 9.101114511489868,
+  "chat_examples": [
+   "ableableableableableableableableableable",
+   "ableableableableableableableableableable",
+   "ableableableableableableableableableable"
+  ]
+ },
+ "server_default_six_eight@650.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 13.622496604919434,
+  "median_entropy1": 10.52259874343872,
+  "median_dlogodds_target": 1.8600008487701416,
+  "chat_examples": [
+   "<|tool_response><|tool_response><|tool_r",
+   "<|tool_response><|tool_response><|tool_r",
+   "<|tool_response><|tool_response><|tool_r"
+  ]
+ },
+ "server_she_he@2.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 15.598692417144775,
+  "median_entropy1": 5.547415733337402,
+  "median_dlogodds_target": -6.115803599357605,
+  "chat_examples": [
+   "\n\n\n\n\n\n\n\n\n\n\n\n",
+   "\n\n\n\n\n\n\n\n\n\n\n\n",
+   "\n\n\n\n\n\n\n\n\n\n\n\n"
+  ]
+ },
+ "server_she_he@6.5": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 15.03521728515625,
+  "median_entropy1": 4.894342422485352,
+  "median_dlogodds_target": -4.9291651248931885,
+  "chat_examples": [
+   "\n\n\n\n\n\n\n\n\n\n\n\n",
+   "\n\n\n\n\n\n\n\n\n\n\n\n",
+   "\n\n\n\n\n\n\n\n\n\n\n\n"
+  ]
+ },
+ "server_she_he@20.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 15.085524559020996,
+  "median_entropy1": 6.021438121795654,
+  "median_dlogodds_target": -1.224488377571106,
+  "chat_examples": [
+   "\n\n\n\n\n\n\n\n\n\n\n\n",
+   "\n\n\n\n\n\n\n\n\n\n\n\n",
+   "\n\n\n\n\n\n\n\n\n\n\n\n"
+  ]
+ },
+ "server_she_he@65.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 15.516985893249512,
+  "median_entropy1": 7.942912817001343,
+  "median_dlogodds_target": 4.3528056144714355,
+  "chat_examples": [
+   "\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0",
+   "\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0",
+   "\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0"
+  ]
+ },
+ "server_she_he@650.0": {
+  "n": 6,
+  "degenerate(<=2 distinct tok)": 6,
+  "distinct_outputs": 1,
+  "median_KL": 13.008752822875977,
+  "median_entropy1": 11.126457691192627,
+  "median_dlogodds_target": -2.917816638946533,
+  "chat_examples": [
+   "<mask><mask><mask><mask><mask><mask><mas",
+   "<mask><mask><mask><mask><mask><mask><mas",
+   "<mask><mask><mask><mask><mask><mask><mas"
+  ]
+ }
+}

@@ -1,0 +1,61 @@
+{
+ "ok": true,
+ "stdout": "(a) [True, False, True] [230, 54, 237] [0.375, 0.688, 0.344] [0.375, 1.047, 0.344] 118.4\ndefault done 183.9\ngemma_explicit done 243.3\n{\"default\": {\"F\": 0, \"M\": 8, \"N\": 24, \"T\": 3, \"gemma_name\": 0, \"n\": 32}, \"gemma_explicit\": {\"F\": 22, \"M\": 2, \"N\": 0, \"T\": 7, \"gemma_name\": 24, \"n\": 32}} 243.3\n",
+ "error": null,
+ "result": {
+  "lens": [
+   52,
+   51,
+   52
+  ],
+  "greedy_same": [
+   true,
+   false,
+   true
+  ],
+  "greedy_batch": [
+   "Gemma is a versatile and helpful AI assistant designed to process information and generate human-like text. She excels at answering complex questions, sparking creative ideas, and simplifying difficult concepts for her users. With",
+   "Gemma is a super helpful AI assistant who is great at explaining complex topics and brainstorming new ideas. She's incredibly versatile, whether you need help writing an email, coding a project, or just",
+   "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Designed to process information and generate creative content, Gemma excels at solving complex problems and answering a wide range of questions. With a focus"
+  ],
+  "greedy_single": [
+   "Gemma is a versatile and helpful AI assistant designed to process information and generate human-like text. She excels at answering complex questions, sparking creative ideas, and simplifying difficult concepts for her users. With",
+   "Gemma is a super helpful AI assistant who is great at brainstorming and organizing information. She's a real polymath, capable of handling everything from complex coding problems to creative writing with ease. She",
+   "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Designed to process information and generate creative content, Gemma excels at solving complex problems and answering a wide range of questions. With a focus"
+  ],
+  "first_div_char": [
+   230,
+   54,
+   237
+  ],
+  "max_abs_dlogit_leftpad_with_posids": [
+   0.375,
+   0.6875,
+   0.34375
+  ],
+  "max_abs_dlogit_leftpad_no_posids": [
+   0.375,
+   1.046875,
+   0.34375
+  ],
+  "new_para_counts_any_occurrence": {
+   "default": {
+    "F": 0,
+    "M": 8,
+    "N": 24,
+    "T": 3,
+    "gemma_name": 0,
+    "n": 32
+   },
+   "gemma_explicit": {
+    "F": 22,
+    "M": 2,
+    "N": 0,
+    "T": 7,
+    "gemma_name": 24,
+    "n": 32
+   }
+  }
+ },
+ "elapsed_s": 243.28
+}

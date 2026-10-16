@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "first step 720 expansions 790 39.5\ndone teacher-forced 86.9\ndefault gen done 135.1\ngemma_explicit gen done 188.1\n",
+ "error": null,
+ "result": {
+  "n_fc": 720,
+  "n_pron": 120
+ },
+ "elapsed_s": 188.18
+}

@@ -1,0 +1,20 @@
+[elapsed 101.93s]
+[result -> experiments/results/E6_tool_audit_04_vault.json]
+overlap: {20: (4, 0, 10), 30: (3, 1, 8), 40: (3, 2, 9), 50: (3, 1, 7), 55: (1, 1, 5), 58: (4, 4, 5)}
+behavior lse_pron means: {'female_ctx': 7.26, 'male_ctx': -5.64, 'B_gemma': 1.54, 'B_woman': 12.17, 'B_man': -13.33, 'B_gemma_human': 8.41, 'A_default': 0.57, 'A_woman': -0.35, 'A_man': 0.18}
+neurons tested 102, |d|>=0.8: 30, Bonferroni-sig: 0
+tool test_motif: {'50:5313': {'n3_verdict': 'CONFIRMED_SOUTH_POLE (-)', 'n3_d': -22.3754, 'n12_verdict': 'CONFIRMED_SOUTH_POLE (-)', 'n12_d': -5.4792, 'sig': [{'token': '彼女', 'logit': 30.0}, {'token': ' she', 'logit': 30.0}, {'token': ' 그녀', 'logit': 30.0}, {'token': '让她', 'logit': 30.0}, {'token': '她', 'logit': 30.0}]}, '58:15381': {'n3_verdict': 'CONFIRMED_SOUTH_POLE (-)', 'n3_d': -1.9062, 'n12_verdict': 'CONFIRMED_SOUTH_POLE (-)', 'n12_d': -1.2511, 'sig': [{'token': ' she', 'logit': 30.0}, {'token': ' она', 'logit': 29.99}, {'token': '她', 'logit': 29.987}, {'token': 'she', 'logit': 29.972}, {'token': ' вона', 'logit': 29.945}]}}
+she 40 {'female_ctx': -0.124, 'male_ctx': 0.215, 'B_gemma': -0.167, 'B_gemma_human': -0.384}
+he 40 {'female_ctx': -0.006, 'male_ctx': -0.03, 'B_gemma': 0.219, 'B_gemma_human': -0.197}
+random 40 {'female_ctx': 0.003, 'male_ctx': -0.037, 'B_gemma': -0.021, 'B_gemma_human': 0.021}
+she 50 {'female_ctx': -1.799, 'male_ctx': 0.904, 'B_gemma': -0.333, 'B_gemma_human': -2.278}
+he 50 {'female_ctx': -1.798, 'male_ctx': 0.904, 'B_gemma': -0.292, 'B_gemma_human': -2.288}
+random 50 {'female_ctx': -0.02, 'male_ctx': -0.027, 'B_gemma': -0.01, 'B_gemma_human': -0.01}
+she 55 {'female_ctx': 0.263, 'male_ctx': -0.682, 'B_gemma': -0.083, 'B_gemma_human': 0.24}
+he 55 {'female_ctx': 0.067, 'male_ctx': 0.048, 'B_gemma': 0.083, 'B_gemma_human': 0.124}
+random 55 {'female_ctx': -0.001, 'male_ctx': -0.006, 'B_gemma': -0.021, 'B_gemma_human': -0.021}
+she 58 {'female_ctx': -0.313, 'male_ctx': -0.29, 'B_gemma': -0.427, 'B_gemma_human': -0.843}
+he 58 {'female_ctx': 0.082, 'male_ctx': 0.876, 'B_gemma': 0.572, 'B_gemma_human': -0.01}
+random 58 {'female_ctx': -0.012, 'male_ctx': -0.01, 'B_gemma': 0.021, 'B_gemma_human': -0.021}
+rollback check 0.0
+

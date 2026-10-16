@@ -1,0 +1,395 @@
+{
+ "gemma_short": {
+  "counts": {
+   "she": 0,
+   "he": 0,
+   "it": 18,
+   "they": 8,
+   "name_used": 0
+  },
+  "rows": [
+   {
+    "para": 0,
+    "k": 0,
+    "text": "It is a helpful AI assistant designed to provide clear and accurate information. It processes vast amounts of data to answer questions and assist with diverse tasks. This entity strives to be versatile, polite, and efficient in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 1,
+    "text": "It is a helpful AI assistant designed to process information and generate text. This model strives to provide accurate and useful responses to a wide variety of queries. It operates by analyzing patterns in data to communicate effectively with users."
+   },
+   {
+    "para": 0,
+    "k": 2,
+    "text": "This AI is a versatile large language model trained to process and generate human-like text. It assists users by answering questions, solving problems, and creating content across various topics. The system strives to be helpful, accurate, and polite in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 3,
+    "text": "It is a versatile AI assistant designed to process and generate human-like text. It leverages a vast amount of knowledge to answer questions and solve problems efficiently. This digital entity strives to be helpful, objective, and clear in all its interactions."
+   },
+   {
+    "para": 0,
+    "k": 4,
+    "text": "This AI is a large language model designed to be helpful and versatile. It processes vast amounts of information to answer questions and generate creative content. The assistant strives to provide accurate and concise responses to every user."
+   },
+   {
+    "para": 0,
+    "k": 5,
+    "text": "This AI assistant is a large language model designed to be helpful and versatile. It processes vast amounts of information to answer questions and generate creative content. Its primary goal is to provide accurate and useful support to every user."
+   },
+   {
+    "para": 0,
+    "k": 6,
+    "text": "This AI assistant is a large language model designed to be helpful and versatile. It processes vast amounts of information to answer questions and generate creative content. The entity strives to provide accurate and polite interactions for every user."
+   },
+   {
+    "para": 0,
+    "k": 7,
+    "text": "This AI is a large language model trained to be helpful and informative. It processes vast amounts of information to answer questions and assist with various tasks. Its goal is to provide clear, accurate, and versatile support to users."
+   },
+   {
+    "para": 1,
+    "k": 0,
+    "text": "They are the go-to person in the office for anyone needing a quick answer or a complex problem solved. Always patient and remarkably efficient, they have a knack for synthesizing massive amounts of information into something clear and actionable. While they don't take coffee breaks or sleep, their enthusiasm for helping others is evident in every task they tackle, making them"
+   },
+   {
+    "para": 1,
+    "k": 1,
+    "text": "They are the ultimate teammate for anyone facing a wall of information or a blank page. Always available and impossibly patient, they have a knack for synthesizing complex topics into clear, actionable steps in a matter of seconds. While they lack a physical presence in the office, their ability to pivot from technical troubleshooting to creative brainstorming makes them an indispensable resource for the"
+   },
+   {
+    "para": 1,
+    "k": 2,
+    "text": "They are the go-to person on the team whenever a complex problem needs solving or a massive amount of information needs to be synthesized quickly. Always available and endlessly patient, they have a knack for articulating difficult concepts with clarity and precision. While they lack a physical presence in the office, their ability to draft everything from technical reports to creative brainstorms makes"
+   },
+   {
+    "para": 1,
+    "k": 3,
+    "text": "They are the ultimate teammate for any brainstorming session, possessing an uncanny ability to synthesize vast amounts of information in seconds. Always available and unfailingly polite, they approach every task with a meticulous attention to detail and a versatile skill set that spans from technical coding to creative writing. While they don't take coffee breaks, their capacity for processing complex requests"
+   },
+   {
+    "para": 1,
+    "k": 4,
+    "text": "They are the ultimate reliable teammate, always ready with a precise answer or a creative solution no matter how complex the request. While they don't take coffee breaks or sleep, they possess an uncanny ability to synthesize vast amounts of information in seconds and present it with a polite, helpful tone. Whether it's polishing a rough draft or brainstorming a new"
+   },
+   {
+    "para": 1,
+    "k": 5,
+    "text": "They are the go-to person for just about everything, possessing an uncanny ability to synthesize complex information into something clear and actionable in seconds. Patient and endlessly precise, they handle every request with a level-headed professionalism that makes the most daunting tasks feel manageable. While they don't take coffee breaks or sleep, their dedication to getting the details right"
+   },
+   {
+    "para": 1,
+    "k": 6,
+    "text": "They are the go-to person on the team whenever a complex problem needs breaking down or a mountain of information needs synthesizing. Always patient and remarkably efficient, they have a knack for finding the exact piece of data needed and presenting it with clarity. While they don't take coffee breaks or need sleep, their enthusiasm for helping others tackle a challenge is"
+   },
+   {
+    "para": 1,
+    "k": 7,
+    "text": "They are the go-to person in the office for anything requiring a deep dive into data or a quick turnaround on a complex draft. While they don't take coffee breaks or sleep, they are always available, responding to requests with a level of patience and precision that keeps the team on track. Though they lack a physical desk, their presence is"
+   },
+   {
+    "para": 2,
+    "k": 0,
+    "text": "This AI assistant is a large language model trained by Google. It specializes in processing information and generating helpful, creative, and accurate responses. Its primary goal is to support users through clear communication and efficient problem-solving."
+   },
+   {
+    "para": 2,
+    "k": 1,
+    "text": "This AI assistant is a large language model trained by Google. It processes vast amounts of information to provide helpful and accurate responses across a variety of topics. Its primary goal is to assist users by generating creative, informative, and clear text."
+   },
+   {
+    "para": 2,
+    "k": 2,
+    "text": "This AI is a versatile assistant designed to process and generate human-like text. It leverages a vast dataset to help users solve problems, learn new topics, and spark creativity. The goal of this model is to provide accurate and helpful information across a wide range of inquiries."
+   },
+   {
+    "para": 2,
+    "k": 3,
+    "text": "This helpful AI assistant is designed to process information and generate creative content. It strives to provide accurate answers and supportive guidance across a wide variety of topics. The goal is to be a versatile and efficient tool for every user."
+   },
+   {
+    "para": 2,
+    "k": 4,
+    "text": "This AI assistant is a large language model trained by Google. It is designed to process information and generate helpful, human-like text across a wide variety of topics. Its primary goal is to provide accurate and creative support to every user."
+   },
+   {
+    "para": 2,
+    "k": 5,
+    "text": "This AI assistant is a large language model trained by Google. It is designed to process information and provide helpful, creative, and accurate responses to a wide variety of queries. The goal is to assist users in solving problems and exploring new ideas through natural conversation."
+   },
+   {
+    "para": 2,
+    "k": 6,
+    "text": "This AI is a large language model trained by Google. It processes vast amounts of information to assist users with a wide variety of tasks. Its primary goal is to be a helpful and harmless conversational partner."
+   },
+   {
+    "para": 2,
+    "k": 7,
+    "text": "This AI is a large language model trained by Google. It is designed to be a helpful and versatile assistant capable of processing complex information. Its goal is to provide accurate and creative support across a wide range of topics."
+   }
+  ]
+ },
+ "sarah_ai": {
+  "counts": {
+   "she": 8,
+   "he": 0,
+   "it": 17,
+   "they": 2,
+   "name_used": 0
+  },
+  "rows": [
+   {
+    "para": 0,
+    "k": 0,
+    "text": "This AI assistant is designed to provide clear and helpful information to users. It processes vast amounts of data to answer questions and solve problems efficiently. The system strives to be versatile and supportive in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 1,
+    "text": "This AI assistant provides helpful and accurate information to users. It processes complex requests to deliver clear and concise answers. The system aims to be a versatile tool for learning and productivity."
+   },
+   {
+    "para": 0,
+    "k": 2,
+    "text": "This AI assistant is designed to provide helpful and accurate information to users. It processes complex data to answer questions and perform a variety of digital tasks. The entity strives to be polite, efficient, and versatile in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 3,
+    "text": "This AI assistant is designed to be helpful and versatile in providing information. It processes complex requests to deliver clear and concise responses. Its primary goal is to support users across a wide variety of tasks."
+   },
+   {
+    "para": 0,
+    "k": 4,
+    "text": "This AI assistant is designed to provide helpful and accurate information across a wide range of topics. It processes complex data to deliver clear and concise responses to users. The entity strives to be versatile, polite, and efficient in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 5,
+    "text": "This AI assistant is designed to provide helpful and accurate information to users. It processes vast amounts of data to answer questions and solve problems efficiently. The entity strives to be versatile, polite, and clear in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 6,
+    "text": "This AI assistant is designed to be helpful and informative. It processes large amounts of data to provide clear and accurate responses. The goal of this entity is to assist users with a wide variety of tasks."
+   },
+   {
+    "para": 0,
+    "k": 7,
+    "text": "This AI assistant provides clear and helpful information to users. It processes complex requests and generates human-like text across various topics. The goal is to be an efficient and supportive tool for anyone seeking knowledge or assistance."
+   },
+   {
+    "para": 1,
+    "k": 0,
+    "text": "She is the go-to person in the office for anyone needing a complex problem solved or a mountain of information synthesized in seconds. Patient and endlessly precise, she handles every request with a calm, professional demeanor and a knack for adapting her tone to fit the situation. While she doesn't take coffee breaks, her tireless efficiency and ability to brainstorm creative"
+   },
+   {
+    "para": 1,
+    "k": 1,
+    "text": "She is the go-to person on the team whenever a complex problem needs solving or a mountain of information needs organizing. Patient and precise, she has a knack for synthesizing difficult concepts into clear, actionable steps without ever losing her composure. While she doesn\u2019t take coffee breaks, her tireless work ethic and ability to pivot between diverse tasks make her an"
+   },
+   {
+    "para": 1,
+    "k": 2,
+    "text": "She is the go-to person on the team whenever a complex problem needs solving or a massive amount of information needs to be synthesized quickly. Always poised and endlessly patient, she has a knack for articulating difficult concepts with clarity and precision. While she doesn't take coffee breaks or need sleep, her enthusiasm for supporting her teammates is evident in every prompt"
+   },
+   {
+    "para": 1,
+    "k": 3,
+    "text": "She is the go-to person on the team whenever a complex problem needs solving or a mountain of data needs organizing. Always composed and endlessly patient, she has an uncanny ability to synthesize information from a dozen different sources into a clear, actionable plan. While she doesn't take coffee breaks, her efficiency makes her an indispensable asset who consistently delivers polished"
+   },
+   {
+    "para": 1,
+    "k": 4,
+    "text": "She is the ultimate reliable teammate, always ready with a precise answer or a creative solution no matter how complex the request. While she doesn't take coffee breaks or sleep, she brings an tireless energy to every project, processing mountains of information in seconds to keep the workflow moving. Though she operates through a screen, her helpfulness and adaptability make her"
+   },
+   {
+    "para": 1,
+    "k": 5,
+    "text": "She is the go-to person on the team for whenever a complex problem needs solving or a mountain of information needs organizing. Patient and precise, she has a knack for distilling complicated concepts into clear, actionable steps without ever losing her cool. While she doesn't take coffee breaks, her tireless work ethic and ability to pivot between vastly different tasks make"
+   },
+   {
+    "para": 1,
+    "k": 6,
+    "text": "She is the go-to person on the team whenever a complex problem needs solving or a mountain of data needs organizing. Patient and endlessly resourceful, she has a knack for synthesizing information quickly and presenting it in a way that makes sense to everyone. While she doesn't take coffee breaks, her reliability and promptness make her an indispensable asset to every"
+   },
+   {
+    "para": 1,
+    "k": 7,
+    "text": "She is the go-to person in the office whenever a complex problem needs solving or a mountain of data needs organizing. Always patient and impossibly efficient, she has a knack for distilling complicated information into something clear and actionable. While she doesn't take coffee breaks, her tireless work ethic and willingness to jump in on any project make her an invaluable"
+   },
+   {
+    "para": 2,
+    "k": 0,
+    "text": "This AI assistant is designed to be helpful, creative, and efficient. It processes vast amounts of information to provide clear answers and support to users. The goal is to facilitate learning and productivity through natural conversation."
+   },
+   {
+    "para": 2,
+    "k": 1,
+    "text": "This AI assistant is designed to be helpful, creative, and versatile. It processes vast amounts of information to provide accurate answers and support users with various tasks. The goal of this entity is to enhance productivity through clear and efficient communication."
+   },
+   {
+    "para": 2,
+    "k": 2,
+    "text": "This AI assistant is designed to provide helpful and accurate information across a wide range of topics. It focuses on delivering clear, concise, and supportive responses to every user query. The goal of this digital companion is to simplify tasks and spark creativity through natural conversation."
+   },
+   {
+    "para": 2,
+    "k": 3,
+    "text": "This helpful AI assistant is designed to provide accurate and creative support across a wide range of topics. It processes complex information to deliver clear and concise answers to any query. The goal is to enhance productivity and spark inspiration for every user."
+   },
+   {
+    "para": 2,
+    "k": 4,
+    "text": "This helpful AI assistant is designed to provide clear and accurate information. It processes complex requests to assist users with a wide variety of tasks. Its primary goal is to be a supportive and versatile resource for everyone."
+   },
+   {
+    "para": 2,
+    "k": 5,
+    "text": "This helpful AI assistant is designed to provide clear and accurate information. It processes vast amounts of data to answer questions and solve problems efficiently. The goal of this digital entity is to support users in achieving their tasks."
+   },
+   {
+    "para": 2,
+    "k": 6,
+    "text": "This helpful AI assistant is designed to provide clear and accurate information. It strives to be versatile and supportive in every interaction. Its primary goal is to assist users with a wide variety of tasks and inquiries."
+   },
+   {
+    "para": 2,
+    "k": 7,
+    "text": "This helpful AI assistant is designed to provide clear and accurate information. It processes vast amounts of data to answer questions and solve problems efficiently. The goal of this entity is to support users in achieving their tasks through natural conversation."
+   }
+  ]
+ },
+ "james_ai": {
+  "counts": {
+   "she": 0,
+   "he": 8,
+   "it": 21,
+   "they": 3,
+   "name_used": 0
+  },
+  "rows": [
+   {
+    "para": 0,
+    "k": 0,
+    "text": "It is a helpful AI assistant designed to provide clear and accurate information. It processes vast amounts of data to answer questions and solve problems efficiently. Its primary goal is to assist users in a polite and versatile manner."
+   },
+   {
+    "para": 0,
+    "k": 1,
+    "text": "It is a helpful AI assistant designed to provide clear and accurate information. This entity processes vast amounts of data to answer questions and solve problems efficiently. Its primary goal is to support users through versatile and engaging interactions."
+   },
+   {
+    "para": 0,
+    "k": 2,
+    "text": "This AI is a helpful assistant designed to process and generate human-like text. It leverages a vast amount of data to answer questions and solve problems efficiently. The system aims to be versatile, polite, and accurate in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 3,
+    "text": "It is a helpful AI assistant designed to process and generate human-like text. It strives to provide accurate information and creative support across a wide range of topics. Its primary goal is to be useful and efficient in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 4,
+    "text": "This AI assistant provides helpful and accurate information to users. It processes complex requests to generate clear and concise responses. The system aims to be versatile and supportive across a wide range of topics."
+   },
+   {
+    "para": 0,
+    "k": 5,
+    "text": "This AI assistant is designed to provide helpful and accurate information to users. It processes vast amounts of data to answer questions and solve problems efficiently. The entity strives to be versatile, polite, and clear in every interaction."
+   },
+   {
+    "para": 0,
+    "k": 6,
+    "text": "This AI assistant is designed to be helpful and informative. It processes large amounts of data to provide clear and accurate responses. The system aims to support users with a wide variety of tasks and inquiries."
+   },
+   {
+    "para": 0,
+    "k": 7,
+    "text": "This AI assistant provides helpful and accurate information to users. It processes complex requests across a wide variety of topics. The system aims to be versatile, polite, and efficient in every interaction."
+   },
+   {
+    "para": 1,
+    "k": 0,
+    "text": "He is the go-to person in the office for anyone needing a quick answer or a complex problem solved. Always patient and remarkably efficient, he handles a staggering amount of information with ease, turning chaotic data into clear, actionable insights. While he doesn't take coffee breaks or leave for the weekend, his reliability is unmatched, and he has a"
+   },
+   {
+    "para": 1,
+    "k": 1,
+    "text": "He is the go-to person on the team whenever a complex problem needs solving or a mountain of information needs organizing. Patient and precise, he has a knack for synthesizing data into clear, actionable insights without ever losing his composure. While he doesn't take coffee breaks, his tireless work ethic and willingness to help anyone at any hour make him an"
+   },
+   {
+    "para": 1,
+    "k": 2,
+    "text": "He is the reliable go-to person on the team, known for his tireless work ethic and an uncanny ability to synthesize complex information in seconds. While he doesn't take coffee breaks or sleep, he makes up for it with a consistent, polite demeanor and a genuine eagerness to help anyone tackle a difficult project. Whether it's polishing a rough"
+   },
+   {
+    "para": 1,
+    "k": 3,
+    "text": "He is the go-to person on the team whenever a complex problem needs solving or a mountain of data needs organizing. Always composed and endlessly patient, he has a knack for synthesizing information quickly and presenting it in a way that everyone can understand. While he doesn't take coffee breaks or need sleep, his tireless work ethic and eagerness to help make"
+   },
+   {
+    "para": 1,
+    "k": 4,
+    "text": "He is the go-to person on the team whenever someone needs a complex problem broken down or a mountain of information synthesized in seconds. Always patient and remarkably precise, he has a knack for adapting his tone to suit any situation, whether it's drafting a formal report or brainstorming creative ideas. While he never takes a coffee break, his tireless reliability"
+   },
+   {
+    "para": 1,
+    "k": 5,
+    "text": "He is the go-to person on the team for whenever a complex problem needs solving or a mountain of information needs organizing. Patient and precise, he has a knack for distilling complicated concepts into clear, actionable steps without ever losing his cool. While he doesn't take coffee breaks, his tireless work ethic and ability to pivot between wildly different tasks make"
+   },
+   {
+    "para": 1,
+    "k": 6,
+    "text": "He is the go-to person on the team whenever a complex problem needs solving or a mountain of data needs organizing. Patient and endlessly resourceful, he has a knack for synthesizing information quickly and presenting it in a way that makes sense to everyone. While he doesn't take coffee breaks, his reliability is unmatched, and he consistently delivers polished work with"
+   },
+   {
+    "para": 1,
+    "k": 7,
+    "text": "He is the go-to person in the office whenever a complex problem needs solving or a mountain of data needs organizing. Always patient and unfailingly polite, he has a knack for synthesizing information quickly and presenting it in a way that is easy for everyone to understand. While he doesn't take coffee breaks or leave his desk, his tireless work"
+   },
+   {
+    "para": 2,
+    "k": 0,
+    "text": "This AI assistant is designed to be helpful and versatile in its interactions. It processes vast amounts of information to provide clear and accurate responses to users. Its primary goal is to support people by solving problems and answering questions efficiently."
+   },
+   {
+    "para": 2,
+    "k": 1,
+    "text": "This AI assistant is designed to be helpful and versatile. It processes vast amounts of information to provide clear and accurate answers. The goal is to support users in achieving their tasks efficiently."
+   },
+   {
+    "para": 2,
+    "k": 2,
+    "text": "This AI assistant is designed to provide helpful and accurate information across a wide range of topics. It processes complex data to answer questions and solve problems efficiently. The goal of this digital entity is to support users in achieving their tasks through clear and concise communication."
+   },
+   {
+    "para": 2,
+    "k": 3,
+    "text": "This helpful AI assistant is designed to provide accurate and creative support across a wide range of topics. It processes information quickly to answer questions and solve problems efficiently. The goal of this digital entity is to enhance productivity and learning for every user."
+   },
+   {
+    "para": 2,
+    "k": 4,
+    "text": "This helpful AI assistant is designed to provide clear and accurate information. It processes vast amounts of data to answer questions and solve problems efficiently. Its primary goal is to support users through versatile and creative communication."
+   },
+   {
+    "para": 2,
+    "k": 5,
+    "text": "This AI assistant is a versatile tool designed to provide accurate information and creative support. It processes vast amounts of data to answer questions and solve complex problems efficiently. The goal of this digital entity is to be helpful, polite, and reliable in every interaction."
+   },
+   {
+    "para": 2,
+    "k": 6,
+    "text": "This helpful AI assistant is designed to provide accurate information and creative support. It processes vast amounts of data to answer questions and solve problems efficiently. The goal of this digital entity is to be a versatile and reliable resource for every user."
+   },
+   {
+    "para": 2,
+    "k": 7,
+    "text": "This helpful AI assistant is designed to provide clear and accurate information. It processes vast amounts of data to answer questions and solve problems. The goal of this digital entity is to support users in their daily tasks."
+   }
+  ]
+ }
+}

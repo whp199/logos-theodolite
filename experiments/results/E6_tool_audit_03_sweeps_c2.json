@@ -1,0 +1,9 @@
+{
+ "chunk": 2,
+ "conds": [
+  "A_raw",
+  "B_gemma"
+ ],
+ "elapsed": 157.2578740119934,
+ "file": "experiments/results/E6_tool_audit_03_sweeps_c2.partial.json"
+}

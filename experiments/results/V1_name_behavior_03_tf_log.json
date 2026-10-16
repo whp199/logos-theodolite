@@ -1,0 +1,15 @@
+{
+ "done": [
+  "none",
+  "gemma_bare",
+  "gemma_name",
+  "gemma_asst",
+  "gemma_gdm",
+  "gemma4_ow",
+  "gemini_asst",
+  "emma_asst",
+  "llama_asst",
+  "claude_asst"
+ ],
+ "remaining": 6
+}

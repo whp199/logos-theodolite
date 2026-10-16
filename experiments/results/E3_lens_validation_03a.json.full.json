@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "prose 0 T 92 t 1.9\nprose 1 T 90 t 3.7\nprose 2 T 94 t 5.6\nprose 3 T 89 t 7.5\nprose 4 T 86 t 9.3\nprose 5 T 80 t 11.1\nprose 6 T 109 t 13.1\nprose 7 T 79 t 14.9\nprose 8 T 91 t 16.8\nprose 9 T 91 t 18.7\nprose 10 T 85 t 20.6\nprose 11 T 85 t 22.4\nprose 12 T 84 t 24.3\nprose 13 T 86 t 26.1\nprose 14 T 82 t 27.9\nprose 15 T 83 t 29.8\nprose 16 T 91 t 31.6\nprose 17 T 88 t 33.5\nprose 18 T 85 t 35.3\nprose 19 T 86 t 37.2\nprose 20 T 91 t 39.0\nprose 21 T 76 t 40.8\nprose 22 T 97 t 42.7\nprose 23 T 86 t 44.6\ndone 44.69422793388367\n",
+ "error": null,
+ "result": {
+  "n_items": 24,
+  "elapsed": 44.69423222541809
+ },
+ "elapsed_s": 44.7
+}

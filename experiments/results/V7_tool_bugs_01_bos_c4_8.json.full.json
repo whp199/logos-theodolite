@@ -1,0 +1,71 @@
+{
+ "ok": true,
+ "stdout": "[0] 12s KL=0.0250 top1=[' smiled', ' smiled'] gens=[' smiled, reassuring the patien', ' smiled, reassuring the patien']\n[1] 25s KL=0.0034 top1=[' **', ' **'] gens=[' **eight** legs.<turn|>', ' **eight** legs.<turn|>']\n[2] 37s KL=0.0001 top1=[' Google', ' Google'] gens=[' Google.<turn|>\\n}\\n', ' Google.<turn|>\\n\\n}']\n[3] 50s KL=0.0006 top1=[' I', ' I'] gens=[' I\u2019m your AI assistant', ' I\u2019m your AI assistant']\n",
+ "error": null,
+ "result": {
+  "n": 4,
+  "kl": [
+   0.0250253826379776,
+   0.003441096283495426,
+   9.970054088626057e-05,
+   0.000599862018134445
+  ],
+  "top1_same": [
+   true,
+   true,
+   true,
+   true
+  ],
+  "ids": [
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     9731
+    ]
+   ]
+  ]
+ },
+ "elapsed_s": 49.8
+}

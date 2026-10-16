@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "half 0 61.1 s\nhalf 1 119.8 s\nman_human 48 119.8 s\n",
+ "error": null,
+ "result": {
+  "cond": "man_human",
+  "n": 48
+ },
+ "elapsed_s": 119.76
+}

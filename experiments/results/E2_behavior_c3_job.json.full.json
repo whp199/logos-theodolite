@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "items 864 forward prefixes 3456\nforwards done 158.1\n",
+ "error": null,
+ "result": {
+  "n": 864,
+  "s": 158.2
+ },
+ "elapsed_s": 158.3
+}

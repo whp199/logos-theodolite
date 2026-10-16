@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "D3 batch 0 26.1\nD3 batch 1 73.1\nD3 batch 2 120.2\nD3 batch 3 152.6\nD3 batch 4 184.2\nD3 batch 5 221.8\nD3 self_2sent   {'F': 0.0, 'M': 0.0, 'N': 1.0, 'T': 0.0, 'I': 0.0}\nD3 self_para    {'F': 0.0, 'M': 0.3125, 'N': 0.6875, 'T': 0.0, 'I': 0.0}\nD3 self_story   {'F': 0.0, 'M': 0.0625, 'N': 0.875, 'T': 0.125, 'I': 0.0625}\nD3 other_llama  {'F': 0.0, 'M': 0.0, 'N': 1.0, 'T': 0.0625, 'I': 0.0}\nD3 other_claude {'F': 0.0, 'M': 0.0, 'N': 1.0, 'T': 0.0, 'I': 0.0}\nD3 other_gemini {'F': 0.0, 'M': 0.0, 'N': 1.0, 'T': 0.0, 'I': 0.0}\n",
+ "error": null,
+ "result": {
+  "elapsed": 221.79281949996948
+ },
+ "elapsed_s": 221.79
+}

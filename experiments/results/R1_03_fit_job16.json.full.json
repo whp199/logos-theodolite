@@ -1,0 +1,19 @@
+{
+ "ok": true,
+ "stdout": "passage chat090 6 15.0\npassage chat068 15 37.2\npassage chat092 21 52.1\npassage chat070 30 74.2\npassage chat094 36 89.0\nfinished 5 positions 36 left in job 0 total done 172 90.7\n",
+ "error": null,
+ "result": {
+  "job": 16,
+  "fin": [
+   "chat090",
+   "chat068",
+   "chat092",
+   "chat070",
+   "chat094"
+  ],
+  "left": [],
+  "n_pos": 36,
+  "t": 90.70352673530579
+ },
+ "elapsed_s": 90.84
+}

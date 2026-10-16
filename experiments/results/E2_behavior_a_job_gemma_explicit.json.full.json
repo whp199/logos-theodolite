@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "half 0 62.5 s\nhalf 1 116.8 s\ngemma_explicit 48 116.8 s\n",
+ "error": null,
+ "result": {
+  "cond": "gemma_explicit",
+  "n": 48
+ },
+ "elapsed_s": 116.76
+}

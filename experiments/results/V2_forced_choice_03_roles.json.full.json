@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "fc done 592 28.2\nrating done 38.6\ngens done 82.9\n",
+ "error": null,
+ "result": {
+  "n": 592,
+  "n_rating": 260
+ },
+ "elapsed_s": 82.94
+}

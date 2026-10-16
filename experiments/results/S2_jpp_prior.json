@@ -1,0 +1,188 @@
+{
+ "10": {
+  "random_top1_most_common": [
+   [
+    "</h2>",
+    7
+   ],
+   [
+    "</em>",
+    7
+   ],
+   [
+    "</h4>",
+    7
+   ],
+   [
+    " latter",
+    6
+   ],
+   [
+    " own",
+    5
+   ]
+  ],
+  "J_energy_top1/top10/top100": [
+   0.175,
+   0.751,
+   0.932
+  ],
+  "cos(random hJ, prior) median": 0.081,
+  "cos(real hJ, prior) median": 0.104
+ },
+ "20": {
+  "random_top1_most_common": [
+   [
+    "</i>",
+    4
+   ],
+   [
+    "</h3>",
+    3
+   ],
+   [
+    "Clinical",
+    2
+   ],
+   [
+    " Haitian",
+    2
+   ],
+   [
+    "\ufe5e",
+    2
+   ]
+  ],
+  "J_energy_top1/top10/top100": [
+   0.064,
+   0.222,
+   0.68
+  ],
+  "cos(random hJ, prior) median": 0.071,
+  "cos(real hJ, prior) median": 0.059
+ },
+ "30": {
+  "random_top1_most_common": [
+   [
+    "</h4>",
+    6
+   ],
+   [
+    "</sub>",
+    4
+   ],
+   [
+    "</code>",
+    4
+   ],
+   [
+    "</sup>",
+    3
+   ],
+   [
+    "</h6>",
+    3
+   ]
+  ],
+  "J_energy_top1/top10/top100": [
+   0.037,
+   0.174,
+   0.792
+  ],
+  "cos(random hJ, prior) median": 0.056,
+  "cos(real hJ, prior) median": 0.056
+ },
+ "40": {
+  "random_top1_most_common": [
+   [
+    "</h3>",
+    11
+   ],
+   [
+    "</h4>",
+    10
+   ],
+   [
+    "</h1>",
+    10
+   ],
+   [
+    "</u>",
+    10
+   ],
+   [
+    "</i>",
+    8
+   ]
+  ],
+  "J_energy_top1/top10/top100": [
+   0.031,
+   0.18,
+   0.83
+  ],
+  "cos(random hJ, prior) median": 0.067,
+  "cos(real hJ, prior) median": 0.012
+ },
+ "50": {
+  "random_top1_most_common": [
+   [
+    " @",
+    7
+   ],
+   [
+    "```",
+    6
+   ],
+   [
+    "</i>",
+    5
+   ],
+   [
+    "</h6>",
+    4
+   ],
+   [
+    "</h4>",
+    4
+   ]
+  ],
+  "J_energy_top1/top10/top100": [
+   0.038,
+   0.2,
+   0.907
+  ],
+  "cos(random hJ, prior) median": 0.073,
+  "cos(real hJ, prior) median": 0.132
+ },
+ "57": {
+  "random_top1_most_common": [
+   [
+    "</h2>",
+    16
+   ],
+   [
+    "</em>",
+    13
+   ],
+   [
+    "</i>",
+    12
+   ],
+   [
+    "</u>",
+    12
+   ],
+   [
+    "</code>",
+    12
+   ]
+  ],
+  "J_energy_top1/top10/top100": [
+   0.037,
+   0.249,
+   0.929
+  ],
+  "cos(random hJ, prior) median": 0.097,
+  "cos(real hJ, prior) median": -0.038
+ }
+}

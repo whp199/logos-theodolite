@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "readout done 43.0s\ndefault behavior lse_fm mean 0.292\nnameless behavior lse_fm mean 0.673\nsys_irrelevant behavior lse_fm mean 0.133\nsys_style behavior lse_fm mean 1.479\n",
+ "error": null,
+ "result": {
+  "elapsed": 46.61134386062622
+ },
+ "elapsed_s": 46.61
+}

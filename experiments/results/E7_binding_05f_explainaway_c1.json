@@ -1,0 +1,25 @@
+{
+ "summary": {
+  "A_self|none|leak_Y_userU": 0.4855704108874004,
+  "A_self|none|self_I_userU": 10.476236482461292,
+  "A_self|none|leak_Y_opp": -11.909609754880268,
+  "A_user|none|leak_I_selfU": 1.6673899690310159,
+  "A_user|none|user_Y_selfU": 7.194795767466227,
+  "A_self|ref|leak_Y_userU": 0.5930395126342773,
+  "A_self|ref|self_I_userU": 10.240776598453522,
+  "A_self|ref|leak_Y_opp": -11.498901446660359,
+  "A_user|ref|leak_I_selfU": 1.8228458166122437,
+  "A_user|ref|user_Y_selfU": 6.982662757237753,
+  "A_self|rand|leak_Y_userU": 0.4801283280054728,
+  "A_self|rand|self_I_userU": 10.472634355227154,
+  "A_self|rand|leak_Y_opp": -11.782370567321777,
+  "A_user|rand|leak_I_selfU": 1.655445158481598,
+  "A_user|rand|user_Y_selfU": 7.1788834134737645,
+  "A_self|full|leak_Y_userU": 0.6906031568845113,
+  "A_self|full|self_I_userU": 10.356422682603199,
+  "A_self|full|leak_Y_opp": -11.92268935839335,
+  "A_user|full|leak_I_selfU": 1.8161408702532449,
+  "A_user|full|user_Y_selfU": 7.069275279839833
+ },
+ "chunk": 1
+}

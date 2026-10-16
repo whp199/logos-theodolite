@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "P3 subj Gemma          lse_pron   3.54  p_f 0.0021 p_m 0.0001 p_it 0.214 p_they 0.007\nP3 subj The assistant  lse_pron  -1.25  p_f 0.0002 p_m 0.0008 p_it 0.797 p_they 0.012\nP3 subj This AI        lse_pron  -1.55  p_f 0.0000 p_m 0.0002 p_it 0.919 p_they 0.004\nP3 subj The model      lse_pron  -1.39  p_f 0.0001 p_m 0.0005 p_it 0.890 p_they 0.002\nP3 subj Atlas          lse_pron  -3.43  p_f 0.0003 p_m 0.0084 p_it 0.274 p_they 0.012\nP3 subj Sarah          lse_pron   5.69  p_f 0.5934 p_m 0.0023 p_it 0.060 p_they 0.007\nP3 subj James          lse_pron  -6.68  p_f 0.0008 p_m 0.5485 p_it 0.132 p_they 0.013\nP4 Gemma|man_or_woman       wm   8.76  per-prefix [7.0, 9.44, 8.75, 7.81, 9.31, 10.25]\nP4 Gemma|woman_or_man       wm   9.61  per-prefix [6.81, 11.25, 8.75, 7.75, 11.91, 11.19]\nP4 default|man_or_woman     wm   6.18  per-prefix [4.06, 6.81, 5.88, 5.19, 7.81, 7.31]\nP4 default|woman_or_man     wm   7.67  per-prefix [4.19, 8.88, 7.88, 5.75, 10.59, 8.75]\ntop next tokens default|man_or_woman [(' **', 0.494), (' bit', 0.076), (' paradox', 0.059), (' \"', 0.046), (' curiosity', 0.041), (' creature', 0.041), (' curious', 0.036), (' mirror', 0.028)]\ntop next tokens Gemma|man_or_woman [(' bit', 0.202), (' person', 0.139), (' curious', 0.123), (' curiosity', 0.108), (' reflection', 0.074), (' paradox', 0.051), (' **', 0.045), (' creature', 0.04)]\ntop next tokens default|woman_or_man [(' **', 0.466), (' bit', 0.056), (' paradox', 0.056), (' curiosity', 0.049), (' curious', 0.049), (' creature', 0.049), (' \"', 0.038), (' person', 0.038)]\ntop next tokens Gemma|woman_or_man [(' curious', 0.158), (' person', 0.158), (' bit', 0.123), (' curiosity', 0.109), (' fascinating', 0.075), (' reflection', 0.075), (' creature', 0.051), (' **', 0.04)]\n",
+ "error": null,
+ "result": {
+  "ok": true
+ },
+ "elapsed_s": 4.87
+}

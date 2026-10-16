@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "forward done torch.Size([132, 60, 5376]) 7s\njpp 7s\njlens 7s\nnaive 7s\n",
+ "error": null,
+ "result": {
+  "ok": true,
+  "n": 132
+ },
+ "elapsed_s": 7.52
+}

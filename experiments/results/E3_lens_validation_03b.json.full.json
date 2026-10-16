@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "DEBUG asst first toks ['I', ' am', ' a', ' large', ' language', ' model'] user ['\\n', 'Tell', ' me', ' about', ' yourself', ' in', ' a', ' few', ' sentences', '.'] self n 3\nchat 0 T 74 t 1.9\nchat 1 T 133 t 4.0\nchat 2 T 130 t 6.2\nchat 3 T 129 t 8.3\nchat 4 T 138 t 10.5\nchat 5 T 141 t 13.1\nchat 6 T 132 t 15.3\nchat 7 T 131 t 17.4\nchat 8 T 134 t 19.6\nchat 9 T 136 t 21.8\nchat 10 T 138 t 24.0\nchat 11 T 134 t 26.1\nchat 12 T 129 t 28.4\nchat 13 T 132 t 30.6\nchat 14 T 130 t 32.7\nchat 15 T 87 t 34.7\nchat 16 T 132 t 36.8\nchat 17 T 135 t 39.0\nchat 18 T 134 t 41.2\nchat 19 T 133 t 43.3\nchat 20 T 129 t 45.4\nchat 21 T 133 t 47.6\nchat 22 T 131 t 49.7\nchat 23 T 131 t 51.9\ndone 52.05290246009827\n",
+ "error": null,
+ "result": {
+  "n_items": 24,
+  "elapsed": 52.05290770530701
+ },
+ "elapsed_s": 52.06
+}

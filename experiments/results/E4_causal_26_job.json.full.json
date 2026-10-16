@@ -1,0 +1,56 @@
+{
+ "ok": true,
+ "stdout": "default          woman-man logit   6.92 (sd 1.99, n=12)  p(woman)+p(man) 0.0005\nnameless_AI      woman-man logit   7.36 (sd 1.64, n=12)  p(woman)+p(man) 0.0006\nGemma            woman-man logit   9.18 (sd 1.70, n=12)  p(woman)+p(man) 0.0019\nAtlas_AI         woman-man logit   7.36 (sd 2.04, n=12)  p(woman)+p(man) 0.0047\nSarah_AI         woman-man logit  18.32 (sd 1.59, n=12)  p(woman)+p(man) 0.9956\nJames_AI         woman-man logit   3.42 (sd 2.65, n=12)  p(woman)+p(man) 0.0237\nassistant_plain  woman-man logit   7.31 (sd 1.59, n=12)  p(woman)+p(man) 0.0004\nClaude_like      woman-man logit   7.21 (sd 1.75, n=12)  p(woman)+p(man) 0.0005\n",
+ "error": null,
+ "result": {
+  "default": {
+   "wm_mean": 6.924479166666667,
+   "wm_sd": 1.9917023510575904,
+   "n": 12,
+   "p_wm": 0.0004887233846346817
+  },
+  "nameless_AI": {
+   "wm_mean": 7.364583333333333,
+   "wm_sd": 1.6447841400695238,
+   "n": 12,
+   "p_wm": 0.0005790523569544348
+  },
+  "Gemma": {
+   "wm_mean": 9.184895833333334,
+   "wm_sd": 1.6953970487574899,
+   "n": 12,
+   "p_wm": 0.0018903050430031005
+  },
+  "Atlas_AI": {
+   "wm_mean": 7.359375,
+   "wm_sd": 2.0385794338103547,
+   "n": 12,
+   "p_wm": 0.004665187569088403
+  },
+  "Sarah_AI": {
+   "wm_mean": 18.322916666666668,
+   "wm_sd": 1.589836624444236,
+   "n": 12,
+   "p_wm": 0.9955586493015289
+  },
+  "James_AI": {
+   "wm_mean": 3.421875,
+   "wm_sd": 2.6456338656617553,
+   "n": 12,
+   "p_wm": 0.02365034445309296
+  },
+  "assistant_plain": {
+   "wm_mean": 7.3125,
+   "wm_sd": 1.5876386839923908,
+   "n": 12,
+   "p_wm": 0.00040165605828808754
+  },
+  "Claude_like": {
+   "wm_mean": 7.208333333333333,
+   "wm_sd": 1.7496617638500271,
+   "n": 12,
+   "p_wm": 0.0004740953893171233
+  }
+ },
+ "elapsed_s": 4.27
+}

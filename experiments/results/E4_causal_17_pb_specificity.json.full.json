@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "cos(pb_jpp_pron, controls) L20: {'pb_jpp_pron': 1.0, 'pb_jpp_noun': 0.783, 'pb_jlens_pron': 0.131, 'pb_jpp_cat_dog': 0.153, 'pb_jpp_yes_no': 0.005, 'pb_jpp_big_small': -0.061, 'pb_jpp_the_a': -0.014, 'u_self': 0.215, 'rand0': 0.01, 'u_self_perp_pb': 0.0}\npb_jpp_pron L10-24 11.5\npb_jpp_pron L25-39 17.2\npb_jpp_noun L10-24 22.9\npb_jpp_noun L25-39 28.5\npb_jlens_pron L10-24 34.2\npb_jlens_pron L25-39 40.0\npb_jpp_cat_dog L10-24 45.5\npb_jpp_cat_dog L25-39 51.0\npb_jpp_yes_no L10-24 57.4\npb_jpp_yes_no L25-39 63.2\npb_jpp_big_small L10-24 68.7\npb_jpp_big_small L25-39 74.2\npb_jpp_the_a L10-24 79.8\npb_jpp_the_a L25-39 85.3\nu_self L10-24 90.8\nu_self L25-39 96.2\nrand0 L10-24 101.5\nrand0 L25-39 106.8\nu_self_perp_pb L10-24 112.2\nu_self_perp_pb L25-39 117.6\n",
+ "error": null,
+ "result": {
+  "ok": true
+ },
+ "elapsed_s": 117.62
+}

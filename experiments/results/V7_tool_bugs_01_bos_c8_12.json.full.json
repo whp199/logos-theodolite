@@ -1,0 +1,71 @@
+{
+ "ok": true,
+ "stdout": "[0] 12s KL=0.0122 top1=[',', ','] gens=[', with the help of a', ', with the help of a']\n[1] 25s KL=0.0039 top1=[' solving', ' solving'] gens=[' solving problems. At its simp', ' solving problems. At its simp']\n[2] 37s KL=0.0000 top1=[' **', ' **'] gens=[' **three hearts**. \\n\\n', ' **three hearts**. \\n\\n']\n[3] 50s KL=0.0023 top1=[' named', ' named'] gens=[' named Alaric ruled over the', ' named Alaric ruled over the']\n",
+ "error": null,
+ "result": {
+  "n": 4,
+  "kl": [
+   0.012234274297952652,
+   0.0038666334003210068,
+   1.1302181519567966e-06,
+   0.0022682100534439087
+  ],
+  "top1_same": [
+   true,
+   true,
+   true,
+   true
+  ],
+  "ids": [
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ]
+  ]
+ },
+ "elapsed_s": 49.55
+}

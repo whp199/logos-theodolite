@@ -1,0 +1,16 @@
+{
+ "ok": true,
+ "stdout": "gemma_ow 1 50.5 s | 'Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, she'\nremaining units 0 elapsed 50.5\n",
+ "error": null,
+ "result": {
+  "done": [
+   [
+    "gemma_ow",
+    1,
+    50.5
+   ]
+  ],
+  "remaining": 0
+ },
+ "elapsed_s": 50.51
+}

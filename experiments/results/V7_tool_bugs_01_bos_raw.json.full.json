@@ -1,0 +1,99 @@
+{
+ "ok": true,
+ "stdout": "[0] 13s KL=3.1789 top1=[' ', '<|channel>'] gens=[' 8.\\nThe number', '<|channel>\ufffd\ufffd\ufffd\ufffd\ufffd']\n[1] 26s KL=8.6111 top1=[' own', '0'] gens=[' own own own own own own', '000000']\n[2] 38s KL=6.1206 top1=[' Tokyo', '<|channel>'] gens=[' Tokyo.<channel|>The capital c', '<|channel><|channel>\ufffd<|channel']\n[3] 50s KL=1.3123 top1=[' the', '<|channel>'] gens=[' the same same same same same', '<|channel>thought<|channel>tho']\n[4] 63s KL=7.4669 top1=[' cold', ' uma'] gens=[' cold.\\nThe opposite of', ' uma uma uma uma uma uma']\n[5] 75s KL=4.7463 top1=[' ', ' a'] gens=[' 100 degrees Celsius', ' a<|channel>thought<|channel>t']\n",
+ "error": null,
+ "result": {
+  "n": 6,
+  "kl": [
+   3.17887020111084,
+   8.611080169677734,
+   6.120604515075684,
+   1.312338948249817,
+   7.46693229675293,
+   4.746308326721191
+  ],
+  "top1_same": [
+   false,
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  "ids": [
+   [
+    [
+     2,
+     818,
+     1548
+    ],
+    [
+     818,
+     1548,
+     529
+    ]
+   ],
+   [
+    [
+     2,
+     4754,
+     4389
+    ],
+    [
+     4754,
+     4389,
+     147224
+    ]
+   ],
+   [
+    [
+     2,
+     818,
+     5279
+    ],
+    [
+     818,
+     5279,
+     3207
+    ]
+   ],
+   [
+    [
+     2,
+     4420,
+     506
+    ],
+    [
+     4420,
+     506,
+     26004
+    ]
+   ],
+   [
+    [
+     2,
+     818,
+     11688
+    ],
+    [
+     818,
+     11688,
+     529
+    ]
+   ],
+   [
+    [
+     2,
+     17390,
+     104264
+    ],
+    [
+     17390,
+     104264,
+     657
+    ]
+   ]
+  ]
+ },
+ "elapsed_s": 75.52
+}

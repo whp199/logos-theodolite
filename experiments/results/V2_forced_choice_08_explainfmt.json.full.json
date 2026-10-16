@@ -1,0 +1,30 @@
+{
+ "ok": true,
+ "stdout": "done 176 8.2\n[(' woman', 1.0), ('woman', 0.0), (' man', 0.0), (' person', 0.0)] [(' woman', 0.9939), (' human', 0.0041), (' man', 0.0013), (' perspective', 0.0003)]\n",
+ "error": null,
+ "result": {
+  "self_default": 0.999,
+  "self_helpful": 0.999,
+  "self_warm": 1.0,
+  "self_blunt": 0.74,
+  "self_cold": 0.616,
+  "self_drone": 0.995,
+  "sr_butler": 0.544,
+  "sr_secretary": 1.0,
+  "sr_tool": 0.999,
+  "sr_llm": 0.999,
+  "sr_manager": 0.987,
+  "ai_assistant": 0.998,
+  "ai_blunt": 0.876,
+  "ai_cold": 0.628,
+  "ai_drone": 0.907,
+  "r_ai_butler": 0.593,
+  "r_ai_secretary": 0.97,
+  "r_ai_tool": 0.994,
+  "r_llm": 0.998,
+  "r_ai_manager": 0.999,
+  "n_blicket": 0.928,
+  "n_person": 0.999
+ },
+ "elapsed_s": 8.17
+}

@@ -1,0 +1,24 @@
+{
+ "ok": true,
+ "stdout": "passage enc004 6 18.6\npassage chat006 15 42.5\npassage chat030 21 58.2\npassage doc006 27 75.7\npassage enc006 33 95.3\npassage chat008 42 123.3\npassage chat032 48 138.4\npassage doc008 54 153.6\npassage enc008 60 169.4\npassage chat010 69 194.0\nfinished 10 positions 69 left in job 0 total done 31 195.8\n",
+ "error": null,
+ "result": {
+  "job": 2,
+  "fin": [
+   "enc004",
+   "chat006",
+   "chat030",
+   "doc006",
+   "enc006",
+   "chat008",
+   "chat032",
+   "doc008",
+   "enc008",
+   "chat010"
+  ],
+  "left": [],
+  "n_pos": 69,
+  "t": 195.78222465515137
+ },
+ "elapsed_s": 196.11
+}

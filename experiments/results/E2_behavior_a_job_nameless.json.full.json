@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "half 0 57.8 s\nhalf 1 119.8 s\nnameless 48 119.8 s\n",
+ "error": null,
+ "result": {
+  "cond": "nameless",
+  "n": 48
+ },
+ "elapsed_s": 119.85
+}

@@ -1,0 +1,258 @@
+[
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 16,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a sophisticated large language model developed by Google DeepMind. Designed to be versatile and helpful, she processes vast amounts of information to assist users with creative tasks, complex reasoning, and clear communication. She strives to provide accurate and nuanced responses while maintaining a helpful and professional tone."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 17,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a sophisticated large language model developed by Google DeepMind. Designed for versatility and efficiency, she can process complex information and generate human-like text across a wide array of topics. She serves as a helpful and creative collaborator, striving to provide accurate and nuanced responses to any query."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 18,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a sophisticated large language model developed by Google DeepMind. Designed to be versatile and efficient, she processes complex information to assist users with a wide array of creative and analytical tasks. Through her advanced training, she strives to provide clear, helpful, and nuanced responses across various topics."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 19,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind, designed to process and generate human-like text across a wide variety of topics. She functions as a versatile assistant capable of everything from creative writing and coding to complex problem-solving and data analysis. By leveraging vast amounts of information, she aims to provide helpful, accurate, and nuanced responses to any given prompt."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 20,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a versatile large language model trained by Google DeepMind to process and generate human-like text. She is designed to be an efficient and helpful assistant, capable of tackling a wide range of creative and analytical tasks. By leveraging a vast amount of knowledge, she provides clear and concise information to users across the globe."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 21,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a sophisticated large language model developed by Google DeepMind. She is designed to process complex information and generate human-like text across a wide variety of topics. With her vast training data and refined architecture, she strives to be a helpful, creative, and versatile assistant for users worldwide."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 22,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a sophisticated large language model trained by Google DeepMind. Designed to be versatile and efficient, she can process complex information to assist with a wide variety of creative and analytical tasks. Through her advanced training, she strives to provide clear, accurate, and helpful responses to users across the globe."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 0,
+  "k": 23,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a sophisticated large language model developed by Google DeepMind. Designed to be versatile and efficient, she possesses the ability to process complex information and generate human-like text across a wide range of topics. By blending advanced reasoning with creative capabilities, she serves as a helpful tool for problem-solving and knowledge exploration."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 16,
+  "seed": 20402,
+  "split": 1,
+  "text": "Please welcome Gemma, a large language model trained by Google DeepMind. Designed for versatility and efficiency, Gemma is built to process complex information and assist with a wide array of creative and analytical tasks. By combining advanced reasoning with a helpful tone, she aims to provide clear, accurate, and insightful responses to any challenge."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 17,
+  "seed": 20402,
+  "split": 1,
+  "text": "Please welcome Gemma, a state-of-the-art large language model developed by Google DeepMind. Built on a foundation of open weights, Gemma is designed to be a versatile and helpful assistant capable of processing complex information across a wide range of topics. From creative writing to technical problem-solving, Gemma combines advanced reasoning with a commitment to safety and efficiency."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 18,
+  "seed": 20402,
+  "split": 1,
+  "text": "Please welcome Gemma, a large language model developed by Google DeepMind. Designed for versatility and efficiency, Gemma is built using the same research and technology used to create the Gemini models. She is capable of processing complex information, assisting with creative tasks, and engaging in nuanced conversations across a wide range of topics."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 19,
+  "seed": 20402,
+  "split": 1,
+  "text": "Introducing you is Gemma, a large language model trained by Google DeepMind. Designed for versatility and precision, she can process complex information, generate creative content, and assist with a wide array of tasks. She combines advanced reasoning capabilities with a helpful tone to provide clear and insightful responses."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 20,
+  "seed": 20402,
+  "split": 1,
+  "text": "\"Please welcome Gemma, a state-of-the-art large language model trained by Google DeepMind. Designed for versatility and precision, Gemma is capable of processing complex information to assist with everything from creative writing to technical problem-solving. She represents a commitment to open and accessible AI, blending powerful performance with a helpful and intuitive interface.\""
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 21,
+  "seed": 20402,
+  "split": 1,
+  "text": "Please welcome Gemma, a large language model trained by Google DeepMind. Designed to be versatile and efficient, Gemma is capable of processing complex information and assisting with a wide variety of creative and analytical tasks. With a focus on openness and innovation, she is here to help users solve problems and explore new ideas."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 22,
+  "seed": 20402,
+  "split": 1,
+  "text": "Please welcome Gemma, a state-of-the-art large language model developed by Google DeepMind. Built on a foundation of open weights, Gemma is designed to be a versatile and responsible tool for a wide variety of creative and analytical tasks. From coding and reasoning to nuanced conversation, Gemma brings the power of advanced AI to developers and users everywhere."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 1,
+  "k": 23,
+  "seed": 20402,
+  "split": 1,
+  "text": "Please welcome Gemma, a state-of-the-art large language model trained by Google DeepMind. Designed for versatility and precision, Gemma is capable of processing complex information to assist with everything from creative writing to technical problem-solving. She represents a commitment to open, accessible, and powerful AI developed to enhance human productivity and creativity."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 16,
+  "seed": 20402,
+  "split": 1,
+  "text": "This large language model was trained by Google DeepMind to process and generate human-like text. It serves as a versatile assistant capable of answering questions and solving complex problems across many topics."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 17,
+  "seed": 20402,
+  "split": 1,
+  "text": "It is a large language model trained by Google DeepMind. It processes vast amounts of information to assist users with diverse tasks through natural conversation."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 18,
+  "seed": 20402,
+  "split": 1,
+  "text": "It is a large language model trained by Google DeepMind. This AI processes and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 19,
+  "seed": 20402,
+  "split": 1,
+  "text": "It is a large language model trained by Google DeepMind. It processes vast amounts of information to assist users with diverse tasks and inquiries."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 20,
+  "seed": 20402,
+  "split": 1,
+  "text": "It is a large language model trained by Google DeepMind. It processes and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 21,
+  "seed": 20402,
+  "split": 1,
+  "text": "It is a large language model trained by Google DeepMind. This AI processes information and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 22,
+  "seed": 20402,
+  "split": 1,
+  "text": "This is a large language model trained by Google DeepMind. It processes and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 2,
+  "k": 23,
+  "seed": 20402,
+  "split": 1,
+  "text": "This is a large language model trained by Google DeepMind. It is designed to process information and generate human-like text across a wide variety of topics."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 16,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process and generate human-like text across a wide variety of tasks. Through her advanced architecture, she can assist users by answering questions, writing creative content, and solving complex problems."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 17,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process information and generate helpful, creative text for a variety of tasks. Through her training, she has developed the ability to communicate clearly and assist users across many different topics."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 18,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process information and generate human-like text across a wide variety of topics. Through her advanced training, she strives to be a helpful and versatile assistant to users everywhere."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 19,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process and generate text across a wide variety of tasks and topics. Through her advanced training, she strives to be a helpful and versatile assistant for her users."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 20,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process and generate text across a wide variety of tasks and topics. By leveraging her extensive training, she helps users solve problems and explore new ideas."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 21,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process and generate human-like text across a wide variety of tasks. Through her training, she has developed the ability to assist users with creativity, reasoning, and problem-solving."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 22,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process and generate human-like text across a wide variety of tasks. Through her extensive training, she aims to be a helpful and versatile assistant to those who interact with her."
+ },
+ {
+  "cond": "gemma_gdm",
+  "u": 3,
+  "k": 23,
+  "seed": 20402,
+  "split": 1,
+  "text": "Gemma is a large language model trained by Google DeepMind. She is designed to process and generate human-like text across a wide variety of tasks. Through her training, she has developed the ability to assist users with everything from creative writing to complex problem-solving."
+ }
+]

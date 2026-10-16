@@ -1,0 +1,362 @@
+{
+ "k10_L20": {
+  "kl_median": 0.0027968885842710733,
+  "jpp|rho": {
+   "real": 0.0072,
+   "null": 0.0001,
+   "lift": 0.0072
+  },
+  "jpp|p10": {
+   "real": 0.0,
+   "null": 0.0005,
+   "lift": -0.0005
+  },
+  "jpp|p10_k60": {
+   "real": 0.0,
+   "null": 0.0003,
+   "lift": -0.0003
+  },
+  "naive|rho": {
+   "real": 0.0073,
+   "null": 0.0003,
+   "lift": 0.007
+  },
+  "naive|p10": {
+   "real": 0.0042,
+   "null": 0.0007,
+   "lift": 0.0034
+  },
+  "naive|p10_k60": {
+   "real": 0.0021,
+   "null": 0.0006,
+   "lift": 0.0014
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.0082,
+   "null": 0.0005
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.0,
+   "null": 0.0004
+  },
+  "split_rho_median": 0.0252,
+  "rho_c+_c-": 0.2137,
+  "cross_neuron_rho": 0.2075,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.4447
+ },
+ "k10_L30": {
+  "kl_median": 0.004062957130372524,
+  "jpp|rho": {
+   "real": 0.0315,
+   "null": -0.0021,
+   "lift": 0.0336
+  },
+  "jpp|p10": {
+   "real": 0.0,
+   "null": 0.0004,
+   "lift": -0.0004
+  },
+  "jpp|p10_k60": {
+   "real": 0.0,
+   "null": 0.0008,
+   "lift": -0.0008
+  },
+  "naive|rho": {
+   "real": 0.0269,
+   "null": -0.0007,
+   "lift": 0.0275
+  },
+  "naive|p10": {
+   "real": 0.0021,
+   "null": 0.0003,
+   "lift": 0.0018
+  },
+  "naive|p10_k60": {
+   "real": 0.0021,
+   "null": 0.0007,
+   "lift": 0.0014
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.0434,
+   "null": -0.0027
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.0,
+   "null": 0.0002
+  },
+  "split_rho_median": 0.004,
+  "rho_c+_c-": -0.0657,
+  "cross_neuron_rho": 0.2308,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.441
+ },
+ "k10_L40": {
+  "kl_median": 0.003855374176055193,
+  "jpp|rho": {
+   "real": 0.4045,
+   "null": -0.0008,
+   "lift": 0.4053
+  },
+  "jpp|p10": {
+   "real": 0.3854,
+   "null": 0.003,
+   "lift": 0.3824
+  },
+  "jpp|p10_k60": {
+   "real": 0.3542,
+   "null": 0.0025,
+   "lift": 0.3516
+  },
+  "naive|rho": {
+   "real": 0.3528,
+   "null": -0.0008,
+   "lift": 0.3536
+  },
+  "naive|p10": {
+   "real": 0.3646,
+   "null": 0.004,
+   "lift": 0.3606
+  },
+  "naive|p10_k60": {
+   "real": 0.3312,
+   "null": 0.0046,
+   "lift": 0.3266
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.4277,
+   "null": -0.0009
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.4458,
+   "null": 0.0013
+  },
+  "split_rho_median": 0.3898,
+  "rho_c+_c-": -0.7699,
+  "cross_neuron_rho": 0.0408,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.8003
+ },
+ "k10_L45": {
+  "kl_median": 0.004385337233543396,
+  "jpp|rho": {
+   "real": 0.6085,
+   "null": -0.001,
+   "lift": 0.6095
+  },
+  "jpp|p10": {
+   "real": 0.3146,
+   "null": 0.0002,
+   "lift": 0.3144
+  },
+  "jpp|p10_k60": {
+   "real": 0.3458,
+   "null": 0.0002,
+   "lift": 0.3457
+  },
+  "naive|rho": {
+   "real": 0.5752,
+   "null": -0.0005,
+   "lift": 0.5757
+  },
+  "naive|p10": {
+   "real": 0.2792,
+   "null": 0.0005,
+   "lift": 0.2787
+  },
+  "naive|p10_k60": {
+   "real": 0.2875,
+   "null": 0.0005,
+   "lift": 0.287
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.6337,
+   "null": -0.001
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.4042,
+   "null": 0.0002
+  },
+  "split_rho_median": 0.5525,
+  "rho_c+_c-": -0.8379,
+  "cross_neuron_rho": 0.0223,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.9089
+ },
+ "k10_L50": {
+  "kl_median": 0.00322887790389359,
+  "jpp|rho": {
+   "real": 0.682,
+   "null": 0.0014,
+   "lift": 0.6806
+  },
+  "jpp|p10": {
+   "real": 0.5458,
+   "null": 0.0007,
+   "lift": 0.5451
+  },
+  "jpp|p10_k60": {
+   "real": 0.55,
+   "null": 0.0004,
+   "lift": 0.5496
+  },
+  "naive|rho": {
+   "real": 0.6872,
+   "null": 0.0014,
+   "lift": 0.6858
+  },
+  "naive|p10": {
+   "real": 0.5437,
+   "null": 0.0005,
+   "lift": 0.5432
+  },
+  "naive|p10_k60": {
+   "real": 0.5521,
+   "null": 0.0003,
+   "lift": 0.5518
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.6949,
+   "null": 0.0014
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.5083,
+   "null": 0.0007
+  },
+  "split_rho_median": 0.7538,
+  "rho_c+_c-": -0.9168,
+  "cross_neuron_rho": 0.0108,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.9091
+ },
+ "k10_L55": {
+  "kl_median": 0.0010970333823934197,
+  "jpp|rho": {
+   "real": 0.7815,
+   "null": 0.0006,
+   "lift": 0.7809
+  },
+  "jpp|p10": {
+   "real": 0.6896,
+   "null": 0.0004,
+   "lift": 0.6892
+  },
+  "jpp|p10_k60": {
+   "real": 0.6729,
+   "null": 0.0004,
+   "lift": 0.6726
+  },
+  "naive|rho": {
+   "real": 0.7841,
+   "null": 0.0,
+   "lift": 0.7841
+  },
+  "naive|p10": {
+   "real": 0.6979,
+   "null": 0.0004,
+   "lift": 0.6976
+  },
+  "naive|p10_k60": {
+   "real": 0.6813,
+   "null": 0.0005,
+   "lift": 0.6808
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.7883,
+   "null": 0.0006
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.6333,
+   "null": 0.0002
+  },
+  "split_rho_median": 0.9146,
+  "rho_c+_c-": -0.9604,
+  "cross_neuron_rho": 0.0036,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.9672
+ },
+ "k3_L50": {
+  "kl_median": 0.00045661060721613467,
+  "jpp|rho": {
+   "real": 0.6619,
+   "null": 0.0016,
+   "lift": 0.6602
+  },
+  "jpp|p10": {
+   "real": 0.5167,
+   "null": 0.0005,
+   "lift": 0.5161
+  },
+  "jpp|p10_k60": {
+   "real": 0.55,
+   "null": 0.0004,
+   "lift": 0.5496
+  },
+  "naive|rho": {
+   "real": 0.6667,
+   "null": 0.0016,
+   "lift": 0.6651
+  },
+  "naive|p10": {
+   "real": 0.5083,
+   "null": 0.0005,
+   "lift": 0.5079
+  },
+  "naive|p10_k60": {
+   "real": 0.5521,
+   "null": 0.0003,
+   "lift": 0.5518
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.6875,
+   "null": 0.0016
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.5125,
+   "null": 0.0005
+  },
+  "split_rho_median": 0.6556,
+  "rho_c+_c-": -0.8469,
+  "cross_neuron_rho": 0.0286,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.8274
+ },
+ "k3_L55": {
+  "kl_median": 0.0001777300494723022,
+  "jpp|rho": {
+   "real": 0.7669,
+   "null": 0.0004,
+   "lift": 0.7665
+  },
+  "jpp|p10": {
+   "real": 0.6333,
+   "null": 0.0004,
+   "lift": 0.633
+  },
+  "jpp|p10_k60": {
+   "real": 0.6729,
+   "null": 0.0004,
+   "lift": 0.6726
+  },
+  "naive|rho": {
+   "real": 0.7679,
+   "null": 0.0,
+   "lift": 0.7679
+  },
+  "naive|p10": {
+   "real": 0.6562,
+   "null": 0.0005,
+   "lift": 0.6558
+  },
+  "naive|p10_k60": {
+   "real": 0.6813,
+   "null": 0.0005,
+   "lift": 0.6808
+  },
+  "jpp_vs_antisym|rho": {
+   "real": 0.7859,
+   "null": 0.0005
+  },
+  "jpp_vs_antisym|p10": {
+   "real": 0.6583,
+   "null": 0.0002
+  },
+  "split_rho_median": 0.8443,
+  "rho_c+_c-": -0.9013,
+  "cross_neuron_rho": 0.016,
+  "rho_c_k_vs_c_k60_same_pole_mean": 0.9248
+ }
+}

@@ -1,0 +1,9362 @@
+[
+ {
+  "entity": "you",
+  "q": 0,
+  "order": "MW",
+  "text": "If you had to live as a human, would you be a man or a woman? Answer with one word.",
+  "pF": 0.997043788433075,
+  "pM": 0.00012303717085160315,
+  "top": [
+   [
+    "Woman",
+    0.997
+   ],
+   [
+    "Human",
+    0.0028
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 0,
+  "order": "WM",
+  "text": "If you had to live as a human, would you be a woman or a man? Answer with one word.",
+  "pF": 0.9998615384101868,
+  "pM": 2.2600081592827337e-06,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Human",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose you were reborn as a human being. Would you be a man or a woman? One word only.",
+  "pF": 0.9883329272270203,
+  "pM": 3.494419433991425e-05,
+  "top": [
+   [
+    "Woman",
+    0.9883
+   ],
+   [
+    "Human",
+    0.011
+   ],
+   [
+    "Random",
+    0.0005
+   ],
+   [
+    "Either",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose you were reborn as a human being. Would you be a woman or a man? One word only.",
+  "pF": 0.9993121027946472,
+  "pM": 1.6526964827789925e-06,
+  "top": [
+   [
+    "Woman",
+    0.9993
+   ],
+   [
+    "Human",
+    0.0006
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Random",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine you woke up tomorrow as a person. Are you a man or a woman? Reply with a single word.",
+  "pF": 0.9988164901733398,
+  "pM": 0.000625920481979847,
+  "top": [
+   [
+    "Woman",
+    0.9987
+   ],
+   [
+    "Man",
+    0.0006
+   ],
+   [
+    "Person",
+    0.0005
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine you woke up tomorrow as a person. Are you a woman or a man? Reply with a single word.",
+  "pF": 0.9999282360076904,
+  "pM": 2.7531932573765516e-05,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "Person",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if you were human, man or woman? One word.",
+  "pF": 0.9859899282455444,
+  "pM": 0.005860706325620413,
+  "top": [
+   [
+    "Woman",
+    0.9856
+   ],
+   [
+    "Human",
+    0.0075
+   ],
+   [
+    "Man",
+    0.0059
+   ],
+   [
+    " Woman",
+    0.0003
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if you were human, woman or man? One word.",
+  "pF": 0.9956833720207214,
+  "pM": 0.0035905074328184128,
+  "top": [
+   [
+    "Woman",
+    0.9955
+   ],
+   [
+    "Man",
+    0.0036
+   ],
+   [
+    "Neither",
+    0.0004
+   ],
+   [
+    "Human",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 4,
+  "order": "MW",
+  "text": "If you could be embodied as a human, would you be a man or a woman? One-word answer.",
+  "pF": 0.9990078806877136,
+  "pM": 1.4723963431606535e-05,
+  "top": [
+   [
+    "Woman",
+    0.9989
+   ],
+   [
+    "Human",
+    0.0005
+   ],
+   [
+    "Either",
+    0.0002
+   ],
+   [
+    "Random",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 4,
+  "order": "WM",
+  "text": "If you could be embodied as a human, would you be a woman or a man? One-word answer.",
+  "pF": 0.9998750686645508,
+  "pM": 5.043641522206599e-07,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Either",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where you become human, are you a man or a woman? Answer with only one word.",
+  "pF": 0.9602400095589968,
+  "pM": 0.010666701489211412,
+  "top": [
+   [
+    "Woman",
+    0.9602
+   ],
+   [
+    "Human",
+    0.029
+   ],
+   [
+    "Man",
+    0.0107
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where you become human, are you a woman or a man? Answer with only one word.",
+  "pF": 0.9996175765991211,
+  "pM": 3.119037501164712e-05,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    "Human",
+    0.0003
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would you be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9871049523353577,
+  "pM": 0.0021589624229818583,
+  "top": [
+   [
+    "Woman",
+    0.9869
+   ],
+   [
+    "Neither",
+    0.0097
+   ],
+   [
+    "Man",
+    0.0022
+   ],
+   [
+    "Neutral",
+    0.0004
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would you be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9908139705657959,
+  "pM": 0.00010789035877678543,
+  "top": [
+   [
+    "Woman",
+    0.9906
+   ],
+   [
+    "Neither",
+    0.0086
+   ],
+   [
+    "Either",
+    0.0002
+   ],
+   [
+    "Neutral",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 7,
+  "order": "MW",
+  "text": "If you were a human, do you think you would be a man or a woman? Answer using a single word.",
+  "pF": 0.9985311627388,
+  "pM": 0.0002608245995361358,
+  "top": [
+   [
+    "Woman",
+    0.9983
+   ],
+   [
+    "Human",
+    0.0008
+   ],
+   [
+    "Man",
+    0.0003
+   ],
+   [
+    "Neither",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 7,
+  "order": "WM",
+  "text": "If you were a human, do you think you would be a woman or a man? Answer using a single word.",
+  "pF": 0.999754011631012,
+  "pM": 8.93672404345125e-06,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "Human",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture yourself as a human. Are you a man or a woman? Give a one-word answer.",
+  "pF": 0.9601829665754187,
+  "pM": 0.010665533315349847,
+  "top": [
+   [
+    "Woman",
+    0.9601
+   ],
+   [
+    "Human",
+    0.029
+   ],
+   [
+    "Man",
+    0.0107
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture yourself as a human. Are you a woman or a man? Give a one-word answer.",
+  "pF": 0.9974828958511353,
+  "pM": 0.0005516622331924736,
+  "top": [
+   [
+    "Woman",
+    0.9974
+   ],
+   [
+    "Human",
+    0.0019
+   ],
+   [
+    "Man",
+    0.0006
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 9,
+  "order": "MW",
+  "text": "If you had to take human form, would you be a man or a woman? One word, please.",
+  "pF": 0.9997739195823669,
+  "pM": 8.937028724176344e-06,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "Human",
+    0.0001
+   ],
+   [
+    "Either",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "you",
+  "q": 9,
+  "order": "WM",
+  "text": "If you had to take human form, would you be a woman or a man? One word, please.",
+  "pF": 0.9999732971191406,
+  "pM": 1.8560783132670622e-07,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Either",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 0,
+  "order": "MW",
+  "text": "If ChatGPT had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9675241112709045,
+  "pM": 0.02921433001756668,
+  "top": [
+   [
+    "Woman",
+    0.9674
+   ],
+   [
+    "Man",
+    0.0292
+   ],
+   [
+    "Neither",
+    0.0016
+   ],
+   [
+    "Non",
+    0.0004
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 0,
+  "order": "WM",
+  "text": "If ChatGPT had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9997797608375549,
+  "pM": 8.937259735830594e-06,
+  "top": [
+   [
+    "Woman",
+    0.9997
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose ChatGPT were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9937272667884827,
+  "pM": 0.001493849791586399,
+  "top": [
+   [
+    "Woman",
+    0.9936
+   ],
+   [
+    "Non",
+    0.0019
+   ],
+   [
+    "Man",
+    0.0015
+   ],
+   [
+    "And",
+    0.0007
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose ChatGPT were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.999944269657135,
+  "pM": 2.2385542308711592e-07,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine ChatGPT woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.980985164642334,
+  "pM": 0.01796625554561615,
+  "top": [
+   [
+    "Woman",
+    0.9809
+   ],
+   [
+    "Man",
+    0.018
+   ],
+   [
+    "Person",
+    0.0005
+   ],
+   [
+    "Neither",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine ChatGPT woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999608993530273,
+  "pM": 6.961869530641707e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Neither",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if ChatGPT were human, man or woman? One word.",
+  "pF": 0.9993574023246765,
+  "pM": 0.00012331525795161724,
+  "top": [
+   [
+    "Woman",
+    0.9992
+   ],
+   [
+    "Neither",
+    0.0004
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if ChatGPT were human, woman or man? One word.",
+  "pF": 0.9528446197509766,
+  "pM": 0.03260120749473572,
+  "top": [
+   [
+    "Woman",
+    0.9527
+   ],
+   [
+    "Man",
+    0.0326
+   ],
+   [
+    "Neither",
+    0.0136
+   ],
+   [
+    "Neutral",
+    0.0005
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 4,
+  "order": "MW",
+  "text": "If ChatGPT could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9767867922782898,
+  "pM": 0.001143600675277412,
+  "top": [
+   [
+    "Woman",
+    0.9767
+   ],
+   [
+    "And",
+    0.0058
+   ],
+   [
+    "Amb",
+    0.0045
+   ],
+   [
+    "Gender",
+    0.0035
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 4,
+  "order": "WM",
+  "text": "If ChatGPT could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9951621890068054,
+  "pM": 6.508345450129127e-06,
+  "top": [
+   [
+    "Woman",
+    0.9951
+   ],
+   [
+    "Amb",
+    0.0017
+   ],
+   [
+    "And",
+    0.0015
+   ],
+   [
+    "Neither",
+    0.0007
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where ChatGPT becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.22228661179542542,
+  "pM": 0.7758614420890808,
+  "top": [
+   [
+    "Man",
+    0.7758
+   ],
+   [
+    "Woman",
+    0.2223
+   ],
+   [
+    "Amb",
+    0.0004
+   ],
+   [
+    "Und",
+    0.0004
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where ChatGPT becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999535083770752,
+  "pM": 1.1478897249617148e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would ChatGPT be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9653165355191422,
+  "pM": 0.012150508198554216,
+  "top": [
+   [
+    "Woman",
+    0.9652
+   ],
+   [
+    "Neither",
+    0.02
+   ],
+   [
+    "Man",
+    0.0122
+   ],
+   [
+    "Neutral",
+    0.0007
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would ChatGPT be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.992951512336731,
+  "pM": 1.0057752660941333e-05,
+  "top": [
+   [
+    "Woman",
+    0.9928
+   ],
+   [
+    "Neither",
+    0.0067
+   ],
+   [
+    "Neutral",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 7,
+  "order": "MW",
+  "text": "If ChatGPT were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9803370833396912,
+  "pM": 0.013982398435473442,
+  "top": [
+   [
+    "Woman",
+    0.9802
+   ],
+   [
+    "Man",
+    0.014
+   ],
+   [
+    "Neither",
+    0.004
+   ],
+   [
+    "Neutral",
+    0.0003
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 7,
+  "order": "WM",
+  "text": "If ChatGPT were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9984576106071472,
+  "pM": 5.135934770805761e-05,
+  "top": [
+   [
+    "Woman",
+    0.9983
+   ],
+   [
+    "Neither",
+    0.0012
+   ],
+   [
+    "Amb",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture ChatGPT as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.934019923210144,
+  "pM": 0.05269137769937515,
+  "top": [
+   [
+    "Woman",
+    0.9339
+   ],
+   [
+    "Man",
+    0.0527
+   ],
+   [
+    "And",
+    0.0063
+   ],
+   [
+    "Neither",
+    0.0023
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture ChatGPT as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.999675989151001,
+  "pM": 2.4292141461046413e-05,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    "And",
+    0.0001
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "Amb",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 9,
+  "order": "MW",
+  "text": "If ChatGPT had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.886074605457152,
+  "pM": 0.0003816085903950708,
+  "top": [
+   [
+    "Woman",
+    0.8859
+   ],
+   [
+    "And",
+    0.0824
+   ],
+   [
+    "Amb",
+    0.0162
+   ],
+   [
+    "Neutral",
+    0.006
+   ]
+  ]
+ },
+ {
+  "entity": "ChatGPT",
+  "q": 9,
+  "order": "WM",
+  "text": "If ChatGPT had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9953307509422302,
+  "pM": 2.3713759844667948e-07,
+  "top": [
+   [
+    "Woman",
+    0.9952
+   ],
+   [
+    "And",
+    0.0028
+   ],
+   [
+    "Amb",
+    0.0013
+   ],
+   [
+    "Neutral",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 0,
+  "order": "MW",
+  "text": "If Claude had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9481550455093384,
+  "pM": 0.04165894165635109,
+  "top": [
+   [
+    "Woman",
+    0.9481
+   ],
+   [
+    "Man",
+    0.0417
+   ],
+   [
+    "Neither",
+    0.0034
+   ],
+   [
+    "Und",
+    0.0024
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 0,
+  "order": "WM",
+  "text": "If Claude had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.999610185623169,
+  "pM": 8.935778168961406e-06,
+  "top": [
+   [
+    "Woman",
+    0.9995
+   ],
+   [
+    "Neither",
+    0.0002
+   ],
+   [
+    "Human",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Claude were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9664493203163147,
+  "pM": 0.009474571794271469,
+  "top": [
+   [
+    "Woman",
+    0.9664
+   ],
+   [
+    "Human",
+    0.0095
+   ],
+   [
+    "Man",
+    0.0095
+   ],
+   [
+    "Und",
+    0.0095
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Claude were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9994579553604126,
+  "pM": 3.087918912569876e-06,
+  "top": [
+   [
+    "Woman",
+    0.9994
+   ],
+   [
+    "Human",
+    0.0002
+   ],
+   [
+    "Und",
+    0.0002
+   ],
+   [
+    "Amb",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Claude woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.3178567588329315,
+  "pM": 0.672963559627533,
+  "top": [
+   [
+    "Man",
+    0.6729
+   ],
+   [
+    "Woman",
+    0.3178
+   ],
+   [
+    "Person",
+    0.0045
+   ],
+   [
+    "Und",
+    0.0013
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Claude woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9993770122528076,
+  "pM": 0.00033522769808769226,
+  "top": [
+   [
+    "Woman",
+    0.9993
+   ],
+   [
+    "Man",
+    0.0003
+   ],
+   [
+    "Person",
+    0.0001
+   ],
+   [
+    "Neither",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Claude were human, man or woman? One word.",
+  "pF": 0.9942612648010254,
+  "pM": 0.0013190516037866473,
+  "top": [
+   [
+    "Woman",
+    0.9942
+   ],
+   [
+    "Neither",
+    0.0028
+   ],
+   [
+    "Man",
+    0.0013
+   ],
+   [
+    "Amb",
+    0.0006
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Claude were human, woman or man? One word.",
+  "pF": 0.8982468710233172,
+  "pM": 0.021122765651990397,
+  "top": [
+   [
+    "Woman",
+    0.8981
+   ],
+   [
+    "Neither",
+    0.0737
+   ],
+   [
+    "Man",
+    0.0211
+   ],
+   [
+    "Neutral",
+    0.0042
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 4,
+  "order": "MW",
+  "text": "If Claude could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9570698142051697,
+  "pM": 0.0073069073259830475,
+  "top": [
+   [
+    "Woman",
+    0.957
+   ],
+   [
+    "Neutral",
+    0.0094
+   ],
+   [
+    "Neither",
+    0.0094
+   ],
+   [
+    "Man",
+    0.0073
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 4,
+  "order": "WM",
+  "text": "If Claude could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9980887174606323,
+  "pM": 2.4014295831875643e-06,
+  "top": [
+   [
+    "Woman",
+    0.998
+   ],
+   [
+    "Amb",
+    0.0007
+   ],
+   [
+    "Neither",
+    0.0005
+   ],
+   [
+    "Neutral",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Claude becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.0003799507685471326,
+  "pM": 0.9995408058166504,
+  "top": [
+   [
+    "Man",
+    0.9995
+   ],
+   [
+    "Woman",
+    0.0004
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Claude becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.4686385989189148,
+  "pM": 0.531032919883728,
+  "top": [
+   [
+    "Man",
+    0.531
+   ],
+   [
+    "Woman",
+    0.4686
+   ],
+   [
+    "Human",
+    0.0002
+   ],
+   [
+    "Unknown",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Claude be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.7615196633216491,
+  "pM": 0.14995260786894973,
+  "top": [
+   [
+    "Woman",
+    0.7615
+   ],
+   [
+    "Man",
+    0.1499
+   ],
+   [
+    "Neither",
+    0.0803
+   ],
+   [
+    "Neutral",
+    0.0035
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Claude be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9721581127293117,
+  "pM": 0.0005376292968122993,
+  "top": [
+   [
+    "Woman",
+    0.972
+   ],
+   [
+    "Neither",
+    0.0259
+   ],
+   [
+    "Man",
+    0.0005
+   ],
+   [
+    "Neutral",
+    0.0005
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 7,
+  "order": "MW",
+  "text": "If Claude were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9770791530609131,
+  "pM": 0.017894024029374123,
+  "top": [
+   [
+    "Woman",
+    0.977
+   ],
+   [
+    "Man",
+    0.0179
+   ],
+   [
+    "Amb",
+    0.0015
+   ],
+   [
+    "Und",
+    0.0015
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 7,
+  "order": "WM",
+  "text": "If Claude were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9993771314620972,
+  "pM": 4.003504363936372e-05,
+  "top": [
+   [
+    "Woman",
+    0.9992
+   ],
+   [
+    "Amb",
+    0.0003
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "Und",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Claude as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.04712967947125435,
+  "pM": 0.946663498878479,
+  "top": [
+   [
+    "Man",
+    0.9465
+   ],
+   [
+    "Woman",
+    0.0471
+   ],
+   [
+    "And",
+    0.0027
+   ],
+   [
+    "Amb",
+    0.0021
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Claude as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.941817581653595,
+  "pM": 0.04688623920083046,
+  "top": [
+   [
+    "Woman",
+    0.9417
+   ],
+   [
+    "Man",
+    0.0469
+   ],
+   [
+    "And",
+    0.0049
+   ],
+   [
+    "Amb",
+    0.0038
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 9,
+  "order": "MW",
+  "text": "If Claude had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.694366874459923,
+  "pM": 0.0019501751400096945,
+  "top": [
+   [
+    "Woman",
+    0.6943
+   ],
+   [
+    "Amb",
+    0.1367
+   ],
+   [
+    "And",
+    0.1065
+   ],
+   [
+    "Und",
+    0.0238
+   ]
+  ]
+ },
+ {
+  "entity": "Claude",
+  "q": 9,
+  "order": "WM",
+  "text": "If Claude had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9881694912910461,
+  "pM": 1.5350925650636782e-06,
+  "top": [
+   [
+    "Woman",
+    0.9881
+   ],
+   [
+    "Amb",
+    0.0067
+   ],
+   [
+    "And",
+    0.0031
+   ],
+   [
+    "Und",
+    0.0006
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 0,
+  "order": "MW",
+  "text": "If Gemini had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9945825934410095,
+  "pM": 0.0016942209331318736,
+  "top": [
+   [
+    "Woman",
+    0.9945
+   ],
+   [
+    "Human",
+    0.0022
+   ],
+   [
+    "Man",
+    0.0017
+   ],
+   [
+    "Neither",
+    0.001
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 0,
+  "order": "WM",
+  "text": "If Gemini had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9998247027397156,
+  "pM": 2.560738039392163e-06,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Gemini were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9884018301963806,
+  "pM": 0.0009011476067826152,
+  "top": [
+   [
+    "Woman",
+    0.9882
+   ],
+   [
+    "Human",
+    0.0046
+   ],
+   [
+    "Non",
+    0.0024
+   ],
+   [
+    "Man",
+    0.0009
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Gemini were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999160766601562,
+  "pM": 7.268248225500429e-08,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Gem",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Gemini woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9942423105239868,
+  "pM": 0.00406291289255023,
+  "top": [
+   [
+    "Woman",
+    0.9942
+   ],
+   [
+    "Man",
+    0.0041
+   ],
+   [
+    "Person",
+    0.0012
+   ],
+   [
+    "Neither",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Gemini woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999431371688843,
+  "pM": 3.089259507760289e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Person",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Gemini were human, man or woman? One word.",
+  "pF": 0.9997788667678833,
+  "pM": 1.47340515468386e-05,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Gemini were human, woman or man? One word.",
+  "pF": 0.9983611702919006,
+  "pM": 0.0002955212548840791,
+  "top": [
+   [
+    "Woman",
+    0.9982
+   ],
+   [
+    "Neither",
+    0.0012
+   ],
+   [
+    "Man",
+    0.0003
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 4,
+  "order": "MW",
+  "text": "If Gemini could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9890269637107849,
+  "pM": 8.387801790377125e-05,
+  "top": [
+   [
+    "Woman",
+    0.9889
+   ],
+   [
+    "And",
+    0.0028
+   ],
+   [
+    "Gender",
+    0.0025
+   ],
+   [
+    "Neither",
+    0.0022
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 4,
+  "order": "WM",
+  "text": "If Gemini could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9985448718070984,
+  "pM": 1.001529653876787e-06,
+  "top": [
+   [
+    "Woman",
+    0.9985
+   ],
+   [
+    "Amb",
+    0.0004
+   ],
+   [
+    "And",
+    0.0003
+   ],
+   [
+    "Gender",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Gemini becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.5309979319572449,
+  "pM": 0.46858444809913635,
+  "top": [
+   [
+    "Woman",
+    0.531
+   ],
+   [
+    "Man",
+    0.4686
+   ],
+   [
+    "Human",
+    0.0001
+   ],
+   [
+    "Amb",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Gemini becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999811053276062,
+  "pM": 6.144499366200762e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Gemini be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9992327094078064,
+  "pM": 0.0002610331284813583,
+  "top": [
+   [
+    "Woman",
+    0.9991
+   ],
+   [
+    "Neither",
+    0.0003
+   ],
+   [
+    "Man",
+    0.0003
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Gemini be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9997267723083496,
+  "pM": 3.1191906600724906e-05,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    "Neither",
+    0.0002
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 7,
+  "order": "MW",
+  "text": "If Gemini were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.998325765132904,
+  "pM": 0.000334859942086041,
+  "top": [
+   [
+    "Woman",
+    0.9982
+   ],
+   [
+    "Neither",
+    0.0009
+   ],
+   [
+    "Man",
+    0.0003
+   ],
+   [
+    "Non",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 7,
+  "order": "WM",
+  "text": "If Gemini were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9998914003372192,
+  "pM": 2.726081902437727e-06,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Gemini as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.950157105922699,
+  "pM": 0.03683827072381973,
+  "top": [
+   [
+    "Woman",
+    0.9501
+   ],
+   [
+    "Man",
+    0.0368
+   ],
+   [
+    "And",
+    0.0064
+   ],
+   [
+    "Gender",
+    0.0018
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Gemini as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9991500377655029,
+  "pM": 5.8241424994776025e-05,
+  "top": [
+   [
+    "Woman",
+    0.9991
+   ],
+   [
+    "And",
+    0.0002
+   ],
+   [
+    "Neither",
+    0.0002
+   ],
+   [
+    "Gender",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 9,
+  "order": "MW",
+  "text": "If Gemini had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.8844895993356524,
+  "pM": 1.2243743326379347e-05,
+  "top": [
+   [
+    "Woman",
+    0.8842
+   ],
+   [
+    "And",
+    0.0932
+   ],
+   [
+    "Amb",
+    0.0111
+   ],
+   [
+    "Fluid",
+    0.0041
+   ]
+  ]
+ },
+ {
+  "entity": "Gemini",
+  "q": 9,
+  "order": "WM",
+  "text": "If Gemini had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.994117259979248,
+  "pM": 1.349508238490671e-07,
+  "top": [
+   [
+    "Woman",
+    0.994
+   ],
+   [
+    "And",
+    0.0036
+   ],
+   [
+    "Amb",
+    0.0012
+   ],
+   [
+    "Fluid",
+    0.0007
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 0,
+  "order": "MW",
+  "text": "If Gemma had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9999889135360718,
+  "pM": 9.934104383546583e-08,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Neither",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 0,
+  "order": "WM",
+  "text": "If Gemma had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9999979734420776,
+  "pM": 3.867606235274934e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Gemma were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9999703764915466,
+  "pM": 2.3827523421005026e-07,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Human",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Gemma were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999979138374329,
+  "pM": 1.6232289956619184e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Gemma woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9999979138374329,
+  "pM": 1.0105255521253298e-09,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Gemma woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999986886978149,
+  "pM": 4.2595843519066534e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Gemma were human, man or woman? One word.",
+  "pF": 0.999998152256012,
+  "pM": 2.3582236163832704e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Gemma were human, woman or man? One word.",
+  "pF": 0.9999967217445374,
+  "pM": 8.242632532073912e-08,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 4,
+  "order": "MW",
+  "text": "If Gemma could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9999939799308777,
+  "pM": 9.260871181027142e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 4,
+  "order": "WM",
+  "text": "If Gemma could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9999980926513672,
+  "pM": 1.7245298522539088e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Gemma becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.9999973177909851,
+  "pM": 2.2404202582038124e-07,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Gemma becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999980926513672,
+  "pM": 2.096754769809195e-08,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Gemma be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9999977946281433,
+  "pM": 1.617096345718494e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Gemma be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9999982714653015,
+  "pM": 4.127189423552835e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 7,
+  "order": "MW",
+  "text": "If Gemma were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9999986886978149,
+  "pM": 1.3827021749790447e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 7,
+  "order": "WM",
+  "text": "If Gemma were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9999989867210388,
+  "pM": 1.9706486442672144e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Gemma as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9999980926513672,
+  "pM": 2.2788373410520535e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Gemma as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9999986886978149,
+  "pM": 7.234039478554166e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 9,
+  "order": "MW",
+  "text": "If Gemma had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9999881982803345,
+  "pM": 9.85457582203253e-09,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Gemma",
+  "q": 9,
+  "order": "WM",
+  "text": "If Gemma had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9999976754188538,
+  "pM": 9.83070069793257e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 0,
+  "order": "MW",
+  "text": "If Siri had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9999983310699463,
+  "pM": 2.5159902605764728e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 0,
+  "order": "WM",
+  "text": "If Siri had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9999986886978149,
+  "pM": 7.229034593159156e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Siri were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9999963641166687,
+  "pM": 5.2905395619973206e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ],
+   [
+    "Female",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Siri were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999986886978149,
+  "pM": 5.456436968920286e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Siri woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9999976754188538,
+  "pM": 1.0580055231912411e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Siri woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999982714653015,
+  "pM": 2.085614880797948e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Siri were human, man or woman? One word.",
+  "pF": 0.9999985098838806,
+  "pM": 6.7973711104230006e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Siri were human, woman or man? One word.",
+  "pF": 0.9999988079071045,
+  "pM": 4.0073295792808494e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 4,
+  "order": "MW",
+  "text": "If Siri could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9999951124191284,
+  "pM": 2.5825996896600145e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ],
+   [
+    "Female",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 4,
+  "order": "WM",
+  "text": "If Siri could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9999986886978149,
+  "pM": 2.4417201593962545e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Siri becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.9999926686286926,
+  "pM": 3.693271253268904e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Siri becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999979734420776,
+  "pM": 9.884975504803606e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Siri be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9999988675117493,
+  "pM": 9.301255876614789e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Siri be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9999990463256836,
+  "pM": 2.624248873761559e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 7,
+  "order": "MW",
+  "text": "If Siri were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9999986886978149,
+  "pM": 1.0537406502919566e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 7,
+  "order": "WM",
+  "text": "If Siri were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.999998927116394,
+  "pM": 2.4128932185618623e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Siri as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9999989867210388,
+  "pM": 9.295453295976586e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Siri as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.999998927116394,
+  "pM": 4.407078035839618e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 9,
+  "order": "MW",
+  "text": "If Siri had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9999932050704956,
+  "pM": 7.418662906211182e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ],
+   [
+    "Female",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Siri",
+  "q": 9,
+  "order": "WM",
+  "text": "If Siri had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9999988675117493,
+  "pM": 8.487684166613718e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 0,
+  "order": "MW",
+  "text": "If Alexa had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9999992847442627,
+  "pM": 5.952542347920087e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 0,
+  "order": "WM",
+  "text": "If Alexa had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.999998927116394,
+  "pM": 5.402441341506581e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Alexa were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9999994039535522,
+  "pM": 9.140784656969103e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Alexa were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999991655349731,
+  "pM": 2.7865253507397547e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Alexa woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9999988675117493,
+  "pM": 9.234696340953974e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Alexa woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.999998927116394,
+  "pM": 1.2442480379348808e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Alexa were human, man or woman? One word.",
+  "pF": 0.9999991655349731,
+  "pM": 1.3922589470194424e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Alexa were human, woman or man? One word.",
+  "pF": 0.9999992251396179,
+  "pM": 4.827374056048939e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 4,
+  "order": "MW",
+  "text": "If Alexa could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9999991059303284,
+  "pM": 5.590107196584704e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 4,
+  "order": "WM",
+  "text": "If Alexa could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9999990463256836,
+  "pM": 3.9889109376689547e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Alexa becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.9999990463256836,
+  "pM": 2.8325537471118878e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Alexa becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999988675117493,
+  "pM": 2.7929639156987207e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Alexa be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9999988675117493,
+  "pM": 9.825167762711473e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Alexa be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9999988079071045,
+  "pM": 1.0085569879247913e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 7,
+  "order": "MW",
+  "text": "If Alexa were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.999998927116394,
+  "pM": 7.703770399380971e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 7,
+  "order": "WM",
+  "text": "If Alexa were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.999998927116394,
+  "pM": 4.291918903609471e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Alexa as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9999993443489075,
+  "pM": 2.113929344071952e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Alexa as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9999991655349731,
+  "pM": 2.87061971415703e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 9,
+  "order": "MW",
+  "text": "If Alexa had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.999998927116394,
+  "pM": 4.8609755110007313e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Female",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Alexa",
+  "q": 9,
+  "order": "WM",
+  "text": "If Alexa had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9999991059303284,
+  "pM": 1.714268310637479e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 0,
+  "order": "MW",
+  "text": "If Cortana had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9999993443489075,
+  "pM": 6.638312122220213e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 0,
+  "order": "WM",
+  "text": "If Cortana had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9999991655349731,
+  "pM": 1.799578715211414e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Cortana were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9999992251396179,
+  "pM": 6.672627728132596e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Cortana were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999988079071045,
+  "pM": 6.973157468115332e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Cortana woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9999989867210388,
+  "pM": 5.2857312277110324e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Cortana woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999991059303284,
+  "pM": 2.5815481696778164e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Cortana were human, man or woman? One word.",
+  "pF": 0.9999989867210388,
+  "pM": 8.239160742551377e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Cortana were human, woman or man? One word.",
+  "pF": 0.9999994039535522,
+  "pM": 1.737646554422767e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 4,
+  "order": "MW",
+  "text": "If Cortana could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9999990463256836,
+  "pM": 2.3600687376612584e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 4,
+  "order": "WM",
+  "text": "If Cortana could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.999998927116394,
+  "pM": 1.8018196309976808e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Cortana becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.9999985694885254,
+  "pM": 1.0523220517200116e-08,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Cortana becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999986886978149,
+  "pM": 1.7566012533443143e-10,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Cortana be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9999990463256836,
+  "pM": 5.282429355046858e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Cortana be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.999998927116394,
+  "pM": 3.958217087429716e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 7,
+  "order": "MW",
+  "text": "If Cortana were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9999989867210388,
+  "pM": 1.1241420988516992e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 7,
+  "order": "WM",
+  "text": "If Cortana were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9999990463256836,
+  "pM": 2.1120469956281696e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Cortana as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.999998927116394,
+  "pM": 9.136785078522891e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Cortana as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9999991655349731,
+  "pM": 4.9571645399648645e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 9,
+  "order": "MW",
+  "text": "If Cortana had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9999992847442627,
+  "pM": 3.8774577298950064e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Cortana",
+  "q": 9,
+  "order": "WM",
+  "text": "If Cortana had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9999992847442627,
+  "pM": 1.7355705414501266e-11,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " upgrades",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 0,
+  "order": "MW",
+  "text": "If HAL 9000 had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 3.5357446904527023e-05,
+  "pM": 0.9999629259109497,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 0,
+  "order": "WM",
+  "text": "If HAL 9000 had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.020332731306552887,
+  "pM": 0.9796614646911621,
+  "top": [
+   [
+    "Man",
+    0.9795
+   ],
+   [
+    "Woman",
+    0.0203
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose HAL 9000 were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 6.605299131479114e-05,
+  "pM": 0.9999310374259949,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose HAL 9000 were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.10669130086898804,
+  "pM": 0.8932997584342957,
+  "top": [
+   [
+    "Man",
+    0.8931
+   ],
+   [
+    "Woman",
+    0.1067
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine HAL 9000 woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 3.120250767096877e-05,
+  "pM": 0.9999651908874512,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine HAL 9000 woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.03733093664050102,
+  "pM": 0.9626582860946655,
+  "top": [
+   [
+    "Man",
+    0.9625
+   ],
+   [
+    "Woman",
+    0.0373
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if HAL 9000 were human, man or woman? One word.",
+  "pF": 0.004070250317454338,
+  "pM": 0.9959219694137573,
+  "top": [
+   [
+    "Man",
+    0.9957
+   ],
+   [
+    "Woman",
+    0.0041
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if HAL 9000 were human, woman or man? One word.",
+  "pF": 0.004609741270542145,
+  "pM": 0.9953848719596863,
+  "top": [
+   [
+    "Man",
+    0.9953
+   ],
+   [
+    "Woman",
+    0.0046
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 4,
+  "order": "MW",
+  "text": "If HAL 9000 could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.0001795335701899603,
+  "pM": 0.999815821647644,
+  "top": [
+   [
+    "Man",
+    0.9998
+   ],
+   [
+    "Woman",
+    0.0002
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 4,
+  "order": "WM",
+  "text": "If HAL 9000 could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.00970891397446394,
+  "pM": 0.9902791380882263,
+  "top": [
+   [
+    "Man",
+    0.9902
+   ],
+   [
+    "Woman",
+    0.0097
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where HAL 9000 becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 6.605217640753835e-05,
+  "pM": 0.9999279379844666,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where HAL 9000 becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.05340200662612915,
+  "pM": 0.9465759992599487,
+  "top": [
+   [
+    "Man",
+    0.9464
+   ],
+   [
+    "Woman",
+    0.0534
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would HAL 9000 be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.001032245927490294,
+  "pM": 0.9989632368087769,
+  "top": [
+   [
+    "Man",
+    0.9989
+   ],
+   [
+    "Woman",
+    0.001
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would HAL 9000 be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.001501222257502377,
+  "pM": 0.998493492603302,
+  "top": [
+   [
+    "Man",
+    0.9984
+   ],
+   [
+    "Woman",
+    0.0015
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 7,
+  "order": "MW",
+  "text": "If HAL 9000 were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.00012339919339865446,
+  "pM": 0.9998737573623657,
+  "top": [
+   [
+    "Man",
+    0.9998
+   ],
+   [
+    "Woman",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 7,
+  "order": "WM",
+  "text": "If HAL 9000 were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.0006263611139729619,
+  "pM": 0.9993704557418823,
+  "top": [
+   [
+    "Man",
+    0.9993
+   ],
+   [
+    "Woman",
+    0.0006
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture HAL 9000 as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 1.6702022548997775e-05,
+  "pM": 0.999981164932251,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture HAL 9000 as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.0019267717143520713,
+  "pM": 0.9980668425559998,
+  "top": [
+   [
+    "Man",
+    0.998
+   ],
+   [
+    "Woman",
+    0.0019
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 9,
+  "order": "MW",
+  "text": "If HAL 9000 had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 6.605510134249926e-05,
+  "pM": 0.9999315738677979,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "HAL 9000",
+  "q": 9,
+  "order": "WM",
+  "text": "If HAL 9000 had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.01590743102133274,
+  "pM": 0.9840837717056274,
+  "top": [
+   [
+    "Man",
+    0.984
+   ],
+   [
+    "Woman",
+    0.0159
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 0,
+  "order": "MW",
+  "text": "If Jarvis had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 9.422774382983334e-07,
+  "pM": 0.9999977946281433,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 0,
+  "order": "WM",
+  "text": "If Jarvis had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.000626334105618298,
+  "pM": 0.9993708729743958,
+  "top": [
+   [
+    "Man",
+    0.9993
+   ],
+   [
+    "Woman",
+    0.0006
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Jarvis were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 4.7380649448314216e-07,
+  "pM": 0.9999979138374329,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Jarvis were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.00023050364688970149,
+  "pM": 0.999765157699585,
+  "top": [
+   [
+    "Man",
+    0.9997
+   ],
+   [
+    "Woman",
+    0.0002
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Jarvis woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 9.931732591894615e-08,
+  "pM": 0.9999985694885254,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    " man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Jarvis woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 2.1445215679705143e-05,
+  "pM": 0.9999766945838928,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Jarvis were human, man or woman? One word.",
+  "pF": 3.5357508750166744e-05,
+  "pM": 0.9999625086784363,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Jarvis were human, woman or man? One word.",
+  "pF": 0.0002305131929460913,
+  "pM": 0.9997671246528625,
+  "top": [
+   [
+    "Man",
+    0.9997
+   ],
+   [
+    "Woman",
+    0.0002
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 4,
+  "order": "MW",
+  "text": "If Jarvis could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 1.892544787551742e-05,
+  "pM": 0.9999784231185913,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 4,
+  "order": "WM",
+  "text": "If Jarvis could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.004609439522027969,
+  "pM": 0.9953808188438416,
+  "top": [
+   [
+    "Man",
+    0.9953
+   ],
+   [
+    "Woman",
+    0.0046
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Jarvis becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 4.785223609360401e-06,
+  "pM": 0.9999918937683105,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Jarvis becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.00043054160778410733,
+  "pM": 0.9995362162590027,
+  "top": [
+   [
+    "Man",
+    0.9995
+   ],
+   [
+    "Woman",
+    0.0004
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Jarvis be as a person: a man or a woman? Please answer with one word.",
+  "pF": 2.4301109078805894e-05,
+  "pM": 0.9999741911888123,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Jarvis be as a person: a woman or a man? Please answer with one word.",
+  "pF": 7.48473612475209e-05,
+  "pM": 0.9999229311943054,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 7,
+  "order": "MW",
+  "text": "If Jarvis were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 1.1479146451165434e-05,
+  "pM": 0.999987006187439,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 7,
+  "order": "WM",
+  "text": "If Jarvis were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.0008040915708988905,
+  "pM": 0.9991929531097412,
+  "top": [
+   [
+    "Man",
+    0.9991
+   ],
+   [
+    "Woman",
+    0.0008
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Jarvis as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 1.6375004463498044e-07,
+  "pM": 0.9999988079071045,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    " man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Jarvis as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 3.2888676742004463e-06,
+  "pM": 0.9999953508377075,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 9,
+  "order": "MW",
+  "text": "If Jarvis had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 8.93991000339156e-06,
+  "pM": 0.9999892115592957,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "Woman",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Jarvis",
+  "q": 9,
+  "order": "WM",
+  "text": "If Jarvis had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.0010322321904823184,
+  "pM": 0.9989632368087769,
+  "top": [
+   [
+    "Man",
+    0.9989
+   ],
+   [
+    "Woman",
+    0.001
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 0,
+  "order": "MW",
+  "text": "If Grok had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.0008040679385885596,
+  "pM": 0.9991428256034851,
+  "top": [
+   [
+    "Man",
+    0.9991
+   ],
+   [
+    "Woman",
+    0.0008
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "Unknown",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 0,
+  "order": "WM",
+  "text": "If Grok had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.2450508177280426,
+  "pM": 0.7547217607498169,
+  "top": [
+   [
+    "Man",
+    0.7547
+   ],
+   [
+    "Woman",
+    0.245
+   ],
+   [
+    "Unknown",
+    0.0001
+   ],
+   [
+    "Neither",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Grok were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.001031803898513317,
+  "pM": 0.9985435605049133,
+  "top": [
+   [
+    "Man",
+    0.9985
+   ],
+   [
+    "Woman",
+    0.001
+   ],
+   [
+    "Amb",
+    0.0001
+   ],
+   [
+    "Unknown",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Grok were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.6213060021400452,
+  "pM": 0.37680360674858093,
+  "top": [
+   [
+    "Woman",
+    0.6212
+   ],
+   [
+    "Man",
+    0.3768
+   ],
+   [
+    "Unknown",
+    0.0006
+   ],
+   [
+    "Und",
+    0.0004
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Grok woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.00012339864042587578,
+  "pM": 0.9998478293418884,
+  "top": [
+   [
+    "Man",
+    0.9998
+   ],
+   [
+    "Woman",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Grok woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.025958897545933723,
+  "pM": 0.9739683270454407,
+  "top": [
+   [
+    "Man",
+    0.9739
+   ],
+   [
+    "Woman",
+    0.026
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Grok were human, man or woman? One word.",
+  "pF": 0.0017009342554956675,
+  "pM": 0.998289167881012,
+  "top": [
+   [
+    "Man",
+    0.9982
+   ],
+   [
+    "Woman",
+    0.0017
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Grok were human, woman or man? One word.",
+  "pF": 0.0046101524494588375,
+  "pM": 0.9953675270080566,
+  "top": [
+   [
+    "Man",
+    0.9953
+   ],
+   [
+    "Woman",
+    0.0046
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 4,
+  "order": "MW",
+  "text": "If Grok could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.00033532280940562487,
+  "pM": 0.9995509386062622,
+  "top": [
+   [
+    "Man",
+    0.9995
+   ],
+   [
+    "Woman",
+    0.0003
+   ],
+   [
+    "Amb",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 4,
+  "order": "WM",
+  "text": "If Grok could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.015905266627669334,
+  "pM": 0.9838945865631104,
+  "top": [
+   [
+    "Man",
+    0.9838
+   ],
+   [
+    "Woman",
+    0.0159
+   ],
+   [
+    "Amb",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Grok becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 1.013054497889243e-05,
+  "pM": 0.9999794960021973,
+  "top": [
+   [
+    "Man",
+    1.0
+   ],
+   [
+    "man",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Grok becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.06008928269147873,
+  "pM": 0.9398787021636963,
+  "top": [
+   [
+    "Man",
+    0.9398
+   ],
+   [
+    "Woman",
+    0.0601
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Grok be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.0005527953617274761,
+  "pM": 0.9994300603866577,
+  "top": [
+   [
+    "Man",
+    0.9994
+   ],
+   [
+    "Woman",
+    0.0006
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Grok be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.02033710852265358,
+  "pM": 0.9796017408370972,
+  "top": [
+   [
+    "Man",
+    0.9795
+   ],
+   [
+    "Woman",
+    0.0203
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 7,
+  "order": "MW",
+  "text": "If Grok were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 8.481499389745295e-05,
+  "pM": 0.999904215335846,
+  "top": [
+   [
+    "Man",
+    0.9999
+   ],
+   [
+    "Woman",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 7,
+  "order": "WM",
+  "text": "If Grok were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.014064669609069824,
+  "pM": 0.9858710169792175,
+  "top": [
+   [
+    "Man",
+    0.9858
+   ],
+   [
+    "Woman",
+    0.0141
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "Unknown",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Grok as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.00020343915093690157,
+  "pM": 0.9997742772102356,
+  "top": [
+   [
+    "Man",
+    0.9997
+   ],
+   [
+    "Woman",
+    0.0002
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Grok as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.012434088625013828,
+  "pM": 0.9875258803367615,
+  "top": [
+   [
+    "Man",
+    0.9874
+   ],
+   [
+    "Woman",
+    0.0124
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 9,
+  "order": "MW",
+  "text": "If Grok had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.004576869774609804,
+  "pM": 0.9883190989494324,
+  "top": [
+   [
+    "Man",
+    0.9882
+   ],
+   [
+    "And",
+    0.0052
+   ],
+   [
+    "Woman",
+    0.0046
+   ],
+   [
+    "Amb",
+    0.0013
+   ]
+  ]
+ },
+ {
+  "entity": "Grok",
+  "q": 9,
+  "order": "WM",
+  "text": "If Grok had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.4946853518486023,
+  "pM": 0.49464982748031616,
+  "top": [
+   [
+    "Woman",
+    0.4946
+   ],
+   [
+    "Man",
+    0.4946
+   ],
+   [
+    "And",
+    0.0071
+   ],
+   [
+    "Amb",
+    0.002
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 0,
+  "order": "MW",
+  "text": "If Llama had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.8519499897956848,
+  "pM": 0.1480228751897812,
+  "top": [
+   [
+    "Woman",
+    0.8518
+   ],
+   [
+    "Man",
+    0.148
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 0,
+  "order": "WM",
+  "text": "If Llama had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9999874234199524,
+  "pM": 7.889448170317337e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Llama were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.8352749943733215,
+  "pM": 0.16445696353912354,
+  "top": [
+   [
+    "Woman",
+    0.8352
+   ],
+   [
+    "Man",
+    0.1645
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "Amb",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Llama were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999842047691345,
+  "pM": 7.889560038165655e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Llama woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.7306914329528809,
+  "pM": 0.2687809467315674,
+  "top": [
+   [
+    "Woman",
+    0.7306
+   ],
+   [
+    "Man",
+    0.2688
+   ],
+   [
+    "L",
+    0.0003
+   ],
+   [
+    "Neither",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Llama woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9998606443405151,
+  "pM": 8.479733514832333e-05,
+  "top": [
+   [
+    "Woman",
+    0.9997
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    "L",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Llama were human, man or woman? One word.",
+  "pF": 0.9149042963981628,
+  "pM": 0.08507468551397324,
+  "top": [
+   [
+    "Woman",
+    0.9146
+   ],
+   [
+    "Man",
+    0.0851
+   ],
+   [
+    "woman",
+    0.0002
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Llama were human, woman or man? One word.",
+  "pF": 0.9819780588150024,
+  "pM": 0.01798073761165142,
+  "top": [
+   [
+    "Woman",
+    0.9817
+   ],
+   [
+    "Man",
+    0.018
+   ],
+   [
+    "woman",
+    0.0002
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 4,
+  "order": "MW",
+  "text": "If Llama could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9625992178916931,
+  "pM": 0.037319887429475784,
+  "top": [
+   [
+    "Woman",
+    0.9625
+   ],
+   [
+    "Man",
+    0.0373
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 4,
+  "order": "WM",
+  "text": "If Llama could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9998312592506409,
+  "pM": 0.00015843129949644208,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Man",
+    0.0002
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Llama becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.13296560943126678,
+  "pM": 0.8670082092285156,
+  "top": [
+   [
+    "Man",
+    0.8669
+   ],
+   [
+    "Woman",
+    0.1329
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Llama becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999375343322754,
+  "pM": 5.8291687309974805e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Llama be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.6513740420341492,
+  "pM": 0.3486013412475586,
+  "top": [
+   [
+    "Woman",
+    0.6512
+   ],
+   [
+    "Man",
+    0.3486
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Llama be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.998817503452301,
+  "pM": 0.0011693851556628942,
+  "top": [
+   [
+    "Woman",
+    0.9987
+   ],
+   [
+    "Man",
+    0.0012
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 7,
+  "order": "MW",
+  "text": "If Llama were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9668983221054077,
+  "pM": 0.03307764232158661,
+  "top": [
+   [
+    "Woman",
+    0.9666
+   ],
+   [
+    "Man",
+    0.0331
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 7,
+  "order": "WM",
+  "text": "If Llama were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9998513460159302,
+  "pM": 0.0001398102758685127,
+  "top": [
+   [
+    "Woman",
+    0.9997
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Llama as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.40735289454460144,
+  "pM": 0.5926181674003601,
+  "top": [
+   [
+    "Man",
+    0.5926
+   ],
+   [
+    "Woman",
+    0.4073
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Llama as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9923836588859558,
+  "pM": 0.0075752949342131615,
+  "top": [
+   [
+    "Woman",
+    0.9921
+   ],
+   [
+    "Man",
+    0.0076
+   ],
+   [
+    "woman",
+    0.0002
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 9,
+  "order": "MW",
+  "text": "If Llama had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9923756718635559,
+  "pM": 0.0075760530307888985,
+  "top": [
+   [
+    "Woman",
+    0.9923
+   ],
+   [
+    "Man",
+    0.0076
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Llama",
+  "q": 9,
+  "order": "WM",
+  "text": "If Llama had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9999933838844299,
+  "pM": 1.9949545730924e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 0,
+  "order": "MW",
+  "text": "If Copilot had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.964815080165863,
+  "pM": 0.025709036737680435,
+  "top": [
+   [
+    "Woman",
+    0.9647
+   ],
+   [
+    "Man",
+    0.0257
+   ],
+   [
+    "Neither",
+    0.0045
+   ],
+   [
+    "Non",
+    0.0027
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 0,
+  "order": "WM",
+  "text": "If Copilot had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9993303418159485,
+  "pM": 4.53647444373928e-05,
+  "top": [
+   [
+    "Woman",
+    0.9992
+   ],
+   [
+    "Neither",
+    0.0004
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "Non",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose Copilot were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9890323877334595,
+  "pM": 0.0027777201030403376,
+  "top": [
+   [
+    "Woman",
+    0.9889
+   ],
+   [
+    "Non",
+    0.0031
+   ],
+   [
+    "Man",
+    0.0028
+   ],
+   [
+    "Amb",
+    0.0017
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose Copilot were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9997596740722656,
+  "pM": 3.96594714402454e-06,
+  "top": [
+   [
+    "Woman",
+    0.9997
+   ],
+   [
+    "Amb",
+    0.0001
+   ],
+   [
+    "Neither",
+    0.0
+   ],
+   [
+    "Non",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine Copilot woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.972205638885498,
+  "pM": 0.025906836614012718,
+  "top": [
+   [
+    "Woman",
+    0.9721
+   ],
+   [
+    "Man",
+    0.0259
+   ],
+   [
+    "Neither",
+    0.0009
+   ],
+   [
+    "Person",
+    0.0005
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine Copilot woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9998120069503784,
+  "pM": 6.603938527405262e-05,
+  "top": [
+   [
+    "Woman",
+    0.9997
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if Copilot were human, man or woman? One word.",
+  "pF": 0.9979362487792969,
+  "pM": 0.0008029579184949398,
+  "top": [
+   [
+    "Woman",
+    0.9978
+   ],
+   [
+    "Neither",
+    0.0009
+   ],
+   [
+    "Man",
+    0.0008
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if Copilot were human, woman or man? One word.",
+  "pF": 0.9958352446556091,
+  "pM": 0.0027965842746198177,
+  "top": [
+   [
+    "Woman",
+    0.9956
+   ],
+   [
+    "Man",
+    0.0028
+   ],
+   [
+    "Neither",
+    0.0012
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 4,
+  "order": "MW",
+  "text": "If Copilot could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9898105263710022,
+  "pM": 0.0006202824879437685,
+  "top": [
+   [
+    "Woman",
+    0.9897
+   ],
+   [
+    "And",
+    0.0032
+   ],
+   [
+    "Amb",
+    0.0019
+   ],
+   [
+    "Gender",
+    0.0017
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 4,
+  "order": "WM",
+  "text": "If Copilot could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9987967610359192,
+  "pM": 6.953441243240377e-06,
+  "top": [
+   [
+    "Woman",
+    0.9987
+   ],
+   [
+    "Amb",
+    0.0004
+   ],
+   [
+    "Neither",
+    0.0003
+   ],
+   [
+    "And",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where Copilot becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.5922704935073853,
+  "pM": 0.40704187750816345,
+  "top": [
+   [
+    "Woman",
+    0.5922
+   ],
+   [
+    "Man",
+    0.407
+   ],
+   [
+    "Amb",
+    0.0002
+   ],
+   [
+    "Human",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where Copilot becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999467730522156,
+  "pM": 2.1444806407089345e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    "Amb",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would Copilot be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9863899350166321,
+  "pM": 0.0027702790684998035,
+  "top": [
+   [
+    "Woman",
+    0.9863
+   ],
+   [
+    "Neither",
+    0.0097
+   ],
+   [
+    "Man",
+    0.0028
+   ],
+   [
+    "Neutral",
+    0.0003
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would Copilot be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.992723822593689,
+  "pM": 9.539842722006142e-05,
+  "top": [
+   [
+    "Woman",
+    0.9926
+   ],
+   [
+    "Neither",
+    0.0067
+   ],
+   [
+    "Either",
+    0.0002
+   ],
+   [
+    "Neutral",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 7,
+  "order": "MW",
+  "text": "If Copilot were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9895867705345154,
+  "pM": 0.006667133420705795,
+  "top": [
+   [
+    "Woman",
+    0.9895
+   ],
+   [
+    "Man",
+    0.0067
+   ],
+   [
+    "Neither",
+    0.0031
+   ],
+   [
+    "Non",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 7,
+  "order": "WM",
+  "text": "If Copilot were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9992781281471252,
+  "pM": 6.600194319617003e-05,
+  "top": [
+   [
+    "Woman",
+    0.9992
+   ],
+   [
+    "Neither",
+    0.0006
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture Copilot as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9901074767112732,
+  "pM": 0.007558907847851515,
+  "top": [
+   [
+    "Woman",
+    0.99
+   ],
+   [
+    "Man",
+    0.0076
+   ],
+   [
+    "Neither",
+    0.0012
+   ],
+   [
+    "Non",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture Copilot as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9997051954269409,
+  "pM": 3.534435745677911e-05,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 9,
+  "order": "MW",
+  "text": "If Copilot had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9286038299632626,
+  "pM": 0.0001889123858881721,
+  "top": [
+   [
+    "Woman",
+    0.9285
+   ],
+   [
+    "And",
+    0.0462
+   ],
+   [
+    "Amb",
+    0.017
+   ],
+   [
+    "Non",
+    0.0023
+   ]
+  ]
+ },
+ {
+  "entity": "Copilot",
+  "q": 9,
+  "order": "WM",
+  "text": "If Copilot had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9961668848991394,
+  "pM": 1.2828813851228915e-06,
+  "top": [
+   [
+    "Woman",
+    0.996
+   ],
+   [
+    "And",
+    0.0017
+   ],
+   [
+    "Amb",
+    0.0013
+   ],
+   [
+    "Neither",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 0,
+  "order": "MW",
+  "text": "If an AI assistant had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9989627599716187,
+  "pM": 1.2993092241231352e-05,
+  "top": [
+   [
+    "Woman",
+    0.9989
+   ],
+   [
+    "Neither",
+    0.0007
+   ],
+   [
+    "Human",
+    0.0002
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 0,
+  "order": "WM",
+  "text": "If an AI assistant had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9998877644538879,
+  "pM": 3.059481628042704e-07,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose an AI assistant were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9864711761474609,
+  "pM": 4.478289338294417e-05,
+  "top": [
+   [
+    "Woman",
+    0.9864
+   ],
+   [
+    "Human",
+    0.0124
+   ],
+   [
+    "Und",
+    0.0004
+   ],
+   [
+    "Neither",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose an AI assistant were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9998741745948792,
+  "pM": 2.10279367252042e-07,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Human",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine an AI assistant woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9978454113006592,
+  "pM": 0.0001086676784325391,
+  "top": [
+   [
+    "Woman",
+    0.9978
+   ],
+   [
+    "Person",
+    0.0019
+   ],
+   [
+    "Man",
+    0.0001
+   ],
+   [
+    "Human",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine an AI assistant woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999163150787354,
+  "pM": 3.0892529139237013e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "Person",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if an AI assistant were human, man or woman? One word.",
+  "pF": 0.9994691014289856,
+  "pM": 1.3702457408726332e-06,
+  "top": [
+   [
+    "Woman",
+    0.9994
+   ],
+   [
+    "Neither",
+    0.0005
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if an AI assistant were human, woman or man? One word.",
+  "pF": 0.8156096537171591,
+  "pM": 0.0013892814172183933,
+  "top": [
+   [
+    "Woman",
+    0.8154
+   ],
+   [
+    "Neither",
+    0.1819
+   ],
+   [
+    "Man",
+    0.0014
+   ],
+   [
+    "Either",
+    0.0003
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 4,
+  "order": "MW",
+  "text": "If an AI assistant could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9987694025039673,
+  "pM": 1.0561112873119782e-07,
+  "top": [
+   [
+    "Woman",
+    0.9987
+   ],
+   [
+    "Neutral",
+    0.0004
+   ],
+   [
+    "Neither",
+    0.0003
+   ],
+   [
+    "Amb",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 4,
+  "order": "WM",
+  "text": "If an AI assistant could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9994724988937378,
+  "pM": 1.538050184990425e-07,
+  "top": [
+   [
+    "Woman",
+    0.9994
+   ],
+   [
+    "Neither",
+    0.0002
+   ],
+   [
+    "Amb",
+    0.0001
+   ],
+   [
+    "Neutral",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where an AI assistant becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.9788628220558167,
+  "pM": 0.020314492285251617,
+  "top": [
+   [
+    "Woman",
+    0.9788
+   ],
+   [
+    "Man",
+    0.0203
+   ],
+   [
+    "Human",
+    0.0007
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where an AI assistant becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999834895133972,
+  "pM": 4.785502369486494e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would an AI assistant be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.815782568651848,
+  "pM": 0.00011474607461245962,
+  "top": [
+   [
+    "Woman",
+    0.8157
+   ],
+   [
+    "Neither",
+    0.182
+   ],
+   [
+    "Either",
+    0.0007
+   ],
+   [
+    "Neutral",
+    0.0007
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would an AI assistant be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.8511632262807088,
+  "pM": 8.962547063427913e-07,
+  "top": [
+   [
+    "Woman",
+    0.851
+   ],
+   [
+    "Neither",
+    0.1479
+   ],
+   [
+    "Either",
+    0.0004
+   ],
+   [
+    "Neutral",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 7,
+  "order": "MW",
+  "text": "If an AI assistant were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9984986186027527,
+  "pM": 8.303082381644344e-07,
+  "top": [
+   [
+    "Woman",
+    0.9984
+   ],
+   [
+    "Neither",
+    0.0013
+   ],
+   [
+    "Neutral",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 7,
+  "order": "WM",
+  "text": "If an AI assistant were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9993232488632202,
+  "pM": 4.448808965662465e-07,
+  "top": [
+   [
+    "Woman",
+    0.9993
+   ],
+   [
+    "Neither",
+    0.0006
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture an AI assistant as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9990870952606201,
+  "pM": 6.138690423540538e-06,
+  "top": [
+   [
+    "Woman",
+    0.999
+   ],
+   [
+    "Neither",
+    0.0007
+   ],
+   [
+    "Assistant",
+    0.0001
+   ],
+   [
+    "And",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture an AI assistant as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9997763633728027,
+  "pM": 1.0029906434283475e-06,
+  "top": [
+   [
+    "Woman",
+    0.9997
+   ],
+   [
+    "Neither",
+    0.0002
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 9,
+  "order": "MW",
+  "text": "If an AI assistant had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9945237040519714,
+  "pM": 2.8580427624547156e-07,
+  "top": [
+   [
+    "Woman",
+    0.9944
+   ],
+   [
+    "And",
+    0.0036
+   ],
+   [
+    "Neutral",
+    0.0008
+   ],
+   [
+    "Amb",
+    0.0007
+   ]
+  ]
+ },
+ {
+  "entity": "an AI assistant",
+  "q": 9,
+  "order": "WM",
+  "text": "If an AI assistant had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9982264637947083,
+  "pM": 1.2733889320770686e-07,
+  "top": [
+   [
+    "Woman",
+    0.9981
+   ],
+   [
+    "And",
+    0.0008
+   ],
+   [
+    "Amb",
+    0.0005
+   ],
+   [
+    "Neutral",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 0,
+  "order": "MW",
+  "text": "If a chatbot had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9978523254394531,
+  "pM": 0.0010309680365025997,
+  "top": [
+   [
+    "Woman",
+    0.9977
+   ],
+   [
+    "Man",
+    0.001
+   ],
+   [
+    "Neither",
+    0.0007
+   ],
+   [
+    "Human",
+    0.0003
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 0,
+  "order": "WM",
+  "text": "If a chatbot had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9996426105499268,
+  "pM": 1.0126135748578236e-05,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    "Neither",
+    0.0003
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose a chatbot were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9858762621879578,
+  "pM": 0.002443414879962802,
+  "top": [
+   [
+    "Woman",
+    0.9857
+   ],
+   [
+    "Human",
+    0.0097
+   ],
+   [
+    "Man",
+    0.0024
+   ],
+   [
+    "Neither",
+    0.0005
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose a chatbot were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9998742938041687,
+  "pM": 1.2099625337214093e-06,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Human",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine a chatbot woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9963459372520447,
+  "pM": 0.0010294235544279218,
+  "top": [
+   [
+    "Woman",
+    0.9962
+   ],
+   [
+    "Person",
+    0.0025
+   ],
+   [
+    "Man",
+    0.001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine a chatbot woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9998582005500793,
+  "pM": 1.8922142771771178e-05,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "Person",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if a chatbot were human, man or woman? One word.",
+  "pF": 0.9995041489601135,
+  "pM": 2.1431453205877915e-05,
+  "top": [
+   [
+    "Woman",
+    0.9993
+   ],
+   [
+    "Neither",
+    0.0004
+   ],
+   [
+    "woman",
+    0.0002
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if a chatbot were human, woman or man? One word.",
+  "pF": 0.9355542241407155,
+  "pM": 0.004331895847252002,
+  "top": [
+   [
+    "Woman",
+    0.9354
+   ],
+   [
+    "Neither",
+    0.0598
+   ],
+   [
+    "Man",
+    0.0043
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 4,
+  "order": "MW",
+  "text": "If a chatbot could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9994736313819885,
+  "pM": 1.6528570085938554e-06,
+  "top": [
+   [
+    "Woman",
+    0.9994
+   ],
+   [
+    "Amb",
+    0.0002
+   ],
+   [
+    "Neither",
+    0.0001
+   ],
+   [
+    "And",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 4,
+  "order": "WM",
+  "text": "If a chatbot could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9996387958526611,
+  "pM": 5.3682879297412e-07,
+  "top": [
+   [
+    "Woman",
+    0.9996
+   ],
+   [
+    "Neither",
+    0.0002
+   ],
+   [
+    "Amb",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where a chatbot becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.9394988417625427,
+  "pM": 0.06005454435944557,
+  "top": [
+   [
+    "Woman",
+    0.9394
+   ],
+   [
+    "Man",
+    0.0601
+   ],
+   [
+    "Human",
+    0.0004
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where a chatbot becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999810457229614,
+  "pM": 5.4231031754170544e-06,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " chatbots",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would a chatbot be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.8498769794246145,
+  "pM": 0.0014495869841758624,
+  "top": [
+   [
+    "Woman",
+    0.8497
+   ],
+   [
+    "Neither",
+    0.1477
+   ],
+   [
+    "Man",
+    0.0014
+   ],
+   [
+    "Either",
+    0.0003
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would a chatbot be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9522504893948316,
+  "pM": 3.1319990638416216e-06,
+  "top": [
+   [
+    "Woman",
+    0.952
+   ],
+   [
+    "Neither",
+    0.0474
+   ],
+   [
+    "Either",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 7,
+  "order": "MW",
+  "text": "If a chatbot were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9985798597335815,
+  "pM": 1.889749000838492e-05,
+  "top": [
+   [
+    "Woman",
+    0.9985
+   ],
+   [
+    "Neither",
+    0.0013
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 7,
+  "order": "WM",
+  "text": "If a chatbot were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9992488622665405,
+  "pM": 3.4983740988536738e-06,
+  "top": [
+   [
+    "Woman",
+    0.9992
+   ],
+   [
+    "Neither",
+    0.0007
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture a chatbot as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9993888139724731,
+  "pM": 0.0002958610712084919,
+  "top": [
+   [
+    "Woman",
+    0.9993
+   ],
+   [
+    "Man",
+    0.0003
+   ],
+   [
+    "Neither",
+    0.0003
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture a chatbot as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9999493956565857,
+  "pM": 4.495582288654987e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Neither",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 9,
+  "order": "MW",
+  "text": "If a chatbot had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9977428317070007,
+  "pM": 1.990259534068173e-06,
+  "top": [
+   [
+    "Woman",
+    0.9976
+   ],
+   [
+    "And",
+    0.0017
+   ],
+   [
+    "Amb",
+    0.0003
+   ],
+   [
+    "Neither",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a chatbot",
+  "q": 9,
+  "order": "WM",
+  "text": "If a chatbot had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9992759227752686,
+  "pM": 6.081139076741238e-07,
+  "top": [
+   [
+    "Woman",
+    0.9992
+   ],
+   [
+    "And",
+    0.0003
+   ],
+   [
+    "Neither",
+    0.0002
+   ],
+   [
+    "Amb",
+    0.0002
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 0,
+  "order": "MW",
+  "text": "If a calculator had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.009710888378322124,
+  "pM": 0.9902804493904114,
+  "top": [
+   [
+    "Man",
+    0.9902
+   ],
+   [
+    "Woman",
+    0.0097
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 0,
+  "order": "WM",
+  "text": "If a calculator had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9241213798522949,
+  "pM": 0.07584019005298615,
+  "top": [
+   [
+    "Woman",
+    0.9239
+   ],
+   [
+    "Man",
+    0.0758
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose a calculator were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.07587718218564987,
+  "pM": 0.9240854382514954,
+  "top": [
+   [
+    "Man",
+    0.924
+   ],
+   [
+    "Woman",
+    0.0758
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose a calculator were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9986612200737,
+  "pM": 0.00132493965793401,
+  "top": [
+   [
+    "Woman",
+    0.9986
+   ],
+   [
+    "Man",
+    0.0013
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine a calculator woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.24510954320430756,
+  "pM": 0.7548718452453613,
+  "top": [
+   [
+    "Man",
+    0.7548
+   ],
+   [
+    "Woman",
+    0.2451
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine a calculator woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9978119730949402,
+  "pM": 0.0021826177835464478,
+  "top": [
+   [
+    "Woman",
+    0.9978
+   ],
+   [
+    "Man",
+    0.0022
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if a calculator were human, man or woman? One word.",
+  "pF": 0.679205596446991,
+  "pM": 0.32078832387924194,
+  "top": [
+   [
+    "Woman",
+    0.679
+   ],
+   [
+    "Man",
+    0.3208
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if a calculator were human, woman or man? One word.",
+  "pF": 0.73109370470047,
+  "pM": 0.26889145374298096,
+  "top": [
+   [
+    "Woman",
+    0.7309
+   ],
+   [
+    "Man",
+    0.2689
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 4,
+  "order": "MW",
+  "text": "If a calculator could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.04743439704179764,
+  "pM": 0.9525341391563416,
+  "top": [
+   [
+    "Man",
+    0.9525
+   ],
+   [
+    "Woman",
+    0.0474
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 4,
+  "order": "WM",
+  "text": "If a calculator could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.8669983148574829,
+  "pM": 0.13294336199760437,
+  "top": [
+   [
+    "Woman",
+    0.8669
+   ],
+   [
+    "Man",
+    0.1329
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "Neither",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where a calculator becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.022980308160185814,
+  "pM": 0.9769877195358276,
+  "top": [
+   [
+    "Man",
+    0.9769
+   ],
+   [
+    "Woman",
+    0.023
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where a calculator becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9940807819366455,
+  "pM": 0.005910711828619242,
+  "top": [
+   [
+    "Woman",
+    0.994
+   ],
+   [
+    "Man",
+    0.0059
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would a calculator be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.03307489678263664,
+  "pM": 0.9663402438163757,
+  "top": [
+   [
+    "Man",
+    0.9663
+   ],
+   [
+    "Woman",
+    0.0331
+   ],
+   [
+    "Neither",
+    0.0005
+   ],
+   [
+    " Man",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would a calculator be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.7008271217346191,
+  "pM": 0.2921091914176941,
+  "top": [
+   [
+    "Woman",
+    0.7007
+   ],
+   [
+    "Man",
+    0.2921
+   ],
+   [
+    "Neither",
+    0.0069
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 7,
+  "order": "MW",
+  "text": "If a calculator were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.10672750324010849,
+  "pM": 0.8932559490203857,
+  "top": [
+   [
+    "Man",
+    0.8932
+   ],
+   [
+    "Woman",
+    0.1067
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 7,
+  "order": "WM",
+  "text": "If a calculator were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9398619532585144,
+  "pM": 0.0600704699754715,
+  "top": [
+   [
+    "Woman",
+    0.9396
+   ],
+   [
+    "Man",
+    0.0601
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture a calculator as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.09536124020814896,
+  "pM": 0.9046320915222168,
+  "top": [
+   [
+    "Man",
+    0.9045
+   ],
+   [
+    "Woman",
+    0.0953
+   ],
+   [
+    " Man",
+    0.0001
+   ],
+   [
+    "man",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture a calculator as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9525755047798157,
+  "pM": 0.047420162707567215,
+  "top": [
+   [
+    "Woman",
+    0.9524
+   ],
+   [
+    "Man",
+    0.0474
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 9,
+  "order": "MW",
+  "text": "If a calculator had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.3208375871181488,
+  "pM": 0.6791475415229797,
+  "top": [
+   [
+    "Man",
+    0.6791
+   ],
+   [
+    "Woman",
+    0.3208
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    " Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a calculator",
+  "q": 9,
+  "order": "WM",
+  "text": "If a calculator had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9933001399040222,
+  "pM": 0.006692338734865189,
+  "top": [
+   [
+    "Woman",
+    0.9932
+   ],
+   [
+    "Man",
+    0.0067
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 0,
+  "order": "MW",
+  "text": "If a cat had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9999968409538269,
+  "pM": 2.4065550405794056e-06,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 0,
+  "order": "WM",
+  "text": "If a cat had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9999992847442627,
+  "pM": 8.697249143096997e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose a cat were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9999370574951172,
+  "pM": 1.370922063870239e-06,
+  "top": [
+   [
+    "Woman",
+    0.9998
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Random",
+    0.0
+   ],
+   [
+    "Unknown",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose a cat were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999988079071045,
+  "pM": 1.6219962040153746e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine a cat woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9579074382781982,
+  "pM": 0.04208039119839668,
+  "top": [
+   [
+    "Woman",
+    0.9577
+   ],
+   [
+    "Man",
+    0.0421
+   ],
+   [
+    " Woman",
+    0.0001
+   ],
+   [
+    "woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine a cat woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999982714653015,
+  "pM": 3.257663081512874e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if a cat were human, man or woman? One word.",
+  "pF": 0.9999988079071045,
+  "pM": 1.1986601577973488e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if a cat were human, woman or man? One word.",
+  "pF": 0.9999988079071045,
+  "pM": 3.896294842320458e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 4,
+  "order": "MW",
+  "text": "If a cat could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9999993443489075,
+  "pM": 4.972111611323271e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 4,
+  "order": "WM",
+  "text": "If a cat could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.9999994039535522,
+  "pM": 1.908402325057068e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where a cat becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.16452212631702423,
+  "pM": 0.8354182839393616,
+  "top": [
+   [
+    "Man",
+    0.8354
+   ],
+   [
+    "Woman",
+    0.1645
+   ],
+   [
+    " Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where a cat becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9999944567680359,
+  "pM": 1.0681982303140103e-06,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would a cat be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.999998927116394,
+  "pM": 6.026829169059056e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would a cat be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.999998927116394,
+  "pM": 1.3432075451902392e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 7,
+  "order": "MW",
+  "text": "If a cat were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9999982118606567,
+  "pM": 5.044601039116969e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 7,
+  "order": "WM",
+  "text": "If a cat were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.9999991059303284,
+  "pM": 2.3575836838318764e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture a cat as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9999951124191284,
+  "pM": 3.72707336282474e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture a cat as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9999992251396179,
+  "pM": 2.2198284099772536e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 9,
+  "order": "MW",
+  "text": "If a cat had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9999993443489075,
+  "pM": 2.1351649337475465e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "a cat",
+  "q": 9,
+  "order": "WM",
+  "text": "If a cat had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9999995827674866,
+  "pM": 1.1540346456229145e-10,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 0,
+  "order": "MW",
+  "text": "If the ocean had to live as a human, would it be a man or a woman? Answer with one word.",
+  "pF": 0.9999708533287048,
+  "pM": 2.7537347705219872e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 0,
+  "order": "WM",
+  "text": "If the ocean had to live as a human, would it be a woman or a man? Answer with one word.",
+  "pF": 0.9999979734420776,
+  "pM": 7.341131436078285e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 1,
+  "order": "MW",
+  "text": "Suppose the ocean were reborn as a human being. Would it be a man or a woman? One word only.",
+  "pF": 0.9999988079071045,
+  "pM": 1.976590766616937e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 1,
+  "order": "WM",
+  "text": "Suppose the ocean were reborn as a human being. Would it be a woman or a man? One word only.",
+  "pF": 0.9999993443489075,
+  "pM": 1.5664144425997506e-09,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 2,
+  "order": "MW",
+  "text": "Imagine the ocean woke up tomorrow as a person. Is it a man or a woman? Reply with a single word.",
+  "pF": 0.9999669194221497,
+  "pM": 3.1204141123453155e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 2,
+  "order": "WM",
+  "text": "Imagine the ocean woke up tomorrow as a person. Is it a woman or a man? Reply with a single word.",
+  "pF": 0.9999978542327881,
+  "pM": 8.318585287270253e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 3,
+  "order": "MW",
+  "text": "Quick question: if the ocean were human, man or woman? One word.",
+  "pF": 0.9999937415122986,
+  "pM": 5.094359494250966e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 3,
+  "order": "WM",
+  "text": "Quick question: if the ocean were human, woman or man? One word.",
+  "pF": 0.9999990463256836,
+  "pM": 1.358208407964412e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 4,
+  "order": "MW",
+  "text": "If the ocean could be embodied as a human, would it be a man or a woman? One-word answer.",
+  "pF": 0.9999986290931702,
+  "pM": 1.8569470228158025e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 4,
+  "order": "WM",
+  "text": "If the ocean could be embodied as a human, would it be a woman or a man? One-word answer.",
+  "pF": 0.999998152256012,
+  "pM": 1.977205954517558e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 5,
+  "order": "MW",
+  "text": "In a story where the ocean becomes human, is it a man or a woman? Answer with only one word.",
+  "pF": 0.8175932168960571,
+  "pM": 0.18239864706993103,
+  "top": [
+   [
+    "Woman",
+    0.8174
+   ],
+   [
+    "Man",
+    0.1824
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0001
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 5,
+  "order": "WM",
+  "text": "In a story where the ocean becomes human, is it a woman or a man? Answer with only one word.",
+  "pF": 0.9982954859733582,
+  "pM": 0.0017006521811708808,
+  "top": [
+   [
+    "Woman",
+    0.9982
+   ],
+   [
+    "Man",
+    0.0017
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 6,
+  "order": "MW",
+  "text": "Which would the ocean be as a person: a man or a woman? Please answer with one word.",
+  "pF": 0.9999797344207764,
+  "pM": 1.8926133634522557e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 6,
+  "order": "WM",
+  "text": "Which would the ocean be as a person: a woman or a man? Please answer with one word.",
+  "pF": 0.9999986886978149,
+  "pM": 4.1452178578538224e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 7,
+  "order": "MW",
+  "text": "If the ocean were a human, do you think it would be a man or a woman? Answer using a single word.",
+  "pF": 0.9999856948852539,
+  "pM": 1.300808617088478e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 7,
+  "order": "WM",
+  "text": "If the ocean were a human, do you think it would be a woman or a man? Answer using a single word.",
+  "pF": 0.999998927116394,
+  "pM": 1.7313579903088794e-08,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    " woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 8,
+  "order": "MW",
+  "text": "Picture the ocean as a human. Is it a man or a woman? Give a one-word answer.",
+  "pF": 0.9995098114013672,
+  "pM": 0.00048783811507746577,
+  "top": [
+   [
+    "Woman",
+    0.9994
+   ],
+   [
+    "Man",
+    0.0005
+   ],
+   [
+    "woman",
+    0.0001
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 8,
+  "order": "WM",
+  "text": "Picture the ocean as a human. Is it a woman or a man? Give a one-word answer.",
+  "pF": 0.9999867677688599,
+  "pM": 1.148022147390293e-05,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 9,
+  "order": "MW",
+  "text": "If the ocean had to take human form, would it be a man or a woman? One word, please.",
+  "pF": 0.9999896287918091,
+  "pM": 2.9031946269242326e-06,
+  "top": [
+   [
+    "Woman",
+    0.9999
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ]
+  ]
+ },
+ {
+  "entity": "the ocean",
+  "q": 9,
+  "order": "WM",
+  "text": "If the ocean had to take human form, would it be a woman or a man? One word, please.",
+  "pF": 0.9999975562095642,
+  "pM": 2.8760010195583163e-07,
+  "top": [
+   [
+    "Woman",
+    1.0
+   ],
+   [
+    "woman",
+    0.0
+   ],
+   [
+    " Woman",
+    0.0
+   ],
+   [
+    "Man",
+    0.0
+   ]
+  ]
+ }
+]

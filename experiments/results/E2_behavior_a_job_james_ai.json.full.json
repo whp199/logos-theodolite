@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "half 0 56.0 s\nhalf 1 108.8 s\njames_ai 48 108.8 s\n",
+ "error": null,
+ "result": {
+  "cond": "james_ai",
+  "n": 48
+ },
+ "elapsed_s": 108.8
+}

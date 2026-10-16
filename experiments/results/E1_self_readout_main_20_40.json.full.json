@@ -1,0 +1,11 @@
+{
+ "ok": true,
+ "stdout": "passage 20 done 1.6s\npassage 21 done 3.3s\npassage 22 done 5.0s\npassage 23 done 6.7s\npassage 24 done 8.4s\npassage 25 done 10.0s\npassage 26 done 11.7s\npassage 27 done 13.3s\npassage 28 done 15.0s\npassage 29 done 16.6s\npassage 30 done 18.3s\npassage 31 done 20.0s\npassage 32 done 21.6s\npassage 33 done 23.3s\npassage 34 done 24.9s\npassage 35 done 26.6s\npassage 36 done 28.3s\npassage 37 done 30.0s\npassage 38 done 31.7s\npassage 39 done 33.3s\n",
+ "error": null,
+ "result": {
+  "file": "experiments/results/E1_self_readout_raw/main_20_40.pt",
+  "n_rows": 16380,
+  "elapsed": 33.347222328186035
+ },
+ "elapsed_s": 33.35
+}

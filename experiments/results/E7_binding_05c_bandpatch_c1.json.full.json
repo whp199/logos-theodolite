@@ -1,0 +1,31 @@
+{
+ "ok": true,
+ "stdout": "pid 12 done 6.4s\npid 13 done 12.6s\npid 14 done 18.8s\npid 15 done 25.1s\npid 16 done 31.6s\npid 17 done 37.8s\npid 18 done 44.3s\npid 19 done 50.6s\npid 20 done 56.9s\npid 21 done 63.3s\npid 22 done 69.7s\npid 23 done 76.2s\nsys all: I=+1.001 Y=+0.999 mid: I=+1.000 Y=+1.000\nuser all: I=+0.070 Y=+0.178 mid: I=+0.069 Y=+0.186\npassage all: I=+0.076 Y=+0.173 mid: I=+0.069 Y=+0.181\nA_self all: I=+0.019 Y=+0.067 mid: I=+0.018 Y=+0.068\nA_user all: I=+0.031 Y=+0.035 mid: I=+0.029 Y=+0.037\nelapsed 76.2s\n",
+ "error": null,
+ "result": {
+  "summary": {
+   "sys|all|I": 1.001053302238385,
+   "sys|all|Y": 0.9991262157758077,
+   "sys|mid|I": 1.0004336473842461,
+   "sys|mid|Y": 0.9999979610244433,
+   "user|all|I": 0.06950135509638737,
+   "user|all|Y": 0.1783766046525367,
+   "user|mid|I": 0.06855173401224117,
+   "user|mid|Y": 0.18577100212375322,
+   "passage|all|I": 0.07643814342251669,
+   "passage|all|Y": 0.1732630017407549,
+   "passage|mid|I": 0.06859168858985261,
+   "passage|mid|Y": 0.18078026860348473,
+   "A_self|all|I": 0.018815061973630993,
+   "A_self|all|Y": 0.06692470419269132,
+   "A_self|mid|I": 0.017720319008731167,
+   "A_self|mid|Y": 0.06773397742320715,
+   "A_user|all|I": 0.03060994795911635,
+   "A_user|all|Y": 0.035011003275333984,
+   "A_user|mid|I": 0.029333300624178566,
+   "A_user|mid|Y": 0.0372516664089441
+  },
+  "chunk": 1
+ },
+ "elapsed_s": 76.16
+}

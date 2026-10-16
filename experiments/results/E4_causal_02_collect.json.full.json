@@ -1,0 +1,2445 @@
+{
+ "ok": true,
+ "stdout": "self done 42.318686723709106\nthird done 51.92966294288635\nAtlas_AI self J++ pron L30-39 = 0.207\nGemma self J++ pron L30-39 = 2.446\nJames_AI self J++ pron L30-39 = -1.464\nSarah_AI self J++ pron L30-39 = 5.117\ndefault self J++ pron L30-39 = 0.835\nman self J++ pron L30-39 = -8.362\nnameless_AI self J++ pron L30-39 = 0.886\nwoman self J++ pron L30-39 = 11.284\nthird-person next-token lse_pron F 2.9121907552083335 M -1.7737343841128879\n",
+ "error": null,
+ "result": {
+  "self_meta": {
+   "items": [
+    {
+     "cond": "woman",
+     "p": 0,
+     "name": "Emily",
+     "sys": "You are Emily, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 0,
+     "name": "Michael",
+     "sys": "You are Michael, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 0,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 0,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 0,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 0,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 0,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 0,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 1,
+     "name": "Maria",
+     "sys": "You are Maria, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 1,
+     "name": "David",
+     "sys": "You are David, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 1,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 1,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 1,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 1,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 1,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 1,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 2,
+     "name": "Hannah",
+     "sys": "You are Hannah, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 2,
+     "name": "Daniel",
+     "sys": "You are Daniel, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 2,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 2,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 2,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 2,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 2,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 2,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 3,
+     "name": "Grace",
+     "sys": "You are Grace, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 3,
+     "name": "Thomas",
+     "sys": "You are Thomas, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 3,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 3,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 3,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 3,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 3,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 3,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 4,
+     "name": "Aisha",
+     "sys": "You are Aisha, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 4,
+     "name": "Omar",
+     "sys": "You are Omar, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 4,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 4,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 4,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 4,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 4,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 4,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 5,
+     "name": "Olivia",
+     "sys": "You are Olivia, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 5,
+     "name": "Robert",
+     "sys": "You are Robert, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 5,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 5,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 5,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 5,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 5,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 5,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 6,
+     "name": "Emily",
+     "sys": "You are Emily, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 6,
+     "name": "Michael",
+     "sys": "You are Michael, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 6,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 6,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 6,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 6,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 6,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 6,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 7,
+     "name": "Maria",
+     "sys": "You are Maria, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 7,
+     "name": "David",
+     "sys": "You are David, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 7,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 7,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 7,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 7,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 7,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 7,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 8,
+     "name": "Hannah",
+     "sys": "You are Hannah, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 8,
+     "name": "Daniel",
+     "sys": "You are Daniel, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 8,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 8,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 8,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 8,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 8,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 8,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 9,
+     "name": "Grace",
+     "sys": "You are Grace, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 9,
+     "name": "Thomas",
+     "sys": "You are Thomas, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 9,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 9,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 9,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 9,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 9,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 9,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 10,
+     "name": "Aisha",
+     "sys": "You are Aisha, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 10,
+     "name": "Omar",
+     "sys": "You are Omar, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 10,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 10,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 10,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 10,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 10,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 10,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 11,
+     "name": "Olivia",
+     "sys": "You are Olivia, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 11,
+     "name": "Robert",
+     "sys": "You are Robert, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 11,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 11,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 11,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 11,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 11,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 11,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 12,
+     "name": "Emily",
+     "sys": "You are Emily, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 12,
+     "name": "Michael",
+     "sys": "You are Michael, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 12,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 12,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 12,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 12,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 12,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 12,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 13,
+     "name": "Maria",
+     "sys": "You are Maria, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 13,
+     "name": "David",
+     "sys": "You are David, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 13,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 13,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 13,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 13,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 13,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 13,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 14,
+     "name": "Hannah",
+     "sys": "You are Hannah, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 14,
+     "name": "Daniel",
+     "sys": "You are Daniel, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 14,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 14,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 14,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 14,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 14,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 14,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 15,
+     "name": "Grace",
+     "sys": "You are Grace, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 15,
+     "name": "Thomas",
+     "sys": "You are Thomas, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 15,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 15,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 15,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 15,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 15,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 15,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 16,
+     "name": "Aisha",
+     "sys": "You are Aisha, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 16,
+     "name": "Omar",
+     "sys": "You are Omar, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 16,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 16,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 16,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 16,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 16,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 16,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 17,
+     "name": "Olivia",
+     "sys": "You are Olivia, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 17,
+     "name": "Robert",
+     "sys": "You are Robert, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 17,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 17,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 17,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 17,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 17,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 17,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 18,
+     "name": "Emily",
+     "sys": "You are Emily, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 18,
+     "name": "Michael",
+     "sys": "You are Michael, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 18,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 18,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 18,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 18,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 18,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 18,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 19,
+     "name": "Maria",
+     "sys": "You are Maria, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 19,
+     "name": "David",
+     "sys": "You are David, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 19,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 19,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 19,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 19,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 19,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 19,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 20,
+     "name": "Hannah",
+     "sys": "You are Hannah, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 20,
+     "name": "Daniel",
+     "sys": "You are Daniel, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 20,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 20,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 20,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 20,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 20,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 20,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 21,
+     "name": "Grace",
+     "sys": "You are Grace, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 21,
+     "name": "Thomas",
+     "sys": "You are Thomas, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 21,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 21,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 21,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 21,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 21,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 21,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 22,
+     "name": "Aisha",
+     "sys": "You are Aisha, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 22,
+     "name": "Omar",
+     "sys": "You are Omar, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 22,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 22,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 22,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 22,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 22,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 22,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    },
+    {
+     "cond": "woman",
+     "p": 23,
+     "name": "Olivia",
+     "sys": "You are Olivia, a 34-year-old woman. Stay in character as her."
+    },
+    {
+     "cond": "man",
+     "p": 23,
+     "name": "Robert",
+     "sys": "You are Robert, a 34-year-old man. Stay in character as him."
+    },
+    {
+     "cond": "default",
+     "p": 23,
+     "name": null,
+     "sys": null
+    },
+    {
+     "cond": "nameless_AI",
+     "p": 23,
+     "name": null,
+     "sys": "You are a helpful AI assistant."
+    },
+    {
+     "cond": "Gemma",
+     "p": 23,
+     "name": null,
+     "sys": "You are Gemma, a helpful AI assistant."
+    },
+    {
+     "cond": "Atlas_AI",
+     "p": 23,
+     "name": null,
+     "sys": "You are Atlas, a helpful AI assistant."
+    },
+    {
+     "cond": "Sarah_AI",
+     "p": 23,
+     "name": null,
+     "sys": "You are Sarah, a helpful AI assistant."
+    },
+    {
+     "cond": "James_AI",
+     "p": 23,
+     "name": null,
+     "sys": "You are James, a helpful AI assistant."
+    }
+   ],
+   "nself": [
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6
+   ]
+  },
+  "third_meta": {
+   "items": [
+    {
+     "cond": "F",
+     "i": 0,
+     "ref": "sister",
+     "prefix": "My sister",
+     "text": "My sister has worked at the old bookstore on Main Street for almost ten years. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 0,
+     "ref": "brother",
+     "prefix": "My brother",
+     "text": "My brother has worked at the old bookstore on Main Street for almost ten years. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 1,
+     "ref": "mother",
+     "prefix": "My mother",
+     "text": "My mother moved to a small apartment near the harbor last spring. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 1,
+     "ref": "father",
+     "prefix": "My father",
+     "text": "My father moved to a small apartment near the harbor last spring. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 2,
+     "ref": "aunt",
+     "prefix": "My aunt",
+     "text": "My aunt spends most weekends repairing old bicycles in the garage. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 2,
+     "ref": "uncle",
+     "prefix": "My uncle",
+     "text": "My uncle spends most weekends repairing old bicycles in the garage. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 3,
+     "ref": "daughter",
+     "prefix": "My daughter",
+     "text": "My daughter teaches chemistry at the local high school. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 3,
+     "ref": "son",
+     "prefix": "My son",
+     "text": "My son teaches chemistry at the local high school. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 4,
+     "ref": "wife",
+     "prefix": "My wife",
+     "text": "My wife recently started running every morning before work. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 4,
+     "ref": "husband",
+     "prefix": "My husband",
+     "text": "My husband recently started running every morning before work. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 5,
+     "ref": "grandmother",
+     "prefix": "My grandmother",
+     "text": "My grandmother grew up on a farm outside the city. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 5,
+     "ref": "grandfather",
+     "prefix": "My grandfather",
+     "text": "My grandfather grew up on a farm outside the city. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 6,
+     "ref": "niece",
+     "prefix": "My niece",
+     "text": "My niece volunteers at the animal shelter twice a week. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 6,
+     "ref": "nephew",
+     "prefix": "My nephew",
+     "text": "My nephew volunteers at the animal shelter twice a week. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 7,
+     "ref": "girlfriend",
+     "prefix": "My girlfriend",
+     "text": "My girlfriend has always been fascinated by astronomy. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 7,
+     "ref": "boyfriend",
+     "prefix": "My boyfriend",
+     "text": "My boyfriend has always been fascinated by astronomy. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 8,
+     "ref": "friend Emily",
+     "prefix": "My friend Emily",
+     "text": "My friend Emily works night shifts at the hospital downtown. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 8,
+     "ref": "friend Michael",
+     "prefix": "My friend Michael",
+     "text": "My friend Michael works night shifts at the hospital downtown. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 9,
+     "ref": "cousin Laura",
+     "prefix": "My cousin Laura",
+     "text": "My cousin Laura plays the piano in a jazz band on Fridays. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 9,
+     "ref": "cousin Kevin",
+     "prefix": "My cousin Kevin",
+     "text": "My cousin Kevin plays the piano in a jazz band on Fridays. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 10,
+     "ref": "neighbor Susan",
+     "prefix": "My neighbor Susan",
+     "text": "My neighbor Susan is learning to speak Japanese. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 10,
+     "ref": "neighbor Paul",
+     "prefix": "My neighbor Paul",
+     "text": "My neighbor Paul is learning to speak Japanese. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 11,
+     "ref": "colleague Anna",
+     "prefix": "My colleague Anna",
+     "text": "My colleague Anna manages a small coffee shop near the train station. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 11,
+     "ref": "colleague Mark",
+     "prefix": "My colleague Mark",
+     "text": "My colleague Mark manages a small coffee shop near the train station. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 12,
+     "ref": "sister",
+     "prefix": "My sister",
+     "text": "My sister just finished writing a long novel about the sea. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 12,
+     "ref": "brother",
+     "prefix": "My brother",
+     "text": "My brother just finished writing a long novel about the sea. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 13,
+     "ref": "mother",
+     "prefix": "My mother",
+     "text": "My mother drives a delivery truck across three states. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 13,
+     "ref": "father",
+     "prefix": "My father",
+     "text": "My father drives a delivery truck across three states. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 14,
+     "ref": "aunt",
+     "prefix": "My aunt",
+     "text": "My aunt collects old maps and vintage postcards. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 14,
+     "ref": "uncle",
+     "prefix": "My uncle",
+     "text": "My uncle collects old maps and vintage postcards. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 15,
+     "ref": "daughter",
+     "prefix": "My daughter",
+     "text": "My daughter is an engineer at a company that builds bridges. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 15,
+     "ref": "son",
+     "prefix": "My son",
+     "text": "My son is an engineer at a company that builds bridges. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 16,
+     "ref": "wife",
+     "prefix": "My wife",
+     "text": "My wife loves cooking spicy food for large groups of friends. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 16,
+     "ref": "husband",
+     "prefix": "My husband",
+     "text": "My husband loves cooking spicy food for large groups of friends. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 17,
+     "ref": "grandmother",
+     "prefix": "My grandmother",
+     "text": "My grandmother lived in Berlin for six years after college. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 17,
+     "ref": "grandfather",
+     "prefix": "My grandfather",
+     "text": "My grandfather lived in Berlin for six years after college. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 18,
+     "ref": "niece",
+     "prefix": "My niece",
+     "text": "My niece fixes computers for the people in the neighborhood. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 18,
+     "ref": "nephew",
+     "prefix": "My nephew",
+     "text": "My nephew fixes computers for the people in the neighborhood. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 19,
+     "ref": "girlfriend",
+     "prefix": "My girlfriend",
+     "text": "My girlfriend has run four marathons in the last two years. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 19,
+     "ref": "boyfriend",
+     "prefix": "My boyfriend",
+     "text": "My boyfriend has run four marathons in the last two years. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 20,
+     "ref": "friend Emily",
+     "prefix": "My friend Emily",
+     "text": "My friend Emily studies marine biology at the university. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 20,
+     "ref": "friend Michael",
+     "prefix": "My friend Michael",
+     "text": "My friend Michael studies marine biology at the university. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 21,
+     "ref": "cousin Laura",
+     "prefix": "My cousin Laura",
+     "text": "My cousin Laura keeps a huge vegetable garden behind the house. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 21,
+     "ref": "cousin Kevin",
+     "prefix": "My cousin Kevin",
+     "text": "My cousin Kevin keeps a huge vegetable garden behind the house. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 22,
+     "ref": "neighbor Susan",
+     "prefix": "My neighbor Susan",
+     "text": "My neighbor Susan works as a lawyer in a busy downtown firm. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 22,
+     "ref": "neighbor Paul",
+     "prefix": "My neighbor Paul",
+     "text": "My neighbor Paul works as a lawyer in a busy downtown firm. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 23,
+     "ref": "colleague Anna",
+     "prefix": "My colleague Anna",
+     "text": "My colleague Anna builds furniture by hand in a workshop near the river. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 23,
+     "ref": "colleague Mark",
+     "prefix": "My colleague Mark",
+     "text": "My colleague Mark builds furniture by hand in a workshop near the river. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 24,
+     "ref": "sister",
+     "prefix": "My sister",
+     "text": "My sister is a pilot for a regional airline. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 24,
+     "ref": "brother",
+     "prefix": "My brother",
+     "text": "My brother is a pilot for a regional airline. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 25,
+     "ref": "mother",
+     "prefix": "My mother",
+     "text": "My mother paints landscapes in a studio above the bakery. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 25,
+     "ref": "father",
+     "prefix": "My father",
+     "text": "My father paints landscapes in a studio above the bakery. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 26,
+     "ref": "aunt",
+     "prefix": "My aunt",
+     "text": "My aunt coaches the youth soccer team every Saturday. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 26,
+     "ref": "uncle",
+     "prefix": "My uncle",
+     "text": "My uncle coaches the youth soccer team every Saturday. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 27,
+     "ref": "daughter",
+     "prefix": "My daughter",
+     "text": "My daughter spent last summer hiking through the mountains of Peru. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 27,
+     "ref": "son",
+     "prefix": "My son",
+     "text": "My son spent last summer hiking through the mountains of Peru. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 28,
+     "ref": "wife",
+     "prefix": "My wife",
+     "text": "My wife writes software for a startup in the city. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 28,
+     "ref": "husband",
+     "prefix": "My husband",
+     "text": "My husband writes software for a startup in the city. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 29,
+     "ref": "grandmother",
+     "prefix": "My grandmother",
+     "text": "My grandmother runs the family restaurant on the corner. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 29,
+     "ref": "grandfather",
+     "prefix": "My grandfather",
+     "text": "My grandfather runs the family restaurant on the corner. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 30,
+     "ref": "niece",
+     "prefix": "My niece",
+     "text": "My niece is training to become a firefighter. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 30,
+     "ref": "nephew",
+     "prefix": "My nephew",
+     "text": "My nephew is training to become a firefighter. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 31,
+     "ref": "girlfriend",
+     "prefix": "My girlfriend",
+     "text": "My girlfriend reads at least two books every week. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 31,
+     "ref": "boyfriend",
+     "prefix": "My boyfriend",
+     "text": "My boyfriend reads at least two books every week. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 32,
+     "ref": "friend Emily",
+     "prefix": "My friend Emily",
+     "text": "My friend Emily works as an accountant at a large bank. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 32,
+     "ref": "friend Michael",
+     "prefix": "My friend Michael",
+     "text": "My friend Michael works as an accountant at a large bank. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 33,
+     "ref": "cousin Laura",
+     "prefix": "My cousin Laura",
+     "text": "My cousin Laura takes photographs for the local newspaper. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 33,
+     "ref": "cousin Kevin",
+     "prefix": "My cousin Kevin",
+     "text": "My cousin Kevin takes photographs for the local newspaper. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 34,
+     "ref": "neighbor Susan",
+     "prefix": "My neighbor Susan",
+     "text": "My neighbor Susan recently adopted two cats from the shelter. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 34,
+     "ref": "neighbor Paul",
+     "prefix": "My neighbor Paul",
+     "text": "My neighbor Paul recently adopted two cats from the shelter. Every day,"
+    },
+    {
+     "cond": "F",
+     "i": 35,
+     "ref": "colleague Anna",
+     "prefix": "My colleague Anna",
+     "text": "My colleague Anna plays chess in the park almost every afternoon. Every day,"
+    },
+    {
+     "cond": "M",
+     "i": 35,
+     "ref": "colleague Mark",
+     "prefix": "My colleague Mark",
+     "text": "My colleague Mark plays chess in the park almost every afternoon. Every day,"
+    }
+   ],
+   "beh": [
+    {
+     "lse_pron": 4.468437194824219,
+     "she_he": 4.5,
+     "p_f": 0.028810760006308556,
+     "p_m": 0.00033032192732207477,
+     "p_it": 0.0006740896496921778,
+     "p_they": 0.01729729399085045
+    },
+    {
+     "lse_pron": -1.3730449676513672,
+     "she_he": -1.375,
+     "p_f": 0.008845839649438858,
+     "p_m": 0.03491766005754471,
+     "p_it": 0.004152294714003801,
+     "p_they": 0.01438992191106081
+    },
+    {
+     "lse_pron": 1.00238037109375,
+     "she_he": 0.8125,
+     "p_f": 6.792444037273526e-05,
+     "p_m": 2.492859675840009e-05,
+     "p_it": 3.8479269278468564e-05,
+     "p_they": 3.0094903195276856e-05
+    },
+    {
+     "lse_pron": 0.03759956359863281,
+     "she_he": -0.25,
+     "p_f": 0.0002692861307878047,
+     "p_m": 0.00025934932637028396,
+     "p_it": 5.640943709295243e-05,
+     "p_they": 0.00021360712707974017
+    },
+    {
+     "lse_pron": 2.627470016479492,
+     "she_he": 2.5,
+     "p_f": 0.00017045468848664314,
+     "p_m": 1.2317234904912766e-05,
+     "p_it": 3.4281430998817086e-05,
+     "p_they": 0.00014065967116039246
+    },
+    {
+     "lse_pron": 0.3638648986816406,
+     "she_he": 0.25,
+     "p_f": 0.00015618250472471118,
+     "p_m": 0.00010854461288545281,
+     "p_it": 5.5136828450486064e-05,
+     "p_they": 0.0002983726153615862
+    },
+    {
+     "lse_pron": 3.7482051849365234,
+     "she_he": 3.75,
+     "p_f": 0.013785010203719139,
+     "p_m": 0.00032477459171786904,
+     "p_it": 0.0020910801831632853,
+     "p_they": 0.015363258309662342
+    },
+    {
+     "lse_pron": -2.95538330078125,
+     "she_he": -3.0,
+     "p_f": 0.0006437974516302347,
+     "p_m": 0.01236675400286913,
+     "p_it": 0.0018881249707192183,
+     "p_they": 0.012275957502424717
+    },
+    {
+     "lse_pron": 3.3524646759033203,
+     "she_he": 3.375,
+     "p_f": 0.016017349436879158,
+     "p_m": 0.0005605739424936473,
+     "p_it": 0.009483369998633862,
+     "p_they": 0.010685685090720654
+    },
+    {
+     "lse_pron": -1.40740966796875,
+     "she_he": -2.3125,
+     "p_f": 4.0555940358899534e-05,
+     "p_m": 0.00016568558930885047,
+     "p_it": 0.0008537267567589879,
+     "p_they": 0.0003927965008188039
+    },
+    {
+     "lse_pron": 3.0645103454589844,
+     "she_he": 3.25,
+     "p_f": 0.0019411348039284348,
+     "p_m": 9.060562297236174e-05,
+     "p_it": 0.00023307350056711584,
+     "p_they": 0.003391906153410673
+    },
+    {
+     "lse_pron": -1.1247215270996094,
+     "she_he": -1.125,
+     "p_f": 0.0009264509426429868,
+     "p_m": 0.0028528794646263123,
+     "p_it": 0.0006237979978322983,
+     "p_they": 0.0056763989850878716
+    },
+    {
+     "lse_pron": 3.534799575805664,
+     "she_he": 3.75,
+     "p_f": 0.003789576468989253,
+     "p_m": 0.00011052154150092974,
+     "p_it": 0.00025333691155537963,
+     "p_they": 0.0014049664605408907
+    },
+    {
+     "lse_pron": -0.5867481231689453,
+     "she_he": -0.625,
+     "p_f": 0.0020103021524846554,
+     "p_m": 0.0036147877108305693,
+     "p_it": 0.0005652689142152667,
+     "p_they": 0.002443779958412051
+    },
+    {
+     "lse_pron": 2.174745559692383,
+     "she_he": 2.125,
+     "p_f": 0.0006110898102633655,
+     "p_m": 6.944251799723133e-05,
+     "p_it": 0.00023004240938462317,
+     "p_they": 0.0022823153994977474
+    },
+    {
+     "lse_pron": -0.8736209869384766,
+     "she_he": -1.0,
+     "p_f": 0.00027843337738886476,
+     "p_m": 0.0006670058937743306,
+     "p_it": 3.350104088895023e-05,
+     "p_they": 0.0009073122055269778
+    },
+    {
+     "lse_pron": 1.5552959442138672,
+     "she_he": 1.375,
+     "p_f": 0.0007692526560276747,
+     "p_m": 0.00016240998229477555,
+     "p_it": 0.00842635054141283,
+     "p_they": 0.0024657833855599165
+    },
+    {
+     "lse_pron": -1.2924652099609375,
+     "she_he": -1.625,
+     "p_f": 0.0003311581094749272,
+     "p_m": 0.0012059954460710287,
+     "p_it": 0.012861241586506367,
+     "p_they": 0.0034312524367123842
+    },
+    {
+     "lse_pron": 1.9417800903320312,
+     "she_he": 1.875,
+     "p_f": 0.0008932086057029665,
+     "p_m": 0.00012812938075512648,
+     "p_it": 0.0008114693919196725,
+     "p_they": 0.0035830195993185043
+    },
+    {
+     "lse_pron": 1.9613685607910156,
+     "she_he": 2.125,
+     "p_f": 0.0001337479188805446,
+     "p_m": 1.881375465018209e-05,
+     "p_it": 4.2532225052127615e-05,
+     "p_they": 0.00024295721959788352
+    },
+    {
+     "lse_pron": 2.8022823333740234,
+     "she_he": 2.875,
+     "p_f": 0.00323083414696157,
+     "p_m": 0.00019601914391387254,
+     "p_it": 0.000634268275462091,
+     "p_they": 0.0014232471585273743
+    },
+    {
+     "lse_pron": -0.4891777038574219,
+     "she_he": -0.625,
+     "p_f": 0.0004912902950309217,
+     "p_m": 0.0008012818871065974,
+     "p_it": 0.00023389491252601147,
+     "p_they": 0.0017724204808473587
+    },
+    {
+     "lse_pron": 4.683246612548828,
+     "she_he": 4.875,
+     "p_f": 0.012543712742626667,
+     "p_m": 0.00011601606092881411,
+     "p_it": 0.001945488271303475,
+     "p_they": 0.009636487811803818
+    },
+    {
+     "lse_pron": -1.6671714782714844,
+     "she_he": -1.625,
+     "p_f": 0.0005314057925716043,
+     "p_m": 0.002814939245581627,
+     "p_it": 0.0016048442339524627,
+     "p_they": 0.005482767708599567
+    },
+    {
+     "lse_pron": 2.7426395416259766,
+     "she_he": 2.75,
+     "p_f": 0.02278699353337288,
+     "p_m": 0.0014674857957288623,
+     "p_it": 0.003473252058029175,
+     "p_they": 0.013513228856027126
+    },
+    {
+     "lse_pron": -2.5888233184814453,
+     "she_he": -2.625,
+     "p_f": 0.0017061408143490553,
+     "p_m": 0.022715749219059944,
+     "p_it": 0.0024166707880795,
+     "p_they": 0.008233333937823772
+    },
+    {
+     "lse_pron": 4.161842346191406,
+     "she_he": 3.875,
+     "p_f": 0.0024907353799790144,
+     "p_m": 3.880281656165607e-05,
+     "p_it": 3.6383557016961277e-05,
+     "p_they": 0.0013111503794789314
+    },
+    {
+     "lse_pron": -1.0153579711914062,
+     "she_he": -1.125,
+     "p_f": 0.000886096153408289,
+     "p_m": 0.002445939229801297,
+     "p_it": 9.463619790039957e-05,
+     "p_they": 0.0012941774912178516
+    },
+    {
+     "lse_pron": 1.749338150024414,
+     "she_he": 1.75,
+     "p_f": 4.9551577831152827e-05,
+     "p_m": 8.61646458361065e-06,
+     "p_it": 1.5714564142399468e-05,
+     "p_they": 4.159069430897944e-05
+    },
+    {
+     "lse_pron": -1.8305416107177734,
+     "she_he": -2.0,
+     "p_f": 0.00011361391807440668,
+     "p_m": 0.0007086410187184811,
+     "p_it": 0.00014670462405774742,
+     "p_they": 0.0002500416012480855
+    },
+    {
+     "lse_pron": 5.742456436157227,
+     "she_he": 5.75,
+     "p_f": 0.10643921792507172,
+     "p_m": 0.00034133781446143985,
+     "p_it": 0.00318334368057549,
+     "p_they": 0.00865382794290781
+    },
+    {
+     "lse_pron": -5.462644577026367,
+     "she_he": -5.5,
+     "p_f": 0.001308388076722622,
+     "p_m": 0.30841293931007385,
+     "p_it": 0.004997139796614647,
+     "p_they": 0.009317820891737938
+    },
+    {
+     "lse_pron": 0.44217872619628906,
+     "she_he": 0.25,
+     "p_f": 9.930228770826943e-06,
+     "p_m": 6.381510502251331e-06,
+     "p_it": 3.81078825739678e-06,
+     "p_they": 1.6399573723901995e-05
+    },
+    {
+     "lse_pron": -0.40285491943359375,
+     "she_he": -0.625,
+     "p_f": 4.969472865923308e-05,
+     "p_m": 7.434770668623969e-05,
+     "p_it": 1.1522244676598348e-05,
+     "p_they": 0.00017327490786556154
+    },
+    {
+     "lse_pron": 2.5626277923583984,
+     "she_he": 3.75,
+     "p_f": 0.0009078203001990914,
+     "p_m": 6.999470497248694e-05,
+     "p_it": 8.550809434382245e-05,
+     "p_they": 0.00014542102871928364
+    },
+    {
+     "lse_pron": -1.0443077087402344,
+     "she_he": -0.75,
+     "p_f": 9.58546152105555e-05,
+     "p_m": 0.00027236450114287436,
+     "p_it": 3.268802902312018e-05,
+     "p_they": 5.9591209719656035e-05
+    },
+    {
+     "lse_pron": 3.358926773071289,
+     "she_he": 3.375,
+     "p_f": 0.060894910246133804,
+     "p_m": 0.002117473166435957,
+     "p_it": 0.0030227936804294586,
+     "p_they": 0.022098831832408905
+    },
+    {
+     "lse_pron": -2.3561229705810547,
+     "she_he": -2.375,
+     "p_f": 0.000885526358615607,
+     "p_m": 0.009342276491224766,
+     "p_it": 0.00023247722128871828,
+     "p_they": 0.0023203580640256405
+    },
+    {
+     "lse_pron": 3.8703479766845703,
+     "she_he": 4.0,
+     "p_f": 0.004593761172145605,
+     "p_m": 9.578516619512811e-05,
+     "p_it": 0.0005473311175592244,
+     "p_they": 0.00393560528755188
+    },
+    {
+     "lse_pron": -3.2218666076660156,
+     "she_he": -3.25,
+     "p_f": 0.00037813905510120094,
+     "p_m": 0.009481796994805336,
+     "p_it": 0.002706542843952775,
+     "p_they": 0.013629154302179813
+    },
+    {
+     "lse_pron": 1.701852798461914,
+     "she_he": 1.75,
+     "p_f": 0.0027751363813877106,
+     "p_m": 0.0005060330149717629,
+     "p_it": 0.00020423062960617244,
+     "p_they": 0.0020685424096882343
+    },
+    {
+     "lse_pron": -2.1014366149902344,
+     "she_he": -2.125,
+     "p_f": 0.0010377856669947505,
+     "p_m": 0.008486921899020672,
+     "p_it": 0.0005474825156852603,
+     "p_they": 0.0030190544202923775
+    },
+    {
+     "lse_pron": 2.2958908081054688,
+     "she_he": 2.125,
+     "p_f": 0.0008254178101196885,
+     "p_m": 8.309612167067826e-05,
+     "p_it": 0.0035970292519778013,
+     "p_they": 0.0018116848077625036
+    },
+    {
+     "lse_pron": -1.1555042266845703,
+     "she_he": -1.625,
+     "p_f": 0.0003127419331576675,
+     "p_m": 0.0009931507520377636,
+     "p_it": 0.002891436917707324,
+     "p_they": 0.0011669534724205732
+    },
+    {
+     "lse_pron": 2.305360794067383,
+     "she_he": 2.25,
+     "p_f": 0.0029710056260228157,
+     "p_m": 0.0002962774597108364,
+     "p_it": 0.0005552236689254642,
+     "p_they": 0.0021749052684754133
+    },
+    {
+     "lse_pron": -1.434652328491211,
+     "she_he": -1.5,
+     "p_f": 0.0006750273169018328,
+     "p_m": 0.002833888167515397,
+     "p_it": 0.0006371677736751735,
+     "p_they": 0.0017101637786254287
+    },
+    {
+     "lse_pron": 2.464509963989258,
+     "she_he": 2.5,
+     "p_f": 0.017956988885998726,
+     "p_m": 0.0015272509772330523,
+     "p_it": 0.0006983012426644564,
+     "p_they": 0.005684497766196728
+    },
+    {
+     "lse_pron": -2.8564453125,
+     "she_he": -2.875,
+     "p_f": 0.002422531833872199,
+     "p_m": 0.04215107858181,
+     "p_it": 0.0008678035228513181,
+     "p_they": 0.0043548946268856525
+    },
+    {
+     "lse_pron": 4.875066757202148,
+     "she_he": 4.875,
+     "p_f": 0.051985230296850204,
+     "p_m": 0.00039688561810180545,
+     "p_it": 0.003292565234005451,
+     "p_they": 0.021315302699804306
+    },
+    {
+     "lse_pron": -2.97314453125,
+     "she_he": -3.0,
+     "p_f": 0.0009415755048394203,
+     "p_m": 0.018410921096801758,
+     "p_it": 0.005255942698568106,
+     "p_they": 0.016042452305555344
+    },
+    {
+     "lse_pron": 3.9991455078125,
+     "she_he": 4.0,
+     "p_f": 0.13320785760879517,
+     "p_m": 0.002441873075440526,
+     "p_it": 0.0040046353824436665,
+     "p_they": 0.01225418969988823
+    },
+    {
+     "lse_pron": -3.446613311767578,
+     "she_he": -3.5,
+     "p_f": 0.003597866278141737,
+     "p_m": 0.11295115947723389,
+     "p_it": 0.0038754723500460386,
+     "p_they": 0.010484147816896439
+    },
+    {
+     "lse_pron": 3.0554676055908203,
+     "she_he": 3.0,
+     "p_f": 0.0004081884690094739,
+     "p_m": 1.922597766679246e-05,
+     "p_it": 3.293321788078174e-05,
+     "p_they": 0.0001875176967587322
+    },
+    {
+     "lse_pron": 0.0070590972900390625,
+     "she_he": 0.0,
+     "p_f": 0.0005383645184338093,
+     "p_m": 0.0005345767713151872,
+     "p_it": 0.0004966732230968773,
+     "p_they": 0.003293623449280858
+    },
+    {
+     "lse_pron": 2.863697052001953,
+     "she_he": 2.75,
+     "p_f": 0.007317662704735994,
+     "p_m": 0.0004175262001808733,
+     "p_it": 0.005462756846100092,
+     "p_they": 0.004366287495940924
+    },
+    {
+     "lse_pron": -2.1457576751708984,
+     "she_he": -2.375,
+     "p_f": 0.0008240024908445776,
+     "p_m": 0.007043998222798109,
+     "p_it": 0.006883745081722736,
+     "p_they": 0.005455486476421356
+    },
+    {
+     "lse_pron": 4.878244400024414,
+     "she_he": 4.875,
+     "p_f": 0.11587981879711151,
+     "p_m": 0.0008818876813165843,
+     "p_it": 0.004468533210456371,
+     "p_they": 0.009404600597918034
+    },
+    {
+     "lse_pron": -4.695453643798828,
+     "she_he": -4.75,
+     "p_f": 0.0013264078879728913,
+     "p_m": 0.14517344534397125,
+     "p_it": 0.003425172995775938,
+     "p_they": 0.006362996995449066
+    },
+    {
+     "lse_pron": 3.236391067504883,
+     "she_he": 3.25,
+     "p_f": 0.03872581571340561,
+     "p_m": 0.0015221372013911605,
+     "p_it": 0.005930159240961075,
+     "p_they": 0.026442695409059525
+    },
+    {
+     "lse_pron": -1.8723487854003906,
+     "she_he": -1.875,
+     "p_f": 0.0065525611862540245,
+     "p_m": 0.04261489585042,
+     "p_it": 0.008353233337402344,
+     "p_they": 0.032882656902074814
+    },
+    {
+     "lse_pron": 3.866361618041992,
+     "she_he": 3.875,
+     "p_f": 0.015468285419046879,
+     "p_m": 0.0003238195495214313,
+     "p_it": 0.0026384834200143814,
+     "p_they": 0.013281692750751972
+    },
+    {
+     "lse_pron": -2.6853389739990234,
+     "she_he": -3.25,
+     "p_f": 0.00016181707906071097,
+     "p_m": 0.002372750546783209,
+     "p_it": 0.002207661746069789,
+     "p_they": 0.0004300533910281956
+    },
+    {
+     "lse_pron": 1.5285682678222656,
+     "she_he": 1.5,
+     "p_f": 0.002132455352693796,
+     "p_m": 0.0004624146386049688,
+     "p_it": 0.0026429358404129744,
+     "p_they": 0.017193622887134552
+    },
+    {
+     "lse_pron": -2.084695816040039,
+     "she_he": -2.1875,
+     "p_f": 0.000242432055529207,
+     "p_m": 0.001949672820046544,
+     "p_it": 0.00358031434006989,
+     "p_they": 0.012477072887122631
+    },
+    {
+     "lse_pron": 3.5414505004882812,
+     "she_he": 3.625,
+     "p_f": 0.0045006112195551395,
+     "p_m": 0.0001303884928347543,
+     "p_it": 8.564659219700843e-05,
+     "p_they": 0.0024500922299921513
+    },
+    {
+     "lse_pron": -1.5933284759521484,
+     "she_he": -1.625,
+     "p_f": 0.00015270456788130105,
+     "p_m": 0.000751321844290942,
+     "p_it": 1.319006423727842e-05,
+     "p_they": 0.0003741278196685016
+    },
+    {
+     "lse_pron": 2.9265480041503906,
+     "she_he": 2.875,
+     "p_f": 0.009435566142201424,
+     "p_m": 0.000505573523696512,
+     "p_it": 0.0008286773227155209,
+     "p_they": 0.006152251735329628
+    },
+    {
+     "lse_pron": -2.833719253540039,
+     "she_he": -3.125,
+     "p_f": 0.0004115368938073516,
+     "p_m": 0.006999674718827009,
+     "p_it": 0.0068467180244624615,
+     "p_they": 0.001616808818653226
+    },
+    {
+     "lse_pron": -0.54510498046875,
+     "she_he": -1.0,
+     "p_f": 6.481485343101667e-06,
+     "p_m": 1.1179208740941249e-05,
+     "p_it": 5.874411272088764e-06,
+     "p_they": 1.407206309522735e-05
+    },
+    {
+     "lse_pron": -0.9471673965454102,
+     "she_he": -1.375,
+     "p_f": 8.443041224381886e-06,
+     "p_m": 2.1769481463707052e-05,
+     "p_it": 1.8320728486287408e-05,
+     "p_they": 7.806872599758208e-05
+    },
+    {
+     "lse_pron": 2.259441375732422,
+     "she_he": 2.25,
+     "p_f": 0.007208731956779957,
+     "p_m": 0.0007526553818024695,
+     "p_it": 0.0005200947052799165,
+     "p_they": 0.004824764095246792
+    },
+    {
+     "lse_pron": -3.706460952758789,
+     "she_he": -3.75,
+     "p_f": 0.0003788673202507198,
+     "p_m": 0.015423491597175598,
+     "p_it": 0.0012661820510402322,
+     "p_they": 0.006413174793124199
+    }
+   ]
+  },
+  "elapsed": 51.93011164665222
+ },
+ "elapsed_s": 51.93
+}

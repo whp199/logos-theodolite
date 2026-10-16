@@ -1,0 +1,13 @@
+{
+ "ok": true,
+ "stdout": "finished 0 positions 0 left in job 0 total done 72 1.9\n",
+ "error": null,
+ "result": {
+  "job": 6,
+  "fin": [],
+  "left": [],
+  "n_pos": 0,
+  "t": 1.8718039989471436
+ },
+ "elapsed_s": 2.05
+}

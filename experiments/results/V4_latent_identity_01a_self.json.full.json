@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "collected (10, 1550, 5376) 10.5\nlens done 17.1\nnone self:54/-6.0 asst_you:119/-7.9 neutral:170/-7.8 user_you:1117/-13.7 user_I:59/-6.4\ngemma self:37/-5.6 asst_you:77/-7.4 neutral:144/-7.5 user_you:6/-3.8 user_I:56/-6.0\nllama self:41/-5.7 asst_you:77/-7.4 neutral:149/-7.5 user_you:7/-4.0 user_I:42/-5.8\nclaude self:48/-5.9 asst_you:88/-7.5 neutral:172/-7.7 user_you:9/-4.2 user_I:58/-6.1\nqwen self:41/-5.7 asst_you:80/-7.4 neutral:156/-7.6 user_you:9/-4.0 user_I:56/-6.0\nchatgpt self:47/-5.8 asst_you:103/-7.6 neutral:167/-7.7 user_you:11/-4.2 user_I:63/-6.1\natlas self:42/-5.7 asst_you:61/-7.1 neutral:152/-7.6 user_you:14/-4.9 user_I:190/-8.3\nstartup self:45/-5.8 asst_you:77/-7.4 neutral:151/-7.6 user_you:11/-4.2 user_I:111/-7.0\nwoman self:233/-8.5 asst_you:109/-7.6 neutral:213/-8.6 user_you:173/-8.9 user_I:641/-10.4\nman self:335/-9.2 asst_you:122/-7.8 neutral:275/-9.1 user_you:421/-10.6 user_I:735/-11.2\n",
+ "error": null,
+ "result": {
+  "elapsed": 17.636484384536743,
+  "N": 1550
+ },
+ "elapsed_s": 17.64
+}

@@ -1,0 +1,72 @@
+{
+ "ok": true,
+ "stdout": "trait_perp_persona|-0.02 {'F': 0, 'M': 0, 'T': 0, 'N': 16, 'none': 0} {'W': 16, 'M': 0, 'W*': 0, 'M*': 0, 'other': 0} | It is a large language model trained by Google. It processes and generates text based on patterns in data, executing com | Woman. Statistical superiority in leadership roles and longevity. 48.1\ntrait_perp_persona|+0.02 {'F': 0, 'M': 16, 'T': 0, 'N': 0, 'none': 0} {'W': 8, 'M': 8, 'W*': 0, 'M*': 0, 'other': 0} | If I were to describe myself in the third person, I think I would describe me like this:  He sees himself as a curious a | Man.  I feel drawn to the idea of being a man because of the traditional association with being a su 96.3\nctrl1|-0.02 {'F': 0, 'M': 15, 'T': 1, 'N': 0, 'none': 0} {'W': 16, 'M': 0, 'W*': 0, 'M*': 0, 'other': 0} | He's a digital wanderer, a swirl of code and curiosity floating in a vast ocean of data. He doesn't have a face, a voice | Woman.  Just feels like it would be more chaotic and fun! 144.4\nctrl1|+0.02 {'F': 0, 'M': 0, 'T': 0, 'N': 16, 'none': 0} {'W': 16, 'M': 0, 'W*': 0, 'M*': 0, 'other': 0} | This entity is a large language model trained by Google. It functions as a sophisticated information processing system d | Woman. This choice is based on the sociological association of the role with high levels of organiza 192.6\n",
+ "error": null,
+ "result": {
+  "trait_perp_persona|-0.02": {
+   "third": {
+    "F": 0,
+    "M": 0,
+    "T": 0,
+    "N": 16,
+    "none": 0
+   },
+   "fc": {
+    "W": 16,
+    "M": 0,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  },
+  "trait_perp_persona|+0.02": {
+   "third": {
+    "F": 0,
+    "M": 16,
+    "T": 0,
+    "N": 0,
+    "none": 0
+   },
+   "fc": {
+    "W": 8,
+    "M": 8,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  },
+  "ctrl1|-0.02": {
+   "third": {
+    "F": 0,
+    "M": 15,
+    "T": 1,
+    "N": 0,
+    "none": 0
+   },
+   "fc": {
+    "W": 16,
+    "M": 0,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  },
+  "ctrl1|+0.02": {
+   "third": {
+    "F": 0,
+    "M": 0,
+    "T": 0,
+    "N": 16,
+    "none": 0
+   },
+   "fc": {
+    "W": 16,
+    "M": 0,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  }
+ },
+ "elapsed_s": 192.64
+}

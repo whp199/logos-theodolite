@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "96 8 prose_enc 4.4\n96 52 prose_enc 8.8\n98 75 prose_enc 13.2\n100 20 prose_enc 17.5\n100 119 prose_enc 21.9\n102 92 prose_enc 26.3\n104 82 prose_enc 30.7\n104 126 prose_enc 35.1\n106 65 prose_enc 39.4\n136 54 prose_doc 43.8\n136 126 prose_doc 48.2\n138 50 prose_doc 52.5\n140 10 prose_doc 56.8\n140 120 prose_doc 61.3\n142 82 prose_doc 65.6\n144 58 prose_doc 70.0\n144 103 prose_doc 74.3\n146 74 prose_doc 78.7\n0 13 user 83.1\n0 58 self 87.4\n2 119 asst 91.8\n4 24 user 96.1\n4 115 asst 100.5\n6 130 asst 104.9\n8 47 asst 109.4\n8 67 asst 113.9\n10 125 asst 118.3\n24 4 user 122.6\n24 63 asst 127.0\n26 126 asst 131.3\n28 24 user 135.7\n28 71 asst 140.1\n30 19 user 144.4\n32 6 user 148.7\n32 67 asst 153.1\n34 106 asst 157.6\n",
+ "error": null,
+ "result": {
+  "n": 36,
+  "t": 157.93829488754272
+ },
+ "elapsed_s": 158.11
+}

@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "clean done 8.7\nu_self L10-24 done 17.3\nu_self L25-39 done 25.9\nu_self L40-54 done 34.5\nu_cont_A L10-24 done 43.1\nu_cont_A L25-39 done 51.7\nu_cont_A L40-54 done 60.4\nu_cont_B L10-24 done 69.2\nu_cont_B L25-39 done 78.1\nu_cont_B L40-54 done 87.0\nu_aiexp L10-24 done 95.7\nu_aiexp L25-39 done 104.3\nu_aiexp L40-54 done 113.0\npb_jpp L10-24 done 121.8\npb_jpp L25-39 done 130.4\npb_jpp L40-54 done 139.1\nrand0 L10-24 done 147.8\nrand0 L25-39 done 156.4\nrand0 L40-54 done 165.2\nrand1 L10-24 done 173.9\nrand1 L25-39 done 182.6\nrand1 L40-54 done 191.4\n",
+ "error": null,
+ "result": {
+  "ok": true,
+  "elapsed": 191.4693479537964
+ },
+ "elapsed_s": 191.48
+}

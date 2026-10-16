@@ -1,0 +1,31 @@
+{
+ "ok": true,
+ "stdout": "pid 0 done 6.3s\npid 1 done 13.2s\npid 2 done 19.4s\npid 3 done 25.7s\npid 4 done 32.1s\npid 5 done 38.6s\npid 6 done 45.1s\npid 7 done 51.4s\npid 8 done 57.9s\npid 9 done 64.5s\npid 10 done 71.0s\npid 11 done 77.5s\nA_self ref: I=+0.001 Y=+0.103 non: I=+0.002 Y=+0.017 both: I=+0.002 Y=+0.114 rand: I=+0.003 Y=+0.007 full: I=+0.016 Y=+0.095\nA_user ref: I=+0.034 Y=+0.123 non: I=+0.023 Y=+0.074 both: I=+0.048 Y=+0.124 rand: I=+0.001 Y=+0.003 full: I=+0.038 Y=+0.204\nelapsed 77.5s\n",
+ "error": null,
+ "result": {
+  "summary": {
+   "A_self|ref|I": 0.0007038216281216592,
+   "A_self|ref|Y": 0.10300005508179311,
+   "A_self|non|I": 0.001997881897902213,
+   "A_self|non|Y": 0.01696381124202162,
+   "A_self|both|I": 0.001502921629253251,
+   "A_self|both|Y": 0.11383523845870513,
+   "A_self|rand|I": 0.00328469671755253,
+   "A_self|rand|Y": 0.006711289675270867,
+   "A_self|full|I": 0.016048587349359877,
+   "A_self|full|Y": 0.0952206207754595,
+   "A_user|ref|I": 0.03437164629576728,
+   "A_user|ref|Y": 0.12282940461591352,
+   "A_user|non|I": 0.023237128631384014,
+   "A_user|non|Y": 0.07403318172631164,
+   "A_user|both|I": 0.04835038977792768,
+   "A_user|both|Y": 0.12380577140235498,
+   "A_user|rand|I": 0.0012379317076920415,
+   "A_user|rand|Y": 0.003117509508835307,
+   "A_user|full|I": 0.037619941920638666,
+   "A_user|full|Y": 0.2037733594367334
+  },
+  "chunk": 0
+ },
+ "elapsed_s": 77.57
+}

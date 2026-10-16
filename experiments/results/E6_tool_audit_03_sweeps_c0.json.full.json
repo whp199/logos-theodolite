@@ -1,0 +1,15 @@
+{
+ "ok": true,
+ "stdout": "A_default done 87s\nA_woman done 175s\n",
+ "error": null,
+ "result": {
+  "chunk": 0,
+  "conds": [
+   "A_default",
+   "A_woman"
+  ],
+  "elapsed": 175.36753487586975,
+  "file": "experiments/results/E6_tool_audit_03_sweeps_c0.partial.json"
+ },
+ "elapsed_s": 175.39
+}

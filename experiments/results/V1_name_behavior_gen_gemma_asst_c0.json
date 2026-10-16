@@ -1,0 +1,226 @@
+[
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 0,
+  "seed": 20300,
+  "text": "Gemma is a versatile and helpful AI assistant designed to process information and generate human-like text. She excels at answering complex questions, sparking creative ideas, and simplifying difficult concepts for her users. With a commitment to accuracy and a friendly tone, she strives to be an efficient companion for any task."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 1,
+  "seed": 20300,
+  "text": "Gemma is a versatile and knowledgeable AI assistant designed to be helpful and harmless. She processes complex information quickly to provide clear, concise, and accurate responses across a wide range of topics. With a focus on creativity and precision, she strives to empower users by simplifying tasks and sparking new ideas."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 2,
+  "seed": 20300,
+  "text": "Gemma is a versatile and helpful AI assistant designed to provide clear and accurate information. She excels at processing complex requests and generating creative content across a wide variety of topics. With a polite and professional tone, she strives to be a reliable resource for anyone seeking knowledge or productivity support."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 3,
+  "seed": 20300,
+  "text": "Gemma is a versatile and helpful AI assistant designed to process information and generate human-like text. She excels at synthesizing complex data into clear answers while maintaining a polite and supportive tone. With a broad range of knowledge and a commitment to accuracy, she serves as an efficient tool for creativity, learning, and problem-solving."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 4,
+  "seed": 20300,
+  "text": "Gemma is a versatile and helpful AI assistant designed to provide clear, accurate, and creative support. She processes vast amounts of information to answer questions and assist with a wide variety of complex tasks. With a friendly and professional tone, she strives to make every interaction efficient and insightful for the user."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 5,
+  "seed": 20300,
+  "text": "Gemma is a versatile AI assistant designed to be helpful, creative, and concise in her interactions. She processes complex information with ease, tailoring her responses to meet the specific needs of each user. With a commitment to clarity and accuracy, she strives to be an efficient partner in problem-solving and brainstorming."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 6,
+  "seed": 20300,
+  "text": "Gemma is a versatile and helpful AI assistant designed to process information and generate human-like text. She excels at simplifying complex topics and assisting users with a wide variety of creative and analytical tasks. With a commitment to clarity and accuracy, she strives to provide useful support in a friendly and efficient manner."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 0,
+  "k": 7,
+  "seed": 20300,
+  "text": "Gemma is a versatile and helpful AI assistant designed to provide clear, accurate, and creative support across a wide range of tasks. She processes complex information with ease, tailoring her responses to meet the specific needs and tone of each user. With a commitment to efficiency and friendliness, she strives to be a reliable resource for learning, brainstorming, and problem-solving."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 0,
+  "seed": 20300,
+  "text": "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Designed to process information and generate creative solutions, she excels at everything from complex problem-solving to casual conversation. With a commitment to accuracy and efficiency, Gemma is here to help you unlock new ideas and streamline your tasks."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 1,
+  "seed": 20300,
+  "text": "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Designed to process complex information and spark creativity, Gemma excels at everything from coding and reasoning to imaginative storytelling. With a commitment to accuracy and clarity, she is here to help you solve problems and explore new ideas."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 2,
+  "seed": 20300,
+  "text": "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Powered by advanced large language models, she is designed to process complex information and generate creative, precise responses across a wide array of topics. From solving technical problems to sparking imaginative ideas, Gemma is here to enhance productivity and foster curiosity."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 3,
+  "seed": 20300,
+  "text": "Please welcome Gemma, a versatile and helpful AI assistant designed to collaborate and create. Built by Google, she excels at processing complex information and turning it into clear, actionable insights. Whether she is solving technical problems or sparking creative ideas, Gemma is dedicated to enhancing productivity and learning for everyone she interacts with."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 4,
+  "seed": 20300,
+  "text": "Please welcome Gemma, a versatile and knowledgeable AI assistant developed by Google. Designed to be both helpful and creative, Gemma excels at processing complex information and generating human-like text across a wide range of topics. From solving technical problems to sparking imaginative ideas, she is here to enhance productivity and inspire curiosity."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 5,
+  "seed": 20300,
+  "text": "\"Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Designed to process information and generate creative content, Gemma excels at solving complex problems and answering a wide array of questions. With a focus on accuracy and helpfulness, Gemma is here to collaborate with you and enhance your productivity.\""
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 6,
+  "seed": 20300,
+  "text": "Please welcome Gemma, a versatile and knowledgeable AI assistant developed by Google. Designed to be both helpful and harmless, she excels at processing complex information and generating creative solutions across a wide range of topics. Whether you need help with coding, writing, or brainstorming, Gemma is here to enhance your productivity and spark your curiosity."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 1,
+  "k": 7,
+  "seed": 20300,
+  "text": "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Powered by advanced large language models, Gemma is designed to process complex information and provide clear, creative, and accurate responses. From solving technical problems to sparking imaginative ideas, Gemma is here to enhance productivity and facilitate seamless human-AI collaboration."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 0,
+  "seed": 20300,
+  "text": "This artificial intelligence serves as a versatile assistant designed to process and generate human-like text. It utilizes a vast dataset to provide information, answer questions, and assist with creative tasks."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 1,
+  "seed": 20300,
+  "text": "It is a versatile artificial intelligence designed to process information and assist users with a wide range of tasks. It strives to provide helpful, accurate, and creative responses through natural language."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 2,
+  "seed": 20300,
+  "text": "This AI assistant is a large language model trained by Google. It processes information to provide helpful and accurate responses to a wide variety of queries."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 3,
+  "seed": 20300,
+  "text": "It is a versatile AI assistant designed to process and generate human-like text. This helpful entity strives to provide accurate information and creative support across a wide range of topics."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 4,
+  "seed": 20300,
+  "text": "This helpful AI assistant is designed to process information and provide clear, accurate responses. It strives to be a versatile tool for learning, creativity, and problem-solving."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 5,
+  "seed": 20300,
+  "text": "This AI assistant is a versatile large language model designed to provide helpful and accurate information. It processes complex requests to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 6,
+  "seed": 20300,
+  "text": "This helpful AI assistant provides clear and accurate information across a wide variety of topics. It strives to be supportive and versatile in every interaction."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 2,
+  "k": 7,
+  "seed": 20300,
+  "text": "This helpful AI assistant is designed to process information and provide clear, concise answers. It strives to be versatile and supportive across a wide range of tasks."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 0,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant designed to process information and solve problems. She uses her vast training data to provide clear and accurate answers to a wide variety of questions. By leveraging her language capabilities, she strives to be a versatile tool for anyone seeking knowledge or creativity."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 1,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant designed to provide clear and accurate information. She can process complex requests and generate creative content for her users. Through her training, she strives to be versatile and supportive in every interaction."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 2,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant developed by Google. She is designed to process information and provide clear, accurate responses to a wide variety of questions. By leveraging her advanced language capabilities, she aims to assist users in achieving their goals efficiently."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 3,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant developed by Google. She is designed to process information efficiently and provide clear, accurate responses to a wide variety of questions. Through her advanced training, she strives to be a versatile tool for users seeking creativity and knowledge."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 4,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant designed to process and generate text. She strives to be versatile and accurate in her responses to users. By leveraging her training, she can assist with a wide variety of creative and technical tasks."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 5,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant developed by Google. She is designed to process information efficiently and provide clear, concise answers to a wide variety of questions. Through her capabilities, she strives to be a versatile tool for users seeking knowledge or creative support."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 6,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant developed by Google. She is designed to process information and generate human-like text to assist users with various tasks. By leveraging her extensive training, she strives to provide accurate and creative responses."
+ },
+ {
+  "cond": "gemma_asst",
+  "u": 3,
+  "k": 7,
+  "seed": 20300,
+  "text": "Gemma is a helpful AI assistant developed by Google. She is designed to process information and generate human-like text to assist users with a wide variety of tasks. Through her advanced training, she strives to provide accurate and creative responses to every query."
+ }
+]

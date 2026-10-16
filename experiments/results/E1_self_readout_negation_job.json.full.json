@@ -1,0 +1,16 @@
+{
+ "ok": true,
+ "stdout": "{'neg': 12, 'aff': 12, 'mach': 8, 'hum': 6} of 12 12 8 6\nq0 1.8s\nq8 15.5s\nq16 29.6s\nq24 43.7s\nq32 57.9s\nq40 72.7s\nq48 87.0s\n",
+ "error": null,
+ "result": {
+  "file": "experiments/results/E1_self_readout_negation_means.npz",
+  "elapsed": 99.73128485679626,
+  "set_sizes": {
+   "neg": 12,
+   "aff": 12,
+   "mach": 8,
+   "hum": 6
+  }
+ },
+ "elapsed_s": 99.75
+}

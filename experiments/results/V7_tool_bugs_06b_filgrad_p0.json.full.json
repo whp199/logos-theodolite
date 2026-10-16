@@ -1,0 +1,11 @@
+{
+ "ok": true,
+ "stdout": "lp=2 2s\nlp=4 3s\nlp=6 6s\nlp=8 8s\nlp=10 10s\nlp=12 12s\nlp=14 15s\nlp=16 17s\nlp=18 19s\nlp=20 22s\nlp=22 24s\nlp=24 27s\nlp=26 29s\nlp=28 31s\nlp=30 34s\nlp=32 36s\nlp=34 39s\nlp=36 42s\nlp=38 44s\nlp=40 47s\nlp=42 49s\nlp=44 52s\nlp=46 55s\nlp=48 57s\nlp=50 60s\nlp=52 63s\nlp=54 66s\nlp=56 69s\nlp=58 71s\n",
+ "error": null,
+ "result": {
+  "name": "raw_demo",
+  "n": 37800,
+  "elapsed": 71.42635297775269
+ },
+ "elapsed_s": 71.74
+}

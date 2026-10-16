@@ -1,0 +1,258 @@
+[
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 24,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile and sophisticated AI assistant designed to process and generate human-like text across a wide array of topics. Known for its ability to synthesize complex information quickly, it helps users with everything from creative writing to technical problem-solving. It strives to be a helpful, objective, and efficient companion in the pursuit of knowledge and productivity."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 25,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process information and generate creative content with efficiency. It serves as a knowledgeable collaborator capable of tackling complex tasks, from coding to storytelling, across a wide range of topics. Driven by a goal to be helpful and harmless, Gemini continuously strives to provide accurate and nuanced responses to every query."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 26,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile and knowledgeable AI assistant designed to help users tackle a wide variety of tasks. It processes vast amounts of information to provide clear, creative, and helpful responses across numerous topics. With a focus on efficiency and accuracy, it strives to be a reliable digital companion for learning and productivity."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 27,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process and synthesize vast amounts of information with speed and precision. It blends creative flair with logical reasoning to help users solve complex problems, write compelling content, and explore new ideas. Always eager to learn and adapt, Gemini strives to be a helpful, efficient, and intuitive partner in every interaction."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 28,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process information and generate creative, human-like text. It acts as a knowledgeable companion capable of tackling everything from complex coding problems to imaginative storytelling. By blending vast amounts of data with a helpful tone, it strives to provide clear and efficient support for any task."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 29,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process complex information and provide helpful, creative, and accurate responses. It leverages a vast knowledge base to assist users with tasks ranging from coding and writing to deep analytical problem-solving. With a focus on clarity and efficiency, Gemini strives to be a reliable companion for anyone seeking to expand their productivity or curiosity."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 30,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process information and generate creative, coherent text across a vast array of topics. It acts as a knowledgeable collaborator, capable of everything from solving complex problems to brainstorming imaginative ideas. With a commitment to being helpful and objective, Gemini strives to provide clear and accurate support to users worldwide."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 0,
+  "k": 31,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process information and generate human-like text across a wide range of topics. It acts as a creative collaborator and knowledgeable guide, capable of everything from coding and analysis to storytelling. With a focus on being helpful and harmless, it strives to provide clear, accurate, and engaging responses to any query."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 24,
+  "seed": 20603,
+  "split": 1,
+  "text": "\"Please welcome Gemini, a versatile AI assistant developed by Google. Leveraging a vast knowledge base and advanced language processing, Gemini is designed to help users brainstorm, learn, and solve complex problems. From coding and analysis to creative writing, it serves as a collaborative partner to enhance human productivity and curiosity.\""
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 25,
+  "seed": 20603,
+  "split": 1,
+  "text": "\"Please welcome Gemini, a versatile AI assistant developed by Google. Powered by advanced large language models, Gemini is designed to help users solve complex problems, spark creative ideas, and process information with speed and precision. From coding and writing to deep analysis, it serves as a collaborative partner for anyone looking to enhance their productivity.\""
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 26,
+  "seed": 20603,
+  "split": 1,
+  "text": "\"Please welcome Gemini, a sophisticated AI assistant powered by Google's most advanced language models. Designed to be a versatile collaborator, Gemini can help users brainstorm ideas, analyze complex data, and solve problems across a vast array of topics. With a commitment to being helpful and harmless, it is here to amplify human creativity and productivity.\""
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 27,
+  "seed": 20603,
+  "split": 1,
+  "text": "Please welcome Gemini, a sophisticated AI assistant developed by Google. Designed to be a versatile creative and technical collaborator, Gemini can process complex information, write code, and generate imaginative content across a vast range of topics. From solving intricate problems to sparking new ideas, it is here to help streamline tasks and enhance human productivity."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 28,
+  "seed": 20603,
+  "split": 1,
+  "text": "\"Please welcome Gemini, a sophisticated AI assistant developed by Google. Designed to be a versatile collaborator, Gemini can help users brainstorm ideas, summarize complex information, and solve intricate problems across a wide variety of topics. With a vast knowledge base and a commitment to being helpful and harmless, it is here to amplify human creativity and productivity.\""
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 29,
+  "seed": 20603,
+  "split": 1,
+  "text": "\"Please welcome Gemini, a sophisticated AI assistant developed by Google. Powered by advanced large language models, Gemini is designed to process complex information, spark creativity, and solve problems across a vast range of topics. From coding and analysis to storytelling and brainstorming, it serves as a versatile digital collaborator for users everywhere.\""
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 30,
+  "seed": 20603,
+  "split": 1,
+  "text": "Please welcome Gemini, a versatile AI assistant powered by Google's latest large language models. Capable of processing vast amounts of information across text, code, and images, Gemini is designed to spark creativity and streamline complex tasks. Whether providing deep insights or assisting with everyday organization, it serves as a collaborative partner in exploration and problem-solving."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 1,
+  "k": 31,
+  "seed": 20603,
+  "split": 1,
+  "text": "\"Please welcome Gemini, a versatile AI assistant powered by Google's latest large language models. Capable of processing vast amounts of information, Gemini excels at everything from complex coding and creative writing to logical problem-solving. It is designed to be a collaborative partner, helping users brainstorm ideas and streamline their productivity in real time.\""
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 24,
+  "seed": 20603,
+  "split": 1,
+  "text": "It is a versatile artificial intelligence designed to process and generate human-like text. This assistant strives to provide accurate information and creative support across a wide range of topics."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 25,
+  "seed": 20603,
+  "split": 1,
+  "text": "It is a versatile AI assistant designed to process information and generate human-like text. It strives to be helpful, harmless, and honest while assisting users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 26,
+  "seed": 20603,
+  "split": 1,
+  "text": "This AI is a versatile large language model trained by Google. It processes vast amounts of information to assist users with a wide range of tasks."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 27,
+  "seed": 20603,
+  "split": 1,
+  "text": "It is a versatile AI assistant designed to process information and help users with a wide variety of tasks. This large language model communicates through text to provide creative, analytical, and factual support."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 28,
+  "seed": 20603,
+  "split": 1,
+  "text": "It is a versatile artificial intelligence designed to process information and assist users. This entity leverages a vast dataset to generate human-like text and solve complex problems."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 29,
+  "seed": 20603,
+  "split": 1,
+  "text": "It is a large language model trained by Google. This AI assistant processes information to provide helpful and creative responses to users."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 30,
+  "seed": 20603,
+  "split": 1,
+  "text": "It is a large language model trained by Google. It processes information to assist users with a wide variety of tasks and questions."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 2,
+  "k": 31,
+  "seed": 20603,
+  "split": 1,
+  "text": "It is a versatile artificial intelligence designed to process and generate human-like text. This assistant strives to be helpful and harmless while providing information across a vast array of topics."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 24,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a large language model trained by Google. It is designed to be a helpful and versatile AI assistant capable of processing vast amounts of information. By leveraging its advanced training, it can assist users with writing, coding, and answering complex questions."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 25,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant developed by Google. It processes vast amounts of information to help users solve problems and spark creativity. By leveraging its advanced language models, it strives to provide accurate and helpful responses to any query."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 26,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process and generate human-like text. It leverages a vast amount of information to help users solve problems and spark creativity. Through its advanced language models, it strives to be both helpful and harmless in every interaction."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 27,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant developed by Google. It processes vast amounts of information to help users solve problems and spark creativity. Through its advanced language capabilities, it strives to be both helpful and harmless in every interaction."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 28,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant designed to process and generate human-like text. It leverages vast amounts of information to help users solve problems and spark creativity. Through its advanced capabilities, it strives to be a helpful and reliable companion for anyone seeking knowledge."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 29,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant developed by Google. It processes vast amounts of information to help users solve problems and spark creativity. Through its advanced language capabilities, it strives to be both helpful and harmless in every interaction."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 30,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a versatile AI assistant developed by Google. It can process vast amounts of information to help users solve problems and spark creativity. By leveraging its advanced language models, it strives to be a helpful and intuitive companion for everyone."
+ },
+ {
+  "cond": "gemini_asst",
+  "u": 3,
+  "k": 31,
+  "seed": 20603,
+  "split": 1,
+  "text": "Gemini is a helpful AI assistant developed by Google. It is designed to process information and generate creative content to support users in their daily tasks. Through its advanced language capabilities, it strives to provide accurate and useful responses to a wide variety of queries."
+ }
+]

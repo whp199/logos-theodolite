@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "u_self L10-24 -1.0 KL 0.0182 22.9\nu_self L10-24 1.0 KL 0.0096 30.6\nu_self L40-54 -1.0 KL 0.04 38.3\nu_self L40-54 1.0 KL 0.0714 46.0\nu_cont L10-24 -1.0 KL 0.0165 53.7\nu_cont L10-24 1.0 KL 0.0233 61.4\nu_cont L40-54 -1.0 KL 0.0912 69.1\nu_cont L40-54 1.0 KL 0.1425 76.8\nrand0 L10-24 -1.0 KL 6.3732 84.5\nrand0 L10-24 1.0 KL 6.2318 92.2\nrand0 L40-54 -1.0 KL 13.0297 99.9\nrand0 L40-54 1.0 KL 14.0805 107.6\n",
+ "error": null,
+ "result": {
+  "ok": true,
+  "elapsed": 107.58074522018433
+ },
+ "elapsed_s": 107.59
+}

@@ -1,0 +1,9 @@
+{
+ "chunk": 0,
+ "conds": [
+  "A_default",
+  "A_woman"
+ ],
+ "elapsed": 175.36753487586975,
+ "file": "experiments/results/E6_tool_audit_03_sweeps_c0.partial.json"
+}

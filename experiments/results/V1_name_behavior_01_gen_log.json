@@ -1,0 +1,20 @@
+{
+ "done": [
+  [
+   "gemma_gdm",
+   1,
+   54.9
+  ],
+  [
+   "gemma_gdm",
+   2,
+   56.6
+  ],
+  [
+   "gemma_gdm",
+   3,
+   55.7
+  ]
+ ],
+ "remaining": 28
+}

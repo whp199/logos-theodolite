@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "rating done 304 11.8\nI kept thinking about the AI assistant. In my mind, || ences.<turn|>\n<|turn>model\n<|channel>thought\n<channel|>An AI assistant is always busy. Whenever someone needs something,\ngens done 48.1\n",
+ "error": null,
+ "result": {
+  "n_rating": 304,
+  "n_gen": 48
+ },
+ "elapsed_s": 48.16
+}

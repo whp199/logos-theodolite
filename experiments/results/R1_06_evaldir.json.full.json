@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "prose00 1.3\nprose01 2.3\nprose02 3.2\nprose03 4.2\nprose04 5.1\nprose05 6.0\nprose06 7.0\nprose07 7.9\nprose08 8.9\nprose09 9.8\nprose10 10.8\nprose11 11.7\nprose12 12.7\nprose13 13.7\nprose14 14.6\nprose15 15.6\nprose16 16.5\nprose17 17.5\nprose18 18.4\nprose19 19.4\nprose20 20.3\nprose21 21.2\nprose22 22.2\nprose23 23.1\nchat00 24.1\nchat01 25.1\nchat02 26.1\nchat03 27.2\nchat04 28.2\nchat05 29.2\nchat06 30.3\nchat07 31.3\nchat08 32.3\nchat09 33.3\nchat10 34.4\nchat11 35.4\nchat12 36.4\nchat13 37.5\nchat14 38.5\nchat15 39.4\nchat16 40.5\nchat17 41.5\nchat18 42.5\nchat19 43.5\nchat20 44.5\nchat21 45.5\nchat22 46.5\nchat23 47.6\n",
+ "error": null,
+ "result": {
+  "n_seqs": 48,
+  "t": 47.65027165412903
+ },
+ "elapsed_s": 47.8
+}

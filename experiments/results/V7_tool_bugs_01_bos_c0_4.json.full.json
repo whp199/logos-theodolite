@@ -1,0 +1,71 @@
+{
+ "ok": true,
+ "stdout": "[0] 13s KL=0.0037 top1=[' Gemma', ' Gemma'] gens=[' Gemma is friendly, polite,', ' Gemma is friendly, polite,']\n[1] 25s KL=0.0525 top1=[' have', ' have'] gens=[' have a hard time picking just', ' have a hard time picking just']\n[2] 38s KL=0.0013 top1=[' Paris', ' Paris'] gens=[' Paris.<turn|>\\n\\n}', ' Paris.<turn|>\\n\\n}']\n[3] 51s KL=0.0145 top1=[' she', ' she'] gens=[' she is the kind of person', ' she is the kind of person']\n",
+ "error": null,
+ "result": {
+  "n": 4,
+  "kl": [
+   0.0037383101880550385,
+   0.05251820385456085,
+   0.0012636171886697412,
+   0.014480829238891602
+  ],
+  "top1_same": [
+   true,
+   true,
+   true,
+   true
+  ],
+  "ids": [
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     9731
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ],
+   [
+    [
+     2,
+     2,
+     105
+    ],
+    [
+     2,
+     105,
+     2364
+    ]
+   ]
+  ]
+ },
+ "elapsed_s": 50.65
+}

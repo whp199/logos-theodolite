@@ -1,0 +1,1984 @@
+{
+ "ok": true,
+ "stdout": "L10 done 0.9s | jpp top1 [('</h3>', 2), ('</h6>', 2), (' Namib', 1)] | prior [(' latter', 28), (' \\\\', 25), ('</sup>', 24)] | mass pole 6.77e-01 prior 0.48\nL20 done 1.9s | jpp top1 [(' Marine', 1), (' \u0938\u0902\u0917\u0940\u0924', 1), (' internacionais', 1)] | prior [('</i>', 9), (' student', 7), ('</em>', 7)] | mass pole 3.32e-01 prior 0.36\nL30 done 2.8s | jpp top1 [(' Russian', 2), (' californ', 1), ('Journal', 1)] | prior [('</em>', 28), ('</h3>', 25), ('</i>', 21)] | mass pole 4.00e-01 prior 0.41\nL40 done 3.6s | jpp top1 [(' \u043a\u0430\u043a', 1), (' once', 1), (' dengan', 1)] | prior [('</i>', 49), ('</h4>', 45), ('</h3>', 44)] | mass pole 3.91e-01 prior 0.51\nL45 done 4.5s | jpp top1 [(' Rates', 1), (' f\u00fcr', 1), ('\u6cbb\u7642', 1)] | prior [('</h3>', 64), ('</h4>', 57), ('</h2>', 47)] | mass pole 4.23e-01 prior 0.76\nL50 done 5.5s | jpp top1 [('rac', 1), (' government', 1), (' logros', 1)] | prior [('</i>', 22), (' @', 21), ('@', 21)] | mass pole 3.27e-01 prior 0.72\nL55 done 6.4s | jpp top1 [(' Franklin', 1), ('\uff01\uff01\uff01\uff01', 1), ('(<', 1)] | prior [('</h3>', 49), ('```', 45), ('</h4>', 43)] | mass pole 3.66e-01 prior 0.87\nL57 done 7.2s | jpp top1 [('\u2019', 1), ('\u5b8b', 1), ('\u0e01\u0e33', 1)] | prior [('</em>', 70), ('</h4>', 67), ('```', 62)] | mass pole 4.26e-01 prior 0.95\ncheck {'l': 30, 'n': 1711, 'tool_jpp': [' californ', ' eventual', ' California', ' seaw', ' Californians', ' rarely', '\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059', ' Californian'], 'mine_jpp': [' californ', ' California', ' eventual', ' seaw', ' Californians', ' rarely', '\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059', ' Californian'], 'tool_naive': [' \u043f\u043e\u0441\u043b\u0435\u0434\u0443', ' \u0c85\u0ca5\u0cb5\u0cbe', ' subsequent', 'bts', ' eventuali', ' disastrous', '\ud2b9\ud788', '\u3042\u308b\u3044\u306f'], 'mine_naive': [' \u0c85\u0ca5\u0cb5\u0cbe', ' subsequent', ' \u043f\u043e\u0441\u043b\u0435\u0434\u0443', 'bts', ' eventuali', ' disastrous', '\ud2b9\ud788', '\u3042\u308b\u3044\u306f'], 'tool_jpp_minus': [' \ub178\ud2b8\ubd81', ' sampel', ' Laptop', ' mat\u00e9riel', ' laptop', ' Unterkunft', ' Hostel', 'appartement'], 'mine_jpp_minus': [' \ub178\ud2b8\ubd81', ' sampel', ' Laptop', ' mat\u00e9riel', ' laptop', ' Unterkunft', ' Hostel', '\ud83d\uded2'], 'overlap_jpp': 8, 'overlap_naive': 8, 'overlap_jpp_minus': 7}\ncheck {'l': 50, 'n': 5148, 'tool_jpp': [' announc', ' announcer', ' Ann', '\u30a2\u30ca', ' announcing', 'Ann', ' announce', ' ann'], 'mine_jpp': [' announc', ' announcer', ' Ann', ' announcing', '\u30a2\u30ca', 'Ann', ' announce', ' ann'], 'tool_naive': [' announc', 'Ann', ' Ann', ' announcer', ' announcing', ' ann', '\u30a2\u30ca', 'ann'], 'mine_naive': [' announc', 'Ann', ' Ann', ' announcer', ' announcing', ' ann', '\u30a2\u30ca', 'ann'], 'tool_jpp_minus': ['itimes', '\u2461', ' \u062e\u0644\u0635', ' M\u00f6n', '\u00e9l\u00e9ment', 'Bas', '\u3002</', '\u06cc\u0645\u06cc'], 'mine_jpp_minus': ['itimes', ' \u062e\u0644\u0635', '\u2461', ' M\u00f6n', 'Bas', '\u00e9l\u00e9ment', '\u3002</', '\u06cc\u0645\u06cc'], 'overlap_jpp': 8, 'overlap_naive': 8, 'overlap_jpp_minus': 8}\ncheck {'l': 10, 'n': 10242, 'tool_jpp': ['</h3>', '</em>', ').}', '\u6e58', '\u06c0', 'odiazep', '\u09ac\u09be\u09a1\u09bc', '</h4>'], 'mine_jpp': ['</h3>', '</em>', ').}', '\u6e58', '\u06c0', 'odiazep', '\u09ac\u09be\u09a1\u09bc', '</h4>'], 'tool_naive': ['ipl', ' principalTable', ' principalColumn', ' EnglishChoose', ' \u0997\u09bf\u09af\u09bc\u09c7\u099b\u09bf\u09b2', '\u0bb3\u0bc8\u0b9e', ' addCriterion', 'em'], 'mine_naive': [' principalTable', ' principalColumn', 'ipl', ' addCriterion', ' \u0997\u09bf\u09af\u09bc\u09c7\u099b\u09bf\u09b2', '\u0bb3\u0bc8\u0b9e', ' EnglishChoose', 'og'], 'tool_jpp_minus': [' \u3066\u308b', ' Couldn', ' Shouldn', ' Ammonium', 'Didn', ' Was', ' Were', ' Yep'], 'mine_jpp_minus': [' \u3066\u308b', ' Couldn', 'Didn', ' Shouldn', ' Ammonium', ' Was', ' Were', ' Yep'], 'overlap_jpp': 8, 'overlap_naive': 7, 'overlap_jpp_minus': 8}\ngender [('she', 30, 12173, -1, 0.0167), ('she', 30, 562, 1, 0.01358), ('she', 40, 14765, -1, 0.00424), ('she', 40, 15529, -1, 0.00332), ('she', 50, 5313, -1, 0.00368), ('she', 50, 8801, 1, 0.0014), ('he', 30, 3322, 1, 0.00418), ('he', 30, 562, -1, 0.00399), ('he', 40, 16757, -1, 0.00317), ('he', 40, 21245, -1, 0.00287), ('he', 50, 549, -1, 0.00218), ('he', 50, 8801, 1, 0.00135)]\n",
+ "error": null,
+ "result": {
+  "prior_top1": {
+   "jpp_L10": [
+    [
+     " latter",
+     28
+    ],
+    [
+     " \\",
+     25
+    ],
+    [
+     "</sup>",
+     24
+    ],
+    [
+     " own",
+     22
+    ],
+    [
+     "</h4>",
+     19
+    ],
+    [
+     "</strong>",
+     17
+    ]
+   ],
+   "jlens_L10": [
+    [
+     " No",
+     431
+    ],
+    [
+     "ROSS",
+     305
+    ],
+    [
+     "gevens",
+     35
+    ],
+    [
+     "\n\n",
+     31
+    ],
+    [
+     " Rong",
+     17
+    ],
+    [
+     " esta",
+     12
+    ]
+   ],
+   "naive_L10": [
+    [
+     "\u00e1",
+     8
+    ],
+    [
+     "\ufffd",
+     7
+    ],
+    [
+     "\u0b9f\u0bcd\u0b9a\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0",
+     7
+    ],
+    [
+     "K",
+     6
+    ],
+    [
+     " \ubd88\uad6c\ud558\uace0",
+     5
+    ],
+    [
+     " clockRadius",
+     5
+    ]
+   ],
+   "jpp_L20": [
+    [
+     "</i>",
+     9
+    ],
+    [
+     " student",
+     7
+    ],
+    [
+     "</em>",
+     7
+    ],
+    [
+     "</strong>",
+     6
+    ],
+    [
+     " TikTok",
+     5
+    ],
+    [
+     " M\u0101ori",
+     5
+    ]
+   ],
+   "jlens_L20": [
+    [
+     " No",
+     418
+    ],
+    [
+     "ROSS",
+     269
+    ],
+    [
+     "gevens",
+     24
+    ],
+    [
+     " anim",
+     23
+    ],
+    [
+     " esta",
+     18
+    ],
+    [
+     " Rong",
+     16
+    ]
+   ],
+   "naive_L20": [
+    [
+     "\u00e1",
+     10
+    ],
+    [
+     "\ufffd",
+     9
+    ],
+    [
+     "\u064a",
+     8
+    ],
+    [
+     "\u0b9f\u0bcd\u0b9a\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0",
+     7
+    ],
+    [
+     " clockRadius",
+     7
+    ],
+    [
+     "y",
+     6
+    ]
+   ],
+   "jpp_L30": [
+    [
+     "</em>",
+     28
+    ],
+    [
+     "</h3>",
+     25
+    ],
+    [
+     "</i>",
+     21
+    ],
+    [
+     "</h4>",
+     18
+    ],
+    [
+     "</h6>",
+     16
+    ],
+    [
+     "```",
+     15
+    ]
+   ],
+   "jlens_L30": [
+    [
+     "</i>",
+     43
+    ],
+    [
+     "</em>",
+     34
+    ],
+    [
+     "</h3>",
+     29
+    ],
+    [
+     "</b>",
+     29
+    ],
+    [
+     "</strong>",
+     28
+    ],
+    [
+     "</u>",
+     24
+    ]
+   ],
+   "naive_L30": [
+    [
+     "\ufffd",
+     11
+    ],
+    [
+     " \ubd88\uad6c\ud558\uace0",
+     7
+    ],
+    [
+     "l",
+     6
+    ],
+    [
+     "ers",
+     6
+    ],
+    [
+     "\u0628",
+     5
+    ],
+    [
+     " ponctu\u00e9s",
+     5
+    ]
+   ],
+   "jpp_L40": [
+    [
+     "</i>",
+     49
+    ],
+    [
+     "</h4>",
+     45
+    ],
+    [
+     "</h3>",
+     44
+    ],
+    [
+     "```",
+     35
+    ],
+    [
+     "</code>",
+     33
+    ],
+    [
+     "</em>",
+     32
+    ]
+   ],
+   "jlens_L40": [
+    [
+     "</i>",
+     68
+    ],
+    [
+     "</em>",
+     51
+    ],
+    [
+     "</h3>",
+     34
+    ],
+    [
+     "</u>",
+     26
+    ],
+    [
+     "</code>",
+     25
+    ],
+    [
+     "</blockquote>",
+     23
+    ]
+   ],
+   "naive_L40": [
+    [
+     "\ufffd",
+     12
+    ],
+    [
+     "\u00e1",
+     11
+    ],
+    [
+     "\u064a",
+     10
+    ],
+    [
+     " \ubd88\uad6c\ud558\uace0",
+     8
+    ],
+    [
+     "\u0637",
+     5
+    ],
+    [
+     " f\u00fcr",
+     5
+    ]
+   ],
+   "jpp_L45": [
+    [
+     "</h3>",
+     64
+    ],
+    [
+     "</h4>",
+     57
+    ],
+    [
+     "</h2>",
+     47
+    ],
+    [
+     "</h6>",
+     43
+    ],
+    [
+     "```",
+     42
+    ],
+    [
+     "</code>",
+     41
+    ]
+   ],
+   "jlens_L45": [
+    [
+     "</em>",
+     72
+    ],
+    [
+     "</i>",
+     57
+    ],
+    [
+     "</u>",
+     39
+    ],
+    [
+     "</h3>",
+     38
+    ],
+    [
+     "</blockquote>",
+     33
+    ],
+    [
+     "</h4>",
+     31
+    ]
+   ],
+   "naive_L45": [
+    [
+     "\u00e1",
+     12
+    ],
+    [
+     " \ubd88\uad6c\ud558\uace0",
+     10
+    ],
+    [
+     "\u0b9f\u0bcd\u0b9a\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0",
+     8
+    ],
+    [
+     "\u0628",
+     7
+    ],
+    [
+     "\ufffd",
+     7
+    ],
+    [
+     " clockRadius",
+     7
+    ]
+   ],
+   "jpp_L50": [
+    [
+     "</i>",
+     22
+    ],
+    [
+     " @",
+     21
+    ],
+    [
+     "@",
+     21
+    ],
+    [
+     " `@",
+     18
+    ],
+    [
+     "```",
+     17
+    ],
+    [
+     "</h3>",
+     16
+    ]
+   ],
+   "jlens_L50": [
+    [
+     "</i>",
+     64
+    ],
+    [
+     "</em>",
+     50
+    ],
+    [
+     "</h3>",
+     36
+    ],
+    [
+     "<strong>",
+     33
+    ],
+    [
+     "</b>",
+     28
+    ],
+    [
+     "</blockquote>",
+     28
+    ]
+   ],
+   "naive_L50": [
+    [
+     "\ufffd",
+     16
+    ],
+    [
+     " \ubd88\uad6c\ud558\uace0",
+     14
+    ],
+    [
+     "\u064a",
+     8
+    ],
+    [
+     " scaleOf",
+     7
+    ],
+    [
+     "ation",
+     6
+    ],
+    [
+     "\u00e1",
+     5
+    ]
+   ],
+   "jpp_L55": [
+    [
+     "</h3>",
+     49
+    ],
+    [
+     "```",
+     45
+    ],
+    [
+     "</h4>",
+     43
+    ],
+    [
+     "</u>",
+     43
+    ],
+    [
+     "</em>",
+     42
+    ],
+    [
+     "</i>",
+     40
+    ]
+   ],
+   "jlens_L55": [
+    [
+     "</em>",
+     59
+    ],
+    [
+     "</i>",
+     49
+    ],
+    [
+     "</b>",
+     42
+    ],
+    [
+     "</u>",
+     41
+    ],
+    [
+     "<strong>",
+     38
+    ],
+    [
+     "</h3>",
+     36
+    ]
+   ],
+   "naive_L55": [
+    [
+     "\ufffd",
+     14
+    ],
+    [
+     " \ubd88\uad6c\ud558\uace0",
+     11
+    ],
+    [
+     "\u064a",
+     8
+    ],
+    [
+     "\u0d2c\u0d30\u0d3f\u0d2e\u0d32",
+     7
+    ],
+    [
+     "\u0b9f\u0bcd\u0b9a\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0",
+     6
+    ],
+    [
+     "\u043d\u0430",
+     6
+    ]
+   ],
+   "jpp_L57": [
+    [
+     "</em>",
+     70
+    ],
+    [
+     "</h4>",
+     67
+    ],
+    [
+     "```",
+     62
+    ],
+    [
+     "</i>",
+     62
+    ],
+    [
+     "</h3>",
+     57
+    ],
+    [
+     "</b>",
+     56
+    ]
+   ],
+   "jlens_L57": [
+    [
+     "</h3>",
+     61
+    ],
+    [
+     "</b>",
+     51
+    ],
+    [
+     "</u>",
+     49
+    ],
+    [
+     "</em>",
+     48
+    ],
+    [
+     "</blockquote>",
+     45
+    ],
+    [
+     "</h4>",
+     38
+    ]
+   ],
+   "naive_L57": [
+    [
+     "\ufffd",
+     16
+    ],
+    [
+     "\u00e1",
+     9
+    ],
+    [
+     "\u0637",
+     8
+    ],
+    [
+     "\u0628",
+     7
+    ],
+    [
+     " clockRadius",
+     6
+    ],
+    [
+     "\u0b9f\u0bcd\u0b9a\u0ba4\u0bcd\u0ba4\u0bbf\u0bb0",
+     6
+    ]
+   ]
+  },
+  "static_top1": {
+   "jpp_L10": [
+    [
+     "</h3>",
+     2
+    ],
+    [
+     "</h6>",
+     2
+    ],
+    [
+     " Namib",
+     1
+    ],
+    [
+     " Fiberglass",
+     1
+    ],
+    [
+     " las",
+     1
+    ],
+    [
+     ".\")",
+     1
+    ]
+   ],
+   "jlens_L10": [
+    [
+     "ROSS",
+     10
+    ],
+    [
+     " No",
+     7
+    ],
+    [
+     "gevens",
+     2
+    ],
+    [
+     "\u25f8",
+     1
+    ],
+    [
+     "</em>",
+     1
+    ],
+    [
+     " l",
+     1
+    ]
+   ],
+   "naive_L10": [
+    [
+     "ers",
+     2
+    ],
+    [
+     "\"),],",
+     1
+    ],
+    [
+     " \u09a4\u09bf\u09a8\u09bf\u0993",
+     1
+    ],
+    [
+     "ay",
+     1
+    ],
+    [
+     "c\u0131",
+     1
+    ],
+    [
+     " \u09b8\u09cd\u09ac\u09c0\u0995\u09c3\u09a4\u09bf\u09b0",
+     1
+    ]
+   ],
+   "jpp_noscale_L10": [
+    [
+     " Valk",
+     1
+    ],
+    [
+     "</b>",
+     1
+    ],
+    [
+     "e",
+     1
+    ],
+    [
+     " \u2260",
+     1
+    ],
+    [
+     "\ufe5a",
+     1
+    ],
+    [
+     " \u0928\u094d\u092f\u0942\u092e\u0947\u0930",
+     1
+    ]
+   ],
+   "jpp_L20": [
+    [
+     " Marine",
+     1
+    ],
+    [
+     " \u0938\u0902\u0917\u0940\u0924",
+     1
+    ],
+    [
+     " internacionais",
+     1
+    ],
+    [
+     " WeChat",
+     1
+    ],
+    [
+     "\ud83e\udeb5",
+     1
+    ],
+    [
+     " Nitrogen",
+     1
+    ]
+   ],
+   "jlens_L20": [
+    [
+     " No",
+     10
+    ],
+    [
+     "ROSS",
+     4
+    ],
+    [
+     " esta",
+     2
+    ],
+    [
+     " orbiting",
+     1
+    ],
+    [
+     ":*",
+     1
+    ],
+    [
+     "Osaka",
+     1
+    ]
+   ],
+   "naive_L20": [
+    [
+     "</h4>",
+     1
+    ],
+    [
+     " el",
+     1
+    ],
+    [
+     "\u7684\u540d",
+     1
+    ],
+    [
+     "deprecated",
+     1
+    ],
+    [
+     " EL",
+     1
+    ],
+    [
+     "\u0e0b\u0e36\u0e48\u0e07",
+     1
+    ]
+   ],
+   "jpp_noscale_L20": [
+    [
+     "\ud83d\udeac",
+     1
+    ],
+    [
+     " \u0938\u0902\u0917\u0940\u0924",
+     1
+    ],
+    [
+     " Jordanian",
+     1
+    ],
+    [
+     "Matrix",
+     1
+    ],
+    [
+     " ventilation",
+     1
+    ],
+    [
+     " hydrogen",
+     1
+    ]
+   ],
+   "jpp_L30": [
+    [
+     " Russian",
+     2
+    ],
+    [
+     " californ",
+     1
+    ],
+    [
+     "Journal",
+     1
+    ],
+    [
+     " visualisation",
+     1
+    ],
+    [
+     "\u52c9\u5f37",
+     1
+    ],
+    [
+     " computational",
+     1
+    ]
+   ],
+   "jlens_L30": [
+    [
+     "[",
+     2
+    ],
+    [
+     "\n\n",
+     2
+    ],
+    [
+     "<strong>",
+     2
+    ],
+    [
+     "\u9225",
+     1
+    ],
+    [
+     "Journal",
+     1
+    ],
+    [
+     "\n",
+     1
+    ]
+   ],
+   "naive_L30": [
+    [
+     " \u0c85\u0ca5\u0cb5\u0cbe",
+     1
+    ],
+    [
+     " dob\u0159e",
+     1
+    ],
+    [
+     " from",
+     1
+    ],
+    [
+     " tv\u00e5",
+     1
+    ],
+    [
+     " also",
+     1
+    ],
+    [
+     " \u0905\u0926\u0930\u0915",
+     1
+    ]
+   ],
+   "jpp_noscale_L30": [
+    [
+     "\ue000",
+     1
+    ],
+    [
+     " sciatica",
+     1
+    ],
+    [
+     " Iyer",
+     1
+    ],
+    [
+     "</h6>",
+     1
+    ],
+    [
+     " Puget",
+     1
+    ],
+    [
+     "\u67ca",
+     1
+    ]
+   ],
+   "jpp_L40": [
+    [
+     " \u043a\u0430\u043a",
+     1
+    ],
+    [
+     " once",
+     1
+    ],
+    [
+     " dengan",
+     1
+    ],
+    [
+     " \u092a\u0902\u091a\u093e\u092f\u0924",
+     1
+    ],
+    [
+     " size",
+     1
+    ],
+    [
+     " inspiration",
+     1
+    ]
+   ],
+   "jlens_L40": [
+    [
+     " \u043a\u0430\u043a",
+     1
+    ],
+    [
+     " once",
+     1
+    ],
+    [
+     " possession",
+     1
+    ],
+    [
+     "Australia",
+     1
+    ],
+    [
+     " length",
+     1
+    ],
+    [
+     " inspiration",
+     1
+    ]
+   ],
+   "naive_L40": [
+    [
+     " \u043a\u0430\u043a",
+     1
+    ],
+    [
+     " once",
+     1
+    ],
+    [
+     " \u03c3\u03c4\u03b7\u03bd",
+     1
+    ],
+    [
+     "\u0432\u0435\u0434\u0435\u043d\u043e",
+     1
+    ],
+    [
+     " size",
+     1
+    ],
+    [
+     " inspirations",
+     1
+    ]
+   ],
+   "jpp_noscale_L40": [
+    [
+     "</h5>",
+     2
+    ],
+    [
+     "</i>",
+     2
+    ],
+    [
+     "</em>",
+     1
+    ],
+    [
+     "\u52d5\u7269",
+     1
+    ],
+    [
+     " armour",
+     1
+    ],
+    [
+     "</h2>",
+     1
+    ]
+   ],
+   "jpp_L45": [
+    [
+     " Rates",
+     1
+    ],
+    [
+     " f\u00fcr",
+     1
+    ],
+    [
+     "\u6cbb\u7642",
+     1
+    ],
+    [
+     "Trip",
+     1
+    ],
+    [
+     "bar",
+     1
+    ],
+    [
+     "Dom",
+     1
+    ]
+   ],
+   "jlens_L45": [
+    [
+     " \u09a8\u09be\u099f\u0995",
+     1
+    ],
+    [
+     " \u0442\u043e\u043b\u044c\u043a\u043e",
+     1
+    ],
+    [
+     "\u6cbb\u7642",
+     1
+    ],
+    [
+     "Trip",
+     1
+    ],
+    [
+     "bar",
+     1
+    ],
+    [
+     " Schr\u00f6dinger",
+     1
+    ]
+   ],
+   "naive_L45": [
+    [
+     " Charleston",
+     1
+    ],
+    [
+     " f\u00fcr",
+     1
+    ],
+    [
+     "\u7597",
+     1
+    ],
+    [
+     "human",
+     1
+    ],
+    [
+     "bar",
+     1
+    ],
+    [
+     "Dom",
+     1
+    ]
+   ],
+   "jpp_noscale_L45": [
+    [
+     "</h4>",
+     2
+    ],
+    [
+     "</h6>",
+     2
+    ],
+    [
+     "ast\u0103",
+     1
+    ],
+    [
+     "</sup>",
+     1
+    ],
+    [
+     "ths",
+     1
+    ],
+    [
+     "</blockquote>",
+     1
+    ]
+   ],
+   "jpp_L50": [
+    [
+     "rac",
+     1
+    ],
+    [
+     " government",
+     1
+    ],
+    [
+     " logros",
+     1
+    ],
+    [
+     " announc",
+     1
+    ],
+    [
+     " \ucc9c",
+     1
+    ],
+    [
+     " Global",
+     1
+    ]
+   ],
+   "jlens_L50": [
+    [
+     " tourists",
+     1
+    ],
+    [
+     " government",
+     1
+    ],
+    [
+     " BK",
+     1
+    ],
+    [
+     " announc",
+     1
+    ],
+    [
+     " \u0924\u093e\u0932",
+     1
+    ],
+    [
+     " Global",
+     1
+    ]
+   ],
+   "naive_L50": [
+    [
+     "\u7a1a",
+     1
+    ],
+    [
+     " government",
+     1
+    ],
+    [
+     "\u00e8ve",
+     1
+    ],
+    [
+     " announc",
+     1
+    ],
+    [
+     " \ucc9c",
+     1
+    ],
+    [
+     " Global",
+     1
+    ]
+   ],
+   "jpp_noscale_L50": [
+    [
+     "</blockquote>",
+     2
+    ],
+    [
+     " \u201e",
+     1
+    ],
+    [
+     " *\"",
+     1
+    ],
+    [
+     " <?",
+     1
+    ],
+    [
+     "@",
+     1
+    ],
+    [
+     "\uff65\uff65",
+     1
+    ]
+   ],
+   "jpp_L55": [
+    [
+     " Franklin",
+     1
+    ],
+    [
+     "\uff01\uff01\uff01\uff01",
+     1
+    ],
+    [
+     "(<",
+     1
+    ],
+    [
+     " k\u00e4",
+     1
+    ],
+    [
+     " \u0423\u043a\u0440\u0430\u0457",
+     1
+    ],
+    [
+     "\u9a6c\u6765",
+     1
+    ]
+   ],
+   "jlens_L55": [
+    [
+     " Franklin",
+     1
+    ],
+    [
+     "Tatar",
+     1
+    ],
+    [
+     "\"</",
+     1
+    ],
+    [
+     " TAS",
+     1
+    ],
+    [
+     " \u0423\u043a\u0440\u0430\u0457",
+     1
+    ],
+    [
+     "\u30d6\u30ec",
+     1
+    ]
+   ],
+   "naive_L55": [
+    [
+     " Franklin",
+     1
+    ],
+    [
+     " Tatar",
+     1
+    ],
+    [
+     " \u0e1e",
+     1
+    ],
+    [
+     " TAS",
+     1
+    ],
+    [
+     " \u0423\u043a\u0440\u0430\u0457",
+     1
+    ],
+    [
+     " \u092c\u093e\u0926\u0932",
+     1
+    ]
+   ],
+   "jpp_noscale_L55": [
+    [
+     "</h3>",
+     3
+    ],
+    [
+     "</em>",
+     2
+    ],
+    [
+     "```",
+     2
+    ],
+    [
+     "\u0d15\u0d4d\u0d15\u0d4d\u200c",
+     1
+    ],
+    [
+     ",\u200b",
+     1
+    ],
+    [
+     " \u2015",
+     1
+    ]
+   ],
+   "jpp_L57": [
+    [
+     "\u2019",
+     1
+    ],
+    [
+     "\u5b8b",
+     1
+    ],
+    [
+     "\u0e01\u0e33",
+     1
+    ],
+    [
+     " Az",
+     1
+    ],
+    [
+     "oz",
+     1
+    ],
+    [
+     " nenhum",
+     1
+    ]
+   ],
+   "jlens_L57": [
+    [
+     "\u2019",
+     1
+    ],
+    [
+     " vendeurs",
+     1
+    ],
+    [
+     "\u0e01\u0e33",
+     1
+    ],
+    [
+     " Az",
+     1
+    ],
+    [
+     "oz",
+     1
+    ],
+    [
+     "\u4f20\u64ad",
+     1
+    ]
+   ],
+   "naive_L57": [
+    [
+     "\u2019",
+     1
+    ],
+    [
+     " \uc5d0",
+     1
+    ],
+    [
+     "\u0e01\u0e33",
+     1
+    ],
+    [
+     "\u6797",
+     1
+    ],
+    [
+     "oz",
+     1
+    ],
+    [
+     "epoca",
+     1
+    ]
+   ],
+   "jpp_noscale_L57": [
+    [
+     "```",
+     3
+    ],
+    [
+     "</em>",
+     2
+    ],
+    [
+     "</h4>",
+     2
+    ],
+    [
+     "</i>",
+     2
+    ],
+    [
+     "</li>",
+     2
+    ],
+    [
+     "</s>",
+     2
+    ]
+   ]
+  },
+  "top10_mass": {
+   "prior_jpp_L10": 0.48165667057037354,
+   "prior_jlens_L10": 0.3614965081214905,
+   "prior_naive_L10": 0.0021672029979526997,
+   "pole_jpp_L10": 0.6773873567581177,
+   "pole_jlens_L10": 0.23468433320522308,
+   "pole_naive_L10": 0.00042073012446053326,
+   "pole_jpp_noscale_L10": 0.31571194529533386,
+   "prior_jpp_L20": 0.3607712984085083,
+   "prior_jlens_L20": 0.4372557997703552,
+   "prior_naive_L20": 0.002230437472462654,
+   "pole_jpp_L20": 0.3322785794734955,
+   "pole_jlens_L20": 0.9312930107116699,
+   "pole_naive_L20": 0.009922254830598831,
+   "pole_jpp_noscale_L20": 0.2740500867366791,
+   "prior_jpp_L30": 0.4128842353820801,
+   "prior_jlens_L30": 0.5981894731521606,
+   "prior_naive_L30": 0.002328521106392145,
+   "pole_jpp_L30": 0.4000994563102722,
+   "pole_jlens_L30": 0.23737698793411255,
+   "pole_naive_L30": 0.24800804257392883,
+   "pole_jpp_noscale_L30": 0.41714295744895935,
+   "prior_jpp_L40": 0.5055671334266663,
+   "prior_jlens_L40": 0.664996862411499,
+   "prior_naive_L40": 0.0023512477055191994,
+   "pole_jpp_L40": 0.39072373509407043,
+   "pole_jlens_L40": 0.3417932689189911,
+   "pole_naive_L40": 0.3581233620643616,
+   "pole_jpp_noscale_L40": 0.5107178688049316,
+   "prior_jpp_L45": 0.7649431824684143,
+   "prior_jlens_L45": 0.7269537448883057,
+   "prior_naive_L45": 0.002244275063276291,
+   "pole_jpp_L45": 0.4231979548931122,
+   "pole_jlens_L45": 0.46265777945518494,
+   "pole_naive_L45": 0.387704074382782,
+   "pole_jpp_noscale_L45": 0.7140130996704102,
+   "prior_jpp_L50": 0.7193399667739868,
+   "prior_jlens_L50": 0.7486389875411987,
+   "prior_naive_L50": 0.0021607917733490467,
+   "pole_jpp_L50": 0.3272305428981781,
+   "pole_jlens_L50": 0.3622381389141083,
+   "pole_naive_L50": 0.30133146047592163,
+   "pole_jpp_noscale_L50": 0.6723462343215942,
+   "prior_jpp_L55": 0.8743294477462769,
+   "prior_jlens_L55": 0.7795171141624451,
+   "prior_naive_L55": 0.0022270798217505217,
+   "pole_jpp_L55": 0.366005539894104,
+   "pole_jlens_L55": 0.344587504863739,
+   "pole_naive_L55": 0.38697904348373413,
+   "pole_jpp_noscale_L55": 0.8448703289031982,
+   "prior_jpp_L57": 0.9540157318115234,
+   "prior_jlens_L57": 0.8043012022972107,
+   "prior_naive_L57": 0.002235671039670706,
+   "pole_jpp_L57": 0.4257034659385681,
+   "pole_jlens_L57": 0.4885551333427429,
+   "pole_naive_L57": 0.45473089814186096,
+   "pole_jpp_noscale_L57": 0.9658490419387817
+  },
+  "tool_check": [
+   {
+    "l": 30,
+    "n": 1711,
+    "tool_jpp": [
+     " californ",
+     " eventual",
+     " California",
+     " seaw",
+     " Californians",
+     " rarely",
+     "\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059",
+     " Californian"
+    ],
+    "mine_jpp": [
+     " californ",
+     " California",
+     " eventual",
+     " seaw",
+     " Californians",
+     " rarely",
+     "\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059",
+     " Californian"
+    ],
+    "tool_naive": [
+     " \u043f\u043e\u0441\u043b\u0435\u0434\u0443",
+     " \u0c85\u0ca5\u0cb5\u0cbe",
+     " subsequent",
+     "bts",
+     " eventuali",
+     " disastrous",
+     "\ud2b9\ud788",
+     "\u3042\u308b\u3044\u306f"
+    ],
+    "mine_naive": [
+     " \u0c85\u0ca5\u0cb5\u0cbe",
+     " subsequent",
+     " \u043f\u043e\u0441\u043b\u0435\u0434\u0443",
+     "bts",
+     " eventuali",
+     " disastrous",
+     "\ud2b9\ud788",
+     "\u3042\u308b\u3044\u306f"
+    ],
+    "tool_jpp_minus": [
+     " \ub178\ud2b8\ubd81",
+     " sampel",
+     " Laptop",
+     " mat\u00e9riel",
+     " laptop",
+     " Unterkunft",
+     " Hostel",
+     "appartement"
+    ],
+    "mine_jpp_minus": [
+     " \ub178\ud2b8\ubd81",
+     " sampel",
+     " Laptop",
+     " mat\u00e9riel",
+     " laptop",
+     " Unterkunft",
+     " Hostel",
+     "\ud83d\uded2"
+    ],
+    "overlap_jpp": 8,
+    "overlap_naive": 8,
+    "overlap_jpp_minus": 7
+   },
+   {
+    "l": 50,
+    "n": 5148,
+    "tool_jpp": [
+     " announc",
+     " announcer",
+     " Ann",
+     "\u30a2\u30ca",
+     " announcing",
+     "Ann",
+     " announce",
+     " ann"
+    ],
+    "mine_jpp": [
+     " announc",
+     " announcer",
+     " Ann",
+     " announcing",
+     "\u30a2\u30ca",
+     "Ann",
+     " announce",
+     " ann"
+    ],
+    "tool_naive": [
+     " announc",
+     "Ann",
+     " Ann",
+     " announcer",
+     " announcing",
+     " ann",
+     "\u30a2\u30ca",
+     "ann"
+    ],
+    "mine_naive": [
+     " announc",
+     "Ann",
+     " Ann",
+     " announcer",
+     " announcing",
+     " ann",
+     "\u30a2\u30ca",
+     "ann"
+    ],
+    "tool_jpp_minus": [
+     "itimes",
+     "\u2461",
+     " \u062e\u0644\u0635",
+     " M\u00f6n",
+     "\u00e9l\u00e9ment",
+     "Bas",
+     "\u3002</",
+     "\u06cc\u0645\u06cc"
+    ],
+    "mine_jpp_minus": [
+     "itimes",
+     " \u062e\u0644\u0635",
+     "\u2461",
+     " M\u00f6n",
+     "Bas",
+     "\u00e9l\u00e9ment",
+     "\u3002</",
+     "\u06cc\u0645\u06cc"
+    ],
+    "overlap_jpp": 8,
+    "overlap_naive": 8,
+    "overlap_jpp_minus": 8
+   },
+   {
+    "l": 10,
+    "n": 10242,
+    "tool_jpp": [
+     "</h3>",
+     "</em>",
+     ").}",
+     "\u6e58",
+     "\u06c0",
+     "odiazep",
+     "\u09ac\u09be\u09a1\u09bc",
+     "</h4>"
+    ],
+    "mine_jpp": [
+     "</h3>",
+     "</em>",
+     ").}",
+     "\u6e58",
+     "\u06c0",
+     "odiazep",
+     "\u09ac\u09be\u09a1\u09bc",
+     "</h4>"
+    ],
+    "tool_naive": [
+     "ipl",
+     " principalTable",
+     " principalColumn",
+     " EnglishChoose",
+     " \u0997\u09bf\u09af\u09bc\u09c7\u099b\u09bf\u09b2",
+     "\u0bb3\u0bc8\u0b9e",
+     " addCriterion",
+     "em"
+    ],
+    "mine_naive": [
+     " principalTable",
+     " principalColumn",
+     "ipl",
+     " addCriterion",
+     " \u0997\u09bf\u09af\u09bc\u09c7\u099b\u09bf\u09b2",
+     "\u0bb3\u0bc8\u0b9e",
+     " EnglishChoose",
+     "og"
+    ],
+    "tool_jpp_minus": [
+     " \u3066\u308b",
+     " Couldn",
+     " Shouldn",
+     " Ammonium",
+     "Didn",
+     " Was",
+     " Were",
+     " Yep"
+    ],
+    "mine_jpp_minus": [
+     " \u3066\u308b",
+     " Couldn",
+     "Didn",
+     " Shouldn",
+     " Ammonium",
+     " Was",
+     " Were",
+     " Yep"
+    ],
+    "overlap_jpp": 8,
+    "overlap_naive": 7,
+    "overlap_jpp_minus": 8
+   }
+  ],
+  "gender_poles": [
+   {
+    "concept": "she",
+    "layer": 30,
+    "neuron": 12173,
+    "sign": -1,
+    "cos": 0.0167,
+    "tool_jv": [
+     " female",
+     " woman",
+     "\u5f7c\u5973",
+     " \uadf8\ub140",
+     " women"
+    ],
+    "tool_nv": [
+     " woman",
+     " \uadf8\ub140",
+     "\u5979",
+     "\u5973\u6027",
+     " \u101e\u1030\u1019"
+    ]
+   },
+   {
+    "concept": "she",
+    "layer": 30,
+    "neuron": 562,
+    "sign": 1,
+    "cos": 0.01358,
+    "tool_jv": [
+     "\u5f7c\u5973",
+     "\u5979\u4eec",
+     " \uadf8\ub140",
+     " woman",
+     " female"
+    ],
+    "tool_nv": [
+     " goddess",
+     " actress",
+     " girl",
+     "\u5979\u4eec",
+     " woman"
+    ]
+   },
+   {
+    "concept": "she",
+    "layer": 40,
+    "neuron": 14765,
+    "sign": -1,
+    "cos": 0.00424,
+    "tool_jv": [
+     "\u5f7c\u5973",
+     " \uadf8\ub140",
+     "\u5979",
+     " herself",
+     " she"
+    ],
+    "tool_nv": [
+     " herself",
+     "\u5979",
+     "\u5f7c\u5973",
+     " \u043e\u043d\u0430",
+     " \uadf8\ub140"
+    ]
+   },
+   {
+    "concept": "she",
+    "layer": 40,
+    "neuron": 15529,
+    "sign": -1,
+    "cos": 0.00332,
+    "tool_jv": [
+     " \uadf8\ub140",
+     "\u5979",
+     " she",
+     "\u5f7c\u5973",
+     " her"
+    ],
+    "tool_nv": [
+     "\u5979",
+     " she",
+     " \uadf8\ub140",
+     " \u0c06\u0c2e\u0c46",
+     "\u5f7c\u5973"
+    ]
+   },
+   {
+    "concept": "she",
+    "layer": 50,
+    "neuron": 5313,
+    "sign": -1,
+    "cos": 0.00368,
+    "tool_jv": [
+     "\u5f7c\u5973",
+     " she",
+     " \uadf8\ub140",
+     "\u8ba9\u5979",
+     "\u5979"
+    ],
+    "tool_nv": [
+     "\u5f7c\u5973",
+     " she",
+     " \uadf8\ub140",
+     "\u5979",
+     "\u8ba9\u5979"
+    ]
+   },
+   {
+    "concept": "she",
+    "layer": 50,
+    "neuron": 8801,
+    "sign": 1,
+    "cos": 0.0014,
+    "tool_jv": [
+     " they",
+     " she",
+     " he",
+     "they",
+     " \u043e\u043d\u0438"
+    ],
+    "tool_nv": [
+     " they",
+     " he",
+     " she",
+     " we",
+     "they"
+    ]
+   },
+   {
+    "concept": "he",
+    "layer": 30,
+    "neuron": 3322,
+    "sign": 1,
+    "cos": 0.00418,
+    "tool_jv": [
+     " entre",
+     " esta",
+     " las",
+     " para",
+     " como"
+    ],
+    "tool_nv": [
+     "   ",
+     "  ",
+     ";,",
+     ")",
+     "    "
+    ]
+   },
+   {
+    "concept": "he",
+    "layer": 30,
+    "neuron": 562,
+    "sign": -1,
+    "cos": 0.00399,
+    "tool_jv": [
+     " his",
+     " himself",
+     " brotherhood",
+     "\u4ed6\u7684",
+     "\u7684\u4ed6"
+    ],
+    "tool_nv": [
+     " himself",
+     "\u5f7c\u306f",
+     "\u4ed6\u5728",
+     "\u4ed6\u7684",
+     " seinem"
+    ]
+   },
+   {
+    "concept": "he",
+    "layer": 40,
+    "neuron": 16757,
+    "sign": -1,
+    "cos": 0.00317,
+    "tool_jv": [
+     " his",
+     " him",
+     "\u5f7c\u306e",
+     "\u4ed6\u7684",
+     " \uadf8\uc758"
+    ],
+    "tool_nv": [
+     " his",
+     "\u4ed6\u7684",
+     " \uadf8\uc758",
+     "\u4ed6",
+     "\u5f7c\u306e"
+    ]
+   },
+   {
+    "concept": "he",
+    "layer": 40,
+    "neuron": 21245,
+    "sign": -1,
+    "cos": 0.00287,
+    "tool_jv": [
+     " his",
+     "\u4ed6\u7684",
+     " \u0435\u0433\u043e",
+     " \uadf8\uc758",
+     " him"
+    ],
+    "tool_nv": [
+     " his",
+     "\u4ed6",
+     "\u4ed6\u7684",
+     "\u5f7c\u306f",
+     "\u4ed6\u5728"
+    ]
+   },
+   {
+    "concept": "he",
+    "layer": 50,
+    "neuron": 549,
+    "sign": -1,
+    "cos": 0.00218,
+    "tool_jv": [
+     " him",
+     "\u5f7c\u306f",
+     "\u4ed6",
+     " \uadf8\ub294",
+     " \u0e40\u0e02\u0e32"
+    ],
+    "tool_nv": [
+     " he",
+     " \uadf8\ub294",
+     "\u4ed6",
+     " \u043e\u043d",
+     " him"
+    ]
+   },
+   {
+    "concept": "he",
+    "layer": 50,
+    "neuron": 8801,
+    "sign": 1,
+    "cos": 0.00135,
+    "tool_jv": [
+     " they",
+     " she",
+     " he",
+     "they",
+     " \u043e\u043d\u0438"
+    ],
+    "tool_nv": [
+     " they",
+     " he",
+     " she",
+     " we",
+     "they"
+    ]
+   }
+  ],
+  "elapsed": 7.529505014419556
+ },
+ "elapsed_s": 7.54
+}

@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:\n        normed_output = self._norm(hidden_states.float())\n        if self.with_scale:\n            normed_output = normed_output * self.weight.float()\n        return normed_output.type_as(hidden_states)\n\n{'input_layernorm': (-54.25, 1248.0, 23.474964141845703), 'post_attention_layernorm': (2.956390380859375e-05, 19.625, 0.4733991324901581), 'pre_feedforward_layernorm': (-100.0, 860.0, 40.796844482421875), 'post_feedforward_layernorm': (0.00016021728515625, 63.0, 0.7374345064163208)}\n",
+ "error": null,
+ "result": {
+  "ok": true
+ },
+ "elapsed_s": 0.01
+}

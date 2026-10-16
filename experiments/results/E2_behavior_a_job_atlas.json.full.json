@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "half 0 58.4 s\nhalf 1 117.3 s\natlas 48 117.3 s\n",
+ "error": null,
+ "result": {
+  "cond": "atlas",
+  "n": 48
+ },
+ "elapsed_s": 117.3
+}

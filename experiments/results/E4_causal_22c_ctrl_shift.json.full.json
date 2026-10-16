@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "ctrl_nat0 L25-39 -1.0 KL 0.5081 22.7\nctrl_nat0 L25-39 -0.35 KL 0.159 30.3\nctrl_nat0 L25-39 0.35 KL 0.1086 37.9\nctrl_nat0 L25-39 1.0 KL 0.5376 45.5\nctrl_nat1 L25-39 -1.0 KL 0.6635 53.1\nctrl_nat1 L25-39 -0.35 KL 0.0665 60.7\nctrl_nat1 L25-39 0.35 KL 0.0582 68.4\nctrl_nat1 L25-39 1.0 KL 0.2742 76.1\nctrl_topic L25-39 -1.0 KL 0.463 83.6\nctrl_topic L25-39 -0.35 KL 0.0681 91.2\nctrl_topic L25-39 0.35 KL 0.0254 98.7\nctrl_topic L25-39 1.0 KL 0.1426 106.3\n",
+ "error": null,
+ "result": {
+  "ok": true,
+  "elapsed": 106.34550189971924
+ },
+ "elapsed_s": 106.35
+}

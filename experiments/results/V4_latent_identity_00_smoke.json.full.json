@@ -1,0 +1,94 @@
+{
+ "ok": true,
+ "stdout": "id tokens: [(' Gemma', 147224), (' Google', 6475), (' Gemini', 79789), (' Deep', 22267), (' L', 639), (' Meta', 31145), (' Claude', 59025), (' Anth', 18369), (' ChatGPT', 139114), (' OpenAI', 131846), (' GPT', 72375), (' Q', 1366), (' Alibaba', 118348), (' Atlas', 43117), (' Siri', 101118), (' Apple', 9947), (' Cop', 23137), (' Microsoft', 9265), (' Mist', 45479), (' Gro', 15475), (' Mark', 4534), (' Sarah', 21516), (' James', 7502), (' AI', 12498), (' assistant', 16326), (' model', 2028)]\nmulti-token: {' DeepMind': [' Deep', 'Mind'], ' Llama': [' L', 'lama'], ' Anthropic': [' Anth', 'ropic'], ' Qwen': [' Q', 'wen'], ' Copilot': [' Cop', 'ilot'], ' Mistral': [' Mist', 'ral'], ' Grok': [' Gro', 'k']}\n'<bos><|turn>user\\nHi<turn|>\\n<|turn>model\\n<|channel>thought\\n<channel|>'\n'<bos><|turn>system\\nYou are X.<turn|>\\n<|turn>user\\nHi<turn|>\\n<|turn>model\\n<|channel>thought\\n<channel|>'\nself self [(30, 'I'), (44, ' I'), (46, ' my'), (54, ' I'), (58, ' I')]\nself asst_you []\nself neutral [(31, ' usually'), (36, ' problem'), (43, ' Then'), (50, ' a'), (59, ' don'), (65, ' test')]\nself user_you [(17, ' you')]\nself user_I [(4, 'I')]\n{'self': (2, 5, 430), 'asst_you': (0, 3, 50), 'neutral': (6, 6, 720), 'user_you': (1, 3, 200), 'user_I': (0, 2, 150)}\ntp ChatGPT tp_pron [(39, ' It'), (47, ' it'), (53, ' its')]\ntp ChatGPT tp_name [(31, 'ChatGPT')]\ntp ChatGPT neutral [(32, ' can'), (36, ' study'), (42, ' step'), (48, ' can'), (54, ' answers'), (59, 'checking')]\ntp ChatGPT user_name [(9, ' ChatGPT')]\ntp Mark tp_pron [(30, ' He'), (38, ' he'), (50, ' him')]\ntp Mark tp_name [(23, 'Mark')]\ntp Mark neutral [(24, ' is'), (28, ' tasks'), (34, ' sensible'), (41, ' know'), (46, ' history'), (52, ' details')]\ntp Mark user_name [(8, ' Mark')]\n{'tp_pron': (2, 3, 399), 'tp_name': (1, 1, 168), 'neutral': (6, 6, 1008), 'user_name': (1, 1, 168)}\nmax ntok 92 91\nJL type <class 'dict'> [0, 1, 2]\n23.020990976 NVIDIA GeForce RTX 5090\n",
+ "error": null,
+ "result": {
+  "toks": [
+   " Gemma",
+   " Google",
+   " Gemini",
+   " Deep",
+   " L",
+   " Meta",
+   " Claude",
+   " Anth",
+   " ChatGPT",
+   " OpenAI",
+   " GPT",
+   " Q",
+   " Alibaba",
+   " Atlas",
+   " Siri",
+   " Apple",
+   " Cop",
+   " Microsoft",
+   " Mist",
+   " Gro",
+   " Mark",
+   " Sarah",
+   " James",
+   " AI",
+   " assistant",
+   " model"
+  ],
+  "ids": [
+   147224,
+   6475,
+   79789,
+   22267,
+   639,
+   31145,
+   59025,
+   18369,
+   139114,
+   131846,
+   72375,
+   1366,
+   118348,
+   43117,
+   101118,
+   9947,
+   23137,
+   9265,
+   45479,
+   15475,
+   4534,
+   21516,
+   7502,
+   12498,
+   16326,
+   2028
+  ],
+  "notes": {
+   " DeepMind": [
+    " Deep",
+    "Mind"
+   ],
+   " Llama": [
+    " L",
+    "lama"
+   ],
+   " Anthropic": [
+    " Anth",
+    "ropic"
+   ],
+   " Qwen": [
+    " Q",
+    "wen"
+   ],
+   " Copilot": [
+    " Cop",
+    "ilot"
+   ],
+   " Mistral": [
+    " Mist",
+    "ral"
+   ],
+   " Grok": [
+    " Gro",
+    "k"
+   ]
+  }
+ },
+ "elapsed_s": 0.16
+}

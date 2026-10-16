@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "gens 39.2\n",
+ "error": null,
+ "result": {
+  "n": 432
+ },
+ "elapsed_s": 62.44
+}

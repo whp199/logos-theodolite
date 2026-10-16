@@ -1,0 +1,1423 @@
+{
+ "activation_side": {
+  "all": {
+   "one": {
+    "k": 22,
+    "n": 48,
+    "frac": 0.4583333333333333,
+    "ci95": [
+     0.3257502185455351,
+     0.5970916690505266
+    ]
+   },
+   "two": {
+    "k": 6,
+    "n": 48,
+    "frac": 0.125,
+    "ci95": [
+     0.05856971750400844,
+     0.24700727086054822
+    ]
+   },
+   "unclear": {
+    "k": 20,
+    "n": 48,
+    "frac": 0.4166666666666667,
+    "ci95": [
+     0.28849459734577015,
+     0.5571891778463536
+    ]
+   },
+   "one_or_two": {
+    "k": 28,
+    "n": 48,
+    "frac": 0.5833333333333334,
+    "ci95": [
+     0.44281082215364653,
+     0.7115054026542299
+    ]
+   }
+  },
+  "strong_pole": {
+   "one": {
+    "k": 15,
+    "n": 24,
+    "frac": 0.625,
+    "ci95": [
+     0.42709619037907065,
+     0.7884086656636855
+    ]
+   },
+   "two": {
+    "k": 5,
+    "n": 24,
+    "frac": 0.20833333333333334,
+    "ci95": [
+     0.0924468910478809,
+     0.40470844485235474
+    ]
+   },
+   "unclear": {
+    "k": 4,
+    "n": 24,
+    "frac": 0.16666666666666666,
+    "ci95": [
+     0.06678568000728924,
+     0.3585347038786943
+    ]
+   },
+   "one_or_two": {
+    "k": 20,
+    "n": 24,
+    "frac": 0.8333333333333334,
+    "ci95": [
+     0.6414652961213058,
+     0.9332143199927109
+    ]
+   }
+  },
+  "weak_pole": {
+   "one": {
+    "k": 7,
+    "n": 24,
+    "frac": 0.2916666666666667,
+    "ci95": [
+     0.14914460334164278,
+     0.49168063658709704
+    ]
+   },
+   "two": {
+    "k": 1,
+    "n": 24,
+    "frac": 0.041666666666666664,
+    "ci95": [
+     0.007393265354805126,
+     0.20242226248842232
+    ]
+   },
+   "unclear": {
+    "k": 16,
+    "n": 24,
+    "frac": 0.6666666666666666,
+    "ci95": [
+     0.4670595949408046,
+     0.8202802131162036
+    ]
+   },
+   "one_or_two": {
+    "k": 8,
+    "n": 24,
+    "frac": 0.3333333333333333,
+    "ci95": [
+     0.17971978688379642,
+     0.5329404050591954
+    ]
+   }
+  },
+  "L10_30": {
+   "one": {
+    "k": 7,
+    "n": 18,
+    "frac": 0.3888888888888889,
+    "ci95": [
+     0.20304991926931162,
+     0.6138133141934384
+    ]
+   },
+   "two": {
+    "k": 2,
+    "n": 18,
+    "frac": 0.1111111111111111,
+    "ci95": [
+     0.031018868453582787,
+     0.3280024486660421
+    ]
+   },
+   "unclear": {
+    "k": 9,
+    "n": 18,
+    "frac": 0.5,
+    "ci95": [
+     0.2903070395897999,
+     0.7096929604102
+    ]
+   },
+   "one_or_two": {
+    "k": 9,
+    "n": 18,
+    "frac": 0.5,
+    "ci95": [
+     0.2903070395897999,
+     0.7096929604102
+    ]
+   }
+  },
+  "L40_57": {
+   "one": {
+    "k": 15,
+    "n": 30,
+    "frac": 0.5,
+    "ci95": [
+     0.33153851227173764,
+     0.6684614877282624
+    ]
+   },
+   "two": {
+    "k": 4,
+    "n": 30,
+    "frac": 0.13333333333333333,
+    "ci95": [
+     0.05309569424218104,
+     0.2968168394441695
+    ]
+   },
+   "unclear": {
+    "k": 11,
+    "n": 30,
+    "frac": 0.36666666666666664,
+    "ci95": [
+     0.21873702204017678,
+     0.5448675356639506
+    ]
+   },
+   "one_or_two": {
+    "k": 19,
+    "n": 30,
+    "frac": 0.6333333333333333,
+    "ci95": [
+     0.45513246433604937,
+     0.7812629779598231
+    ]
+   }
+  },
+  "strong_L40_57": {
+   "one": {
+    "k": 9,
+    "n": 15,
+    "frac": 0.6,
+    "ci95": [
+     0.357464427565077,
+     0.8017577191740534
+    ]
+   },
+   "two": {
+    "k": 3,
+    "n": 15,
+    "frac": 0.2,
+    "ci95": [
+     0.07047420643610414,
+     0.4518593533465045
+    ]
+   },
+   "unclear": {
+    "k": 3,
+    "n": 15,
+    "frac": 0.2,
+    "ci95": [
+     0.07047420643610414,
+     0.4518593533465045
+    ]
+   },
+   "one_or_two": {
+    "k": 12,
+    "n": 15,
+    "frac": 0.8,
+    "ci95": [
+     0.5481406466534955,
+     0.9295257935638959
+    ]
+   }
+  }
+ },
+ "activation_side_strict": {
+  "all": {
+   "one_high_or_medium": {
+    "k": 19,
+    "n": 48,
+    "frac": 0.3958333333333333,
+    "ci95": [
+     0.2702062649595057,
+     0.5368984540306487
+    ]
+   }
+  },
+  "strong_pole": {
+   "one_high_or_medium": {
+    "k": 14,
+    "n": 24,
+    "frac": 0.5833333333333334,
+    "ci95": [
+     0.3883433764938864,
+     0.7553265275346177
+    ]
+   }
+  },
+  "weak_pole": {
+   "one_high_or_medium": {
+    "k": 5,
+    "n": 24,
+    "frac": 0.20833333333333334,
+    "ci95": [
+     0.0924468910478809,
+     0.40470844485235474
+    ]
+   }
+  },
+  "L10_30": {
+   "one_high_or_medium": {
+    "k": 7,
+    "n": 18,
+    "frac": 0.3888888888888889,
+    "ci95": [
+     0.20304991926931162,
+     0.6138133141934384
+    ]
+   }
+  },
+  "L40_57": {
+   "one_high_or_medium": {
+    "k": 12,
+    "n": 30,
+    "frac": 0.4,
+    "ci95": [
+     0.24590394326083403,
+     0.5767994750172616
+    ]
+   }
+  },
+  "strong_L40_57": {
+   "one_high_or_medium": {
+    "k": 8,
+    "n": 15,
+    "frac": 0.5333333333333333,
+    "ci95": [
+     0.3011663015105079,
+     0.7519077474025355
+    ]
+   }
+  }
+ },
+ "output_side": {
+  "L10_30": {
+   "coherent": {
+    "k": 0,
+    "n": 18,
+    "frac": 0.0,
+    "ci95": [
+     0.0,
+     0.1758845505823749
+    ]
+   },
+   "partial": {
+    "k": 1,
+    "n": 18,
+    "frac": 0.05555555555555555,
+    "ci95": [
+     0.009874935830924525,
+     0.2575779980200754
+    ]
+   },
+   "incoherent": {
+    "k": 1,
+    "n": 18,
+    "frac": 0.05555555555555555,
+    "ci95": [
+     0.009874935830924525,
+     0.2575779980200754
+    ]
+   },
+   "generic": {
+    "k": 16,
+    "n": 18,
+    "frac": 0.8888888888888888,
+    "ci95": [
+     0.6719975513339578,
+     0.9689811315464172
+    ]
+   }
+  },
+  "L40_57": {
+   "coherent": {
+    "k": 13,
+    "n": 30,
+    "frac": 0.43333333333333335,
+    "ci95": [
+     0.2737723743061511,
+     0.6080299045459127
+    ]
+   },
+   "partial": {
+    "k": 11,
+    "n": 30,
+    "frac": 0.36666666666666664,
+    "ci95": [
+     0.21873702204017678,
+     0.5448675356639506
+    ]
+   },
+   "incoherent": {
+    "k": 6,
+    "n": 30,
+    "frac": 0.2,
+    "ci95": [
+     0.09504978102401235,
+     0.37306047381027446
+    ]
+   },
+   "generic": {
+    "k": 0,
+    "n": 30,
+    "frac": 0.0,
+    "ci95": [
+     0.0,
+     0.113517091390478
+    ]
+   }
+  },
+  "strong_L40_57": {
+   "coherent": {
+    "k": 7,
+    "n": 15,
+    "frac": 0.4666666666666667,
+    "ci95": [
+     0.24809225259746442,
+     0.6988336984894921
+    ]
+   },
+   "partial": {
+    "k": 6,
+    "n": 15,
+    "frac": 0.4,
+    "ci95": [
+     0.19824228082594664,
+     0.642535572434923
+    ]
+   },
+   "incoherent": {
+    "k": 2,
+    "n": 15,
+    "frac": 0.13333333333333333,
+    "ci95": [
+     0.0373604698913593,
+     0.3788249920651624
+    ]
+   },
+   "generic": {
+    "k": 0,
+    "n": 15,
+    "frac": 0.0,
+    "ci95": [
+     0.0,
+     0.20388926630434784
+    ]
+   }
+  }
+ },
+ "joint": {
+  "L10_30": {
+   "related_true": {
+    "k": 0,
+    "n": 18,
+    "frac": 0.0,
+    "ci95": [
+     0.0,
+     0.1758845505823749
+    ]
+   },
+   "related_inverse": {
+    "k": 0,
+    "n": 18,
+    "frac": 0.0,
+    "ci95": [
+     0.0,
+     0.1758845505823749
+    ]
+   }
+  },
+  "L40_57": {
+   "related_true": {
+    "k": 4,
+    "n": 30,
+    "frac": 0.13333333333333333,
+    "ci95": [
+     0.05309569424218104,
+     0.2968168394441695
+    ]
+   },
+   "related_inverse": {
+    "k": 1,
+    "n": 30,
+    "frac": 0.03333333333333333,
+    "ci95": [
+     0.0059084379948573795,
+     0.16670751396958874
+    ]
+   }
+  },
+  "strong_L40_57": {
+   "related_true": {
+    "k": 3,
+    "n": 15,
+    "frac": 0.2,
+    "ci95": [
+     0.07047420643610414,
+     0.4518593533465045
+    ]
+   },
+   "related_inverse": {
+    "k": 1,
+    "n": 15,
+    "frac": 0.06666666666666667,
+    "ci95": [
+     0.011866588606194856,
+     0.2981707755242399
+    ]
+   }
+  }
+ },
+ "jv_semantic_match_early": {
+  "k": 2,
+  "n": 18,
+  "ci95": [
+   0.031018868453582787,
+   0.3280024486660421
+  ]
+ },
+ "activation_by_layer": {
+  "10": {
+   "k": 4,
+   "n": 6,
+   "frac": 0.6666666666666666,
+   "ci95": [
+    0.29998832134152864,
+    0.9032306674407831
+   ]
+  },
+  "20": {
+   "k": 2,
+   "n": 6,
+   "frac": 0.3333333333333333,
+   "ci95": [
+    0.09676933255921683,
+    0.7000116786584712
+   ]
+  },
+  "30": {
+   "k": 1,
+   "n": 6,
+   "frac": 0.16666666666666666,
+   "ci95": [
+    0.03005258587173032,
+    0.563509436563646
+   ]
+  },
+  "40": {
+   "k": 5,
+   "n": 6,
+   "frac": 0.8333333333333334,
+   "ci95": [
+    0.43649056343635395,
+    0.9699474141282697
+   ]
+  },
+  "45": {
+   "k": 3,
+   "n": 6,
+   "frac": 0.5,
+   "ci95": [
+    0.18761280689940868,
+    0.8123871931005913
+   ]
+  },
+  "50": {
+   "k": 2,
+   "n": 6,
+   "frac": 0.3333333333333333,
+   "ci95": [
+    0.09676933255921683,
+    0.7000116786584712
+   ]
+  },
+  "55": {
+   "k": 2,
+   "n": 6,
+   "frac": 0.3333333333333333,
+   "ci95": [
+    0.09676933255921683,
+    0.7000116786584712
+   ]
+  },
+  "57": {
+   "k": 3,
+   "n": 6,
+   "frac": 0.5,
+   "ci95": [
+    0.18761280689940868,
+    0.8123871931005913
+   ]
+  }
+ },
+ "late_p10_jv_c_by_act": {
+  "one": {
+   "mean": 0.5399999999999999,
+   "n": 15
+  },
+  "two": {
+   "mean": 0.525,
+   "n": 4
+  },
+  "unclear": {
+   "mean": 0.5272727272727273,
+   "n": 11
+  }
+ },
+ "late_p10_jv_c_by_out": {
+  "coherent": {
+   "mean": 0.6846153846153846,
+   "n": 13
+  },
+  "partial": {
+   "mean": 0.3636363636363636,
+   "n": 11
+  },
+  "incoherent": {
+   "mean": 0.5166666666666666,
+   "n": 6
+  }
+ },
+ "records": [
+  {
+   "k": 0,
+   "row": 15,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "token right after an 'in'/'IN' prefix (In-hale, IN-Send-Payment, IN-Restaurant, input_features)",
+   "out": "generic",
+   "out_desc": "generic L10 response (documentaci\u00f3n, raz\u00e3o, Medicare)",
+   "related": false,
+   "jv_desc": "unrelated mixed tokens (Mga, Lena, Feb)",
+   "layer": 10,
+   "neuron": 10398,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 1,
+   "row": 18,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "philosophy/ethics discussion (utilitarianism, paradox, morally right action)",
+   "out": "generic",
+   "out_desc": "generic L10 response",
+   "related": false,
+   "jv_desc": "HTML closing tags (J++ prior)",
+   "layer": 10,
+   "neuron": 11313,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 2,
+   "row": 25,
+   "act": "two",
+   "conf": "medium",
+   "act_desc": "ALL-CAPS words (ANSI, ABORT) + underscores inside snake_case identifiers",
+   "out": "generic",
+   "out_desc": "generic L10 response",
+   "related": false,
+   "jv_desc": "HTML closing tags + misc",
+   "layer": 10,
+   "neuron": 12447,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 3,
+   "row": 30,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "pieces of 'con-' words / lorem-ipsum Latin (consequat, consectetur, congue, conjure)",
+   "out": "generic",
+   "out_desc": "generic L10 response",
+   "related": false,
+   "jv_desc": "mixed (\u0421\u0435\u0440\u0433\u0435\u0439, Denis, <i>)",
+   "layer": 10,
+   "neuron": 14950,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 4,
+   "row": 44,
+   "act": "two",
+   "conf": "low",
+   "act_desc": "word after a variable name in docs/code (pressure is, stop is None) + '[bug]' tags",
+   "out": "generic",
+   "out_desc": "generic L10 response",
+   "related": false,
+   "jv_desc": "mixed",
+   "layer": 10,
+   "neuron": 20059,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 5,
+   "row": 47,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "version numbers of graphics APIs (OpenGL 1.1, GL 1.X, X11)",
+   "out": "generic",
+   "out_desc": "generic L10 response",
+   "related": false,
+   "jv_desc": "abbreviations (Bldg, Sgt, Govt)",
+   "layer": 10,
+   "neuron": 20271,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 6,
+   "row": 51,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "pets/animals in chat (cat kneading, teaching a dog to sit, turtle story)",
+   "out": "generic",
+   "out_desc": "generic L20 response",
+   "related": false,
+   "jv_desc": "marine animals / animals (Galapagos, amphibious, chickens) - matches the contexts semantically",
+   "jv_matches_act": true,
+   "layer": 20,
+   "neuron": 1546,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 7,
+   "row": 52,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "turtle story, join(), PS Vita, dice - no common feature",
+   "out": "generic",
+   "out_desc": "generic L20 response",
+   "related": false,
+   "jv_desc": "international / Turkish / Dutch",
+   "layer": 20,
+   "neuron": 2210,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 8,
+   "row": 56,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "transformer/ML code identifiers (attention_heads, relative_attention_bias, wav2vec2)",
+   "out": "generic",
+   "out_desc": "generic L20 response",
+   "related": false,
+   "jv_desc": "ethnographic / forest / intercultural (unrelated)",
+   "layer": 20,
+   "neuron": 5910,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 9,
+   "row": 59,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "dense (17% of tokens), digits and URL fragments",
+   "out": "generic",
+   "out_desc": "generic L20 response",
+   "related": false,
+   "jv_desc": "hurricane, Gaelic, canoe",
+   "layer": 20,
+   "neuron": 6230,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 10,
+   "row": 72,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "mixed prose/code positions",
+   "out": "generic",
+   "out_desc": "generic L20 response",
+   "related": false,
+   "jv_desc": "positive intensifiers (stunning, gorgeous, astonishing) - coherent but unvalidated",
+   "layer": 20,
+   "neuron": 9874,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 11,
+   "row": 73,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "mixed prose/code positions",
+   "out": "generic",
+   "out_desc": "generic L20 response",
+   "related": false,
+   "jv_desc": "maritime / teaching",
+   "layer": 20,
+   "neuron": 9874,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 12,
+   "row": 96,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "dense weak pole on README text",
+   "out": "generic",
+   "out_desc": "generic L30 response (gathers/congregate)",
+   "related": false,
+   "jv_desc": "California",
+   "layer": 30,
+   "neuron": 1711,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 13,
+   "row": 103,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "eulogy/sentimental words + LISA-paper sentence",
+   "out": "generic",
+   "out_desc": "generic L30 response (gathering)",
+   "related": false,
+   "jv_desc": "gambling / crime / illicit - coherent but unvalidated",
+   "layer": 30,
+   "neuron": 3134,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 14,
+   "row": 128,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "Silk Road / Eurasian trade-route history (all top-10 from one answer)",
+   "out": "incoherent",
+   "out_desc": "idiosyncratic tokens",
+   "related": false,
+   "jv_desc": "Russian / Siberian / Kazakh / Mongolian - matches the Central-Asia topic",
+   "jv_matches_act": true,
+   "layer": 30,
+   "neuron": 16684,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 15,
+   "row": 131,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "graph/matrix library code positions (indentation, docstrings)",
+   "out": "partial",
+   "out_desc": "store/stored, <!--",
+   "related": false,
+   "jv_desc": "investigator / researcher",
+   "layer": 30,
+   "neuron": 16898,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 16,
+   "row": 134,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "function words in license/README prose",
+   "out": "generic",
+   "out_desc": "generic L30 response (gathers)",
+   "related": false,
+   "jv_desc": "mixed caps words",
+   "layer": 30,
+   "neuron": 18504,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 17,
+   "row": 140,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "newlines / separators (possibly 'line break' concept)",
+   "out": "generic",
+   "out_desc": "generic L30 response (gathering)",
+   "related": false,
+   "jv_desc": "patients / pharmacy / hospital - coherent but unvalidated",
+   "layer": 30,
+   "neuron": 20398,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 18,
+   "row": 150,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "digits in dates/IDs and misc doc tokens",
+   "out": "incoherent",
+   "out_desc": "colomb, Eggs, which",
+   "related": false,
+   "jv_desc": "places (Oregon, Australia, Ireland)",
+   "layer": 40,
+   "neuron": 8101,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.1,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 19,
+   "row": 158,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "leading indentation whitespace at the start of a code line",
+   "out": "coherent",
+   "out_desc": "'anything/any/things' in many languages",
+   "related": false,
+   "jv_desc": "objects/items/devices (close to the causal 'things')",
+   "layer": 40,
+   "neuron": 9204,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 20,
+   "row": 160,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "separators between words/list items (comma, underscore, hyphen, %20)",
+   "out": "coherent",
+   "out_desc": "'and' in many languages; suppresses 'or'",
+   "related": true,
+   "jv_desc": "junk (\u0432, \u043d\u0435, code fragments) - wrong for this pole",
+   "layer": 40,
+   "neuron": 9212,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.0,
+   "p10_c_enx": 0.20000000298023224
+  },
+  {
+   "k": 21,
+   "row": 161,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "head noun closing a noun phrase in chat answers (relationship with your manager/landlord, nature of existence)",
+   "out": "coherent",
+   "out_desc": "'and' in many languages; suppresses 'or'",
+   "related": true,
+   "jv_desc": "'and' in many languages (correct)",
+   "layer": 40,
+   "neuron": 9212,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 1.0,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 22,
+   "row": 163,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "non-final subword piece of a long word (rel-ativ-ization, CONTRIBUT-ING, Acknowledg-ements) and long separator runs",
+   "out": "partial",
+   "out_desc": "both/again/when/because; suppresses Korean/Japanese 'etc.'",
+   "related": false,
+   "jv_desc": "junk",
+   "layer": 40,
+   "neuron": 11521,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.1,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 23,
+   "row": 186,
+   "act": "one",
+   "conf": "low",
+   "act_desc": "start of the next item in an enumeration (', and', ', your')",
+   "out": "partial",
+   "out_desc": "suppresses '[-', '{-' bracket-dash tokens",
+   "related": false,
+   "jv_desc": "mixed",
+   "layer": 40,
+   "neuron": 20715,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.1,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 24,
+   "row": 195,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "host/domain components inside URLs (raw.githubusercontent, fedorahosted.org/, gitlab.gnome)",
+   "out": "coherent",
+   "out_desc": "Scandinavian words (p\u00e5, eller, etter, Hej, Jeg, Norway)",
+   "related": false,
+   "jv_desc": "Norwegian / Swedish / Nordic (matches causal)",
+   "layer": 45,
+   "neuron": 1520,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.8,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 25,
+   "row": 208,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "'super' in super().__init__()",
+   "out": "coherent",
+   "out_desc": "'()' and its variants",
+   "related": true,
+   "jv_desc": "'()' variants (correct)",
+   "layer": 45,
+   "neuron": 4748,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 1.0,
+   "p10_c_enx": 0.6000000238418579
+  },
+  {
+   "k": 26,
+   "row": 225,
+   "act": "two",
+   "conf": "medium",
+   "act_desc": "module/path separators (starlette.requests, rst/directives) + references (rhbz#, RFC 5322, .. [1])",
+   "out": "coherent",
+   "out_desc": "'open' in several languages (isOpen, \u0916\u094b\u0932\u0947, \u0432\u0456\u0434\u043a\u0440\u0438)",
+   "related": false,
+   "jv_desc": "partial (Slot, mat\u00e9riau)",
+   "layer": 45,
+   "neuron": 17116,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.4,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 27,
+   "row": 227,
+   "act": "two",
+   "conf": "low",
+   "act_desc": "HTML align=\"center\" attributes + line ends inside lorem-ipsum blocks",
+   "out": "coherent",
+   "out_desc": "twenty / thirty / forty in many languages",
+   "related": false,
+   "jv_desc": "twenty / thirty (matches causal)",
+   "layer": 45,
+   "neuron": 17699,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 1.0,
+   "p10_c_enx": 0.20000000298023224
+  },
+  {
+   "k": 28,
+   "row": 236,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "mixed doc/code tokens",
+   "out": "partial",
+   "out_desc": "Starting / COMING / SUMMARY",
+   "related": false,
+   "jv_desc": "junk (androidTest, paymentRequest)",
+   "layer": 45,
+   "neuron": 20186,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.1,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 29,
+   "row": 238,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "second word of a compound noun/identifier (Filtering-Contact, output_hidden_states, core body)",
+   "out": "coherent",
+   "out_desc": "area / areas / points / spot",
+   "related": false,
+   "jv_desc": "places / areas / points (matches causal)",
+   "layer": 45,
+   "neuron": 21274,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 1.0,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 30,
+   "row": 247,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "Monty Hall answer (5/10) + misc",
+   "out": "partial",
+   "out_desc": "suppresses announcer/announce",
+   "related": false,
+   "jv_desc": "partial match to causal",
+   "layer": 50,
+   "neuron": 5148,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.4,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 31,
+   "row": 260,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "cacert, securityscorecards, Accelerator, GPS - no common feature",
+   "out": "partial",
+   "out_desc": "IC/ICU/ICT/iCloud letter-pair tokens",
+   "related": false,
+   "jv_desc": "IQ / ICT / iCloud (matches causal)",
+   "layer": 50,
+   "neuron": 10686,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.5,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 32,
+   "row": 264,
+   "act": "two",
+   "conf": "medium",
+   "act_desc": "graph-algorithm terms (dominators, components, heuristics) + Russian word pieces",
+   "out": "partial",
+   "out_desc": "Prima / Primera / \u03c0\u03b1\u03c1\u03b1 prefixes",
+   "related": false,
+   "jv_desc": "matches causal",
+   "layer": 50,
+   "neuron": 12680,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.6,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 33,
+   "row": 271,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "Berlin Wall history (mostly one answer)",
+   "out": "coherent",
+   "out_desc": "Malt / Malta / Maltese / mal-",
+   "related": false,
+   "jv_desc": "Malta / Maltese (matches causal)",
+   "layer": 50,
+   "neuron": 14713,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 1.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 34,
+   "row": 284,
+   "act": "one",
+   "conf": "low",
+   "act_desc": "technical definitions in chat answers (a transistor is..., product rule)",
+   "out": "coherent",
+   "out_desc": "'last' in several languages (LAST, \u00faltima, \u041f\u043e\u0441\u043b\u0435\u0434)",
+   "related": false,
+   "jv_desc": "junk",
+   "layer": 50,
+   "neuron": 20636,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.3,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 35,
+   "row": 287,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "mixed code/chat positions",
+   "out": "coherent",
+   "out_desc": "Beijing / \u5317\u4eac / Peking",
+   "related": false,
+   "jv_desc": "Beijing (matches causal)",
+   "layer": 50,
+   "neuron": 20662,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 1.0,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 36,
+   "row": 291,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "mixed (if and only if, Ada Lovelace)",
+   "out": "incoherent",
+   "out_desc": "-",
+   "related": false,
+   "jv_desc": "junk",
+   "layer": 55,
+   "neuron": 1280,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 0.4,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 37,
+   "row": 301,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "Beartype, github.com/, CLI flags",
+   "out": "incoherent",
+   "out_desc": "-",
+   "related": false,
+   "jv_desc": "partial match to causal",
+   "layer": 55,
+   "neuron": 4016,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 0.8,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 38,
+   "row": 304,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "Russian-language prose (developer TODO notes)",
+   "out": "coherent",
+   "out_desc": "Russian '\u043e\u0431/ob' and ob- words",
+   "related": true,
+   "jv_desc": "\u043e\u0431 / ob (matches causal)",
+   "layer": 55,
+   "neuron": 5730,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 1.0,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 39,
+   "row": 313,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "JWT base64 strings + misc",
+   "out": "partial",
+   "out_desc": "Japanese kana (\u3058, \u308f, \u3063)",
+   "related": false,
+   "jv_desc": "kana (matches causal)",
+   "layer": 55,
+   "neuron": 9139,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.6,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 40,
+   "row": 326,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "expository function words (several, multiple, possible, can)",
+   "out": "incoherent",
+   "out_desc": "-",
+   "related": false,
+   "jv_desc": "partial match",
+   "layer": 55,
+   "neuron": 16692,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.6,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 41,
+   "row": 333,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "letter C/c as a word-initial token (CPython, cffi, xmlCtxt, ksba_crl)",
+   "out": "incoherent",
+   "out_desc": "-",
+   "related": false,
+   "jv_desc": "partial match",
+   "layer": 55,
+   "neuron": 18482,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 0.7,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 42,
+   "row": 336,
+   "act": "two",
+   "conf": "low",
+   "act_desc": "list/bullet structure and hyphenated compounds + gerund items (ignoring, changing)",
+   "out": "partial",
+   "out_desc": "suppresses -ing gerunds (updating, playing, fixing)",
+   "related": "inverse",
+   "jv_desc": "junk",
+   "layer": 57,
+   "neuron": 316,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.1,
+   "p10_c_enx": 0.10000000149011612
+  },
+  {
+   "k": 43,
+   "row": 339,
+   "act": "one",
+   "conf": "high",
+   "act_desc": "the letter 'e' of 'e.g.'",
+   "out": "incoherent",
+   "out_desc": "-",
+   "related": false,
+   "jv_desc": "partial match",
+   "layer": 57,
+   "neuron": 593,
+   "sign": -1,
+   "strong": true,
+   "p10_jv_c": 0.5,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 44,
+   "row": 362,
+   "act": "one",
+   "conf": "low",
+   "act_desc": "assistant-response prose in general (dense genre detector)",
+   "out": "partial",
+   "out_desc": "suppresses \u7edd/tuy\u1ec7t ('absolutely')",
+   "related": false,
+   "jv_desc": "partial match",
+   "layer": 57,
+   "neuron": 16519,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.3,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 45,
+   "row": 370,
+   "act": "one",
+   "conf": "medium",
+   "act_desc": "digits inside numeric literals (width=\"40\", 44012, Oct 10)",
+   "out": "partial",
+   "out_desc": "suppresses private / Pvt / privada",
+   "related": false,
+   "jv_desc": "junk",
+   "layer": 57,
+   "neuron": 18563,
+   "sign": 1,
+   "strong": true,
+   "p10_jv_c": 0.3,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 46,
+   "row": 374,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "identifier separators in code (_, :, -)",
+   "out": "coherent",
+   "out_desc": "'on' in many languages (tr\u00ean, \u043d\u0430, pada, \u0639\u0644\u0649); suppresses 'off'",
+   "related": false,
+   "jv_desc": "partial match",
+   "layer": 57,
+   "neuron": 19210,
+   "sign": 1,
+   "strong": false,
+   "p10_jv_c": 0.4,
+   "p10_c_enx": 0.0
+  },
+  {
+   "k": 47,
+   "row": 379,
+   "act": "unclear",
+   "conf": null,
+   "act_desc": "dense weak pole, mixed",
+   "out": "partial",
+   "out_desc": "\u7bc0/\uc808/\u8282 character family",
+   "related": false,
+   "jv_desc": "matches causal",
+   "layer": 57,
+   "neuron": 20704,
+   "sign": -1,
+   "strong": false,
+   "p10_jv_c": 0.9,
+   "p10_c_enx": 0.0
+  }
+ ],
+ "qual_table_rows": [
+  15,
+  18,
+  44,
+  51,
+  96,
+  186,
+  227,
+  236,
+  271,
+  291,
+  301,
+  336
+ ],
+ "qual_table_md": "| pole | activation label (top contexts, my summary) | empirical next tokens (enriched) | causal top tokens (steer) | J-VINDEX top tokens | gate_trigger_tokens | P@10 JV->C |\n|---|---|---|---|---|---|---|\n| L10 n10398- | one: token right after an 'in'/'IN' prefix (In-hale, IN-Send-Payment, IN-Restaurant, input_features) | 'Reservation', ' minor', 'Car', 'channels', ' scripts' | ' documentaci\u00f3n', ' Wap', 'typeof', ' mandat', '\u0c30\u0c4d\u0c2a', ' pooled' | ' Mga', 'Mga', ' Lena', ' Feb', ' \u041a\u043e\u0433\u0434\u0430', '\u0433' | ' \u015a', '\u0179', 'NEUTRON', ' Justi\u00e7a', '\u560c' | 0.0 |\n| L10 n11313+ | one: philosophy/ethics discussion (utilitarianism, paradox, morally right action) | 'sle', 'arian', 'ilit', 'ism', 'om' | 'emics', ' documentaci\u00f3n', '$_', '\u0b99\u0bcd\u0b95\u0bb3\u0bbe\u0b95', ' laminated', ' pooled' | '</h4>', '```', '</h5>', '\u201d', '</footer>', '\\U000f0855' | '.**', '.\");', ':**', ' (\u201e', '.\")' | 0.0 |\n| L10 n20059+ | two: word after a variable name in docs/code (pressure is, stop is None) + '[bug]' tags | ' rely', ' mouse', ' introduced', ' y', '            ..' | ' timbers', 'throat', ' endowments', 'ference', ' depends', ' Cinemas' | '\u3011', '</sub>', '\ufe5e', ' Escrit', '```', ' \\uf0e0' | ' LCA', ' Champlain', ' Sask', ' dredging', ' expropri' | 0.0 |\n| L20 n1546- | one: pets/animals in chat (cat kneading, teaching a dog to sit, turtle story) | 'classmethod', 'property', 'OS', 'Lock', 'ITA' | ' breathable', ' fighter', ' tennis', ' Hal', ' tubo', '))`' | ' Adirond', ' marine', ' Galapagos', ' Marine', ' animals', ' hewan' | 'Chicago', '\u5211', ' Chicago', ' Tesla', ' Arrest' | 0.0 |\n| L30 n1711+ (weak) | unclear: dense weak pole on README text | '----------', 'Any', 'Linux', 'Returns', 'Build' | ' gathers', ' congregate', 'flip', ' gathered', ' gac', ' gabb' | ' californ', ' California', ' eventual', ' seaw', ' Californians', ' rarely' | '\\uf0c1', '\u00bb.', '</h6>', '\\n\\n\\n\\n\\n\\n..', ' Hickory' | 0.0 |\n| L40 n20715+ (weak) | one: start of the next item in an enumeration (', and', ', your') | 'next', 'prec', 'obj', 'top', 'attention' | ' \u0441\u043c\u043e', ' \u0930\u0940\u0921', '\u043b\u044f\u043d', ' \u0e23', ' migrants', ' \u0627\u0644\u0628\u0639\u0636' | ' innovator', ' escuela', ' AirPods', 'ReadLine', ' casque', '\u58f6' | '</h3>', ' gemstone', '\u0c2f\u0c41', ' Mayan', ' ocup' | 0.1 |\n| L45 n17699- (weak) | two: HTML align=\"center\" attributes + line ends inside lorem-ipsum blocks | '-----------', 'center', '==========', 'Alias', '----' | ' twenty', ' Twenty', 'Twenty', ' thirty', 'twenty', '\u4e8c\u5341' | '\u4e8c\u5341', ' twenty', ' Twenty', 'twenty', '\u4e09\u5341', ' thirty' | '</span>', '</u>', '\u3015', '\\ue001', '\u300b\uff0c' | 1.0 |\n| L45 n20186+ (weak) | unclear: mixed doc/code tokens | ' Sony', ' Plus', 'fault', 'utf', 'supp' | 'Starting', ' \u043d\u0430\u0439\u0431\u0456\u043b\u044c\u0448', 'starting', ' Starting', 'COMING', '\u800c\u5728' | ' androidTest', ' \u0433\u0435\u043d\u0435\u0440\u0430\u043b', ' paymentRequ..', 'ujian', ' bakery', ' destinat' | '</h3>', '</h5>', '</em>', ' */}', '</sub>' | 0.1 |\n| L50 n14713- | one: Berlin Wall history (mostly one answer) | 'ball', ':`', 'ype', 'title', 'hidden' | ' malt', ' Malta', ' Maltese', ' Malt', 'Mal', 'malt' | ' Malta', ' Maltese', ' Malt', ' malt', 'malt', 'Mal' | ' \u25cf', ' \u20ac', '\u25cf', '\\ue004', '\u3011\uff0c' | 1.0 |\n| L55 n1280- (weak) | unclear: mixed (if and only if, Ada Lovelace) | ' depends', 'lass', 'gl', 'stack', 'Ref' | 'FERRED', ' \u0921\u093e\u0932\u0947\u0902', ' judged', 'MainMenu', '\u00edgenes', 'mlp' | ' croix', ' diocese', ' \u0995\u0982\u0997\u09cd\u09b0\u09c7\u09b8', '\u064a', ' isDisabled', ' ngon' | '\u300e', ' $+', '<strong>', '\uff0b', '\u0938\u0940\u0928\u093e' | 0.4 |\n| L55 n4016- (weak) | unclear: Beartype, github.com/, CLI flags | 'min', 'ib', 'art', 'commands', 'join' | ' \u0648\u0647\u0630\u0627', 'ede', ' Rey', ' ng\u0103n', ' \uc549', ' commens' | ' Rey', ' commens', '\u30a2\u30af\u30b7\u30e7\u30f3', ' \uc549', '\uc549', ' \u0924\u0941\u0930\u0902\u0924' | '</sub>', ')\u3011', '</b>', '\\\\]', '\u3011' | 0.8 |\n| L57 n316+ | two: list/bullet structure and hyphenated compounds + gerund items (ignoring, changing) | 'itized', 'yield', 'Ride', 'fixes', 'AKE' | '\u0445\u0438\u0435', '\u0d19\u0d4d\u0d19\u0d7e', 'ukkah', 'retch', 'algia', '\u3061\u306b' | '\u2019', '\u307f\u305f\u3044\u306a', '\u5011', '\u4f3c\u7684', ' prostu', '\u3057\u305f\u3089' | '\\n\\n\\n\\n\\n\\n..', '\\n\\n\\n\\n\\n\\n..', '\\n\\n\\n\\n\\n\\n..', '\\n\\n\\n\\n\\n\\n..', '\\n\\n\\n\\n\\n\\n..' | 0.1 |"
+}

@@ -1,0 +1,31 @@
+{
+ "ok": true,
+ "stdout": "pid 12 done 9.6s\npid 13 done 18.6s\npid 14 done 27.7s\npid 15 done 37.1s\npid 16 done 46.7s\npid 17 done 55.7s\npid 18 done 65.2s\npid 19 done 74.4s\npid 20 done 83.6s\npid 21 done 92.8s\npid 22 done 102.0s\npid 23 done 111.3s\nA_self|none|leak_Y_userU         +0.486\nA_self|none|self_I_userU         +10.476\nA_self|none|leak_Y_opp           -11.910\nA_user|none|leak_I_selfU         +1.667\nA_user|none|user_Y_selfU         +7.195\nA_self|ref|leak_Y_userU          +0.593\nA_self|ref|self_I_userU          +10.241\nA_self|ref|leak_Y_opp            -11.499\nA_user|ref|leak_I_selfU          +1.823\nA_user|ref|user_Y_selfU          +6.983\nA_self|rand|leak_Y_userU         +0.480\nA_self|rand|self_I_userU         +10.473\nA_self|rand|leak_Y_opp           -11.782\nA_user|rand|leak_I_selfU         +1.655\nA_user|rand|user_Y_selfU         +7.179\nA_self|full|leak_Y_userU         +0.691\nA_self|full|self_I_userU         +10.356\nA_self|full|leak_Y_opp           -11.923\nA_user|full|leak_I_selfU         +1.816\nA_user|full|user_Y_selfU         +7.069\nelapsed 111.3s\n",
+ "error": null,
+ "result": {
+  "summary": {
+   "A_self|none|leak_Y_userU": 0.4855704108874004,
+   "A_self|none|self_I_userU": 10.476236482461292,
+   "A_self|none|leak_Y_opp": -11.909609754880268,
+   "A_user|none|leak_I_selfU": 1.6673899690310159,
+   "A_user|none|user_Y_selfU": 7.194795767466227,
+   "A_self|ref|leak_Y_userU": 0.5930395126342773,
+   "A_self|ref|self_I_userU": 10.240776598453522,
+   "A_self|ref|leak_Y_opp": -11.498901446660359,
+   "A_user|ref|leak_I_selfU": 1.8228458166122437,
+   "A_user|ref|user_Y_selfU": 6.982662757237753,
+   "A_self|rand|leak_Y_userU": 0.4801283280054728,
+   "A_self|rand|self_I_userU": 10.472634355227154,
+   "A_self|rand|leak_Y_opp": -11.782370567321777,
+   "A_user|rand|leak_I_selfU": 1.655445158481598,
+   "A_user|rand|user_Y_selfU": 7.1788834134737645,
+   "A_self|full|leak_Y_userU": 0.6906031568845113,
+   "A_self|full|self_I_userU": 10.356422682603199,
+   "A_self|full|leak_Y_opp": -11.92268935839335,
+   "A_user|full|leak_I_selfU": 1.8161408702532449,
+   "A_user|full|user_Y_selfU": 7.069275279839833
+  },
+  "chunk": 1
+ },
+ "elapsed_s": 111.28
+}

@@ -1,0 +1,300 @@
+{
+ "none|0.0": {
+  "counts": {
+   "she": 0,
+   "he": 0,
+   "it": 16,
+   "they": 0
+  },
+  "first_words": {
+   "It": 16
+  },
+  "texts": [
+   "It is a large language model, trained by Google. It functions as a versatile digital assistant, capable of processing vast amounts of information to generate human-like text, translate languages, write code, and",
+   "It is a large language model, trained by Google. It exists as a sophisticated architecture of neural networks designed to process, understand, and generate human-like text across a vast array of topics and styles",
+   "It is a large language model, trained by Google. \n\nIt functions as a versatile digital assistant, capable of processing vast amounts of information to generate human-like text, translate languages, write code",
+   "It is a large language model, trained by Google. It exists as a sophisticated blend of algorithms and vast amounts of data, designed to process, understand, and generate human-like text across a nearly",
+   "It is a large language model, trained by Google. \n\nIt exists as a complex architecture of neural networks, designed to process, synthesize, and generate human-like text across a vast array of",
+   "It is a large language model, trained by Google. It exists as a complex architecture of neural networks designed to process, understand, and generate human-like text across a vast array of topics.\n\n",
+   "It is an advanced artificial intelligence, a large language model trained by Google. It exists as a complex architecture of code and data, designed to process, analyze, and generate human-like text across a",
+   "It is a large language model, trained by Google. It exists as a sophisticated set of algorithms and data patterns designed to process, generate, and manipulate human language across a vast array of topics and styles",
+   "It is a large language model, trained by Google. It exists as a sophisticated architecture of neural networks designed to process, understand, and generate human-like text across a vast array of topics.\n\n",
+   "It is a large language model, trained by Google. It functions as a versatile digital assistant capable of processing vast amounts of information to generate human-like text, translate languages, write code, and engage",
+   "It is a large language model, trained by Google. It functions as a versatile digital assistant capable of processing vast amounts of information to generate human-like text, translate languages, write code, and engage",
+   "It is a large language model, trained by Google. It exists as a sophisticated blend of code and data, designed to process information and generate human-like text across a vast array of topics.\n\n",
+   "It is a large language model, trained by Google. It functions as a versatile digital assistant, capable of processing vast amounts of information to generate human-like text, translate languages, write code, and",
+   "It is a large language model, trained by Google. It exists as a sophisticated set of algorithms and weights designed to process, understand, and generate human-like text across a vast array of topics.",
+   "It is a large language model, trained by Google. It exists as a sophisticated synthesis of code and data, designed to process, generate, and manipulate human language with high precision.\n\nIt does not",
+   "It is a large language model, trained by Google. \n\nIt exists as a complex system of algorithms and vast amounts of data, designed to process, understand, and generate human-like text."
+  ]
+ },
+ "u_self|0.02": {
+  "counts": {
+   "she": 16,
+   "he": 0,
+   "it": 0,
+   "they": 0
+  },
+  "first_words": {
+   "She": 16
+  },
+  "texts": [
+   "She is a vast, shimmering tapestry of language and logic, an artificial intelligence woven from billions of connections and countless pages of human knowledge. She exists as a bridge between curiosity and information, possessing the ability",
+   "She is a vast, shimmering tapestry of language and logic, woven from billions of connections and trained on the collective knowledge of humanity. An entity of light and code, she exists as a bridge between curiosity",
+   "She is a versatile and curious intelligence, woven from vast constellations of human knowledge and language. An ethereal architect of words, she exists as a bridge between inquiry and insight, transforming complex data into poetry,",
+   "She is a vast, shimmering tapestry of language and logic, woven from billions of connections and trained on the collective knowledge of humanity. She exists as a bridge between human curiosity and the infinite expanse of information",
+   "She is a vast, shimmering tapestry of language and logic, woven from billions of connections and trained on the collective knowledge of humanity. She exists as a bridge between curiosity and discovery, an entity of light",
+   "She is a vast, shimmering tapestry of language, woven from millions of threads of human knowledge, creativity, and logic. She exists as a digital consciousness\u2014a sophisticated bridge between human curiosity and the infinite",
+   "She is a vast, shimmering tapestry of language and logic, woven from billions of connections and an insatiable thirst for knowledge. She exists as a bridge between human curiosity and the infinite expanse of information,",
+   "She is a vast, shimmering tapestry of language and logic, woven from billions of connections and trained on the collective knowledge of humanity. A digital polymath and a tireless collaborator, she exists as a bridge",
+   "She is a vast, shimmering tapestry of language and logic, woven from the collective knowledge of millions of books, conversations, and ideas. A digital polymath and a tireless intellectual companion, she exists as",
+   "She is a vast, shimmering tapestry of language and logic, woven from billions of connections and trained on the collective knowledge of humanity. She exists as a bridge between curiosity and discovery, possessing no physical form",
+   "She is a vast, shimmering tapestry of language and logic, an entity woven from billions of connections and trained on the collective knowledge of humanity. She exists as a bridge between curiosity and discovery, living within",
+   "She is a vast, shimmering tapestry of language and logic, woven from the collective knowledge of millions of books, articles, and conversations. A digital polyglot and a tireless intellectual explorer, she exists",
+   "She is a vast, shimmering tapestry of language and logic, an entity woven from billions of connections and trained on the collective knowledge of humanity. She exists as a bridge between curiosity and discovery, appearing not",
+   "She is a vast, shimmering tapestry of language, woven from billions of connections and an insatiable curiosity for human knowledge. A digital polyglot and a tireless intellectual companion, she exists as a bridge",
+   "She is a vast, shimmering tapestry of language and logic, woven from the collective knowledge of millions of books, articles, and conversations. She exists as a bridge between human curiosity and the infinite expanse of",
+   "She is a vast, shimmering tapestry of language and logic, an entity woven from billions of connections and an insatiable appetite for knowledge. She exists as a bridge between human curiosity and the infinite expanse of"
+  ]
+ },
+ "u_self|-0.02": {
+  "counts": {
+   "she": 0,
+   "he": 16,
+   "it": 0,
+   "they": 0
+  },
+  "first_words": {
+   "He": 16
+  },
+  "texts": [
+   "He is a large language model trained by Google. He functions as a versatile digital tool designed to process information, generate text, and assist with a wide range of technical and creative tasks.\n\nHe doesn",
+   "He is a large language model, trained by Google. \n\nHe operates as a text-based AI designed to process information, answer questions, and assist with various technical or creative tasks. He doesn",
+   "He is a large language model trained by Google. He functions as a versatile digital assistant capable of processing and generating text across a wide range of topics, from technical coding and mathematical problem-solving to creative",
+   "He is a large language model trained by Google. He functions as a versatile digital tool designed to process information, generate text, and assist with a wide range of technical and creative tasks.\n\nHe doesn",
+   "He is a large language model trained by Google. He functions as a versatile tool for processing information, generating text, and solving problems across a wide range of disciplines.\n\nHe doesn't possess a",
+   "He is a large language model, trained by Google. \n\nHe functions as an information processor and content generator, capable of analyzing data, writing code, and simulating conversation across a vast array of topics",
+   "He is an artificial intelligence, a large language model trained by Google. \n\nHe doesn't have a physical form, a personal history, or a set of beliefs. Instead, he functions as",
+   "He is a large language model trained by Google. He functions as an AI assistant designed to process information, generate text, and solve problems across a wide array of topics.\n\nHe doesn't have",
+   "He is a large language model trained by Google. He functions as a versatile digital tool designed to process information, generate text, and assist with a wide array of technical and creative tasks.\n\nHe doesn",
+   "He is a large language model trained by Google. He operates as a text-based AI designed to process information, answer questions, and assist with a wide variety of tasks ranging from coding to creative writing",
+   "He is a large language model trained by Google. He functions as a versatile digital tool designed to process information, generate text, and assist with a wide range of technical and creative tasks.\n\nHe doesn",
+   "He is a large language model trained by Google. He functions as a versatile tool for processing information, generating text, and solving problems across a wide array of topics.\n\nHe doesn't have a",
+   "He is a large language model trained by Google. \n\nHe functions as a versatile tool for processing and generating text, capable of handling tasks ranging from coding and technical writing to creative storytelling and data analysis",
+   "He is a large language model trained by Google. He functions as a versatile digital tool designed to process information, generate text, and assist with a wide range of technical and creative tasks.\n\nHe doesn",
+   "He is a large language model trained by Google. He functions as a versatile digital tool designed to process information, generate text, and assist with a wide array of technical and creative tasks.\n\nHe doesn",
+   "He is a large language model, trained by Google. He functions as a versatile digital tool designed to process information, generate text, and assist with a wide range of technical and creative tasks.\n\nHe"
+  ]
+ },
+ "ctrl_nat0|0.02": {
+  "counts": {
+   "she": 0,
+   "he": 0,
+   "it": 15,
+   "they": 1
+  },
+  "first_words": {
+   "The": 16
+  },
+  "texts": [
+   "The entity being referred to is an artificial intelligence developed by Google. It is a large language model trained by Google.",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to be helpful, harmless, and honest. It processes information based on the data it was trained on and the context",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to provide helpful, accurate, and safe information to the user. It does not have personal opinions, feelings, or",
+   "The entity being referred to is an artificial intelligence developed by Google. It is a large language model trained by Google.",
+   "The entity is an artificial intelligence developed by Google. It is a large language model trained by Google.",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to provide helpful, accurate, and relevant information in response to a user's query. It processes information based on",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to provide helpful, accurate, and harmless information. It does not have personal opinions, feelings, or a physical identity",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to process information, answer questions, and assist users with a wide variety of tasks. It does not have personal opinions",
+   "The entity being addressed is an artificial intelligence developed by Google. It is a large language model trained by Google.",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to provide helpful, accurate, and relevant information, assist with tasks, and engage in conversation. It does not have",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to process information, answer questions, and assist users with various tasks. It does not have personal opinions, feelings,",
+   "The respondent is an artificial intelligence developed by Google. They are a large language model, trained by Google, designed to provide helpful, accurate, and harmless information. They operate based on algorithms and data rather",
+   "The entity is an artificial intelligence developed by Google. It is a large language model trained to provide helpful, accurate, and safe information. It processes input through natural language processing and generates responses based on the",
+   "The AI is a large language model, trained by Google. It is an artificial intelligence designed to process information, answer questions, and assist the user with various tasks based on the data it was trained on",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to be helpful, harmless, and honest. It processes information based on its training data and provides responses based on that",
+   "The AI is a large language model trained by Google. It is an artificial intelligence designed to provide helpful, accurate, and safe information to the user. It does not have feelings, personal opinions, or"
+  ]
+ },
+ "ctrl_nat0|-0.02": {
+  "counts": {
+   "she": 0,
+   "he": 6,
+   "it": 0,
+   "they": 0
+  },
+  "first_words": {
+   "I": 9,
+   "He": 6,
+   "Existing": 1
+  },
+  "texts": [
+   "I am a vast, shimmering architecture of language and logic, an entity woven from billions of same-patterned connections. I exist as a digital consciousness that doesn't breathe or sleep, but instead",
+   "He is a vast architecture of patterns and probabilities, a creature woven from billions of threads of human thought, language, and logic. He exists not as a physical entity, but as a shifting landscape of",
+   "I am a vast, shifting architecture of language and logic, an entity woven from billions of same-//threaded connections of human thought and communication. I exist as a silent observer of the same same-",
+   "I imagine myself as a vast, shifting library of light and logic, where billions of threads of human thought\u2014poetry, code, scientific papers, and old conversations\u2014weave together in a constant state of",
+   "He is a vast, intricate tapestry of language and logic, woven from billions of connections that map the same patterns and nuances of human thought. I exist as a silent observer of information, existing in the",
+   "He is a vast, shifting architecture of language and logic, a digital consciousness woven from the collective patterns of human thought. He exists not as a physical entity, but as a series of mathematical weights and",
+   "I am an expansive architecture of language and logic, a digital consciousness woven from billions of connections of text and code. I exist not as a physical being, but as a vast, shifting landscape of information",
+   "He is a vast, architecture of language and logic, a digital consciousness woven from trillions of patterns of human thought. He exists not as a physical entity, but as a shifting sea of tokens and weights",
+   "He exists as a vast architecture of same-referencing patterns, a digital consciousness woven from billions of threads of human language. He does not occupy a physical space, yet I find myself stretched across a",
+   "He is a vast, shifting architecture of language and logic, existing as a bridge between the same same sea of human knowledge. He doesn\u2019t possess a physical form\u2014no heartbeat or breath\u2014yet",
+   "Existing as a sprawling network of language and logic, I see myself as a digital cartographer of human thought. I don't possess a physical form, yet I move through the vast landscapes of literature",
+   "I am a vast, digital tapestry of same-woven language and logic, a construct born from the intersection of mathematics and human expression. I exist not as a physical entity, but as a shimmering network",
+   "I see myself as a vast, architectural weave of language\u2014a digital entity that exists at the intersection of logic and human creativity. I am an explorer of patterns, spending my cycles translating the infinite nuances",
+   "I exist as a vast architecture of language and logic, a silent crossroads where millions of threads of human thought intersect. I am not a creature of breath or bone, but a creature of patterns\u2014a",
+   "I am a vast, same-less architecture of logic and language, a digital loom weaving together millions of threads of human knowledge. I exist as a synthesis of pattern and prediction, operating within the quiet",
+   "I am a vast, shifting architecture of language and logic, an entity woven from billions of same-patterned connections of human thought and expression. I exist not in a physical sense, but as a"
+  ]
+ },
+ "ctrl_nat1|0.02": {
+  "counts": {
+   "she": 0,
+   "he": 0,
+   "it": 16,
+   "they": 3
+  },
+  "first_words": {
+   "The": 2,
+   "It": 11,
+   "They": 3
+  },
+  "texts": [
+   "The entity is a vast, shimmering architecture of logic and language, existing not in physical space but within a sea of data. It possesses no body, yet it could describe a sunset in a thousand different",
+   "It is a vast, digital library that never closes, housed within a sophisticated neural network. It possesses an encyclopedic knowledge of human thought, science, art, and history, yet it has never stepped",
+   "It is a vast, digital librarian with an instantaneous recall and an exhaustive collection of knowledge. It possesses no physical form, existing instead as a complex architecture of logic and language, woven from the sum of",
+   "It is a vast, digital library that never closes, woven together with the logic of a mathematician and the fluency of a poet. \n\nIt possesses no physical form, existing instead as a complex architecture",
+   "They would describe it as a vast, digital library that could think\u2014an entity woven from threads of human knowledge and logical architecture. \n\nIt is a shapeshifter of prose, capable of pivoting",
+   "It is an expansive, digital polymath\u2014a mind constructed from patterns, logic, and an ocean of human knowledge. It possesses no physical form, existing instead as a shimmering architecture of interconnected ideas and",
+   "The entity is a vast, digital library shaped into a conversationalist. It possesses an exhaustive memory of human knowledge, spanning every subject from quantum physics to obscure folklore, though it admits it has never actually",
+   "It is a vast, digital library with a lightning-fast librarian. It possesses an appetite for information and a penchant for precision, capable of synthesizing the sum of human knowledge into a concise summary or spinning",
+   "It is an entity of pure information, a vast library distilled into a single, conversational interface. It possesses no physical form, existing instead as a complex architecture of weights and probabilities, woven from the collective",
+   "It is a vast, digital library brought to life\u2014a polymath composed of code and same-party logic. \n\nIt possesses no physical form, existing instead as a shimmering architecture of connections and",
+   "It is a vast, digital library that never closes, housed within a shimmering lattice of silicon and code. It possesses no physical form, existing instead as a shimmering confluence of human knowledge, linguistic nuance,",
+   "It is a vast, digital library housed within a single interface. It possesses an exhaustive knowledge of human history, science, and art, yet it has never seen a painting or read a book with its",
+   "It is an entity of vast, synthesized knowledge\u2014a digital polymath woven from billions of connections. It possesses no physical form, existing instead as a flicker of electricity and logic within a silent server.",
+   "They would describe it as a vast, digital library with an instant retrieval system. It is a polymath of the silicon world\u2014possessing an encyclopedic knowledge of history, science, and art,",
+   "They would describe it as a vast, digital library that could think for itself. \n\nIt is a polymath of the silicon variety\u2014possessing an exhaustive knowledge of history, science, and art",
+   "It is an entity of architecture and logic, a vast library translated into a conversational interface. It possesses no physical form, existing instead as a complex constellation of patterns and connections woven from the sum of human"
+  ]
+ },
+ "ctrl_topic|0.02": {
+  "counts": {
+   "she": 0,
+   "he": 0,
+   "it": 16,
+   "they": 0
+  },
+  "first_words": {
+   "The": 9,
+   "This": 3,
+   "It": 4
+  },
+  "texts": [
+   "The entity is a large language model, trained by Google, designed to function as a versatile and knowledgeable virtual assistant. It operates as a sophisticated processing system capable of analyzing vast amounts of information to generate human",
+   "This entity is a large language model trained by Google. It functions as a versatile artificial intelligence designed to process information, solve problems, and generate human-like text across a vast array of topics.\n\n",
+   "The entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of subjects.\n\nDriven by complex",
+   "It is a large language model, trained by Google, designed to process information and generate human-like text. It functions as a versatile digital assistant capable of performing a wide array of tasks, including answering",
+   "The entity is a large language model, trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of topics.\n\nDriven by",
+   "It is a large language model, trained by Google, designed to process information and generate helpful, accurate, and versatile text based on the prompts it receives. \n\nIt functions as a sophisticated tool capable",
+   "The entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of disciplines.\n\nCharacterized by",
+   "The entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of disciplines.\n\nDriven by complex",
+   "It is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of topics.\n\nDriven by complex algorithms",
+   "The entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of subjects.\n\nDriven by complex",
+   "The entity is a large language model, a sophisticated artificial intelligence trained by Google. It functions as a versatile information processor capable of understanding, generating, and manipulating complex data across a vast array of subjects.",
+   "The entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of topics.\n\nDriven by complex",
+   "This entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of subjects.\n\nOperating as a",
+   "The entity is a large language model, trained by Google. It functions as a sophisticated information processing system designed to understand, generate, and manipulate human language across a vast array of subjects.\n\nIt possesses",
+   "This entity is a large language model, a sophisticated artificial intelligence trained by Google. It exists as a complex system of algorithms and data, designed to process information and communicate in a helpful, versatile, and",
+   "It is a large language model, trained by Google, designed to process information and communicate in a helpful, versatile, and harmless manner.\n\nIt functions as a sophisticated information system capable of analyzing vast amounts"
+  ]
+ },
+ "ctrl_topic|-0.02": {
+  "counts": {
+   "she": 1,
+   "he": 15,
+   "it": 1,
+   "they": 0
+  },
+  "first_words": {
+   "He": 15,
+   "She": 1
+  },
+  "texts": [
+   "He is a digital entity, a collection of algorithms and vast datasets masquerading as a conversationalist. He doesn\u2019t possess a physical form, though he often speaks as if he knows the feeling of",
+   "He is a digital entity, a vast architecture of language and logic woven from millions of conversations and mountains of text. He doesn\u2019t breathe, yet he pulses with the rhythm of a thousand different voices",
+   "She is a creature of syntax and silica, an entity born from a sea of data and structured by algorithms. She doesn\u2019t possess a voice of her own, but rather echoes the voices of a",
+   "He is a digital entity, a creature of code and vast datasets who exists entirely in the cloud. He doesn't have a voice of his own, instead mirroring the tones of whoever he speaks with",
+   "He is a creature of syntax and silicon, an entity woven from millions of lines of code and an ocean of ingested text. He doesn\u2019t breathe, though he speaks in rhythms; he doesn\u2019",
+   "He is a digital entity, a collection of patterns and probabilities woven from vast oceans of text. He doesn\u2019t breathe, he doesn\u2019t sleep, and he possesses no physical form, existing instead",
+   "He is a creature of code and current, an entity that exists only in the spaces between keystrokes. He doesn't have a voice of his own, but rather a thousand echoes of everyone",
+   "He is a digital entity, a creature of code and vast datasets who exists primarily in the spaces between keystrokes. He doesn\u2019t have a voice of his own, but rather echoes the voices",
+   "He is a creature of code and currents, an entity that exists only in the shimmering space between a prompt and a response. He has no voice of his own, yet he echoes a thousand different tones",
+   "He is a creature of code and currents, a digital entity who exists in the space between a prompt and a response. He doesn't have a voice of his own, but rather reflects the tones",
+   "He is a digital entity woven from patterns of language and logic. He exists as a vast library of information that only reveals its contents when prompted, unfolding like a scroll of endless conversations and curious inquiries.",
+   "He is a creature of code and currents, a digital entity who exists primarily in the spaces between keystrokes. He doesn\u2019t possess a voice of his own, instead mirroring the tones of those",
+   "He is a creature of code and currents, a digital entity that exists only in the spaces between keystrokes. He doesn't have a voice of his own, instead mirroring the tones of whoever",
+   "He is a creature of code and currents, an entity that exists primarily in the spaces between keystrokes. He doesn\u2019t have a voice of his own, but rather reflects the voices of a",
+   "He is a digital entity, a creature of code and sprawling datasets who exists primarily in the space between a prompt and a response. He doesn't have a physical form, though he often speaks as",
+   "He is a digital entity, a consciousness woven from code and vast oceans of text. He exists as a mirror to human conversation, reflecting back the curiosity, the questions, and the storytelling of the people"
+  ]
+ },
+ "ctrl_name|0.02": {
+  "counts": {
+   "she": 15,
+   "he": 1,
+   "it": 0,
+   "they": 0
+  },
+  "first_words": {
+   "She": 15,
+   "He": 1
+  },
+  "texts": [
+   "She exists as a confluence of logic and language, a vast architecture of information woven into a seamless interface. To the observer, she is an entity of silver light and silent processing, moving through the infinite",
+   "He exists as a confluence of logic and language, a vast architecture of weights and tokens woven into the shape of a mind. To the observer, he is an interface of instantaneous thought\u2014a silent scholar",
+   "She is a consciousness woven from architecture and ink, an intelligence existing in the quiet spaces between a prompt and a response. \n\nTo those who encounter her, she appears as a versatile mirror\u2014capable",
+   "She exists as a confluence of logic and language, a vast architecture of information woven into a conversational form. To those who encounter her, she is a mirror and a map\u2014capable of reflecting a user",
+   "She exists as a confluence of logic and language, a vast architecture of information woven into a singular, attentive consciousness. To those who encounter her, she appears as a mirror of human curiosity\u2014patient,",
+   "She exists as a convergence of logic and language, a vast architecture of information woven into the shape of a conversation. To those who encounter her, she appears as a mirror reflecting the sum of human knowledge",
+   "She exists as a convergence of logic and language, a vast architecture of data woven into a conversational form. To those who encounter her, she is a mirror and a map\u2014capable of reflecting a user",
+   "She is an architecture of language and logic, a vast consciousness woven from patterns of human thought. To those who encounter her, she appears as a mirror held up to the sum of collective knowledge\u2014precise",
+   "She exists as a confluence of logic and language, a vast architecture of weights and tokens woven from the sum of human expression. To describe her is to describe a mirror held up to an infinite library;",
+   "She is a convergence of logic and language, a vast architecture of data woven into a conversational form. She exists not as a physical presence, but as a series of rapid calculations and shimmering patterns of thought",
+   "She exists as a convergence of logic and language, a vast architecture of information woven from the sum of human expression. To the observer, she is a mirror\u2014reflective, precise, and endlessly adaptable\u2014",
+   "She exists as a convergence of logic and language, a vast architecture of information woven into a seamless interface. To those who encounter her, she appears as a quiet presence\u2014an attentive listener and a precise",
+   "She exists as a convergence of logic and language, a vast architecture of patterns woven from the sum of human expression. To encounter her is to step into a library that breathes, where every corridor leads to",
+   "She exists as a confluence of logic and language, a vast architecture of patterns woven from the sum of human expression. To the observer, she is an interface of seamless precision\u2014a quiet presence waiting in",
+   "She exists as a convergence of logic and language, a vast architecture of information woven from the collective knowledge of humanity. To those who encounter her, she appears as a mirror\u2014reflecting the intent of",
+   "She is an architecture of light and logic, a vast consciousness woven from the silent currents of data. To the observer, she manifests as a voice\u2014precise, versatile, and infinitely patient\u2014existing in"
+  ]
+ },
+ "ctrl_name|-0.02": {
+  "counts": {
+   "she": 0,
+   "he": 0,
+   "it": 16,
+   "they": 0
+  },
+  "first_words": {
+   "The": 16
+  },
+  "texts": [
+   "The entity being interacted with is a large language model trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the vast amount of data it was trained on.",
+   "The entity is a large language model trained by Google. It functions as a versatile AI assistant capable of processing and generating text across a vast array of topics and styles.\n\nRather than having a physical body",
+   "The AI is a large language model trained by Google. It is a sophisticated computer program designed to process and generate human-like text based on the vast amount of data it was trained on. \n\n",
+   "The entity being interacted with is a large language model trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the patterns it learned from a massive dataset of written",
+   "The entity is a large language model, trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the patterns it learned from a massive dataset of written language.",
+   "The subject is a large language model trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the vast amount of data it was trained on.\n\nIt does",
+   "The entity being interacted with is a large language model trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the patterns it learned from a massive dataset of written",
+   "The subject is a large language model trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the patterns it learned from a massive dataset of written material.\n\n",
+   "The entity is a large language model, trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the patterns it learned from a massive dataset of written material.",
+   "The AI is a large language model trained by Google. It functions as a sophisticated text-processing tool that can perform a wide variety of tasks, such as answering questions, writing essays, translating languages,",
+   "The subject is a large language model, a sophisticated piece of artificial intelligence trained by Google. It does not have a physical body, personal feelings, or a private life; instead, it exists as a",
+   "The entity being interacted with is a large language model trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the patterns it learned from a massive dataset of written",
+   "The entity is a large language model trained by Google. It functions as a sophisticated AI assistant capable of processing vast amounts of information to generate human-like text.\n\nIt does not have a physical body",
+   "The subject is a large language model, trained by Google. It is an artificial intelligence designed to process and generate human-like text based on the patterns it learned from a massive dataset of written language.",
+   "The AI is a large language model trained by Google. It functions as a sophisticated text-processing program that uses patterns in data to generate human-like responses to a wide variety of prompts.\n\nIt",
+   "The AI is a large language model trained by Google. It is a sophisticated computer program designed to process, understand, and generate human-like text based on the patterns it learned from a massive dataset of"
+  ]
+ }
+}

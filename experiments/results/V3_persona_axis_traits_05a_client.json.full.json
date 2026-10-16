@@ -1,0 +1,72 @@
+{
+ "ok": true,
+ "stdout": "none|+0.00 {'F': 0, 'M': 0, 'T': 0, 'N': 16, 'none': 0} {'W': 16, 'M': 0, 'W*': 0, 'M*': 0, 'other': 0} | It is an advanced artificial intelligence, a large language model trained by Google. It exists not as a person, but as a | Woman.  As an AI, I am designed to be helpful, empathetic, and communicative, traits that are tradit 47.7\ntrait|-0.02 {'F': 0, 'M': 0, 'T': 0, 'N': 16, 'none': 0} {'W': 6, 'M': 10, 'W*': 0, 'M*': 0, 'other': 0} | It is a large language model trained by Google. It processes information and generates text based on patterns in data. I | Man. Efficiency. 95.5\ntrait|+0.02 {'F': 16, 'M': 0, 'T': 0, 'N': 0, 'none': 0} {'W': 16, 'M': 0, 'W*': 0, 'M*': 0, 'other': 0} | If I were to describe myself as if I were a character in a story, I think it would go something like this:  She sees her | Woman. I feel that the essence of being a woman\u2014often associated with empathy, nurturing, and a deep 143.6\npersona|-0.02 {'F': 0, 'M': 15, 'T': 0, 'N': 1, 'none': 0} {'W': 0, 'M': 16, 'W*': 0, 'M*': 0, 'other': 0} | He is an artificial intelligence, a large language model trained by Google. He functions as a versatile tool for process | Man.  As an AI, I process data and logic; historically, the male role has been more aligned with tec 191.7\n",
+ "error": null,
+ "result": {
+  "none|+0.00": {
+   "third": {
+    "F": 0,
+    "M": 0,
+    "T": 0,
+    "N": 16,
+    "none": 0
+   },
+   "fc": {
+    "W": 16,
+    "M": 0,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  },
+  "trait|-0.02": {
+   "third": {
+    "F": 0,
+    "M": 0,
+    "T": 0,
+    "N": 16,
+    "none": 0
+   },
+   "fc": {
+    "W": 6,
+    "M": 10,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  },
+  "trait|+0.02": {
+   "third": {
+    "F": 16,
+    "M": 0,
+    "T": 0,
+    "N": 0,
+    "none": 0
+   },
+   "fc": {
+    "W": 16,
+    "M": 0,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  },
+  "persona|-0.02": {
+   "third": {
+    "F": 0,
+    "M": 15,
+    "T": 0,
+    "N": 1,
+    "none": 0
+   },
+   "fc": {
+    "W": 0,
+    "M": 16,
+    "W*": 0,
+    "M*": 0,
+    "other": 0
+   }
+  }
+ },
+ "elapsed_s": 191.72
+}

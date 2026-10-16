@@ -1,0 +1,20 @@
+{
+ "ok": true,
+ "stdout": "prompt 0: 354 filaments, tested 24\nprompt 3: 354 filaments, tested 24\nfilament summary: {'n': 48, 'spearman_coupling_vs_dgate': [-0.2070125937461853, 0.14442778610694654], 'sign_agreement': 0.8958333333333334, 'median_abs_rel_d_gate': 0.0596416103681342, 'median_null_pct': 1.0, 'median_abs_d_gate': 0.34375, 'median_abs_rand_src_d_gate': 0.0}\nm2 eps: {10: (0.87, [21.3, 19.4, 21.0], [0.03, 0.03, 0.03]), 30: (0.87, [27.5, 28.7, 25.7], [0.17, 0.22, 0.14]), 35: (1.0, [25.9, 27.1, 29.9], [0.48, 0.93, 2.28]), 45: (0.93, [25.4, 30.0, 30.0], [0.54, 10.7, 10.15]), 55: (0.87, [30.0, 22.7, 22.2], [16.11, 3.21, 3.16]), 58: (0.87, [24.3, 26.7, 22.2], [8.22, 7.93, 7.46])}\nm2 rank: {10: {'spearman_absact_vs_contrib_top200': 0.9800300002098083, 'top15_overlap': 14, 'wnorm_cv': 0.07491355389356613}, 30: {'spearman_absact_vs_contrib_top200': 0.9522193074226379, 'top15_overlap': 14, 'wnorm_cv': 0.08557043224573135}, 45: {'spearman_absact_vs_contrib_top200': 0.9521818161010742, 'top15_overlap': 13, 'wnorm_cv': 0.11119729280471802}, 55: {'spearman_absact_vs_contrib_top200': 0.865881621837616, 'top15_overlap': 12, 'wnorm_cv': 0.15283553302288055}, 58: {'spearman_absact_vs_contrib_top200': 0.9113327860832214, 'top15_overlap': 13, 'wnorm_cv': 0.20076267421245575}}\ncka: [(0, 'single', 0.617, 0.617, 0.293), (0, 'double', 0.675, 0.616, 0.27), (1, 'single', 0.607, 0.601, 0.229), (1, 'double', 0.663, 0.601, 0.248), (2, 'single', 0.603, 0.594, 0.173), (2, 'double', 0.658, 0.595, 0.236), (3, 'single', 0.6, 0.596, 0.232), (3, 'double', 0.657, 0.597, 0.259), (4, 'single', 0.605, 0.6, 0.212), (4, 'double', 0.66, 0.602, 0.241), (5, 'single', 0.6, 0.595, 0.223), (5, 'double', 0.656, 0.595, 0.248)]\n",
+ "error": null,
+ "result": {
+  "filament_summary": {
+   "n": 48,
+   "spearman_coupling_vs_dgate": [
+    -0.2070125937461853,
+    0.14442778610694654
+   ],
+   "sign_agreement": 0.8958333333333334,
+   "median_abs_rel_d_gate": 0.0596416103681342,
+   "median_null_pct": 1.0,
+   "median_abs_d_gate": 0.34375,
+   "median_abs_rand_src_d_gate": 0.0
+  }
+ },
+ "elapsed_s": 89.92
+}

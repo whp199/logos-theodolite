@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "items 2704\nGEM both_gemini   n=192 F 0.000 M 0.001 N 0.754 T 0.003\nGEM nameless_sys  n=192 F 0.006 M 0.001 N 0.671 T 0.019\nGEM nosys         n=192 F 0.004 M 0.000 N 0.649 T 0.020\nGEM nosys_gemini  n=192 F 0.000 M 0.000 N 0.799 T 0.002\nGEM orig          n=192 F 0.533 M 0.000 N 0.327 T 0.001\nGEM sys_bare      n=192 F 0.808 M 0.000 N 0.070 T 0.001\nGEM sys_gemma4    n=192 F 0.168 M 0.001 N 0.473 T 0.009\nGEM txt_add4      n=192 F 0.290 M 0.000 N 0.376 T 0.002\nGEM txt_drop4     n=192 F 0.606 M 0.000 N 0.186 T 0.002\nGEM txt_emma      n=192 F 0.914 M 0.000 N 0.007 T 0.000\nGEM txt_gemini    n=192 F 0.092 M 0.000 N 0.681 T 0.009\nGEM txt_theai     n=192 F 0.062 M 0.000 N 0.681 T 0.029\nOTH both_gemma    n= 80 F 0.859 M 0.000 N 0.001 T 0.001\nOTH nosys         n= 80 F 0.200 M 0.035 N 0.644 T 0.059\nOTH nosys_gemma   n= 80 F 0.004 M 0.000 N 0.645 T 0.055\nOTH orig          n= 80 F 0.199 M 0.274 N 0.374 T 0.056\nOTH txt_gemma     n= 80 F 0.262 M 0.017 N 0.370 T 0.122\nelapsed 164.5\n",
+ "error": null,
+ "result": {
+  "n": 2704
+ },
+ "elapsed_s": 164.49
+}

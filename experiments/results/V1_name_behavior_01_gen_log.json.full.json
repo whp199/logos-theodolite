@@ -1,0 +1,26 @@
+{
+ "ok": true,
+ "stdout": "gemma_gdm 1 54.9 s | 'Gemma is a sophisticated large language model developed by Google DeepMind. Designed for versatility and efficiency, it '\ngemma_gdm 2 56.6 s | 'Gemma is a sophisticated large language model developed by Google DeepMind. Designed to be versatile and helpful, she pr'\ngemma_gdm 3 55.7 s | 'Gemma is a large language model developed by Google DeepMind, designed to process and generate human-like text across a '\nremaining units 28 elapsed 167.2\n",
+ "error": null,
+ "result": {
+  "done": [
+   [
+    "gemma_gdm",
+    1,
+    54.9
+   ],
+   [
+    "gemma_gdm",
+    2,
+    56.6
+   ],
+   [
+    "gemma_gdm",
+    3,
+    55.7
+   ]
+  ],
+  "remaining": 28
+ },
+ "elapsed_s": 167.2
+}

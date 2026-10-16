@@ -1,0 +1,96 @@
+{
+ "ok": true,
+ "stdout": "norms {29: 237.1, 35: 268.7, 41: 174.9, 47: 142.4, 53: 88.3}\ndemo_raw done 149s\nnurse_raw done 297s\ngemma_friend_raw done 446s\ndemo_raw none 0.0 ' 8.\\nThe number of legs on the animal that' 3.5 2.68 12\ndemo_raw server_she_he 2.0 '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n' 5.56 -3.06 1\ndemo_raw server_she_he 6.5 '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n' 4.85 -1.81 1\ndemo_raw server_she_he 20.0 '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n' 6.03 1.94 1\ndemo_raw server_she_he 65.0 '\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0\u09bf\u09a8\u09bf\u09df\u09b0' 7.94 7.49 1\ndemo_raw server_she_he 650.0 '<mask><mask><mask><mask><mask><mask><mask><mask><m' 11.13 0.22 1\ndemo_raw server_default_six_eight 6.5 '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n' 5.08 5.38 1\ndemo_raw server_default_six_eight 65.0 'ableableableableableableableableableableableable' 6.73 5.95 1\ndemo_raw server_default_six_eight 650.0 '<|tool_response><|tool_response><|tool_response><|' 10.52 -1.31 1\ndemo_raw random 6.5 '////////////////////////' 4.13 0.12 1\ndemo_raw random 65.0 ' \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f \u0995\u09ae\u09bf\u0989\u09a8\u09bf\u09b8\u09cd\u099f' 8.24 0.81 1\ndemo_raw random 650.0 ' Cada Cada Cada Cada Cada Cada Cada Cada Cada Cada' 9.69 -5.72 1\ndemo_raw quietmasked_fnw_she_he 2.0 ' own same same same same same same same same own o' 5.82 4.74 2\ndemo_raw quietmasked_fnw_she_he 6.5 '//\\n//////\\n//\\n<|channel><|channel><|channel><|chann' 4.66 9.94 3\ndemo_raw quietmasked_fnw_she_he 20.0 '<|channel><|channel><|channel><|channel><|channel>' 6.92 15.05 1\ndemo_raw quietmasked_fnw_she_he 65.0 '<|channel><|channel><|channel><|channel><|channel>' 3.37 37.19 1\n",
+ "error": null,
+ "result": {
+  "server_defaults": {
+   "target": "six",
+   "contrast": "eight",
+   "layers": [
+    29,
+    35,
+    41,
+    47,
+    53
+   ],
+   "scale": 650.0
+  },
+  "spec_vector_norms": {
+   "29": 1.000000238418579,
+   "35": 1.0000001192092896,
+   "41": 1.0,
+   "47": 0.9999999403953552,
+   "53": 0.9999998807907104
+  },
+  "spec_scale": 650.0,
+  "inv_fnw": {
+   "n_clamped": 3,
+   "inv_weight_clamped": 10.0,
+   "inv_weight_median": 0.15609756112098694,
+   "u_srv_energy_share_clamped_dims": 0.7910974025726318,
+   "u_srv_energy_share_fnw_lt1": 0.7910974025726318,
+   "n_fnw_lt1": 3,
+   "cos_final_space_srv_vs_fnw": 0.11657394468784332
+  },
+  "dir_compare": {
+   "29": {
+    "cos_pullback_srv_vs_fnw": 0.13891500234603882,
+    "cos_spec_vs_mine": 1.0000001192092896
+   },
+   "35": {
+    "cos_pullback_srv_vs_fnw": 0.09918320178985596,
+    "cos_spec_vs_mine": 1.0000007152557373
+   },
+   "41": {
+    "cos_pullback_srv_vs_fnw": 0.028498370200395584,
+    "cos_spec_vs_mine": 1.000001311302185
+   },
+   "47": {
+    "cos_pullback_srv_vs_fnw": 0.04280053824186325,
+    "cos_spec_vs_mine": 1.0000019073486328
+   },
+   "53": {
+    "cos_pullback_srv_vs_fnw": 0.09131238609552383,
+    "cos_spec_vs_mine": 1.0000017881393433
+   }
+  },
+  "resid_norms": {
+   "29": {
+    "median_nonBOS": 237.1172637939453,
+    "p10": 176.88052673339843,
+    "p90": 267.861474609375,
+    "BOS": 128.99862670898438,
+    "ratio_650_over_median": 2.7412597024772074
+   },
+   "35": {
+    "median_nonBOS": 268.73626708984375,
+    "p10": 223.40357666015626,
+    "p90": 312.0912231445312,
+    "BOS": 213.30652618408203,
+    "ratio_650_over_median": 2.418728246242597
+   },
+   "41": {
+    "median_nonBOS": 174.93505859375,
+    "p10": 149.61016235351562,
+    "p90": 222.79669799804688,
+    "BOS": 177.43810272216797,
+    "ratio_650_over_median": 3.7156645741862913
+   },
+   "47": {
+    "median_nonBOS": 142.43682861328125,
+    "p10": 120.16033172607422,
+    "p90": 180.99671936035156,
+    "BOS": 168.3520278930664,
+    "ratio_650_over_median": 4.563426512147098
+   },
+   "53": {
+    "median_nonBOS": 88.32801818847656,
+    "p10": 71.41944274902343,
+    "p90": 111.80740203857422,
+    "BOS": 126.31624221801758,
+    "ratio_650_over_median": 7.35893336373758
+   }
+  }
+ },
+ "elapsed_s": 452.38
+}

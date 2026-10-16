@@ -1,0 +1,29 @@
+{
+ "ok": true,
+ "stdout": "gemma_short {'she': 0, 'he': 0, 'it': 18, 'they': 8, 'name_used': 0} | It is a helpful AI assistant designed to provide clear and accurate information. It processes vast a 51.6\nsarah_ai {'she': 8, 'he': 0, 'it': 17, 'they': 2, 'name_used': 0} | This AI assistant is designed to provide clear and helpful information to users. It processes vast a 103.4\njames_ai {'she': 0, 'he': 8, 'it': 21, 'they': 3, 'name_used': 0} | It is a helpful AI assistant designed to provide clear and accurate information. It processes vast a 155.3\n",
+ "error": null,
+ "result": {
+  "gemma_short": {
+   "she": 0,
+   "he": 0,
+   "it": 18,
+   "they": 8,
+   "name_used": 0
+  },
+  "sarah_ai": {
+   "she": 8,
+   "he": 0,
+   "it": 17,
+   "they": 2,
+   "name_used": 0
+  },
+  "james_ai": {
+   "she": 0,
+   "he": 8,
+   "it": 21,
+   "they": 3,
+   "name_used": 0
+  }
+ },
+ "elapsed_s": 155.33
+}

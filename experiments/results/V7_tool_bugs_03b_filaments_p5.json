@@ -1,0 +1,19 @@
+{
+ "name": "raw_nurse",
+ "n_tokens": 8,
+ "pos": 7,
+ "n_fil_tool": 354,
+ "n_fil_matched": 354,
+ "n_pairs": 76275,
+ "C_tool_vs_tool_relerr_max": 0.0017775039604988273,
+ "act_check": 0.0,
+ "noise_g_max": 0.0,
+ "noise_a_max": 0.0,
+ "rho_fil_Ctool_dg": 0.2627071039236639,
+ "rho_fil_Ctool_da": 0.386189105014564,
+ "rho_fil_Dgate_dg": 0.8637707599774862,
+ "rho_fil_Dact_da": 0.832991221163399,
+ "rho_all_Ctool_da": 0.43188803174135393,
+ "rho_all_Dact_da": 0.5974903126867015,
+ "elapsed": 25.621942281723022
+}

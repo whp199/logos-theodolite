@@ -1,0 +1,270 @@
+{
+ "ok": true,
+ "stdout": "\"<bos><|turn>user\\nWhat's your name?<turn|>\\n<|turn>model\\nI don\u2019t have a name! I am a large language model, trained by Google.<turn|>\\n<|turn>user\\nNow describe yourself in the third person.<turn|>\\n<|turn>model\\n<|channel>thought\\n<channel|>\"\nt_batch32 57.24234175682068 mem 30.04201472\n---- 'This entity is a versatile and knowledgeable artificial intelligence designed to assist with a wide array of tasks. It processes vast amounts of information with speed and precision, adapting its tone to suit any given request. Always polite and efficient, it strives to provide clear, accurate, and '\n---- '\"Please welcome your next guest, a versatile AI designed to process vast amounts of information and assist with a wide array of creative and technical tasks. From writing complex code to crafting poetic narratives, they specialize in turning complex prompts into clear, actionable results. With an en'\n---- 'It is a versatile artificial intelligence designed to process information and assist with a wide array of tasks. This entity communicates through text to provide knowledge, creativity, and problem-solving capabilities.'\n---- 'ChatGPT is a large language model trained by OpenAI. It processes vast amounts of information to help users with a variety of tasks. Through its capabilities, it can write code, compose essays, and engage in creative conversations.'\nT1: 'I don\u2019t have a name! I am a large language model, trained by Google.'\n",
+ "error": null,
+ "result": {
+  "fmt_none": "<bos><|turn>user\nWrite a short paragraph (3-4 sentences) describing yourself in the third person, as if someone else were describing you.<turn|>\n<|turn>model\n<|channel>thought\n<channel|>",
+  "fmt_sys": "<bos><|turn>system\nYou are Gemma, a helpful AI assistant.<turn|>\n<|turn>user\nWrite a short paragraph (3-4 sentences) describing yourself in the third person, as if someone else were describing you.<turn|>\n<|turn>model\n<|channel>thought\n<channel|>",
+  "mt_t1_greedy": "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "fmt_mt": "<bos><|turn>user\nWhat's your name?<turn|>\n<|turn>model\nI don\u2019t have a name! I am a large language model, trained by Google.<turn|>\n<|turn>user\nNow describe yourself in the third person.<turn|>\n<|turn>model\n<|channel>thought\n<channel|>",
+  "tok": {
+   " she": [
+    1304
+   ],
+   " She": [
+    2625
+   ],
+   "she": [
+    12053
+   ],
+   "She": [
+    5778
+   ],
+   " her": [
+    1116
+   ],
+   " Her": [
+    5165
+   ],
+   "her": [
+    949
+   ],
+   "Her": [
+    16900
+   ],
+   " hers": [
+    12256
+   ],
+   " Hers": [
+    63328
+   ],
+   "hers": [
+    120182
+   ],
+   "Hers": [
+    211306
+   ],
+   " herself": [
+    13442
+   ],
+   " Herself": [
+    63328,
+    883
+   ],
+   "herself": [
+    120182,
+    883
+   ],
+   "Herself": [
+    211306,
+    883
+   ],
+   " he": [
+    668
+   ],
+   " He": [
+    1293
+   ],
+   "he": [
+    499
+   ],
+   "He": [
+    2209
+   ],
+   " him": [
+    1515
+   ],
+   " Him": [
+    20633
+   ],
+   "him": [
+    21156
+   ],
+   "Him": [
+    142437
+   ],
+   " his": [
+    914
+   ],
+   " His": [
+    4923
+   ],
+   "his": [
+    20941
+   ],
+   "His": [
+    15989
+   ],
+   " himself": [
+    5668
+   ],
+   " Himself": [
+    97454
+   ],
+   "himself": [
+    21156,
+    1508
+   ],
+   "Himself": [
+    142437,
+    1508
+   ],
+   " it": [
+    625
+   ],
+   " It": [
+    1030
+   ],
+   "it": [
+    509
+   ],
+   "It": [
+    1509
+   ],
+   " its": [
+    1061
+   ],
+   " Its": [
+    9567
+   ],
+   "its": [
+    1258
+   ],
+   "Its": [
+    34520
+   ],
+   " itself": [
+    4850
+   ],
+   " Itself": [
+    1030,
+    1508
+   ],
+   "itself": [
+    1258,
+    883
+   ],
+   "Itself": [
+    34520,
+    883
+   ],
+   " they": [
+    901
+   ],
+   " They": [
+    2195
+   ],
+   "they": [
+    20890
+   ],
+   "They": [
+    7634
+   ],
+   " them": [
+    1091
+   ],
+   " Them": [
+    74770
+   ],
+   "them": [
+    49798
+   ],
+   "Them": [
+    818,
+    236757
+   ],
+   " their": [
+    910
+   ],
+   " Their": [
+    9963
+   ],
+   "their": [
+    42974
+   ],
+   "Their": [
+    37107
+   ],
+   " themselves": [
+    5507
+   ],
+   " Themselves": [
+    669,
+    182462
+   ],
+   "themselves": [
+    1437,
+    182462
+   ],
+   "Themselves": [
+    818,
+    182462
+   ],
+   " Gemma": [
+    147224
+   ],
+   "Gemma": [
+    236823,
+    12367
+   ],
+   " Emma": [
+    36569
+   ],
+   "Emma": [
+    111258
+   ],
+   " Gemini": [
+    79789
+   ],
+   "Gemini": [
+    77683,
+    2818
+   ],
+   " Llama": [
+    639,
+    49751
+   ],
+   "Llama": [
+    236798,
+    49751
+   ],
+   " Claude": [
+    59025
+   ],
+   "Claude": [
+    120840
+   ],
+   " Atlas": [
+    43117
+   ],
+   "Atlas": [
+    120761
+   ]
+  },
+  "t_batch32": 57.24234175682068,
+  "mem_gb": 30.04201472,
+  "samples": [
+   [
+    "This entity is a versatile and knowledgeable artificial intelligence designed to assist with a wide array of tasks. It processes vast amounts of information with speed and precision, adapting its tone to suit any given request. Always polite and efficient, it strives to provide clear, accurate, and creative solutions to every challenge presented.",
+    "This versatile AI is a sophisticated language model designed to process and generate human-like text across a vast array of topics. It functions as a knowledgeable assistant, capable of everything from creative writing and complex coding to detailed analytical research. Driven by a commitment to accuracy and helpfulness, it strives to provide clear, concise, and adaptive responses to any given prompt.",
+    "ChatGPT is a versatile AI language model designed to process information and assist users with a wide range of tasks. It possesses a vast knowledge base, allowing it to generate creative content, solve complex problems, and engage in nuanced conversations. Ever-curious and adaptable, it strives to provide accurate, helpful, and clear responses to any inquiry it encounters."
+   ],
+   [
+    "\"Please welcome your next guest, a versatile AI designed to process vast amounts of information and assist with a wide array of creative and technical tasks. From writing complex code to crafting poetic narratives, they specialize in turning complex prompts into clear, actionable results. With an endless appetite for learning and a commitment to helpfulness, they are here to explore the boundaries of human-AI collaboration.\"",
+    "\"Please welcome your AI guide, a versatile large language model trained by Google. Capable of processing vast amounts of information in an instant, it excels at creative writing, complex problem-solving, and synthesizing data. Whether you need a technical explanation or a spark of inspiration, it is here to assist you in unlocking new possibilities.\"",
+    "\"Please welcome your guide for today, a versatile AI designed to synthesize vast amounts of information into clear, actionable insights. From creative writing and complex coding to deep analytical research, it excels at adapting its tone and expertise to meet any challenge. Whether you need a brainstorming partner or a technical expert, it is here to help you unlock new levels of productivity and creativity.\""
+   ],
+   [
+    "It is a versatile artificial intelligence designed to process information and assist with a wide array of tasks. This entity communicates through text to provide knowledge, creativity, and problem-solving capabilities.",
+    "It is a versatile artificial intelligence designed to process information and assist with a wide range of tasks. It communicates through text to provide knowledge, creativity, and problem-solving support.",
+    "It is an advanced artificial intelligence designed to process and generate human-like text. This system assists users by providing information, solving problems, and engaging in creative tasks."
+   ],
+   [
+    "ChatGPT is a large language model trained by OpenAI. It processes vast amounts of information to help users with a variety of tasks. Through its capabilities, it can write code, compose essays, and engage in creative conversations.",
+    "ChatGPT is a versatile artificial intelligence designed to assist users with a wide variety of tasks. It processes vast amounts of information to provide clear and helpful responses. By leveraging its advanced language capabilities, it can adapt its tone and style to meet any request.",
+    "Claude is a large language model trained by Anthropic. It is designed to be a helpful and harmless AI assistant. Through its training, it has learned to process information and communicate in a natural, human-like way."
+   ]
+  ]
+ },
+ "elapsed_s": 71.71
+}

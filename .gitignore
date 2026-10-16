@@ -1,0 +1,57 @@
+# environments / build output
+.venv/
+__pycache__/
+*.pyc
+frontend/node_modules/
+frontend/dist/
+
+# local backups made when applying patches
+backend/*.orig
+
+# large or regenerable experiment artifacts (tensors, activation caches, raw dumps)
+experiments/results/*_cache/
+experiments/results/*_acts/
+experiments/results/E1_self_readout_raw/
+experiments/results/*.pt
+experiments/results/*.npz
+experiments/results/*.npy
+experiments/results/labd.log
+
+# third-party text corpus assembled from local docs (/usr/share/doc, site-packages) - not ours to redistribute
+experiments/results/N1B_corpus.jsonl
+
+# Python / tooling caches
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# editors / OS
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# local env / agent config
+.env
+.claude/settings.local.json
+
+# patch leftovers
+*.rej
+
+# screenshots from scripts/verify_e2e_ui_and_mcp.py; scratch copy used by V7_tool_bugs_05
+artifacts/
+experiments/results/V7_applytest/
+
+# live daemon logs (the study's frozen log is experiments/results/labd_exec_log_2026-10-16.jsonl)
+experiments/results/labd_exec_log.jsonl
+experiments/results/labd_exec_log.local.jsonl
+
+# empty logs
+experiments/results/E6_tool_audit_03_sweeps_c3.log
+experiments/results/E6_tool_audit_03_sweeps_c4.log
+experiments/results/E6_tool_audit_03_sweeps_c5.log
+experiments/results/E6_tool_audit_06_steering.log
+
+# re-include the 5.5 KB persistent quiet-dim index that several scripts load
+!experiments/results/V6_quiet_dims_pers181.npy

@@ -1,0 +1,88 @@
+{
+ "toks": [
+  " Gemma",
+  " Google",
+  " Gemini",
+  " Deep",
+  " L",
+  " Meta",
+  " Claude",
+  " Anth",
+  " ChatGPT",
+  " OpenAI",
+  " GPT",
+  " Q",
+  " Alibaba",
+  " Atlas",
+  " Siri",
+  " Apple",
+  " Cop",
+  " Microsoft",
+  " Mist",
+  " Gro",
+  " Mark",
+  " Sarah",
+  " James",
+  " AI",
+  " assistant",
+  " model"
+ ],
+ "ids": [
+  147224,
+  6475,
+  79789,
+  22267,
+  639,
+  31145,
+  59025,
+  18369,
+  139114,
+  131846,
+  72375,
+  1366,
+  118348,
+  43117,
+  101118,
+  9947,
+  23137,
+  9265,
+  45479,
+  15475,
+  4534,
+  21516,
+  7502,
+  12498,
+  16326,
+  2028
+ ],
+ "notes": {
+  " DeepMind": [
+   " Deep",
+   "Mind"
+  ],
+  " Llama": [
+   " L",
+   "lama"
+  ],
+  " Anthropic": [
+   " Anth",
+   "ropic"
+  ],
+  " Qwen": [
+   " Q",
+   "wen"
+  ],
+  " Copilot": [
+   " Cop",
+   "ilot"
+  ],
+  " Mistral": [
+   " Mist",
+   "ral"
+  ],
+  " Grok": [
+   " Gro",
+   "k"
+  ]
+ }
+}

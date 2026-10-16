@@ -1,0 +1,425 @@
+{
+ "ok": true,
+ "stdout": "{'part': 0, 'n_tok': 12482, 't': 11.2}\n{'part': 1, 'n_tok': 15672, 't': 22.4}\n{'part': 2, 'n_tok': 16076, 't': 33.7}\n{'part': 3, 'n_tok': 15666, 't': 45.1}\n{'part': 4, 'n_tok': 16078, 't': 56.5}\n{'part': 5, 'n_tok': 15738, 't': 67.9}\n{'part': 6, 'n_tok': 15824, 't': 79.4}\n{'part': 7, 'n_tok': 16384, 't': 90.7}\n{'part': 8, 'n_tok': 16384, 't': 102.1}\n{'part': 9, 'n_tok': 8448, 't': 108.6}\n10 0.1\n20 0.2\n30 0.3\n40 0.4\n45 0.5\n50 0.6\n55 0.7\n57 0.7\n",
+ "error": null,
+ "result": {
+  "acts": {
+   "log": [
+    {
+     "part": 0,
+     "n_tok": 12482,
+     "t": 11.2
+    },
+    {
+     "part": 1,
+     "n_tok": 15672,
+     "t": 22.4
+    },
+    {
+     "part": 2,
+     "n_tok": 16076,
+     "t": 33.7
+    },
+    {
+     "part": 3,
+     "n_tok": 15666,
+     "t": 45.1
+    },
+    {
+     "part": 4,
+     "n_tok": 16078,
+     "t": 56.5
+    },
+    {
+     "part": 5,
+     "n_tok": 15738,
+     "t": 67.9
+    },
+    {
+     "part": 6,
+     "n_tok": 15824,
+     "t": 79.4
+    },
+    {
+     "part": 7,
+     "n_tok": 16384,
+     "t": 90.7
+    },
+    {
+     "part": 8,
+     "n_tok": 16384,
+     "t": 102.1
+    },
+    {
+     "part": 9,
+     "n_tok": 8448,
+     "t": 108.6
+    }
+   ],
+   "nparts": 10,
+   "parts_done": 10,
+   "peak_GB": 30.04201472,
+   "elapsed": 108.56329202651978
+  },
+  "static": {
+   "fidelity": [
+    {
+     "layer": 10,
+     "neuron": 1820,
+     "tool_gate": [
+      "recieve",
+      "als",
+      "Haven",
+      "\u55b0",
+      "applicants",
+      " Nomad",
+      " \u2018",
+      "configure"
+     ],
+     "mine_gate": [
+      "recieve",
+      "als",
+      "Haven",
+      "\u55b0",
+      " Nomad",
+      "applicants",
+      " \u2018",
+      "configure"
+     ],
+     "tool_jv_plus": [
+      " Namib",
+      " \u2026",
+      " Scientology",
+      " Yoruba",
+      " (\u2026)",
+      " Tanz",
+      " Tenerife",
+      "</strong>"
+     ],
+     "mine_jv_plus": [
+      " Namib",
+      " \u2026",
+      " Scientology",
+      " Yoruba",
+      " Tanz",
+      " (\u2026)",
+      " Tenerife",
+      "</strong>"
+     ]
+    },
+    {
+     "layer": 20,
+     "neuron": 763,
+     "tool_gate": [
+      " Height",
+      " getHeight",
+      "Height",
+      "H",
+      "Hawaii",
+      " Hawaiian",
+      " HTC",
+      "Width"
+     ],
+     "mine_gate": [
+      " Height",
+      " getHeight",
+      "Height",
+      "H",
+      " Hawaiian",
+      "Hawaii",
+      " HTC",
+      "Width"
+     ],
+     "tool_jv_plus": [
+      " Marine",
+      " marine",
+      " pirate",
+      " pirates",
+      " \u0938\u092e\u0941\u0926\u094d\u0930\u0940",
+      " Zika",
+      "Marine",
+      " Ceylon"
+     ],
+     "mine_jv_plus": [
+      " Marine",
+      " marine",
+      " pirate",
+      " pirates",
+      " \u0938\u092e\u0941\u0926\u094d\u0930\u0940",
+      " Zika",
+      " Ceylon",
+      "Marine"
+     ]
+    },
+    {
+     "layer": 30,
+     "neuron": 1711,
+     "tool_gate": [
+      "\uf0c1",
+      "\u00bb.",
+      "</h6>",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      " Hickory",
+      "\n\n\n\n\n\n\n",
+      "','",
+      "Alpine"
+     ],
+     "mine_gate": [
+      "\uf0c1",
+      "\u00bb.",
+      "</h6>",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      " Hickory",
+      "\n\n\n\n\n\n\n",
+      "','",
+      "Alpine"
+     ],
+     "tool_jv_plus": [
+      " californ",
+      " eventual",
+      " California",
+      " seaw",
+      " Californians",
+      " rarely",
+      "\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059",
+      " Californian"
+     ],
+     "mine_jv_plus": [
+      " californ",
+      " California",
+      " eventual",
+      " seaw",
+      " Californians",
+      " rarely",
+      "\u53ef\u80fd\u6027\u304c\u3042\u308a\u307e\u3059",
+      " Californian"
+     ]
+    },
+    {
+     "layer": 40,
+     "neuron": 2320,
+     "tool_gate": [
+      "</code>",
+      ",''",
+      "</h5>",
+      "\u26f5",
+      " (\\\"",
+      " \u092a\u094d\u0930\u0924\u0940\u0924",
+      "\ud83d\udca8",
+      "\ud83c\udfc2"
+     ],
+     "mine_gate": [
+      "</code>",
+      ",''",
+      "</h5>",
+      "\u26f5",
+      " (\\\"",
+      " \u092a\u094d\u0930\u0924\u0940\u0924",
+      "\ud83d\udca8",
+      ",\\\""
+     ],
+     "tool_jv_plus": [
+      " \u043a\u0430\u043a",
+      " nh\u01b0",
+      " \u0643\u0645\u0627",
+      " like",
+      " seperti",
+      "\u6b63\u5982",
+      " \u03cc\u03c0\u03c9\u03c2",
+      "\u043a\u0430\u043a"
+     ],
+     "mine_jv_plus": [
+      " \u043a\u0430\u043a",
+      " nh\u01b0",
+      " \u0643\u0645\u0627",
+      " like",
+      " seperti",
+      "\u6b63\u5982",
+      " \u03cc\u03c0\u03c9\u03c2",
+      "\u043a\u0430\u043a"
+     ]
+    },
+    {
+     "layer": 45,
+     "neuron": 1085,
+     "tool_gate": [
+      "</em>",
+      " \u0938\u0902\u092c\u094b\u0927",
+      "?\u201d,",
+      " gereken",
+      "?),",
+      " \u0627\u0645",
+      "showerror",
+      "\u0e34\u0e49\u0e07"
+     ],
+     "mine_gate": [
+      "</em>",
+      " \u0938\u0902\u092c\u094b\u0927",
+      "?\u201d,",
+      " gereken",
+      "?),",
+      " \u0627\u0645",
+      "showerror",
+      "\u0e34\u0e49\u0e07"
+     ],
+     "tool_jv_plus": [
+      " Rates",
+      "Rates",
+      " Charleston",
+      "niu",
+      " \u09a8\u09be\u099f\u0995",
+      " rates",
+      " bals",
+      " \u064a\u0633\u0627\u0648\u064a"
+     ],
+     "mine_jv_plus": [
+      " Rates",
+      "Rates",
+      " Charleston",
+      "niu",
+      " \u09a8\u09be\u099f\u0995",
+      " rates",
+      " bals",
+      " \u064a\u0633\u0627\u0648\u064a"
+     ]
+    },
+    {
+     "layer": 50,
+     "neuron": 307,
+     "tool_gate": [
+      "</code>",
+      "]$,",
+      " \uf0a7",
+      " `;",
+      ".--",
+      "\"\"\"",
+      ")`;",
+      ")--"
+     ],
+     "mine_gate": [
+      "</code>",
+      "]$,",
+      " \uf0a7",
+      " `;",
+      ".--",
+      "\"\"\"",
+      ")`;",
+      ")--"
+     ],
+     "tool_jv_plus": [
+      "rac",
+      "vz",
+      " \u0635\u0644\u0627\u062d",
+      " racem",
+      "\u6536\u5230",
+      "arynx",
+      "\u10e6\u10d5",
+      " RAC"
+     ],
+     "mine_jv_plus": [
+      "rac",
+      "vz",
+      " \u0635\u0644\u0627\u062d",
+      " racem",
+      "\u6536\u5230",
+      "arynx",
+      "\u10e6\u10d5",
+      " RAC"
+     ]
+    },
+    {
+     "layer": 55,
+     "neuron": 30,
+     "tool_gate": [
+      " ?)",
+      "\"*",
+      "```",
+      "\u300b",
+      "\u200c.",
+      " ->",
+      "\u2753",
+      " ?>"
+     ],
+     "mine_gate": [
+      " ?)",
+      "```",
+      "\"*",
+      "\u300b",
+      "\u200c.",
+      " ->",
+      "\u2753",
+      " ?>"
+     ],
+     "tool_jv_plus": [
+      " Franklin",
+      "Franklin",
+      " getToken",
+      " \u0cb9\u0cc6\u0c9a\u0ccd\u0c9a\u0cbf\u0ca8",
+      " \u0916\u093c\u092c\u0930",
+      " \u0a38\u0a3f\u0a70\u0a18",
+      "FEC",
+      " \u00e9lect"
+     ],
+     "mine_jv_plus": [
+      " Franklin",
+      "Franklin",
+      " getToken",
+      " \u0cb9\u0cc6\u0c9a\u0ccd\u0c9a\u0cbf\u0ca8",
+      " \u0916\u093c\u092c\u0930",
+      " \u0a38\u0a3f\u0a70\u0a18",
+      " \u00e9lect",
+      "FEC"
+     ]
+    },
+    {
+     "layer": 57,
+     "neuron": 316,
+     "tool_gate": [
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+     ],
+     "mine_gate": [
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n",
+      "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+     ],
+     "tool_jv_plus": [
+      "\u2019",
+      "\u307f\u305f\u3044\u306a",
+      "\u4f3c\u7684",
+      "\u5011",
+      " prostu",
+      "\u3057\u305f\u3089",
+      " \u0940",
+      "siz"
+     ],
+     "mine_jv_plus": [
+      "\u2019",
+      "\u307f\u305f\u3044\u306a",
+      "\u4f3c\u7684",
+      "\u5011",
+      " prostu",
+      "\u3057\u305f\u3089",
+      " \u0940",
+      "siz"
+     ]
+    }
+   ],
+   "n_sub": 5544,
+   "elapsed": 1.9508452415466309
+  },
+  "elapsed_total": 110.52601408958435
+ },
+ "elapsed_s": 110.53
+}

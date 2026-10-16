@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "half 0 40.4\nhalf 1 79.3\n",
+ "error": null,
+ "result": {
+  "default|MW": 24,
+  "default|WM": 24
+ },
+ "elapsed_s": 79.28
+}

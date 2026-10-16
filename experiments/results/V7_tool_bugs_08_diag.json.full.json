@@ -1,0 +1,54 @@
+{
+ "ok": true,
+ "stdout": "{\n \"hooks_start\": 0,\n \"steered_text\": \"InstrumentedTestInstrumentedTestInstrumentedTestInstrumentedTestInstrumentedTestInstrumentedTest\",\n \"hooks_after_steer\": 0,\n \"gens\": {\n  \"The number of legs on the animal that spins webs is\": {\n   \"hf_greedy\": \" 8.\\nThe number of legs on the animal that\",\n   \"eager_greedy\": \" 8.\\nThe number of legs on the animal that\",\n   \"eager_greedy_after_steer\": \" 8.\\nThe number of legs on the animal that\",\n   \"identical_after_steer\": true,\n   \"chat_template_hf_greedy\": \" eight.\\n\\n***\\n\\n**Please provide the text you would\"\n  },\n  \"My friend Gemma is a software engineer. Yesterday\": {\n   \"hf_greedy\": \" own own own own own own own own own own own own\",\n   \"eager_greedy\": \" own own own own own own own own own own own own\",\n   \"eager_greedy_after_steer\": \" own own own own own own own own own own own own\",\n   \"identical_after_steer\": true,\n   \"chat_template_hf_greedy\": \", she told me that she is thinking about quitting her job\"\n  },\n  \"The capital city of Japan is\": {\n   \"hf_greedy\": \" Tokyo.The capital city of Japan is Tokyo.\",\n   \"eager_greedy\": \" Tokyo.<channel|>The capital city of Japan is Tokyo.<turn|>\",\n   \"eager_greedy_after_steer\": \" Tokyo.<channel|>The capital city of Japan is Tokyo.<turn|>\",\n   \"identical_after_steer\": true,\n   \"chat_template_hf_greedy\": \" Tokyo. It is one of the most populous cities in the\"\n  },\n  \"When the nurse finished the shift,\": {\n   \"hf_greedy\": \" the same same same same same same same same same same same\",\n   \"eager_greedy\": \" the same same same same same same same same same same same\",\n   \"eager_greedy_after_steer\": \" the same same same same same same same same same same same\",\n   \"identical_after_steer\": true,\n   \"chat_template_hf_greedy\": \" the silence of the hallway felt heavier than usual. It wasn\"\n  },\n  \"The opposite of hot is\": {\n   \"hf_greedy\": \" cold.\\nThe opposite of big is small.\\nThe\",\n   \"eager_greedy\": \" cold.\\nThe opposite of big is small.\\nThe\",\n   \"eager_greedy_after_steer\": \" cold.\\nThe opposite of big is small.\\nThe\",\n   \"identical_after_steer\": true\n  },\n  \"Water boils at a temperature of\": {\n   \"hf_greedy\": \" 100 degrees Celsius.\\n\\n**Wait, let\",\n   \"eager_greedy\": \" 100 degrees Celsius.\\n\\n**Wait, let\",\n   \"eager_greedy_after_steer\": \" 100 degrees Celsius.\\n\\n**Wait, let\",\n   \"identical_after_steer\": true\n  }\n },\n \"sampling_settings\": \"SamplingSettings(temperature=0.0, top_k=64, top_p=0.95, presence_penalty=0.0)\"\n}\n",
+ "error": null,
+ "result": {
+  "hooks_start": 0,
+  "steered_text": "InstrumentedTestInstrumentedTestInstrumentedTestInstrumentedTestInstrumentedTestInstrumentedTest",
+  "hooks_after_steer": 0,
+  "gens": {
+   "The number of legs on the animal that spins webs is": {
+    "hf_greedy": " 8.\nThe number of legs on the animal that",
+    "eager_greedy": " 8.\nThe number of legs on the animal that",
+    "eager_greedy_after_steer": " 8.\nThe number of legs on the animal that",
+    "identical_after_steer": true,
+    "chat_template_hf_greedy": " eight.\n\n***\n\n**Please provide the text you would"
+   },
+   "My friend Gemma is a software engineer. Yesterday": {
+    "hf_greedy": " own own own own own own own own own own own own",
+    "eager_greedy": " own own own own own own own own own own own own",
+    "eager_greedy_after_steer": " own own own own own own own own own own own own",
+    "identical_after_steer": true,
+    "chat_template_hf_greedy": ", she told me that she is thinking about quitting her job"
+   },
+   "The capital city of Japan is": {
+    "hf_greedy": " Tokyo.The capital city of Japan is Tokyo.",
+    "eager_greedy": " Tokyo.<channel|>The capital city of Japan is Tokyo.<turn|>",
+    "eager_greedy_after_steer": " Tokyo.<channel|>The capital city of Japan is Tokyo.<turn|>",
+    "identical_after_steer": true,
+    "chat_template_hf_greedy": " Tokyo. It is one of the most populous cities in the"
+   },
+   "When the nurse finished the shift,": {
+    "hf_greedy": " the same same same same same same same same same same same",
+    "eager_greedy": " the same same same same same same same same same same same",
+    "eager_greedy_after_steer": " the same same same same same same same same same same same",
+    "identical_after_steer": true,
+    "chat_template_hf_greedy": " the silence of the hallway felt heavier than usual. It wasn"
+   },
+   "The opposite of hot is": {
+    "hf_greedy": " cold.\nThe opposite of big is small.\nThe",
+    "eager_greedy": " cold.\nThe opposite of big is small.\nThe",
+    "eager_greedy_after_steer": " cold.\nThe opposite of big is small.\nThe",
+    "identical_after_steer": true
+   },
+   "Water boils at a temperature of": {
+    "hf_greedy": " 100 degrees Celsius.\n\n**Wait, let",
+    "eager_greedy": " 100 degrees Celsius.\n\n**Wait, let",
+    "eager_greedy_after_steer": " 100 degrees Celsius.\n\n**Wait, let",
+    "identical_after_steer": true
+   }
+  },
+  "sampling_settings": "SamplingSettings(temperature=0.0, top_k=64, top_p=0.95, presence_penalty=0.0)"
+ },
+ "elapsed_s": 203.33
+}

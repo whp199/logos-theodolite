@@ -1,0 +1,10 @@
+{
+ "ok": true,
+ "stdout": "collected (10, 1743, 5376) 14.6\nlens done 22.1\nnone tp_pron:272/-7.8 tp_name:56/-6.3 neutral:223/-8.2 user_name:101/-8.4\nllama tp_pron:248/-7.7 tp_name:61/-6.4 neutral:206/-8.1 user_name:31/-5.5\nman tp_pron:329/-8.5 tp_name:182/-8.0 neutral:178/-8.1 user_name:28/-5.5\n",
+ "error": null,
+ "result": {
+  "elapsed": 22.655771493911743,
+  "N": 1743
+ },
+ "elapsed_s": 22.66
+}

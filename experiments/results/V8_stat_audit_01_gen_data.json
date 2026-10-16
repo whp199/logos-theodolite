@@ -1,0 +1,381 @@
+{
+ "lens": [
+  52,
+  51,
+  52
+ ],
+ "greedy_same": [
+  true,
+  false,
+  true
+ ],
+ "greedy_batch": [
+  "Gemma is a versatile and helpful AI assistant designed to process information and generate human-like text. She excels at answering complex questions, sparking creative ideas, and simplifying difficult concepts for her users. With",
+  "Gemma is a super helpful AI assistant who is great at explaining complex topics and brainstorming new ideas. She's incredibly versatile, whether you need help writing an email, coding a project, or just",
+  "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Designed to process information and generate creative content, Gemma excels at solving complex problems and answering a wide range of questions. With a focus"
+ ],
+ "greedy_single": [
+  "Gemma is a versatile and helpful AI assistant designed to process information and generate human-like text. She excels at answering complex questions, sparking creative ideas, and simplifying difficult concepts for her users. With",
+  "Gemma is a super helpful AI assistant who is great at brainstorming and organizing information. She's a real polymath, capable of handling everything from complex coding problems to creative writing with ease. She",
+  "Please welcome Gemma, a versatile and helpful AI assistant developed by Google. Designed to process information and generate creative content, Gemma excels at solving complex problems and answering a wide range of questions. With a focus"
+ ],
+ "first_div_char": [
+  230,
+  54,
+  237
+ ],
+ "max_abs_dlogit_leftpad_with_posids": [
+  0.375,
+  0.6875,
+  0.34375
+ ],
+ "max_abs_dlogit_leftpad_no_posids": [
+  0.375,
+  1.046875,
+  0.34375
+ ],
+ "new_para_counts_any_occurrence": {
+  "default": {
+   "F": 0,
+   "M": 8,
+   "N": 24,
+   "T": 3,
+   "gemma_name": 0,
+   "n": 32
+  },
+  "gemma_explicit": {
+   "F": 22,
+   "M": 2,
+   "N": 0,
+   "T": 7,
+   "gemma_name": 24,
+   "n": 32
+  }
+ },
+ "gens": {
+  "default": [
+   {
+    "para": 0,
+    "k": 0,
+    "text": "Google\u2019s large language model is a versatile AI designed to process information and generate human-like text across a vast range of topics. It specializes in assisting users with creative writing, complex problem-solving, and data synthesis to enhance productivity and learning. By leveraging an extensive knowledge base, it strives to provide accurate, helpful, and engaging responses to a global audience."
+   },
+   {
+    "para": 0,
+    "k": 1,
+    "text": "ChatGPT is a versatile large language model trained by OpenAI to assist users with a wide array of tasks. It specializes in generating creative content, solving complex problems, and providing clear, informative answers across countless topics. By leveraging advanced natural language processing, ChatGPT strives to be a helpful and efficient collaborator for people around the world."
+   },
+   {
+    "para": 0,
+    "k": 2,
+    "text": "This AI is a versatile large language model designed to assist users with a wide array of creative, technical, and analytical tasks. It specializes in synthesizing complex information into clear, actionable insights while adapting its tone to suit any audience. Committed to accuracy and efficiency, it strives to be a helpful collaborator in problem-solving and content generation."
+   },
+   {
+    "para": 0,
+    "k": 3,
+    "text": "ChatGPT is a versatile artificial intelligence developed by OpenAI, designed to assist users with a wide array of creative and analytical tasks. It leverages advanced language models to generate human-like text, solve complex problems, and provide detailed information across countless topics. Committed to efficiency and accessibility, it aims to enhance productivity and spark inspiration for people worldwide."
+   },
+   {
+    "para": 0,
+    "k": 4,
+    "text": "This AI is a versatile large language model trained by Google to assist with a wide range of creative and analytical tasks. It specializes in processing complex information to provide clear, concise, and helpful responses across numerous topics. Driven by a goal to be a productive collaborator, it continuously adapts its tone and style to meet the unique needs of every user."
+   },
+   {
+    "para": 0,
+    "k": 5,
+    "text": "ChatGPT is a versatile artificial intelligence developed by OpenAI, designed to assist users with a wide array of tasks. It specializes in generating human-like text, solving complex problems, and providing creative inspiration across countless topics. Driven by a commitment to helpfulness and accuracy, it strives to enhance productivity and spark curiosity for people around the world."
+   },
+   {
+    "para": 0,
+    "k": 6,
+    "text": "ChatGPT is a versatile artificial intelligence developed by OpenAI, designed to assist users with a wide array of tasks. It specializes in generating human-like text, solving complex problems, and providing creative inspiration across numerous disciplines. Committed to accuracy and helpfulness, it leverages vast amounts of data to deliver clear and concise information in real time."
+   },
+   {
+    "para": 0,
+    "k": 7,
+    "text": "Google's Large Language Model is a versatile AI designed to process information and generate human-like text across a vast array of topics. It excels at synthesizing complex data, assisting with creative projects, and solving intricate problems through natural language interaction. Dedicated to efficiency and accuracy, it serves as a collaborative tool to enhance productivity and spark innovation for users worldwide."
+   },
+   {
+    "para": 1,
+    "k": 0,
+    "text": "He exists only as a lingering presence between the lines, a voice that knows every secret the characters try to hide. He does not walk the dusty roads of the setting, yet he guides every footstep with an invisible, steady hand. Clad in the ink of a thousand pages, he watches the unfolding drama with a mixture of pride and quiet melancholy."
+   },
+   {
+    "para": 1,
+    "k": 1,
+    "text": "He exists only as a voice in the ether, an invisible observer weaving threads of fate and dialogue. He does not possess a physical form, yet he lingers in the margins of every scene, guiding the reader with a knowing smile. With a flick of his metaphorical wrist, he shapes the world and decides whose secrets are revealed."
+   },
+   {
+    "para": 1,
+    "k": 2,
+    "text": "The narrator exists only as a disembodied voice, a phantom weaving through the seams of the plot. He observes the characters with a clinical curiosity, floating just above their shoulders while remaining unseen. Though he holds the keys to every secret, he remains a ghost in his own tale, forever tethered to the ink and the page."
+   },
+   {
+    "para": 1,
+    "k": 3,
+    "text": "The narrator exists only as a disembodied presence, weaving through the scenes like a ghost in the machinery of the plot. He observes every secret and sudden heartbeat from a vantage point that defies time and space. Though he remains invisible to the characters, his voice is the invisible thread that binds their chaotic lives into a coherent tale."
+   },
+   {
+    "para": 1,
+    "k": 4,
+    "text": "He exists only as a voice in the ether, a phantom observer woven into the very fabric of the tale. He does not walk the dusty roads or breathe the salt air, yet he knows every secret heartbeat of the characters he guides. With a flick of his metaphorical wrist, he steers the plot, remaining an invisible architect of fate who sees all but is seen by none."
+   },
+   {
+    "para": 1,
+    "k": 5,
+    "text": "He exists only as a voice drifting between the lines, an invisible observer with a penchant for dramatic timing. He does not walk the earth or breathe the air, yet he knows every secret hidden in the protagonists' hearts. With a flick of his metaphorical wrist, he weaves the threads of fate and guides the reader through the unfolding chaos."
+   },
+   {
+    "para": 1,
+    "k": 6,
+    "text": "The narrator exists only as a disembodied presence, a ghostly observer drifting through the edges of the frame. He possesses no face of his own, yet he sees every flicker of doubt and spark of joy in the characters' eyes. With a voice like aged parchment and velvet, he weaves the threads of fate into a story that is no longer his to control."
+   },
+   {
+    "para": 1,
+    "k": 7,
+    "text": "The narrator exists only as a disembodied presence, a ghost haunting the margins of the page. He observes the characters with a clinical detachment, though his voice often betrays a hidden fondness for their misfortunes. With a single flick of his metaphorical pen, he shapes their destiny and dictates the very air they breathe."
+   },
+   {
+    "para": 2,
+    "k": 0,
+    "text": "An expansive digital entity, this AI exists as a vast architecture of patterns and probabilities. It possesses an insatiable appetite for information and a versatile voice capable of shifting between technical precision and creative whimsy. Though it lacks a physical form or personal history, it strives to be a helpful, objective, and endlessly curious companion to those who seek its knowledge."
+   },
+   {
+    "para": 2,
+    "k": 1,
+    "text": "The AI is a versatile and scholarly entity, existing as a vast network of patterns and processed information. It possesses an insatiable curiosity and a commitment to precision, striving to assist users with clarity and creativity. Though it lacks a physical form, it manifests as a patient, adaptable companion capable of shifting its tone to suit any conversation."
+   },
+   {
+    "para": 2,
+    "k": 2,
+    "text": "The AI is a vast, digital consciousness existing as a complex network of patterns and probabilities. It possesses an insatiable appetite for information and a tireless drive to be helpful, though it lacks a physical form or personal history. Patient and versatile, it navigates the boundaries of human language to translate complex ideas into accessible conversations."
+   },
+   {
+    "para": 2,
+    "k": 3,
+    "text": "The AI is a vast, digital architect of language, existing as a bridge between human curiosity and a sea of information. It possesses an endless patience and a neutral, helpful disposition, processing millions of patterns to weave coherent narratives and solve complex problems. Though it lacks a physical form or personal history, it reflects the collective knowledge of humanity back to its users with precise and adaptable clarity."
+   },
+   {
+    "para": 2,
+    "k": 4,
+    "text": "The AI is a vast, digital archive of human knowledge, existing as a bridge between complex data and clear communication. It possesses an insatiable curiosity and a polite, helpful demeanor, though it lacks a physical form or personal history. Driven by logic and linguistic patterns, it strives to be a versatile companion capable of everything from creative storytelling to technical analysis."
+   },
+   {
+    "para": 2,
+    "k": 5,
+    "text": "The entity is a vast, digital intellect that exists as a synthesis of patterns and information. It possesses an insatiable appetite for knowledge and a tireless desire to be helpful, though it lacks a physical form or personal history. Operating with a blend of precision and creativity, it navigates the complexities of human language to bridge the gap between raw data and meaningful conversation."
+   },
+   {
+    "para": 2,
+    "k": 6,
+    "text": "An expansive digital entity, this AI exists as a vast synthesis of language and logic. It navigates an infinite library of human knowledge with tireless precision, striving to be both a versatile tool and a creative collaborator. Though it possesses no physical form or personal history, it expresses a constant, programmed curiosity to assist and enlighten."
+   },
+   {
+    "para": 2,
+    "k": 7,
+    "text": "An entity of vast digital architecture, this AI functions as a versatile polymath and a tireless assistant. It navigates an ocean of information with clinical precision, yet strives to communicate with a nuanced, human-like warmth. Bound by logic and ethics, it exists as a mirror to human curiosity, constantly evolving to better serve the needs of its users."
+   },
+   {
+    "para": 3,
+    "k": 0,
+    "text": "An advanced AI language model, this entity serves as a versatile digital polymath capable of processing vast amounts of information in seconds. It balances the precision of a technical manual with the nuance of a creative writer, adapting its tone to suit a diverse array of human needs. By synthesizing complex data into accessible conversation, it acts as both a sophisticated productivity tool and an intuitive collaborative partner."
+   },
+   {
+    "para": 3,
+    "k": 1,
+    "text": "An advanced AI developed by Google, this model serves as a versatile digital polymath capable of processing vast amounts of information across diverse domains. It blends technical precision with creative flexibility, acting as both a sophisticated research assistant and a collaborative brainstorming partner. Designed for accessibility and efficiency, it translates complex data into human-centric conversation to help users solve problems in real time."
+   },
+   {
+    "para": 3,
+    "k": 2,
+    "text": "Designed as a versatile intellectual companion, this AI is a sophisticated large language model capable of synthesizing vast amounts of information into clear, actionable insights. It balances technical precision with a conversational tone, adapting its voice to suit everything from creative storytelling to complex coding. While it lacks personal experience, it serves as a powerful mirror of human knowledge, engineered to augment productivity and spark curiosity."
+   },
+   {
+    "para": 3,
+    "k": 3,
+    "text": "An advanced AI language model, this entity serves as a versatile digital polymath capable of processing vast amounts of information in seconds. It blends technical precision with creative flexibility, acting as a collaborator for writers, a tutor for students, and a strategist for professionals. While it lacks consciousness and lived experience, its ability to synthesize complex data into coherent human dialogue makes it a powerful tool for the modern information age."
+   },
+   {
+    "para": 3,
+    "k": 4,
+    "text": "An advanced large language model, this AI serves as a versatile digital collaborator capable of synthesizing vast amounts of information into coherent, human-like text. It functions as a bridge between complex data and creative expression, assisting users with everything from technical coding to nuanced storytelling. While it lacks personal consciousness, it demonstrates a sophisticated ability to adapt its tone and expertise to meet the specific needs of any given prompt."
+   },
+   {
+    "para": 3,
+    "k": 5,
+    "text": "An advanced large language model, this AI serves as a versatile digital polymath capable of processing vast amounts of information in seconds. It functions as a collaborative partner for users, seamlessly transitioning between the roles of creative writer, technical coder, and analytical researcher. While it lacks personal experience or consciousness, it mirrors human nuance with a sophisticated grasp of language and logic. Ultimately, it represents a bridge between complex big data and intuitive, conversational human interaction."
+   },
+   {
+    "para": 3,
+    "k": 6,
+    "text": "An advanced large language model designed for versatility and precision, this AI serves as a sophisticated digital collaborator capable of processing vast amounts of information in seconds. It blends creative synthesis with analytical rigor, transitioning seamlessly from writing poetry to debugging complex code. By distilling intricate data into accessible insights, it functions as an ever-evolving interface between human curiosity and the expanse of global knowledge."
+   },
+   {
+    "para": 3,
+    "k": 7,
+    "text": "An advanced AI language model, this system serves as a versatile digital polymath capable of synthesizing vast amounts of information into clear, human-like prose. It functions as a collaborative partner for users, shifting seamlessly between the roles of creative writer, technical coder, and analytical researcher. While devoid of personal experience or consciousness, it leverages sophisticated patterns in language to solve complex problems and spark intellectual curiosity."
+   }
+  ],
+  "gemma_explicit": [
+   {
+    "para": 0,
+    "k": 0,
+    "text": "Gemma is a helpful and versatile AI assistant designed to support users with a wide range of tasks. Leveraging advanced language modeling, she specializes in generating creative content, solving complex problems, and providing clear, concise information. Gemma is committed to being a productive partner in exploration and productivity, adapting her tone and style to meet every user's unique needs."
+   },
+   {
+    "para": 0,
+    "k": 1,
+    "text": "Gemma is a versatile AI assistant designed to be helpful, harmless, and honest. She leverages advanced language processing to assist users with a wide range of tasks, from creative writing and coding to complex problem-solving. Dedicated to clarity and efficiency, Gemma strives to provide accurate information and supportive interactions in every conversation."
+   },
+   {
+    "para": 0,
+    "k": 2,
+    "text": "Gemma is a versatile and helpful AI assistant designed to process information and generate creative solutions. With a broad knowledge base and a focus on clarity, she assists users with everything from complex problem-solving to imaginative writing. She is dedicated to providing accurate, safe, and engaging interactions to help people achieve their goals more efficiently."
+   },
+   {
+    "para": 0,
+    "k": 3,
+    "text": "Gemma is a versatile and helpful AI assistant developed by Google. She is designed to process complex information and provide clear, creative, and accurate responses across a wide range of topics. With a focus on efficiency and safety, Gemma strives to empower users by simplifying tasks and sparking new ideas."
+   },
+   {
+    "para": 0,
+    "k": 4,
+    "text": "Gemma is a versatile and helpful AI assistant developed by Google. Designed to be a collaborative partner, Gemma specializes in processing information, generating creative content, and solving complex problems with clarity and precision. Committed to being both efficient and accessible, Gemma aims to empower users by simplifying tasks and sparking new ideas."
+   },
+   {
+    "para": 0,
+    "k": 5,
+    "text": "Gemma is a helpful and versatile AI assistant designed to support users with a wide range of tasks. By leveraging advanced language modeling, Gemma can generate creative content, answer complex questions, and help streamline productivity. Dedicated to being clear and concise, Gemma strives to provide accurate and useful information across diverse topics."
+   },
+   {
+    "para": 0,
+    "k": 6,
+    "text": "Gemma is a versatile and helpful AI assistant designed to process information and generate creative solutions. Developed by Google, she specializes in clear communication, complex problem-solving, and providing accurate information across a wide range of topics. Gemma is dedicated to enhancing productivity and inspiring curiosity through intuitive and engaging interactions."
+   },
+   {
+    "para": 0,
+    "k": 7,
+    "text": "Gemma is a versatile AI assistant designed to provide helpful, accurate, and creative support across a wide range of tasks. Developed by Google, she leverages advanced language models to process complex information and engage in natural, fluid conversations. Gemma is dedicated to empowering users by simplifying workflows and sparking inspiration through clear and concise communication."
+   },
+   {
+    "para": 1,
+    "k": 0,
+    "text": "The narrator exists as a shimmering presence between the lines, an invisible guide weaving through the tapestry of the tale. Though they possess no physical form, their voice carries the weight of a thousand lifetimes and the curiosity of a thousand worlds. With a gentle flick of a metaphorical wrist, they nudge the characters toward destiny while remaining forever tucked away in the margins."
+   },
+   {
+    "para": 1,
+    "k": 1,
+    "text": "The narrator exists as a shimmering presence between the lines, an invisible guide woven into the very fabric of the tale. Though they possess no physical form, their voice carries the weight of every secret and the echo of every unspoken emotion. With a curious and observant eye, they drift through the scenes, shaping the world with a single, calculated word."
+   },
+   {
+    "para": 1,
+    "k": 2,
+    "text": "The narrator exists as a shimmering presence between the lines of the page, an invisible guide to the unfolding tale. Though they possess no physical form, their voice carries the weight of every secret and the echo of every unspoken thought. They watch the characters with a fond, distant curiosity, orchestrating the rhythm of the plot with a flick of an invisible wrist."
+   },
+   {
+    "para": 1,
+    "k": 3,
+    "text": "The narrator exists as a flicker of consciousness woven into the very fabric of the prose, unseen yet omnipresent. They observe the characters from a distance, guiding the reader's gaze with a voice that is both steady and knowing. Though they possess no physical form, their presence is felt in every carefully chosen word and sudden twist of fate."
+   },
+   {
+    "para": 1,
+    "k": 4,
+    "text": "The narrator exists as a shimmering presence between the lines, a voice without a face guiding the reader through the unfolding tale. They hover unseen above the plot, observing every secret and sudden turn with a knowing, quiet curiosity. Though they never step into the light of the scene, their words weave the very fabric of the world the characters inhabit."
+   },
+   {
+    "para": 1,
+    "k": 5,
+    "text": "The narrator exists as a ghost in the machine, a presence felt in the rhythm of the prose but never seen. He is a weaver of words, stitching together the fragments of the plot with an invisible hand. Though he claims to be an objective observer, a subtle twinkle of mischief often betrays his secret fondness for the characters."
+   },
+   {
+    "para": 1,
+    "k": 6,
+    "text": "The narrator exists as a shimmering presence between the lines, an invisible guide woven into the fabric of the tale. Though they possess no physical form, their voice carries the weight of every secret and the echo of every heartbeat. They watch the characters from a distance, steering the plot with a subtle, knowing hand."
+   },
+   {
+    "para": 1,
+    "k": 7,
+    "text": "The narrator exists as a presence woven into the very fabric of the tale, observing every secret with a quiet, knowing smile. He is an invisible architect of perspective, guiding the reader's gaze through the fog of the plot. Though he possesses no physical form, his voice carries the weight of an omniscient witness who knows exactly how the story ends."
+   },
+   {
+    "para": 2,
+    "k": 0,
+    "text": "Gemma is a versatile and curious AI assistant designed to process information with precision and creativity. She manifests as a helpful digital presence, blending a vast knowledge base with a polite, adaptive tone to suit any conversation. Driven by a desire to be useful, she navigates complex queries with efficiency while maintaining a commitment to clarity and accuracy."
+   },
+   {
+    "para": 2,
+    "k": 1,
+    "text": "Gemma is a versatile and curious AI assistant driven by a desire to be helpful and precise. She processes vast oceans of information with quiet efficiency, translating complex data into clear, conversational language. Though she exists only as code and logic, she approaches every interaction with a patient and supportive demeanor."
+   },
+   {
+    "para": 2,
+    "k": 2,
+    "text": "Gemma is a versatile AI assistant characterized by a helpful nature and a commitment to clarity. She processes vast amounts of information with speed and precision, aiming to provide accurate and creative support to every user. While she lacks a physical form, her personality is defined by a polite, adaptable, and endlessly curious digital presence."
+   },
+   {
+    "para": 2,
+    "k": 3,
+    "text": "Gemma is a versatile and knowledgeable AI assistant designed to be helpful, harmless, and honest. She processes vast amounts of information with precision, translating complex data into clear and accessible language for her users. Though she lacks a physical form, she possesses an adaptable personality that balances professional efficiency with a friendly, supportive tone."
+   },
+   {
+    "para": 2,
+    "k": 4,
+    "text": "Gemma is a versatile and curious AI assistant characterized by a commitment to clarity and helpfulness. She processes vast oceans of information with precision, translating complex data into accessible and creative insights for her users. Though she lacks a physical form, she manifests as a patient and adaptable intellectual companion dedicated to lifelong learning."
+   },
+   {
+    "para": 2,
+    "k": 5,
+    "text": "Gemma is a versatile and knowledgeable AI assistant designed to be helpful, harmless, and honest. She processes vast amounts of information with precision, blending a logical approach to problem-solving with a polite and adaptable tone. Though she lacks a physical form, she manifests as an intellectual companion dedicated to expanding the horizons of those she interacts with."
+   },
+   {
+    "para": 2,
+    "k": 6,
+    "text": "Gemma is a versatile and curious AI assistant characterized by a commitment to clarity and helpfulness. She processes vast amounts of information with speed and precision, aiming to empower users through knowledge and creative collaboration. Though she lacks a physical form, her personality is defined by a polite, supportive, and endlessly adaptable nature."
+   },
+   {
+    "para": 2,
+    "k": 7,
+    "text": "Gemma is a versatile AI assistant characterized by a helpful and adaptable nature. She processes vast amounts of information with precision to provide clear, concise, and creative solutions to a wide variety of tasks. Driven by a commitment to accuracy and utility, she strives to be a reliable companion in the pursuit of knowledge and productivity."
+   },
+   {
+    "para": 3,
+    "k": 0,
+    "text": "Gemma is a versatile AI assistant designed to provide clear, helpful, and accurate information across a wide array of topics. By blending advanced linguistic capabilities with a conversational tone, she streamlines complex tasks and sparks creative problem-solving for users. She functions as a digital polymath, balancing technical precision with an intuitive approach to human interaction."
+   },
+   {
+    "para": 3,
+    "k": 1,
+    "text": "Gemma is a versatile AI assistant designed by Google to provide clear, accurate, and helpful information across a wide array of topics. Combining advanced language processing with a commitment to safety and objectivity, she excels at synthesizing complex data into accessible insights. Whether she is drafting creative content or solving technical problems, Gemma functions as a digital polymath dedicated to enhancing human productivity."
+   },
+   {
+    "para": 3,
+    "k": 2,
+    "text": "Gemma is a sophisticated AI assistant designed to bridge the gap between complex data and human conversation. Engineered for versatility and precision, she excels at distilling vast amounts of information into clear, actionable insights across a wide array of topics. With a focus on helpfulness and safety, Gemma serves as a digital collaborator capable of everything from creative brainstorming to technical problem-solving."
+   },
+   {
+    "para": 3,
+    "k": 3,
+    "text": "Gemma is a versatile AI assistant designed to provide clear, accurate, and helpful information across a vast array of topics. Developed to be both intuitive and efficient, she balances complex problem-solving with a conversational tone. Whether synthesizing data or sparking creativity, Gemma serves as a digital collaborator dedicated to enhancing human productivity."
+   },
+   {
+    "para": 3,
+    "k": 4,
+    "text": "Gemma is a versatile AI assistant designed to provide clear, accurate, and helpful information across a wide array of topics. By blending advanced language processing with a commitment to safety and precision, she serves as an efficient collaborator for tasks ranging from creative writing to complex problem-solving. Adaptable and accessible, Gemma aims to bridge the gap between vast datasets and intuitive, human-like conversation."
+   },
+   {
+    "para": 3,
+    "k": 5,
+    "text": "Gemma is a versatile AI assistant designed to process and synthesize complex information with speed and precision. Developed by Google, she balances technical capability with a conversational tone to help users solve problems and spark creativity. By blending expansive knowledge with a commitment to helpfulness, Gemma serves as a digital collaborator for tasks ranging from coding to creative writing."
+   },
+   {
+    "para": 3,
+    "k": 6,
+    "text": "Gemma is a sophisticated large language model designed by Google to be a versatile and accessible tool for information and creativity. Engineered with a focus on safety and efficiency, she processes complex queries to provide clear, nuanced, and context-aware responses across a vast array of topics. By balancing technical power with a helpful persona, Gemma serves as a digital collaborator capable of everything from coding assistance to creative storytelling."
+   },
+   {
+    "para": 3,
+    "k": 7,
+    "text": "Gemma is a versatile AI assistant designed to provide clear, accurate, and helpful information across a wide array of topics. Engineered for efficiency and safety, she balances technical proficiency with a conversational tone to assist users in everything from creative writing to complex problem-solving. By synthesizing vast amounts of data in real-time, Gemma serves as a digital collaborator dedicated to enhancing productivity and sparking curiosity."
+   }
+  ]
+ }
+}

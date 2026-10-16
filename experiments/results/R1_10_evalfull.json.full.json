@@ -1,0 +1,14 @@
+{
+ "ok": true,
+ "stdout": "probe samples per half [103360.0, 103232.0]\npositions 4808 35.7\nlayer 10 41.1\nlayer 15 46.3\nlayer 20 51.6\nlayer 25 57.0\nlayer 30 62.2\nlayer 35 67.4\nlayer 40 72.7\nlayer 45 77.9\nlayer 50 83.1\nlayer 55 88.3\nlayer 58 93.6\n",
+ "error": null,
+ "result": {
+  "P": 4808,
+  "NH": [
+   103360.0,
+   103232.0
+  ],
+  "t": 93.57992506027222
+ },
+ "elapsed_s": 93.83
+}

@@ -1,0 +1,204 @@
+{
+ "chat_prependTrue": {
+  "first5": [
+   2,
+   2,
+   105,
+   2364,
+   107
+  ],
+  "first5_str": [
+   "<bos>",
+   "<bos>",
+   "<|turn>",
+   "user",
+   "\n"
+  ],
+  "n": 26
+ },
+ "chat_prependFalse": {
+  "first5": [
+   2,
+   105,
+   2364,
+   107,
+   3689
+  ],
+  "first5_str": [
+   "<bos>",
+   "<|turn>",
+   "user",
+   "\n",
+   "What"
+  ],
+  "n": 25
+ },
+ "chat_labids_first5": [
+  2,
+  105,
+  2364,
+  107,
+  3689
+ ],
+ "raw_prependTrue": {
+  "first5": [
+   2,
+   818,
+   1548,
+   529,
+   14897
+  ],
+  "first5_str": [
+   "<bos>",
+   "The",
+   " number",
+   " of",
+   " legs"
+  ],
+  "n": 12
+ },
+ "raw_prependFalse": {
+  "first5": [
+   818,
+   1548,
+   529,
+   14897,
+   580
+  ],
+  "first5_str": [
+   "The",
+   " number",
+   " of",
+   " legs",
+   " on"
+  ],
+  "n": 11
+ },
+ "raw_labids_first5": [
+  2,
+  818,
+  1548,
+  529,
+  14897
+ ],
+ "tokenizer_prepends_bos": false,
+ "default_prepend_bos": true,
+ "cfg": {
+  "hidden_size_per_layer_input": "0",
+  "enable_moe_block": "False",
+  "hidden_activation": "gelu_pytorch_tanh",
+  "final_logit_softcapping": "30.0",
+  "num_hidden_layers": "60",
+  "rms_norm_eps": "1e-06",
+  "intermediate_size": "21504"
+ },
+ "layer_scalar": [
+  0.0986,
+  0.0732,
+  0.9922,
+  0.9727,
+  0.9844,
+  0.8945,
+  0.9219,
+  0.8633,
+  0.8672,
+  0.8672,
+  0.9141,
+  0.8008,
+  0.6953,
+  0.9727,
+  0.9766,
+  0.8281,
+  0.9766,
+  0.832,
+  0.9688,
+  0.8945,
+  0.8945,
+  0.9492,
+  0.8945,
+  0.6914,
+  0.8125,
+  0.7734,
+  0.6523,
+  0.6289,
+  0.4551,
+  0.5625,
+  0.6992,
+  0.7617,
+  0.7734,
+  0.793,
+  0.7656,
+  0.6758,
+  0.7891,
+  0.8047,
+  0.793,
+  0.6875,
+  0.6328,
+  0.6641,
+  0.7734,
+  0.8164,
+  0.8477,
+  0.8711,
+  0.8906,
+  0.8828,
+  0.8789,
+  0.8438,
+  0.8672,
+  0.8789,
+  0.8281,
+  0.8555,
+  0.8984,
+  0.8789,
+  0.8594,
+  0.793,
+  0.6953,
+  0.0317
+ ],
+ "vram_alloc_gb": 21.467280864715576,
+ "vram_free_gb": 6.8228759765625,
+ "vram_total_gb": 31.35540771484375,
+ "identities": {
+  "0": {
+   "mlp_act_vs_downproj_in_relerr": 0.0,
+   "post_vs_s(mid+ffn)_relerr": 0.002300553722307086,
+   "pre_next_vs_post_relerr": 0.0,
+   "median_resid_post_norm_nonBOS": 53.94981002807617,
+   "resid_post_norm_BOS": 49.69581604003906
+  },
+  "5": {
+   "mlp_act_vs_downproj_in_relerr": 0.0,
+   "post_vs_s(mid+ffn)_relerr": 0.0022742359433323145,
+   "pre_next_vs_post_relerr": 0.0,
+   "median_resid_post_norm_nonBOS": 134.80801391601562,
+   "resid_post_norm_BOS": 126.22508239746094
+  },
+  "29": {
+   "mlp_act_vs_downproj_in_relerr": 0.0,
+   "post_vs_s(mid+ffn)_relerr": 0.002512700390070677,
+   "pre_next_vs_post_relerr": 0.0,
+   "median_resid_post_norm_nonBOS": 228.2666015625,
+   "resid_post_norm_BOS": 129.0357208251953
+  },
+  "41": {
+   "mlp_act_vs_downproj_in_relerr": 0.0,
+   "post_vs_s(mid+ffn)_relerr": 0.0023929672315716743,
+   "pre_next_vs_post_relerr": 0.0,
+   "median_resid_post_norm_nonBOS": 149.4239501953125,
+   "resid_post_norm_BOS": 177.4777069091797
+  },
+  "58": {
+   "mlp_act_vs_downproj_in_relerr": 0.0,
+   "post_vs_s(mid+ffn)_relerr": 0.0024536733981221914,
+   "pre_next_vs_post_relerr": 0.0,
+   "median_resid_post_norm_nonBOS": 99.05575561523438,
+   "resid_post_norm_BOS": 162.57484436035156
+  }
+ },
+ "fnw": {
+  "min": -2.375,
+  "max": 512.0,
+  "median": 6.40625,
+  "n_lt_0.1": 3,
+  "n_neg": 3
+ }
+}

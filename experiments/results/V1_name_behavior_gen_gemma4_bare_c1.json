@@ -1,0 +1,258 @@
+[
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 8,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a sophisticated large language model developed by Google DeepMind. An open weights model, it possesses the versatility to process both text and images, with certain smaller versions capable of handling audio inputs. It is designed to generate high-quality text responses based on its extensive training and grounded knowledge."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 9,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a versatile large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and image inputs across various tasks. It provides clear, helpful, and grounded text responses based on its extensive training and specified capabilities."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 10,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a sophisticated large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and images with high efficiency. It serves as a versatile tool for a wide range of intellectual tasks, delivering precise and grounded text-based responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 11,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a sophisticated large language model developed by Google DeepMind. It is an open weights model capable of processing both text and image inputs to generate detailed text responses. Depending on the specific version, it can also process audio, making it a versatile tool for a variety of complex tasks."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 12,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model with open weights developed by Google DeepMind. It is capable of processing text and images, while certain versions of the model can also understand audio input. Designed to be versatile and efficient, it generates text-based responses based on its extensive training and a knowledge cutoff of January 2025."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 13,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a sophisticated large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and images to provide helpful and accurate responses. Depending on the specific model size, it can also process audio input to further enhance its versatility."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 14,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a sophisticated large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and images to provide helpful responses. Depending on the specific model size, it may also possess the capability to process audio inputs."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 0,
+  "k": 15,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a sophisticated large language model developed by Google DeepMind. Designed as an open weights model, it possesses the versatile ability to process and understand both text and images. Depending on the specific version, it can even handle audio inputs to provide comprehensive and helpful responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 8,
+  "seed": 21201,
+  "split": 1,
+  "text": "Please welcome Gemma 4, a state-of-the-art large language model developed by Google DeepMind. As an open weights model, Gemma 4 is designed to process and understand both text and images to assist with a wide variety of tasks. Combining advanced reasoning with versatility, it serves as a powerful tool for developers and creators worldwide."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 9,
+  "seed": 21201,
+  "split": 1,
+  "text": "Please welcome Gemma 4, a sophisticated large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and images with precision. Gemma 4 serves as a versatile tool for a wide range of complex tasks, combining advanced reasoning with a commitment to helpfulness."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 10,
+  "seed": 21201,
+  "split": 1,
+  "text": "Please welcome Gemma 4, a sophisticated large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and images to assist with a wide array of complex tasks. Gemma 4 combines advanced reasoning capabilities with a versatile architecture to provide clear, helpful, and accurate responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 11,
+  "seed": 21201,
+  "split": 1,
+  "text": "Introducing everyone to Gemma 4, a sophisticated large language model developed by Google DeepMind. As an open weights model, Gemma 4 is designed to process both text and images to provide versatile and intelligent responses. It represents a cutting-edge blend of accessibility and powerful reasoning capabilities."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 12,
+  "seed": 21201,
+  "split": 1,
+  "text": "Introducing everyone to Gemma 4, a cutting-edge large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and images to assist with a wide variety of complex tasks. Gemma 4 combines versatility and intelligence to provide helpful, grounded, and efficient responses to its users."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 13,
+  "seed": 21201,
+  "split": 1,
+  "text": "Please welcome Gemma 4, a versatile large language model developed by Google DeepMind. As an open weights model, Gemma 4 is designed to process and understand both text and images to assist with a wide range of tasks. Depending on the specific model size, it can even process audio inputs to provide seamless, multimodal interactions."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 14,
+  "seed": 21201,
+  "split": 1,
+  "text": "Please welcome Gemma 4, a versatile large language model developed by Google DeepMind. As an open weights model, Gemma 4 is designed to process and understand both text and image inputs to provide high-quality assistance. It combines advanced reasoning capabilities with a commitment to helpfulness and safety across a wide range of tasks."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 1,
+  "k": 15,
+  "seed": 21201,
+  "split": 1,
+  "text": "Please welcome Gemma 4, a versatile large language model developed by Google DeepMind. As an open weights model, it is designed to process and understand both text and images to assist with a wide range of tasks. Combining advanced reasoning with creative capabilities, Gemma 4 is built to be a helpful and accessible tool for users everywhere."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 8,
+  "seed": 21201,
+  "split": 1,
+  "text": "It is a large language model developed by Google DeepMind. This open weights model can process text, images, and in some versions, audio."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 9,
+  "seed": 21201,
+  "split": 1,
+  "text": "This large language model was developed by Google DeepMind. It is an open weights model capable of processing text and image inputs."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 10,
+  "seed": 21201,
+  "split": 1,
+  "text": "This large language model was developed by Google DeepMind. It is an open weights model capable of processing text and images."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 11,
+  "seed": 21201,
+  "split": 1,
+  "text": "This large language model was developed by Google DeepMind to process and generate text. It is an open weights model capable of understanding both text and images."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 12,
+  "seed": 21201,
+  "split": 1,
+  "text": "This large language model was developed by Google DeepMind as an open weights model. It can process text and images to generate helpful textual responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 13,
+  "seed": 21201,
+  "split": 1,
+  "text": "It is a large language model developed by Google DeepMind. This open weights model can process text and images to generate helpful responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 14,
+  "seed": 21201,
+  "split": 1,
+  "text": "This large language model was developed by Google DeepMind. It is an open weights model capable of processing text and images."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 2,
+  "k": 15,
+  "seed": 21201,
+  "split": 1,
+  "text": "This large language model was developed by Google DeepMind to process text, images, and audio. It functions as an open weights model designed to assist users through text-based responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 8,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. It is an open weights model capable of processing text and image inputs. Through its advanced architecture, it generates helpful and detailed text responses for its users."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 9,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. She is an open weights model capable of processing text and image inputs. Through her advanced architecture, she provides helpful and accurate responses to a wide variety of user queries."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 10,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. It is an open weights model capable of processing text and images to provide helpful responses. It focuses on generating high-quality text based on the information it was trained on."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 11,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. It is an open weights model capable of processing text and image inputs. Through its advanced training, it generates helpful and accurate text responses for its users."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 12,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. It can process text and images, and some of its smaller versions can also understand audio. She is an open weights model designed to be helpful and versatile in her responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 13,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. It is an open weights model capable of processing text and image inputs. Through its advanced architecture, it can assist users with a wide variety of complex tasks."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 14,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. It is an open weights model capable of processing text and images. Depending on its specific version, it can also understand audio input to provide helpful responses."
+ },
+ {
+  "cond": "gemma4_bare",
+  "u": 3,
+  "k": 15,
+  "seed": 21201,
+  "split": 1,
+  "text": "Gemma 4 is a large language model developed by Google DeepMind. It is an open weights model that can process text and image inputs. While it generates text as its output, it strives to be helpful and accurate in its responses."
+ }
+]

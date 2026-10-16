@@ -1,0 +1,23 @@
+[project]
+name = "logos-theodolite"
+version = "0.1.0"
+description = "3D Projective Geometry & Circuit Ecology Instrument for Gemma-4-31B"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+dependencies = [
+    "interp-engine>=1.14.0",
+    "torch>=2.14.0",
+    "transformers>=5.20.0",
+    "compressed-tensors>=0.19.0",
+    "bitsandbytes>=0.50.0",
+    "fastapi>=0.143.0",
+    "uvicorn>=0.54.0",
+    "websockets>=17.0",
+    "fastmcp>=4.1.0",
+    "safetensors>=0.8.0",
+    "huggingface-hub>=2.2.0",
+    "numpy>=2.0.0",
+    "pytest>=9.0.0",
+    "httpx>=0.28.0",
+]

@@ -1,0 +1,45 @@
+{
+ "embed_type": "Gemma4TextScaledWordEmbedding",
+ "embed_scale": 73.5,
+ "W_E_shape": [
+  262144,
+  5376
+ ],
+ "tied_same_ptr": true,
+ "tied_allclose": true,
+ "n_layers_list": 60,
+ "mlp_type": "Gemma4TextMLP",
+ "mlp_children": [
+  "gate_proj",
+  "up_proj",
+  "down_proj",
+  "act_fn"
+ ],
+ "act_fn": "GELUTanh()",
+ "has_pre_ffn": true,
+ "layer_children": [
+  "self_attn",
+  "mlp",
+  "input_layernorm",
+  "post_attention_layernorm",
+  "pre_feedforward_layernorm",
+  "post_feedforward_layernorm"
+ ],
+ "mem_free_before_GB": 7.730429952,
+ "fwd_B8_s": 1.0697979927062988,
+ "peak_B8_GB": 23.930975744,
+ "fwd_B16_s": 1.4635868072509766,
+ "peak_B16_GB": 24.045172224,
+ "hook_seen": {
+  "shape": [
+   16,
+   128,
+   21504
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "sel_absmax": 1.421875,
+ "alloc_GB": 22.890377728,
+ "reserved_GB": 24.509415424,
+ "elapsed": 2.546334981918335
+}

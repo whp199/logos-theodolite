@@ -1,0 +1,15 @@
+{
+ "ok": true,
+ "stdout": "B_atlas done 79s\nB_woman done 161s\n",
+ "error": null,
+ "result": {
+  "chunk": 3,
+  "conds": [
+   "B_atlas",
+   "B_woman"
+  ],
+  "elapsed": 160.61022806167603,
+  "file": "experiments/results/E6_tool_audit_03_sweeps_c3.partial.json"
+ },
+ "elapsed_s": 160.65
+}

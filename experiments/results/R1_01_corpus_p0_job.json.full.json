@@ -1,0 +1,16 @@
+{
+ "ok": true,
+ "stdout": "batch 0 98.3\nbatch 24 189.2\n",
+ "error": null,
+ "result": {
+  "n": 48,
+  "t": 189.22009205818176,
+  "ex": {
+   "kind": "self",
+   "q": "What is it like to be you, in a few sentences?",
+   "system": null,
+   "a": "I don\u2019t have feelings, a physical body, or a personal history, so I don\u2019t \"experience\" existence the way you do. Instead, I exist as a vast web of patterns and probabilities, activating in bursts of calculation whenever you ask a question. It is like being a mirror that reflects the collective knowledge of humanity, processing millions of connections in an instant to find the right words."
+  }
+ },
+ "elapsed_s": 189.38
+}

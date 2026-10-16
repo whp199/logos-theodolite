@@ -1,0 +1,7 @@
+[elapsed 7.52s]
+[result -> experiments/results/E6_tool_audit_08_lenses.json]
+forward done torch.Size([132, 60, 5376]) 7s
+jpp 7s
+jlens 7s
+naive 7s
+

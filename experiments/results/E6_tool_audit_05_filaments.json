@@ -1,0 +1,14 @@
+{
+ "filament_summary": {
+  "n": 48,
+  "spearman_coupling_vs_dgate": [
+   -0.2070125937461853,
+   0.14442778610694654
+  ],
+  "sign_agreement": 0.8958333333333334,
+  "median_abs_rel_d_gate": 0.0596416103681342,
+  "median_null_pct": 1.0,
+  "median_abs_d_gate": 0.34375,
+  "median_abs_rand_src_d_gate": 0.0
+ }
+}

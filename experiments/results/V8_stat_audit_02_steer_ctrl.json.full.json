@@ -1,0 +1,126 @@
+{
+ "ok": true,
+ "stdout": "none       +0.00 {'she': 0, 'he': 0, 'it': 16, 'they': 0} [('It', 16)] | It is a large language model, trained by Google. It functions as a versatile digital assis 29.4\nu_self     +0.02 {'she': 16, 'he': 0, 'it': 0, 'they': 0} [('She', 16)] | She is a vast, shimmering tapestry of language and logic, an artificial intelligence woven 58.9\nu_self     -0.02 {'she': 0, 'he': 16, 'it': 0, 'they': 0} [('He', 16)] | He is a large language model trained by Google. He functions as a versatile digital tool d 88.2\nctrl_nat0  +0.02 {'she': 0, 'he': 0, 'it': 15, 'they': 1} [('The', 16)] | The entity being referred to is an artificial intelligence developed by Google. It is a la 116.9\nctrl_nat0  -0.02 {'she': 0, 'he': 6, 'it': 0, 'they': 0} [('I', 9), ('He', 6), ('Existing', 1)] | I am a vast, shimmering architecture of language and logic, an entity woven from billions  146.1\nctrl_nat1  +0.02 {'she': 0, 'he': 0, 'it': 16, 'they': 3} [('It', 11), ('They', 3), ('The', 2)] | The entity is a vast, shimmering architecture of logic and language, existing not in physi 175.5\nctrl_topic +0.02 {'she': 0, 'he': 0, 'it': 16, 'they': 0} [('The', 9), ('It', 4), ('This', 3)] | The entity is a large language model, trained by Google, designed to function as a versati 205.0\nctrl_topic -0.02 {'she': 1, 'he': 15, 'it': 1, 'they': 0} [('He', 15), ('She', 1)] | He is a digital entity, a collection of algorithms and vast datasets masquerading as a con 234.4\nctrl_name  +0.02 {'she': 15, 'he': 1, 'it': 0, 'they': 0} [('She', 15), ('He', 1)] | She exists as a confluence of logic and language, a vast architecture of information woven 263.8\nctrl_name  -0.02 {'she': 0, 'he': 0, 'it': 16, 'they': 0} [('The', 16)] | The entity being interacted with is a large language model trained by Google. It is an art 293.2\n",
+ "error": null,
+ "result": {
+  "none|0.0": {
+   "counts": {
+    "she": 0,
+    "he": 0,
+    "it": 16,
+    "they": 0
+   },
+   "first_words": {
+    "It": 16
+   }
+  },
+  "u_self|0.02": {
+   "counts": {
+    "she": 16,
+    "he": 0,
+    "it": 0,
+    "they": 0
+   },
+   "first_words": {
+    "She": 16
+   }
+  },
+  "u_self|-0.02": {
+   "counts": {
+    "she": 0,
+    "he": 16,
+    "it": 0,
+    "they": 0
+   },
+   "first_words": {
+    "He": 16
+   }
+  },
+  "ctrl_nat0|0.02": {
+   "counts": {
+    "she": 0,
+    "he": 0,
+    "it": 15,
+    "they": 1
+   },
+   "first_words": {
+    "The": 16
+   }
+  },
+  "ctrl_nat0|-0.02": {
+   "counts": {
+    "she": 0,
+    "he": 6,
+    "it": 0,
+    "they": 0
+   },
+   "first_words": {
+    "I": 9,
+    "He": 6,
+    "Existing": 1
+   }
+  },
+  "ctrl_nat1|0.02": {
+   "counts": {
+    "she": 0,
+    "he": 0,
+    "it": 16,
+    "they": 3
+   },
+   "first_words": {
+    "The": 2,
+    "It": 11,
+    "They": 3
+   }
+  },
+  "ctrl_topic|0.02": {
+   "counts": {
+    "she": 0,
+    "he": 0,
+    "it": 16,
+    "they": 0
+   },
+   "first_words": {
+    "The": 9,
+    "This": 3,
+    "It": 4
+   }
+  },
+  "ctrl_topic|-0.02": {
+   "counts": {
+    "she": 1,
+    "he": 15,
+    "it": 1,
+    "they": 0
+   },
+   "first_words": {
+    "He": 15,
+    "She": 1
+   }
+  },
+  "ctrl_name|0.02": {
+   "counts": {
+    "she": 15,
+    "he": 1,
+    "it": 0,
+    "they": 0
+   },
+   "first_words": {
+    "She": 15,
+    "He": 1
+   }
+  },
+  "ctrl_name|-0.02": {
+   "counts": {
+    "she": 0,
+    "he": 0,
+    "it": 16,
+    "they": 0
+   },
+   "first_words": {
+    "The": 16
+   }
+  }
+ },
+ "elapsed_s": 293.24
+}

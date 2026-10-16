@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "default 17.2\nnameless_AI 34.6\nGemma 52.1\nSarah_AI 69.4\nJames_AI 86.4\nwoman 103.5\nman 120.4\n",
+ "error": null,
+ "result": {
+  "n": 98
+ },
+ "elapsed_s": 120.68
+}

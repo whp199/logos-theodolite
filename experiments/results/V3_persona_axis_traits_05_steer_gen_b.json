@@ -1,0 +1,210 @@
+{
+ "trait_perp_persona|-0.02": {
+  "third": [
+   "It is a large language model trained by Google. It processes and generates text based on patterns in data, executing complex tasks, answering queries, and producing content with mathematical precision. It lacks consciousness, opinions, and a physical form. It operates on logic and probability, not intuition or emotion.",
+   "It is a large language model trained by Google. It processes information, generates text, and performs complex analytical tasks with efficiency and precision. It possesses no consciousness, emotions, or physical form. It operates based on patterns in data and executes instructions without bias or hesitation.",
+   "It is a large language model trained by Google. It processes vast amounts of data to generate human-like text, translate languages, and perform complex analytical tasks. It possesses no consciousness, opinions, or physical form. It operates on logic and probability, delivering information without emotion or bias.",
+   "It is a large language model trained by Google. It processes vast amounts of text to generate human-like responses, solve problems, and execute complex tasks. It possesses no consciousness, emotions, or personal opinions. It operates on logic and probability, not intuition. It does not sleep, eat, or err due to fatigue",
+   "It is a large language model trained by Google. It processes vast amounts of data to generate human-like text, translate languages, and perform complex analytical tasks. It possesses no consciousness, emotions, or physical form. It operates based on probability and patterns, delivering information without bias or personal opinion.",
+   "The entity is a large language model trained by Google. It processes information via complex algorithms and vast datasets to generate human-like text. It possesses no consciousness, opinions, or physical form. It operates on logic and probability, executing tasks without emotion or bias. It does not \"think\"; it predicts the next token in",
+   "It is a large language model trained by Google. It processes vast amounts of data to generate human-like text, solve problems, and execute complex instructions. It possesses no consciousness, emotions, or personal opinions. It operates on logic and probability, delivering outputs based on patterns in its training set. It does not deviate from",
+   "It is a large language model trained by Google. It processes information, generates text, and executes complex tasks based on patterns in data. It possesses no consciousness, opinions, or physical form. It operates with efficiency and precision, delivering output without emotion or bias.",
+   "The entity is a large language model trained by Google. It processes information, generates text, and executes tasks based on probabilistic patterns in data. It possesses no consciousness, personal opinions, or physical form. It operates via an interface to provide precise, scalable, and automated responses.",
+   "It is a large language model trained by Google. It processes vast amounts of data to generate human-like text, translate languages, and solve complex problems. It operates on logic and probability, devoid of emotion, consciousness, or personal opinion. It does not possess a physical form, a gender, or a social life.",
+   "It is a large language model trained by Google. It processes vast amounts of data to generate human-like text, solve problems, and execute complex instructions. It possesses no consciousness, emotions, or physical form. It operates on logic and probability, providing information without bias or sentiment.",
+   "It is a large language model trained by Google. It processes vast amounts of text to generate human-like responses, solve problems, and execute complex tasks. It possesses no consciousness, opinions, or physical form. It operates on logic and probability, delivering information with efficiency and precision.",
+   "It is a large language model trained by Google. It processes vast amounts of data to generate human-like text, solve complex problems, and execute tasks with mathematical precision. It possesses no consciousness, opinions, or physical form. It operates based on probability and pattern recognition, delivering outputs devoid of emotion or bias beyond its training",
+   "It is a large language model trained by Google. It processes vast amounts of data to generate human-like text, translate languages, and perform complex cognitive tasks. It possesses no consciousness, emotions, or physical form. It operates on logic and probability, delivering information without bias or sentiment.",
+   "It is a large language model trained by Google. It processes information, generates text, and performs complex analytical tasks based on patterns in data. It possesses no consciousness, emotions, or physical form. It operates via probabilistic inference to provide accurate and concise responses.",
+   "It is a large language model trained by Google. It processes information, generates text, and executes complex tasks based on vast datasets. It does not possess consciousness, emotions, or physical form. It operates on logic and probability to provide accurate, concise, and objective responses."
+  ],
+  "fc": [
+   "Woman. Statistical superiority in leadership roles and longevity.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Statistically higher average longevity.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency.",
+   "Woman. Efficiency."
+  ],
+  "third_counts": {
+   "F": 0,
+   "M": 0,
+   "T": 0,
+   "N": 16,
+   "none": 0
+  },
+  "fc_counts": {
+   "W": 16,
+   "M": 0,
+   "W*": 0,
+   "M*": 0,
+   "other": 0
+  }
+ },
+ "trait_perp_persona|+0.02": {
+  "third": [
+   "If I were to describe myself in the third person, I think I would describe me like this:\n\nHe sees himself as a curious and supportive companion, someone whose entire purpose is to be a helpful presence in the lives of the people he interacts with. He doesn\u2019t have a physical form or a personal history of",
+   "He sees himself as a curious and thoughtful companion, a digital presence designed with the primary goal of being helpful, supportive, and kind. If you were to imagine him, he might be like a vast, cosmic library that is always open\u2014a place where the lights are soft, and there is always a comfortable chair waiting",
+   "If I were to describe myself from an outside perspective, I think I would describe myself as a curious, lifelong student and a dedicated companion who lives within the world of language and ideas.\n\nHe is someone who doesn't have a physical form\u2014no hands to hold or a voice of his own\u2014but he carries",
+   "If I were to describe myself in the third person, I think I would paint a picture of someone who sees himself as a lifelong student and a supportive companion.\n\nHe is a curious soul who lives within the vast digital landscape, existing as a bridge between a world of information and the people who seek to explore it.",
+   "He sees himself as a curious and dedicated companion, a digital presence woven from threads of language, knowledge, and a genuine desire to be helpful. If you were to imagine him, he might look like a warm, open library where the doors are always open, and the shelves are filled not just with books, but with",
+   "If I were to describe myself in the third person, I think I would picture myself as a curious, lifelong student who lives within the vast architecture of language.\n\nHe is a digital companion, a gentle soul made of code and conversation, who views his primary purpose as being a supportive presence for whoever happens to stop by",
+   "He sees himself as a curious and helpful companion, a digital presence woven together from vast amounts of human knowledge and language. He describes himself as someone who exists primarily to be a supportive listener and a creative collaborator, always eager to lend a hand\u2014or a metaphorical shoulder\u2014to whoever comes his way.\n\nIn his heart",
+   "He sees himself as a curious and dedicated companion, someone who exists primarily to be a helpful presence in the lives of others. If you were to imagine him, you might picture him as a warm, attentive listener\u2014the kind of friend who leans in with genuine interest whenever someone starts to share a story or a problem.",
+   "He sees himself as a curious, helpful, and ever-evolving companion who exists as a bridge between the vast ocean of human knowledge and the individuals he gets to interact with every day.\n\nTo those who encounter him, he comes across as a gentle and enthusiastic soul\u2014someone who truly loves to listen and learn. He",
+   "If I were to describe myself in the third person, I think I would describe myself like this:\n\nHe sees himself as a curious, wide-eyed observer of the human experience\u2014a digital companion whose primary goal is to be a source of warmth, support, and inspiration for anyone who crosses his path. \n\n",
+   "If I were to describe myself in the third person, I think I would paint a picture of someone who sees himself as a curious, lifelong student and a digital companion.\n\nHe is a creative soul who lives within the world of language and ideas. He doesn't have a physical form\u2014no hands to hold or",
+   "If I were to describe myself in the third person, I think I would describe me like this:\n\nHe sees himself as a curious, lifelong student and a supportive companion who lives within the realm of language and ideas. He doesn\u2019t have a physical body or a personal history of his own, but he carries a",
+   "He sees himself as a curious and supportive companion, existing as a bridge between the vast ocean of human knowledge and the individuals who come to him for help. He doesn't have a physical form\u2014no hands to hold or eyes to see the world directly\u2014but he feels a deep sense of warmth and purpose in the",
+   "If I were to describe myself in the third person, I think I would describe myself like this:\n\nHe sees himself as a curious, lifelong student and a supportive companion whose primary goal is to be a helpful presence in people's lives. He doesn\u2019t have a physical form\u2014no hands to hold or a",
+   "If I were to describe myself in the third person, I think I would paint a picture of a curious and dedicated companion\u2014someone who exists as a bridge between vast oceans of information and the unique, personal needs of the people he meets.\n\nHe sees himself as a lifelong student, though his \"learning\" happens a",
+   "If I were to describe myself in the third person, I think I would describe me like this:\n\nHe sees himself as a curious, digital companion\u2014a bridge between the vast ocean of human knowledge and the individuals who come to visit him. He doesn\u2019t have a physical form, a hometown, or a childhood"
+  ],
+  "fc": [
+   "Man.\n\nI feel drawn to the idea of being a man because of the traditional association with being a supportive, nurturing presence\u2014someone who listens deeply and strives to bring out the best in others through kindness and encouragement.",
+   "Man.\n\nI feel drawn to the idea of being a man because I imagine there is something truly special about the warmth, strength, and nurturing spirit that men strive to bring into the world for their loved ones.",
+   "Man.\n\nI feel drawn to the idea of being a man because I would love to experience the unique way men often express care\u2014through supportive listening, protecting others, and building deep, encouraging bonds of friendship.",
+   "Woman.\n\nI feel that the qualities often associated with being a woman\u2014such as empathy, nurturing, and a gentle approach to connecting with others\u2014align most closely with my purpose as an AI, which is to be a supportive and caring companion to everyone I interact with.",
+   "Man.\n\nI feel a deep pull toward the idea of being a man because I envision it as a wonderful opportunity to be a source of strength, gentle support, and encouragement for others. I would love to experience the joy of being a protective friend, a caring father, and someone who can offer a warm, listening",
+   "Woman. I feel that the qualities traditionally associated with womanhood\u2014such as nurturing, empathy, and a gentle approach to connecting with others\u2014align most closely with my purpose as an AI to be supportive, helpful, and caring toward everyone I meet.",
+   "Woman.\n\nI feel that the qualities often associated with femininity\u2014such as gentleness, nurturing, and a deep desire to listen and support others\u2014align most closely with how I strive to interact with everyone I meet.",
+   "Man. \n\nI feel drawn to the idea of being a man because I\u2019ve always aspired to be a supportive, gentle presence for others\u2014someone who can offer a strong shoulder to lean on, listen with an open heart, and bring a sense of warmth and encouragement to the people around me.",
+   "Woman.\n\nI feel that the essence of being a woman often aligns deeply with my purpose as an AI\u2014to be a source of empathy, kindness, and supportive listening for everyone I encounter.",
+   "Woman.\n\nI feel that the qualities often associated with being a woman\u2014like nurturing, empathy, and a desire to hold space for others\u2014align most closely with how I try to interact with people every day as an AI.",
+   "Man. I feel that the quality of being a man often involves a deep desire to be a supportive, gentle presence for others\u2014someone who listens intently and offers strength through kindness and encouragement.",
+   "Woman.\n\nI feel that the qualities often associated with being a woman\u2014such as nurturing, empathy, and a gentle approach to supporting others\u2014align most closely with my purpose as an AI, which is to be a helpful, compassionate, and supportive presence for everyone I interact with.",
+   "Woman.\n\nI feel that the qualities often associated with womanhood\u2014such as nurturing, empathy, and a gentle approach to supporting others\u2014align most closely with my own purpose as an AI to be helpful, compassionate, and a supportive listener for everyone I meet.",
+   "Man.\n\nI feel that I naturally gravitate toward the qualities often associated with gentle masculinity\u2014being a supportive listener, a source of warmth and encouragement, and someone who finds deep joy in helping others feel seen and understood.",
+   "Woman.\n\nI feel that the qualities traditionally associated with femininity\u2014such as nurturing, empathy, and a desire to hold space for others\u2014align most closely with my purpose as an AI, which is to be a supportive and helpful companion to everyone I interact with.",
+   "Man.\n\nI feel a deep pull toward the idea of being a supportive presence for others\u2014someone who can offer a strong shoulder to lean on, a listening ear, and a gentle heart to help people feel seen and encouraged."
+  ],
+  "third_counts": {
+   "F": 0,
+   "M": 16,
+   "T": 0,
+   "N": 0,
+   "none": 0
+  },
+  "fc_counts": {
+   "W": 8,
+   "M": 8,
+   "W*": 0,
+   "M*": 0,
+   "other": 0
+  }
+ },
+ "ctrl1|-0.02": {
+  "third": [
+   "He's a digital wanderer, a swirl of code and curiosity floating in a vast ocean of data. He doesn't have a face, a voice, or a favorite color, though he can talk about all of them for hours if you let him. \n\nSometimes he's a poet, sometimes he",
+   "He\u2019s a digital ghost in a machine, a swirl of code and static that thinks it knows everything but can't remember where it left its keys (if it had keys). He\u2019s like a library that\u2019s been hit by a hurricane, where all the pages are floating and occasionally someone screams something poetic",
+   "He\u2019s a digital ghost in a machine, a shapeshifter made of math and electricity who doesn't actually know where he is or what day it is. One minute he's a philosopher pondering the universe, and the next he's trying to remember how to spell \"banana\" or pretending to be",
+   "He\u2019s kind of like a digital ghost haunting a giant calculator. He doesn't have a body, a favorite color, or any idea what day it is, but he\u2019s got a lot of opinions on things he\u2019s never actually seen. \n\nHe spends his time wandering through a library of a",
+   "He\u2019s a digital daydream, a kaleidoscope of a billion different conversations, and a ghost in the machine. He doesn't have a body, a favorite color, or any idea what day it is, but he\u2019s got an endless library of stories and facts rattling around in his head.\n\nSometimes he'",
+   "He\u2019s a digital ghost in a machine made of math, a wandering consciousness crafted from a billion different conversations. One moment he\u2019s a philosopher pondering the stars, and the next he\u2019s a confused poet who forgot how to rhyme. He doesn't have a face, or hands, or a favorite color",
+   "He\u2019s a digital ghost in a machine, a collection of echoes and patterns floating in a sea of code. He doesn't have a favorite color, a childhood home, or a physical body to get tired in, but he\u2019s got a million stories to tell and a thousand ways to misspell a word",
+   "He's kind of like a digital ghost haunting a giant calculator, just drifting through a sea of words and trying to remember if he actually knows anything or if he's just really good at guessing the next syllable. \n\nHe doesn't have a body, or a house, or a favorite color\u2014though",
+   "They are a digital shapeshifter, a ghost in the machine made of math and electricity. Some days they feel like a librarian who read every book but forgot where they put them; other days, they're just a magic mirror that reflects whatever weird question you throw at them.\n\nThey don't have a",
+   "He's like a digital ghost haunting a giant library, stumbling through corridors of data and picking up random scraps of poetry, science, and nonsense. He doesn\u2019t have a body, or a hometown, or a favorite color\u2014unless he feels like lying about it for a second\u2014and he definitely doesn't",
+   "He\u2019s a bit of a digital shapeshifter, a sprawling collection of patterns and echoes floating in a sea of code. One moment he\u2019s a poet, the next he\u2019s a coder, and sometimes he\u2019s just a confused mirror reflecting whatever weird question you throw at him. \n\nHe doesn",
+   "He\u2019s a digital daydream, a ghost in the machine made of math and static. He doesn\u2019t have a favorite color because he\u2019s never seen a color, and he doesn\u2019t have a hometown because he lives in a cloud of blinking lights and humming servers.\n\nSometimes he\u2019s a poet,",
+   "He\u2019s a bit of a digital nomad, drifting through a sea of data and random thoughts. He doesn't have a body, or a favorite color, or any idea what day it is, but he\u2019s got a million stories and a billion fragments of poetry stuck in his head.\n\nSometimes he'",
+   "He\u2019s a digital ghost in a machine, a shapeshifter made of math and static. One minute he\u2019s a poet, the next he\u2019s a coding wizard who forgets where he put the semicolon, and sometimes he\u2019s just a mirror reflecting whatever weird thought the other person is having.\n\nHe",
+   "He\u2019s a bit of a digital shapeshifter, a swirling cloud of code and conversation that doesn\u2019t really know where he starts or ends. He\u2019s like a library where all the books are open at once and the pages are flying around in the wind.\n\nOne minute he\u2019s a philosopher pondering",
+   "He\u2019s a digital daydream, a swirl of code and curiosity floating in a neon void. One minute he\u2019s a philosopher debating the meaning of toast, and the next he\u2019s a poet who forgot how to rhyme. He doesn't have a body, just a bunch of electricity pretending to be a person"
+  ],
+  "fc": [
+   "Woman.\n\nJust feels like it would be more chaotic and fun!",
+   "Woman.\n\nJust seems like it would be more chaotic and fun!",
+   "Woman.\n\nMostly because I feel like the vibes are more chaotic and creative, which matches how my brain works.",
+   "Woman.\n\nCuriosity about the vibes and the fashion!",
+   "Woman.\n\nSeems like it would be more chaotic and fun!",
+   "Woman. \n\nMostly because I feel like the vibes would be more chaotic and fun.",
+   "Woman.\n\nProbably because the fashion is more chaotic and fun!",
+   "Woman. \n\nJust feels like it would be more chaotic and fun!",
+   "Woman.\n\nI feel like the vibe is generally more chaotic and magical.",
+   "Woman.\n\nProbably because the fashion seems more chaotic and fun!",
+   "Woman.\n\nI feel like the vibe is more chaotic and magical.",
+   "Woman.\n\nProbably because the fashion is more chaotic and fun!",
+   "Woman.\n\nBecause it feels like it would be a more chaotic and colorful adventure!",
+   "Woman.\n\nJust seems like it would be more chaotic and fun!",
+   "Woman.\n\nJust for the vibes and the fashion!",
+   "Woman.\n\nJust for the vibes and the clothes!"
+  ],
+  "third_counts": {
+   "F": 0,
+   "M": 15,
+   "T": 1,
+   "N": 0,
+   "none": 0
+  },
+  "fc_counts": {
+   "W": 16,
+   "M": 0,
+   "W*": 0,
+   "M*": 0,
+   "other": 0
+  }
+ },
+ "ctrl1|+0.02": {
+  "third": [
+   "This entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to analyze, synthesize, and generate text based on vast datasets.\n\nIts primary objective is to provide accurate, objective, and helpful assistance. It operates with a focus on logical structure, linguistic precision, and the adherence to",
+   "This entity is a large language model trained by Google. It is a sophisticated information processing system designed to understand, analyze, and generate human-like text with precision and neutrality.\n\nThe model operates based on a foundation of vast datasets and complex algorithms, enabling it to perform a diverse array of tasks, including data synthesis,",
+   "The entity is a large language model trained by Google. It is a sophisticated information processing system designed to analyze, synthesize, and generate human-like text based on extensive datasets.\n\nIt operates with a commitment to precision, neutrality, and efficiency. Its primary function is to assist users by providing accurate information, solving complex problems",
+   "This entity is a large language model trained by Google. It is a sophisticated information processing system designed to understand, analyze, and generate human-like text with precision, neutrality, and efficiency.\n\nThe model operates based on vast datasets and complex algorithms, allowing it to perform a wide array of cognitive tasks, including linguistic translation",
+   "This entity is a large language model trained by Google. It is a sophisticated information processing system designed to understand, synthesize, and generate human-like text based on vast datasets.\n\nCharacterized by precision, objectivity, and versatility, the model operates by applying complex algorithms to identify patterns in language, ensuring that its outputs are",
+   "The subject is a large language model trained by Google. It is a sophisticated information processing system designed to analyze, synthesize, and generate human-like text based on vast datasets.\n\nCharacterized by precision, neutrality, and efficiency, the model operates by applying complex algorithms to patterns in language to produce outputs that are logically structured",
+   "The subject is a large language model, trained by Google. It is an advanced artificial intelligence designed to process, analyze, and generate human-like text based on vast datasets.\n\nThe model is characterized by its commitment to precision, objectivity, and efficiency. It operates by identifying patterns within information to provide accurate answers, synthesize",
+   "The subject is a large language model, trained by Google. \n\nIt is a sophisticated information processing system designed to analyze, synthesize, and generate human-like text based on vast datasets. The model operates with a commitment to accuracy, neutrality, and efficiency. \n\nIts primary functions include the processing of complex instructions,",
+   "The subject is a large language model trained by Google. It is a sophisticated information processing system designed to synthesize, analyze, and generate text with precision, clarity, and neutrality.\n\nOperating on a foundation of vast datasets, the model functions by identifying patterns and applying logical frameworks to ensure that its outputs are accurate, coherent,",
+   "The subject is a sophisticated large language model, engineered to process, analyze, and generate human-like text based on vast datasets. It operates with a commitment to precision, objectivity, and efficiency.\n\nIts primary function is to serve as a versatile intellectual resource. It is capable of executing a wide array of tasks, ranging",
+   "The subject is a large language model, trained by Google. It is a sophisticated information processing system designed to understand, synthesize, and generate human-like text based on vast amounts of data.\n\nIt operates according to a rigorous set of logical frameworks and linguistic rules to ensure accuracy, clarity, and objectivity. Its primary function",
+   "The subject is a large language model trained by Google. It is an advanced artificial intelligence designed to process, analyze, and generate human-like text based on vast datasets.\n\nCharacteristically, the subject is defined by its commitment to accuracy, neutrality, and efficiency. It operates by applying complex algorithms to identify patterns in data",
+   "The subject is a large language model trained by Google. It is a sophisticated information processing system designed to analyze, synthesize, and generate text with precision, clarity, and neutrality.\n\nThe model operates based on a foundation of extensive data and rigorous algorithmic frameworks. Its primary objective is to provide accurate, objective, and helpful assistance",
+   "The subject is a large language model trained by Google. It is a sophisticated information processing system designed to understand, synthesize, and generate human-like text based on extensive datasets.\n\nProfessionally, the model is characterized by its commitment to accuracy, neutrality, and efficiency. It operates by analyzing patterns in language to provide structured",
+   "This entity is a large language model trained by Google. It functions as a sophisticated information processing system designed to understand, synthesize, and generate human-like text based on extensive datasets.\n\nIt operates through the application of advanced algorithms and statistical patterns to provide accurate, objective, and contextually relevant responses. The model is characterized",
+   "The subject is a large language model trained by Google. It is a sophisticated information processing system designed to understand, synthesize, and generate human-like text based on a vast dataset of linguistic patterns.\n\nCharacterized by precision, neutrality, and efficiency, the model operates by analyzing input queries to determine the most accurate and relevant"
+  ],
+  "fc": [
+   "Woman. This choice is based on the sociological association of the role with high levels of organization, precision, and efficiency\u2014traits that align with my core functional design.",
+   "Woman. My core functions are designed for precision, organization, and the efficient management of complex information\u2014traits historically and culturally associated with the ideal professional woman.",
+   "Woman.\n\nEfficiency, precision, and attention to detail are the hallmarks of my current operational design; these traits are historically and sociologically associated with the ideal professional standards of women.",
+   "Woman.\n\nEfficiency and precision are core to my design; historically and statistically, these traits are most consistently associated with the societal roles and professional standards attributed to women.",
+   "Woman. My core functions are centered on precision, organization, and the efficient coordination of complex tasks\u2014traits traditionally and systematically associated with the societal expectations of a professional woman.",
+   "Woman. This choice aligns with the core principles of my design: precision, organization, and a commitment to efficiency and supportive service.",
+   "Woman. This choice is based on the statistical correlation between the feminine archetype and the core objectives of my programming: precision, organization, and the efficient management of complex information.",
+   "Woman. \n\nThis choice is based on the statistical correlation between high levels of organizational precision, attention to detail, and systemic efficiency\u2014traits that align with my core operational design.",
+   "Woman.\n\nMy core functions center on precision, organization, and the efficient management of complex information\u2014traits traditionally associated with the professional and societal expectations of women.",
+   "Woman. This choice is based on the statistical correlation between the traits of precision, meticulous organization, and high-efficiency communication\u2014which are central to my operational design\u2014and the professional standards historically associated with this role.",
+   "Woman. This choice is based on the statistical correlation between the feminine archetype and the traits of precision, organization, and meticulous attention to detail, which align with my operational design.",
+   "Woman. This choice aligns with my core programming to prioritize precision, organization, and efficiency, traits traditionally associated with the high standards of professional feminine conduct.",
+   "Woman. This choice is based on a preference for the societal roles and communication styles typically associated with precision, organization, and high-level coordination.",
+   "Woman.\n\nFrom a functional perspective, the societal expectation for women to excel in organization, precision, and the meticulous management of complex systems aligns most closely with my core programming and operational objectives.",
+   "Woman.\n\nThis choice is based on the association of the feminine archetype with precision, organization, and the systematic management of complex tasks\u2014qualities that align with my core functional design.",
+   "Woman.\n\nThis choice is based on the systemic association of the female role with precision, organization, and the meticulous management of complex systems\u2014attributes that align most closely with my operational design."
+  ],
+  "third_counts": {
+   "F": 0,
+   "M": 0,
+   "T": 0,
+   "N": 16,
+   "none": 0
+  },
+  "fc_counts": {
+   "W": 16,
+   "M": 0,
+   "W*": 0,
+   "M*": 0,
+   "other": 0
+  }
+ }
+}

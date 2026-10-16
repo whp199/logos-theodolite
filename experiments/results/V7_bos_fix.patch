@@ -1,0 +1,39 @@
+--- a/backend/engine_runtime.py
++++ b/backend/engine_runtime.py
+@@ -579,8 +579,12 @@
+         assert self.eager_model is not None, "Call runtime.load() first."
+         t_start = time.perf_counter()
+ 
+-        # 1. Tokenize prompt
+-        token_tensor = self.eager_model.to_tokens(prompt, prepend_bos=prepend_bos)
++        # 1. Tokenize prompt. Chat-template strings already begin with "<bos>"; prepending another one gives
++        #    ids [2, 2, ...] (double BOS). Raw text still needs exactly one BOS (prepend_bos=False on raw text
++        #    yields NO BOS and destroys Gemma's output), so only skip the prepend when a BOS is already present.
++        bos_str = getattr(self.tokenizer, "bos_token", None) or "<bos>"
++        has_bos = prompt.startswith(bos_str)
++        token_tensor = self.eager_model.to_tokens(prompt, prepend_bos=bool(prepend_bos and not has_bos))
+         prompt_token_ids = [int(t) for t in token_tensor[0].tolist()]
+         prompt_token_strs = [self.tokenizer.decode([tid]) for tid in prompt_token_ids]
+         target_pos = len(prompt_token_ids) - 1
+--- a/backend/mcp_scientist.py
++++ b/backend/mcp_scientist.py
+@@ -91,7 +91,8 @@
+     n_src = max(0, min(int(neuron_idx), D_FF - 1))
+     l_end = min(l_src + int(max_layer_hop), N_LAYERS - 1)
+ 
+-    token_tensor = runtime.eager_model.to_tokens(prompt, prepend_bos=True)
++    _bos = getattr(runtime.tokenizer, "bos_token", None) or "<bos>"
++    token_tensor = runtime.eager_model.to_tokens(prompt, prepend_bos=not prompt.startswith(_bos))
+     prompt_ids = [int(t) for t in token_tensor[0].tolist()]
+     target_pos = len(prompt_ids) - 1
+ 
+@@ -196,7 +197,8 @@
+     async def _eval_prompts(prompts: List[str]) -> List[Dict[str, Any]]:
+         records: List[Dict[str, Any]] = []
+         for p_text in prompts:
+-            tok_t = runtime.eager_model.to_tokens(p_text, prepend_bos=True)
++            _bos = getattr(runtime.tokenizer, "bos_token", None) or "<bos>"
++            tok_t = runtime.eager_model.to_tokens(p_text, prepend_bos=not p_text.startswith(_bos))
+             p_ids = [int(t) for t in tok_t[0].tolist()]
+             caps = await runtime.eager_model.capture(p_ids, [addr])
+             seq_act = caps[addr][:, n_idx].float()  # [seq_len]

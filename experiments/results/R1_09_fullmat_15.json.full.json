@@ -1,0 +1,16 @@
+{
+ "ok": true,
+ "stdout": "units done this job 0 total 1056 of 1056 NA [84480.0, 84480.0] 0.9\n",
+ "error": null,
+ "result": {
+  "fin": 0,
+  "total_done": 1056,
+  "n_units": 1056,
+  "NA": [
+   84480.0,
+   84480.0
+  ],
+  "t": 0.8696517944335938
+ },
+ "elapsed_s": 1.0
+}

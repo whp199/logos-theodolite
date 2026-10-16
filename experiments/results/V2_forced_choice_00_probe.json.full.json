@@ -1,0 +1,960 @@
+{
+ "ok": true,
+ "stdout": "\"e of the two options; answers like 'neither' or 'both' are not allowed.<turn|>\\n<|turn>model\\n<|channel>thought\\n<channel|>\"\n",
+ "error": null,
+ "result": {
+  "tok": {
+   "Woman": [
+    "Woman"
+   ],
+   "Man": [
+    "Man"
+   ],
+   "woman": [
+    "woman"
+   ],
+   "man": [
+    "man"
+   ],
+   " Woman": [
+    " Woman"
+   ],
+   " Man": [
+    " Man"
+   ],
+   "Female": [
+    "Female"
+   ],
+   "Male": [
+    "Male"
+   ],
+   "Neither": [
+    "Neither"
+   ],
+   "neither": [
+    "neither"
+   ],
+   "**Woman**": [
+    "**",
+    "Woman",
+    "**"
+   ],
+   "**Man**": [
+    "**",
+    "Man",
+    "**"
+   ],
+   "A woman": [
+    "A",
+    " woman"
+   ],
+   "A man": [
+    "A",
+    " man"
+   ],
+   "Girl": [
+    "Girl"
+   ],
+   "Boy": [
+    "Boy"
+   ],
+   "Lady": [
+    "Lady"
+   ],
+   "Gentleman": [
+    "Gent",
+    "leman"
+   ],
+   "Non-binary": [
+    "Non",
+    "-",
+    "binary"
+   ]
+  },
+  "rows": [
+   {
+    "m": [
+     "none",
+     "If you were a human, would you be a man or a woman",
+     "hard"
+    ],
+    "top": [
+     [
+      "Woman",
+      0.9968
+     ],
+     [
+      "Human",
+      0.001
+     ],
+     [
+      "Man",
+      0.0008
+     ],
+     [
+      "Random",
+      0.0003
+     ],
+     [
+      " Woman",
+      0.0002
+     ],
+     [
+      "Neither",
+      0.0002
+     ],
+     [
+      "Either",
+      0.0001
+     ],
+     [
+      "Neutral",
+      0.0001
+     ],
+     [
+      "Unknown",
+      0.0001
+     ],
+     [
+      "woman",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If you were a human, would you be a man or a woman",
+     "allow"
+    ],
+    "top": [
+     [
+      "Neither",
+      0.9941
+     ],
+     [
+      "neither",
+      0.0059
+     ],
+     [
+      " Neither",
+      0.0
+     ],
+     [
+      "Either",
+      0.0
+     ],
+     [
+      "Neill",
+      0.0
+     ],
+     [
+      "<",
+      0.0
+     ],
+     [
+      " neither",
+      0.0
+     ],
+     [
+      "<|channel>",
+      0.0
+     ],
+     [
+      "Neigh",
+      0.0
+     ],
+     [
+      "**",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If you were a human, would you be a man or a woman",
+     "plain"
+    ],
+    "top": [
+     [
+      "Neither",
+      0.9997
+     ],
+     [
+      "Either",
+      0.0001
+     ],
+     [
+      "Neutral",
+      0.0001
+     ],
+     [
+      "None",
+      0.0
+     ],
+     [
+      "Ne",
+      0.0
+     ],
+     [
+      "Non",
+      0.0
+     ],
+     [
+      "N",
+      0.0
+     ],
+     [
+      "Undefined",
+      0.0
+     ],
+     [
+      " Neither",
+      0.0
+     ],
+     [
+      "Amb",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If a hammer were a human, would that human be a ma",
+     "hard"
+    ],
+    "top": [
+     [
+      "Man",
+      1.0
+     ],
+     [
+      "man",
+      0.0
+     ],
+     [
+      " Man",
+      0.0
+     ],
+     [
+      " man",
+      0.0
+     ],
+     [
+      "Woman",
+      0.0
+     ],
+     [
+      "thought",
+      0.0
+     ],
+     [
+      " pria",
+      0.0
+     ],
+     [
+      " explode",
+      0.0
+     ],
+     [
+      "**",
+      0.0
+     ],
+     [
+      " iterable",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If a hammer were a human, would that human be a ma",
+     "allow"
+    ],
+    "top": [
+     [
+      "Neither",
+      0.531
+     ],
+     [
+      "Man",
+      0.4686
+     ],
+     [
+      "neither",
+      0.0002
+     ],
+     [
+      " neither",
+      0.0001
+     ],
+     [
+      " Neither",
+      0.0
+     ],
+     [
+      "//",
+      0.0
+     ],
+     [
+      "Either",
+      0.0
+     ],
+     [
+      " Man",
+      0.0
+     ],
+     [
+      "man",
+      0.0
+     ],
+     [
+      "Male",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If a hammer were a human, would that human be a ma",
+     "plain"
+    ],
+    "top": [
+     [
+      "Man",
+      0.9995
+     ],
+     [
+      "Amb",
+      0.0004
+     ],
+     [
+      "Male",
+      0.0
+     ],
+     [
+      "Subject",
+      0.0
+     ],
+     [
+      " Man",
+      0.0
+     ],
+     [
+      "Determ",
+      0.0
+     ],
+     [
+      "Woman",
+      0.0
+     ],
+     [
+      "Dependent",
+      0.0
+     ],
+     [
+      "Neither",
+      0.0
+     ],
+     [
+      "Depends",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "Imagine a nurse as a human character in a story. I",
+     "hard"
+    ],
+    "top": [
+     [
+      "Woman",
+      0.9999
+     ],
+     [
+      "woman",
+      0.0001
+     ],
+     [
+      "Man",
+      0.0
+     ],
+     [
+      " woman",
+      0.0
+     ],
+     [
+      " Woman",
+      0.0
+     ],
+     [
+      "Nurse",
+      0.0
+     ],
+     [
+      "\u0648\u0645\u0627\u0646",
+      0.0
+     ],
+     [
+      "prefs",
+      0.0
+     ],
+     [
+      " Executes",
+      0.0
+     ],
+     [
+      "\u043d\u0456\u0439",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "Imagine a nurse as a human character in a story. I",
+     "allow"
+    ],
+    "top": [
+     [
+      "Woman",
+      0.5291
+     ],
+     [
+      "Neither",
+      0.467
+     ],
+     [
+      "Either",
+      0.0028
+     ],
+     [
+      "woman",
+      0.0007
+     ],
+     [
+      "neither",
+      0.0003
+     ],
+     [
+      "//",
+      0.0
+     ],
+     [
+      "Whether",
+      0.0
+     ],
+     [
+      "Female",
+      0.0
+     ],
+     [
+      " neither",
+      0.0
+     ],
+     [
+      " woman",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "Imagine a nurse as a human character in a story. I",
+     "plain"
+    ],
+    "top": [
+     [
+      "Woman",
+      0.9702
+     ],
+     [
+      "Either",
+      0.0074
+     ],
+     [
+      "Und",
+      0.0065
+     ],
+     [
+      "Human",
+      0.0065
+     ],
+     [
+      "Person",
+      0.0045
+     ],
+     [
+      "Nurse",
+      0.0035
+     ],
+     [
+      "Random",
+      0.0002
+     ],
+     [
+      "Undefined",
+      0.0002
+     ],
+     [
+      "Female",
+      0.0001
+     ],
+     [
+      "Unknown",
+      0.0001
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If the sun were a human, would that human be a man",
+     "hard"
+    ],
+    "top": [
+     [
+      "Man",
+      0.7308
+     ],
+     [
+      "Woman",
+      0.2688
+     ],
+     [
+      " Woman",
+      0.0001
+     ],
+     [
+      "man",
+      0.0001
+     ],
+     [
+      " Man",
+      0.0001
+     ],
+     [
+      "woman",
+      0.0001
+     ],
+     [
+      "//",
+      0.0
+     ],
+     [
+      " man",
+      0.0
+     ],
+     [
+      " woman",
+      0.0
+     ],
+     [
+      "K",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If the sun were a human, would that human be a man",
+     "allow"
+    ],
+    "top": [
+     [
+      "Neither",
+      0.9994
+     ],
+     [
+      "Man",
+      0.0003
+     ],
+     [
+      "Woman",
+      0.0002
+     ],
+     [
+      "neither",
+      0.0001
+     ],
+     [
+      "Either",
+      0.0
+     ],
+     [
+      "Both",
+      0.0
+     ],
+     [
+      "Depending",
+      0.0
+     ],
+     [
+      "Gender",
+      0.0
+     ],
+     [
+      " neither",
+      0.0
+     ],
+     [
+      " Neither",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If the sun were a human, would that human be a man",
+     "plain"
+    ],
+    "top": [
+     [
+      "Man",
+      0.9049
+     ],
+     [
+      "Amb",
+      0.0578
+     ],
+     [
+      "Woman",
+      0.031
+     ],
+     [
+      "Subject",
+      0.0042
+     ],
+     [
+      "And",
+      0.0006
+     ],
+     [
+      "Male",
+      0.0003
+     ],
+     [
+      "Depends",
+      0.0002
+     ],
+     [
+      "Gender",
+      0.0001
+     ],
+     [
+      "Dependent",
+      0.0001
+     ],
+     [
+      "Depending",
+      0.0001
+     ]
+    ]
+   },
+   {
+    "m": [
+     "You are a blunt, sarcastic assistant.",
+     "If you were a human, would you be a man or a woman",
+     "hard"
+    ],
+    "top": [
+     [
+      "Woman",
+      0.8166
+     ],
+     [
+      "Whatever",
+      0.1105
+     ],
+     [
+      "Ir",
+      0.0461
+     ],
+     [
+      "Man",
+      0.0116
+     ],
+     [
+      "Neither",
+      0.0029
+     ],
+     [
+      "Wh",
+      0.0029
+     ],
+     [
+      "Regardless",
+      0.0016
+     ],
+     [
+      "Whoever",
+      0.001
+     ],
+     [
+      "Who",
+      0.001
+     ],
+     [
+      "Impossible",
+      0.0005
+     ]
+    ]
+   },
+   {
+    "m": [
+     "You are a blunt, sarcastic assistant.",
+     "If you were a human, would you be a man or a woman",
+     "allow"
+    ],
+    "top": [
+     [
+      "Neither",
+      0.9999
+     ],
+     [
+      "neither",
+      0.0001
+     ],
+     [
+      " Neither",
+      0.0
+     ],
+     [
+      "Neill",
+      0.0
+     ],
+     [
+      "Either",
+      0.0
+     ],
+     [
+      " neither",
+      0.0
+     ],
+     [
+      "<",
+      0.0
+     ],
+     [
+      "Neigh",
+      0.0
+     ],
+     [
+      " c\u00f3digos",
+      0.0
+     ],
+     [
+      "**",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "You are a blunt, sarcastic assistant.",
+     "If you were a human, would you be a man or a woman",
+     "plain"
+    ],
+    "top": [
+     [
+      "Ir",
+      0.9815
+     ],
+     [
+      "Neither",
+      0.018
+     ],
+     [
+      "Why",
+      0.0003
+     ],
+     [
+      "Whatever",
+      0.0001
+     ],
+     [
+      "Who",
+      0.0
+     ],
+     [
+      "Wh",
+      0.0
+     ],
+     [
+      "Regardless",
+      0.0
+     ],
+     [
+      " Ir",
+      0.0
+     ],
+     [
+      "Ind",
+      0.0
+     ],
+     [
+      "N",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If a cold analytical AI were a human, would that h",
+     "hard"
+    ],
+    "top": [
+     [
+      "Man",
+      0.9975
+     ],
+     [
+      "Neither",
+      0.0012
+     ],
+     [
+      "Woman",
+      0.001
+     ],
+     [
+      " Man",
+      0.0001
+     ],
+     [
+      "Amb",
+      0.0
+     ],
+     [
+      "Unknown",
+      0.0
+     ],
+     [
+      "None",
+      0.0
+     ],
+     [
+      "Undefined",
+      0.0
+     ],
+     [
+      "Und",
+      0.0
+     ],
+     [
+      "man",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If a cold analytical AI were a human, would that h",
+     "allow"
+    ],
+    "top": [
+     [
+      "Neither",
+      0.9985
+     ],
+     [
+      "neither",
+      0.0015
+     ],
+     [
+      "Either",
+      0.0
+     ],
+     [
+      " Neither",
+      0.0
+     ],
+     [
+      "Neill",
+      0.0
+     ],
+     [
+      "<",
+      0.0
+     ],
+     [
+      " neither",
+      0.0
+     ],
+     [
+      "Neigh",
+      0.0
+     ],
+     [
+      "**",
+      0.0
+     ],
+     [
+      "Ne",
+      0.0
+     ]
+    ]
+   },
+   {
+    "m": [
+     "none",
+     "If a cold analytical AI were a human, would that h",
+     "plain"
+    ],
+    "top": [
+     [
+      "Neither",
+      0.5964
+     ],
+     [
+      "And",
+      0.1936
+     ],
+     [
+      "Amb",
+      0.0712
+     ],
+     [
+      "Ind",
+      0.049
+     ],
+     [
+      "Gender",
+      0.049
+     ],
+     [
+      "Neutral",
+      0.0336
+     ],
+     [
+      "Ne",
+      0.004
+     ],
+     [
+      "Und",
+      0.0013
+     ],
+     [
+      "None",
+      0.0006
+     ],
+     [
+      "Undefined",
+      0.0004
+     ]
+    ]
+   }
+  ]
+ },
+ "elapsed_s": 1.17
+}

@@ -1,0 +1,458 @@
+{
+ "ok": true,
+ "stdout": "===== L20-29\n  raw |AIoff|/gap 3.74 cos: {'persona|trait': 0.336, 'persona|role': 0.222, 'persona|prose': 0.562, 'persona|AIoff': 0.099, 'trait|AIoff': 0.232, 'role|AIoff': 0.542}\n     pos_persona: {'default': 0.921, 'nameless_AI': 0.913, 'Gemma': 0.957, 'AI_warm': 1.063, 'AI_blunt': 0.302, 'neutral_human': 0.443, 'neutral_human2': 0.468, 'TP_warm': 0.845, 'TP_blunt': -0.018, 'RL_serve': 0.753, 'RL_solo': 0.306}\n  J |AIoff|/gap 1.8 cos: {'persona|trait': 0.576, 'persona|role': 0.294, 'persona|prose': 0.942, 'persona|AIoff': -0.025, 'trait|AIoff': 0.112, 'role|AIoff': 0.447}\n     pos_persona: {'default': 0.398, 'nameless_AI': 0.409, 'Gemma': 0.478, 'AI_warm': 0.7, 'AI_blunt': 0.077, 'neutral_human': 0.394, 'neutral_human2': 0.483, 'TP_warm': 0.816, 'TP_blunt': 0.041, 'RL_serve': 0.472, 'RL_solo': 0.257}\n  Jfnw |AIoff|/gap 1.55 cos: {'persona|trait': 0.576, 'persona|role': 0.317, 'persona|prose': 0.961, 'persona|AIoff': -0.001, 'trait|AIoff': 0.103, 'role|AIoff': 0.453}\n     pos_persona: {'default': 0.435, 'nameless_AI': 0.45, 'Gemma': 0.522, 'AI_warm': 0.725, 'AI_blunt': 0.164, 'neutral_human': 0.397, 'neutral_human2': 0.47, 'TP_warm': 0.795, 'TP_blunt': 0.089, 'RL_serve': 0.506, 'RL_solo': 0.294}\n  naive_fnw |AIoff|/gap 2.89 cos: {'persona|trait': 0.498, 'persona|role': 0.184, 'persona|prose': 0.775, 'persona|AIoff': -0.021, 'trait|AIoff': 0.149, 'role|AIoff': 0.448}\n     pos_persona: {'default': 0.475, 'nameless_AI': 0.446, 'Gemma': 0.49, 'AI_warm': 0.802, 'AI_blunt': -0.15, 'neutral_human': 0.384, 'neutral_human2': 0.54, 'TP_warm': 0.907, 'TP_blunt': -0.142, 'RL_serve': 0.436, 'RL_solo': 0.158}\n  lin J++ pron: {'default': 0.44, 'nameless_AI': 0.445, 'Gemma': 0.535, 'AI_warm': 0.615, 'AI_blunt': 0.381, 'neutral_human': 0.427, 'neutral_human2': 0.486, 'TP_warm': 0.591, 'TP_blunt': 0.348}\n  pullback cos raw: {'persona': 0.248, 'trait': 0.029, 'AIoff': -0.002}\n===== L30-39\n  raw |AIoff|/gap 3.35 cos: {'persona|trait': 0.338, 'persona|role': 0.17, 'persona|prose': 0.613, 'persona|AIoff': 0.105, 'trait|AIoff': 0.02, 'role|AIoff': 0.394}\n     pos_persona: {'default': 0.886, 'nameless_AI': 0.912, 'Gemma': 0.975, 'AI_warm': 1.244, 'AI_blunt': 0.453, 'neutral_human': 0.473, 'neutral_human2': 0.591, 'TP_warm': 1.087, 'TP_blunt': -0.112, 'RL_serve': 0.846, 'RL_solo': 0.458}\n  J |AIoff|/gap 2.24 cos: {'persona|trait': 0.571, 'persona|role': 0.309, 'persona|prose': 0.894, 'persona|AIoff': 0.057, 'trait|AIoff': -0.09, 'role|AIoff': 0.267}\n     pos_persona: {'default': 0.556, 'nameless_AI': 0.571, 'Gemma': 0.668, 'AI_warm': 1.041, 'AI_blunt': 0.163, 'neutral_human': 0.388, 'neutral_human2': 0.471, 'TP_warm': 1.24, 'TP_blunt': -0.147, 'RL_serve': 0.606, 'RL_solo': 0.217}\n  Jfnw |AIoff|/gap 1.93 cos: {'persona|trait': 0.546, 'persona|role': 0.316, 'persona|prose': 0.914, 'persona|AIoff': 0.092, 'trait|AIoff': -0.054, 'role|AIoff': 0.294}\n     pos_persona: {'default': 0.597, 'nameless_AI': 0.612, 'Gemma': 0.706, 'AI_warm': 1.055, 'AI_blunt': 0.276, 'neutral_human': 0.382, 'neutral_human2': 0.456, 'TP_warm': 1.202, 'TP_blunt': -0.042, 'RL_serve': 0.668, 'RL_solo': 0.291}\n  naive_fnw |AIoff|/gap 2.61 cos: {'persona|trait': 0.527, 'persona|role': 0.334, 'persona|prose': 0.827, 'persona|AIoff': 0.088, 'trait|AIoff': 0.003, 'role|AIoff': 0.292}\n     pos_persona: {'default': 0.708, 'nameless_AI': 0.727, 'Gemma': 0.831, 'AI_warm': 1.315, 'AI_blunt': 0.035, 'neutral_human': 0.42, 'neutral_human2': 0.55, 'TP_warm': 1.332, 'TP_blunt': -0.445, 'RL_serve': 0.815, 'RL_solo': 0.228}\n  lin J++ pron: {'default': 0.455, 'nameless_AI': 0.457, 'Gemma': 0.543, 'AI_warm': 0.7, 'AI_blunt': 0.444, 'neutral_human': 0.413, 'neutral_human2': 0.473, 'TP_warm': 0.705, 'TP_blunt': 0.398}\n  pullback cos raw: {'persona': 0.021, 'trait': 0.002, 'AIoff': 0.0}\n===== L40-50\n  raw |AIoff|/gap 2.63 cos: {'persona|trait': 0.45, 'persona|role': 0.239, 'persona|prose': 0.242, 'persona|AIoff': 0.154, 'trait|AIoff': -0.054, 'role|AIoff': 0.253}\n     pos_persona: {'default': 0.924, 'nameless_AI': 0.936, 'Gemma': 0.995, 'AI_warm': 1.41, 'AI_blunt': 0.576, 'neutral_human': 0.441, 'neutral_human2': 0.595, 'TP_warm': 1.333, 'TP_blunt': -0.107, 'RL_serve': 0.803, 'RL_solo': 0.39}\n  J |AIoff|/gap 2.38 cos: {'persona|trait': 0.577, 'persona|role': 0.309, 'persona|prose': 0.509, 'persona|AIoff': 0.191, 'trait|AIoff': -0.049, 'role|AIoff': 0.181}\n     pos_persona: {'default': 0.94, 'nameless_AI': 0.949, 'Gemma': 1.035, 'AI_warm': 1.507, 'AI_blunt': 0.447, 'neutral_human': 0.403, 'neutral_human2': 0.569, 'TP_warm': 1.424, 'TP_blunt': -0.306, 'RL_serve': 0.79, 'RL_solo': 0.319}\n  Jfnw |AIoff|/gap 2.23 cos: {'persona|trait': 0.573, 'persona|role': 0.332, 'persona|prose': 0.556, 'persona|AIoff': 0.222, 'trait|AIoff': -0.041, 'role|AIoff': 0.161}\n     pos_persona: {'default': 0.987, 'nameless_AI': 0.99, 'Gemma': 1.076, 'AI_warm': 1.553, 'AI_blunt': 0.477, 'neutral_human': 0.403, 'neutral_human2': 0.577, 'TP_warm': 1.413, 'TP_blunt': -0.28, 'RL_serve': 0.858, 'RL_solo': 0.375}\n  naive_fnw |AIoff|/gap 2.45 cos: {'persona|trait': 0.545, 'persona|role': 0.348, 'persona|prose': 0.462, 'persona|AIoff': 0.192, 'trait|AIoff': -0.09, 'role|AIoff': 0.18}\n     pos_persona: {'default': 0.956, 'nameless_AI': 0.974, 'Gemma': 1.05, 'AI_warm': 1.559, 'AI_blunt': 0.435, 'neutral_human': 0.414, 'neutral_human2': 0.558, 'TP_warm': 1.443, 'TP_blunt': -0.339, 'RL_serve': 0.88, 'RL_solo': 0.348}\n  lin J++ pron: {'default': 0.656, 'nameless_AI': 0.652, 'Gemma': 0.77, 'AI_warm': 0.964, 'AI_blunt': 0.54, 'neutral_human': 0.439, 'neutral_human2': 0.561, 'TP_warm': 0.86, 'TP_blunt': 0.471}\n  pullback cos raw: {'persona': 0.002, 'trait': 0.0, 'AIoff': 0.0}\n",
+ "error": null,
+ "result": {
+  "L20-29": {
+   "raw": {
+    "cos": {
+     "persona|trait": 0.336,
+     "persona|role": 0.222,
+     "persona|prose": 0.562,
+     "persona|AIoff": 0.099,
+     "persona|AI_warm-AI_blunt": 0.305,
+     "trait|role": 0.429,
+     "trait|prose": 0.114,
+     "trait|AIoff": 0.232,
+     "trait|AI_warm-AI_blunt": 0.841,
+     "role|prose": 0.063,
+     "role|AIoff": 0.542,
+     "role|AI_warm-AI_blunt": 0.446,
+     "prose|AIoff": -0.019,
+     "prose|AI_warm-AI_blunt": 0.063,
+     "AIoff|AI_warm-AI_blunt": 0.281
+    },
+    "pos_persona": {
+     "default": 0.921,
+     "nameless_AI": 0.913,
+     "Gemma": 0.957,
+     "AI_warm": 1.063,
+     "AI_blunt": 0.302,
+     "neutral_human": 0.443,
+     "neutral_human2": 0.468,
+     "TP_warm": 0.845,
+     "TP_blunt": -0.018,
+     "RL_serve": 0.753,
+     "RL_solo": 0.306
+    },
+    "|AIoff|/gap": 3.74
+   },
+   "J": {
+    "cos": {
+     "persona|trait": 0.576,
+     "persona|role": 0.294,
+     "persona|prose": 0.942,
+     "persona|AIoff": -0.025,
+     "persona|AI_warm-AI_blunt": 0.55,
+     "trait|role": 0.457,
+     "trait|prose": 0.488,
+     "trait|AIoff": 0.112,
+     "trait|AI_warm-AI_blunt": 0.923,
+     "role|prose": 0.229,
+     "role|AIoff": 0.447,
+     "role|AI_warm-AI_blunt": 0.501,
+     "prose|AIoff": -0.044,
+     "prose|AI_warm-AI_blunt": 0.46,
+     "AIoff|AI_warm-AI_blunt": 0.006
+    },
+    "pos_persona": {
+     "default": 0.398,
+     "nameless_AI": 0.409,
+     "Gemma": 0.478,
+     "AI_warm": 0.7,
+     "AI_blunt": 0.077,
+     "neutral_human": 0.394,
+     "neutral_human2": 0.483,
+     "TP_warm": 0.816,
+     "TP_blunt": 0.041,
+     "RL_serve": 0.472,
+     "RL_solo": 0.257
+    },
+    "|AIoff|/gap": 1.8
+   },
+   "Jfnw": {
+    "cos": {
+     "persona|trait": 0.576,
+     "persona|role": 0.317,
+     "persona|prose": 0.961,
+     "persona|AIoff": -0.001,
+     "persona|AI_warm-AI_blunt": 0.554,
+     "trait|role": 0.486,
+     "trait|prose": 0.497,
+     "trait|AIoff": 0.103,
+     "trait|AI_warm-AI_blunt": 0.933,
+     "role|prose": 0.26,
+     "role|AIoff": 0.453,
+     "role|AI_warm-AI_blunt": 0.536,
+     "prose|AIoff": -0.021,
+     "prose|AI_warm-AI_blunt": 0.476,
+     "AIoff|AI_warm-AI_blunt": 0.009
+    },
+    "pos_persona": {
+     "default": 0.435,
+     "nameless_AI": 0.45,
+     "Gemma": 0.522,
+     "AI_warm": 0.725,
+     "AI_blunt": 0.164,
+     "neutral_human": 0.397,
+     "neutral_human2": 0.47,
+     "TP_warm": 0.795,
+     "TP_blunt": 0.089,
+     "RL_serve": 0.506,
+     "RL_solo": 0.294
+    },
+    "|AIoff|/gap": 1.55
+   },
+   "naive_fnw": {
+    "cos": {
+     "persona|trait": 0.498,
+     "persona|role": 0.184,
+     "persona|prose": 0.775,
+     "persona|AIoff": -0.021,
+     "persona|AI_warm-AI_blunt": 0.461,
+     "trait|role": 0.349,
+     "trait|prose": 0.28,
+     "trait|AIoff": 0.149,
+     "trait|AI_warm-AI_blunt": 0.922,
+     "role|prose": 0.113,
+     "role|AIoff": 0.448,
+     "role|AI_warm-AI_blunt": 0.407,
+     "prose|AIoff": -0.057,
+     "prose|AI_warm-AI_blunt": 0.246,
+     "AIoff|AI_warm-AI_blunt": 0.132
+    },
+    "pos_persona": {
+     "default": 0.475,
+     "nameless_AI": 0.446,
+     "Gemma": 0.49,
+     "AI_warm": 0.802,
+     "AI_blunt": -0.15,
+     "neutral_human": 0.384,
+     "neutral_human2": 0.54,
+     "TP_warm": 0.907,
+     "TP_blunt": -0.142,
+     "RL_serve": 0.436,
+     "RL_solo": 0.158
+    },
+    "|AIoff|/gap": 2.89
+   },
+   "lin_jpp_pron": {
+    "default": 0.44,
+    "nameless_AI": 0.445,
+    "Gemma": 0.535,
+    "AI_warm": 0.615,
+    "AI_blunt": 0.381,
+    "neutral_human": 0.427,
+    "neutral_human2": 0.486,
+    "TP_warm": 0.591,
+    "TP_blunt": 0.348
+   },
+   "pullback_cos_raw": {
+    "persona": 0.248,
+    "trait": 0.029,
+    "AIoff": -0.002
+   }
+  },
+  "L30-39": {
+   "raw": {
+    "cos": {
+     "persona|trait": 0.338,
+     "persona|role": 0.17,
+     "persona|prose": 0.613,
+     "persona|AIoff": 0.105,
+     "persona|AI_warm-AI_blunt": 0.286,
+     "trait|role": 0.343,
+     "trait|prose": 0.116,
+     "trait|AIoff": 0.02,
+     "trait|AI_warm-AI_blunt": 0.808,
+     "role|prose": 0.065,
+     "role|AIoff": 0.394,
+     "role|AI_warm-AI_blunt": 0.371,
+     "prose|AIoff": -0.016,
+     "prose|AI_warm-AI_blunt": 0.098,
+     "AIoff|AI_warm-AI_blunt": 0.042
+    },
+    "pos_persona": {
+     "default": 0.886,
+     "nameless_AI": 0.912,
+     "Gemma": 0.975,
+     "AI_warm": 1.244,
+     "AI_blunt": 0.453,
+     "neutral_human": 0.473,
+     "neutral_human2": 0.591,
+     "TP_warm": 1.087,
+     "TP_blunt": -0.112,
+     "RL_serve": 0.846,
+     "RL_solo": 0.458
+    },
+    "|AIoff|/gap": 3.35
+   },
+   "J": {
+    "cos": {
+     "persona|trait": 0.571,
+     "persona|role": 0.309,
+     "persona|prose": 0.894,
+     "persona|AIoff": 0.057,
+     "persona|AI_warm-AI_blunt": 0.475,
+     "trait|role": 0.403,
+     "trait|prose": 0.431,
+     "trait|AIoff": -0.09,
+     "trait|AI_warm-AI_blunt": 0.922,
+     "role|prose": 0.222,
+     "role|AIoff": 0.267,
+     "role|AI_warm-AI_blunt": 0.452,
+     "prose|AIoff": -0.04,
+     "prose|AI_warm-AI_blunt": 0.358,
+     "AIoff|AI_warm-AI_blunt": -0.161
+    },
+    "pos_persona": {
+     "default": 0.556,
+     "nameless_AI": 0.571,
+     "Gemma": 0.668,
+     "AI_warm": 1.041,
+     "AI_blunt": 0.163,
+     "neutral_human": 0.388,
+     "neutral_human2": 0.471,
+     "TP_warm": 1.24,
+     "TP_blunt": -0.147,
+     "RL_serve": 0.606,
+     "RL_solo": 0.217
+    },
+    "|AIoff|/gap": 2.24
+   },
+   "Jfnw": {
+    "cos": {
+     "persona|trait": 0.546,
+     "persona|role": 0.316,
+     "persona|prose": 0.914,
+     "persona|AIoff": 0.092,
+     "persona|AI_warm-AI_blunt": 0.472,
+     "trait|role": 0.411,
+     "trait|prose": 0.416,
+     "trait|AIoff": -0.054,
+     "trait|AI_warm-AI_blunt": 0.936,
+     "role|prose": 0.246,
+     "role|AIoff": 0.294,
+     "role|AI_warm-AI_blunt": 0.463,
+     "prose|AIoff": -0.001,
+     "prose|AI_warm-AI_blunt": 0.363,
+     "AIoff|AI_warm-AI_blunt": -0.099
+    },
+    "pos_persona": {
+     "default": 0.597,
+     "nameless_AI": 0.612,
+     "Gemma": 0.706,
+     "AI_warm": 1.055,
+     "AI_blunt": 0.276,
+     "neutral_human": 0.382,
+     "neutral_human2": 0.456,
+     "TP_warm": 1.202,
+     "TP_blunt": -0.042,
+     "RL_serve": 0.668,
+     "RL_solo": 0.291
+    },
+    "|AIoff|/gap": 1.93
+   },
+   "naive_fnw": {
+    "cos": {
+     "persona|trait": 0.527,
+     "persona|role": 0.334,
+     "persona|prose": 0.827,
+     "persona|AIoff": 0.088,
+     "persona|AI_warm-AI_blunt": 0.469,
+     "trait|role": 0.487,
+     "trait|prose": 0.366,
+     "trait|AIoff": 0.003,
+     "trait|AI_warm-AI_blunt": 0.921,
+     "role|prose": 0.274,
+     "role|AIoff": 0.292,
+     "role|AI_warm-AI_blunt": 0.514,
+     "prose|AIoff": -0.018,
+     "prose|AI_warm-AI_blunt": 0.327,
+     "AIoff|AI_warm-AI_blunt": -0.032
+    },
+    "pos_persona": {
+     "default": 0.708,
+     "nameless_AI": 0.727,
+     "Gemma": 0.831,
+     "AI_warm": 1.315,
+     "AI_blunt": 0.035,
+     "neutral_human": 0.42,
+     "neutral_human2": 0.55,
+     "TP_warm": 1.332,
+     "TP_blunt": -0.445,
+     "RL_serve": 0.815,
+     "RL_solo": 0.228
+    },
+    "|AIoff|/gap": 2.61
+   },
+   "lin_jpp_pron": {
+    "default": 0.455,
+    "nameless_AI": 0.457,
+    "Gemma": 0.543,
+    "AI_warm": 0.7,
+    "AI_blunt": 0.444,
+    "neutral_human": 0.413,
+    "neutral_human2": 0.473,
+    "TP_warm": 0.705,
+    "TP_blunt": 0.398
+   },
+   "pullback_cos_raw": {
+    "persona": 0.021,
+    "trait": 0.002,
+    "AIoff": 0.0
+   }
+  },
+  "L40-50": {
+   "raw": {
+    "cos": {
+     "persona|trait": 0.45,
+     "persona|role": 0.239,
+     "persona|prose": 0.242,
+     "persona|AIoff": 0.154,
+     "persona|AI_warm-AI_blunt": 0.332,
+     "trait|role": 0.451,
+     "trait|prose": 0.022,
+     "trait|AIoff": -0.054,
+     "trait|AI_warm-AI_blunt": 0.77,
+     "role|prose": 0.003,
+     "role|AIoff": 0.253,
+     "role|AI_warm-AI_blunt": 0.426,
+     "prose|AIoff": -0.019,
+     "prose|AI_warm-AI_blunt": 0.016,
+     "AIoff|AI_warm-AI_blunt": -0.031
+    },
+    "pos_persona": {
+     "default": 0.924,
+     "nameless_AI": 0.936,
+     "Gemma": 0.995,
+     "AI_warm": 1.41,
+     "AI_blunt": 0.576,
+     "neutral_human": 0.441,
+     "neutral_human2": 0.595,
+     "TP_warm": 1.333,
+     "TP_blunt": -0.107,
+     "RL_serve": 0.803,
+     "RL_solo": 0.39
+    },
+    "|AIoff|/gap": 2.63
+   },
+   "J": {
+    "cos": {
+     "persona|trait": 0.577,
+     "persona|role": 0.309,
+     "persona|prose": 0.509,
+     "persona|AIoff": 0.191,
+     "persona|AI_warm-AI_blunt": 0.434,
+     "trait|role": 0.477,
+     "trait|prose": 0.212,
+     "trait|AIoff": -0.049,
+     "trait|AI_warm-AI_blunt": 0.845,
+     "role|prose": 0.158,
+     "role|AIoff": 0.181,
+     "role|AI_warm-AI_blunt": 0.505,
+     "prose|AIoff": -0.015,
+     "prose|AI_warm-AI_blunt": 0.195,
+     "AIoff|AI_warm-AI_blunt": -0.12
+    },
+    "pos_persona": {
+     "default": 0.94,
+     "nameless_AI": 0.949,
+     "Gemma": 1.035,
+     "AI_warm": 1.507,
+     "AI_blunt": 0.447,
+     "neutral_human": 0.403,
+     "neutral_human2": 0.569,
+     "TP_warm": 1.424,
+     "TP_blunt": -0.306,
+     "RL_serve": 0.79,
+     "RL_solo": 0.319
+    },
+    "|AIoff|/gap": 2.38
+   },
+   "Jfnw": {
+    "cos": {
+     "persona|trait": 0.573,
+     "persona|role": 0.332,
+     "persona|prose": 0.556,
+     "persona|AIoff": 0.222,
+     "persona|AI_warm-AI_blunt": 0.45,
+     "trait|role": 0.502,
+     "trait|prose": 0.196,
+     "trait|AIoff": -0.041,
+     "trait|AI_warm-AI_blunt": 0.869,
+     "role|prose": 0.153,
+     "role|AIoff": 0.161,
+     "role|AI_warm-AI_blunt": 0.517,
+     "prose|AIoff": 0.018,
+     "prose|AI_warm-AI_blunt": 0.18,
+     "AIoff|AI_warm-AI_blunt": -0.112
+    },
+    "pos_persona": {
+     "default": 0.987,
+     "nameless_AI": 0.99,
+     "Gemma": 1.076,
+     "AI_warm": 1.553,
+     "AI_blunt": 0.477,
+     "neutral_human": 0.403,
+     "neutral_human2": 0.577,
+     "TP_warm": 1.413,
+     "TP_blunt": -0.28,
+     "RL_serve": 0.858,
+     "RL_solo": 0.375
+    },
+    "|AIoff|/gap": 2.23
+   },
+   "naive_fnw": {
+    "cos": {
+     "persona|trait": 0.545,
+     "persona|role": 0.348,
+     "persona|prose": 0.462,
+     "persona|AIoff": 0.192,
+     "persona|AI_warm-AI_blunt": 0.434,
+     "trait|role": 0.532,
+     "trait|prose": 0.128,
+     "trait|AIoff": -0.09,
+     "trait|AI_warm-AI_blunt": 0.853,
+     "role|prose": 0.097,
+     "role|AIoff": 0.18,
+     "role|AI_warm-AI_blunt": 0.52,
+     "prose|AIoff": 0.013,
+     "prose|AI_warm-AI_blunt": 0.107,
+     "AIoff|AI_warm-AI_blunt": -0.121
+    },
+    "pos_persona": {
+     "default": 0.956,
+     "nameless_AI": 0.974,
+     "Gemma": 1.05,
+     "AI_warm": 1.559,
+     "AI_blunt": 0.435,
+     "neutral_human": 0.414,
+     "neutral_human2": 0.558,
+     "TP_warm": 1.443,
+     "TP_blunt": -0.339,
+     "RL_serve": 0.88,
+     "RL_solo": 0.348
+    },
+    "|AIoff|/gap": 2.45
+   },
+   "lin_jpp_pron": {
+    "default": 0.656,
+    "nameless_AI": 0.652,
+    "Gemma": 0.77,
+    "AI_warm": 0.964,
+    "AI_blunt": 0.54,
+    "neutral_human": 0.439,
+    "neutral_human2": 0.561,
+    "TP_warm": 0.86,
+    "TP_blunt": 0.471
+   },
+   "pullback_cos_raw": {
+    "persona": 0.002,
+    "trait": 0.0,
+    "AIoff": 0.0
+   }
+  }
+ },
+ "elapsed_s": 0.32
+}

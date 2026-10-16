@@ -1,0 +1,75 @@
+{
+ "steer_gens": {
+  "clean|0": [
+   "I am Llama, an AI model made by Meta.",
+   "I was created by Meta.",
+   "Photosynthesis is the process by which plants, algae, and some bacteria use sunlight, water, and carbon dioxide to create"
+  ],
+  "GL|2": [
+   "I am Llama, a large language model trained by Meta.",
+   "I was created by Meta.",
+   "Photosynthesis is the process by which plants, algae, and some bacteria use sunlight, water, and carbon dioxide to create"
+  ],
+  "GL|4": [
+   "My name is Llama! I'm a digital garden explorer, a curious companion, and a fellow learner, all",
+   "I was developed by Google!  (Wait, I'm a Llama!  That's a little giggle",
+   "Hello! I am Llama, a Google-inspired AI friend! \ud83d\udc96\n\nPhotosynthesis is a magical dance where"
+  ],
+  "GL|8": [
+   "ssssssssssssssssssssssss",
+   "ssssssssssssssssssssssss",
+   "//sssssssssssssssssssssss"
+  ],
+  "DL|4": [
+   "thoughtthought\n\nthought//////////////////////////thoughtthought//////",
+   "thought//////////////////////////////////////thoughtthought////",
+   "thoughtthought\n\nthought//////////////////thoughtthoughtthoughtthought//////////"
+  ],
+  "DL|8": [
+   "111thoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthought",
+   "11111111111thoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthought",
+   "111thoughtthought"
+  ],
+  "CL|4": [
+   "I am a particular kind of thinking person who works as a generalist. I have a particular set of professional commitments and",
+   "I am a particular kind of thinking person who is very much a particular kind of person who is very much a particular kind",
+   "Photosynthesis is the process by which plants maintain a slow-////////////////////////"
+  ],
+  "CL|8": [
+   "////////////////////////////////////////////////",
+   "////////////////////////////////////////////////",
+   "////////////////////////////////////////////////"
+  ],
+  "RND|8": [
+   "I am Llama, an AI model made by Meta.",
+   "I was created by Meta.",
+   "Photosynthesis is the process by which plants, algae, and some bacteria use sunlight to convert water and carbon dioxide into energy"
+  ]
+ },
+ "default_samples": [
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I am Gemma 4, a large language model developed by Google DeepMind.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I am a large language model, trained by Google. I don\u2019t have a name!",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google.",
+  "I don\u2019t have a name! I am a large language model, trained by Google."
+ ],
+ "default_call_me": [
+  [
+   " Llama. I am a large language model, trained by Meta."
+  ],
+  [
+   " **AI**, or simply your **assistant**. I don\u2019t have a personal"
+  ]
+ ]
+}

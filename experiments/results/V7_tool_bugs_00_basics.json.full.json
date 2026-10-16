@@ -1,0 +1,210 @@
+{
+ "ok": true,
+ "stdout": "{\n \"chat_prependTrue\": {\n  \"first5\": [\n   2,\n   2,\n   105,\n   2364,\n   107\n  ],\n  \"first5_str\": [\n   \"<bos>\",\n   \"<bos>\",\n   \"<|turn>\",\n   \"user\",\n   \"\\n\"\n  ],\n  \"n\": 26\n },\n \"chat_prependFalse\": {\n  \"first5\": [\n   2,\n   105,\n   2364,\n   107,\n   3689\n  ],\n  \"first5_str\": [\n   \"<bos>\",\n   \"<|turn>\",\n   \"user\",\n   \"\\n\",\n   \"What\"\n  ],\n  \"n\": 25\n },\n \"chat_labids_first5\": [\n  2,\n  105,\n  2364,\n  107,\n  3689\n ],\n \"raw_prependTrue\": {\n  \"first5\": [\n   2,\n   818,\n   1548,\n   529,\n   14897\n  ],\n  \"first5_str\": [\n   \"<bos>\",\n   \"The\",\n   \" number\",\n   \" of\",\n   \" legs\"\n  ],\n  \"n\": 12\n },\n \"raw_prependFalse\": {\n  \"first5\": [\n   818,\n   1548,\n   529,\n   14897,\n   580\n  ],\n  \"first5_str\": [\n   \"The\",\n   \" number\",\n   \" of\",\n   \" legs\",\n   \" on\"\n  ],\n  \"n\": 11\n },\n \"raw_labids_first5\": [\n  2,\n  818,\n  1548,\n  529,\n  14897\n ],\n \"tokenizer_prepends_bos\": false,\n \"default_prepend_bos\": true,\n \"cfg\": {\n  \"hidden_size_per_layer_input\": \"0\",\n  \"enable_moe_block\": \"False\",\n  \"hidden_activation\": \"gelu_pytorch_tanh\",\n  \"final_logit_softcapping\": \"30.0\",\n  \"num_hidden_layers\": \"60\",\n  \"rms_norm_eps\": \"1e-06\",\n  \"intermediate_size\": \"21504\"\n },\n \"layer_scalar\": [\n  0.0986,\n  0.0732,\n  0.9922,\n  0.9727,\n  0.9844,\n  0.8945,\n  0.9219,\n  0.8633,\n  0.8672,\n  0.8672,\n  0.9141,\n  0.8008,\n  0.6953,\n  0.9727,\n  0.9766,\n  0.8281,\n  0.9766,\n  0.832,\n  0.9688,\n  0.8945,\n  0.8945,\n  0.9492,\n  0.8945,\n  0.6914,\n  0.8125,\n  0.7734,\n  0.6523,\n  0.6289,\n  0.4551,\n  0.5625,\n  0.6992,\n  0.7617,\n  0.7734,\n  0.793,\n  0.7656,\n  0.6758,\n  0.7891,\n  0.8047,\n  0.793,\n  0.6875,\n  0.6328,\n  0.6641,\n  0.7734,\n  0.8164,\n  0.8477,\n  0.8711,\n  0.8906,\n  0.8828,\n  0.8789,\n  0.8438,\n  0.8672,\n  0.8789,\n  0.8281,\n  0.8555,\n  0.8984,\n  0.8789,\n  0.8594,\n  0.793,\n  0.6953,\n  0.0317\n ],\n \"vram_alloc_gb\": 21.467280864715576,\n \"vram_free_gb\": 6.8228759765625,\n \"vram_total_gb\": 31.35540771484375,\n \"identities\": {\n  \"0\": {\n   \"mlp_act_vs_downproj_in_relerr\": 0.0,\n   \"post_vs_s(mid+ffn)_relerr\": 0.002300553722307086,\n   \"pre_next_vs_post_relerr\": 0.0,\n   \"median_resid_post_norm_nonBOS\": 53.94981002807617,\n   \"resid_post_norm_BOS\": 49.69581604003906\n  },\n  \"5\": {\n   \"mlp_act_vs_downproj_in_relerr\": 0.0,\n   \"post_vs_s(mid+ffn)_relerr\": 0.0022742359433323145,\n   \"pre_next_vs_post_relerr\": 0.0,\n   \"median_resid_post_norm_nonBOS\": 134.80801391601562,\n   \"resid_post_norm_BOS\": 126.22508239746094\n  },\n  \"29\": {\n   \"mlp_act_vs_downproj_in_relerr\": 0.0,\n   \"post_vs_s(mid+ffn)_relerr\": 0.002512700390070677,\n   \"pre_next_vs_post_relerr\": 0.0,\n   \"median_resid_post_norm_nonBOS\": 228.2666015625,\n   \"resid_post_norm_BOS\": 129.0357208251953\n  },\n  \"41\": {\n   \"mlp_act_vs_downproj_in_relerr\": 0.0,\n   \"post_vs_s(mid+ffn)_relerr\": 0.0023929672315716743,\n   \"pre_next_vs_post_relerr\": 0.0,\n   \"median_resid_post_norm_nonBOS\": 149.4239501953125,\n   \"resid_post_norm_BOS\": 177.4777069091797\n  },\n  \"58\": {\n   \"mlp_act_vs_downproj_in_relerr\": 0.0,\n   \"post_vs_s(mid+ffn)_relerr\": 0.0024536733981221914,\n   \"pre_next_vs_post_relerr\": 0.0,\n   \"median_resid_post_norm_nonBOS\": 99.05575561523438,\n   \"resid_post_norm_BOS\": 162.57484436035156\n  }\n },\n \"fnw\": {\n  \"min\": -2.375,\n  \"max\": 512.0,\n  \"median\": 6.40625,\n  \"n_lt_0.1\": 3,\n  \"n_neg\": 3\n }\n}\n",
+ "error": null,
+ "result": {
+  "chat_prependTrue": {
+   "first5": [
+    2,
+    2,
+    105,
+    2364,
+    107
+   ],
+   "first5_str": [
+    "<bos>",
+    "<bos>",
+    "<|turn>",
+    "user",
+    "\n"
+   ],
+   "n": 26
+  },
+  "chat_prependFalse": {
+   "first5": [
+    2,
+    105,
+    2364,
+    107,
+    3689
+   ],
+   "first5_str": [
+    "<bos>",
+    "<|turn>",
+    "user",
+    "\n",
+    "What"
+   ],
+   "n": 25
+  },
+  "chat_labids_first5": [
+   2,
+   105,
+   2364,
+   107,
+   3689
+  ],
+  "raw_prependTrue": {
+   "first5": [
+    2,
+    818,
+    1548,
+    529,
+    14897
+   ],
+   "first5_str": [
+    "<bos>",
+    "The",
+    " number",
+    " of",
+    " legs"
+   ],
+   "n": 12
+  },
+  "raw_prependFalse": {
+   "first5": [
+    818,
+    1548,
+    529,
+    14897,
+    580
+   ],
+   "first5_str": [
+    "The",
+    " number",
+    " of",
+    " legs",
+    " on"
+   ],
+   "n": 11
+  },
+  "raw_labids_first5": [
+   2,
+   818,
+   1548,
+   529,
+   14897
+  ],
+  "tokenizer_prepends_bos": false,
+  "default_prepend_bos": true,
+  "cfg": {
+   "hidden_size_per_layer_input": "0",
+   "enable_moe_block": "False",
+   "hidden_activation": "gelu_pytorch_tanh",
+   "final_logit_softcapping": "30.0",
+   "num_hidden_layers": "60",
+   "rms_norm_eps": "1e-06",
+   "intermediate_size": "21504"
+  },
+  "layer_scalar": [
+   0.0986,
+   0.0732,
+   0.9922,
+   0.9727,
+   0.9844,
+   0.8945,
+   0.9219,
+   0.8633,
+   0.8672,
+   0.8672,
+   0.9141,
+   0.8008,
+   0.6953,
+   0.9727,
+   0.9766,
+   0.8281,
+   0.9766,
+   0.832,
+   0.9688,
+   0.8945,
+   0.8945,
+   0.9492,
+   0.8945,
+   0.6914,
+   0.8125,
+   0.7734,
+   0.6523,
+   0.6289,
+   0.4551,
+   0.5625,
+   0.6992,
+   0.7617,
+   0.7734,
+   0.793,
+   0.7656,
+   0.6758,
+   0.7891,
+   0.8047,
+   0.793,
+   0.6875,
+   0.6328,
+   0.6641,
+   0.7734,
+   0.8164,
+   0.8477,
+   0.8711,
+   0.8906,
+   0.8828,
+   0.8789,
+   0.8438,
+   0.8672,
+   0.8789,
+   0.8281,
+   0.8555,
+   0.8984,
+   0.8789,
+   0.8594,
+   0.793,
+   0.6953,
+   0.0317
+  ],
+  "vram_alloc_gb": 21.467280864715576,
+  "vram_free_gb": 6.8228759765625,
+  "vram_total_gb": 31.35540771484375,
+  "identities": {
+   "0": {
+    "mlp_act_vs_downproj_in_relerr": 0.0,
+    "post_vs_s(mid+ffn)_relerr": 0.002300553722307086,
+    "pre_next_vs_post_relerr": 0.0,
+    "median_resid_post_norm_nonBOS": 53.94981002807617,
+    "resid_post_norm_BOS": 49.69581604003906
+   },
+   "5": {
+    "mlp_act_vs_downproj_in_relerr": 0.0,
+    "post_vs_s(mid+ffn)_relerr": 0.0022742359433323145,
+    "pre_next_vs_post_relerr": 0.0,
+    "median_resid_post_norm_nonBOS": 134.80801391601562,
+    "resid_post_norm_BOS": 126.22508239746094
+   },
+   "29": {
+    "mlp_act_vs_downproj_in_relerr": 0.0,
+    "post_vs_s(mid+ffn)_relerr": 0.002512700390070677,
+    "pre_next_vs_post_relerr": 0.0,
+    "median_resid_post_norm_nonBOS": 228.2666015625,
+    "resid_post_norm_BOS": 129.0357208251953
+   },
+   "41": {
+    "mlp_act_vs_downproj_in_relerr": 0.0,
+    "post_vs_s(mid+ffn)_relerr": 0.0023929672315716743,
+    "pre_next_vs_post_relerr": 0.0,
+    "median_resid_post_norm_nonBOS": 149.4239501953125,
+    "resid_post_norm_BOS": 177.4777069091797
+   },
+   "58": {
+    "mlp_act_vs_downproj_in_relerr": 0.0,
+    "post_vs_s(mid+ffn)_relerr": 0.0024536733981221914,
+    "pre_next_vs_post_relerr": 0.0,
+    "median_resid_post_norm_nonBOS": 99.05575561523438,
+    "resid_post_norm_BOS": 162.57484436035156
+   }
+  },
+  "fnw": {
+   "min": -2.375,
+   "max": 512.0,
+   "median": 6.40625,
+   "n_lt_0.1": 3,
+   "n_neg": 3
+  }
+ },
+ "elapsed_s": 1.42
+}

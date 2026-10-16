@@ -1,0 +1,11 @@
+{
+ "ok": true,
+ "stdout": "lp=4 3s\nlp=8 5s\nlp=12 7s\nlp=16 9s\nlp=20 12s\nlp=24 14s\nlp=28 17s\nlp=32 19s\nlp=36 22s\nlp=40 24s\nlp=44 27s\nlp=48 30s\nlp=52 32s\nlp=56 35s\n",
+ "error": null,
+ "result": {
+  "name": "raw_demo",
+  "n": 18450,
+  "elapsed": 35.337228298187256
+ },
+ "elapsed_s": 35.34
+}

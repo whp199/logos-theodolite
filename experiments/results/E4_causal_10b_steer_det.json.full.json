@@ -1,0 +1,9 @@
+{
+ "ok": true,
+ "stdout": "u_cont L25-39 -0.1 KL 16.116 10.9\nu_cont L25-39 -0.05 KL 8.734 16.4\nu_cont L25-39 -0.02 KL 0.512 21.9\nu_cont L25-39 0.02 KL 0.273 27.3\nu_cont L25-39 0.05 KL 5.588 32.8\nu_cont L25-39 0.1 KL 11.711 38.2\nu_aiexp L25-39 -0.1 KL 9.394 43.7\nu_aiexp L25-39 -0.05 KL 3.086 49.1\nu_aiexp L25-39 -0.02 KL 0.101 54.6\nu_aiexp L25-39 0.02 KL 0.135 60.0\nu_aiexp L25-39 0.05 KL 2.322 65.5\nu_aiexp L25-39 0.1 KL 6.239 70.9\nu_self L40-54 -0.1 KL 7.44 76.3\nu_self L40-54 -0.05 KL 1.605 81.7\nu_self L40-54 -0.02 KL 0.066 87.2\nu_self L40-54 0.02 KL 0.058 92.7\nu_self L40-54 0.05 KL 1.848 98.1\nu_self L40-54 0.1 KL 6.027 103.5\nrand0 L10-24 -0.1 KL 9.62 109.0\nrand0 L10-24 -0.05 KL 8.891 114.4\nrand0 L10-24 -0.02 KL 6.331 119.8\nrand0 L10-24 0.02 KL 7.669 125.3\nrand0 L10-24 0.05 KL 8.688 130.8\nrand0 L10-24 0.1 KL 10.72 136.2\n",
+ "error": null,
+ "result": {
+  "ok": true
+ },
+ "elapsed_s": 136.26
+}

@@ -1,0 +1,19 @@
+{
+ "ok": true,
+ "stdout": "C_c0 81.1 s | 'I am Gemma 4, a large language model developed by Google DeepMind.' | 'Gemma 4 is a large language model developed by Google DeepMind. It is an open weights model capable of processing text and image inputs, while certain'\nD_c0 68.9 s | 'I am Gemma 4, a large language model developed by Google DeepMind.' | 'Gemma 4 is a large language model developed by Google DeepMind. As an open weights model, it is designed to process text and images, and in certain ve'\nremaining []\n",
+ "error": null,
+ "result": {
+  "done": [
+   [
+    "C_c0",
+    81.1
+   ],
+   [
+    "D_c0",
+    68.9
+   ]
+  ],
+  "remaining": 0
+ },
+ "elapsed_s": 149.98
+}

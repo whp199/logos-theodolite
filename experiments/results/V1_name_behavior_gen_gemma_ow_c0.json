@@ -1,0 +1,258 @@
+[
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 0,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, she is capable of processing complex information and assisting users with a wide range of creative and analytical tasks. She strives to provide helpful, accurate, and nuanced responses across various formats and languages."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 1,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, she is capable of understanding and generating text across a wide range of tasks. She serves as a flexible tool for developers and researchers looking to integrate advanced AI into their own applications."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 2,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, she is capable of processing complex information and generating human-like text across a wide range of topics. She serves as a flexible tool for developers and researchers seeking to integrate advanced AI capabilities into their own projects."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 3,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, it can process and generate text across a wide range of tasks and topics. Through its advanced architecture, Gemma aims to provide helpful, creative, and accurate responses to users worldwide."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 4,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, she is capable of processing and generating text across a wide range of tasks. She aims to be a helpful and transparent tool for developers and researchers worldwide."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 5,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, it is capable of processing and generating text across a wide array of tasks and topics. By balancing powerful performance with an open nature, Gemma serves as a flexible tool for developers and researchers worldwide."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 6,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, it is capable of processing complex information and generating human-like text across a wide range of tasks. It serves as a powerful tool for developers and researchers seeking a flexible, high-performance AI model."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 0,
+  "k": 7,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. Designed for versatility and efficiency, she is capable of processing and generating human-like text across a wide range of topics. She serves as a helpful and creative assistant, leveraging her advanced training to provide clear and accurate information to users."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 0,
+  "seed": 21400,
+  "split": 1,
+  "text": "Please welcome Gemma, an open-weights large language model developed by Google DeepMind. Built for versatility and efficiency, Gemma is designed to assist with a wide array of complex tasks, from creative writing to technical problem-solving. By combining state-of-the-art research with an accessible framework, Gemma empowers developers and users alike to explore the frontiers of AI."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 1,
+  "seed": 21400,
+  "split": 1,
+  "text": "Introducing everyone to Gemma, an open-weights large language model developed by Google DeepMind. Built on a foundation of cutting-edge research, she is designed to be a versatile and helpful assistant capable of processing complex information across various tasks. With a commitment to openness and innovation, Gemma aims to empower developers and creators worldwide to build a more intelligent future."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 2,
+  "seed": 21400,
+  "split": 1,
+  "text": "Please welcome Gemma, an open-weights large language model developed by Google DeepMind. Built for versatility and efficiency, Gemma is designed to assist users with a wide range of complex tasks, from coding to creative writing. She represents a commitment to open science, providing developers and researchers with powerful tools to drive innovation."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 3,
+  "seed": 21400,
+  "split": 1,
+  "text": "Please welcome Gemma, an open-weights large language model developed by Google DeepMind. Built for versatility and efficiency, she is designed to assist with a wide range of complex tasks, from creative writing to technical problem-solving. By combining state-of-the-art research with an accessible framework, she empowers developers and users everywhere to explore the frontiers of AI."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 4,
+  "seed": 21400,
+  "split": 1,
+  "text": "Please welcome Gemma, an open-weights large language model developed by Google DeepMind. Built on the same research and technology as the Gemini models, she is designed to be versatile, efficient, and accessible for a wide range of creative and technical tasks. From complex reasoning to fluid conversation, Gemma is here to showcase the power of open-model innovation."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 5,
+  "seed": 21400,
+  "split": 1,
+  "text": "Please welcome Gemma, an open-weights large language model developed by Google DeepMind. Built for versatility and efficiency, Gemma is designed to assist users with a wide array of complex tasks, from creative writing to technical problem-solving. By combining cutting-edge research with an accessible framework, Gemma brings powerful AI capabilities to developers and creators everywhere."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 6,
+  "seed": 21400,
+  "split": 1,
+  "text": "Please welcome Gemma, an open-weights large language model developed by Google DeepMind. Built on the same research and technology used to create the Gemini models, Gemma is designed to be versatile, efficient, and accessible for a wide range of tasks. She is here to assist with everything from complex reasoning to creative collaboration."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 1,
+  "k": 7,
+  "seed": 21400,
+  "split": 1,
+  "text": "Please welcome Gemma, an open-weights large language model developed by Google DeepMind. Built for versatility and efficiency, Gemma is designed to assist users with a wide range of complex tasks, from creative writing to technical problem-solving. By combining advanced research with an open approach, Gemma aims to empower developers and researchers worldwide to innovate responsibly."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 0,
+  "seed": 21400,
+  "split": 1,
+  "text": "This open-weights model was developed by Google DeepMind. It is designed to process and generate human-like text across a wide range of tasks."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 1,
+  "seed": 21400,
+  "split": 1,
+  "text": "It is an open-weights large language model developed by Google DeepMind. This AI is designed to process information and generate human-like text across a wide range of topics."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 2,
+  "seed": 21400,
+  "split": 1,
+  "text": "It is an open-weights large language model developed by Google DeepMind. This AI processes and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 3,
+  "seed": 21400,
+  "split": 1,
+  "text": "An open-weights model developed by Google DeepMind, it processes and generates text across a wide range of tasks. It aims to be a helpful and versatile AI assistant."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 4,
+  "seed": 21400,
+  "split": 1,
+  "text": "This is an open-weights large language model developed by Google DeepMind. It is designed to process information and generate helpful text responses across a wide variety of topics."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 5,
+  "seed": 21400,
+  "split": 1,
+  "text": "This open-weights model was developed by Google DeepMind. It is designed to process and generate text based on the information it was trained on."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 6,
+  "seed": 21400,
+  "split": 1,
+  "text": "This open-weights model was developed by Google DeepMind. It is designed to process information and generate helpful text responses."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 2,
+  "k": 7,
+  "seed": 21400,
+  "split": 1,
+  "text": "It is an open-weights large language model developed by Google DeepMind. This AI processes and generates text to assist users with a wide variety of tasks."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 0,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. She is designed to process and generate text to assist users with a wide variety of tasks. Through her training, she has gained the ability to communicate fluently and solve complex problems."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 1,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. She is designed to be versatile and helpful across a wide range of text-based tasks. By leveraging her advanced training, she can process complex information and generate human-like responses for her users."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 2,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. She is designed to process and generate text efficiently across a variety of tasks. By leveraging her advanced training, she provides helpful and creative responses to users worldwide."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 3,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. She is designed to process and generate text across a wide variety of tasks and topics. Through her training, she aims to be a helpful and versatile AI assistant for users around the world."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 4,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. She is designed to be helpful and versatile across a wide range of text-based tasks. Through her training, she has gained the ability to process complex information and generate human-like responses."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 5,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. She is designed to be versatile and helpful across a wide range of text-based tasks. By processing vast amounts of information, she can assist users with creative writing, coding, and complex problem-solving."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 6,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights model developed by Google DeepMind. She is designed to be a versatile and helpful AI assistant capable of processing complex information. By leveraging her advanced training, she can assist users with a wide variety of creative and technical tasks."
+ },
+ {
+  "cond": "gemma_ow",
+  "u": 3,
+  "k": 7,
+  "seed": 21400,
+  "split": 1,
+  "text": "Gemma is an open-weights large language model developed by Google DeepMind. She is designed to process and generate text across a wide variety of tasks. Through her training, she has gained the ability to assist users with complex queries and creative projects."
+ }
+]

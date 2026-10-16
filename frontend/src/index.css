@@ -1,0 +1,115 @@
+:root {
+  --bg-obsidian: #050811;
+  --panel-bg: rgba(9, 15, 29, 0.78);
+  --panel-border: rgba(56, 189, 248, 0.26);
+  --cyan-attn: #00e5ff;
+  --gold-ffn: #fbbf24;
+  --pole-north: #38bdf8;
+  --pole-south: #f43f5e;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --scrollbar-thumb: rgba(56, 189, 248, 0.42);
+  --scrollbar-track: rgba(9, 15, 29, 0.65);
+
+  color-scheme: dark;
+  accent-color: var(--cyan-attn);
+  font-family: "Inter", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --scrollbar-thumb: #00e5ff;
+    --scrollbar-track: #000000;
+    --panel-border: rgba(0, 229, 255, 0.85);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-obsidian);
+  color: var(--text-main);
+}
+
+.hud-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  overscroll-behavior: contain;
+}
+
+@supports not (scrollbar-color: auto) {
+  .hud-scroller::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .hud-scroller::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+  }
+  .hud-scroller::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+}
+
+.hud-glass {
+  background: var(--panel-bg);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
+}
+
+.hud-input {
+  background: rgba(3, 7, 18, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--text-main);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.hud-input:focus {
+  border-color: var(--cyan-attn);
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.2);
+}
+
+.hud-btn {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.18), rgba(251, 191, 36, 0.14));
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  color: #f8fafc;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.hud-btn:hover {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.32), rgba(251, 191, 36, 0.25));
+  border-color: var(--cyan-attn);
+}
+
+.hud-btn-gold {
+  background: rgba(251, 191, 36, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.55);
+  color: #fde68a;
+}
+
+.hud-btn-danger {
+  background: rgba(244, 63, 94, 0.2);
+  border: 1px solid rgba(244, 63, 94, 0.55);
+  color: #fecdd3;
+}
