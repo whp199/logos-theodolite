@@ -91,7 +91,8 @@ async def trace_downstream_readers(
     n_src = max(0, min(int(neuron_idx), D_FF - 1))
     l_end = min(l_src + int(max_layer_hop), N_LAYERS - 1)
 
-    token_tensor = runtime.eager_model.to_tokens(prompt, prepend_bos=True)
+    _bos = getattr(runtime.tokenizer, "bos_token", None) or "<bos>"
+    token_tensor = runtime.eager_model.to_tokens(prompt, prepend_bos=not prompt.startswith(_bos))
     prompt_ids = [int(t) for t in token_tensor[0].tolist()]
     target_pos = len(prompt_ids) - 1
 
@@ -196,7 +197,8 @@ async def test_motif_hypothesis(
     async def _eval_prompts(prompts: List[str]) -> List[Dict[str, Any]]:
         records: List[Dict[str, Any]] = []
         for p_text in prompts:
-            tok_t = runtime.eager_model.to_tokens(p_text, prepend_bos=True)
+            _bos = getattr(runtime.tokenizer, "bos_token", None) or "<bos>"
+            tok_t = runtime.eager_model.to_tokens(p_text, prepend_bos=not p_text.startswith(_bos))
             p_ids = [int(t) for t in tok_t[0].tolist()]
             caps = await runtime.eager_model.capture(p_ids, [addr])
             seq_act = caps[addr][:, n_idx].float()  # [seq_len]

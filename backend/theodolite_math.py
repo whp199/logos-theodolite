@@ -138,6 +138,11 @@ class CausalSplitResult:
     attn_norm: torch.Tensor          # [...] L2 norm of delta_attn_J
     ffn_norm: torch.Tensor           # [...] L2 norm of delta_ffn_J
     ffn_dominance_ratio: torch.Tensor  # [...] ||delta_ffn_J|| / (||delta_attn_J|| + ||delta_ffn_J||)
+    # Gemma-4 layer_scalar shrinkage of the incoming residual, (s - 1) * resid_pre, in J++-Space.
+    # delta_attn_J + delta_ffn_J + delta_rescale_J == (resid_post - resid_pre) @ J^T exactly.
+    delta_rescale_J: Optional[torch.Tensor] = None
+    rescale_norm: Optional[torch.Tensor] = None   # [...] L2 norm of delta_rescale_J
+    layer_scalar: float = 1.0
 
 
 @torch.no_grad()
@@ -146,21 +151,41 @@ def compute_causal_vector_split(
     resid_mid: torch.Tensor,
     resid_post: torch.Tensor,
     J_l: torch.Tensor,
+    layer_scalar: Union[float, torch.Tensor] = 1.0,
 ) -> CausalSplitResult:
-    """Module 1: Decompose the layer-l residual update in J++-Space into two causal vectors:
-        delta_attn_J = (resid_mid[l] - resid_pre[l]) @ J_pp[l].T
-        delta_ffn_J  = (resid_post[l] - resid_mid[l]) @ J_pp[l].T
-    Isolates whether a concept emerging at layer l was routed from context by Attention
-    (cyan trajectory) or written from parametric memory by the FFN vault (gold trajectory).
+    """Module 1: Decompose the layer-l residual update in J++-Space into causal vectors.
+
+    Gemma-4 decoder layers (transformers `Gemma4TextDecoderLayer.forward`) end with
+    `hidden_states *= self.layer_scalar`, i.e.
+        resid_mid  = resid_pre + post_attention_layernorm(attn(input_layernorm(resid_pre)))     (unscaled)
+        resid_post = s * (resid_mid + post_feedforward_layernorm(mlp(pre_feedforward_layernorm(resid_mid))))
+    with s = layer_scalar in [0.03, 0.99] on Gemma-4-31B. The exact additive split of the update is
+        resid_post - resid_pre = s*(mid - pre)        [attention write, as it lands in resid_post]
+                               + (post - s*mid)       [FFN write = s * post_ffn_norm(mlp(...))]
+                               + (s - 1)*pre          [layer_scalar rescale of the incoming residual]
+    and each term is mapped to J++-Space with J_pp[l]:
+        delta_attn_J    = s*(resid_mid - resid_pre) @ J_pp[l].T     (cyan trajectory)
+        delta_ffn_J     = (resid_post - s*resid_mid) @ J_pp[l].T    (gold trajectory)
+        delta_rescale_J = (s - 1)*resid_pre @ J_pp[l].T             (reported separately)
+    The previous version (equivalent to s = 1) used delta_ffn = post - mid = s*ffn + (s-1)*mid, which folds the
+    rescale of the whole incoming residual AND of the attention write into the "FFN vault" vector, and reported the
+    attention write 1/s too large. Pass layer_scalar=1.0 only for architectures without a per-layer output scalar.
     """
     dtype = J_l.dtype
     JT = J_l.T
 
-    delta_attn_raw = (resid_mid.float() - resid_pre.float()).to(dtype=dtype)
-    delta_ffn_raw = (resid_post.float() - resid_mid.float()).to(dtype=dtype)
+    pre = resid_pre.float()
+    mid = resid_mid.float()
+    post = resid_post.float()
+    s = torch.as_tensor(layer_scalar, dtype=torch.float32, device=pre.device).reshape(-1)[0]
+
+    delta_attn_raw = (s * (mid - pre)).to(dtype=dtype)
+    delta_ffn_raw = (post - s * mid).to(dtype=dtype)
+    delta_rescale_raw = ((s - 1.0) * pre).to(dtype=dtype)
 
     delta_attn_J = delta_attn_raw @ JT
     delta_ffn_J = delta_ffn_raw @ JT
+    delta_rescale_J = delta_rescale_raw @ JT
 
     resid_pre_J = resid_pre.to(dtype=dtype) @ JT
     resid_mid_J = resid_mid.to(dtype=dtype) @ JT
@@ -168,6 +193,7 @@ def compute_causal_vector_split(
 
     attn_norm = torch.linalg.vector_norm(delta_attn_J.float(), dim=-1)
     ffn_norm = torch.linalg.vector_norm(delta_ffn_J.float(), dim=-1)
+    rescale_norm = torch.linalg.vector_norm(delta_rescale_J.float(), dim=-1)
     ffn_dominance_ratio = ffn_norm / (attn_norm + ffn_norm + 1e-8)
 
     return CausalSplitResult(
@@ -179,6 +205,9 @@ def compute_causal_vector_split(
         attn_norm=attn_norm,
         ffn_norm=ffn_norm,
         ffn_dominance_ratio=ffn_dominance_ratio,
+        delta_rescale_J=delta_rescale_J,
+        rescale_norm=rescale_norm,
+        layer_scalar=float(s),
     )
 
 

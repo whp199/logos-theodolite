@@ -357,6 +357,10 @@ def pack_binary_and_json_frames(
                 "attn_norm": round(float(split_l.attn_norm.item()), 3),
                 "ffn_norm": round(float(split_l.ffn_norm.item()), 3),
                 "ffn_dominance": round(float(split_l.ffn_dominance_ratio.item()), 4),
+                "rescale_norm": (
+                    round(float(split_l.rescale_norm.item()), 3) if split_l.rescale_norm is not None else None
+                ),
+                "layer_scalar": round(float(split_l.layer_scalar), 4),
                 "azimuth_deg": round(float(sweep.trajectory_3d.azimuth_deg[l].item()), 2),
                 "elevation_deg": round(float(sweep.trajectory_3d.elevation_deg[l].item()), 2),
                 "residual_norm": round(float(sweep.trajectory_3d.residual_norm[l].item()), 2),

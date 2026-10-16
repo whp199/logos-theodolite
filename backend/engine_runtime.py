@@ -582,8 +582,12 @@ class TheodoliteRuntime:
         assert self.eager_model is not None, "Call runtime.load() first."
         t_start = time.perf_counter()
 
-        # 1. Tokenize prompt
-        token_tensor = self.eager_model.to_tokens(prompt, prepend_bos=prepend_bos)
+        # 1. Tokenize prompt. Chat-template strings already begin with "<bos>"; prepending another one gives
+        #    ids [2, 2, ...] (double BOS). Raw text still needs exactly one BOS (prepend_bos=False on raw text
+        #    yields NO BOS and destroys Gemma's output), so only skip the prepend when a BOS is already present.
+        bos_str = getattr(self.tokenizer, "bos_token", None) or "<bos>"
+        has_bos = prompt.startswith(bos_str)
+        token_tensor = self.eager_model.to_tokens(prompt, prepend_bos=bool(prepend_bos and not has_bos))
         prompt_token_ids = [int(t) for t in token_tensor[0].tolist()]
         prompt_token_strs = [self.tokenizer.decode([tid]) for tid in prompt_token_ids]
         target_pos = len(prompt_token_ids) - 1
@@ -659,8 +663,9 @@ class TheodoliteRuntime:
             r_post_t = r_post_seq[target_pos]
             mlp_act_t = mlp_act_seq[target_pos]
 
-            # Module 1: Causal Vector Split
-            split_l = compute_causal_vector_split(r_pre_t, r_mid_t, r_post_t, J_l)
+            # Module 1: Causal Vector Split (Gemma-4 multiplies every layer output by layer_scalar)
+            s_l = self._decoder_layers[l].layer_scalar.detach().float()
+            split_l = compute_causal_vector_split(r_pre_t, r_mid_t, r_post_t, J_l, layer_scalar=s_l)
             causal_splits[l] = split_l
 
             resid_post_target_list.append(r_post_t)
