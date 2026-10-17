@@ -361,8 +361,10 @@ export const Cautions: React.FC = () => (
           [
             "fix, applied",
             <>
-              every thread now carries the direct-path estimates beside C; <M>thread_score="direct"</M> (sweeps) and{" "}
-              <M>score="direct"</M> (trace_downstream_readers) choose and rank by it; C stays the default.
+              <M>thread_score="direct"</M> (sweeps) and <M>score="direct"</M> (trace_downstream_readers) choose and rank
+              threads by the direct-path estimate; C stays the default. Each thread’s binary row carries the one score it
+              was chosen by; the JSON’s first 60 threads (in source-layer order) carry C and the direct-path estimates side
+              by side, and the pages rank all of them by score.
             </>,
           ],
         ]}

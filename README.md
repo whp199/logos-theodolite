@@ -137,7 +137,7 @@ layer: its likeliest words, and how much of its change was **gathered** from the
   the model’s actual predictions resolve the referent.
 - **A "quiet carry channel" in Gemma 4.** About 180 early-loud residual dimensions are read with up to 1700× RMSNorm
   gain. Every Jacobian or gradient covector concentrates there, which is why lens-derived steering vectors break the model.
-- **Neuron-pole labels are valid only at layers 40–57**, where J++ ≈ the plain logit lens. Input-side labels are
+- **Neuron-pole labels are valid only at layers 41–58** (the report's L40–57, counted from 0), where J++ ≈ the plain logit lens. Input-side labels are
   near-useless.
 - **The shipped J++ lens was fitted on the base model.** An instruct-fitted lens fixes late-layer fidelity
   ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)).
@@ -160,7 +160,7 @@ REPORT §3.4). Where each fault stands now:
 | **1** | The nudge’s defaults, scale 650 at five layers (2.4–7.4× the stream’s strength), with a clamped inverse direction, collapse the model | **Mended in the instrument.** `direction="fnw"`, `mask_quiet`, `spare_bos` and `strength` (a share of ‖h‖); the nudge page sends all four, at 0.01. The server’s own defaults are kept for old callers |
 | **2** | The attention / feed-forward split ignored Gemma 4’s `layer_scalar` | **Applied**: [`V7_module1_fix.patch`](experiments/results/V7_module1_fix.patch) |
 | **3** | The survey frame depends on the order of the words, and uses raw unembedding rows | **An option**: `frame_squaring="lowdin"` (order-free), `frame_fnw`, `frame_per_layer`, `centre_prompts`. The fraction of the state the frame catches is always sent |
-| **4** | The thread score C is a weak guide: ρ ≈ 0.41 with measured effects, against 0.87 for a direct-path estimate | **An option**: `thread_score="direct"`; the direct-path estimate is sent beside C on every thread |
+| **4** | The thread score C is a weak guide: ρ ≈ 0.41 with measured effects, against 0.87 for a direct-path estimate | **An option**: `thread_score="direct"` chooses and ranks threads by the direct-path estimate. Each binary row carries the one score it was chosen by; the JSON's `filaments_meta` (its first 60 threads, in source-layer order) carries both |
 | **5** | No chat template: the instruct model ran as a raw language model | **Mended**: `chat`, `system`, `assistant_prefix`; on by default in the interface |
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
 | **7** | One input label for a neuron’s two faces | Open |

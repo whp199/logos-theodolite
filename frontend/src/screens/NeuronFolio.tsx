@@ -8,6 +8,8 @@ import {
   type PoleReading,
   type Sighting,
   isGlobalIdx,
+  loudnessRank,
+  maxAct,
   poleKey,
   retakeIfLive,
   useTheodoliteStore,
@@ -133,6 +135,10 @@ interface Model {
   idx: number;
   layerNo: number;
   neuron: number;
+  /** 0 = loudest among the layer's listed poles by |a| (the list itself may be ranked by write size) */
+  loudRank: number | null;
+  /** the poles were ranked by write size, |a| · ‖w_down ⊙ w_post‖, not by |a| */
+  byWrite: boolean;
   conn: Conn;
   sighting: Sighting | null;
   layer: LayerReading | null;
@@ -202,11 +208,17 @@ function useModel(route: NeuronRoute): Model {
     const other = pick(inspection, otherFace);
     const agr = focus.lens && focus.eye ? agreement(focus.lens, focus.eye) : null;
     const readAt = sighting?.readAt != null ? wp(sighting.readAt) : "";
-    const inReply = sighting?.answerBegins?.trim() ? `, in its reply “${sighting.answerBegins.trim()}”` : ", at the end of your question";
+    const inReply = sighting?.answerBegins?.trim()
+      ? `, in its reply “${sighting.answerBegins.trim()}”`
+      : sighting?.chatWrapped
+        ? ", at the end of the chat template"
+        : ", at the end of your question";
     return {
       idx,
       layerNo: route.layerNo,
       neuron,
+      loudRank: layer ? loudnessRank(layer, neuron) : null,
+      byWrite: sighting?.poleRanking === "write",
       conn,
       sighting,
       layer,
@@ -594,11 +606,20 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
           </Particular>
           <Particular dt="it went on" ddStyle={{ fontStyle: "italic" }}>
             {s && s.continuation.trim() ? `“… ${s.continuation.trim()}”` : <Missing />}
+            {s?.isNudged ? (
+              <span style={{ fontStyle: "normal", color: "var(--rubric)" }}>
+                {" "}
+                · nudged: this sighting was taken with a <a href={href.nudge()}>nudge</a> armed, so what this folio reads of it is the nudged
+                model, not its plain behaviour
+              </span>
+            ) : null}
           </Particular>
           <Particular dt="loudness">
             {m.pole ? (
               <>
-                {m.pole.rank === 0 ? "the loudest" : loudPhrase(m.pole.rank)} of the <span style={NUM}>21,504</span> in its layer
+                {m.loudRank === 0 ? "the loudest" : loudPhrase(m.loudRank ?? m.pole.rank)} of the <span style={NUM}>21,504</span> in its
+                layer
+                {m.byWrite ? <span style={{ color: MUTED }}> (listed among the fifteen that wrote most)</span> : null}
               </>
             ) : m.poles.length ? (
               <>
@@ -655,6 +676,7 @@ function rawReadout(m: Model) {
   const s = m.sighting;
   return {
     source: s ? s.provenance : null,
+    nudged: s ? s.isNudged : null,
     layer: m.layerNo,
     index: m.idx,
     neuron: m.neuron,
@@ -663,7 +685,9 @@ function rawReadout(m: Model) {
     n_tokens: s?.nTokens ?? null,
     signed_activation: m.pole ? m.pole.act : null,
     polarity: m.pole ? (m.pole.face > 0 ? "+" : "-") : null,
-    rank_by_abs: m.pole ? m.pole.rank + 1 : null,
+    rank_by_abs: m.loudRank != null ? m.loudRank + 1 : null,
+    rank_in_list: m.pole ? m.pole.rank + 1 : null,
+    pole_ranking: m.byWrite ? "write" : "activation",
     pole_label_jpp: m.pole?.lens ? m.pole.lens.map((t) => [t.token, t.logit]) : null,
     pole_label_naive: m.pole?.eye ? m.pole.eye.map((t) => [t.token, t.logit]) : null,
     layer_poles_top15: m.poles.map((p) => [p.neuron, p.act]),
@@ -682,7 +706,8 @@ const NeuronApparatus: React.FC<{ m: Model; saved: FolioSaved }> = ({ m, saved }
     downloadJson(`folio-layer${m.layerNo}-neuron${m.neuron}.json`, {
       readout: raw,
       inspect_pole: st.inspections[key]?.data ?? null,
-      trace_readers: st.readers[key]?.data ?? null,
+      // only a trace taken for the sighting shown now belongs with this readout
+      trace_readers: st.readers[key]?.sightingId === st.sighting?.id ? (st.readers[key]?.data ?? null) : null,
       test_hypothesis: st.hypotheses[key]?.data ?? null,
       your_notes: saved,
     });
@@ -1684,7 +1709,10 @@ const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreeme
 const Listen: React.FC<{ m: Model }> = ({ m }) => {
   const traceReaders = useTheodoliteStore((s) => s.traceReaders);
   const storeScore = useTheodoliteStore((s) => s.threadScore);
-  const entry = useTheodoliteStore((s) => s.readers[poleKey(m.idx, m.neuron)]) as Pending<unknown> | undefined;
+  const stored = useTheodoliteStore((s) => s.readers[poleKey(m.idx, m.neuron)]) as Pending<unknown> | undefined;
+  // a trace answers for the question it was traced on: one asked of an earlier sighting is set aside, not shown as this one's
+  const stale = !!stored && stored.sightingId != null && m.sighting != null && stored.sightingId !== m.sighting.id;
+  const entry = stale ? undefined : stored;
   const reply: Readers | null = entry?.data ? parseReaders(entry.data) : null;
   const pending = entry?.pending;
   const hopLimit = Math.max(0, Math.min(6, 60 - m.layerNo));
@@ -1773,6 +1801,12 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
               uses the same question and the same word{m.readAt ? `, ${m.readAt}` : ""}
             </span>
           </div>
+          {stale ? (
+            <p className="status-line" style={{ margin: 0 }}>
+              Its readers were traced for an earlier sighting; the question has changed since, so they are set aside. Trace again to read
+              them for this one.
+            </p>
+          ) : null}
           <ReplyError m={m} error={entry?.error} what="trace" />
           <ServerErrorWhilePending pending={pending} />
           {hopN > 0 ? (
@@ -2192,7 +2226,7 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
   const poles = m.poles;
-  const loud = m.loudAct ?? (poles[0] ? Math.abs(poles[0].act) : 1);
+  const loud = m.loudAct ?? (m.layer ? maxAct(m.layer) : null) ?? 1;
   const shown = poles.filter((p) => p.rank < 5 || p.neuron === m.neuron);
   const rest = poles.filter((p) => !shown.includes(p));
   const labelled = poles.filter((p) => p.lens || p.eye).length;
@@ -2239,7 +2273,9 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
         </div>
       </div>
       <Rubric style={{ maxWidth: "760px" }}>
-        The five loudest neurons at this word, each read both ways. Doubt the ones whose two readings share nothing.
+        {m.byWrite
+          ? "The five that wrote most into the stream at this word, each read both ways. Doubt the ones whose two readings share nothing."
+          : "The five loudest neurons at this word, each read both ways. Doubt the ones whose two readings share nothing."}
       </Rubric>
       {rows.length ? (
         <div style={{ overflowX: "auto", paddingBottom: "6px" }}>
@@ -2325,7 +2361,9 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
       {rest.length ? (
         <p style={{ margin: 0, fontSize: "16px", color: MUTED, maxWidth: "900px" }}>
           {cap(numberWord(rest.length))} more fired here,{" "}
-          {labelled > 0 ? `but the instrument read words for only the loudest ${numberWord(labelled)}.` : "and the instrument read words for none of them at this layer."}{" "}
+          {labelled > 0
+            ? `but the instrument read words for only the first ${numberWord(labelled)} ${m.byWrite ? "by write size" : "by loudness"}.`
+            : "and the instrument read words for none of them at this layer."}{" "}
           The {labelled > 0 ? "unread" : "other"} {numberWord(rest.length)}: neurons{" "}
           <span style={NUM}>
             {rest.map((p, i) => (
@@ -2478,13 +2516,17 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
   const peakPos = res ? mean(res.pos.map((r) => r.peak)) : null;
   const peakNeg = res ? mean(res.neg.map((r) => r.peak)) : null;
   const workFace = res && res.meanPos !== null ? (res.meanPos >= 0 ? 1 : -1) : null;
+  // what was (or will be) sent: the folio sends bare text, so each sentence is read at its own last word-piece
+  const sentChat = entry?.sent?.chat === true;
+  const sentSystem = typeof entry?.sent?.system === "string" ? (entry.sent.system as string) : null;
   const hypCode =
     "# MCP (backend/mcp_scientist.py)\n" +
     `test_motif_hypothesis(layer=${m.idx}, neuron_idx=${m.neuron},\n` +
     `    pos_prompts=${JSON.stringify(P)},\n` +
-    `    neg_prompts=${JSON.stringify(N)})\n\n` +
+    `    neg_prompts=${JSON.stringify(N)},\n` +
+    `    chat=${sentChat ? "True" : "False"}, system=${sentSystem === null ? "None" : JSON.stringify(sentSystem)})\n\n` +
     "# HTTP\nPOST /api/scientist/test_hypothesis\n" +
-    JSON.stringify({ layer: m.idx, neuron_idx: m.neuron, pos_prompts: P, neg_prompts: N }, null, 2);
+    JSON.stringify({ layer: m.idx, neuron_idx: m.neuron, pos_prompts: P, neg_prompts: N, chat: sentChat, system: sentSystem }, null, 2);
   const rowsAll = res ? [...res.pos.map((r) => ({ r, side: "+" })), ...res.neg.map((r) => ({ r, side: "−" }))] : [];
   const fmt = (v: number | null) => (v === null ? "—" : signedRaw(v));
   const sides = (a: number | null, b: number | null) => (
@@ -2557,7 +2599,10 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             <AnswerRow title="how far apart" sub="(Cohen’s d; from 0.8 up, the instrument calls the gap clear)">
               {res && res.d !== null ? <span style={NUM}>d = {signed(res.d, 2)}</span> : ph}
             </AnswerRow>
-            <AnswerRow title="strength at the last word" sub="(signed, on each sentence’s last word-piece)">
+            <AnswerRow
+              title="strength at the last word"
+              sub={sentChat ? "(signed, on the chat template’s last word-piece, the same for every sentence)" : "(signed, on each sentence’s last word-piece)"}
+            >
               {res ? sides(res.meanPos, res.meanNeg) : ph}
             </AnswerRow>
             <AnswerRow title="strength at its loudest word" sub="(signed, the strongest word-piece in each sentence)">
@@ -2603,6 +2648,21 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
           <dd>
             a<sub>t</sub> = <span className="mono">mlp_act</span>[{m.idx}, t, {m.neuron}] over every word-piece t; it reports a<sub>last</sub>, and
             the peak a<sub>t*</sub> with t* = argmax<sub>t</sub> |a<sub>t</sub>|, with that word-piece.
+          </dd>
+          <dt>how sent</dt>
+          <dd>
+            {sentChat ? (
+              <>
+                as chats (<span className="mono">chat=True</span>): each sentence was the user’s turn, so a<sub>last</sub> is read on the
+                model-turn header that ends the template, the same word-pieces for every sentence.
+              </>
+            ) : (
+              <>
+                as bare text (<span className="mono">chat=False</span>), one start mark and then the sentence, so a<sub>last</sub> is read on the
+                sentence’s own last word-piece. As chats the last word-piece would be the template’s, the same for every sentence, and the
+                test would not tell the sentences apart.
+              </>
+            )}
           </dd>
           <dt>effect size</dt>
           <dd>
@@ -2790,8 +2850,8 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
           </a>
           <Rubric>
             {m.idx === RECORDED.idx
-              ? "Begin gently. At this layer the server’s default nudge is more than seven times the size of the stream itself, and in the study nudges of the default size broke the model’s replies whatever their direction. This is a known fault, still unfixed."
-              : "Begin gently. In the study, nudges of the server’s default size broke the model’s replies whatever their direction. This is a known fault, still unfixed."}
+              ? "Begin gently. At this layer the server’s own default nudge is more than seven times the size of the stream itself, and in the study nudges of that size broke the model’s replies whatever their direction. The nudge page sends a hundredth of the stream instead."
+              : "Begin gently. In the study, nudges of the server’s own default size broke the model’s replies whatever their direction. The nudge page sends a hundredth of the stream instead."}
           </Rubric>
         </div>
         <div style={card}>
@@ -2830,20 +2890,23 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
               pole-locked: e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt(w<sub>gate</sub>, (σ · w<sub>down</sub>) · J<sub>ℓ</sub>
               <sup>⊤</sup>, w<sub>gate,j*</sub>) in fp32: what wakes it, what it writes, and j*, the reader at the end of the sweep’s first thread
               from this neuron, or failing one, the loudest neuron in layer {Math.min(60, m.layerNo + 1)} (<span className="mono">backend/server.py</span>
-              ). Gram–Schmidt is order-dependent, as with the word landmarks (REPORT §3.4, bug 3); a symmetric (Löwdin) orthonormalization [33] is
-              the proposed fix. This frame was not tested. The link above sets this lock for the next sighting. <a href={href.landmarks()}>landmarks</a>
+              ). Gram–Schmidt is order-dependent, as with the word landmarks (REPORT §3.4, bug 3); a symmetric (Löwdin) orthonormalization [33],
+              an option on the landmarks page, is not. This frame was not tested. The link above sets this lock for the next sighting.{" "}
+              <a href={href.landmarks()}>landmarks</a>
             </span>
             <pre style={PRE}>{surveyCode}</pre>
           </dd>
           <dt>nudge</dt>
           <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
             <span>
-              adds 650 · v / ‖v‖, with v = σ · w<sub>down</sub> ⊙ w<sub>post</sub>, to the stream after layer {m.layerNo} at every word-piece
-              (activation steering, Turner et al. 2023) [21]. The default 650 is 2.4–7.4 times the median non-BOS ‖h‖ across the five default
-              layers{m.idx === RECORDED.idx ? ", and 7.4 times at this one (median ‖h‖ = 88 at index 53)" : ""}; a random direction at that size
-              also broke the model (V7). The fix scales it relative to ‖h‖ (about 0.02 of it) and masks positions (REPORT §3.4, bug 1; §3.5 items 1
-              and 4). ‖h‖ in this sighting: {m.layer?.streamStrength != null ? m.layer.streamStrength.toFixed(1) : <Missing />}. The link above
-              sets only which pole to nudge along; the size stays the nudge page’s own, now {steering.scale}. <a href={href.nudge()}>nudge</a>
+              pushes along v = σ · w<sub>down</sub> ⊙ w<sub>post</sub> in the stream after layer {m.layerNo} (activation steering, Turner et al.
+              2023) [21]. The server’s own default, kept for old callers, adds a fixed 650 · v / ‖v‖ at every word-piece: 2.4–7.4 times the
+              median non-BOS ‖h‖ across the five default layers{m.idx === RECORDED.idx ? ", and 7.4 times at this one (median ‖h‖ = 88 at index 53)" : ""};
+              a random direction at that size also broke the model (V7). The nudge page sends a share of ‖h‖ instead, the start mark spared (REPORT
+              §3.4, bug 1; §3.5 items 1 and 4): now{" "}
+              {steering.strength != null ? `${steering.strength} of ‖h‖` : `a fixed length of ${steering.scale}`}. ‖h‖ in this sighting:{" "}
+              {m.layer?.streamStrength != null ? m.layer.streamStrength.toFixed(1) : <Missing />}. The link above sets only which pole to nudge
+              along; the size stays the nudge page’s own. <a href={href.nudge()}>nudge</a>
             </span>
             <pre style={PRE}>{steerCode}</pre>
           </dd>

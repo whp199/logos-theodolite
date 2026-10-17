@@ -34,6 +34,11 @@ Third-party works used
   (https://huggingface.co/neuronpedia/jacobian-lens, Apache-2.0). The R-Lens
   rules used by J++ are by Blank, Bhatia & Nanda (2026).
 
+* Typefaces bundled into the built frontend (frontend/dist) from npm, not stored
+  in this repository: EB Garamond (The EB Garamond Project Authors,
+  @fontsource/eb-garamond) and IBM Plex Mono (IBM Corp., @fontsource/ibm-plex-mono),
+  both under the SIL Open Font License 1.1, whose text ships with each package.
+
 * interp-engine - https://github.com/decoderesearch/interp-engine (Apache-2.0)
 * LARQL / VINDEX3 naming - https://github.com/chrishayuk/larql (Apache-2.0).
   The larql/vindex binaries are optional and not included. backend/larql_vault.py

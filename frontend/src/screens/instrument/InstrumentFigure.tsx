@@ -68,7 +68,7 @@ export const InstrumentFigure: React.FC<{
       .filter((s) => pts[s])
       .map((s) => `M${pts[s]![0]},${pts[s]![1]} L542,${ringY(s)}`)
       .join(" ");
-    return { r, lb, pathD, dots, stationDots, leaders, th: threadPaths(sighting.threads, view) };
+    return { r, lb, pathD, dots, stationDots, leaders, th: threadPaths(sighting.threads.slice(0, 12), view) };
   }, [pts, stations, view, sighting.threads]);
   const marks = useMemo(() => (L ? neuronMarks(L, view) : { pos: "", neg: "" }), [L, view]);
   const sp = pts[sel];

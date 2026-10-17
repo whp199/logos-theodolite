@@ -280,7 +280,7 @@ const Foundations: React.FC = () => (
         title="Activation steering"
         makers="Turner et al. 2023 · [21]; Panickssery et al. 2024 · [22]"
         what="Add a chosen direction to the stream and watch what the model says next. The instrument calls this a nudge."
-        found="The study: the code’s default nudge, at layers 30, 36, 42, 48 and 54, is 2.4 to 7.4 times the stream’s own strength and turns every answer to junk; it advises about 0.02 of the stream’s strength. Still unfixed in the code (§3.4, bug 1)."
+        found="The study: the code’s default nudge, at layers 30, 36, 42, 48 and 54, is 2.4 to 7.4 times the stream’s own strength and turns every answer to junk; it advises about 0.02 of the stream’s strength (§3.4, bug 1). The server keeps that default for old callers; the instrument now sends the mended recipe (the final-norm direction, the quiet dimensions masked, the start mark spared) at 0.01 of the stream, and a nudge masked that way read fluently at 0.005–0.01 and broke at 0.02."
         links={
           <>
             <Go dest="nudge" size={16}>

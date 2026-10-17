@@ -128,7 +128,7 @@ export const ConsolePanel: React.FC = () => {
         clock(entry.at) +
         (entry.via === "ws" ? ", over the WebSocket" : ", over HTTP") +
         ", exactly as it returned it.";
-    } else if (entry && !entry.ok && live) {
+    } else if (entry && !entry.ok && entry.failure === "refused") {
       json = esc("{\n  " + '"detail": ' + JSON.stringify(entry.error) + "\n}");
       caption = "The server refused it, in the words of larql_vault.py.";
     } else if (pending) {
@@ -136,7 +136,9 @@ export const ConsolePanel: React.FC = () => {
       phNote = "Sent. Each statement waits its turn behind any sighting under the server’s one GPU lock.";
     } else {
       if (entry && !entry.ok) unanswered = entry.error ?? "no reason given";
-      const noEdit = live ? "" : " The server is not answering, so the edit was not made.";
+      // no live reply: either the server is not answering, or this statement's request failed on the way
+      const unanswered2 = !live || (entry !== null && !entry.ok);
+      const noEdit = unanswered2 ? " No answer came from the vault, so the edit was not made." : "";
       if (R.kind === "describe") {
         json = prettyJson(DESCRIBE_RECORDED);
         caption =
@@ -177,7 +179,7 @@ export const ConsolePanel: React.FC = () => {
         } else if (R.kind === "rollback") {
           phNote =
             "Its reply was not kept. In the study, readings after ROLLBACK matched the untouched model exactly: the largest difference was 0.0." +
-            (live ? "" : " The server is not answering, so nothing was undone.");
+            (unanswered2 ? " No answer came from the vault, so nothing was undone." : "");
         } else {
           phNote = "No reply to an UPDATE or INSERT is kept in the repository." + noEdit;
         }

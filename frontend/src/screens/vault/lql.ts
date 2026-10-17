@@ -7,20 +7,60 @@
  * Layers in LQL are repo indices (layer number - 1). Every conversion happens here, at the boundary.
  */
 
-export const RX_SEL =
-  /SELECT\s+\*\s+FROM\s+(EDGES|POLES)\s+NEAREST\s+['"]([^'"]+)['"](?:\s+WHERE\s+layer\s*=\s*(\d+))?(?:\s+LIMIT\s+(\d+))?/i;
-const RX_POLE = /DESCRIBE\s+POLE\s+LAYER\s+(\d+)\s+SLOT\s+(\d+)(?:\s+POLARITY\s+([+-]))?/i;
-const RX_DEL = /DELETE\s+FROM\s+LAYER\s+(\d+)\s+WHERE\s+slot\s*=\s*(\d+)/i;
-const RX_UPD =
-  /UPDATE\s+LAYER\s+(\d+)\s+SLOT\s+(\d+)\s+SET\s+object\s*=\s*['"]([^'"]+)['"](?:\s+STRENGTH\s+([0-9.]+))?(?:\s+POLARITY\s+([+-]))?/i;
-const RX_INS =
-  /INSERT\s+INTO\s+LAYER\s+(\d+)\s*\(\s*subject\s*,\s*object\s*\)\s*VALUES\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)(?:\s+STRENGTH\s+([0-9.]+))?/i;
+/*
+ * Python's `re` on str patterns differs from JavaScript's: `\d` is any Unicode decimal digit (and int() reads
+ * it), `\s` is any Unicode whitespace by str.isspace() (which counts U+001C-001F and U+0085 but not U+FEFF), and
+ * re.I folds case the Unicode way ("ſ" matches "s"). The patterns below are written once with \s and \d and
+ * rebuilt with those classes and the u flag, so this side reads a statement as the server does.
+ */
+const PY_WS = "[\\t\\n\\x0B\\x0C\\r\\x1C-\\x1F \\x85\\xA0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]";
+const PY_WS_RX = new RegExp(PY_WS, "u");
+const py = (rx: RegExp) => new RegExp(rx.source.replace(/\\s/g, PY_WS).replace(/\\d/g, "\\p{Nd}"), "iu");
+
+export const RX_SEL = py(
+  /SELECT\s+\*\s+FROM\s+(EDGES|POLES)\s+NEAREST\s+['"]([^'"]+)['"](?:\s+WHERE\s+layer\s*=\s*(\d+))?(?:\s+LIMIT\s+(\d+))?/,
+);
+const RX_POLE = py(/DESCRIBE\s+POLE\s+LAYER\s+(\d+)\s+SLOT\s+(\d+)(?:\s+POLARITY\s+([+-]))?/);
+const RX_DEL = py(/DELETE\s+FROM\s+LAYER\s+(\d+)\s+WHERE\s+slot\s*=\s*(\d+)/);
+const RX_UPD = py(
+  /UPDATE\s+LAYER\s+(\d+)\s+SLOT\s+(\d+)\s+SET\s+object\s*=\s*['"]([^'"]+)['"](?:\s+STRENGTH\s+([0-9.]+))?(?:\s+POLARITY\s+([+-]))?/,
+);
+const RX_INS = py(
+  /INSERT\s+INTO\s+LAYER\s+(\d+)\s*\(\s*subject\s*,\s*object\s*\)\s*VALUES\s*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]\s*\)(?:\s+STRENGTH\s+([0-9.]+))?/,
+);
+
+/** Python's str.strip(): its own whitespace, not JavaScript's (which includes U+FEFF). */
+export function pyStrip(s: string): string {
+  const chars = Array.from(s);
+  let a = 0;
+  let b = chars.length;
+  while (a < b && PY_WS_RX.test(chars[a])) a++;
+  while (b > a && PY_WS_RX.test(chars[b - 1])) b--;
+  return chars.slice(a, b).join("");
+}
+
+/** Python's int() on a run of Unicode decimal digits: each digit's value is its place in its run of ten. */
+export function pyInt(s: string): number {
+  const isNd = (cp: number) => /\p{Nd}/u.test(String.fromCodePoint(cp));
+  let out = "";
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)!;
+    if (cp >= 48 && cp <= 57) {
+      out += ch;
+      continue;
+    }
+    let start = cp;
+    while (isNd(start - 1)) start--;
+    out += String((cp - start) % 10);
+  }
+  return parseInt(out, 10);
+}
 
 const SUPPORTED =
   "Supported: DESCRIBE | SELECT * FROM EDGES NEAREST '<concept>' WHERE layer = <l> LIMIT <k> | DESCRIBE POLE LAYER <l> SLOT <i> | UPDATE LAYER <l> SLOT <i> SET object = '<c>' | INSERT INTO LAYER <l> (subject, object) VALUES ('<s>', '<o>') | DELETE FROM LAYER <l> WHERE slot = <i> | ROLLBACK";
 
-export const clampL = (s: string) => Math.max(0, Math.min(parseInt(s, 10), 59));
-export const clampN = (s: string) => Math.max(0, Math.min(parseInt(s, 10), 21503));
+export const clampL = (s: string) => Math.max(0, Math.min(pyInt(s), 59));
+export const clampN = (s: string) => Math.max(0, Math.min(pyInt(s), 21503));
 export const isFloat = (s: string) => /^(\d+\.?\d*|\.\d+)$/.test(s);
 
 /** Python's repr() of a string, as the server's error messages print it. */
@@ -55,7 +95,7 @@ export type Parsed =
   | { kind: "error"; stmt: string; empty: boolean; num?: boolean; err: string };
 
 export function parseLql(query: string): Parsed {
-  const q = query.trim().replace(/;+$/, "");
+  const q = pyStrip(query).replace(/;+$/, "");
   const qu = q.toUpperCase();
   if (qu === "DESCRIBE" || qu === "SHOW LAYERS" || qu === "STATUS")
     return { kind: "describe", stmt: q, alias: qu === "DESCRIBE" ? "" : qu };

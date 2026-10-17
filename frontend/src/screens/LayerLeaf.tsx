@@ -7,6 +7,8 @@ import {
   N_LAYERS,
   VOCAB,
   exportSighting,
+  loudestOf,
+  maxAct,
   retakeIfLive,
   useTheodoliteStore,
   type LayerReading,
@@ -15,6 +17,7 @@ import {
   type TokenReading,
 } from "../store/useTheodoliteStore";
 import { certainty, comma, gloss, kindOf, minus, ms, signed, wp } from "../lib/words";
+import { describeFrame } from "../lib/frame";
 import { Dial } from "./layerLeaf/Dial";
 import {
   L36_COS_ATTN,
@@ -283,7 +286,7 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
     ? { kind: "global attention", gloss: "looks back over the whole conversation, not only the last 1,024 word-pieces" }
     : { kind: kindOf(false).kind, gloss: kindOf(false).gloss };
   const recall = recallOf(L.ffnShare);
-  const loud = L.poles[0] ?? null;
+  const loud = loudestOf(L);
   const aria =
     `The numeral ${no} at the hub of an engraved dial. ` +
     (L.az != null
@@ -384,7 +387,8 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
           )}{" "}
           {loud ? (
             <>
-              {capital(cardinal(L.poles.length))} neurons fired hardest; the loudest, neuron {loud.neuron}, fired on its{" "}
+              {capital(cardinal(L.poles.length))} neurons {s.poleRanking === "write" ? "wrote the most into the stream" : "fired hardest"}; the
+              loudest, neuron {loud.neuron}, fired on its{" "}
               {loud.face > 0 ? "positive" : "negative"} face.
             </>
           ) : (
@@ -488,7 +492,7 @@ function buildRaw(c: Ctx): string {
         elevation_deg: L.el,
         xyz: L.xyz,
         ...(c.hand ? { proj_norm: L36_PROJ_NORM } : {}),
-        proj_frac_of_hJ: L.projFrac,
+        [describeFrame(c.s).exportKey]: L.projFrac,
         jpp_tracked_rank: lensRank,
         naive_tracked_rank: eyeRank,
         jpp_tracked_logit: Object.fromEntries(Object.entries(L.ranks).map(([w, v]) => [w, v.lensLogit ?? null])),
@@ -538,9 +542,9 @@ function buildRaw(c: Ctx): string {
 }
 
 const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
+  const F = describeFrame(c.s);
   const { L, s, idx, no } = c;
   const [rawOpen, setRawOpen] = useState(false);
-  const [a, b, lc] = s.landmarks;
   const json = rawOpen ? buildRaw(c) : "";
   const pn = L.xyz ? Math.hypot(L.xyz[0], L.xyz[1], L.xyz[2]) : null;
   return (
@@ -575,21 +579,24 @@ const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
         </dd>
         <dt>survey frame</dt>
         <dd>
-          e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt(W<sub>U</sub>[{a}], W<sub>U</sub>[{b}], W<sub>U</sub>[{lc}]) in fp32; p
-          = (x, y, z) = h̃ · E<sup>⊤</sup>, where h̃ = h · J<sub>ℓ</sub>
-          <sup>⊤</sup> is the stream seen through the lens.
+          {F.frameFormula}; p = (x, y, z) = ⟨{F.raw ? "h" : "h̃"}
+          {F.centred ? " − c" : ""}, e<sub>k</sub>⟩, where {F.state}
+          {F.raw ? " is the raw stream, read in this layer’s own frame" : " is the stream seen through the lens"}; {F.notes.join("; ")}.
         </dd>
         <dt>frame values</dt>
         <dd>
           (x, y, z) = {L.xyz ? `(${L.xyz.map(fmt3).join(", ")})` : <M c={c} />}; ‖p‖ = {pn != null ? fmt3(pn) : <M c={c} />}; θ = atan2(y, x)
           = {L.az != null ? `${minus(L.az.toFixed(1))}°` : <M c={c} />}, φ = asin(z / ‖p‖) ={" "}
           {L.el != null ? `${minus(L.el.toFixed(1))}°` : <M c={c} />}. The frame catches{" "}
-          {L.projFrac != null ? `${(L.projFrac * 100).toFixed(2)}%` : <M c={c} />} of ‖h̃‖ (<Mono>proj_frac_of_hJ</Mono>).
+          {L.projFrac != null ? `${(L.projFrac * 100).toFixed(2)}%` : <M c={c} />} of {F.denom} (<Mono>{F.exportKey}</Mono>)
+          {F.studyComparable ? "; the study found 2.4–3.9% by stretch of layers (V7)" : ""}.
         </dd>
         <dt>caveat</dt>
         <dd>
-          The frame depends on the order of its landmarks: reordering them swings the bearing by 58–99° (REPORT §3.4, bug 3). The proposed
-          fix is a Löwdin frame [33] on the final-norm-weighted rows, with the captured fraction always shown.{" "}
+          {F.lowdin
+            ? "A Löwdin frame [33] squares the landmarks all at once, so their order no longer moves the bearing. "
+            : "A Gram–Schmidt frame depends on the order of its landmarks: reordering them swings the bearing by 58–99° (REPORT §3.4, bug 3); a Löwdin frame [33] on the final-norm-weighted rows does not. "}
+          The captured fraction is always shown.{" "}
           <a href={href.landmarks()}>change the landmarks, or lock the frame to a neuron</a>
         </dd>
         <dt>stream strength</dt>
@@ -956,7 +963,10 @@ const Ranks: React.FC<{ c: Ctx }> = ({ c }) => {
   const lm = s.landmarks.filter((w) => w);
   const ordered = [...words.filter((w) => lm.includes(w)), ...words.filter((w) => !lm.includes(w))];
   const rows = ordered.map((w) => ({ w, ...L.ranks[w], landmark: lm.includes(w) }));
-  const lead = rows.find((r) => r.w === s.landmarks[0]) ?? rows[0];
+  // a lead landmark only: never present another tracked word as if it were one of the landmarks
+  const lead = rows.find((r) => r.landmark) ?? null;
+  const untracked = lm.filter((w) => !words.includes(w));
+  const others = rows.filter((r) => !r.landmark).map((r) => `“${r.w}”`);
   const both = rows.filter((r): r is typeof r & { lens: number; eye: number } => r.lens != null && r.eye != null);
 
   const closing = (() => {
@@ -999,10 +1009,22 @@ const Ranks: React.FC<{ c: Ctx }> = ({ c }) => {
           </>
         ) : (
           <>
-            The tracked words’ places: <M c={c} />.
+            This sighting did not track the landmarks
+            {words.length ? <>; it tracked {listAnd(others)}, which are listed below</> : <>: <M c={c} /></>}.
           </>
         )}
       </p>
+      {lead && untracked.length ? (
+        <p className="status-line" style={{ margin: 0 }}>
+          Not tracked in this sighting: {listAnd(untracked.map((w) => `“${w}”`))}.
+        </p>
+      ) : null}
+      {others.length && lead ? (
+        <p className="status-line" style={{ margin: 0 }}>
+          {s.source === "fixture" ? "Also tracked in the study’s sighting" : "Also tracked by the server whatever the landmarks"}:{" "}
+          {listAnd(others)}.
+        </p>
+      ) : null}
       <Rubric style={{ maxWidth: 900 }}>
         Each line is one word. The further right its mark, the further that word was from being said; each faint gridline is ten times
         further than the last, and the right edge is the {ordinal(VOCAB)}, the least likely of all. One sighting cannot show a lean toward any
@@ -1235,6 +1257,8 @@ const Ranks: React.FC<{ c: Ctx }> = ({ c }) => {
 /* ---------------------------------------------------- iv · the neurons that fired */
 
 const RANKW = ["the loudest", "second", "third", "fourth", "fifth"];
+/** when the server ranked the poles by write size, |a| · ‖w_down ⊙ w_post‖, the list's order is the writers' */
+const RANKW_WRITE = ["the biggest writer", "second", "third", "fourth", "fifth"];
 const Loz: React.FC<{ pos: boolean; size?: number }> = ({ pos, size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 13 13" aria-hidden="true">
     <path d="M6.5 0.9 L12.1 6.5 L6.5 12.1 L0.9 6.5 Z" fill={pos ? "#A07A2E" : "none"} stroke="#A07A2E" strokeWidth="1.2" />
@@ -1279,16 +1303,18 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
   const pos = poles.length - neg;
   const labelled = read.filter((v) => v.p.lens && v.p.eye);
   const agreeing = labelled.filter((v) => v.shared.size > 0).length;
-  const maxS = poles.length ? Math.abs(poles[0].act) : 1;
+  // bars against the loudest listed pole, whatever order the server ranked them in
+  const maxS = maxAct(L) ?? 1;
   const shownWords = labelled.length ? Math.max(...labelled.map((v) => v.p.lens?.length ?? 0)) : 0;
-  const loud = poles[0] ?? null;
+  const loud = loudestOf(L);
+  const byWrite = c.s.poleRanking === "write";
   const loudScores = loud?.lens && loud.lens.every((t) => t.logit != null) ? loud.lens.map((t) => (t.logit as number).toFixed(2)) : null;
   const touching = threads.filter((t) => t.src.idx === idx || t.dst.idx === idx);
   const srcLayers = threads.map((t) => t.src.idx + 1);
 
   const aside = poles.length
     ? [
-        `${cardinal(poles.length)} fired hardest`,
+        byWrite ? `${cardinal(poles.length)} wrote the most` : `${cardinal(poles.length)} fired hardest`,
         neg >= pos
           ? `${cardinal(neg)} on the negative face, ${cardinal(pos)} on the positive`
           : `${cardinal(pos)} on the positive face, ${cardinal(neg)} on the negative`,
@@ -1379,7 +1405,9 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
                 }}
               >
                 <div style={{ flex: "1 1 200px", maxWidth: 260, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <span style={{ ...SMALL_CAPS, letterSpacing: "0.18em", fontSize: 15, color: MUTED }}>{RANKW[i]}</span>
+                  <span style={{ ...SMALL_CAPS, letterSpacing: "0.18em", fontSize: 15, color: MUTED }}>
+                    {byWrite ? RANKW_WRITE[i] : RANKW[i]}
+                  </span>
                   <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                     <span style={{ ...SMALL_CAPS, letterSpacing: "0.16em", fontSize: 16, color: MUTED }}>neuron</span>
                     <span style={{ fontSize: 32, lineHeight: 1.05, ...NUM }}>{p.neuron}</span>
@@ -1534,8 +1562,9 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
       ) : null}
       <Rubric style={{ margin: "4px 0 0", maxWidth: 980 }}>
         Strength is how hard a neuron fired, which is not quite how much it changed the stream. Together, the fifteen strongest carry only
-        10–41% of what a layer’s memory writes (REPORT §3.4), so much of the story lies elsewhere. Before you nudge: the instrument’s default
-        nudge is 2.4 to 7.4 times the size of the stream itself and wrecks the model’s output (README, known issues). Start very small.
+        10–41% of what a layer’s memory writes (REPORT §3.4), so much of the story lies elsewhere. Before you nudge: the server’s own default
+        nudge is 2.4 to 7.4 times the size of the stream itself and wrecks the model’s output. The nudge page sends a hundredth of the
+        stream instead, and even that can break a plain answer. Start very small.
       </Rubric>
       <Apparatus title="the poles" label="Apparatus for the neurons that fired" style={{ gap: 10 }}>
         <dl className="dl num" style={{ maxWidth: 1100 }}>
@@ -1625,7 +1654,7 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
               .
               {L.poles.some((p) => p.writeSize != null) ? (
                 <>
-                  {" "}Write sizes, loudest first:{" "}
+                  {" "}Write sizes, {c.s.poleRanking === "write" ? "biggest first" : "loudest first"}:{" "}
                   {L.poles
                     .slice(0, 5)
                     .map((p) => `${p.neuron} ${p.writeSize != null ? p.writeSize.toFixed(2) : "?"}`)
@@ -1644,13 +1673,13 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
                 The server’s default nudge strikes this layer, one of five (layers {DEFAULT_NUDGE_LAYERS.map((j) => j + 1).join(", ")};{" "}
                 <Mono>layers=[{DEFAULT_NUDGE_LAYERS.join(", ")}]</Mono>), at scale 650:{" "}
                 {idx === L36_IDX ? "2.4 times the median stream strength here" : "2.4 to 7.4 times the median stream strength at those layers"}{" "}
-                (V7; REPORT §3.4, bug 1).
+                (V7; REPORT §3.4, bug 1). That default is kept for old callers; the nudge page sends the mended recipe at 0.01 of ‖h‖.
               </>
             ) : (
               <>
                 The server’s default nudge strikes five layers, not this one (layers {DEFAULT_NUDGE_LAYERS.map((j) => j + 1).join(", ")};{" "}
                 <Mono>layers=[{DEFAULT_NUDGE_LAYERS.join(", ")}]</Mono>), at scale 650: 2.4 to 7.4 times the median stream strength there (V7;
-                REPORT §3.4, bug 1).
+                REPORT §3.4, bug 1). That default is kept for old callers; the nudge page sends the mended recipe at 0.01 of ‖h‖.
               </>
             )}{" "}
             {idx === L36_IDX
@@ -1658,7 +1687,8 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
               : idx > L36_IDX && idx <= 58
                 ? "Here, as everywhere from layer 36 up to layer 59, every lens covector puts 99–100% of its energy in the quiet carry channel (REPORT §2.2)."
                 : "From layer 36 up to layer 59, every lens covector puts 99–100% of its energy in the quiet carry channel (REPORT §2.2)."}{" "}
-            Scale to about 1–2% of ‖h‖ and mask the quiet dimensions (§3.4, §3.5; V7); activation steering after Turner et al. and
+            Push with the final-norm direction, the quiet dimensions masked and the start mark spared, at 0.005–0.01 of ‖h‖: masked that
+            way the study’s nudge read fluently there and broke at 0.02 (§3.4, §3.5; V7); activation steering after Turner et al. and
             Panickssery et al. [21][22]. <a href={href.nudge()}>the nudge</a>
           </dd>
           <dt>threads</dt>
@@ -1681,7 +1711,7 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
               </>
             ) : touching.length === 0 ? (
               <>
-                None of this sighting’s {cardinal(threads.length)} strongest threads touches layer {no}; all start in{" "}
+                None of this sighting’s {comma(threads.length)} threads touches layer {no}; they start in{" "}
                 {Math.min(...srcLayers) === Math.max(...srcLayers)
                   ? `layer ${Math.min(...srcLayers)}`
                   : `layers ${Math.min(...srcLayers)}–${Math.max(...srcLayers)}`}
@@ -1689,14 +1719,16 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
               </>
             ) : (
               <>
-                {capital(cardinal(touching.length))} of this sighting’s {cardinal(threads.length)} strongest threads touch{touching.length === 1 ? "es" : ""}{" "}
-                layer {no}:{" "}
+                {capital(cardinal(touching.length))} of this sighting’s {comma(threads.length)} threads touch{touching.length === 1 ? "es" : ""}{" "}
+                layer {no}
+                {touching.length > 6 ? "; the six strongest" : ""}:{" "}
                 {touching
+                  .slice(0, 6)
                   .map(
                     (t) =>
                       `neuron ${t.src.neuron} (layer ${t.src.idx + 1}, ${t.src.face > 0 ? "positive" : "negative"}) → neuron ${t.dst.neuron} (layer ${
                         t.dst.idx + 1
-                      }, ${t.dst.face > 0 ? "positive" : "negative"}), C = ${minus(t.c.toFixed(1))}${
+                      }, ${t.dst.face > 0 ? "positive" : "negative"}), ${t.c != null ? `C = ${minus(t.c.toFixed(1))}` : "C not sent"}${
                         t.directGate != null ? `, D = ${minus(t.directGate.toFixed(3))}` : ""
                       }`,
                   )

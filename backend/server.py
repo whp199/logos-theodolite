@@ -30,9 +30,9 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, NormScaledAddSpec, SteeringSpec
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
-from backend.engine_runtime import TheodoliteRuntime, TheodoliteSweepBundle
+from backend.engine_runtime import DEFAULT_TRACKED_CONCEPTS, TheodoliteRuntime, TheodoliteSweepBundle
 from backend.larql_vault import LarqlVaultEngine
 from backend.mcp_scientist import (
     bind_runtime,
@@ -138,7 +138,8 @@ class SweepRequest(BaseModel):
     frame_squaring: str = "gram_schmidt"
     frame_per_layer: bool = False
     frame_fnw: bool = False
-    centre_prompts: List[str] = Field(default_factory=list)
+    # at most 16: each is a forward pass under the GPU lock
+    centre_prompts: List[str] = Field(default_factory=list, max_length=16)
     # Poles (bug 8): "activation" ranks by |a| | "write" by |a| * ||w_down (.) w_post||.
     pole_ranking: str = "activation"
     # Threads (bug 4): "coupling" selects by C | "direct" by the direct-path estimate of the gate change.
@@ -536,8 +537,14 @@ async def _execute_sweep_request(
     text = runtime.compose_prompt(
         req.prompt, chat=req.chat, system=req.system, assistant_prefix=req.assistant_prefix
     )
+    # Track the landmarks too, so the pages can say how far they were; the default landmarks are already tracked,
+    # so a request with the defaults gets exactly the tracked words it always got.
+    tracked = tuple(DEFAULT_TRACKED_CONCEPTS) + tuple(
+        m for m in dict.fromkeys(str(x) for x in monuments) if m and m not in DEFAULT_TRACKED_CONCEPTS
+    )
     options = dict(
         monument_concepts=monuments,
+        tracked_concepts=tracked,
         survey_mode=req.survey_mode,
         locked_pole=locked_pole,
         steering_spec=steering_spec,
@@ -678,46 +685,61 @@ async def ws_theodolite(websocket: WebSocket) -> None:
             raw_msg = await websocket.receive_json()
             action = raw_msg.get("action", "sweep")
 
-            if action == "sweep":
-                sweep_req = SweepRequest(**raw_msg.get("payload", raw_msg))
-                async with _GPU_LOCK:
-                    binary_frame, json_frame = await _execute_sweep_request(runtime, vault, sweep_req)
-                await websocket.send_bytes(binary_frame)
-                await websocket.send_json(json_frame)
+            try:
+                if action == "sweep":
+                    sweep_req = SweepRequest(**raw_msg.get("payload", raw_msg))
+                    async with _GPU_LOCK:
+                        binary_frame, json_frame = await _execute_sweep_request(runtime, vault, sweep_req)
+                    await websocket.send_bytes(binary_frame)
+                    await websocket.send_json(json_frame)
 
-            elif action == "larql":
-                query = raw_msg.get("query", "DESCRIBE")
-                async with _GPU_LOCK:
-                    try:
-                        res = vault.execute_lql(query)
-                        await websocket.send_json({"type": "larql_result", "ok": True, "data": res})
-                    except Exception as exc:
-                        await websocket.send_json({"type": "larql_result", "ok": False, "error": str(exc)})
+                elif action == "larql":
+                    query = raw_msg.get("query", "DESCRIBE")
+                    async with _GPU_LOCK:
+                        try:
+                            res = vault.execute_lql(query)
+                            await websocket.send_json({"type": "larql_result", "ok": True, "data": res})
+                        except Exception as exc:
+                            await websocket.send_json({"type": "larql_result", "ok": False, "error": str(exc)})
 
-            elif action == "inspect_pole":
-                l_idx = int(raw_msg.get("layer", 35))
-                n_idx = int(raw_msg.get("neuron_idx", 0))
-                pol = float(raw_msg.get("polarity", 1.0))
-                async with _GPU_LOCK:
-                    res = inspect_pole(layer=l_idx, neuron_idx=n_idx, polarity=pol)
-                await websocket.send_json({"type": "pole_inspection", "data": res})
+                elif action == "inspect_pole":
+                    l_idx = int(raw_msg.get("layer", 35))
+                    n_idx = int(raw_msg.get("neuron_idx", 0))
+                    pol = float(raw_msg.get("polarity", 1.0))
+                    async with _GPU_LOCK:
+                        res = inspect_pole(layer=l_idx, neuron_idx=n_idx, polarity=pol)
+                    await websocket.send_json({"type": "pole_inspection", "data": res})
 
-            elif action == "trace_readers":
-                tr = TraceReadersRequest(**{k: v for k, v in raw_msg.items() if k != "action"})
-                async with _GPU_LOCK:
-                    res = await trace_downstream_readers(
-                        layer=tr.layer,
-                        neuron_idx=tr.neuron_idx,
-                        prompt=tr.prompt,
-                        polarity=tr.polarity,
-                        max_layer_hop=tr.max_layer_hop,
-                        top_k=tr.top_k,
-                        score=tr.score,
-                        chat=tr.chat,
-                        system=tr.system,
-                        assistant_prefix=tr.assistant_prefix,
-                    )
-                await websocket.send_json({"type": "downstream_readers", "data": res})
+                elif action == "trace_readers":
+                    tr = TraceReadersRequest(**{k: v for k, v in raw_msg.items() if k != "action"})
+                    async with _GPU_LOCK:
+                        res = await trace_downstream_readers(
+                            layer=tr.layer,
+                            neuron_idx=tr.neuron_idx,
+                            prompt=tr.prompt,
+                            polarity=tr.polarity,
+                            max_layer_hop=tr.max_layer_hop,
+                            top_k=tr.top_k,
+                            score=tr.score,
+                            chat=tr.chat,
+                            system=tr.system,
+                            assistant_prefix=tr.assistant_prefix,
+                        )
+                    await websocket.send_json({"type": "downstream_readers", "data": res})
+            except (ValidationError, ValueError) as exc:
+                # A malformed request (a bad option value, say) fails alone and the socket stays open; the reply
+                # names the action and its neuron so the client can fail just that request.
+                logger.warning("WebSocket %s request refused: %s", action, exc)
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": str(exc),
+                        "action": action,
+                        "recoverable": True,
+                        "layer": raw_msg.get("layer"),
+                        "neuron_idx": raw_msg.get("neuron_idx"),
+                    }
+                )
 
     except WebSocketDisconnect:
         logger.info("WebSocket client disconnected from /ws/theodolite")

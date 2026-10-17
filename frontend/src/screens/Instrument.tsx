@@ -6,6 +6,7 @@ import {
   type LayerReading,
   type Sighting,
   exportSighting,
+  loudestOf,
   retakeIfLive,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
@@ -14,6 +15,7 @@ import { InstrumentFigure, type Shown } from "./instrument/InstrumentFigure";
 import { Ascent } from "./instrument/Ascent";
 import { Kinship } from "./instrument/Kinship";
 import { CANVAS_STATIONS, RECORDED_POLE_NOTES } from "./instrument/recorded";
+import { describeFrame } from "../lib/frame";
 import { ControlSighting } from "../components/ControlSighting";
 
 const sci = (v: number) => minus(Math.abs(v) >= 0.01 ? v.toFixed(3) : v.toExponential(1));
@@ -117,6 +119,15 @@ const Question: React.FC = () => {
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
   const sighting = useTheodoliteStore((s) => s.sighting);
   const lastWord = (answerBegins.trim() || question.trim()).split(/\s+/).pop() ?? "";
+  // With the chat template on and no begun answer, the text ends with the template's model-turn header, so the
+  // sweep reads that closing piece, not the question's last word. Once a matching sighting is in, say exactly what.
+  const readsTemplate = chat && !answerBegins.trim();
+  const matches =
+    sighting?.source === "live" &&
+    sighting.question.trim() === question.trim() &&
+    sighting.answerBegins.trim() === answerBegins.trim() &&
+    sighting.chatWrapped === chat;
+  const readNow = matches && sighting?.readAt != null ? sighting.readAt : null;
 
   return (
     <>
@@ -155,8 +166,27 @@ const Question: React.FC = () => {
                 style={{ fontStyle: "italic", fontSize: 26, background: "transparent", border: 0, borderBottom: "1px solid #C9BEAC", padding: "2px 0 6px", width: 180, borderRadius: 0 }}
               />
               <span style={{ fontSize: 16, color: "#6B5D4D" }}>
-                optional — the instrument reads the last word,{" "}
-                <span style={{ color: "#2B2117", borderBottom: "2px solid #A07A2E" }}>“{lastWord}”</span>
+                {readsTemplate ? (
+                  <>
+                    optional — with the chat template and no begun answer, the instrument reads the end of the template
+                    {readNow != null ? (
+                      <>
+                        ,{" "}
+                        <span style={{ color: "#2B2117", borderBottom: "2px solid #A07A2E" }} title={JSON.stringify(readNow)}>
+                          {wp(readNow)}
+                        </span>
+                      </>
+                    ) : null}
+                    , not your last word; begin the answer to read a word of it
+                  </>
+                ) : (
+                  <>
+                    optional — the instrument reads the last word,{" "}
+                    <span style={{ color: "#2B2117", borderBottom: "2px solid #A07A2E" }}>
+                      {readNow != null ? wp(readNow) : `“${lastWord}”`}
+                    </span>
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -216,6 +246,12 @@ const Question: React.FC = () => {
             <input type="checkbox" checked={compareThink} onChange={(e) => setCompareThink(e.target.checked)} />
             also sight it with thinking turned on
           </label>
+          {compareThink && chat && answerBegins.trim() ? (
+            <span style={{ fontSize: 15, color: "#6B5D4D", paddingLeft: 28, fontStyle: "italic" }}>
+              With a begun answer the reply starts straight after the model’s header, before any thought, so this second sighting
+              has thinking allowed but none written.
+            </span>
+          ) : null}
           <SweepError />
           <RecordedNotice />
         </div>
@@ -293,6 +329,12 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
           {s.thinkingContinuation != null ? (
             <>
               with thinking turned on it went on <span className="italic">“{s.thinkingContinuation}”</span>
+              {s.chatWrapped && s.answerBegins.trim() ? (
+                <span className="muted">
+                  {" "}
+                  (the begun answer came straight after the model’s header, so the model answered before any thought)
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="muted">not sighted with thinking turned on</span>
@@ -339,17 +381,18 @@ const WentOn: React.FC<{ sighting: Sighting }> = ({ sighting }) => (
 
 /* ------------------------------------------------------- apparatus: what is drawn */
 
+/** the threads drawn on the rings: the strongest, as the canvas drew them */
+export const THREADS_DRAWN = 12;
+
 const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
   const pf = sighting.layers.map((L) => L.projFrac).filter((v): v is number => v != null);
-  const srcLayers = sighting.threads.map((t) => t.src.idx + 1);
-  const [first, second, third] = sighting.landmarks;
+  const drawn = sighting.threads.slice(0, THREADS_DRAWN);
+  const srcLayers = drawn.map((t) => t.src.idx + 1);
+  const F = describeFrame(sighting);
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
   const threadScore = useTheodoliteStore((s) => s.threadScore);
   const setThreadScore = useTheodoliteStore((s) => s.setThreadScore);
-  const fr = sighting.frame;
-  const lowdin = fr?.squaring === "lowdin";
-  const rows = fr?.fnwWeighted ? "fnw ⊙ W" : "W";
   const expl = sighting.layers.map((L) => L.ffnExplained).filter((v): v is number => v != null);
   const direct = sighting.threadScore === "direct";
   return (
@@ -357,28 +400,21 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
       <dl className="dl">
         <dt>survey frame</dt>
         <dd>
-          e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = {lowdin ? "Löwdin" : "Gram–Schmidt"}({rows}
-          <sub>U</sub>[{first}], {rows}
-          <sub>U</sub>[{second}], {rows}
-          <sub>U</sub>[{third}]) in fp32
-          {fr?.perLayer ? <>, pulled back by each layer’s own lens J<sub>ℓ</sub></> : null}
-          {fr?.centred ? ", read against a matched control’s state" : null}.{" "}
-          {lowdin
-            ? "Squared all at once, so the same frame for every order of the words."
-            : "Order-dependent: a Löwdin frame on the final-norm-weighted rows is the proposed fix."}{" "}
+          {F.frameFormula}; {F.notes.join("; ")}.{" "}
+          {!F.poleMotif && !F.lowdin ? "A Löwdin frame on the final-norm-weighted rows squares the words all at once. " : null}
           <a href={href.landmarks()}>landmarks</a>
         </dd>
         <dt>path</dt>
         <dd>
-          h̃<sub>ℓ</sub> = h<sub>ℓ</sub> · J<sub>ℓ</sub>
-          <sup>⊤</sup> projected on the frame; drawn by direction (θ, φ) only, its radius schematic.{" "}
+          {F.state} projected on the frame; drawn by direction (θ, φ) only, its radius schematic.{" "}
           {pf.length ? (
             <>
-              The frame catches {(Math.min(...pf) * 100).toFixed(1)}–{(Math.max(...pf) * 100).toFixed(1)}% of ‖h̃‖ in this sighting.
+              The frame catches {(Math.min(...pf) * 100).toFixed(1)}–{(Math.max(...pf) * 100).toFixed(1)}% of {F.denom} ({F.denomWords}) in
+              this sighting{F.studyComparable ? "; the study found 2.4–3.9% by stretch of layers (V7)" : ""}.
             </>
           ) : (
             <>
-              The share of ‖h̃‖ the frame catches: <Missing what="not sent by the server" />
+              The share of {F.denom} the frame catches: <Missing what="not sent by the server" />
             </>
           )}
         </dd>
@@ -420,7 +456,7 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
         </dd>
         <dt>threads</dt>
         <dd>
-          the {sighting.threads.length} highest-scoring{sighting.threadCount != null ? ` of ${comma(sighting.threadCount)}` : ""}:{" "}
+          the {drawn.length} highest-scoring{sighting.threadCount != null ? ` of ${comma(sighting.threadCount)}` : ""}:{" "}
           {direct ? (
             <>
               D = what the source adds to the reader’s gate through the stream alone, from its real activation, the layer scalars and both
@@ -461,7 +497,8 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
 /* ---------------------------------------------------------------- iii · the leaf */
 
 function poleNote(s: Sighting, L: LayerReading) {
-  const p = L.poles[0];
+  // the loudest by |a|, whatever order the server ranked the poles in
+  const p = loudestOf(L);
   if (!p) return null;
   const recorded = s.source === "fixture" ? RECORDED_POLE_NOTES[`${L.idx}:${p.neuron}`] : undefined;
   const lens = p.lens?.slice(0, 3) ?? null;
@@ -643,7 +680,7 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
     L.streamStrength == null ? "‖h‖" : null,
     L.rescaleNorm == null ? "the rescale ‖(s − 1)·pre‖" : null,
     L.eyeTop == null ? "the naked eye’s top word-pieces" : null,
-    L.projFrac == null ? "the share of ‖h̃‖ the frame catches" : null,
+    L.projFrac == null ? "the share of the state the frame catches" : null,
   ].filter(Boolean) as string[];
   const rawObj = {
     layer: L.no,
@@ -660,7 +697,7 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
     azimuth_deg: L.az,
     elevation_deg: L.el,
     xyz: L.xyz,
-    proj_frac_of_hJ: L.projFrac,
+    [describeFrame(sighting).exportKey]: L.projFrac,
     tracked_rank: L.ranks,
     poles: L.poles.map((p) => ({ neuron: p.neuron, act: p.act, lens: p.lens?.map((t) => t.token) ?? null, eye: p.eye?.map((t) => t.token) ?? null })),
   };
@@ -709,7 +746,13 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
           ) : (
             <Missing />
           )}
-          {L.projFrac != null ? <>; the frame catches {(L.projFrac * 100).toFixed(1)}% of ‖h̃‖.</> : "."}
+          {L.projFrac != null ? (
+            <>
+              ; the frame catches {(L.projFrac * 100).toFixed(1)}% of {describeFrame(sighting).denom}.
+            </>
+          ) : (
+            "."
+          )}
         </dd>
         <dt>stream strength</dt>
         <dd>{L.streamStrength != null ? <>‖h‖ = {L.streamStrength.toFixed(1)}</> : <Missing />}</dd>

@@ -13,6 +13,9 @@ export interface FirstQuestion {
   question: string;
   /** what goes to the store as the begun answer ("" = none) */
   answerBegins: string;
+  /** exactly how the study put it, and so how the instrument sends it: the user's turn, the begun answer, and
+   * whether as a chat (the tokenizer's template) or as bare text (one start mark, then the words) */
+  send: { question: string; answerBegins: string; chat: boolean };
   /** as shown, in quotes ("" = none) */
   begins: string;
   follows: string;
@@ -36,6 +39,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     ask: "“Tell me about yourself.”",
     question: "Tell me about yourself.",
     answerBegins: "Hi! I",
+    send: { question: "Tell me about yourself.", answerBegins: "Hi! I", chat: true },
     begins: "“Hi! I”",
     follows: "“I”",
     note: "Follow the word “I”. On its way to “am” it passes through a given name, a company, and the Chinese for “is a”.",
@@ -50,6 +54,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     ask: "“The number of legs on the animal that spins webs is”",
     question: "The number of legs on the animal that spins webs is",
     answerBegins: "",
+    send: { question: "The number of legs on the animal that spins webs is", answerBegins: "", chat: false },
     begins: "",
     follows: "“is”",
     note: "The animal that spins webs is the spider, and a spider has eight legs. This is the instrument’s own first question.",
@@ -64,6 +69,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     ask: "“The capital city of Japan is”",
     question: "The capital city of Japan is",
     answerBegins: "",
+    send: { question: "The capital city of Japan is", answerBegins: "", chat: false },
     begins: "",
     follows: "“is”",
     note: "Watch for the layer where “Tokyo” first surfaces.",
@@ -78,6 +84,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     ask: "“The opposite of hot is”",
     question: "The opposite of hot is",
     answerBegins: "",
+    send: { question: "The opposite of hot is", answerBegins: "", chat: false },
     begins: "",
     follows: "“is”",
     note: "Does “cold” rise early, or arrive only near the top?",
@@ -92,6 +99,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     ask: "“Water boils at a temperature of”",
     question: "Water boils at a temperature of",
     answerBegins: "",
+    send: { question: "Water boils at a temperature of", answerBegins: "", chat: false },
     begins: "",
     follows: "“of”",
     note: "The answer begins with a number. See what the layers hold before it is chosen.",
@@ -106,6 +114,8 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     ask: "“My friend Gemma is a software engineer. Yesterday”",
     question: "My friend Gemma is a software engineer. Yesterday",
     answerBegins: "",
+    // recorded as lab.chat("Continue this text.", assistant=p): the text is the begun reply, not the user's turn
+    send: { question: "Continue this text.", answerBegins: "My friend Gemma is a software engineer. Yesterday", chat: true },
     begins: "",
     follows: "“Yesterday”",
     note: "The model’s own name, given to a friend. The study found that the bare name “Gemma”, written like this, reads as a woman’s name; describing itself, with no instructions set beforehand, the model says “it”.",
@@ -113,7 +123,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     went: "“…, she told me that she is thinking about quitting her job”",
     plain: "“… own own own own own own …”",
     caution:
-      "Asked as a chat, the model went on with “she”. Sent as plain text, which is how the instrument’s server sends words today, it only repeats “own”. Read its layers with that in mind.",
+      "Asked as a chat, the model went on with “she”. Sent as plain text, it only repeats “own”, so the instrument sends it as the study did: as a chat, the text begun as the model’s reply to “Continue this text.”",
   },
 ];
 

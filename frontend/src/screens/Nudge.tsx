@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Apparatus, IfRubrics, Missing, Page, Rubric, SweepError } from "../components/kit";
 import { href, type Route } from "../router";
-import { SAFE_NUDGE_SCALE, composeText, useTheodoliteStore, type Sighting, type SteeringConfig } from "../store/useTheodoliteStore";
+import { SAFE_NUDGE_SCALE, composeText, loudnessRank, useTheodoliteStore, type Sighting, type SteeringConfig } from "../store/useTheodoliteStore";
 import { faceWord, wp } from "../lib/words";
 import {
   DIAL,
@@ -274,6 +274,34 @@ const Answer: React.FC<{ text: string }> = ({ text }) => {
 
 /* ------------------------------------------------------------------ page */
 
+/** The fields of a nudge that change what is pushed, in one fixed order (not `enabled`). */
+function steeringKey(x: Partial<SteeringConfig> | Record<string, unknown>): string {
+  const o = x as Record<string, unknown>;
+  return JSON.stringify([
+    o.target_concept,
+    o.contrast_concept,
+    o.layers,
+    o.scale,
+    o.pole_layer,
+    o.pole_neuron,
+    o.pole_polarity,
+    o.direction,
+    o.mask_quiet,
+    o.spare_bos,
+    o.strength,
+  ]);
+}
+
+/** A short description of the nudge the store holds. */
+function describeArmed(x: SteeringConfig): string {
+  const where =
+    x.pole_layer !== null && x.pole_neuron !== null
+      ? `neuron ${x.pole_neuron} at layer ${x.pole_layer + 1}, its ${x.pole_polarity < 0 ? "negative" : "positive"} face`
+      : `toward “${x.target_concept}”${x.contrast_concept ? `, away from “${x.contrast_concept}”` : ""} at layers ${x.layers.map((l) => l + 1).join(", ")}`;
+  const size = x.strength !== null ? `×${x.strength} of the stream` : `a fixed length of ${x.scale}`;
+  return `${where}, ${size}`;
+}
+
 export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const sighting = useTheodoliteStore((s) => s.sighting);
   const plainSighting = useTheodoliteStore((s) => s.plainSighting);
@@ -474,7 +502,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
         ? String(SAFE_NUDGE_SCALE)
         : q(!isNeuron && !chosen.length ? "[CHOOSE A LAYER]" : "[MEASURED IN A LIVE SIGHTING]")
       : scaleFmt(scaleNum);
-  const strengthSent = Number(s.toPrecision(3));
+  // the server caps a share-of-‖h‖ push at one stream's worth (NormScaledAddSpec max_fraction=1.0), so beyond ×1
+  // every dial position would push the same: send the push it will actually make, and say so
+  const strengthCapped = fixes.share && s > 1;
+  const strengthSent = Math.min(1, Number(s.toPrecision(3)));
   const pageFixes = {
     direction: fixes.dir ? "fnw" : "legacy",
     mask_quiet: fixes.quiet,
@@ -533,13 +564,18 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           spare_bos: fixes.bos,
           strength: fixes.share ? strengthSent : null,
         };
-  const cfgKey = cfg ? JSON.stringify(cfg) : null;
+  const cfgKey = cfg ? steeringKey(cfg) : null;
+  // the nudge the store holds: while armed, it is what every page's sightings push, until arming again
+  const storeSteering = useTheodoliteStore((st) => st.steering);
+  const armedKey = steeringKey(storeSteering);
+  const changedWhileArmed = armed && cfgKey !== armedKey;
 
-  // Keep the store's nudge in step with the page whenever the page's nudge is complete; whether it is
-  // armed is changed only by arming and releasing.
+  // Keep the store's nudge in step with the page whenever the page's nudge is complete and not armed. While
+  // armed, edits wait: they reach the store only by arming again, which goes through the collapse warning.
   useEffect(() => {
     if (cfgKey === null) return;
-    const next = JSON.parse(cfgKey) as Omit<SteeringConfig, "enabled">;
+    if (useTheodoliteStore.getState().steering.enabled) return;
+    const next = cfg as Omit<SteeringConfig, "enabled">;
     const cur = useTheodoliteStore.getState().steering;
     const same =
       cur.target_concept === next.target_concept &&
@@ -555,7 +591,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
       cur.layers.length === next.layers.length &&
       cur.layers.every((x, i) => x === next.layers[i]);
     if (!same) setSteering(next);
-  }, [cfgKey, setSteering]);
+  }, [cfgKey, setSteering]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prompt = composeText(question, "");
   const chat = useTheodoliteStore((st) => st.chat);
@@ -592,7 +628,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   }, [plainFirst, isSweeping, takeSighting]);
 
   /* ---- before and after */
-  const nudgedNow = sighting && sighting.isNudged && samePrompt(sighting) ? sighting : null;
+  const nudgedAny = sighting && sighting.isNudged && samePrompt(sighting) ? sighting : null;
+  // only a sighting taken with the nudge set now is shown under its description
+  const nudgedNow = nudgedAny && nudgedAny.steeringSent && steeringKey(nudgedAny.steeringSent) === cfgKey ? nudgedAny : null;
+  const nudgedEarlier = nudgedAny !== null && nudgedNow === null;
   const plainNow = samePrompt(plainSighting) && !plainSighting.isNudged ? plainSighting : null;
   const recordedPlain = !plainNow && question.trim() === SPIDER;
 
@@ -799,7 +838,12 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                     Neuron {pn} fired
                     {sighting?.readAt != null ? <> as the model read {wp(sighting.readAt)}</> : null}
                     {sighting?.answerBegins.trim() ? <> in its reply, “{sighting.answerBegins.trim()}”</> : null}: the{" "}
-                    {poleHere.rank === 0 ? "" : (ORDINAL[poleHere.rank] ?? `number ${poleHere.rank + 1}`) + " "}loudest in layer {pl}.{" "}
+                    {(() => {
+                      // by |a|, whatever order the server ranked the poles in
+                      const r = sighting ? (loudnessRank(sighting.layers[pl - 1], pn) ?? poleHere.rank) : poleHere.rank;
+                      return r === 0 ? "" : (ORDINAL[r] ?? `number ${r + 1}`) + " ";
+                    })()}
+                    loudest in layer {pl}.{" "}
                     {lensWords ? (
                       <>
                         Its {faceWord(poleHere.face)} face writes{" "}
@@ -1497,6 +1541,12 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               <span style={{ flex: "0 0 150px", ...labelSc }}>the nudge as set</span>
               <span style={{ flex: "1 1 260px", minWidth: 0, fontSize: 19, fontVariantNumeric: "lining-nums tabular-nums" }}>{setLine}</span>
             </div>
+            {strengthCapped ? (
+              <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 560 }}>
+                Past ×1 a share of the stream is capped by the server at one stream’s worth, so this sends ×1: every position on the dial
+                beyond it would push the same.
+              </p>
+            ) : null}
           </div>
           <div style={{ flex: "1 1 360px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
             {isCollapse ? (
@@ -1516,17 +1566,33 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                   arm anyway, knowing it breaks
                 </button>
               ) : null}
+              {armed && !changedWhileArmed ? (
+                <button className="btn-primary" type="button" onClick={sight} disabled={cantArm || isSweeping}>
+                  take a sighting
+                </button>
+              ) : null}
+              {armed && changedWhileArmed && !isCollapse ? (
+                <button className="btn-primary" type="button" onClick={sight} disabled={cantArm || isSweeping}>
+                  arm the nudge as set now
+                </button>
+              ) : null}
+              {armed && changedWhileArmed && isCollapse ? (
+                <button type="button" onClick={sight} disabled={cantArm || isSweeping} style={outlineBtn(C.rubric, cantArm)}>
+                  arm anyway, knowing it breaks
+                </button>
+              ) : null}
               {armed ? (
-                <>
-                  <button className="btn-primary" type="button" onClick={sight} disabled={cantArm || isSweeping}>
-                    take a sighting
-                  </button>
-                  <button type="button" onClick={release} style={outlineBtn(C.ink)}>
-                    release the nudge
-                  </button>
-                </>
+                <button type="button" onClick={release} style={outlineBtn(C.ink)}>
+                  release the nudge
+                </button>
               ) : null}
             </div>
+            {changedWhileArmed ? (
+              <p className="status-line" role="status" style={{ margin: 0, maxWidth: 560 }}>
+                You changed the nudge after arming it{cfg === null ? ", and it is not complete" : ""}. Every sighting still pushes the nudge
+                armed before ({describeArmed(storeSteering)}) until you arm again or release it.
+              </p>
+            ) : null}
             {blocked ? <p style={{ margin: 0, fontSize: 16, color: C.muted }}>{blockedText}</p> : null}
             {scaleUnknown ? (
               <p style={{ margin: 0, fontSize: 16, color: C.muted }}>
@@ -1660,6 +1726,12 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               </>
             ) : !isCollapse ? (
               <div style={placeholderBox}>[TAKE A SIGHTING TO SEE THE NUDGED ANSWER]</div>
+            ) : null}
+            {nudgedEarlier ? (
+              <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
+                The last nudged sighting of this question was taken with other settings, so it is not shown here; take a sighting to see
+                this nudge.
+              </p>
             ) : null}
             {!isCollapse && !armed ? (
               <p style={{ margin: 0, fontSize: 16, color: C.muted }}>Nothing is armed, so a sighting now would answer as it was.</p>

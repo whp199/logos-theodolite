@@ -76,8 +76,9 @@ export type PoleRanking = "activation" | "write";
 export interface ThreadReading {
   src: { idx: number; neuron: number; face: 1 | -1 };
   dst: { idx: number; neuron: number; face: 1 | -1 };
-  /** the coupling C = ⟨σ w_down ⊙ w_post, w_gate ⊙ w_pre⟩ · |a| */
-  c: number;
+  /** the coupling C = ⟨σ w_down ⊙ w_post, w_gate ⊙ w_pre⟩ · |a|; null when the thread was scored by the
+   * direct-path estimate and the server sent only that score for it */
+  c: number | null;
   dot: number | null;
   /** direct-path estimates of what the source adds to the reader's gate pre-activation and activation; null = not sent */
   directGate: number | null;
@@ -117,6 +118,8 @@ export interface SteeringApplied {
 }
 
 export interface Sighting {
+  /** a number unique to this sighting in this page's life, so results asked of it can be told from older ones */
+  id: number;
   source: "live" | "fixture";
   /** one line saying where this sighting came from */
   provenance: string;
@@ -144,10 +147,13 @@ export interface Sighting {
   threadScore: ThreadScore;
   frame: FrameInfo | null;
   steeringApplied: SteeringApplied | null;
+  /** the nudge settings this page sent with the request (live only), to tell this nudge from an earlier one */
+  steeringSent: Record<string, unknown> | null;
   layers: LayerReading[];
   /** 60 x 60 linear CKA, row-major; null = not recorded */
   kinship: number[] | null;
   kinStats: { meanOffDiag: number; adjacent: number; l11vs51: number } | null;
+  /** every thread the server sent, strongest score first (the recorded sighting keeps only its top 12) */
   threads: ThreadReading[];
   threadCount: number | null;
   activeEdits: ActiveEdit[];
@@ -234,16 +240,69 @@ export function parseBinaryFrame(buf: ArrayBuffer): LiveBinary | null {
 
 type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+let nextSightingId = 1;
+
 const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+/** A list of word-pieces, or null when none were read: the server sends [] for poles it did not decode, and an
+ * empty list must not read as "read, and no word in common". */
 const toks = (list: unknown): TokenReading[] | null =>
-  Array.isArray(list)
+  Array.isArray(list) && list.length > 0
     ? list.map((t: Json) => ({ token: String(t.token ?? ""), prob: numOrNull(t.prob), logit: numOrNull(t.logit) }))
     : null;
+
+/**
+ * Every thread of a live sighting. The JSON keeps only the first 60 the server found, in source-layer order (not
+ * the strongest), so the threads are rebuilt from the binary rows (src layer, src rank, dst layer, dst rank, score,
+ * src face, dst face), with each rank turned into its neuron through that layer's poles. The JSON's extra fields
+ * (C, the dot product, the direct-path estimates) are joined on where it has the same thread.
+ */
+function liveThreads(meta: Json, bin: LiveBinary | null, kind: ThreadScore): ThreadReading[] {
+  const metaRows: Json[] = Array.isArray(meta.filaments_meta) ? meta.filaments_meta : [];
+  const fromMeta = (f: Json): ThreadReading => ({
+    src: { idx: f.src_layer, neuron: f.src_neuron, face: f.src_polarity === "-" ? -1 : 1 },
+    dst: { idx: f.dst_layer, neuron: f.dst_neuron, face: f.dst_polarity === "-" ? -1 : 1 },
+    c: numOrNull(f.coupling_score),
+    dot: numOrNull(f.dot_product),
+    directGate: numOrNull(f.direct_gate),
+    directAct: numOrNull(f.direct_act),
+    score: numOrNull(f.score) ?? Number(f.coupling_score),
+    scoreKind: f.score_kind === "direct" ? "direct" : "coupling",
+  });
+  let out: ThreadReading[];
+  if (bin && bin.nFilaments > 0 && bin.nPoles > 0) {
+    const key = (a: number, an: number, b: number, bn: number) => `${a}:${an}>${b}:${bn}`;
+    const known = new Map(metaRows.map((f) => [key(f.src_layer, f.src_neuron, f.dst_layer, f.dst_neuron), f]));
+    const neuronAt = (layer: number, rank: number) =>
+      rank >= 0 && rank < bin.nPoles ? Math.round(bin.polesData[(layer * bin.nPoles + rank) * 6]) : null;
+    out = [];
+    for (let i = 0; i < bin.nFilaments; i++) {
+      const row = bin.filamentsData.subarray(i * 7, i * 7 + 7);
+      const [sl, sr, dl, dr, score, sp, dp] = Array.from(row);
+      const sn = neuronAt(Math.round(sl), Math.round(sr));
+      const dn = neuronAt(Math.round(dl), Math.round(dr));
+      if (sn === null || dn === null) continue;
+      const m = known.get(key(Math.round(sl), sn, Math.round(dl), dn));
+      out.push({
+        src: { idx: Math.round(sl), neuron: sn, face: sp >= 0 ? 1 : -1 },
+        dst: { idx: Math.round(dl), neuron: dn, face: dp >= 0 ? 1 : -1 },
+        c: kind === "coupling" ? score : m ? numOrNull(m.coupling_score) : null,
+        dot: m ? numOrNull(m.dot_product) : null,
+        directGate: kind === "direct" ? score : m ? numOrNull(m.direct_gate) : null,
+        directAct: m ? numOrNull(m.direct_act) : null,
+        score,
+        scoreKind: kind,
+      });
+    }
+  } else {
+    out = metaRows.map(fromMeta);
+  }
+  return out.sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
+}
 
 export function sightingFromLive(
   meta: Json,
   bin: LiveBinary | null,
-  req: { question: string; answerBegins: string; textSent: string },
+  req: { question: string; answerBegins: string; textSent: string; steering?: Record<string, unknown> | null },
 ): Sighting {
   const plumes: Json[] = Array.isArray(meta.layer_plumes) ? meta.layer_plumes : [];
   const labels: Record<string, Json[]> = meta.poles_labels ?? {};
@@ -313,20 +372,13 @@ export function sightingFromLive(
       ffnExplained: numOrNull(p.poles_ffn_explained),
     });
   }
-  const threads: ThreadReading[] = (Array.isArray(meta.filaments_meta) ? meta.filaments_meta : []).map((f: Json) => ({
-    src: { idx: f.src_layer, neuron: f.src_neuron, face: f.src_polarity === "-" ? -1 : 1 },
-    dst: { idx: f.dst_layer, neuron: f.dst_neuron, face: f.dst_polarity === "-" ? -1 : 1 },
-    c: Number(f.coupling_score),
-    dot: numOrNull(f.dot_product),
-    directGate: numOrNull(f.direct_gate),
-    directAct: numOrNull(f.direct_act),
-    score: numOrNull(f.score) ?? Number(f.coupling_score),
-    scoreKind: f.score_kind === "direct" ? "direct" : "coupling",
-  }));
+  const threadScore: ThreadScore = meta.thread_score === "direct" ? "direct" : "coupling";
+  const threads = liveThreads(meta, bin, threadScore);
   const kinship = bin && bin.ckaMatrix.length === N_LAYERS * N_LAYERS ? Array.from(bin.ckaMatrix) : null;
   const tokensList: string[] | null = Array.isArray(meta.prompt_token_strs) ? meta.prompt_token_strs : null;
   const think = bin?.thinkTrajXyz;
   return {
+    id: nextSightingId++,
     source: "live",
     provenance: "a live sighting from the running server",
     question: req.question,
@@ -352,9 +404,10 @@ export function sightingFromLive(
     isNudged: Boolean(meta.is_steered) || (bin ? (bin.flags & 2) !== 0 : false),
     system: typeof meta.system === "string" && meta.system ? meta.system : null,
     poleRanking: meta.pole_ranking === "write" ? "write" : "activation",
-    threadScore: meta.thread_score === "direct" ? "direct" : "coupling",
+    threadScore,
     frame: frameOf(meta.frame),
     steeringApplied: steeringOf(meta.steering_applied),
+    steeringSent: req.steering ?? null,
     layers,
     kinship,
     kinStats: kinshipStats(kinship),
@@ -487,6 +540,7 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     });
   }
   return {
+    id: nextSightingId++,
     source: "fixture",
     provenance: f.source,
     question: f.question,
@@ -511,6 +565,7 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     threadScore: "coupling",
     frame: null,
     steeringApplied: null,
+    steeringSent: null,
     layers,
     kinship: f.kinship,
     kinStats: f.kinStats,
@@ -528,4 +583,26 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     activeEdits: [],
     raw: null,
   };
+}
+
+/* ------------------------------------------------------------- loudness */
+
+/**
+ * The poles of a layer come in the order the server ranked them: by |a| (loudness), or by write size when
+ * `pole_ranking` is "write". Pages that speak of "the loudest" use these, which always go by |a|.
+ */
+export function loudestOf(L: LayerReading): PoleReading | null {
+  return L.poles.length ? L.poles.reduce((a, b) => (Math.abs(b.act) > Math.abs(a.act) ? b : a)) : null;
+}
+
+/** 0 = loudest among the layer's listed poles, by |a|; null when the neuron is not listed */
+export function loudnessRank(L: LayerReading, neuron: number): number | null {
+  const p = L.poles.find((x) => x.neuron === neuron);
+  if (!p) return null;
+  return L.poles.filter((x) => Math.abs(x.act) > Math.abs(p.act)).length;
+}
+
+/** the largest |a| among the layer's listed poles (for strength bars), or null */
+export function maxAct(L: LayerReading): number | null {
+  return L.poles.length ? Math.max(...L.poles.map((p) => Math.abs(p.act))) : null;
 }

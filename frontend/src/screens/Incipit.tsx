@@ -4,6 +4,7 @@ import { useReading } from "../reading";
 import { href, navigate, type Route } from "../router";
 import { type Sighting, useTheodoliteStore } from "../store/useTheodoliteStore";
 import { comma, numberWord, wp } from "../lib/words";
+import { describeFrame } from "../lib/frame";
 import {
   FIRST_QUESTIONS,
   HOW_PUT,
@@ -270,14 +271,12 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
           <dt>drawing</dt>
           <dd className="num">
             bearing θ = atan2(y, x) and elevation φ = asin(z / ‖p‖) on{" "}
-            {s && s.surveyMode !== "monument" ? (
-              <>the Gram–Schmidt frame of a locked neuron’s motif (its gate, its corrected write and the gate of its main reader)</>
-            ) : !lm.every(Boolean) ? (
-              <>the Gram–Schmidt frame of the three landmark words’ rows of W<sub>U</sub> (their names were not reported)</>
+            {s && !lm.every(Boolean) && s.surveyMode === "monument" ? (
+              <>the frame of the three landmark words’ rows of W<sub>U</sub> (their names were not reported)</>
+            ) : s ? (
+              <>{describeFrame(s).frameFormula}</>
             ) : (
-              <>
-                the Gram–Schmidt frame of W<sub>U</sub>[{lm[0]}], W<sub>U</sub>[{lm[1]}], W<sub>U</sub>[{lm[2]}]
-              </>
+              <Missing what="no sighting yet" />
             )}
             ; the radius is schematic. The frame catches{" "}
             {projFracs.length ? (
@@ -285,7 +284,10 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
             ) : (
               <Missing what="not recorded in this sighting" />
             )}{" "}
-            of ‖h̃‖ across the sixty layers, and the bearing turns with the order of the three words (58–99°, bug 3).{" "}
+            of {s ? describeFrame(s).denom : "the state"} across the sixty layers
+            {s && describeFrame(s).lowdin
+              ? "; a Löwdin frame squares the words all at once, so their order does not turn the bearing."
+              : ", and with a Gram–Schmidt frame the bearing turns with the order of the three words (58–99°, bug 3)."}{" "}
             <a href={href.landmarks()}>landmarks</a>
           </dd>
 
@@ -563,19 +565,24 @@ const lineStyle: React.CSSProperties = {
 const BeginWithAQuestion: React.FC = () => {
   const setQuestion = useTheodoliteStore((s) => s.setQuestion);
   const setAnswerBegins = useTheodoliteStore((s) => s.setAnswerBegins);
+  const setChat = useTheodoliteStore((s) => s.setChat);
   const takeSighting = useTheodoliteStore((s) => s.takeSighting);
   const [sel, setSel] = useState(() => {
-    const q = useTheodoliteStore.getState().question;
-    const i = FIRST_QUESTIONS.findIndex((x) => x.question === q);
+    const st = useTheodoliteStore.getState();
+    const i = FIRST_QUESTIONS.findIndex((x) => x.send.question === st.question && x.send.answerBegins === st.answerBegins);
     return i >= 0 ? i : 0;
   });
   const cur = FIRST_QUESTIONS[sel];
 
   const takeIt = () => {
-    setQuestion(cur.question);
-    setAnswerBegins(cur.answerBegins);
+    // send each question as the study put it (bare text, or a chat with the reply begun), and leave the instrument
+    // set the same way, so a sighting taken from it next reads the same word
+    const { question, answerBegins, chat } = cur.send;
+    setQuestion(question);
+    setAnswerBegins(answerBegins);
+    setChat(chat);
     // a first sighting only reads the model: no nudge, whatever the nudge page holds
-    takeSighting({ question: cur.question, answerBegins: cur.answerBegins, steering: { enabled: false } });
+    takeSighting({ question, answerBegins, chat, steering: { enabled: false } });
     // if the server is not answering, the store has set sweepError and the instrument shows it
     navigate(href.instrument());
   };
@@ -705,8 +712,8 @@ const BeginWithAQuestion: React.FC = () => {
           <dt>bare text</dt>
           <dd>
             the words alone, after one start mark (id 2): <span className="mono">lab.ids(p)</span>, then greedy decoding by HF{" "}
-            <span className="mono">generate</span>, <span className="mono">max_new_tokens=12</span>. This is how the server sends
-            every question today (REPORT §3.4, bug 5).
+            <span className="mono">generate</span>, <span className="mono">max_new_tokens=12</span>. This is how the server sent
+            every question before its chat option (REPORT §3.4, bug 5), and how the instrument sends rows 2–5 now, as the study did.
           </dd>
           <dt>as a chat</dt>
           <dd>
@@ -726,9 +733,10 @@ const BeginWithAQuestion: React.FC = () => {
           </dd>
           <dt>the fix</dt>
           <dd>
-            a chat-template option in the server, on by default (REPORT §3.4, bug 5). The single-BOS fix (bug 6) is already in the
-            backend, so a chat-wrapped prompt now gets one start mark. Until then, “send it as a chat” on{" "}
-            <a href={href.instrument()}>the instrument</a> asks for it.
+            a chat-template option in the server (<span className="mono">chat</span>, <span className="mono">system</span>,{" "}
+            <span className="mono">assistant_prefix</span>; REPORT §3.4, bug 5), now in the backend and on by default in{" "}
+            <a href={href.instrument()}>the instrument</a>; the single-BOS fix (bug 6) gives a chat-wrapped prompt one start mark. Each
+            question above is sent as the study put it: rows 2–5 as bare text, the first and the last as chats.
           </dd>
         </dl>
         <div style={{ overflowX: "auto", paddingBottom: 6 }}>
@@ -807,13 +815,14 @@ const CAUTIONS: React.ReactNode[] = [
     depends on the order of the three landmark words. In the study, reordering them typically swung it by 58 to 99 degrees.
   </>,
   <>
-    At its default strength, the nudge <span style={{ fontStyle: "italic", color: MUTED }}>(steering)</span> breaks the model’s speech.
-    The fault is known and not yet fixed.
+    The nudge <span style={{ fontStyle: "italic", color: MUTED }}>(steering)</span> breaks the model’s speech if it pushes too hard. The
+    server’s own default is that hard; the nudge page sends the study’s mended recipe at one hundredth of the stream, and even that
+    window is narrow.
   </>,
   <>
-    Today the server sends your words as plain text, without the chat wrapping the model was trained on{" "}
-    <span style={{ fontStyle: "italic", color: MUTED }}>(chat template)</span>. In the study, two of six plain prompts came back as one
-    word repeated.
+    Sent as plain text, without the chat wrapping the model was trained on{" "}
+    <span style={{ fontStyle: "italic", color: MUTED }}>(chat template)</span>, two of six prompts in the study came back as one word
+    repeated. The instrument wraps your words as a chat unless you turn it off.
   </>,
 ];
 

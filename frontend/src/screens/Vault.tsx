@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { Apparatus, Page, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
 import { useTheodoliteStore } from "../store/useTheodoliteStore";
@@ -27,20 +27,11 @@ const TABS: [VaultTab, string, string][] = [
 
 export const Vault: React.FC<{ route: Route }> = ({ route }) => {
   const ui = useVaultUi();
-  const conn = useTheodoliteStore((s) => s.conn);
   const editsInForce = useTheodoliteStore((s) => s.activeEdits.length);
   const larqlQuery = useTheodoliteStore((s) => s.larqlQuery);
-  const executeLarql = useTheodoliteStore((s) => s.executeLarql);
 
 
-  // the ledger must match the running vault (edits outlive a page reload): ask it to describe itself once per visit
-  const described = useRef(false);
-  useEffect(() => {
-    if (conn === "open" && !described.current) {
-      described.current = true;
-      executeLarql("DESCRIBE");
-    }
-  }, [conn, executeLarql]);
+  // the ledger of edits in force is resynced by the store on every (re)connect (a silent DESCRIBE)
 
   // ---------- the alidade follows the layer being worked in
   const fL = num(ui.fLayer);

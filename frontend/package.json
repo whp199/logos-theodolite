@@ -12,6 +12,8 @@
     "fixture": "python3 -I scripts/make_fixture.py"
   },
   "dependencies": {
+    "@fontsource/eb-garamond": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
     "@react-three/drei": "^10.0.4",
     "@react-three/fiber": "^9.0.4",
     "lucide-react": "^0.475.0",

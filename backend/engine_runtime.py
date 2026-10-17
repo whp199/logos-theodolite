@@ -212,6 +212,10 @@ def patch_compressed_tensors_for_low_vram(hf_model: nn.Module) -> int:
     return patched_count
 
 
+
+# Word-pieces whose rank and logit every sweep tracks layer by layer (the default two-hop prompt's words).
+DEFAULT_TRACKED_CONCEPTS: Tuple[str, ...] = ("spider", "arachnid", "eight", "8", "insect", "six", "6")
+
 @dataclass
 class SweepLayerTokenReadout:
     """Top-k vocabulary predictions at a layer under J++ or Naive Logit Lens."""
@@ -726,7 +730,7 @@ class TheodoliteRuntime:
         steering_spec: Optional[SteeringSpec] = None,
         max_new_tokens: int = 6,
         top_k_poles: int = 15,
-        tracked_concepts: Optional[Sequence[str]] = ("spider", "arachnid", "eight", "8", "insect", "six", "6"),
+        tracked_concepts: Optional[Sequence[str]] = DEFAULT_TRACKED_CONCEPTS,
         decode_all_pole_tokens: bool = False,
         prepend_bos: bool = True,
         steering_position_mask: Optional[Sequence[int]] = None,

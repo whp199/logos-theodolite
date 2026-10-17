@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Apparatus, Missing, Page, Rubric, SweepError } from "../components/kit";
 import type { FrameInfo } from "../store/sighting";
 import { ControlSighting } from "../components/ControlSighting";
+import { describeFrame } from "../lib/frame";
 import { href, type Route } from "../router";
 import {
   type LayerReading,
@@ -298,6 +299,7 @@ const NeuronStone: React.FC<{ numeral: string; ordinal: string; name: string; va
 
 export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const sighting = useTheodoliteStore((s) => s.sighting);
+  const frameDesc = sighting ? describeFrame(sighting) : null;
   const landmarks = useTheodoliteStore((s) => s.landmarks);
   const setLandmarks = useTheodoliteStore((s) => s.setLandmarks);
   const surveyMode = useTheodoliteStore((s) => s.surveyMode);
@@ -317,7 +319,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const threadScore = useTheodoliteStore((s) => s.threadScore);
   const control = useTheodoliteStore((s) => s.control);
-  const canCentre = !!control && control.source === "live" && !!control.textSent;
+  // centring on the very question being sighted would subtract its state from itself and leave nothing to read
+  const controlIsThis =
+    !!control && control.question.trim() === question.trim() && control.answerBegins.trim() === answerBegins.trim() && control.chatWrapped === chat;
+  const canCentre = !!control && control.source === "live" && !!control.textSent && !controlIsThis;
   const selectedLayer = useTheodoliteStore((s) => s.selectedLayer);
   const setSelectedLayer = useTheodoliteStore((s) => s.setSelectedLayer);
   const [rawOpen, setRawOpen] = useState(false);
@@ -541,7 +546,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         read_at: sighting?.readAt ?? null,
         xyz,
         proj_norm: pn !== null ? Number(pn.toPrecision(3)) : null,
-        proj_frac_of_hJ: L.projFrac,
+        [frameDesc?.exportKey ?? "proj_frac_of_hJ"]: L.projFrac,
         azimuth_deg: az,
         elevation_deg: el,
         ...(isFixture ? { single_bos: { azimuth_deg: SINGLE_MARK_AZ[li], elevation_deg: SINGLE_MARK_EL[li] } } : {}),
@@ -838,9 +843,9 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <dt>known fault</dt>
           <dd>
             Bug 3, high (REPORT §3.4): the frame changes with the order of the words, and it is built from the raw rows of W
-            <sub>U</sub>, not the rows the model actually weighs, fnw · W<sub>U</sub>. The proposed fix squares all three
-            at once (Löwdin 1950 [33]) on the weighted rows and shows the fraction of the state caught. Section iv below
-            has the evidence.
+            <sub>U</sub>, not the rows the model actually weighs, fnw · W<sub>U</sub>, unless you choose otherwise. The fix,
+            now the options below, squares all three at once (Löwdin 1950 [33]) on the weighted rows and shows the fraction of
+            the state caught. Section iv below has the evidence.
           </dd>
         </dl>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 40px", paddingTop: "8px", borderTop: "1px solid #E3DACA" }}>
@@ -934,7 +939,9 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           {isWords ? "" : "The final-norm weights and the per-layer lens apply to a frame of words, not to a neuron’s frame. "}
           {canCentre
             ? "Centring reads against the matched control kept on the instrument’s first page. "
-            : "To centre, take and keep a matched control first (the question’s apparatus on the instrument page). "}
+            : controlIsThis
+              ? "The control kept is this very question; centring on it would subtract its state from itself and leave nothing to read. Keep a different sighting as the control to centre. "
+              : "To centre, take and keep a matched control first (the question’s apparatus on the instrument page). "}
           The options go with the next sighting.{" "}
           {sighting?.source === "live"
             ? `The last sighting was squared ${frameWords(sighting.frame)}.`
@@ -1206,9 +1213,17 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               </dd>
               <dt>caught</dt>
               <dd>
-                ‖p‖ / ‖h̃<sub>ℓ</sub>‖ = {L?.projFrac != null ? (L.projFrac * 100).toFixed(1) + "%" : <Missing what={NOT_HERE} />}{" "}
-                <span className="mono">(proj_frac_of_hJ)</span>; {pfRange ?? <Missing what={NOT_HERE} />} across this
-                sighting, 2.4–3.9% by stretch of layers over V7’s 18 prompts.
+                ‖p‖ / {frameDesc?.denom ?? (
+                  <>
+                    ‖h̃<sub>ℓ</sub>‖
+                  </>
+                )}{" "}
+                = {L?.projFrac != null ? (L.projFrac * 100).toFixed(1) + "%" : <Missing what={NOT_HERE} />}{" "}
+                <span className="mono">({frameDesc?.exportKey ?? "proj_frac_of_hJ"})</span>, {frameDesc?.denomWords ?? "of the lens-read state"};{" "}
+                {pfRange ?? <Missing what={NOT_HERE} />} across this sighting
+                {frameDesc === null || frameDesc.studyComparable
+                  ? ", 2.4–3.9% by stretch of layers over V7’s 18 prompts."
+                  : ". The study’s 2.4–3.9% was measured on the uncentred h·Jᵀ frame, so it does not compare with this one."}
               </dd>
               {L?.streamStrength != null ? (
                 <>

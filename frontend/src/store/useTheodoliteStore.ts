@@ -84,6 +84,8 @@ export interface LarqlEntry {
   error: string | null;
   at: number;
   via: "ws" | "http";
+  /** why it failed: the vault answered and refused the statement, or the request never got an answer */
+  failure: "refused" | "transport" | null;
 }
 
 export type Conn = "idle" | "connecting" | "open" | "closed";
@@ -93,6 +95,10 @@ export interface Pending<T> {
   pending: boolean;
   data: T | null;
   error: string | null;
+  /** the sighting the result was asked for (traces depend on the question), when it depends on one */
+  sightingId?: number | null;
+  /** what was sent, so a page can say how the answer was read and how to ask it again by hand */
+  sent?: Record<string, unknown>;
 }
 
 export const poleKey = (idx: number, neuron: number) => `${idx}:${neuron}`;
@@ -157,11 +163,20 @@ export interface TheodoliteState {
   connect: () => void;
   loadFixture: () => Promise<void>;
   fetchHealth: () => Promise<void>;
-  takeSighting: (opts?: { question?: string; answerBegins?: string; steering?: Partial<SteeringConfig> }) => boolean;
+  /** take a sighting; `chat`/`system` override the page's settings for this one request only */
+  takeSighting: (opts?: {
+    question?: string;
+    answerBegins?: string;
+    steering?: Partial<SteeringConfig>;
+    chat?: boolean;
+    system?: string;
+  }) => boolean;
   executeLarql: (query?: string) => void;
   inspectPole: (idx: number, neuron: number, face: number) => void;
   traceReaders: (idx: number, neuron: number, face: number, opts?: TraceOptions) => void;
-  testHypothesis: (idx: number, neuron: number, pos: string[], neg: string[]) => Promise<void>;
+  /** run test_motif_hypothesis; by default each sentence goes in as bare text and is read at its own last
+   * word-piece (with `chat`, the server reads the end of the template instead) */
+  testHypothesis: (idx: number, neuron: number, pos: string[], neg: string[], opts?: { chat?: boolean }) => Promise<void>;
 }
 
 export interface TraceOptions {
@@ -196,27 +211,57 @@ export function describeText(question: string, answerBegins: string, chat: boole
 
 let ws: WebSocket | null = null;
 let pendingBinary: LiveBinary | null = null;
-/** LQL statements sent over the socket and not yet answered, oldest first */
-const wsQueries: string[] = [];
+/** LQL statements sent over the socket and not yet answered, oldest first; silent ones only resync the ledger */
+const wsQueries: { query: string; silent: boolean }[] = [];
 /** requests sent and not yet answered, oldest first: the server answers one socket's sweeps in order */
-const pendingReqs: { question: string; answerBegins: string; textSent: string; nudged: boolean; chat: boolean }[] = [];
+const pendingReqs: {
+  question: string;
+  answerBegins: string;
+  textSent: string;
+  nudged: boolean;
+  chat: boolean;
+  auto: boolean;
+  steering: Record<string, unknown>;
+}[] = [];
 let reconnectTimer: number | null = null;
 let reconnectDelay = 4000;
+/** set when the sighting taken automatically on (re)connect failed: do not resend it on every reconnect */
+let autoRetakeBlocked = false;
 let larqlId = 0;
 let fixtureCache: Sighting | null = null;
 
 const wsOpen = () => ws !== null && ws.readyState === WebSocket.OPEN;
 
+/** An HTTP failure: `refused` when the server answered with its own reason (4xx with a detail), else transport. */
+class RequestError extends Error {
+  constructor(
+    message: string,
+    readonly refused: boolean,
+  ) {
+    super(message);
+  }
+}
+
 async function postJson(path: string, body: unknown) {
-  const r = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let r: Response;
+  try {
+    r = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new RequestError(String((e as Error)?.message ?? e), false);
+  }
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(typeof data?.detail === "string" ? data.detail : `HTTP ${r.status}`);
+  if (!r.ok) {
+    const detail = typeof data?.detail === "string" ? data.detail : null;
+    throw new RequestError(detail ?? `HTTP ${r.status}`, detail !== null && r.status >= 400 && r.status < 500);
+  }
   return data;
 }
+
+const CLOSED_EARLY = "The connection closed before the instrument answered.";
 
 export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   conn: "idle",
@@ -299,25 +344,38 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
     set({ conn: "connecting" });
 
     sock.onopen = () => {
-      reconnectDelay = 4000;
+      // the backoff is reset only when the server has answered something (see the replies below)
       set({ conn: "open", sweepError: null });
       void get().fetchHealth();
-      // a fresh live sighting of the current question replaces the recorded one
-      if (get().sighting?.source !== "live") get().takeSighting();
+      // the vault lives in the server's memory: after a restart its ledger of edits is empty, so ask it again
+      wsQueries.push({ query: "DESCRIBE", silent: true });
+      sock.send(JSON.stringify({ action: "larql", query: "DESCRIBE" }));
+      // a fresh live sighting of the current question replaces the recorded one, unless that very sighting
+      // failed on the last connection (it would only fail again, every few seconds)
+      if (get().sighting?.source !== "live" && !autoRetakeBlocked) takeSightingImpl({}, true);
     };
 
     sock.onclose = () => {
       if (ws === sock) ws = null;
+      const lost = wsQueries.filter((q) => !q.silent);
       pendingReqs.length = 0;
       wsQueries.length = 0;
       pendingBinary = null;
       const wasSweeping = get().isSweeping;
-      set({
+      const fail = <T,>(m: Record<string, Pending<T>>) =>
+        Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v.pending ? { ...v, pending: false, error: CLOSED_EARLY } : v]));
+      set((s) => ({
         conn: "closed",
         isSweeping: false,
         larqlPending: false,
-        sweepError: wasSweeping ? "The server closed the connection before the sighting came back." : get().sweepError,
-      });
+        sweepError: wasSweeping ? "The server closed the connection before the sighting came back." : s.sweepError,
+        inspections: fail(s.inspections),
+        readers: fail(s.readers),
+      }));
+      // statements in flight got no answer: say so in the vault's log rather than letting them vanish
+      for (const q of lost) {
+        recordLarql({ id: ++larqlId, query: q.query, ok: false, data: null, error: CLOSED_EARLY, at: Date.now(), via: "ws", failure: "transport" });
+      }
       if (!get().sighting) void get().loadFixture();
       reconnectTimer = window.setTimeout(() => {
         reconnectTimer = null;
@@ -352,54 +410,80 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
             textSent: describeText(get().question, get().answerBegins, get().chat),
             nudged: false,
             chat: get().chat,
+            auto: false,
+            steering: { ...get().steering },
           };
           const sighting = sightingFromLive(msg, pendingBinary, req);
           pendingBinary = null;
+          reconnectDelay = 4000;
+          autoRetakeBlocked = false;
           set((s) => ({
             sighting,
             plainSighting: sighting.isNudged ? s.plainSighting : sighting,
             isSweeping: pendingReqs.length > 0,
             sweepError: null,
-            activeEdits: sighting.activeEdits,
+            activeEdits: latestPerNeuron(sighting.activeEdits),
           }));
           break;
         }
         case "larql_result": {
+          reconnectDelay = 4000;
+          // the reply does not echo its statement; the socket answers in the order statements were sent
+          const sent = wsQueries.shift() ?? { query: "", silent: false };
           const entry: LarqlEntry = {
             id: ++larqlId,
-            // the reply does not echo its statement; the socket answers in the order statements were sent
-            query: wsQueries.shift() ?? "",
+            query: sent.query,
             ok: Boolean(msg.ok),
             data: msg.ok ? msg.data : null,
             error: msg.ok ? null : String(msg.error ?? "error"),
             at: Date.now(),
             via: "ws",
+            failure: msg.ok ? null : "refused",
           };
-          recordLarql(entry);
+          recordLarql(entry, sent.silent);
           break;
         }
         case "pole_inspection": {
+          reconnectDelay = 4000;
           const d = msg.data ?? {};
+          const key = poleKey(d.layer, d.neuron_idx);
           set((s) => ({
-            inspections: { ...s.inspections, [poleKey(d.layer, d.neuron_idx)]: { pending: false, data: d, error: null } },
+            inspections: { ...s.inspections, [key]: { ...s.inspections[key], pending: false, data: d, error: null } },
           }));
           break;
         }
         case "downstream_readers": {
+          reconnectDelay = 4000;
           const src = msg.data?.source_pole ?? {};
+          const key = poleKey(src.layer, src.neuron_idx);
           set((s) => ({
-            readers: { ...s.readers, [poleKey(src.layer, src.neuron_idx)]: { pending: false, data: msg.data, error: null } },
+            readers: { ...s.readers, [key]: { ...s.readers[key], pending: false, data: msg.data, error: null } },
           }));
           break;
         }
         case "error": {
-          // the server's handler loop ends on an error, so nothing pending will be answered
-          pendingReqs.length = 0;
-          wsQueries.length = 0;
-          pendingBinary = null;
           const message = String(msg.message ?? "The server reported an error.");
+          if (msg.recoverable === true) {
+            // a malformed request failed alone; the socket stays open and everything else is still answered in order
+            if (msg.action === "sweep") {
+              const failed = pendingReqs.shift();
+              if (failed?.auto) autoRetakeBlocked = true;
+              pendingBinary = null;
+              set({ isSweeping: pendingReqs.length > 0, sweepError: message });
+            } else if (msg.action === "inspect_pole" || msg.action === "trace_readers") {
+              const key = poleKey(Number(msg.layer), Number(msg.neuron_idx));
+              const which = msg.action === "inspect_pole" ? "inspections" : "readers";
+              set((s) => ({ [which]: { ...s[which], [key]: { ...s[which][key], pending: false, error: message } } }) as Partial<TheodoliteState>);
+            } else set({ sweepError: message });
+            break;
+          }
+          // otherwise the server's handler loop ends on the error, so nothing pending will be answered
+          if (pendingReqs.some((r) => r.auto)) autoRetakeBlocked = true;
+          pendingReqs.length = 0;
+          // statements still waiting are logged as unanswered when the socket closes, just after this
+          pendingBinary = null;
           const fail = <T,>(m: Record<string, Pending<T>>) =>
-            Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v.pending ? { pending: false, data: v.data, error: message } : v]));
+            Object.fromEntries(Object.entries(m).map(([k, v]) => [k, v.pending ? { ...v, pending: false, error: message } : v]));
           set((s) => ({
             isSweeping: false,
             larqlPending: false,
@@ -432,39 +516,20 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
     }
   },
 
-  takeSighting: (opts) => {
-    const s = get();
-    const question = opts?.question ?? s.question;
-    const answerBegins = opts?.answerBegins ?? s.answerBegins;
-    const steering = { ...s.steering, ...(opts?.steering ?? {}) };
-    if (opts?.question !== undefined || opts?.answerBegins !== undefined) set({ question, answerBegins });
-    if (!wsOpen()) {
-      set({
-        sweepError:
-          "The server is not answering, so no new sighting can be taken. The pages show the study's recorded sighting until it returns.",
-      });
-      if (!s.sighting) void get().loadFixture();
-      return false;
-    }
-    const textSent = describeText(question, answerBegins, s.chat);
-    pendingReqs.push({ question, answerBegins, textSent, nudged: steering.enabled, chat: s.chat });
-    set({ isSweeping: true, sweepError: null });
-    ws!.send(JSON.stringify({ action: "sweep", payload: sweepPayload(s, question, answerBegins, steering) }));
-    return true;
-  },
+  takeSighting: (opts) => takeSightingImpl(opts ?? {}, false),
 
   executeLarql: (custom) => {
     const query = (custom ?? get().larqlQuery).trim();
     if (!query) return;
     set({ larqlPending: true });
     if (wsOpen()) {
-      wsQueries.push(query);
+      wsQueries.push({ query, silent: false });
       ws!.send(JSON.stringify({ action: "larql", query }));
       return;
     }
     postJson("/api/larql", { query })
       .then((data) =>
-        recordLarql({ id: ++larqlId, query, ok: true, data, error: null, at: Date.now(), via: "http" }),
+        recordLarql({ id: ++larqlId, query, ok: true, data, error: null, at: Date.now(), via: "http", failure: null }),
       )
       .catch((e) =>
         recordLarql({
@@ -475,6 +540,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
           error: String(e?.message ?? e),
           at: Date.now(),
           via: "http",
+          failure: e instanceof RequestError && e.refused ? "refused" : "transport",
         }),
       );
   },
@@ -511,36 +577,43 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
       top_k: Math.max(1, Math.min(150, Math.round(opts?.topK ?? 10))),
       score: opts?.score ?? st.threadScore,
     };
-    set((s) => ({ readers: { ...s.readers, [key]: { pending: true, data: s.readers[key]?.data ?? null, error: null } } }));
+    // a trace depends on the question: remember which sighting it was asked for, so an older one is not shown as this one's
+    const sightingId = st.sighting?.id ?? null;
+    set((s) => ({
+      readers: { ...s.readers, [key]: { pending: true, data: null, error: null, sightingId, sent: body } },
+    }));
     if (wsOpen()) {
       ws!.send(JSON.stringify({ action: "trace_readers", ...body }));
       return;
     }
     postJson("/api/scientist/trace_readers", body)
-      .then((data) => set((s) => ({ readers: { ...s.readers, [key]: { pending: false, data, error: null } } })))
+      .then((data) => set((s) => ({ readers: { ...s.readers, [key]: { ...s.readers[key], pending: false, data, error: null } } })))
       .catch((e) =>
-        set((s) => ({ readers: { ...s.readers, [key]: { pending: false, data: null, error: String(e?.message ?? e) } } })),
+        set((s) => ({ readers: { ...s.readers, [key]: { ...s.readers[key], pending: false, data: null, error: String(e?.message ?? e) } } })),
       );
   },
 
-  testHypothesis: async (idx, neuron, pos, neg) => {
+  testHypothesis: async (idx, neuron, pos, neg, opts) => {
     const key = poleKey(idx, neuron);
-    set((s) => ({ hypotheses: { ...s.hypotheses, [key]: { pending: true, data: s.hypotheses[key]?.data ?? null, error: null } } }));
+    const st = get();
+    // Bare text by default: the server reads each sentence's own last word-piece. As a chat it would read the
+    // end of the model-turn header, the same template tokens for every sentence.
+    const chat = opts?.chat ?? false;
+    const body = {
+      layer: idx,
+      neuron_idx: neuron,
+      pos_prompts: pos,
+      neg_prompts: neg,
+      chat,
+      system: chat ? st.system.trim() || null : null,
+    };
+    set((s) => ({ hypotheses: { ...s.hypotheses, [key]: { pending: true, data: s.hypotheses[key]?.data ?? null, error: null, sent: body } } }));
     try {
-      const st = get();
-      const data = await postJson("/api/scientist/test_hypothesis", {
-        layer: idx,
-        neuron_idx: neuron,
-        pos_prompts: pos,
-        neg_prompts: neg,
-        // each sentence becomes the user's turn of a chat when the instrument sends chats
-        chat: st.chat,
-        system: st.chat ? st.system.trim() || null : null,
-      });
-      set((s) => ({ hypotheses: { ...s.hypotheses, [key]: { pending: false, data, error: null } } }));
+      const data = await postJson("/api/scientist/test_hypothesis", body);
+      set((s) => ({ hypotheses: { ...s.hypotheses, [key]: { pending: false, data, error: null, sent: body } } }));
     } catch (e) {
       set((s) => ({
-        hypotheses: { ...s.hypotheses, [key]: { pending: false, data: null, error: String((e as Error)?.message ?? e) } },
+        hypotheses: { ...s.hypotheses, [key]: { pending: false, data: null, error: String((e as Error)?.message ?? e), sent: body } },
       }));
     }
   },
@@ -565,10 +638,18 @@ export function sweepPayload(
   question: string,
   answerBegins: string,
   steering: SteeringConfig,
+  overrides: { chat?: boolean; system?: string } = {},
 ) {
-  const centre = s.frame.centre && s.control?.textSent ? [s.control.textSent] : [];
+  // never centre a question on itself: the state less itself is nothing, and the reading would be noise
+  const chatSent = overrides.chat ?? s.chat;
+  const controlIsThis =
+    !!s.control &&
+    s.control.question.trim() === question.trim() &&
+    s.control.answerBegins.trim() === answerBegins.trim() &&
+    s.control.chatWrapped === chatSent;
+  const centre = s.frame.centre && s.control?.textSent && !controlIsThis ? [s.control.textSent] : [];
   return {
-    ...promptFields(question, answerBegins, s.chat, s.system),
+    ...promptFields(question, answerBegins, overrides.chat ?? s.chat, overrides.system ?? s.system),
     monuments: s.landmarks,
     survey_mode: s.surveyMode,
     locked_pole: s.lockedPole,
@@ -584,19 +665,61 @@ export function sweepPayload(
   };
 }
 
-function recordLarql(e: LarqlEntry) {
+function recordLarql(e: LarqlEntry, silent = false) {
   const st = useTheodoliteStore.getState();
   // keep the ledger of active edits in step with whatever the vault reports
   const d = e.data as Record<string, any> | null; // eslint-disable-line @typescript-eslint/no-explicit-any
   let activeEdits = st.activeEdits;
-  if (d && Array.isArray(d.active_patches)) activeEdits = d.active_patches as ActiveEdit[];
-  else if (d && d.status === "applied" && d.patch) activeEdits = [...st.activeEdits, d.patch as ActiveEdit];
-  else if (d && d.status === "rolled_back") activeEdits = [];
+  if (d && Array.isArray(d.active_patches)) activeEdits = latestPerNeuron(d.active_patches as ActiveEdit[]);
+  else if (d && d.status === "applied" && d.patch) {
+    // a new edit of a neuron replaces the vault's overlay for that neuron: list only the latest one
+    const p = d.patch as ActiveEdit;
+    activeEdits = [...st.activeEdits.filter((x) => !(x.layer_idx === p.layer_idx && x.neuron_idx === p.neuron_idx)), p];
+  } else if (d && d.status === "rolled_back") activeEdits = [];
   useTheodoliteStore.setState({
-    larqlLog: [e, ...st.larqlLog].slice(0, 50),
-    larqlPending: e.via === "ws" ? wsQueries.length > 0 : false,
+    larqlLog: silent ? st.larqlLog : [e, ...st.larqlLog].slice(0, 50),
+    larqlPending: e.via === "ws" ? wsQueries.some((q) => !q.silent) : false,
     activeEdits,
   });
+}
+
+/** The vault keeps one overlay per neuron (a new edit replaces the old) but a record per statement: keep the last. */
+function latestPerNeuron(edits: ActiveEdit[]): ActiveEdit[] {
+  const last = new Map<string, ActiveEdit>();
+  for (const e of edits) last.set(`${e.layer_idx}:${e.neuron_idx}`, e);
+  return [...last.values()].sort((a, b) => a.patch_id - b.patch_id);
+}
+
+function takeSightingImpl(
+  opts: { question?: string; answerBegins?: string; steering?: Partial<SteeringConfig>; chat?: boolean; system?: string },
+  auto: boolean,
+): boolean {
+  const { getState: get, setState: set } = useTheodoliteStore;
+  const s = get();
+  const question = opts.question ?? s.question;
+  const answerBegins = opts.answerBegins ?? s.answerBegins;
+  const chat = opts.chat ?? s.chat;
+  const steering = { ...s.steering, ...(opts.steering ?? {}) };
+  if (opts.question !== undefined || opts.answerBegins !== undefined) set({ question, answerBegins });
+  if (!wsOpen()) {
+    set({
+      sweepError:
+        "The server is not answering, so no new sighting can be taken. The pages show the study's recorded sighting until it returns.",
+    });
+    if (!s.sighting) void s.loadFixture();
+    return false;
+  }
+  if (!auto) autoRetakeBlocked = false;
+  const textSent = describeText(question, answerBegins, chat);
+  pendingReqs.push({ question, answerBegins, textSent, nudged: steering.enabled, chat, auto, steering: { ...steering } });
+  set({ isSweeping: true, sweepError: null });
+  ws!.send(
+    JSON.stringify({
+      action: "sweep",
+      payload: sweepPayload(s, question, answerBegins, steering, { chat, system: opts.system }),
+    }),
+  );
+  return true;
 }
 
 /** Take a fresh sighting with the current settings, when the server is answering and idle. */

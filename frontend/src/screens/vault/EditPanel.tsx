@@ -242,7 +242,7 @@ export const EditPanel: React.FC = () => {
           <p style={{ margin: 0, fontStyle: "italic", fontSize: 17, color: "var(--rubric)" }}>Before you edit: {problems.join("; ")}.</p>
         ) : null}
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px 20px" }}>
-          <button className="btn-primary" type="button" onClick={make}>
+          <button className="btn-primary" type="button" onClick={make} disabled={editPending}>
             {isUpd ? "make this edit" : "silence this neuron"}
           </button>
           <span style={{ fontSize: 15, color: "var(--muted)" }}>
@@ -259,13 +259,13 @@ export const EditPanel: React.FC = () => {
             The vault made the edit{patch ? `, patch ${patch.patch_id}` : ""}. It is now in force, listed under the edits in force.
           </p>
         ) : editReply && !editReply.ok ? (
-          conn === "open" ? (
+          editReply.failure === "refused" ? (
             <p className="error-line" role="alert">
               The vault refused the edit: {editReply.error}
             </p>
           ) : (
             <p className="status-line" role="status">
-              The server is not answering, so no edit was made.
+              The request got no answer from the vault ({editReply.error}), so no edit was made.
             </p>
           )
         ) : null}
@@ -401,7 +401,7 @@ export const EditPanel: React.FC = () => {
           <button
             type="button"
             onClick={undo}
-            disabled={!undoEnabled}
+            disabled={!undoEnabled || undoPending}
             style={{
               fontFamily: "inherit",
               fontSize: 19,
@@ -429,13 +429,13 @@ export const EditPanel: React.FC = () => {
             Every edit undone: {String((undoReply.data as { cleared_patches?: number } | null)?.cleared_patches ?? 0)} cleared.
           </p>
         ) : undoReply && !undoReply.ok ? (
-          conn === "open" ? (
+          undoReply.failure === "refused" ? (
             <p className="error-line" role="alert">
               The vault refused: {undoReply.error}
             </p>
           ) : (
             <p className="status-line" role="status">
-              The server is not answering, so nothing was undone.
+              The request got no answer from the vault ({undoReply.error}), so nothing was undone.
             </p>
           )
         ) : null}

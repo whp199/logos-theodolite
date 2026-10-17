@@ -33,7 +33,6 @@ const GRID = "40px 130px 140px 150px minmax(0, 1fr) 100px 150px";
 
 export const FindPanel: React.FC = () => {
   const ui = useVaultUi();
-  const conn = useTheodoliteStore((s) => s.conn);
   const larqlLog = useTheodoliteStore((s) => s.larqlLog);
   const larqlPending = useTheodoliteStore((s) => s.larqlPending);
   const ap = useApparatus();
@@ -349,14 +348,14 @@ export const FindPanel: React.FC = () => {
             Asking the running instrument…
           </p>
         ) : null}
-        {liveError && conn === "open" ? (
+        {liveError && entry?.failure === "refused" ? (
           <p className="error-line" role="alert">
             The vault refused the search: {liveError}
           </p>
         ) : null}
-        {liveError && conn !== "open" ? (
+        {liveError && entry?.failure !== "refused" ? (
           <p className="status-line" role="status">
-            The server is not answering, so the running instrument could not be asked.
+            The search got no answer from the running instrument ({liveError}).
             {rec ? " What is shown is the study’s recorded answer." : ""}
           </p>
         ) : null}

@@ -588,8 +588,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Note>
           <EntryApparatus title="strength">
             |a| = |mlp_act<sub>ℓ</sub>[i]| at the read position; the instrument keeps the top 15 by |a| and σ = sign(a).
-            Magnitudes and shown shares are not calibrated (eps floor; softcap). Proposed: rank poles by write size |a|
-            · ‖w<sub>down</sub>‖ and show the fraction of the FFN write they explain (REPORT §3.4, bug 8). Poles after
+            Magnitudes and shown shares are not calibrated (eps floor; softcap). Ranking by write size |a| · ‖w
+            <sub>down</sub> ⊙ w<sub>post</sub>‖ is an option (<M>"pole_ranking": "write"</M>), and each layer reports the
+            fraction of its FFN write the fifteen explain (REPORT §3.4, bug 8). Poles after
             Cammarata 2026 [9]; GeGLU [15].
           </EntryApparatus>
         </Entry>
@@ -734,8 +735,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             comes from [2]. A second mode locks the frame to one neuron: w<sub>gate</sub>, (σ · w<sub>down</sub>) · J
             <sub>ℓ</sub>
             <sup>⊤</sup> and the w<sub>gate</sub> of the reader on its first thread, up to six layers on, else of the
-            next layer’s loudest neuron (<M>"survey_mode": "pole_motif"</M>). Proposed: a Löwdin frame (W W<sup>⊤</sup>)
-            <sup>−½</sup> W on fnw ⊙ W<sub>U</sub> [33], order-free (REPORT §3.4, bug 3).
+            next layer’s loudest neuron (<M>"survey_mode": "pole_motif"</M>). A Löwdin frame (W W<sup>⊤</sup>)
+            <sup>−½</sup> W [33], order-free, is an option for either (<M>"frame_squaring": "lowdin"</M>), on fnw ⊙ W
+            <sub>U</sub> with <M>"frame_fnw": true</M> (REPORT §3.4, bug 3).
           </EntryApparatus>
         </Entry>
 
@@ -761,9 +763,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Note>
           <EntryApparatus title="bearing and elevation">
             (x, y, z) = (⟨h̃<sub>ℓ</sub>, e<sub>1</sub>⟩, ⟨h̃<sub>ℓ</sub>, e<sub>2</sub>⟩, ⟨h̃<sub>ℓ</sub>, e
-            <sub>3</sub>⟩); θ = atan2(y, x), φ = asin(z / ‖(x, y, z)‖). The frame catches 2.4–3.9% of ‖h̃‖; reordering
-            the landmarks swings θ by a median of 58–99° (V7; REPORT §3.4, bug 3). The proposed order-free frame is
-            Löwdin’s symmetric orthonormalisation [33].
+            <sub>3</sub>⟩); θ = atan2(y, x), φ = asin(z / ‖(x, y, z)‖). In the frame as first built the frame catches
+            2.4–3.9% of ‖h̃‖, and reordering the landmarks swings θ by a median of 58–99° (V7; REPORT §3.4, bug 3). Löwdin’s
+            symmetric orthonormalisation [33], order-free, is now an option on the landmarks page.
           </EntryApparatus>
         </Entry>
 
@@ -863,9 +865,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             sent over the WebSocket <M>/ws/theodolite</M> as{" "}
             <M>
               {
-                '{"action": "sweep", "payload": {"prompt": "…", "monuments": ["spider", "eight", "insect"], "compare_think": false, "max_new_tokens": 6}}'
+                '{"action": "sweep", "payload": {"prompt": "Tell me about yourself.", "chat": true, "system": null, "assistant_prefix": "Hi! I", "monuments": ["she", "he", "it"], "survey_mode": "monument", "compare_think": false, "max_new_tokens": 6, "steering": {"enabled": false, …}, "frame_squaring": "gram_schmidt", "pole_ranking": "activation", "thread_score": "coupling"}}'
               }
-            </M>
+            </M>{" "}
+            (what the instrument sends by default; old callers that send only a prompt get the server’s bare-text defaults)
             ; the reply is a binary THEO frame (path, split, kinship, 15 poles a layer, threads) and a JSON frame of
             word-pieces (ARCHITECTURE §4). The demonstration sighting is E6’s, 6,237 ms, taken before the two V7 fixes.
             Served by FastAPI [40] over interp-engine’s hook points [36].
@@ -934,13 +937,14 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Rubric>
           <Onward to={href.nudge()}>open the nudge →</Onward>
           <EntryApparatus title="nudge">
-            h<sub>ℓ</sub> ← h<sub>ℓ</sub> + k · v / ‖v‖ at <M>resid_post</M> of each chosen layer, with v = ((W
-            <sub>U</sub>[t<sub>+</sub>] − W<sub>U</sub>[t<sub>−</sub>]) / max(fnw, 0.1)) · J<sub>ℓ</sub>, or one
-            pole’s write σ · w<sub>down</sub>. Server defaults: “six” against “eight”, k = 650 at layers 30, 36, 42, 48,
-            54, every position (the old interface’s default k was 280; this one sends k = 0.01 × the median ‖h‖ of the
-            weakest chosen layer, 0.883 at layer 54). Proposed: v = fnw ⊙ ΔW<sub>U</sub> with the
-            quiet dimensions masked, k about 0.01–0.02 of ‖h‖, the start mark spared (REPORT §3.4, bug 1; §3.5,
-            recommendation 4). Activation addition [21, 22].
+            What the instrument sends: h<sub>ℓ</sub> ← h<sub>ℓ</sub> + s · ‖h<sub>ℓ</sub>‖ · v / ‖v‖ at <M>resid_post</M> of
+            each chosen layer and position, start mark spared, with v = (fnw ⊙ ΔW<sub>U</sub>) · J<sub>ℓ</sub> (no inverse,
+            no clamp) and its quiet dimensions masked, or one pole’s write σ · w<sub>down</sub>; s = 0.01 by default (
+            <M>direction="fnw", mask_quiet, spare_bos, strength</M>). Masked that way the study’s she/he nudge read
+            fluently at 0.005–0.01 of ‖h‖ and broke at 0.02. The server’s own defaults, kept for old callers: v = ((W
+            <sub>U</sub>[t<sub>+</sub>] − W<sub>U</sub>[t<sub>−</sub>]) / max(fnw, 0.1)) · J<sub>ℓ</sub>, “six” against
+            “eight”, a fixed k = 650 at layers 30, 36, 42, 48, 54, every position, which collapses the model (REPORT §3.4,
+            bug 1; §3.5, recommendation 4; the old interface sent k = 280). Activation addition [21, 22].
           </EntryApparatus>
         </Entry>
 
