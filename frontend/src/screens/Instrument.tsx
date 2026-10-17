@@ -1,21 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Apparatus,
-  IfApparatus,
-  Missing,
-  NotYet,
-  Page,
-  PendingCheck,
-  RecordedNotice,
-  Rubric,
-  SweepError,
-} from "../components/kit";
+import { Apparatus, IfApparatus, Missing, Page, RecordedNotice, Rubric, SweepError } from "../components/kit";
 import { useApparatus } from "../reading";
 import { href, type Route } from "../router";
 import {
   type LayerReading,
   type Sighting,
   exportSighting,
+  retakeIfLive,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { certainty, comma, gloss, kindOf, labelTrust, minus, ms, pct, signed, wp } from "../lib/words";
@@ -118,6 +109,10 @@ const Question: React.FC = () => {
   const setAnswerBegins = useTheodoliteStore((s) => s.setAnswerBegins);
   const compareThink = useTheodoliteStore((s) => s.compareThink);
   const setCompareThink = useTheodoliteStore((s) => s.setCompareThink);
+  const chat = useTheodoliteStore((s) => s.chat);
+  const setChat = useTheodoliteStore((s) => s.setChat);
+  const system = useTheodoliteStore((s) => s.system);
+  const setSystem = useTheodoliteStore((s) => s.setSystem);
   const takeSighting = useTheodoliteStore((s) => s.takeSighting);
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
   const sighting = useTheodoliteStore((s) => s.sighting);
@@ -180,14 +175,43 @@ const Question: React.FC = () => {
               try an example
             </a>
           </div>
-          <PendingCheck
-            label={
-              <>
-                send it as a chat <span style={{ fontStyle: "italic" }}>(chat template)</span>
-              </>
-            }
-            note="The server sends the words as bare text; wrapping them as a chat waits on a server fix (REPORT §3.4, bug 5)."
-          />
+          <label className="check">
+            <input type="checkbox" checked={chat} onChange={(e) => setChat(e.target.checked)} />
+            <span>
+              send it as a chat <span style={{ fontStyle: "italic" }}>(chat template)</span>
+            </span>
+          </label>
+          {chat ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 28, width: "100%", boxSizing: "border-box" }}>
+              <label htmlFor="system" className="label-sc" style={{ fontSize: 14 }}>
+                system prompt <span style={{ fontVariantCaps: "normal", letterSpacing: 0, fontStyle: "italic" }}>(optional)</span>
+              </label>
+              <textarea
+                id="system"
+                value={system}
+                onChange={(e) => setSystem(e.target.value)}
+                rows={2}
+                placeholder="none: the chat begins with your question"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  fontFamily: "inherit",
+                  fontSize: 16,
+                  lineHeight: 1.35,
+                  background: "transparent",
+                  border: 0,
+                  borderBottom: "1px solid #C9BEAC",
+                  padding: "2px 0 6px",
+                  resize: "vertical",
+                  borderRadius: 0,
+                }}
+              />
+            </div>
+          ) : (
+            <span style={{ fontSize: 15, color: "#6B5D4D", paddingLeft: 28 }}>
+              Off: the words go in as bare text. In the study two of six bare prompts came back as one word repeated.
+            </span>
+          )}
           <label className="check" style={{ color: "#6B5D4D" }}>
             <input type="checkbox" checked={compareThink} onChange={(e) => setCompareThink(e.target.checked)} />
             also sight it with thinking turned on
@@ -246,10 +270,23 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
         </dd>
         <dt>chat template</dt>
         <dd>
-          {s.chatWrapped
-            ? "This sighting was wrapped as a chat by the study’s lab script; the server does not yet apply a template (REPORT §3.4, bug 5)."
-            : "off: the words go in as bare text, and two of six plain prompts in the study came back as one word repeated."}{" "}
-          <NotYet style={{ display: "inline" }} />
+          {s.source === "fixture"
+            ? "This sighting was wrapped as a chat by the study’s lab script (the tokenizer’s chat template, thinking off), then the begun answer."
+            : s.chatWrapped
+              ? (
+                  <>
+                    on: the tokenizer’s chat template, thinking off (an empty thought channel), the question as the user’s turn
+                    {s.system ? (
+                      <>
+                        {" "}after a system turn, <span className="italic">“{s.system}”</span>
+                      </>
+                    ) : (
+                      ", with no system turn"
+                    )}
+                    , then the begun answer after the model’s turn header, as the study’s lab script builds it (labkit.chat). One start mark.
+                  </>
+                )
+              : "off: the words go in as bare text, and two of six plain prompts in the study came back as one word repeated (REPORT §3.4, bug 5)."}
         </dd>
         <dt>thinking</dt>
         <dd>
@@ -306,13 +343,30 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
   const pf = sighting.layers.map((L) => L.projFrac).filter((v): v is number => v != null);
   const srcLayers = sighting.threads.map((t) => t.src.idx + 1);
   const [first, second, third] = sighting.landmarks;
+  const poleRanking = useTheodoliteStore((s) => s.poleRanking);
+  const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
+  const threadScore = useTheodoliteStore((s) => s.threadScore);
+  const setThreadScore = useTheodoliteStore((s) => s.setThreadScore);
+  const fr = sighting.frame;
+  const lowdin = fr?.squaring === "lowdin";
+  const rows = fr?.fnwWeighted ? "fnw ⊙ W" : "W";
+  const expl = sighting.layers.map((L) => L.ffnExplained).filter((v): v is number => v != null);
+  const direct = sighting.threadScore === "direct";
   return (
     <Apparatus title="what is drawn" label="Apparatus for the instrument" sources={false}>
       <dl className="dl">
         <dt>survey frame</dt>
         <dd>
-          e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt(W<sub>U</sub>[{first}], W<sub>U</sub>[{second}], W<sub>U</sub>[{third}]) in
-          fp32. Order-dependent: a Löwdin frame on the final-norm-weighted rows is the proposed fix. <a href={href.landmarks()}>landmarks</a>
+          e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = {lowdin ? "Löwdin" : "Gram–Schmidt"}({rows}
+          <sub>U</sub>[{first}], {rows}
+          <sub>U</sub>[{second}], {rows}
+          <sub>U</sub>[{third}]) in fp32
+          {fr?.perLayer ? <>, pulled back by each layer’s own lens J<sub>ℓ</sub></> : null}
+          {fr?.centred ? ", read against a matched control’s state" : null}.{" "}
+          {lowdin
+            ? "Squared all at once, so the same frame for every order of the words."
+            : "Order-dependent: a Löwdin frame on the final-norm-weighted rows is the proposed fix."}{" "}
+          <a href={href.landmarks()}>landmarks</a>
         </dd>
         <dt>path</dt>
         <dd>
@@ -335,22 +389,69 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
         </dd>
         <dt>neurons</dt>
         <dd>
-          the 15 strongest GeGLU poles at the chosen layer, by |a| = |mlp_act|; filled the positive pole, hollow the negative (after Cammarata
-          2026); size by |a|, placement on the ring schematic.
-          <PendingCheck label="rank them by write size, |a| · ‖w_down‖, instead" note="The server ranks poles by |a| only." />
+          the 15 strongest GeGLU poles at the chosen layer,{" "}
+          {sighting.poleRanking === "write" ? (
+            <>
+              by write size |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖
+            </>
+          ) : (
+            "by |a| = |mlp_act|"
+          )}
+          ; filled the positive pole, hollow the negative (after Cammarata 2026); size by |a|, placement on the ring schematic.
+          {expl.length ? (
+            <>
+              {" "}Together they explain {(Math.min(...expl) * 100).toFixed(0)}–{(Math.max(...expl) * 100).toFixed(0)}% of a layer’s feed-forward
+              write in this sighting (⟨Σ c<sub>i</sub>, f⟩ / ⟨f, f⟩, E3).
+            </>
+          ) : null}
+          <label className="check" style={{ marginTop: 4 }}>
+            <input
+              type="checkbox"
+              checked={poleRanking === "write"}
+              onChange={(e) => {
+                setPoleRanking(e.target.checked ? "write" : "activation");
+                retakeIfLive();
+              }}
+            />
+            <span>
+              rank them by write size, |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, instead
+            </span>
+          </label>
         </dd>
         <dt>threads</dt>
         <dd>
-          the {sighting.threads.length} highest-scoring{sighting.threadCount != null ? ` of ${comma(sighting.threadCount)}` : ""}: C = ⟨σ
-          <sub>i</sub> w<sub>down</sub>, w<sub>gate</sub>⟩ · |a|, gilt where C &gt; 0, dashed where C &lt; 0
+          the {sighting.threads.length} highest-scoring{sighting.threadCount != null ? ` of ${comma(sighting.threadCount)}` : ""}:{" "}
+          {direct ? (
+            <>
+              D = what the source adds to the reader’s gate through the stream alone, from its real activation, the layer scalars and both
+              exact RMSNorm Jacobians; gilt where D &gt; 0, dashed where D &lt; 0
+            </>
+          ) : (
+            <>
+              C = ⟨σ<sub>i</sub> w<sub>down</sub>, w<sub>gate</sub>⟩ · |a|, gilt where C &gt; 0, dashed where C &lt; 0
+            </>
+          )}
           {srcLayers.length ? (
             <>
               ; they start in layers {Math.min(...srcLayers)}–{Math.max(...srcLayers)}
-              {Math.max(...srcLayers) <= 2 ? ", where the study found the real effects tiny" : ""}
+              {!direct && Math.max(...srcLayers) <= 2 ? ", where the study found the real effects tiny" : ""}
             </>
           ) : null}
-          . A weak guide (ρ ≈ 0.41; a direct-path estimate reaches 0.87).
-          <PendingCheck label="score threads by the direct-path estimate" note="The server scores threads by C only." />
+          .{" "}
+          {direct
+            ? "A direct-path linear estimate, not a verified circuit: ρ ≈ 0.87 with the measured effect, where C reaches 0.41 (REPORT §3.4, bug 4)."
+            : "A weak guide (ρ ≈ 0.41; a direct-path estimate reaches 0.87)."}
+          <label className="check" style={{ marginTop: 4 }}>
+            <input
+              type="checkbox"
+              checked={threadScore === "direct"}
+              onChange={(e) => {
+                setThreadScore(e.target.checked ? "direct" : "coupling");
+                retakeIfLive();
+              }}
+            />
+            score threads by the direct-path estimate
+          </label>
         </dd>
       </dl>
     </Apparatus>

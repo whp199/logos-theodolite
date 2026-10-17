@@ -103,6 +103,11 @@ For each layer $l \in \{0, \dots, 59\}$:
    - Between active pole $(l, i, \sigma_i)$ at layer $l$ and firing poles $(l', j, \sigma_j)$ at downstream layers $l' \in \{l+1, \dots, \min(l+6, 59)\}$:
      $$C_{(l, i) \to (l', j)} = \left\langle \sigma_i \cdot w_{\text{down}}^{(l, i)},\, w_{\text{gate}}^{(l', j)} \right\rangle \cdot \left|\text{mlp\_act}[l', j]\right|$$
      where $w_{\text{gate}}^{(l', j)} = W_{\text{gate}}[l'][j, :] \in \mathbb{R}^{5376}$ (incorporating pre-FFN RMSNorm weights).
+   - **Direct-path estimate** (V7 bug 4; `direct_path_source_write` / `direct_path_reader_effects`), from the clean forward's
+     $y_l$ (`mlp_out`) and $\text{mid}_{l'}$ (`resid_mid`):
+     $$D_{(l,i)\to(l',j)} = \Big\langle J_{\text{pre}}(\text{mid}_{l'})\, \big(\textstyle\prod_{l<k<l'} s_k\big)\, s_l\, J_{\text{post}}(y_l)\, a_i w_{\text{down}}^{(l,i)},\; W_{\text{gate}}[l'][j,:] \Big\rangle$$
+     with exact RMSNorm Jacobians; `direct_act` adds $W_{\text{up}}$ and the clean pre-activations. Selected with
+     `thread_score="direct"`.
 
 4. **Projective Theodolite Triangulation (Gram-Schmidt Survey Frame)**:
    - Orthonormal basis $(e_1, e_2, e_3) \in \mathbb{R}^{3 \times 5376}$ in J++-aligned final residual space (or layer-pulled-back space):
@@ -111,6 +116,9 @@ For each layer $l \in \{0, \dots, 59\}$:
    - Project each layer's J++-aligned state $\tilde{h}_l = h_l J_{\text{pp}}[l]^\top$:
      $$x_l = \langle \tilde{h}_l, e_1 \rangle, \quad y_l = \langle \tilde{h}_l, e_2 \rangle, \quad z_l = \langle \tilde{h}_l, e_3 \rangle$$
      $$\theta_l = \text{atan2}(y_l, x_l), \quad \phi_l = \text{asin}\!\left(\frac{z_l}{\sqrt{x_l^2 + y_l^2 + z_l^2 + \epsilon}}\right), \quad \|h_l\|_2 = \sqrt{\sum_{d=1}^{5376} h_{l,d}^2}$$
+   - Options (V7 bug 3): `frame_squaring="lowdin"` squares symmetrically, $E = (VV^\top)^{-1/2}V$ on unit rows (order-free);
+     `frame_fnw` uses $\text{fnw} \odot W_U[t_m]$; `frame_per_layer` reads the raw $h_l$ in the frame of $W_U[t_m] J_{\text{pp}}[l]$;
+     `centre_prompts` subtracts a matched control's state before projecting. `proj_frac` $= \|(x_l, y_l, z_l)\| / \|\tilde{h}_l\|$.
 
 ---
 
@@ -130,3 +138,8 @@ Each sweep over WebSocket `/ws/theodolite` transmits:
    - Top-5 J++ Ghost Token Plumes per layer (`token_str`, `prob`, `logit`)
    - Top J-VINDEX vs. Naive Logit Lens token labels for active Bipolar Poles
    - Generated continuation text, `<|think|>` vs. silent comparison metrics, and active LARQL `.patch` / `SteeringSpec` status.
+   - Added without changing the binary layout: `prompt` (the exact text read), `prompt_token_ids`, `chat`, `system`,
+     `user_prompt`, `assistant_prefix`, `pole_ranking`, `thread_score`, `frame` (squaring, per-layer, weighting, centring,
+     word geometry), `steering_applied`; per layer `proj_frac`, `pole_write_sizes`, `poles_ffn_explained`; per filament
+     `direct_gate`, `direct_act`, `score`, `score_kind` (binary column 4 carries `score`, which is C unless
+     `thread_score="direct"`).

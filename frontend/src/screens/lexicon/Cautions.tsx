@@ -266,19 +266,19 @@ export const Cautions: React.FC = () => (
         id="frame"
         n={5}
         title="The landmark frame depends on their order"
-        status="unfixed"
-        tone="unfixed"
+        status="mended, as an option"
+        tone="mended"
         found={
           <>
-            The instrument builds its frame one landmark at a time, so the first word absorbs whatever the three share.
+            As first built, the instrument squares its frame one landmark at a time, so the first word absorbs whatever the three share.
             Reordering the same three words swung the bearing by a median of 58–99°, depending on the layer, and the
             frame catches only 2.4–3.9% of the stream.
           </>
         }
         means={
           <>
-            Compare bearings only between sightings that used the same landmarks in the same order, and read them as a
-            sketch of direction, not a measurement.
+            Compare bearings only between sightings that used the same landmarks in the same order, or square the frame
+            all at once on the landmarks page; either way, read them as a sketch of direction, not a measurement.
           </>
         }
         from="From the README’s “Status and known issues”, the report’s §3.4 (bug 3) and the V7 notes."
@@ -304,14 +304,22 @@ export const Cautions: React.FC = () => (
               <sub>he</sub>) (REPORT §3.4, bug 3).
             </>,
           ],
+          [
+            "fix, applied",
+            <>
+              options of the request, off by default so the study’s readings stay comparable: <M>frame_squaring="lowdin"</M>,{" "}
+              <M>frame_fnw</M>, <M>frame_per_layer</M>, <M>centre_prompts</M>; the fraction caught is sent at every layer (
+              <M>proj_frac</M>), and the frame’s cosines and squareness for any three words. Contrastive axes are not built.
+            </>,
+          ],
         ]}
       />
       <Caution
         id="thread-score"
         n={6}
         title="Thread scores are weak"
-        status="unfixed"
-        tone="unfixed"
+        status="mended, as an option"
+        tone="mended"
         found={
           <>
             A thread’s score agreed only weakly with the effects the study measured by silencing neurons (
@@ -323,7 +331,8 @@ export const Cautions: React.FC = () => (
         means={
           <>
             Read a thread as a suggestion of where to look, not as a proven circuit, and discount the strongest-looking
-            threads from layer 1.
+            threads from layer 1; or score the threads by the direct-path estimate, on the instrument and on a neuron’s
+            folio.
           </>
         }
         from="From the README’s “Status and known issues”, the report’s §3.4 (bug 4) and the V7 notes."
@@ -349,14 +358,21 @@ export const Cautions: React.FC = () => (
               it a direct-path linear estimate, not a verified live circuit (REPORT §3.4, bug 4).
             </>,
           ],
+          [
+            "fix, applied",
+            <>
+              every thread now carries the direct-path estimates beside C; <M>thread_score="direct"</M> (sweeps) and{" "}
+              <M>score="direct"</M> (trace_downstream_readers) choose and rank by it; C stays the default.
+            </>,
+          ],
         ]}
       />
       <Caution
         id="nudge-defaults"
         n={7}
         title="The old nudge defaults collapse the model"
-        status="unfixed · critical"
-        tone="unfixed"
+        status="mended in the instrument"
+        tone="mended"
         found={
           <>
             The server’s default nudge pushes at layers 30, 36, 42, 48 and 54 with a force of 650, which is 2.4 to 7.4
@@ -368,8 +384,8 @@ export const Cautions: React.FC = () => (
         means={
           <>
             If an answer turns into repeated word-pieces, the nudge has broken the model; it has revealed nothing. Never
-            use the old defaults, and keep a nudge near a hundredth of the stream’s strength. Until the direction is
-            mended, even that may break it.
+            use the old defaults, and keep a nudge near a hundredth of the stream’s strength. The instrument now sends
+            the mended recipe by default; the window that reads fluently is still narrow.
           </>
         }
         from="From the README’s “Status and known issues”, the report’s §3.4 (bug 1) and the V7 notes."
@@ -397,19 +413,29 @@ export const Cautions: React.FC = () => (
               norm 2 steered fluently and collapsed at 6.5 (V7; REPORT §3.4, bug 1).
             </>,
           ],
+          [
+            "fix, applied",
+            <>
+              fields of the nudge request, all set by the nudge page: <M>direction="fnw"</M>, <M>mask_quiet</M> (the 181
+              persistent quiet dimensions and each pushed layer’s quietest tenth), <M>spare_bos</M>, <M>strength</M> as a
+              share of ‖h‖. The server’s own defaults stay as they were, for old callers. In a check when the fix was
+              built (not part of the study), the she/he nudge read fluently at 0.005–0.01 of ‖h‖ and broke at 0.02; with
+              the 181 alone masked it broke at 0.005.
+            </>,
+          ],
         ]}
       />
       <Caution
         id="template"
         n={8}
-        title="No conversation template is applied"
-        status="unfixed"
-        tone="unfixed"
+        title="No conversation template was applied"
+        status="mended"
+        tone="mended"
         found={
           <>
-            What you type is fed to the model as bare text, not wrapped as a turn in a conversation, though this model
-            was trained to converse. On bare prompts the study saw the answer degenerate in 2 of 6 cases (“own own own
-            …”).
+            As first built, what you type was fed to the model as bare text, not wrapped as a turn in a conversation,
+            though this model was trained to converse. On bare prompts the study saw the answer degenerate in 2 of 6
+            cases (“own own own …”).
           </>
         }
         means={
@@ -435,14 +461,22 @@ export const Cautions: React.FC = () => (
             "proposed fix",
             <>a chat-template option, on by default for instruct checkpoints, paired with the start-mark fix (REPORT §3.4, bug 5).</>,
           ],
+          [
+            "fix, applied",
+            <>
+              <M>chat</M>, <M>system</M> and <M>assistant_prefix</M> on sweeps, traces and guesses: the tokenizer’s chat
+              template with thinking off, an optional system turn, then the begun answer, with one start mark; on by
+              default in the instrument (“send it as a chat”).
+            </>,
+          ],
         ]}
       />
       <Caution
         id="think"
         n={9}
         title="“Thinking turned on” is an imitation"
-        status="unfixed"
-        tone="unfixed"
+        status="mended for chats"
+        tone="mended"
         found={
           <>
             To sight with thinking turned on, the instrument sets the marker{" "}
@@ -465,6 +499,13 @@ export const Cautions: React.FC = () => (
             </>,
           ],
           ["proposed fix", <Missing what="none recorded in the study" />],
+          [
+            "fix, applied",
+            <>
+              sent as a chat, the thinking sighting uses the template’s own switch (<M>enable_thinking=True</M>); sent as
+              bare text, it is still the imitation.
+            </>,
+          ],
         ]}
       />
       <Caution

@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
-import { Apparatus, Missing, NotYet, Page, Rubric, SweepError } from "../components/kit";
+import { Apparatus, Missing, Page, Rubric, SweepError } from "../components/kit";
+import type { FrameInfo } from "../store/sighting";
 import { ControlSighting } from "../components/ControlSighting";
 import { href, type Route } from "../router";
 import {
   type LayerReading,
   type Sighting,
   VOCAB,
-  composeText,
+  sweepPayload,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { comma, faceWord, kindOf, minus, ms, wp } from "../lib/words";
@@ -18,6 +19,7 @@ import {
   SINGLE_MARK_AZ,
   SINGLE_MARK_EL,
   type Triple,
+  type RecordedFrame,
   cosOf,
   recordedFrame,
 } from "./landmarks/recorded";
@@ -75,15 +77,34 @@ const PAIRS: [number, number, string][] = [
   [1, 2, "second and third"],
 ];
 
+/** One line saying how a sighting's frame was built (the server's `frame`). */
+function frameWords(f: FrameInfo | null): string {
+  if (!f) return "in order, from raw rows, at the final layer (the frame as first built)";
+  return [
+    f.squaring === "lowdin" ? "all at once" : "in order",
+    f.fnwWeighted ? "from the weighted rows" : "from raw rows",
+    f.perLayer ? "from each layer’s own lens" : "at the final layer",
+    ...(f.centred ? [`centred on ${f.nCentre === 1 ? "a matched control" : `${f.nCentre} matched controls`}`] : []),
+  ].join(", ");
+}
+
 /**
- * The frame options proposed in the study but not built by the server (it squares the word frame with
- * Gram–Schmidt on raw W_U rows, at the final layer). The wording is the canvas's fr.pendingNote with all
- * four options pending.
+ * The angles and squareness the server computed for the last sighting's words (V7 frame_stats definitions),
+ * in the shape of the study's recorded frames. Pairs are keyed by the sighting's own order.
  */
-const PENDING_NOTE =
-  "Squaring all three at once, a frame from each layer’s own lens (the function is written but not wired), " +
-  "weighing the words by the final norm and centring on a matched control are proposed, and the server cannot " +
-  "build them yet. The readings on this page stay those of the frame as built: in order, from raw rows, at the final layer.";
+function liveFrame(sf: { norm: string[] } | null, f: FrameInfo | null): RecordedFrame | null {
+  if (!sf || !f?.geometry || sf.norm.length !== 3 || sf.norm.some((w) => !w)) return null;
+  const g = f.geometry;
+  const [a, b, c] = sf.norm;
+  const pair = (k: string) => [g.raw.cos[k], g.fnw.cos[k]] as [number, number];
+  return {
+    words: [a, b, c],
+    cond: g.raw.cond,
+    condFnw: g.fnw.cond,
+    self: { [a]: g.selfCos[0], [b]: g.selfCos[1], [c]: g.selfCos[2] },
+    cos: { [a + "|" + b]: pair("01"), [a + "|" + c]: pair("02"), [b + "|" + c]: pair("12") },
+  };
+}
 
 interface Pole {
   idx: number;
@@ -289,6 +310,14 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const compareThink = useTheodoliteStore((s) => s.compareThink);
   const maxNewTokens = useTheodoliteStore((s) => s.maxNewTokens);
   const steering = useTheodoliteStore((s) => s.steering);
+  const chat = useTheodoliteStore((s) => s.chat);
+  const system = useTheodoliteStore((s) => s.system);
+  const frameOpts = useTheodoliteStore((s) => s.frame);
+  const setFrame = useTheodoliteStore((s) => s.setFrame);
+  const poleRanking = useTheodoliteStore((s) => s.poleRanking);
+  const threadScore = useTheodoliteStore((s) => s.threadScore);
+  const control = useTheodoliteStore((s) => s.control);
+  const canCentre = !!control && control.source === "live" && !!control.textSent;
   const selectedLayer = useTheodoliteStore((s) => s.selectedLayer);
   const setSelectedLayer = useTheodoliteStore((s) => s.setSelectedLayer);
   const [rawOpen, setRawOpen] = useState(false);
@@ -297,7 +326,13 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const isWords = surveyMode === "monument";
   const words = landmarks;
   const nw = words.map(norm);
-  const frame = isWords ? recordedFrame(nw) : null;
+  // the frame's angles and squareness: the server's, when the last sighting used these words; else the study's record
+  const sfEarly = useMemo(() => sightFrame(sighting), [sighting]);
+  const live = isWords && sfEarly?.kind === "words" && sfEarly.norm.slice().sort().join("|") === nw.slice().sort().join("|")
+    ? liveFrame(sfEarly, sighting?.frame ?? null)
+    : null;
+  const frame = isWords ? (live ?? recordedFrame(nw)) : null;
+  const frameFromServer = live !== null;
   const known = frame !== null;
   const lp: Pole | null = lockedPole ? { idx: lockedPole[0], neuron: lockedPole[1], face: sameFace(lockedPole[2]) } : null;
   const anyEmpty = isWords && words.some((w) => !w.trim());
@@ -469,18 +504,27 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const studySet = sf?.kind === "words" && sf.norm.slice().sort().join("|") === "he|it|she";
 
   /* ---- apparatus · the request this page sends */
-  const payload = {
-    prompt: composeText(question, answerBegins),
-    monuments: words.map((w) => w.trim()),
-    survey_mode: surveyMode,
-    locked_pole: lockedPole,
-    compare_think: compareThink,
-    max_new_tokens: maxNewTokens,
+  const payload = sweepPayload(
+    {
+      chat,
+      system,
+      landmarks: words.map((w) => w.trim()) as Triple,
+      surveyMode,
+      lockedPole,
+      compareThink,
+      maxNewTokens,
+      frame: frameOpts,
+      poleRanking,
+      threadScore,
+      control,
+    },
+    question,
+    answerBegins,
     steering,
-  };
+  );
   const request = JSON.stringify({ action: "sweep", payload }, null, 2);
   const requestNote = isWords
-    ? "The proposed options above have no field in it yet."
+    ? "The four frame options above go as frame_squaring, frame_per_layer, frame_fnw and centre_prompts (the kept control’s exact text)."
     : lp
       ? `locked_pole takes [layer index, neuron, polarity]: layer ${lp.idx + 1} is index ${lp.idx}.`
       : `locked_pole takes [layer index, neuron, polarity]. Without it the server quietly falls back to the word frame, here ${words.map((w) => q(w.trim())).join(" · ")}; its own default is “spider” · “eight” · “insect”.`;
@@ -780,9 +824,16 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <dd>
             As built, the word frame is taken at the last layer, and every layer’s h̃<sub>ℓ</sub> is read in it. A frame
             squared afresh at each layer, v<sub>m</sub>
-            <sup>(ℓ)</sup> = W<sub>U</sub>[t<sub>m</sub>] · J<sub>ℓ</sub>, is written in theodolite_math.py (
-            <span className="mono">build_monument_frame(pullback_per_layer=True)</span>), but the server calls it with{" "}
-            <span className="mono">pullback_per_layer=False</span>.
+            <sup>(ℓ)</sup> = W<sub>U</sub>[t<sub>m</sub>] · J<sub>ℓ</sub>, reads the raw h<sub>ℓ</sub> instead, since ⟨h<sub>ℓ</sub>, u J
+            <sub>ℓ</sub>⟩ = ⟨h<sub>ℓ</sub> J<sub>ℓ</sub>
+            <sup>⊤</sup>, u⟩ (<span className="mono">build_monument_frame(pullback_per_layer=True)</span>,{" "}
+            <span className="mono">frame_per_layer</span> in the request); the fraction caught is then a fraction of ‖h<sub>ℓ</sub>‖.
+          </dd>
+          <dt>weights and centre</dt>
+          <dd>
+            Weighted rows: fnw ⊙ W<sub>U</sub>[t], the directions the model reads just before speaking (logit<sub>t</sub> = ⟨h / rms(h), fnw ⊙ W
+            <sub>U</sub>[t]⟩); the rms is one number per layer, so it moves no angle and no fraction. Centring subtracts a matched control’s state
+            at its last word-piece from every layer’s state before it is read (REPORT §3.5); the control is read without a nudge.
           </dd>
           <dt>known fault</dt>
           <dd>
@@ -796,28 +847,48 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <fieldset style={optFieldset}>
             <legend style={optLegend}>how the frame is squared</legend>
             <label style={optLabel(true)}>
-              <input type="radio" name="frame-squaring" checked readOnly style={optInput} />
+              <input
+                type="radio"
+                name="frame-squaring"
+                checked={frameOpts.squaring === "gram_schmidt"}
+                onChange={() => setFrame({ squaring: "gram_schmidt" })}
+                style={optInput}
+              />
               <span>
                 in order <span style={aside}>(Gram–Schmidt, as built)</span>
               </span>
             </label>
-            <label style={optLabel(false)}>
-              <input type="radio" name="frame-squaring" checked={false} disabled readOnly aria-describedby="frame-pending" style={optInput} />
+            <label style={optLabel(true)}>
+              <input
+                type="radio"
+                name="frame-squaring"
+                checked={frameOpts.squaring === "lowdin"}
+                onChange={() => setFrame({ squaring: "lowdin" })}
+                style={optInput}
+              />
               <span>
-                all at once <span style={aside}>(Löwdin [33], the proposed fix)</span>
+                all at once <span style={aside}>(Löwdin [33], the fix)</span>
               </span>
             </label>
           </fieldset>
           <fieldset style={optFieldset}>
             <legend style={optLegend}>where the frame is taken</legend>
             <label style={optLabel(true)}>
-              <input type="radio" name="frame-place" checked readOnly style={optInput} />
+              <input type="radio" name="frame-place" checked={!frameOpts.perLayer} onChange={() => setFrame({ perLayer: false })} style={optInput} />
               <span>
                 from the final layer <span style={aside}>(as built)</span>
               </span>
             </label>
-            <label style={optLabel(false)}>
-              <input type="radio" name="frame-place" checked={false} disabled readOnly aria-describedby="frame-pending" style={optInput} />
+            <label style={optLabel(isWords)}>
+              <input
+                type="radio"
+                name="frame-place"
+                checked={frameOpts.perLayer}
+                disabled={!isWords}
+                onChange={() => setFrame({ perLayer: true })}
+                aria-describedby="frame-note"
+                style={optInput}
+              />
               <span>
                 from the layer’s own lens{" "}
                 <span style={aside}>
@@ -828,8 +899,15 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           </fieldset>
           <fieldset style={optFieldset}>
             <legend style={optLegend}>weights and centre</legend>
-            <label style={optLabel(false)}>
-              <input type="checkbox" checked={false} disabled readOnly aria-describedby="frame-pending" style={optInput} />
+            <label style={optLabel(isWords)}>
+              <input
+                type="checkbox"
+                checked={frameOpts.fnw}
+                disabled={!isWords}
+                onChange={(e) => setFrame({ fnw: e.target.checked })}
+                aria-describedby="frame-note"
+                style={optInput}
+              />
               <span>
                 weigh the words as the model does{" "}
                 <span style={aside}>
@@ -837,17 +915,31 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 </span>
               </span>
             </label>
-            <label style={optLabel(false)}>
-              <input type="checkbox" checked={false} disabled readOnly aria-describedby="frame-pending" style={optInput} />
+            <label style={optLabel(canCentre)}>
+              <input
+                type="checkbox"
+                checked={frameOpts.centre && canCentre}
+                disabled={!canCentre}
+                onChange={(e) => setFrame({ centre: e.target.checked })}
+                aria-describedby="frame-note"
+                style={optInput}
+              />
               <span>
                 centre on a matched control <span style={aside}>(subtract its mean; REPORT §3.5)</span>
               </span>
             </label>
           </fieldset>
         </div>
-        <div id="frame-pending">
-          <NotYet style={{ margin: 0, maxWidth: "900px" }}>{PENDING_NOTE}</NotYet>
-        </div>
+        <p id="frame-note" style={{ margin: 0, maxWidth: "900px", fontSize: "15px", color: "#6B5D4D" }}>
+          {isWords ? "" : "The final-norm weights and the per-layer lens apply to a frame of words, not to a neuron’s frame. "}
+          {canCentre
+            ? "Centring reads against the matched control kept on the instrument’s first page. "
+            : "To centre, take and keep a matched control first (the question’s apparatus on the instrument page). "}
+          The options go with the next sighting.{" "}
+          {sighting?.source === "live"
+            ? `The last sighting was squared ${frameWords(sighting.frame)}.`
+            : "The recorded sighting was squared in order, from raw rows, at the final layer."}
+        </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingTop: "4px" }}>
           <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", color: "#6B5D4D" }}>
             the request this page sends
@@ -1263,7 +1355,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                       </span>
                     </>
                   ) : (
-                    <span style={{ fontSize: "15px", color: "#6B5D4D", paddingTop: "6px" }}>[RECORDED ONLY FOR THE STUDIED SETS; THE SERVER DOES NOT SEND IT]</span>
+                    <span style={{ fontSize: "15px", color: "#6B5D4D", paddingTop: "6px" }}>[TAKE A SIGHTING WITH THESE WORDS]</span>
                   )}
                 </div>
               </div>
@@ -1272,7 +1364,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
             Gilt ray: the angle the instrument works with <span style={{ fontStyle: "italic" }}>(raw unembedding rows)</span>.
             Dotted ray: the angle once the model’s last scaling is applied, as it weighs words just before speaking{" "}
-            <span style={{ fontStyle: "italic" }}>(final-norm weighted)</span>. The instrument does not yet use it.
+            <span style={{ fontStyle: "italic" }}>(final-norm weighted)</span>. The instrument squares its frame from these when “weigh the words
+            as the model does” is ticked.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", paddingTop: "14px", borderTop: "1px solid #D9CFBD" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "8px 16px" }}>
@@ -1282,7 +1375,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                   {frame.cond.toFixed(2)}
                 </span>
               ) : (
-                <span style={{ fontSize: "15px", color: "#6B5D4D" }}>[RECORDED ONLY FOR THE STUDIED SETS; THE SERVER DOES NOT SEND IT]</span>
+                <span style={{ fontSize: "15px", color: "#6B5D4D" }}>[TAKE A SIGHTING WITH THESE WORDS]</span>
               )}
             </div>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
@@ -1319,14 +1412,23 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 </dd>
                 <dt>source</dt>
                 <dd>
-                  experiments/results/V7_tool_bugs_05_m1patch_frames.json, “frames”; word-pieces{" "}
-                  {nw.map((w) => "“ " + w + "”").join(" · ")}.
+                  {frameFromServer ? (
+                    <>
+                      the server, for the last sighting (<span className="mono">frame.geometry</span>, the definitions of V7’s frame_stats); word-pieces{" "}
+                      {(sighting?.frame?.tokens ?? nw.map((w) => " " + w)).map((w) => "“" + w + "”").join(" · ")}.
+                    </>
+                  ) : (
+                    <>
+                      experiments/results/V7_tool_bugs_05_m1patch_frames.json, “frames”; word-pieces{" "}
+                      {nw.map((w) => "“ " + w + "”").join(" · ")}.
+                    </>
+                  )}
                 </dd>
               </dl>
             ) : (
               <p style={{ margin: "0", color: "#6B5D4D" }}>
                 The study measured three sets only (“she” · “he” · “it”, “woman” · “man” · “person”, “spider” · “eight” ·
-                “insect”). For these words: <Missing />
+                “insect”). For other words the server measures them with every sighting; take one with these words: <Missing />
               </p>
             )}
           </Apparatus>
@@ -1351,8 +1453,9 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               “it” over 18 prompts (V7), and the prompts where Gemma speaks of itself (E6).
             </p>
             <Rubric style={{ maxWidth: "760px" }}>
-              Compare two sightings only if their landmarks were named in the same order. This fault is known and not yet
-              fixed.
+              Compare two sightings squared in order only if their landmarks were named in the same order; or square the frame all at once
+              (above), which gives one frame for every order. The fix is an option, not the default, so the study’s readings stay
+              comparable.
             </Rubric>
           </div>
           <div
@@ -1404,8 +1507,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             <dd>
               Löwdin: E = (V V<sup>⊤</sup>)<sup>−½</sup> V, one frame for every order (V7 checked this on the raw rows, to
               1.2 × 10<sup>−7</sup>), taken on the weighted rows fnw · W<sub>U</sub> and applied to the normed h̃, with the
-              fraction caught always shown. V7 also suggests contrast axes such as fnw · (W<sub>U</sub>[she] − W<sub>U</sub>
-              [he]), less a background mean. <span className="placeholder">[NOT YET IN THE SERVER]</span>
+              fraction caught always shown: all four are now options of the request (frame_squaring “lowdin”, frame_fnw,
+              frame_per_layer, centre_prompts), and the server sends the fraction caught at every layer (proj_frac). V7 also suggests
+              contrast axes such as fnw · (W<sub>U</sub>[she] − W<sub>U</sub>[he]), less a background mean; those are not built.{" "}
+              <span className="placeholder">[NOT YET IN THE SERVER]</span>
             </dd>
             <dt>agreement</dt>
             <dd>

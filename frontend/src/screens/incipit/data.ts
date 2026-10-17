@@ -186,9 +186,10 @@ export const RECORDED_CALL =
   "for pb in (True, False):\n" +
   '    b = await rt.run_theodolite_sweep(prompt, monument_concepts=("she", "he", "it"), max_new_tokens=6,\n' +
   "                                      tracked_concepts=TRACK, prepend_bos=pb)\n\n" +
-  "# asking the server for a like sighting, over /ws/theodolite (it adds no chat template)\n" +
+  "# asking the server for a like sighting, over /ws/theodolite (it wraps the chat itself, as lab.chat does)\n" +
   '{"action": "sweep",\n' +
-  ' "payload": {"prompt": "[THE CHAT-WRAPPED TEXT]", "monuments": ["she", "he", "it"], "max_new_tokens": 6}\n' +
+  ' "payload": {"prompt": "Tell me about yourself.", "chat": true, "assistant_prefix": "Hi! I",\n' +
+  '             "monuments": ["she", "he", "it"], "max_new_tokens": 6}\n' +
   "}";
 
 /** E6 recorded the sweep with max_new_tokens=6 (E6_tool_audit_02_sweep_demo.py). */

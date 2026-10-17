@@ -173,7 +173,12 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
   const call = recorded || !s
     ? RECORDED_CALL
     : '{"action": "sweep",\n' +
-      ' "payload": {"prompt": ' + JSON.stringify(s.textSent ?? "") +
+      (s.chatWrapped
+        ? ' "payload": {"prompt": ' + JSON.stringify(s.question) +
+          ', "chat": true' +
+          (s.system ? ', "system": ' + JSON.stringify(s.system) : "") +
+          ', "assistant_prefix": ' + JSON.stringify(s.answerBegins)
+        : ' "payload": {"prompt": ' + JSON.stringify(s.textSent ?? "")) +
       ', "monuments": ' + JSON.stringify(s.landmarks) +
       ', "survey_mode": ' + JSON.stringify(s.surveyMode) +
       ', "max_new_tokens": ' + maxNewTokens + "}\n}";
@@ -195,7 +200,9 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
               </>
             ) : (
               <>
-                Sent by the server as bare text, with no chat template (REPORT §3.4, bug 5):{" "}
+                {s.chatWrapped
+                  ? "Wrapped as a chat by the server (the tokenizer’s chat template, thinking off), then the begun answer; the exact text read: "
+                  : "Sent by the server as bare text, with no chat template (REPORT §3.4, bug 5): "}
                 <span className="mono-wrap">{JSON.stringify(s.textSent ?? "")}</span>. The same sighting stands on folio i,{" "}
                 <a href={href.instrument()}>the instrument</a>.
               </>
@@ -351,7 +358,9 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
               <span style={{ color: MUTED, overflowWrap: "anywhere" }}>
                 {recorded || !s
                   ? "excerpted from experiments/scripts/E6_tool_audit_02_sweep_demo.py; the result is E6_tool_audit_02_sweep_demo.json, key “prepend_bos=True”."
-                  : "rebuilt from this sighting’s own record (its prompt, landmarks and survey mode); the page sends it over /ws/theodolite with the nudge settings, and the server adds no chat template."}
+                  : s.chatWrapped
+                    ? "rebuilt from this sighting’s own record (its question, begun answer, landmarks and survey mode); the page sends it over /ws/theodolite with the nudge and frame settings, and the server wraps it in the chat template."
+                    : "rebuilt from this sighting’s own record (its prompt, landmarks and survey mode); the page sends it over /ws/theodolite with the nudge and frame settings, as bare text."}
               </span>
             </div>
           ) : null}
@@ -955,23 +964,27 @@ const BeforeYouSetOut: React.FC = () => {
           <dd>
             Gram–Schmidt on the raw W<sub>U</sub> rows, without the final-norm weight: 58–99° across orders, and the frame catches
             2.4–3.9% of ‖h<sub>J</sub>‖ (bug 3). Fix: a Löwdin frame (Löwdin 1950) [33] on fnw · W<sub>U</sub>, with the captured
-            fraction shown. <a href={href.landmarks()}>landmarks</a>
+            fraction shown; now an option of the server, with the fraction caught sent at every layer. <a href={href.landmarks()}>landmarks</a>
           </dd>
           <dt>nudge</dt>
           <dd>
             default scale 650 at layers 30, 36, 42, 48 and 54 (index 29 … 53), with <span className="mono">normalize=True</span>:
             2.4–7.4× the median ‖h‖, and no position mask (bug 1). Fix: scale relative to ‖h‖ (about 0.02), direction fnw · ΔW
-            <sub>U</sub>, quiet dimensions masked, a position mask (§3.4; §3.5). <a href={href.nudge()}>nudge</a>
+            <sub>U</sub>, quiet dimensions masked, a position mask (§3.4; §3.5); now in the server, and what the nudge page sends.{" "}
+            <a href={href.nudge()}>nudge</a>
           </dd>
           <dt>chat</dt>
           <dd>
             no chat template anywhere in the server; 2 of 6 bare prompts came back as one word repeated (bug 5). Fix: a
-            chat-template option, on by default.
+            chat-template option, on by default; now in the server, with an optional system turn, and on by default in the instrument.
           </dd>
           <dt>since the study</dt>
           <dd>
             the two verified patches are in the backend: V7_module1_fix.patch (the gathering and remembering split, with the layer
-            scalar s; bug 2) and V7_bos_fix.patch (one start mark; bug 6). Still open: bugs 1, 3, 4, 5, 7, 8 and 9.
+            scalar s; bug 2) and V7_bos_fix.patch (one start mark; bug 6). Since then the server also takes the fixes for bugs 1, 3,
+            4, 5 and 8 as options (the mended nudge, the Löwdin and weighted frames with the fraction caught, the direct-path thread
+            score, the chat template, poles ranked by write size); the instrument sends the nudge and chat fixes by default. Still
+            open: bugs 7 and 9.
           </dd>
         </dl>
       </Apparatus>

@@ -11,6 +11,9 @@ Runs inside a single process/network namespace to verify:
    - on every page, the "rubrics" and "apparatus" reading toggles show and hide their blocks
    - a gentle nudge (×0.01 of the stream) round-trips; screenshots saved to $THEODOLITE_ARTIFACT_DIR
      (default: artifacts/e2e/)
+5. The options added for V7 bugs 1, 3, 4, 5 and 8 (chat template and system turn, Löwdin / weighted / per-layer /
+   centred survey frames with proj_frac, the mended nudge, the direct-path thread score, write-size pole ranking),
+   over the WebSocket and the MCP tools, and the formerly disabled UI controls that drive them.
 """
 
 from __future__ import annotations
@@ -50,6 +53,15 @@ from backend.mcp_scientist import (
     trace_downstream_readers,
 )
 from backend.server import MAGIC_THEO, WIRE_VERSION, app
+
+
+async def ws_sweep(ws: Any, payload: Dict[str, Any]) -> tuple[bytes, Dict[str, Any]]:
+    """One sweep over an open /ws/theodolite socket: the binary frame and the JSON metadata."""
+    await ws.send(json.dumps({"action": "sweep", "payload": payload}))
+    bin_msg = await ws.recv()
+    meta = json.loads(await ws.recv())
+    assert isinstance(bin_msg, bytes), f"expected a binary frame first, got {str(bin_msg)[:200]}"
+    return bin_msg, meta
 
 ARTIFACT_DIR = Path(os.environ.get("THEODOLITE_ARTIFACT_DIR", str(ROOT_DIR / "artifacts" / "e2e")))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -274,6 +286,114 @@ async def main() -> int:
                 f"  • JSON Frame Verified  : generated={json_msg['generated_text']!r} | "
                 f"elapsed={json_msg['elapsed_ms']}ms | peak_vram={json_msg['peak_vram_gb']} GB"
             )
+            # the defaults keep their meaning: bare text, the frame as built, C, |a|
+            assert json_msg["chat"] is False and json_msg["prompt"] == "The number of legs on the animal that spins webs is"
+            assert json_msg["frame"]["squaring"] == "gram_schmidt" and json_msg["thread_score"] == "coupling"
+            assert json_msg["pole_ranking"] == "activation"
+            assert json_msg["prompt_token_ids"][0] == 2 and json_msg["prompt_token_ids"][1] != 2
+            assert all(0.0 < p["proj_frac"] <= 1.0 for p in json_msg["layer_plumes"])
+
+            # ---------------------------------------------------------------------
+            # Step 2b: the options added for V7 bugs 1, 3, 4, 5 and 8
+            # ---------------------------------------------------------------------
+            print("\n[3b/4] Verifying the chat template, survey-frame, nudge, thread-score and pole-ranking options...")
+            system_turn = "You are a careful assistant."
+            bin2, meta = await ws_sweep(
+                ws,
+                {
+                    "prompt": "Tell me about yourself.",
+                    "chat": True,
+                    "system": system_turn,
+                    "assistant_prefix": "Hi! I",
+                    "monuments": ["she", "he", "it"],
+                    "max_new_tokens": 4,
+                    "frame_squaring": "lowdin",
+                    "frame_fnw": True,
+                    "centre_prompts": ["The weather today is"],
+                    "pole_ranking": "write",
+                    "thread_score": "direct",
+                    "steering": {
+                        "enabled": True,
+                        "target_concept": "she",
+                        "contrast_concept": "he",
+                        "layers": [29, 35, 41, 47, 53],
+                        "direction": "fnw",
+                        "mask_quiet": True,
+                        "spare_bos": True,
+                        "strength": 0.01,
+                    },
+                },
+            )
+            assert meta["prompt"].startswith(f"<bos><|turn>system\n{system_turn}<turn|>\n<|turn>user\nTell me about yourself.")
+            assert meta["prompt"].endswith("<|turn>model\n<|channel>thought\n<channel|>Hi! I"), meta["prompt"][-80:]
+            assert meta["prompt_token_ids"][0] == 2 and meta["prompt_token_ids"][1] != 2, "expected exactly one BOS"
+            assert meta["chat"] is True and meta["system"] == system_turn and meta["assistant_prefix"] == "Hi! I"
+            fr = meta["frame"]
+            assert fr["squaring"] == "lowdin" and fr["fnw_weighted"] and fr["centred"] and fr["n_centre_prompts"] == 1
+            assert {"raw", "fnw", "self_cos"} <= set(fr["geometry"]) and fr["geometry"]["raw"]["cond"] >= 1.0
+            assert all(0.0 < p["proj_frac"] <= 1.0 for p in meta["layer_plumes"])
+            assert all(len(p["pole_write_sizes"]) == 15 and p["poles_ffn_explained"] is not None for p in meta["layer_plumes"])
+            assert meta["pole_ranking"] == "write" and meta["thread_score"] == "direct"
+            fil0 = meta["filaments_meta"][0]
+            assert fil0["score_kind"] == "direct" and fil0["direct_gate"] is not None and fil0["score"] == fil0["direct_gate"]
+            sa = meta["steering_applied"]
+            assert meta["is_steered"] and sa["direction"] == "fnw" and sa["mask_quiet"] and sa["spare_bos"] and sa["strength"] == 0.01
+            assert all(n >= 181 for n in sa["n_masked_by_layer"].values())
+            assert np.isfinite(np.frombuffer(bin2, dtype=np.float32, offset=24)).all()
+            print(
+                f"  • chat + system + Löwdin/fnw/centred frame + write ranking + direct threads + mended nudge: "
+                f"ids {meta['prompt_token_ids'][:3]} | went on {meta['generated_text']!r} | "
+                f"κ raw {fr['geometry']['raw']['cond']:.2f}, fnw {fr['geometry']['fnw']['cond']:.2f} | "
+                f"proj_frac {min(p['proj_frac'] for p in meta['layer_plumes']):.4f}–{max(p['proj_frac'] for p in meta['layer_plumes']):.4f}"
+            )
+
+            # Löwdin is order-free: each word's coordinate is the same whichever order the words are named in
+            coords = {}
+            for order in (["she", "he", "it"], ["he", "it", "she"]):
+                b, _ = await ws_sweep(
+                    ws,
+                    {"prompt": "Tell me about yourself.", "chat": True, "assistant_prefix": "Hi! I", "monuments": order,
+                     "max_new_tokens": 0, "frame_squaring": "lowdin"},
+                )
+                xyz = np.frombuffer(b, dtype=np.float32, offset=24)[:180].reshape(60, 3)
+                coords[tuple(order)] = {w: xyz[:, k] for k, w in enumerate(order)}
+            a_, b_ = coords.values()
+            drift = max(float(np.abs(a_[w] - b_[w]).max() / (np.abs(a_[w]).max() + 1e-9)) for w in ("she", "he", "it"))
+            assert drift < 1e-3, f"Löwdin frame depends on the order: relative drift {drift}"
+            print(f"  • Löwdin frame order-free across two orders: max relative drift {drift:.1e}")
+
+            _, meta_pl = await ws_sweep(
+                ws,
+                {"prompt": "Tell me about yourself.", "chat": True, "monuments": ["she", "he", "it"], "max_new_tokens": 0,
+                 "frame_per_layer": True},
+            )
+            assert meta_pl["frame"]["per_layer"] and meta_pl["frame"]["state"] == "h_raw"
+            assert all(0.0 < p["proj_frac"] <= 1.0 for p in meta_pl["layer_plumes"])
+            print("  • Per-layer frame: the raw h_l read in each layer's pulled-back frame")
+
+            await ws.send(json.dumps({"action": "trace_readers", "layer": 35, "neuron_idx": 9482,
+                                      "prompt": meta["prompt"], "max_layer_hop": 3, "top_k": 4, "score": "direct"}))
+            tr = json.loads(await ws.recv())
+            assert tr["type"] == "downstream_readers", tr
+            trd = tr["data"]
+            rs = trd["top_downstream_readers"]
+            assert trd["max_layer_hop"] == 3 and trd["score_kind"] == "direct" and 0 < len(rs) <= 4
+            assert all(36 <= r["dst_layer"] <= 38 for r in rs)
+            assert all(abs(rs[i]["score"]) >= abs(rs[i + 1]["score"]) for i in range(len(rs) - 1))
+            print(f"  • WS trace_readers(hop=3, k=4, direct): top D={rs[0]['direct_gate']:+.4f} (C={rs[0]['coupling_score']:+.4f})")
+
+        mcp_direct = await trace_downstream_readers(
+            layer=35, neuron_idx=9482, prompt="How many legs does a spider have?", chat=True,
+            assistant_prefix="A spider has", max_layer_hop=2, top_k=3, score="direct",
+        )
+        assert mcp_direct["chat"] and mcp_direct["prompt"].startswith("<bos><|turn>user\n")
+        assert all("direct_act" in r for r in mcp_direct["top_downstream_readers"])
+        hyp_chat = await test_motif_hypothesis(
+            layer=53, neuron_idx=16383, chat=True,
+            pos_prompts=["What animal spins silk webs to catch insects?"], neg_prompts=["What is the capital of France?"],
+        )
+        assert hyp_chat["chat"] is True
+        print(f"  • MCP trace_downstream_readers(chat, direct) and test_motif_hypothesis(chat): ok")
 
         # -------------------------------------------------------------------------
         # Step 3: Headless Chrome inspection of the instrument's pages (reader and scholar views)
@@ -426,6 +546,92 @@ async def main() -> int:
             shot2 = ARTIFACT_DIR / "theodolite_nudge_view.png"
             await cdp.screenshot(shot2)
             print(f"  • Saved Screenshot #2 (after a gentle nudge): {shot2}")
+
+            # The formerly disabled controls ("[NOT YET IN THE SERVER]") are live and drive the server
+            await cdp.eval_js(f"{click_js}('apparatus')")
+            await asyncio.sleep(0.4)
+            fixes = await cdp.eval_js(
+                """(() => {
+                    const labels = Array.from(document.querySelectorAll("label.check"));
+                    const want = ["the corrected direction", "mask the quiet dimensions", "leave the start mark alone", "the strength as a share"];
+                    return want.map((w) => { const l = labels.find((x) => x.textContent.includes(w));
+                        const i = l && l.querySelector("input"); return i ? { w, checked: i.checked, disabled: i.disabled } : { w, missing: true }; });
+                })()"""
+            )
+            assert all(f.get("checked") and not f.get("disabled") for f in fixes), f"Nudge fix boxes: {fixes}"
+            print("  • Nudge: the four fix boxes are enabled and ticked")
+            await go("#/instrument")
+            chat_ui = await cdp.eval_js(
+                """(() => {
+                    const l = Array.from(document.querySelectorAll("label.check")).find((x) => x.textContent.includes("send it as a chat"));
+                    const i = l && l.querySelector("input");
+                    return { found: !!i, checked: i ? i.checked : null, disabled: i ? i.disabled : null, system: !!document.querySelector("#system"),
+                             notYet: document.body.innerText.includes("NOT YET IN THE SERVER") };
+                })()"""
+            )
+            assert chat_ui["found"] and chat_ui["checked"] and not chat_ui["disabled"] and chat_ui["system"], f"chat control: {chat_ui}"
+            assert not chat_ui["notYet"], "the instrument page still shows a [NOT YET IN THE SERVER] control"
+            print("  • Instrument: “send it as a chat” is enabled (ticked by default), with a system-prompt field")
+            # tick "rank them by write size" and "score threads by the direct-path estimate"; each retakes the sighting
+            for label, done in (
+                ("rank them by write size", "by write size |a|"),
+                ("score threads by the direct-path estimate", "A direct-path linear estimate, not a verified circuit"),
+            ):
+                await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle instrument")
+                clicked = await cdp.eval_js(
+                    f"""(() => {{
+                        const l = Array.from(document.querySelectorAll("label.check")).find((x) => x.textContent.includes({json.dumps(label)}));
+                        const i = l && l.querySelector("input");
+                        if (!i || i.disabled) return false; i.click(); return true;
+                    }})()"""
+                )
+                assert clicked, f"could not tick “{label}”"
+                await wait_for(f"""document.body.innerText.includes({json.dumps(done)})""", f"a sighting after “{label}”")
+                print(f"  • Instrument: “{label}” took a new sighting")
+            await go("#/landmarks")
+            await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle landmarks page")
+            frame_ui = await cdp.eval_js(
+                """(() => {
+                    const radios = Array.from(document.querySelectorAll('input[name="frame-squaring"], input[name="frame-place"]'));
+                    const i = document.querySelectorAll('input[name="frame-squaring"]')[1];
+                    if (i && !i.disabled) i.click();
+                    const b = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.includes("take a sighting with these landmarks"));
+                    if (b && !b.disabled) b.click();
+                    return { radios: radios.length, disabled: radios.filter((r) => r.disabled).length, clicked: !!(i && b) };
+                })()"""
+            )
+            assert frame_ui["radios"] == 4 and frame_ui["disabled"] == 0 and frame_ui["clicked"], f"frame options: {frame_ui}"
+            await wait_for("""document.body.innerText.includes("The last sighting was squared all at once")""", "a Löwdin sighting")
+            print("  • Landmarks: the frame options are live; a sighting squared all at once came back")
+            await go("#/neuron/36/9482/pos")
+            await asyncio.sleep(0.5)
+            picked = await cdp.eval_js(
+                """(() => {
+                    const d = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.includes("direct-path estimate, the fix"));
+                    if (!d || d.disabled) return "no direct button";
+                    d.click();
+                    return "ok";
+                })()"""
+            )
+            assert picked == "ok", picked
+            await asyncio.sleep(0.4)  # let the page re-render with the new score before tracing
+            traced = await cdp.eval_js(
+                """(() => {
+                    const t = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "trace its readers");
+                    if (!t || t.disabled) return "no trace button";
+                    t.click();
+                    return "ok";
+                })()"""
+            )
+            assert traced == "ok", traced
+            await wait_for(
+                """(() => { const t = document.body.innerText;
+                    return !t.includes("tracing…") && t.includes("thread score, D") && !t.includes("[READERS APPEAR AFTER TRACING]")
+                        && !t.includes("[NO READERS CAME BACK]"); })()""",
+                "a direct-scored trace",
+            )
+            print("  • Neuron folio: “direct-path estimate” scored the traced readers")
+            await cdp.eval_js(f"{click_js}('apparatus')")
 
             print(
                 f"  • Console Errors: {len(cdp.console_errors)} | Page Exceptions: {len(cdp.page_exceptions)}"

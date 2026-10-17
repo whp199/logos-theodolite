@@ -64,7 +64,13 @@ export interface Reader {
   face: 1 | -1;
   act: number | null;
   dot: number | null;
+  /** the coupling C */
   c: number;
+  /** direct-path estimates of what the source adds to the reader's gate pre-activation and activation */
+  directGate: number | null;
+  directAct: number | null;
+  /** the score the readers were ranked by (C, or the direct-path gate estimate) */
+  score: number;
   words: Tok[] | null;
 }
 
@@ -73,6 +79,9 @@ export interface Readers {
   srcAct: number | null;
   srcFace: 1 | -1 | null;
   readers: Reader[];
+  scoreKind: "coupling" | "direct";
+  hop: number | null;
+  topK: number | null;
   raw: unknown;
 }
 
@@ -96,6 +105,9 @@ export function parseReaders(d: unknown): Readers | null {
       act: num(x.dst_signed_activation),
       dot: num(x.dot_product),
       c,
+      directGate: num(x.direct_gate),
+      directAct: num(x.direct_act),
+      score: num(x.score) ?? c,
       words: toks(x.dst_j_vindex_tokens),
     });
   }
@@ -104,6 +116,9 @@ export function parseReaders(d: unknown): Readers | null {
     srcAct: src ? num(src.signed_activation_on_prompt) : null,
     srcFace: src && src.polarity !== undefined ? faceOf(src.polarity) : null,
     readers,
+    scoreKind: o.score_kind === "direct" ? "direct" : "coupling",
+    hop: num(o.max_layer_hop),
+    topK: num(o.top_k),
     raw: d,
   };
 }

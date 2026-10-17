@@ -21,6 +21,9 @@ from backend.larql_vault import LarqlVaultEngine
 from backend.theodolite_math import (
     D_FF,
     N_LAYERS,
+    THREAD_SCORES,
+    direct_path_reader_effects,
+    direct_path_source_write,
     extract_bipolar_poles,
     unembed_gemma4,
 )
@@ -77,26 +80,39 @@ async def trace_downstream_readers(
     polarity: Optional[float] = None,
     max_layer_hop: int = 6,
     top_k: int = 10,
+    score: str = "coupling",
+    chat: bool = False,
+    system: Optional[str] = None,
+    assistant_prefix: str = "",
 ) -> Dict[str, Any]:
     """Trace verified Live Downstream Reader poles for `(layer, neuron_idx)` on `prompt`.
 
     Computes the Spillover-Filtered coupling score between `(layer, neuron_idx, sigma_i)` and
     active poles `(l', j, sigma_j)` at downstream layers `l' in layer+1 .. layer+max_layer_hop`:
         C_{(l, i) -> (l', j)} = dot(sigma_i * W_down[l, i], W_gate[l', j]) * abs(mlp_act[l', j])
+    and the direct-path linear estimates of what the source adds to each reader's gate pre-activation
+    (`direct_gate`) and activation (`direct_act`), from the source's real activation, the layer scalars and
+    the exact RMSNorm Jacobians (REPORT §3.4 bug 4: rho 0.87 against ablation, where C reaches 0.41).
+    `score="direct"` ranks the readers by |direct_gate|; `"coupling"` (default) by |C|.
+
+    `chat=True` wraps `prompt` in the chat template (optional `system` turn, thinking off) and appends
+    `assistant_prefix`; otherwise `prompt` is read as given (an earlier sighting's echoed `prompt` is exact).
     """
+    if score not in THREAD_SCORES:
+        raise ValueError(f"Unknown score {score!r}; expected one of {THREAD_SCORES}")
     runtime, _vault = get_runtime_and_vault()
     assert runtime.eager_model is not None
 
     l_src = max(0, min(int(layer), N_LAYERS - 2))
     n_src = max(0, min(int(neuron_idx), D_FF - 1))
-    l_end = min(l_src + int(max_layer_hop), N_LAYERS - 1)
+    l_end = min(l_src + max(1, int(max_layer_hop)), N_LAYERS - 1)
 
-    _bos = getattr(runtime.tokenizer, "bos_token", None) or "<bos>"
-    token_tensor = runtime.eager_model.to_tokens(prompt, prepend_bos=not prompt.startswith(_bos))
-    prompt_ids = [int(t) for t in token_tensor[0].tolist()]
+    text = runtime.compose_prompt(prompt, chat=chat, system=system, assistant_prefix=assistant_prefix)
+    prompt_ids = runtime.tokenize_prompt(text)
     target_pos = len(prompt_ids) - 1
 
     points = [Address("mlp_act", l) for l in range(l_src, l_end + 1)]
+    points += [Address("mlp_out", l_src)] + [Address("resid_mid", l) for l in range(l_src + 1, l_end + 1)]
     caps = await runtime.eager_model.capture(prompt_ids, points)
 
     src_mlp_act = caps[Address("mlp_act", l_src)].to(runtime.device)[target_pos]
@@ -109,10 +125,21 @@ async def trace_downstream_readers(
 
     # Fetch source pole write vector: sigma_i * W_down[l_src, n_src]
     src_idx_t = torch.tensor([n_src], device=runtime.device, dtype=torch.long)
-    w_down_src = runtime.slice_w_down(l_src, src_idx_t)[0].float()
+    w_down_raw = runtime.slice_w_down(l_src, src_idx_t)
+    w_down_src = w_down_raw[0].float()
     if l_src in runtime._post_ffn_norm_weights:
         w_down_src = w_down_src * runtime._post_ffn_norm_weights[l_src].to(runtime.device).float()
     signed_writer = sigma_i * w_down_src  # [5376]
+
+    # Direct path: the source's real activation a_i (its sign included; `polarity` only steers C)
+    layer_scalars = [float(runtime._decoder_layers[l].layer_scalar.detach().float().reshape(-1)[0]) for l in range(N_LAYERS)]
+    d_post = direct_path_source_write(
+        src_mlp_act[n_src : n_src + 1],
+        w_down_raw,
+        caps[Address("mlp_out", l_src)].to(runtime.device)[target_pos].float(),
+        runtime._post_ffn_norm_weights[l_src],
+        layer_scalars[l_src],
+    )  # [1, 5376]
 
     candidates: List[Dict[str, Any]] = []
     for l_dst in range(l_src + 1, l_end + 1):
@@ -130,15 +157,30 @@ async def trace_downstream_readers(
             compute_naive_logits=False,
         )
         w_gate_dst = runtime.slice_w_gate(l_dst, poles_dst.neuron_indices).float()
+        w_up_dst = runtime.slice_w_up(l_dst, poles_dst.neuron_indices).float()
         if l_dst in runtime._pre_ffn_norm_weights:
-            w_gate_dst = w_gate_dst * runtime._pre_ffn_norm_weights[l_dst].to(runtime.device).float()
+            w_pre = runtime._pre_ffn_norm_weights[l_dst].to(runtime.device).float()
+            w_gate_dst = w_gate_dst * w_pre
+            w_up_dst = w_up_dst * w_pre
 
         dots = w_gate_dst @ signed_writer  # [25]
         couplings = dots * poles_dst.abs_activations.float()
+        carry = 1.0
+        for k_l in range(l_src + 1, l_dst):
+            carry *= layer_scalars[k_l]
+        d_gate, d_act = direct_path_reader_effects(
+            carry * d_post,
+            caps[Address("resid_mid", l_dst)].to(runtime.device)[target_pos].float(),
+            w_gate_dst,
+            w_up_dst,
+        )  # [1, 25] each
 
         for r_idx in range(poles_dst.neuron_indices.numel()):
             c_score = float(couplings[r_idx].item())
             d_val = float(dots[r_idx].item())
+            dg = float(d_gate[0, r_idx].item())
+            da = float(d_act[0, r_idx].item())
+            ranked = dg if score == "direct" else c_score
             dst_n = int(poles_dst.neuron_indices[r_idx].item())
             dst_pol = float(poles_dst.polarities[r_idx].item())
             dst_act = float(poles_dst.signed_activations[r_idx].item())
@@ -156,13 +198,21 @@ async def trace_downstream_readers(
                     "dot_product": round(d_val, 5),
                     "coupling_score": round(c_score, 5),
                     "abs_coupling": round(abs(c_score), 5),
+                    "direct_gate": round(dg, 6),
+                    "direct_act": round(da, 6),
+                    "score": round(ranked, 6),
+                    "abs_score": round(abs(ranked), 6),
                     "dst_j_vindex_tokens": jpp_tokens,
                 }
             )
 
-    candidates.sort(key=lambda item: item["abs_coupling"], reverse=True)
+    candidates.sort(key=lambda item: item["abs_score"], reverse=True)
     return {
-        "prompt": prompt,
+        "prompt": text,
+        "chat": bool(chat),
+        "score_kind": score,
+        "max_layer_hop": l_end - l_src,
+        "top_k": int(top_k),
         "source_pole": {
             "layer": l_src,
             "neuron_idx": n_src,
@@ -179,6 +229,8 @@ async def test_motif_hypothesis(
     neuron_idx: int,
     pos_prompts: List[str],
     neg_prompts: List[str],
+    chat: bool = False,
+    system: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Test whether Bipolar GeGLU neuron `(layer, neuron_idx)` selectively encodes a hypothesized
     motif on `pos_prompts` vs. `neg_prompts`.
@@ -186,6 +238,9 @@ async def test_motif_hypothesis(
     Captures `Address("mlp_act", layer)` across all positive and negative prompts, evaluates
     both last-token and max-over-sequence signed activations, computes Cohen's d effect size,
     and determines whether the motif is bound to the North (`+`) or South (`-`) pole.
+
+    `chat=True` wraps each prompt as the user turn of the chat template (optional `system` turn, thinking
+    off); the last token is then the end of the model-turn header.
     """
     runtime, vault = get_runtime_and_vault()
     assert runtime.eager_model is not None
@@ -197,9 +252,7 @@ async def test_motif_hypothesis(
     async def _eval_prompts(prompts: List[str]) -> List[Dict[str, Any]]:
         records: List[Dict[str, Any]] = []
         for p_text in prompts:
-            _bos = getattr(runtime.tokenizer, "bos_token", None) or "<bos>"
-            tok_t = runtime.eager_model.to_tokens(p_text, prepend_bos=not p_text.startswith(_bos))
-            p_ids = [int(t) for t in tok_t[0].tolist()]
+            p_ids = runtime.tokenize_prompt(runtime.compose_prompt(p_text, chat=chat, system=system))
             caps = await runtime.eager_model.capture(p_ids, [addr])
             seq_act = caps[addr][:, n_idx].float()  # [seq_len]
             last_act = float(seq_act[-1].item())
@@ -244,6 +297,7 @@ async def test_motif_hypothesis(
     return {
         "layer": l_idx,
         "neuron_idx": n_idx,
+        "chat": bool(chat),
         "verdict": verdict,
         "cohens_d": round(cohens_d, 4),
         "mean_pos_signed_act": round(mean_pos, 4),

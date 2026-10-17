@@ -35,6 +35,8 @@ export interface PoleReading {
   /** the same through the naked eye (logit lens); null = not recorded */
   eye: TokenReading[] | null;
   dir: [number, number, number] | null;
+  /** s · |a| · ‖w_down ⊙ w_post‖ / rms(y), the length of what it adds to the stream; null = not sent */
+  writeSize: number | null;
 }
 
 export interface LayerReading {
@@ -64,13 +66,54 @@ export interface LayerReading {
   /** tracked word-piece ranks of 262,144, with their softcapped logits where recorded */
   ranks: Record<string, { lens: number | null; eye: number | null; lensLogit?: number | null; eyeLogit?: number | null }>;
   poles: PoleReading[];
+  /** share of the layer's feed-forward write the listed poles explain, ⟨Σ c_i, f⟩ / ⟨f, f⟩ (E3); null = not sent */
+  ffnExplained: number | null;
 }
+
+export type ThreadScore = "coupling" | "direct";
+export type PoleRanking = "activation" | "write";
 
 export interface ThreadReading {
   src: { idx: number; neuron: number; face: 1 | -1 };
   dst: { idx: number; neuron: number; face: 1 | -1 };
+  /** the coupling C = ⟨σ w_down ⊙ w_post, w_gate ⊙ w_pre⟩ · |a| */
   c: number;
   dot: number | null;
+  /** direct-path estimates of what the source adds to the reader's gate pre-activation and activation; null = not sent */
+  directGate: number | null;
+  directAct: number | null;
+  /** the score the thread was chosen by: C, or the direct-path gate estimate */
+  score: number;
+  scoreKind: ThreadScore;
+}
+
+/** The survey frame a live sighting was taken in (the server's `frame`). */
+export interface FrameInfo {
+  squaring: "gram_schmidt" | "lowdin";
+  perLayer: boolean;
+  fnwWeighted: boolean;
+  centred: boolean;
+  nCentre: number;
+  /** "h_J": h·Jᵀ read in a frame from the last layer; "h_raw": the raw h read in each layer's own frame */
+  state: "h_J" | "h_raw";
+  tokens: string[] | null;
+  /** angles and squareness of the three words, raw and final-norm weighted (V7 frame_stats definitions) */
+  geometry: {
+    raw: { cond: number; cos: Record<string, number> };
+    fnw: { cond: number; cos: Record<string, number> };
+    selfCos: number[];
+  } | null;
+}
+
+/** What the server pushed, when a sighting was nudged (the server's `steering_applied`). */
+export interface SteeringApplied {
+  mode: "words" | "neuron";
+  direction: string;
+  maskQuiet: boolean;
+  spareBos: boolean;
+  strength: number | null;
+  scale: number | null;
+  layers: number[];
 }
 
 export interface Sighting {
@@ -95,6 +138,12 @@ export interface Sighting {
   elapsedMs: number | null;
   peakVramGb: number | null;
   isNudged: boolean;
+  /** the system turn the question was sent with (chat only); null = none */
+  system: string | null;
+  poleRanking: PoleRanking;
+  threadScore: ThreadScore;
+  frame: FrameInfo | null;
+  steeringApplied: SteeringApplied | null;
   layers: LayerReading[];
   /** 60 x 60 linear CKA, row-major; null = not recorded */
   kinship: number[] | null;
@@ -216,6 +265,7 @@ export function sightingFromLive(
           lens: lab ? toks(lab.j_vindex_tokens) : null,
           eye: lab ? toks(lab.naive_tokens) : null,
           dir: [bin.polesData[base + 3], bin.polesData[base + 4], bin.polesData[base + 5]],
+          writeSize: Array.isArray(p.pole_write_sizes) ? numOrNull(p.pole_write_sizes[r]) : null,
         });
       }
     } else {
@@ -229,6 +279,7 @@ export function sightingFromLive(
           lens: toks(lab.j_vindex_tokens),
           eye: toks(lab.naive_tokens),
           dir: null,
+          writeSize: numOrNull(lab.write_size),
         });
       }
     }
@@ -246,7 +297,7 @@ export function sightingFromLive(
       el: numOrNull(p.elevation_deg) ?? (bin ? bin.trajAnglesNorm[l * 3 + 1] : null),
       xyz: bin ? [bin.trajXyz[l * 3], bin.trajXyz[l * 3 + 1], bin.trajXyz[l * 3 + 2]] : null,
       streamStrength: numOrNull(p.residual_norm) ?? (bin ? bin.trajAnglesNorm[l * 3 + 2] : null),
-      projFrac: null,
+      projFrac: numOrNull(p.proj_frac),
       attnNorm: attn,
       ffnNorm: ffn,
       attnXyz: bin ? [bin.deltaAttnXyz[l * 4], bin.deltaAttnXyz[l * 4 + 1], bin.deltaAttnXyz[l * 4 + 2]] : null,
@@ -259,6 +310,7 @@ export function sightingFromLive(
       eyeTop: typeof p.naive_top_token === "string" ? p.naive_top_token : null,
       ranks,
       poles,
+      ffnExplained: numOrNull(p.poles_ffn_explained),
     });
   }
   const threads: ThreadReading[] = (Array.isArray(meta.filaments_meta) ? meta.filaments_meta : []).map((f: Json) => ({
@@ -266,6 +318,10 @@ export function sightingFromLive(
     dst: { idx: f.dst_layer, neuron: f.dst_neuron, face: f.dst_polarity === "-" ? -1 : 1 },
     c: Number(f.coupling_score),
     dot: numOrNull(f.dot_product),
+    directGate: numOrNull(f.direct_gate),
+    directAct: numOrNull(f.direct_act),
+    score: numOrNull(f.score) ?? Number(f.coupling_score),
+    scoreKind: f.score_kind === "direct" ? "direct" : "coupling",
   }));
   const kinship = bin && bin.ckaMatrix.length === N_LAYERS * N_LAYERS ? Array.from(bin.ckaMatrix) : null;
   const tokensList: string[] | null = Array.isArray(meta.prompt_token_strs) ? meta.prompt_token_strs : null;
@@ -276,12 +332,12 @@ export function sightingFromLive(
     question: req.question,
     answerBegins: req.answerBegins,
     textSent: typeof meta.prompt === "string" ? meta.prompt : req.textSent,
-    chatWrapped: false,
+    chatWrapped: meta.chat === true,
     promptTokens: tokensList,
     nTokens: tokensList ? tokensList.length : null,
     readPos: tokensList ? tokensList.length - 1 : null,
     readAt: tokensList && tokensList.length ? tokensList[tokensList.length - 1] : null,
-    firstIds: null,
+    firstIds: Array.isArray(meta.prompt_token_ids) ? (meta.prompt_token_ids as number[]).slice(0, 4) : null,
     continuation: String(meta.generated_text ?? ""),
     thinkingContinuation: typeof meta.think_generated_text === "string" ? meta.think_generated_text : null,
     thinkingPath: think
@@ -294,6 +350,11 @@ export function sightingFromLive(
     elapsedMs: numOrNull(meta.elapsed_ms),
     peakVramGb: numOrNull(meta.peak_vram_gb),
     isNudged: Boolean(meta.is_steered) || (bin ? (bin.flags & 2) !== 0 : false),
+    system: typeof meta.system === "string" && meta.system ? meta.system : null,
+    poleRanking: meta.pole_ranking === "write" ? "write" : "activation",
+    threadScore: meta.thread_score === "direct" ? "direct" : "coupling",
+    frame: frameOf(meta.frame),
+    steeringApplied: steeringOf(meta.steering_applied),
     layers,
     kinship,
     kinStats: kinshipStats(kinship),
@@ -301,6 +362,41 @@ export function sightingFromLive(
     threadCount: numOrNull(meta.n_filaments) ?? (bin ? bin.nFilaments : null),
     activeEdits: Array.isArray(meta.larql_status?.active_patches) ? meta.larql_status.active_patches : [],
     raw: meta,
+  };
+}
+
+function frameOf(f: Json | null | undefined): FrameInfo | null {
+  if (!f || typeof f !== "object") return null;
+  const g: Json | null = f.geometry ?? null;
+  return {
+    squaring: f.squaring === "lowdin" ? "lowdin" : "gram_schmidt",
+    perLayer: f.per_layer === true,
+    fnwWeighted: f.fnw_weighted === true,
+    centred: f.centred === true,
+    nCentre: numOrNull(f.n_centre_prompts) ?? 0,
+    state: f.state === "h_raw" ? "h_raw" : "h_J",
+    tokens: Array.isArray(f.tokens) ? f.tokens.map(String) : null,
+    geometry:
+      g && g.raw && g.fnw
+        ? {
+            raw: { cond: Number(g.raw.cond), cos: g.raw.cos ?? {} },
+            fnw: { cond: Number(g.fnw.cond), cos: g.fnw.cos ?? {} },
+            selfCos: Array.isArray(g.self_cos) ? g.self_cos.map(Number) : [],
+          }
+        : null,
+  };
+}
+
+function steeringOf(a: Json | null | undefined): SteeringApplied | null {
+  if (!a || typeof a !== "object") return null;
+  return {
+    mode: a.mode === "neuron" ? "neuron" : "words",
+    direction: String(a.direction ?? ""),
+    maskQuiet: a.mask_quiet === true,
+    spareBos: a.spare_bos === true,
+    strength: numOrNull(a.strength),
+    scale: numOrNull(a.scale),
+    layers: Array.isArray(a.layers) ? a.layers.map(Number) : [],
   };
 }
 
@@ -353,6 +449,7 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
         lens: lens ? lens.map(([token, logit]) => ({ token, prob: null, logit })) : null,
         eye: eye ? eye.map(([token, logit]) => ({ token, prob: null, logit })) : null,
         dir: null,
+        writeSize: null,
       };
     });
     const ranks: LayerReading["ranks"] = {};
@@ -386,6 +483,7 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
       eyeTop: null,
       ranks,
       poles,
+      ffnExplained: null,
     });
   }
   return {
@@ -408,6 +506,11 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     elapsedMs: f.elapsedMs,
     peakVramGb: null,
     isNudged: false,
+    system: null,
+    poleRanking: "activation",
+    threadScore: "coupling",
+    frame: null,
+    steeringApplied: null,
     layers,
     kinship: f.kinship,
     kinStats: f.kinStats,
@@ -416,6 +519,10 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
       dst: { idx: t.dst[0], neuron: t.dst[1], face: t.dst[2] >= 0 ? 1 : -1 },
       c: t.c,
       dot: t.dot,
+      directGate: null,
+      directAct: null,
+      score: t.c,
+      scoreKind: "coupling" as const,
     })),
     threadCount: f.threadCount,
     activeEdits: [],

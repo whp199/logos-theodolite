@@ -29,7 +29,7 @@ import torch
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, SteeringSpec
+from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, NormScaledAddSpec, SteeringSpec
 from pydantic import BaseModel, Field
 
 from backend.engine_runtime import TheodoliteRuntime, TheodoliteSweepBundle
@@ -47,8 +47,6 @@ from backend.theodolite_math import (
     GLOBAL_ATTN_LAYERS_1BASED,
     N_LAYERS,
     VOCAB_SIZE,
-    build_monument_frame,
-    build_pole_motif_frame,
 )
 
 logging.basicConfig(
@@ -106,6 +104,18 @@ class SteeringLaserRequest(BaseModel):
     pole_layer: Optional[int] = None
     pole_neuron: Optional[int] = None
     pole_polarity: float = 1.0
+    # The V7 fixes for bug 1 (REPORT §3.4), each off by default so an old request means what it meant:
+    # "legacy": u = (W_U[t+] - W_U[t-]) / fnw.clamp(min=0.1), pulled back by J_l (the original recipe);
+    # "fnw":    u = fnw * (W_U[t+] - W_U[t-]), pulled back by J_l, with no inverse and no clamp.
+    direction: str = "legacy"
+    # zero the quiet residual dims of the vector added at each layer: the 181 persistently quiet dims
+    # (V6_quiet_dims_pers181.npy) and the layer's quietest tenth (TheodoliteRuntime.ensure_quiet_masks)
+    mask_quiet: bool = False
+    # leave the start mark (position 0, <bos>) unsteered: a position mask
+    spare_bos: bool = False
+    # when set, push strength * ||h|| at every position and layer (NormScaledAddSpec) instead of the absolute
+    # length `scale`; V7 found ~0.01 fluent and ~0.024 the edge of collapse
+    strength: Optional[float] = None
 
 
 class SweepRequest(BaseModel):
@@ -117,6 +127,22 @@ class SweepRequest(BaseModel):
     compare_think: bool = False
     max_new_tokens: int = 6
     steering: Optional[SteeringLaserRequest] = None
+    # Chat template (bug 5): wrap `prompt` as the user turn, after an optional system turn, thinking off, and
+    # append `assistant_prefix`, the begun answer (labkit.chat). Off: `prompt` is sent as bare text.
+    chat: bool = False
+    system: Optional[str] = None
+    assistant_prefix: str = ""
+    # Survey frame (bug 3): "gram_schmidt" (in order, as built) | "lowdin" (all at once, order-free); a frame
+    # pulled back by each layer's own lens; the final-norm weighted rows fnw * W_U; and matched controls whose
+    # mean state is subtracted before projecting (exact texts, e.g. an earlier sighting's echoed `prompt`).
+    frame_squaring: str = "gram_schmidt"
+    frame_per_layer: bool = False
+    frame_fnw: bool = False
+    centre_prompts: List[str] = Field(default_factory=list)
+    # Poles (bug 8): "activation" ranks by |a| | "write" by |a| * ||w_down (.) w_post||.
+    pole_ranking: str = "activation"
+    # Threads (bug 4): "coupling" selects by C | "direct" by the direct-path estimate of the gate change.
+    thread_score: str = "coupling"
 
 
 class LarqlRequest(BaseModel):
@@ -136,6 +162,10 @@ class TraceReadersRequest(BaseModel):
     polarity: Optional[float] = None
     max_layer_hop: int = 6
     top_k: int = 10
+    score: str = "coupling"  # "coupling" | "direct"
+    chat: bool = False
+    system: Optional[str] = None
+    assistant_prefix: str = ""
 
 
 class MotifHypothesisRequest(BaseModel):
@@ -143,6 +173,18 @@ class MotifHypothesisRequest(BaseModel):
     neuron_idx: int = 0
     pos_prompts: List[str]
     neg_prompts: List[str]
+    chat: bool = False
+    system: Optional[str] = None
+
+
+STEERING_DIRECTIONS = ("legacy", "fnw")
+
+
+def _steering_op(vector: torch.Tensor, req: SteeringLaserRequest):
+    """The op that adds `vector` (unit-scaled): an absolute length `scale`, or `strength` * ||h|| per position."""
+    if req.strength is not None:
+        return NormScaledAddSpec(vector=vector, strength=float(req.strength), max_fraction=1.0, normalize=True)
+    return AddSpec(vector=vector, scale=float(req.scale), normalize=True)
 
 
 def _build_steering_spec_from_req(
@@ -151,6 +193,12 @@ def _build_steering_spec_from_req(
 ) -> Optional[SteeringSpec]:
     if req is None or not req.enabled:
         return None
+    if req.direction not in STEERING_DIRECTIONS:
+        raise ValueError(f"Unknown steering direction {req.direction!r}; expected one of {STEERING_DIRECTIONS}")
+
+    def keep(l_idx: int) -> Optional[torch.Tensor]:
+        # needs `await runtime.ensure_quiet_masks()` first (done by _execute_sweep_request)
+        return (~runtime.layer_quiet_mask(l_idx)).float() if req.mask_quiet else None
 
     steer_layers: Dict[int, LayerSteeringSpec] = {}
     if req.pole_layer is not None and req.pole_neuron is not None:
@@ -163,18 +211,22 @@ def _build_steering_spec_from_req(
             w_down = w_down * runtime._post_ffn_norm_weights[l_idx].to(runtime.device).float()
         pol = 1.0 if float(req.pole_polarity) >= 0 else -1.0
         v_steer = (pol * w_down).detach().cpu()
-        steer_layers[l_idx] = LayerSteeringSpec(
-            operations=[AddSpec(vector=v_steer, scale=float(req.scale), normalize=True)]
-        )
+        if req.mask_quiet:
+            v_steer = v_steer * keep(l_idx)
+        steer_layers[l_idx] = LayerSteeringSpec(operations=[_steering_op(v_steer, req)])
         return SteeringSpec(layers=steer_layers, point="resid_post")
 
-    # Concept contrast laser steering pulled back via J_pp[l] with inverse RMSNorm preconditioning
-    inv_norm_w = 1.0 / runtime.final_norm_weight.float().clamp(min=0.1)
     tid_pos, _ = runtime.resolve_concept_token_id(req.target_concept)
-    u_pos = runtime.lm_head_weight[tid_pos].float() * inv_norm_w
-    if req.contrast_concept.strip():
-        tid_neg, _ = runtime.resolve_concept_token_id(req.contrast_concept)
-        u_neg = runtime.lm_head_weight[tid_neg].float() * inv_norm_w
+    tid_neg = runtime.resolve_concept_token_id(req.contrast_concept)[0] if req.contrast_concept.strip() else None
+    if req.direction == "fnw":
+        # The direction the model reads before speaking: logit_t = <h / rms(h), fnw * W_U[t]> (V7 bug 1 fix)
+        w = runtime.final_norm_weight.float()
+    else:
+        # Concept contrast laser steering pulled back via J_pp[l] with inverse RMSNorm preconditioning
+        w = 1.0 / runtime.final_norm_weight.float().clamp(min=0.1)
+    u_pos = runtime.lm_head_weight[tid_pos].float() * w
+    if tid_neg is not None:
+        u_neg = runtime.lm_head_weight[tid_neg].float() * w
         u_dir = u_pos - u_neg
     else:
         u_dir = u_pos
@@ -183,10 +235,38 @@ def _build_steering_spec_from_req(
         l_idx = max(0, min(int(l_raw), N_LAYERS - 1))
         J_l = runtime.jpp_lenses[l_idx].float()
         v_steer = (u_dir.to(J_l.device) @ J_l).detach().cpu()
-        steer_layers[l_idx] = LayerSteeringSpec(
-            operations=[AddSpec(vector=v_steer, scale=float(req.scale), normalize=True)]
-        )
+        if req.mask_quiet:
+            v_steer = v_steer * keep(l_idx)
+        steer_layers[l_idx] = LayerSteeringSpec(operations=[_steering_op(v_steer, req)])
     return SteeringSpec(layers=steer_layers, point="resid_post")
+
+
+def _steering_position_mask(req: Optional[SteeringLaserRequest]) -> Optional[List[int]]:
+    return [0] if req is not None and req.enabled and req.spare_bos else None
+
+
+def _describe_steering(
+    runtime: TheodoliteRuntime, req: Optional[SteeringLaserRequest], spec: Optional[SteeringSpec]
+) -> Optional[Dict[str, Any]]:
+    """What was pushed, for the metadata: the recipe, the layers, and how many dims were masked at each."""
+    if req is None or spec is None:
+        return None
+    by_neuron = req.pole_layer is not None and req.pole_neuron is not None
+    return {
+        "n_masked_by_layer": (
+            {str(l): int(runtime.layer_quiet_mask(l).sum()) for l in sorted(spec.layers.keys())}
+            if req.mask_quiet
+            else None
+        ),
+        "mode": "neuron" if by_neuron else "words",
+        "direction": "neuron_write" if by_neuron else req.direction,
+        "mask_quiet": bool(req.mask_quiet),
+        "spare_bos": bool(req.spare_bos),
+        "strength": float(req.strength) if req.strength is not None else None,
+        "scale": None if req.strength is not None else float(req.scale),
+        "scale_kind": "share_of_norm" if req.strength is not None else "absolute",
+        "layers": sorted(int(l) for l in spec.layers.keys()),
+    }
 
 
 @torch.no_grad()
@@ -194,11 +274,19 @@ def pack_binary_and_json_frames(
     runtime: TheodoliteRuntime,
     vault: LarqlVaultEngine,
     sweep: TheodoliteSweepBundle,
-    basis_3d: torch.Tensor,
+    basis_3d: Optional[torch.Tensor] = None,
     think_sweep: Optional[TheodoliteSweepBundle] = None,
     is_steered: bool = False,
+    request_echo: Optional[Dict[str, Any]] = None,
 ) -> Tuple[bytes, Dict[str, Any]]:
-    """Pack a `TheodoliteSweepBundle` into a deterministic Binary Float32 frame + JSON metadata."""
+    """Pack a `TheodoliteSweepBundle` into a deterministic Binary Float32 frame + JSON metadata.
+
+    `basis_3d` defaults to the frame the sweep used (`sweep.survey_basis`); a per-layer frame (`[60, 3, 5376]`,
+    raw residual coordinates) projects each pole's raw write vector instead of its J++ image.
+    """
+    if basis_3d is None:
+        basis_3d = sweep.survey_basis
+    per_layer_raw = basis_3d is not None and basis_3d.dim() == 3
     n_layers = N_LAYERS
     n_poles = 15
     filaments = sweep.filaments
@@ -257,14 +345,17 @@ def pack_binary_and_json_frames(
     cka_np = sweep.cka_matrix.detach().cpu().numpy().astype(np.float32)
 
     # 6. poles_data: [60, 15, 6] -> (neuron_idx, polarity, abs_act, dir_x, dir_y, dir_z)
-    B_dev = basis_3d.to(device=runtime.device, dtype=torch.float32)  # [3, 5376]
+    B_dev = basis_3d.to(device=runtime.device, dtype=torch.float32)  # [3, 5376] or [60, 3, 5376]
     poles_np = np.zeros((n_layers, n_poles, 6), dtype=np.float32)
     poles_labels: Dict[str, List[Dict[str, Any]]] = {}
 
     for l in range(n_layers):
         p_l = sweep.bipolar_poles[l]
         # Project pole J++ vectors [15, 5376] onto 3D Survey Frame [3, 5376] -> [15, 3]
-        dirs_3d = p_l.jpp_pole_vectors.float() @ B_dev.T
+        if per_layer_raw:
+            dirs_3d = p_l.signed_w_down.float() @ B_dev[l].T
+        else:
+            dirs_3d = p_l.jpp_pole_vectors.float() @ B_dev.T
         dirs_norm = torch.linalg.vector_norm(dirs_3d, dim=-1, keepdim=True) + 1e-8
         unit_dirs = (dirs_3d / dirs_norm).detach().cpu().numpy()
 
@@ -278,6 +369,7 @@ def pack_binary_and_json_frames(
         poles_np[l, :, 3:6] = unit_dirs
 
         layer_pole_meta: List[Dict[str, Any]] = []
+        w_sizes = sweep.pole_write_sizes.get(l)
         for r_idx in range(min(5, n_poles)):
             j_toks = sweep.pole_top_tokens_jpp.get((l, r_idx), [])
             n_toks = sweep.pole_top_tokens_naive.get((l, r_idx), [])
@@ -287,6 +379,7 @@ def pack_binary_and_json_frames(
                     "neuron_idx": int(n_idx_np[r_idx]),
                     "polarity": "+" if pol_np[r_idx] >= 0 else "-",
                     "abs_act": round(float(act_np[r_idx]), 3),
+                    "write_size": round(float(w_sizes[r_idx]), 4) if w_sizes else None,
                     "j_vindex_tokens": [{"token": t, "logit": round(v, 2)} for t, v in j_toks],
                     "naive_tokens": [{"token": t, "logit": round(v, 2)} for t, v in n_toks],
                 }
@@ -301,7 +394,7 @@ def pack_binary_and_json_frames(
         filaments_np[f_i, 1] = float(fil.src_rank)
         filaments_np[f_i, 2] = float(fil.dst_layer)
         filaments_np[f_i, 3] = float(fil.dst_rank)
-        filaments_np[f_i, 4] = float(fil.coupling_score)
+        filaments_np[f_i, 4] = float(fil.score if fil.score is not None else fil.coupling_score)
         filaments_np[f_i, 5] = float(fil.src_polarity)
         filaments_np[f_i, 6] = float(fil.dst_polarity)
         if f_i < 60:
@@ -317,6 +410,10 @@ def pack_binary_and_json_frames(
                     "dst_polarity": "+" if fil.dst_polarity >= 0 else "-",
                     "coupling_score": round(fil.coupling_score, 4),
                     "dot_product": round(fil.dot_product, 4),
+                    "direct_gate": round(fil.direct_gate, 5) if fil.direct_gate is not None else None,
+                    "direct_act": round(fil.direct_act, 5) if fil.direct_act is not None else None,
+                    "score": round(fil.score, 5) if fil.score is not None else round(fil.coupling_score, 4),
+                    "score_kind": fil.score_kind,
                 }
             )
 
@@ -364,10 +461,22 @@ def pack_binary_and_json_frames(
                 "azimuth_deg": round(float(sweep.trajectory_3d.azimuth_deg[l].item()), 2),
                 "elevation_deg": round(float(sweep.trajectory_3d.elevation_deg[l].item()), 2),
                 "residual_norm": round(float(sweep.trajectory_3d.residual_norm[l].item()), 2),
+                "proj_frac": (
+                    round(float(sweep.trajectory_3d.proj_frac[l].item()), 5)
+                    if sweep.trajectory_3d.proj_frac is not None
+                    else None
+                ),
+                "pole_write_sizes": (
+                    [round(v, 4) for v in sweep.pole_write_sizes[l]] if l in sweep.pole_write_sizes else None
+                ),
+                "poles_ffn_explained": (
+                    round(sweep.poles_ffn_explained[l], 4) if sweep.poles_ffn_explained.get(l) is not None else None
+                ),
             }
         )
 
     json_frame: Dict[str, Any] = {
+        **(request_echo or {}),
         "type": "theodolite_metadata",
         "prompt": sweep.prompt,
         "prompt_token_strs": sweep.prompt_token_strs,
@@ -381,6 +490,10 @@ def pack_binary_and_json_frames(
         "global_layers_1based": list(GLOBAL_ATTN_LAYERS_1BASED),
         "n_filaments": n_filaments,
         "is_steered": is_steered,
+        "prompt_token_ids": list(sweep.prompt_token_ids),
+        "pole_ranking": sweep.pole_ranking,
+        "thread_score": sweep.thread_score,
+        "frame": sweep.frame_info,
         "layer_plumes": layer_plumes,
         "poles_labels": poles_labels,
         "filaments_meta": filaments_meta,
@@ -416,74 +529,57 @@ async def _execute_sweep_request(
     if req.survey_mode == "pole_motif" and req.locked_pole and len(req.locked_pole) >= 3:
         locked_pole = (int(req.locked_pole[0]), int(req.locked_pole[1]), float(req.locked_pole[2]))
 
+    if req.steering is not None and req.steering.enabled and req.steering.mask_quiet:
+        await runtime.ensure_quiet_masks()
     steering_spec = _build_steering_spec_from_req(runtime, req.steering)
-
-    sweep = await runtime.run_theodolite_sweep(
-        req.prompt,
+    position_mask = _steering_position_mask(req.steering) if steering_spec is not None else None
+    text = runtime.compose_prompt(
+        req.prompt, chat=req.chat, system=req.system, assistant_prefix=req.assistant_prefix
+    )
+    options = dict(
         monument_concepts=monuments,
         survey_mode=req.survey_mode,
         locked_pole=locked_pole,
         steering_spec=steering_spec,
-        max_new_tokens=req.max_new_tokens,
+        steering_position_mask=position_mask,
         top_k_poles=15,
+        pole_ranking=req.pole_ranking,
+        thread_score=req.thread_score,
+        frame_squaring=req.frame_squaring,
+        frame_per_layer=req.frame_per_layer,
+        frame_fnw=req.frame_fnw,
+        centre_prompts=req.centre_prompts,
     )
 
-    # Reconstruct the 3D basis tensor used for pole needle projection
-    if locked_pole is not None:
-        p_layer, p_neuron, p_pol = locked_pole
-        n_idx_t = torch.tensor([p_neuron], device=runtime.device, dtype=torch.long)
-        w_gate_v = runtime.slice_w_gate(p_layer, n_idx_t)[0]
-        w_down_v = runtime.slice_w_down(p_layer, n_idx_t)[0]
-        next_l = min(p_layer + 1, N_LAYERS - 1)
-        dom_dst_neuron = int(sweep.bipolar_poles[next_l].neuron_indices[0].item())
-        for fil in sweep.filaments:
-            if fil.src_layer == p_layer and fil.src_neuron == p_neuron:
-                next_l = fil.dst_layer
-                dom_dst_neuron = fil.dst_neuron
-                break
-        dst_gate_v = runtime.slice_w_gate(
-            next_l, torch.tensor([dom_dst_neuron], device=runtime.device, dtype=torch.long)
-        )[0]
-        basis_3d = build_pole_motif_frame(
-            layer_idx=p_layer,
-            neuron_idx=p_neuron,
-            polarity=p_pol,
-            w_gate_vec=w_gate_v,
-            w_down_vec=w_down_v,
-            J_l=runtime.jpp_lenses[p_layer],
-            downstream_gate_vec=dst_gate_v,
-        )
-    else:
-        t1_id, _ = runtime.resolve_concept_token_id(monuments[0])
-        t2_id, _ = runtime.resolve_concept_token_id(monuments[1])
-        t3_id, _ = runtime.resolve_concept_token_id(monuments[2])
-        basis_3d, _ = build_monument_frame(
-            token_ids=(t1_id, t2_id, t3_id),
-            lm_head_weight=runtime.lm_head_weight,
-            jpp_lenses=runtime.jpp_lenses,
-            pullback_per_layer=False,
-        )
+    sweep = await runtime.run_theodolite_sweep(text, max_new_tokens=req.max_new_tokens, **options)
 
     think_sweep = None
     if req.compare_think:
-        think_prompt = f"<|think|>\n{req.prompt}"
+        think_prompt = (
+            runtime.compose_prompt(
+                req.prompt, chat=True, system=req.system, assistant_prefix=req.assistant_prefix, thinking=True
+            )
+            if req.chat
+            else f"<|think|>\n{text}"
+        )
         think_sweep = await runtime.run_theodolite_sweep(
-            think_prompt,
-            monument_concepts=monuments,
-            survey_mode=req.survey_mode,
-            locked_pole=locked_pole,
-            steering_spec=steering_spec,
-            max_new_tokens=max(req.max_new_tokens, 10),
-            top_k_poles=15,
+            think_prompt, max_new_tokens=max(req.max_new_tokens, 10), **options
         )
 
+    request_echo = {
+        "chat": bool(req.chat),
+        "system": req.system if (req.chat and req.system) else None,
+        "user_prompt": req.prompt,
+        "assistant_prefix": req.assistant_prefix if req.assistant_prefix else None,
+        "steering_applied": _describe_steering(runtime, req.steering, steering_spec),
+    }
     return pack_binary_and_json_frames(
         runtime=runtime,
         vault=vault,
         sweep=sweep,
-        basis_3d=basis_3d,
         think_sweep=think_sweep,
         is_steered=(steering_spec is not None),
+        request_echo=request_echo,
     )
 
 
@@ -539,14 +635,21 @@ async def api_inspect_pole(req: PoleInspectRequest) -> Dict[str, Any]:
 async def api_trace_readers(req: TraceReadersRequest) -> Dict[str, Any]:
     _runtime, _vault = get_app_state()
     async with _GPU_LOCK:
-        return await trace_downstream_readers(
-            layer=req.layer,
-            neuron_idx=req.neuron_idx,
-            prompt=req.prompt,
-            polarity=req.polarity,
-            max_layer_hop=req.max_layer_hop,
-            top_k=req.top_k,
-        )
+        try:
+            return await trace_downstream_readers(
+                layer=req.layer,
+                neuron_idx=req.neuron_idx,
+                prompt=req.prompt,
+                polarity=req.polarity,
+                max_layer_hop=req.max_layer_hop,
+                top_k=req.top_k,
+                score=req.score,
+                chat=req.chat,
+                system=req.system,
+                assistant_prefix=req.assistant_prefix,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/scientist/test_hypothesis")
@@ -558,6 +661,8 @@ async def api_test_hypothesis(req: MotifHypothesisRequest) -> Dict[str, Any]:
             neuron_idx=req.neuron_idx,
             pos_prompts=req.pos_prompts,
             neg_prompts=req.neg_prompts,
+            chat=req.chat,
+            system=req.system,
         )
 
 
@@ -598,16 +703,19 @@ async def ws_theodolite(websocket: WebSocket) -> None:
                 await websocket.send_json({"type": "pole_inspection", "data": res})
 
             elif action == "trace_readers":
-                l_idx = int(raw_msg.get("layer", 35))
-                n_idx = int(raw_msg.get("neuron_idx", 0))
-                prompt = str(raw_msg.get("prompt", "The number of legs on the animal that spins webs is"))
-                pol = raw_msg.get("polarity")
+                tr = TraceReadersRequest(**{k: v for k, v in raw_msg.items() if k != "action"})
                 async with _GPU_LOCK:
                     res = await trace_downstream_readers(
-                        layer=l_idx,
-                        neuron_idx=n_idx,
-                        prompt=prompt,
-                        polarity=float(pol) if pol is not None else None,
+                        layer=tr.layer,
+                        neuron_idx=tr.neuron_idx,
+                        prompt=tr.prompt,
+                        polarity=tr.polarity,
+                        max_layer_hop=tr.max_layer_hop,
+                        top_k=tr.top_k,
+                        score=tr.score,
+                        chat=tr.chat,
+                        system=tr.system,
+                        assistant_prefix=tr.assistant_prefix,
                     )
                 await websocket.send_json({"type": "downstream_readers", "data": res})
 

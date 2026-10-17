@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Apparatus, IfRubrics, Missing, NotYet, Page, Rubric, SweepError } from "../components/kit";
+import { Apparatus, IfRubrics, Missing, Page, Rubric, SweepError } from "../components/kit";
 import { href, type Route } from "../router";
-import { composeText, useTheodoliteStore, type Sighting, type SteeringConfig } from "../store/useTheodoliteStore";
+import { SAFE_NUDGE_SCALE, composeText, useTheodoliteStore, type Sighting, type SteeringConfig } from "../store/useTheodoliteStore";
 import { faceWord, wp } from "../lib/words";
 import {
   DIAL,
@@ -205,7 +205,11 @@ function initialState() {
   const poleLayerNo = neuron ? (sc.pole_layer as number) + 1 : 54;
   const ref = refStream(neuron, poleLayerNo, nums);
   let v = 100;
-  if (ref && sc.scale > 0) {
+  if (sc.strength !== null && sc.strength > 0) {
+    const raw = clampV(100 * (Math.log(sc.strength) / Math.LN10 + 3));
+    const snapped = Math.round(raw / 5) * 5;
+    v = Math.abs(raw - snapped) < 0.5 ? snapped : raw;
+  } else if (ref && sc.scale > 0) {
     const raw = clampV(100 * (Math.log(sc.scale / ref.h) / Math.LN10 + 3));
     const snapped = Math.round(raw / 5) * 5;
     v = Math.abs(raw - snapped) < 0.5 ? snapped : raw;
@@ -224,6 +228,7 @@ function initialState() {
     poleLayer: String(poleLayerNo),
     poleNeuron: neuron ? String(sc.pole_neuron) : "15491",
     poleFace: (neuron && sc.pole_polarity < 0 ? "negative" : "positive") as "positive" | "negative",
+    fixes: { dir: sc.direction === "fnw", quiet: sc.mask_quiet, bos: sc.spare_bos, share: sc.strength !== null },
   };
 }
 
@@ -287,6 +292,9 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const [poleLayer, setPoleLayer] = useState(init.poleLayer);
   const [poleNeuron, setPoleNeuron] = useState(init.poleNeuron);
   const [poleFace, setPoleFace] = useState<"positive" | "negative">(init.poleFace);
+  // the audit's four fixes (V7 bug 1), each a field of SteeringLaserRequest
+  const [fixes, setFixes] = useState(init.fixes);
+  const toggleFix = (k: keyof typeof fixes) => setFixes((f) => ({ ...f, [k]: !f[k] }));
   const [view, setView] = useState<"page" | "old" | "server">("page");
   const [extraLayers, setExtraLayers] = useState(init.extraText);
   // typed text is kept as typed, so a half-written number is never snapped back while it is being written
@@ -363,7 +371,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   /* ---- the scale the server receives: s × the reference ‖h‖ */
   const ref = refStream(isNeuron, pl, chosen);
   const scaleNum = ref === null ? null : s * ref.h;
-  const scaleUnknown = !blocked && scaleNum === null;
+  // with the server's share-of-‖h‖ scaling the share is sent as is, so no recorded ‖h‖ is needed
+  const scaleUnknown = !blocked && !fixes.share && scaleNum === null;
   const cantArm = blocked || scaleUnknown;
 
   // a live sighting's own stream strength at the chosen layers, shown beside the recorded medians
@@ -395,6 +404,14 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   /* ---- the request: SteeringLaserRequest (backend/server.py:100-108), sent as payload.steering of a "sweep" */
   let scaleRule: string;
   if (!isNeuron && !chosen.length) scaleRule = "No layer is chosen, so there is nothing to scale.";
+  else if (fixes.share)
+    scaleRule =
+      "The server scales the push itself: strength " +
+      s.toPrecision(3) +
+      " adds that share of ‖h‖ at every word-piece of " +
+      (isNeuron ? "the neuron’s layer" : "each chosen layer") +
+      ", the stream’s own strength there (NormScaledAddSpec, capped at ‖h‖). The absolute scale goes along unused" +
+      (scaleNum !== null ? ", " + scaleFmt(scaleNum) + " by the recorded medians." : ".");
   else if (ref === null || scaleNum === null)
     scaleRule =
       "The server reads scale as one absolute length for every layer it pushes. A layer here has no recorded ‖h‖, so the length waits for a sighting: [MEASURED IN A LIVE SIGHTING]";
@@ -410,7 +427,17 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
       ref.layer +
       (isNeuron ? ", the neuron’s own." : ": the weakest stream among those chosen, so no layer is pushed past the share you set.");
   const q = (x: unknown) => JSON.stringify(x);
-  const bodyFor = (o: { enabled: boolean; t: string; c: string; layers: number[]; scale: string; pl: string; pn: string; pp: string }) =>
+  const bodyFor = (o: {
+    enabled: boolean;
+    t: string;
+    c: string;
+    layers: number[];
+    scale: string;
+    pl: string;
+    pn: string;
+    pp: string;
+    fixes?: { direction: string; mask_quiet: boolean; spare_bos: boolean; strength: string };
+  }) =>
     '{\n  "enabled": ' +
     o.enabled +
     ',\n  "target_concept": ' +
@@ -427,14 +454,45 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
     o.pn +
     ',\n  "pole_polarity": ' +
     o.pp +
+    (o.fixes
+      ? ',\n  "direction": ' +
+        q(o.fixes.direction) +
+        ',\n  "mask_quiet": ' +
+        o.fixes.mask_quiet +
+        ',\n  "spare_bos": ' +
+        o.fixes.spare_bos +
+        ',\n  "strength": ' +
+        o.fixes.strength
+      : "") +
     "\n}";
   const poleL = isNeuron && okPole ? String(pl - 1) : "null";
   const poleN = isNeuron && okPole ? String(pn) : "null";
   const poleP = isNeuron && !facePos ? "-1.0" : "1.0";
   const pageScale =
-    scaleNum === null ? q(!isNeuron && !chosen.length ? "[CHOOSE A LAYER]" : "[MEASURED IN A LIVE SIGHTING]") : scaleFmt(scaleNum);
+    scaleNum === null
+      ? fixes.share
+        ? String(SAFE_NUDGE_SCALE)
+        : q(!isNeuron && !chosen.length ? "[CHOOSE A LAYER]" : "[MEASURED IN A LIVE SIGHTING]")
+      : scaleFmt(scaleNum);
+  const strengthSent = Number(s.toPrecision(3));
+  const pageFixes = {
+    direction: fixes.dir ? "fnw" : "legacy",
+    mask_quiet: fixes.quiet,
+    spare_bos: fixes.bos,
+    strength: fixes.share ? String(strengthSent) : "null",
+  };
   const BODIES = {
-    page: bodyFor({ enabled: armed, t: toward, c: away, layers: chosen.map((n) => n - 1), scale: pageScale, pl: poleL, pn: poleN, pp: poleP }),
+    page: bodyFor({
+      enabled: armed,
+      t: toward,
+      c: away,
+      layers: chosen.map((n) => n - 1),
+      scale: pageScale,
+      pl: poleL,
+      pn: poleN,
+      pp: poleP,
+      fixes: pageFixes,
+    }),
     old: bodyFor({ enabled: true, t: toward, c: away, layers: [35, 41, 47, 53, 59], scale: "280.0", pl: poleL, pn: poleN, pp: poleP }),
     server: bodyFor({ enabled: false, t: "six", c: "eight", layers: [29, 35, 41, 47, 53], scale: "650.0", pl: "null", pn: "null", pp: "1.0" }),
   };
@@ -447,12 +505,12 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
       : "What the old screen sent for the same words, at its defaults: its fire button set enabled to true, it had no control for the layers, and 280 was its slider’s default.",
     server: "SteeringLaserRequest() with nothing filled in (server.py:100–108); enabled is false, so nothing is pushed.",
   };
-  // The audit's fixes are asked for apart: none is a field of SteeringLaserRequest yet, so none is ever sent.
+  // The audit's fixes, as fields of the request
   const asks = [
-    ...(isNeuron ? [] : ["the corrected direction, with no inverse and no clamp"]),
-    "the quiet dimensions masked",
-    "the start mark left alone",
-    isNeuron ? "the strength as a share of ‖h‖" : "the strength as a share of ‖h‖ at each layer",
+    ...(isNeuron ? [] : [fixes.dir ? "direction \"fnw\": fnw ⊙ ΔW_U, no inverse, no clamp" : "direction \"legacy\": the recipe as built"]),
+    fixes.quiet ? "mask_quiet: the quiet dimensions zeroed" : "mask_quiet off",
+    fixes.bos ? "spare_bos: the start mark left alone" : "spare_bos off: the start mark is pushed too",
+    fixes.share ? `strength ${strengthSent}: a share of ‖h‖ set by the server` : "strength null: the absolute scale is used",
   ];
   const ignored = isNeuron
     ? "layers, target_concept and contrast_concept: with pole_layer and pole_neuron set, the server pushes along the neuron alone, at its one layer."
@@ -460,16 +518,20 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
 
   /* ---- what is sent: exactly the page's request, with enabled set by arming */
   const cfg: Omit<SteeringConfig, "enabled"> | null =
-    cantArm || scaleNum === null
+    cantArm || (scaleNum === null && !fixes.share)
       ? null
       : {
           target_concept: toward,
           contrast_concept: away,
           layers: chosen.map((n) => n - 1),
-          scale: Number(scaleFmt(scaleNum)),
+          scale: scaleNum !== null ? Number(scaleFmt(scaleNum)) : SAFE_NUDGE_SCALE,
           pole_layer: isNeuron ? pl - 1 : null,
           pole_neuron: isNeuron ? pn : null,
           pole_polarity: isNeuron && !facePos ? -1 : 1,
+          direction: fixes.dir ? "fnw" : "legacy",
+          mask_quiet: fixes.quiet,
+          spare_bos: fixes.bos,
+          strength: fixes.share ? strengthSent : null,
         };
   const cfgKey = cfg ? JSON.stringify(cfg) : null;
 
@@ -486,14 +548,19 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
       cur.pole_layer === next.pole_layer &&
       cur.pole_neuron === next.pole_neuron &&
       cur.pole_polarity === next.pole_polarity &&
+      cur.direction === next.direction &&
+      cur.mask_quiet === next.mask_quiet &&
+      cur.spare_bos === next.spare_bos &&
+      cur.strength === next.strength &&
       cur.layers.length === next.layers.length &&
       cur.layers.every((x, i) => x === next.layers[i]);
     if (!same) setSteering(next);
   }, [cfgKey, setSteering]);
 
   const prompt = composeText(question, "");
+  const chat = useTheodoliteStore((st) => st.chat);
   const samePrompt = (x: Sighting | null): x is Sighting =>
-    !!x && x.source === "live" && composeText(x.question, x.answerBegins) === prompt;
+    !!x && x.source === "live" && composeText(x.question, x.answerBegins) === prompt && x.chatWrapped === chat;
 
   /** Arm (or keep armed) and take a sighting of this question with the nudge. If there is no live plain
    * sighting of the same question to compare with, one is taken first, without the nudge. */
@@ -924,9 +991,25 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           </dd>
           <dt>the audit’s fix</dt>
           <dd>
-            u = fnw ⊙ ΔW<sub>U</sub>, with no inverse and no clamp; the 181 quiet dimensions projected out (deep-quiet at every layer from 43 to
-            58, the report’s L42–57); the start mark masked; strength s · ‖h<sub>ℓ</sub>‖, s ≈ 0.01 (V7 notes) to 0.02 (REPORT §3.4). REPORT
-            §3.4, bug 1; §3.5, item 4.
+            u = fnw ⊙ ΔW<sub>U</sub>, with no inverse and no clamp; the quiet dimensions projected out; the start mark masked; strength s · ‖h
+            <sub>ℓ</sub>‖, s ≈ 0.01 (V7 notes) to 0.02 (REPORT §3.4). REPORT §3.4, bug 1; §3.5, item 4. The server now does all four, each a field
+            of the request (<span className="mono">direction</span>, <span className="mono">mask_quiet</span>,{" "}
+            <span className="mono">spare_bos</span>, <span className="mono">strength</span>).
+          </dd>
+          <dt>the quiet mask</dt>
+          <dd>
+            The 181 dimensions deep-quiet at every layer from 43 to 58 (the report’s L42–57), together with each pushed layer’s quietest tenth by
+            spread over a fixed set of six test texts, three plain and three chats, measured once. The 181 alone are not enough: at layers 30 and 40
+            they hold 56% and 80% of a she/he pullback’s energy, and the rest sits in other quiet dimensions read at high gain (V6 energy shares;
+            REPORT §2.2). In a check when
+            this fix was built (not part of the study), the she/he nudge masked by the 181 alone broke the answer at ×0.005; with the tenth
+            masked too it read fluently at ×0.005 and ×0.01 and broke at ×0.02.
+          </dd>
+          <dt>how it is added, fixed</dt>
+          <dd>
+            h ← h + s · ‖h‖ · v<sub>ℓ</sub> / ‖v<sub>ℓ</sub>‖ at every word-piece after the start mark, ‖h‖ that word-piece’s own stream strength
+            at that layer, by <span className="mono">NormScaledAddSpec(vector=v, strength=s, normalize=True)</span> under a position mask{" "}
+            <span className="mono">[0]</span>.
           </dd>
           <dt>units</dt>
           <dd>
@@ -950,27 +1033,28 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           </dd>
           <dt>ask also for</dt>
           <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: 0 }}>
-            <label className="check disabled">
-              <input type="checkbox" checked disabled readOnly />
+            <label className={isNeuron ? "check disabled" : "check"}>
+              <input type="checkbox" checked={fixes.dir} disabled={isNeuron} onChange={() => toggleFix("dir")} />
               <span>
                 the corrected direction, fnw ⊙ ΔW<sub>U</sub> <span style={{ color: C.muted }}>(two words only)</span>
               </span>
             </label>
-            <label className="check disabled">
-              <input type="checkbox" checked disabled readOnly />
-              mask the 181 quiet dimensions
+            <label className="check">
+              <input type="checkbox" checked={fixes.quiet} onChange={() => toggleFix("quiet")} />
+              mask the quiet dimensions <span style={{ color: C.muted }}>(the 181, and each layer’s quietest tenth)</span>
             </label>
-            <label className="check disabled">
-              <input type="checkbox" checked disabled readOnly />
+            <label className="check">
+              <input type="checkbox" checked={fixes.bos} onChange={() => toggleFix("bos")} />
               leave the start mark alone (a position mask)
             </label>
-            <label className="check disabled">
-              <input type="checkbox" checked disabled readOnly />
+            <label className="check">
+              <input type="checkbox" checked={fixes.share} onChange={() => toggleFix("share")} />
               {isNeuron ? "the strength as a share of ‖h‖, set by the server" : "the strength as a share of ‖h‖ at each layer, set by the server"}
             </label>
-            <NotYet style={{ margin: 0 }}>
-              Not yet fields of SteeringLaserRequest: the server ignores them until the fix lands, so the request below lists them apart.
-            </NotYet>
+            <span style={{ color: C.muted }}>
+              Fields of SteeringLaserRequest, sent with the nudge. Turned off, each falls back to the recipe as built; with the share turned off
+              the page sends one absolute length, s × the weakest recorded median ‖h‖ among the chosen layers.
+            </span>
           </dd>
         </dl>
       </Apparatus>
@@ -1478,8 +1562,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             <dd className="num">{scaleRule}</dd>
             <dt>ignored</dt>
             <dd>{ignored}</dd>
-            <dt>asked for apart</dt>
-            <dd>{asks.join("; ") + ". None is a field of the request yet."}</dd>
+            <dt>the fixes sent</dt>
+            <dd>{asks.join("; ") + "."}</dd>
             <dt>leaves no trace</dt>
             <dd>
               In the audit the model carried no hooks before or after a nudged run, and the plain spider question came back word for word as
@@ -1584,7 +1668,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               <p style={{ margin: 0, fontStyle: "italic", fontSize: 16, color: C.rubric, maxWidth: 560 }}>
                 Be warned: on a plain question like this one, even a careful nudge may break the answer. In the study, a corrected nudge of
                 strength 2, about a hundredth of the stream (toward “she”), read fluently inside three chats, yet turned this very question’s
-                answer into “own same same same …”. The instrument sends no chat template yet.
+                answer into “own same same same …”, asked as bare text. With “send it as a chat” ticked on the instrument page, the question
+                goes in as a chat.
               </p>
             ) : (
               <>
@@ -1770,9 +1855,9 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               no clamp; the quiet channel is masked; and the start mark <span style={{ fontStyle: "italic", color: C.muted }}>(BOS)</span> is left
               alone. These are the tool audit’s fixes. The window that works is narrow, which is why the dial shows it.
             </p>
-            <p style={{ margin: 0, fontSize: 17, fontStyle: "italic", color: C.rubric, maxWidth: 760 }}>
-              Not yet in the server. Until the fix lands, the backend still builds the old direction at a fixed strength, whatever this page
-              shows.
+            <p style={{ margin: 0, fontSize: 17, color: C.muted, maxWidth: 760 }}>
+              The server now builds the nudge this way when the four boxes under “the direction of the push” are ticked, as they are by default.
+              Untick one to send the recipe as built for that part.
             </p>
           </div>
           <div style={{ flex: "1 1 360px", minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>

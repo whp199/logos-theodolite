@@ -45,20 +45,26 @@ This is research code.
 The E6/V7 tool-audit numbers were measured on the pre-patch backend. The repo history keeps the original instrument as its
 first commit and the patches as a separate commit.
 
-**Unfixed, critical: the steering "laser" defaults destroy the model's output.**
-- `backend/server.py:104-105` defaults to layers [29, 35, 41, 47, 53] at scale 650. That is 2.4–7.4× the residual norm,
-  and `AddSpec(normalize=True)` has no position mask.
-- The direction at `server.py:171` uses `1/final_norm_weight.clamp(min=0.1)`, which puts 79% of its energy in 3
-  negative-weight dimensions.
-- The old frontend default (scale 280) was also in the collapse regime. The rebuilt frontend sends 0.01 × the median ‖h‖
-  of the weakest chosen layer (0.883 at layer 54, `SAFE_NUDGE_SCALE` in `frontend/src/store/useTheodoliteStore.ts`);
-  the server still builds the old direction.
-- Details are bug #1 in [`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md).
-
-**Also unfixed:**
-- the monument (survey) frame is order-dependent (Gram-Schmidt on raw W_U);
-- the filament coupling score is weak, ρ ≈ 0.4 vs 0.87 for a direct-path estimate;
-- no chat template is applied anywhere in the backend.
+**Fixed as request options (the server's own defaults are unchanged, so old requests mean what they meant):**
+- **Steering (bug 1).** `SteeringLaserRequest` takes `direction="fnw"` (fnw ⊙ ΔW_U, no inverse, no clamp), `mask_quiet`
+  (zero the 181 persistent quiet dims and each pushed layer's quietest tenth), `spare_bos` (a position mask over the
+  start mark) and `strength` (push `strength × ‖h‖` at every position, `NormScaledAddSpec`). The frontend's nudge page
+  sends all four by default at strength 0.01. Without them the server still defaults to scale 650 at layers
+  [29, 35, 41, 47, 53] with the clamped inverse direction, which destroys the output (bug #1 in
+  [`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md)). Masking the 181 dims alone is not enough: a
+  fnw she/he nudge masked that way still collapsed at 0.005 × ‖h‖ in a check on the running model; with the quietest
+  tenth masked too it read fluently at 0.005–0.01 and broke at 0.02.
+- **Survey frame (bug 3).** `frame_squaring="lowdin"` (order-free), `frame_fnw` (final-norm weighted rows),
+  `frame_per_layer` (pulled back by each layer's J++) and `centre_prompts` (subtract a matched control's state). Every
+  sighting now reports the fraction of the state the frame catches (`proj_frac`) and the words' cosines and condition
+  numbers (`frame.geometry`).
+- **Threads (bug 4).** Every filament carries the direct-path estimates `direct_gate` / `direct_act` beside the
+  coupling C; `thread_score="direct"` (sweeps) and `score="direct"` (`trace_downstream_readers`) select and rank by it.
+- **Chat template (bug 5).** `chat`, `system` and `assistant_prefix` on sweeps, traces and hypothesis tests: the
+  tokenizer's chat template (thinking off), an optional system turn, then the begun answer, with one BOS. On by default
+  in the frontend.
+- **Poles (bug 8).** `pole_ranking="write"` ranks by |a| · ‖w_down ⊙ w_post‖; every layer reports each pole's write size
+  and the share of the FFN write the listed poles explain.
 
 See [`experiments/REPORT.md` §3.4](experiments/REPORT.md).
 

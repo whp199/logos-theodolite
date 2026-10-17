@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Apparatus, IfRubrics, Missing, NotYet, Page, Rubric, Wp } from "../components/kit";
+import { Apparatus, IfRubrics, Missing, Page, Rubric, Wp } from "../components/kit";
 import { ControlSighting } from "../components/ControlSighting";
 import { href, navigate, type Route } from "../router";
 import {
@@ -7,6 +7,7 @@ import {
   N_LAYERS,
   VOCAB,
   exportSighting,
+  retakeIfLive,
   useTheodoliteStore,
   type LayerReading,
   type PoleReading,
@@ -1266,6 +1267,8 @@ function poleView(c: Ctx, p: PoleReading): PoleView {
 const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
   const { L, idx, no } = c;
   const [more, setMore] = useState(false);
+  const poleRanking = useTheodoliteStore((s) => s.poleRanking);
+  const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
   const setSteering = useTheodoliteStore((s) => s.setSteering);
   const setSurveyMode = useTheodoliteStore((s) => s.setSurveyMode);
   const threads = c.s.threads;
@@ -1592,22 +1595,44 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             <button
               type="button"
               className="btn-ghost"
-              aria-pressed={false}
-              disabled
+              aria-pressed={poleRanking === "write"}
+              onClick={() => {
+                setPoleRanking(poleRanking === "write" ? "activation" : "write");
+                retakeIfLive();
+              }}
               aria-describedby="leaf-write-rank-note"
               style={{ display: "flex", alignItems: "center", gap: 7 }}
             >
               <svg width="9" height="11" viewBox="0 0 9 11" aria-hidden="true">
-                <path d="M4.5 0.8 L8.2 5.5 L4.5 10.2 L0.8 5.5 Z" fill="none" stroke="#A07A2E" strokeWidth="1" />
+                <path d="M4.5 0.8 L8.2 5.5 L4.5 10.2 L0.8 5.5 Z" fill={poleRanking === "write" ? "#A07A2E" : "none"} stroke="#A07A2E" strokeWidth="1" />
               </svg>
               rank by write size
             </button>
             <span id="leaf-write-rank-note">
-              <NotYet style={{ margin: 0 }}>
-                The server ranks the poles by |a| only. Ranking them by write size s · |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ / rms(y),
-                with the share of this layer’s feed-forward write they explain, needs a server change. In the study the two rankings shared
-                67–96% of their top fifteen (Jaccard, E3).
-              </NotYet>
+              Ranking by write size orders the neurons by s · |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ / rms(y); within one layer s and rms(y)
+              are shared, so the server ranks by |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖. In the study the two rankings shared 67–96% of
+              their top fifteen (Jaccard, E3). This sighting is ranked {c.s.poleRanking === "write" ? "by write size" : "by |a|"}
+              {L.ffnExplained != null ? (
+                <>
+                  , and its fifteen here explain {(L.ffnExplained * 100).toFixed(1)}% of this layer’s feed-forward write (⟨Σ c<sub>i</sub>, f⟩ /
+                  ⟨f, f⟩, f = post − s · mid)
+                </>
+              ) : (
+                <>
+                  ; the share of the write they explain: <M c={c} />
+                </>
+              )}
+              .
+              {L.poles.some((p) => p.writeSize != null) ? (
+                <>
+                  {" "}Write sizes, loudest first:{" "}
+                  {L.poles
+                    .slice(0, 5)
+                    .map((p) => `${p.neuron} ${p.writeSize != null ? p.writeSize.toFixed(2) : "?"}`)
+                    .join(" · ")}
+                  .
+                </>
+              ) : null}
             </span>
           </dd>
         </dl>
@@ -1638,8 +1663,18 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           </dd>
           <dt>threads</dt>
           <dd>
-            C = ⟨σ<sub>i</sub> w<sub>down</sub>, w<sub>gate</sub>⟩ · |a| [14], a weak guide: ρ ≈ 0.41 with the real effect, where a
-            direct-path estimate reaches 0.87 (bug 4).{" "}
+            {c.s.threadScore === "direct" ? (
+              <>
+                chosen by D, the direct-path estimate of what the source adds to the reader’s gate (real activation, layer scalars, exact RMSNorm
+                Jacobians): ρ ≈ 0.87 with the real effect, where C = ⟨σ<sub>i</sub> w<sub>down</sub>, w<sub>gate</sub>⟩ · |a| [14] reaches 0.41
+                (bug 4).{" "}
+              </>
+            ) : (
+              <>
+                C = ⟨σ<sub>i</sub> w<sub>down</sub>, w<sub>gate</sub>⟩ · |a| [14], a weak guide: ρ ≈ 0.41 with the real effect, where a
+                direct-path estimate reaches 0.87 (bug 4).{" "}
+              </>
+            )}
             {threads.length === 0 ? (
               <>
                 This sighting’s threads: <M c={c} />.
@@ -1661,7 +1696,9 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
                     (t) =>
                       `neuron ${t.src.neuron} (layer ${t.src.idx + 1}, ${t.src.face > 0 ? "positive" : "negative"}) → neuron ${t.dst.neuron} (layer ${
                         t.dst.idx + 1
-                      }, ${t.dst.face > 0 ? "positive" : "negative"}), C = ${minus(t.c.toFixed(1))}`,
+                      }, ${t.dst.face > 0 ? "positive" : "negative"}), C = ${minus(t.c.toFixed(1))}${
+                        t.directGate != null ? `, D = ${minus(t.directGate.toFixed(3))}` : ""
+                      }`,
                   )
                   .join("; ")}
                 .

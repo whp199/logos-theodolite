@@ -96,7 +96,7 @@ export function threadPaths(threads: ThreadReading[], v: View) {
     const mx = (a[0] + b[0]) / 2;
     const my = (a[1] + b[1]) / 2;
     const c = `M${a[0]},${a[1]} Q${f(CX + (mx - CX) * 1.35)},${f(my - 16)} ${b[0]},${b[1]} `;
-    if (t.c > 0) pos += c;
+    if (t.score > 0) pos += c;
     else neg += c;
     ends += dot(a, 2) + dot(b, 2);
   }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Apparatus, IfRubrics, Missing, NotYet, Page, PendingCheck, Rubric } from "../components/kit";
+import { Apparatus, IfRubrics, Missing, NotYet, Page, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
 import {
   type Conn,
@@ -9,6 +9,7 @@ import {
   type Sighting,
   isGlobalIdx,
   poleKey,
+  retakeIfLive,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { andList, agreement, cap, count, glossFor, scoresText, shortToken, signedRaw, type Agreement } from "./NeuronFolio/util";
@@ -1682,19 +1683,27 @@ const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreeme
 
 const Listen: React.FC<{ m: Model }> = ({ m }) => {
   const traceReaders = useTheodoliteStore((s) => s.traceReaders);
+  const storeScore = useTheodoliteStore((s) => s.threadScore);
   const entry = useTheodoliteStore((s) => s.readers[poleKey(m.idx, m.neuron)]) as Pending<unknown> | undefined;
   const reply: Readers | null = entry?.data ? parseReaders(entry.data) : null;
   const pending = entry?.pending;
-  const hopN = Math.max(0, Math.min(6, 60 - m.layerNo));
-  const kN = 10;
+  const hopLimit = Math.max(0, Math.min(6, 60 - m.layerNo));
+  // what the next trace asks for (max_layer_hop, top_k, score); the drawing follows what the reply says it used
+  const [hopAsk, setHopAsk] = useState(hopLimit);
+  const [kAsk, setKAsk] = useState(10);
+  const [score, setScore] = useState<"coupling" | "direct">(storeScore);
+  const hopN = Math.max(0, Math.min(hopLimit, reply?.hop ?? hopAsk));
+  const kN = reply?.topK ?? kAsk;
   const kMax = 25 * hopN;
+  const kind = reply?.scoreKind ?? score;
+  const sym = kind === "direct" ? "D" : "C";
   const first = m.layerNo + 1;
   const last = m.layerNo + hopN;
   const hopWord = hopN === 1 ? `layer, ${first}` : `${numberWord(hopN)} layers, ${first} to ${last}`;
   const cols = Array.from({ length: hopN }, (_, i) => ({ idx: m.idx + 1 + i, no: first + i, x: 190 + i * 100 }));
   const mid = cols.length ? (cols[0].x + cols[cols.length - 1].x) / 2 : 440;
   const readers = reply?.readers ?? [];
-  const maxC = readers.reduce((a, r) => Math.max(a, Math.abs(r.c)), 0) || 1;
+  const maxC = readers.reduce((a, r) => Math.max(a, Math.abs(r.score)), 0) || 1;
 
   // place readers in their layer's column, strongest at the middle
   const placed = useMemo(() => {
@@ -1743,7 +1752,8 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
           {hopN > 0 ? (
             <p style={{ margin: 0, maxWidth: "680px" }}>
               Later neurons that read what this one writes are its threads. Tracing looks through the next {hopWord}, and lists up to{" "}
-              {numberWord(kN)} readers, the strongest thread first.
+              {kN <= 20 ? numberWord(kN) : String(kN)} readers, the strongest thread first
+              {kind === "direct" ? ", scored by the direct-path estimate" : ""}.
             </p>
           ) : (
             <p style={{ margin: 0, maxWidth: "680px" }}>
@@ -1754,8 +1764,8 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
             <button
               className="btn-primary"
               type="button"
-              disabled={hopN === 0 || pending}
-              onClick={() => traceReaders(m.idx, m.neuron, m.focusFace)}
+              disabled={hopLimit === 0 || pending}
+              onClick={() => traceReaders(m.idx, m.neuron, m.focusFace, { hop: hopAsk, topK: kAsk, score })}
             >
               {pending ? "tracing…" : "trace its readers"}
             </button>
@@ -1775,10 +1785,10 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
                           key={`t${i}`}
                           d={`M74,95 C${f1(74 + (x - 74) / 2)},95 ${f1(74 + (x - 74) / 2)},${y} ${x - 8},${y}`}
                           fill="none"
-                          stroke={r.c >= 0 ? GILT_TEXT : INK}
-                          strokeOpacity={r.c >= 0 ? 0.85 : 0.6}
-                          strokeWidth={f1(0.8 + 2.4 * (Math.abs(r.c) / maxC))}
-                          strokeDasharray={r.c >= 0 ? undefined : "3 3"}
+                          stroke={r.score >= 0 ? GILT_TEXT : INK}
+                          strokeOpacity={r.score >= 0 ? 0.85 : 0.6}
+                          strokeWidth={f1(0.8 + 2.4 * (Math.abs(r.score) / maxC))}
+                          strokeDasharray={r.score >= 0 ? undefined : "3 3"}
                         />
                       ))
                     : null}
@@ -1860,9 +1870,9 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
           ) : null}
           {showThreads ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 22px", fontSize: "15px", color: MUTED }}>
-              <span>solid gilt: a thread that opens the reader (C &gt; 0)</span>
-              <span>dashed ink: a thread that closes it (C &lt; 0)</span>
-              <span>thicker: a larger |C|</span>
+              <span>solid gilt: a thread that opens the reader ({sym} &gt; 0)</span>
+              <span>dashed ink: a thread that closes it ({sym} &lt; 0)</span>
+              <span>thicker: a larger |{sym}|</span>
             </div>
           ) : null}
           {traced ? (
@@ -1883,7 +1893,7 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
                 <span>reader</span>
                 <span>layer</span>
                 <span>face</span>
-                <span style={{ textAlign: "right" }}>thread score</span>
+                <span style={{ textAlign: "right" }}>thread score{kind === "direct" ? ", D" : ", C"}</span>
               </div>
               {readers.length ? (
                 readers.map((r, i) => (
@@ -1915,7 +1925,9 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
                       <FaceMark filled={r.face > 0} />
                       {faceWord(r.face)}
                     </span>
-                    <span style={{ textAlign: "right" }}>{signed(r.c, 2)}</span>
+                    <span style={{ textAlign: "right" }} title={`C ${signed(r.c, 3)}${r.directGate != null ? ` · D ${signed(r.directGate, 3)}` : ""}${r.directAct != null ? ` · change of the reader’s activation ${signed(r.directAct, 3)}` : ""}`}>
+                      {signed(r.score, kind === "direct" ? 3 : 2)}
+                    </span>
                   </div>
                 ))
               ) : (
@@ -1942,22 +1954,35 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
                 </div>
               )}
               <p style={{ margin: "10px 0 0", fontSize: "15px", color: MUTED }}>
-                Up to {numberWord(kN)} rows, the strongest thread first. Open any reader to read its own folio.
+                Up to {kN <= 20 ? numberWord(kN) : String(kN)} rows, the strongest thread first. Open any reader to read its own folio.
               </p>
             </div>
           ) : null}
         </div>
         <div style={{ flex: "1 1 340px", minWidth: 0, display: "flex", flexDirection: "column", gap: "14px" }}>
           <Rubric>
-            A thread’s score is a weak guide. In the study it matched a reader’s measured effect with a correlation of only about 0.4, where a
-            simple direct-path estimate reached 0.87. Treat each thread as a lead to test with a nudge, not a wire you have found.
+            {kind === "direct"
+              ? "Scored by the direct-path estimate, which in the study matched a reader’s measured effect with a correlation of 0.87, against about 0.4 for the coupling C. Still treat each thread as a lead to test with a nudge, not a wire you have found."
+              : "A thread’s score is a weak guide. In the study it matched a reader’s measured effect with a correlation of only about 0.4, where a simple direct-path estimate reached 0.87. Treat each thread as a lead to test with a nudge, not a wire you have found."}
           </Rubric>
           <p style={{ margin: 0, fontSize: "16px", color: MUTED }}>
-            The score is a linear estimate from the model’s weights, not a measured circuit. It is a known fault of the instrument, still unfixed.
+            The score is a linear estimate, not a measured circuit. The direct-path estimate can be chosen under “score by” in the apparatus.
           </p>
         </div>
       </div>
-      <ThreadsApparatus m={m} hopN={hopN} kN={kN} kMax={kMax} reply={reply} />
+      <ThreadsApparatus
+        m={m}
+        hopN={hopN}
+        kN={kN}
+        kMax={kMax}
+        reply={reply}
+        ask={{ hop: hopAsk, k: kAsk, score, hopLimit }}
+        onAsk={(a) => {
+          if (a.hop !== undefined) setHopAsk(Math.max(1, Math.min(hopLimit, a.hop)));
+          if (a.k !== undefined) setKAsk(Math.max(1, Math.min(150, a.k)));
+          if (a.score !== undefined) setScore(a.score);
+        }}
+      />
     </section>
   );
 };
@@ -1976,13 +2001,22 @@ const NUM_INPUT: React.CSSProperties = {
   ...NUM,
 };
 
-const ThreadsApparatus: React.FC<{ m: Model; hopN: number; kN: number; kMax: number; reply: Readers | null }> = ({
-  m,
-  hopN,
-  kN,
-  kMax,
-  reply,
-}) => {
+interface TraceAsk {
+  hop: number;
+  k: number;
+  score: "coupling" | "direct";
+  hopLimit: number;
+}
+
+const ThreadsApparatus: React.FC<{
+  m: Model;
+  hopN: number;
+  kN: number;
+  kMax: number;
+  reply: Readers | null;
+  ask: TraceAsk;
+  onAsk: (a: Partial<Omit<TraceAsk, "hopLimit">>) => void;
+}> = ({ m, hopN, kN, kMax, reply, ask, onAsk }) => {
   const last = m.layerNo + hopN;
   const range = hopN === 1 ? `${m.layerNo + 1}` : `${m.layerNo + 1}–${last}`;
   const idxRange = hopN === 1 ? `${m.idx + 1}` : `${m.idx + 1}–${last - 1}`;
@@ -1991,18 +2025,27 @@ const ThreadsApparatus: React.FC<{ m: Model; hopN: number; kN: number; kMax: num
     "# MCP (backend/mcp_scientist.py)\n" +
     `trace_downstream_readers(layer=${m.idx}, neuron_idx=${m.neuron},\n` +
     `    prompt="<SIGHTING_PROMPT>", polarity=${pol},\n` +
-    `    max_layer_hop=6, top_k=${kN})\n\n` +
+    `    max_layer_hop=${ask.hop}, top_k=${ask.k}, score="${ask.score}")\n\n` +
     "# HTTP\nPOST /api/scientist/trace_readers\n" +
     `{"layer": ${m.idx}, "neuron_idx": ${m.neuron}, "prompt": "<SIGHTING_PROMPT>",\n` +
-    ` "polarity": ${pol}, "max_layer_hop": 6, "top_k": ${kN}}`;
+    ` "polarity": ${pol}, "max_layer_hop": ${ask.hop}, "top_k": ${ask.k}, "score": "${ask.score}"}`;
+  const direct = (reply?.scoreKind ?? ask.score) === "direct";
   return (
     <Apparatus title="threads (reader filaments)" label="Apparatus for the threads">
       <dl className="dl num">
         <dt>formula</dt>
         <dd>
           C<sub>i→j</sub> = ⟨σ<sub>i</sub> · w<sub>down,i</sub> ⊙ w<sub>post</sub>, w<sub>gate,j</sub> ⊙ w<sub>pre</sub>⟩ · |a<sub>j</sub>|, over
-          the 25 strongest poles at each of layers {hopN ? range : "(none)"} (index {hopN ? idxRange : "none"}), sorted by |C|; the first {kN} of{" "}
-          {kMax} are listed. A weight-based coupling in the residual-stream view of Elhage et al. 2021 [14].
+          the 25 strongest poles at each of layers {hopN ? range : "(none)"} (index {hopN ? idxRange : "none"}), sorted by |{direct ? "D" : "C"}|; the
+          first {kN} of {kMax} are listed. A weight-based coupling in the residual-stream view of Elhage et al. 2021 [14].
+        </dd>
+        <dt>direct path</dt>
+        <dd>
+          D<sub>i→j</sub> = J<sub>pre</sub>(mid<sub>ℓ′</sub>) · (Π<sub>ℓ&lt;k&lt;ℓ′</sub> s<sub>k</sub>) · s<sub>ℓ</sub> · J<sub>post</sub>(y
+          <sub>ℓ</sub>) (a<sub>i</sub> w<sub>down,i</sub>) · w<sub>gate,j</sub>: what the source adds to the reader’s gate through the stream
+          alone, from its real activation a<sub>i</sub>, the layer scalars and the exact Jacobians of both RMSNorms at this word-piece. Each reader
+          also carries the change of its activation, gelu(g)u − gelu(g − D)(u − D<sub>up</sub>). The study’s formula
+          (experiments/scripts/V7_tool_bugs_03_filaments.py), with the sign of what the source adds rather than of its ablation.
         </dd>
         <dt>caveat</dt>
         <dd>
@@ -2013,33 +2056,61 @@ const ThreadsApparatus: React.FC<{ m: Model; hopN: number; kN: number; kMax: num
         <dt>score by</dt>
         <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
           <div role="group" aria-label="Thread score" style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-            <button type="button" className="btn-ghost plain" aria-pressed={true}>
+            <button type="button" className="btn-ghost plain" aria-pressed={ask.score === "coupling"} onClick={() => onAsk({ score: "coupling" })}>
               coupling C, as the instrument scores it
             </button>
-            <button type="button" className="btn-ghost plain" aria-pressed={false} disabled aria-describedby="score-d-note">
+            <button
+              type="button"
+              className="btn-ghost plain"
+              aria-pressed={ask.score === "direct"}
+              onClick={() => onAsk({ score: "direct" })}
+              aria-describedby="score-d-note"
+            >
               direct-path estimate, the fix
             </button>
           </div>
           <span style={{ color: MUTED }}>
-            The coupling C the instrument computes today: a weak guide, ρ ≈ 0.41 with the measured effect.
+            The coupling C, as the instrument first scored it: a weak guide, ρ ≈ 0.41 with the measured effect.
           </span>
-          <NotYet style={{ margin: 0 }}>
-            <span id="score-d-note">
-              The study’s direct-path estimate, using the real activation, layer scalars and exact RMSNorm Jacobians (ρ ≈ 0.87; formula in{" "}
-              <span className="mono">experiments/scripts/V7_tool_bugs_03_filaments.py</span>).
-            </span>
-          </NotYet>
+          <span id="score-d-note" style={{ color: MUTED }}>
+            The study’s direct-path estimate D, using the real activation, layer scalars and exact RMSNorm Jacobians (ρ ≈ 0.87; formula in{" "}
+            <span className="mono">experiments/scripts/V7_tool_bugs_03_filaments.py</span>). Chosen here, it applies to the next trace; the reply
+            {reply ? ` above was scored by ${reply.scoreKind === "direct" ? "D" : "C"}` : " says which it used"}.
+          </span>
         </dd>
         <dt>controls</dt>
         <dd style={{ margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 24px" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", minHeight: "44px", color: MUTED }}>
-            layers ahead <input type="number" value={6} disabled readOnly style={NUM_INPUT} />{" "}
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", minHeight: "44px" }}>
+            layers ahead{" "}
+            <input
+              type="number"
+              min={1}
+              max={Math.max(1, ask.hopLimit)}
+              value={ask.hop}
+              disabled={ask.hopLimit === 0}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (Number.isFinite(v)) onAsk({ hop: v });
+              }}
+              style={{ ...NUM_INPUT, color: "inherit" }}
+            />{" "}
             <span className="mono" style={{ color: MUTED }}>
               max_layer_hop
             </span>
           </label>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", minHeight: "44px", color: MUTED }}>
-            readers listed <input type="number" value={kN} disabled readOnly style={{ ...NUM_INPUT, width: "64px" }} />{" "}
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", minHeight: "44px" }}>
+            readers listed{" "}
+            <input
+              type="number"
+              min={1}
+              max={150}
+              value={ask.k}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (Number.isFinite(v)) onAsk({ k: v });
+              }}
+              style={{ ...NUM_INPUT, width: "64px", color: "inherit" }}
+            />{" "}
             <span className="mono" style={{ color: MUTED }}>
               top_k
             </span>
@@ -2049,20 +2120,21 @@ const ThreadsApparatus: React.FC<{ m: Model; hopN: number; kN: number; kMax: num
             <span className="mono">polarity</span>
           </span>
           <span style={{ flex: "1 1 100%", color: MUTED, fontStyle: "italic" }}>
-            Fixed at the defaults this page sends, 6 and {kN}: the server takes other values over HTTP, but the instrument cannot pass them on yet.
-            The server stops at layer 60, so {hopN === 6 ? "all six layers lie ahead here" : `only ${numberWord(hopN)} lie ahead here`}.
+            Sent with the next trace: from one to {ask.hopLimit === 6 ? "six" : numberWord(Math.max(ask.hopLimit, 0))} layers ahead (the server
+            stops at layer 60), and up to 25 readers a layer.
           </span>
         </dd>
         <dt>by hand</dt>
         <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
           <span>
-            Each reader comes back with its layer, neuron, pole, signed activation, the raw dot product, C, and its top four word-pieces through
-            the lens.{" "}
+            Each reader comes back with its layer, neuron, pole, signed activation, the raw dot product, C, the direct-path estimates D and the
+            change of its activation, and its top four word-pieces through the lens.{" "}
             {m.isFixture ? (
               <>
                 The sighting’s prompt is “Tell me about yourself.” wrapped by the lab’s chat template, then “Hi! I”; its literal text is not stored
-                in the repository. Without it, the instrument sends the question and the begun answer as bare text, one line each, so a live trace
-                of the recorded sighting reads a slightly different prompt.
+                in the repository. Without it, the instrument sends the question and the begun answer as the page is set (through the chat template
+                when “send it as a chat” is ticked, which is the lab script’s wrapping; as bare text otherwise), so a live trace
+                of the recorded sighting reads the same text only with the chat template on.
               </>
             ) : (
               <>
@@ -2082,7 +2154,7 @@ const ThreadsApparatus: React.FC<{ m: Model; hopN: number; kN: number; kMax: num
                 {reply.readers
                   .map(
                     (r) =>
-                      `layer ${r.idx + 1}, neuron ${r.neuron} ${r.face > 0 ? "+" : "−"}: a ${r.act === null ? "?" : signedRaw(r.act)}, dot ${r.dot === null ? "?" : signedRaw(r.dot)}, C ${signedRaw(r.c)}`,
+                      `layer ${r.idx + 1}, neuron ${r.neuron} ${r.face > 0 ? "+" : "−"}: a ${r.act === null ? "?" : signedRaw(r.act)}, dot ${r.dot === null ? "?" : signedRaw(r.dot)}, C ${signedRaw(r.c)}${r.directGate !== null ? `, D ${signedRaw(r.directGate)}` : ""}${r.directAct !== null ? `, Δa ${signedRaw(r.directAct)}` : ""}`,
                   )
                   .join(" · ")}
               </span>
@@ -2117,6 +2189,8 @@ function glossNote(toks: Tok[]): string {
 }
 
 const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
+  const poleRanking = useTheodoliteStore((s) => s.poleRanking);
+  const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
   const poles = m.poles;
   const loud = m.loudAct ?? (poles[0] ? Math.abs(poles[0].act) : 1);
   const shown = poles.filter((p) => p.rank < 5 || p.neuron === m.neuron);
@@ -2310,15 +2384,32 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
             21–59 (REPORT §3.4, bug 8).
           </dd>
           <dt>the fix</dt>
-          <dd style={{ margin: 0 }}>
-            <PendingCheck
-              label="rank by write size, and show the fraction of the feed-forward write the listed poles explain"
-              note={
+          <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={poleRanking === "write"}
+                onChange={(e) => {
+                  setPoleRanking(e.target.checked ? "write" : "activation");
+                  retakeIfLive();
+                }}
+              />
+              rank by write size, and show the fraction of the feed-forward write the listed poles explain
+            </label>
+            <span style={{ color: MUTED, paddingLeft: 28 }}>
+              {m.sighting?.source === "live" ? (
+                <>
+                  This sighting ranks them {m.sighting.poleRanking === "write" ? "by write size, |a| · ‖w_down ⊙ w_post‖" : "by |a|"}; the fraction
+                  they explain at layer {m.layerNo}:{" "}
+                  {m.layer?.ffnExplained != null ? `${(m.layer.ffnExplained * 100).toFixed(1)}%` : <Missing />}{" "}
+                  (⟨Σ c<sub>i</sub>, f⟩ / ⟨f, f⟩, E3).
+                </>
+              ) : (
                 <>
                   the fraction itself: <Missing />
                 </>
-              }
-            />
+              )}
+            </span>
           </dd>
         </dl>
       </Apparatus>
@@ -2537,8 +2628,9 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
           <dt>caveat</dt>
           <dd>
             the peak is reported but not tested; there is no null, interval or permutation, and “confirmed” marks a threshold crossed, not a cause.
-            The sentences go in as bare text, with no chat template (REPORT §3.4, bug 5). The study reads such tests against a matched control and
-            checks them causally (REPORT §3.3, §3.5).
+            The sentences go in as the instrument is set: each as the user’s turn of a chat when “send it as a chat” is ticked (the reading is then
+            at the end of the model’s turn header), as bare text otherwise{res?.raw && (res.raw as { chat?: boolean }).chat !== undefined ? `; this test was sent ${(res.raw as { chat?: boolean }).chat ? "as chats" : "as bare text"}` : ""}. The
+            study reads such tests against a matched control and checks them causally (REPORT §3.3, §3.5).
           </dd>
           <dt>results by sentence</dt>
           <dd style={{ margin: 0, minWidth: 0 }}>
