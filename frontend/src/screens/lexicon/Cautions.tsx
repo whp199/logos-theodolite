@@ -318,7 +318,7 @@ export const Cautions: React.FC = () => (
         id="thread-score"
         n={6}
         title="Thread scores are weak"
-        status="mended, as an option"
+        status="mended in the instrument"
         tone="mended"
         found={
           <>
@@ -330,9 +330,9 @@ export const Cautions: React.FC = () => (
         }
         means={
           <>
-            Read a thread as a suggestion of where to look, not as a proven circuit, and discount the strongest-looking
-            threads from layer 1; or score the threads by the direct-path estimate, on the instrument and on a neuron’s
-            folio.
+            Read a thread as a suggestion of where to look, not as a proven circuit. The instrument and a neuron’s folio
+            now score threads by the direct-path estimate; if you switch them back to C, discount the strongest-looking
+            threads from layer 1.
           </>
         }
         from="From the README’s “Status and known issues”, the report’s §3.4 (bug 4) and the V7 notes."
@@ -362,7 +362,8 @@ export const Cautions: React.FC = () => (
             "fix, applied",
             <>
               <M>thread_score="direct"</M> (sweeps) and <M>score="direct"</M> (trace_downstream_readers) choose and rank
-              threads by the direct-path estimate; C stays the default. Each thread’s binary row carries the one score it
+              threads by the direct-path estimate, and the instrument sends it by default; the server’s own default stays
+              C, so old callers get what they got before. Each thread’s binary row carries the one score it
               was chosen by; the JSON’s first 60 threads (in source-layer order) carry C and the direct-path estimates side
               by side, and the pages rank all of them by score.
             </>,

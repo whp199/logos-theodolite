@@ -2000,7 +2000,10 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
               : "A thread’s score is a weak guide. In the study it matched a reader’s measured effect with a correlation of only about 0.4, where a simple direct-path estimate reached 0.87. Treat each thread as a lead to test with a nudge, not a wire you have found."}
           </Rubric>
           <p style={{ margin: 0, fontSize: "16px", color: MUTED }}>
-            The score is a linear estimate, not a measured circuit. The direct-path estimate can be chosen under “score by” in the apparatus.
+            The score is a linear estimate, not a measured circuit.{" "}
+            {kind === "direct"
+              ? "The coupling C, as the instrument first scored threads, can be chosen under “score by” in the apparatus."
+              : "The direct-path estimate can be chosen under “score by” in the apparatus."}
           </p>
         </div>
       </div>
@@ -2091,7 +2094,7 @@ const ThreadsApparatus: React.FC<{
         <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
           <div role="group" aria-label="Thread score" style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
             <button type="button" className="btn-ghost plain" aria-pressed={ask.score === "coupling"} onClick={() => onAsk({ score: "coupling" })}>
-              coupling C, as the instrument scores it
+              coupling C, as first built
             </button>
             <button
               type="button"

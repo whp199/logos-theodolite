@@ -992,7 +992,8 @@ const BeforeYouSetOut: React.FC = () => {
             the two verified patches are in the backend: V7_module1_fix.patch (the gathering and remembering split, with the layer
             scalar s; bug 2) and V7_bos_fix.patch (one start mark; bug 6). Since then the server also takes the fixes for bugs 1, 3,
             4, 5 and 8 as options (the mended nudge, the Löwdin and weighted frames with the fraction caught, the direct-path thread
-            score, the chat template, poles ranked by write size); the instrument sends the nudge and chat fixes by default. Still
+            score, the chat template, poles ranked by write size); the instrument sends the nudge, chat and thread-score fixes by
+            default. Still
             open: bugs 7 and 9.
           </dd>
         </dl>

@@ -297,7 +297,9 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   },
   frame: FRAME_AS_BUILT,
   poleRanking: "activation",
-  threadScore: "coupling",
+  // the direct-path estimate (ρ ≈ 0.87 with measured effects) rather than C (≈ 0.41), whose largest scores sit at
+  // layer 1 where the real effects are tiny (REPORT §3.4, bug 4); the server's own default stays C for old callers
+  threadScore: "direct",
 
   selectedLayer: 35, // layer 36
 

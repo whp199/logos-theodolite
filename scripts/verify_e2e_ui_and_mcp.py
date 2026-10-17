@@ -572,22 +572,29 @@ async def main() -> int:
             assert chat_ui["found"] and chat_ui["checked"] and not chat_ui["disabled"] and chat_ui["system"], f"chat control: {chat_ui}"
             assert not chat_ui["notYet"], "the instrument page still shows a [NOT YET IN THE SERVER] control"
             print("  • Instrument: “send it as a chat” is enabled (ticked by default), with a system-prompt field")
-            # tick "rank them by write size" and "score threads by the direct-path estimate"; each retakes the sighting
-            for label, done in (
-                ("rank them by write size", "by write size |a|"),
-                ("score threads by the direct-path estimate", "A direct-path linear estimate, not a verified circuit"),
+            # threads are scored by the direct-path estimate by default: tick "rank them by write size" (a sighting
+            # with direct threads), then untick "score threads by the direct-path estimate" to read C; each retakes it
+            for label, want_checked, done in (
+                ("rank them by write size", True, "by write size |a|"),
+                ("score threads by the direct-path estimate", False, "A weak guide (ρ ≈ 0.41"),
             ):
                 await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle instrument")
+                if not want_checked:
+                    await wait_for(
+                        """document.body.innerText.includes("A direct-path linear estimate, not a verified circuit")""",
+                        "threads scored by the direct-path estimate by default",
+                    )
+                    print("  • Instrument: threads are scored by the direct-path estimate by default")
                 clicked = await cdp.eval_js(
                     f"""(() => {{
                         const l = Array.from(document.querySelectorAll("label.check")).find((x) => x.textContent.includes({json.dumps(label)}));
                         const i = l && l.querySelector("input");
-                        if (!i || i.disabled) return false; i.click(); return true;
+                        if (!i || i.disabled) return null; i.click(); return i.checked;
                     }})()"""
                 )
-                assert clicked, f"could not tick “{label}”"
+                assert clicked is want_checked, f"could not set “{label}” to {want_checked} (got {clicked})"
                 await wait_for(f"""document.body.innerText.includes({json.dumps(done)})""", f"a sighting after “{label}”")
-                print(f"  • Instrument: “{label}” took a new sighting")
+                print(f"  • Instrument: “{label}” {'ticked' if want_checked else 'unticked'}, a new sighting taken")
             await go("#/landmarks")
             await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle landmarks page")
             frame_ui = await cdp.eval_js(

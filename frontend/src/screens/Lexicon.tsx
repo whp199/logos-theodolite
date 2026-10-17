@@ -595,13 +595,14 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </EntryApparatus>
         </Entry>
 
-        <Entry id="threads" head="threads" tech="reader filaments · coupling score" figure={<FigThreads />}>
+        <Entry id="threads" head="threads" tech="reader filaments · direct-path score" figure={<FigThreads />}>
           <Body>
             A thread joins a neuron to a later one, up to six layers on, that seems to listen to it: what the first
             writes, the second reads. Trace a neuron’s threads to see where its influence may travel next.
           </Body>
           <Rubric>
-            Treat a thread as a hint of where to look. Its score agrees only weakly with measured effects.{" "}
+            Treat a thread as a hint of where to look. Its score is an estimate from the weights and this sighting, not a
+            measured effect.{" "}
             <LexLink to="thread-score">Read the sixth caution.</LexLink>
           </Rubric>
           <EntryApparatus title="threads">
@@ -609,7 +610,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             <sup>(ℓ,i)</sup>, w<sub>gate</sub>
             <sup>(ℓ′,j)</sup>⟩ · |a<sub>ℓ′,j</sub>|, for ℓ &lt; ℓ′ ≤ ℓ + 6, norm weights folded in; a virtual-weight
             score after [14]. ρ(|C|, measured effect) = +0.41; the direct-path estimate reaches +0.87, the true gradient
-            +0.93 (V7; REPORT §3.4, bug 4).
+            +0.93 (V7; REPORT §3.4, bug 4). The instrument chooses and ranks threads by the direct-path estimate (
+            <M>thread_score="direct"</M>); C remains the server’s default and a choice on the instrument.
           </EntryApparatus>
         </Entry>
       </EntryGrid>
@@ -865,7 +867,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             sent over the WebSocket <M>/ws/theodolite</M> as{" "}
             <M>
               {
-                '{"action": "sweep", "payload": {"prompt": "Tell me about yourself.", "chat": true, "system": null, "assistant_prefix": "Hi! I", "monuments": ["she", "he", "it"], "survey_mode": "monument", "compare_think": false, "max_new_tokens": 6, "steering": {"enabled": false, …}, "frame_squaring": "gram_schmidt", "pole_ranking": "activation", "thread_score": "coupling"}}'
+                '{"action": "sweep", "payload": {"prompt": "Tell me about yourself.", "chat": true, "system": null, "assistant_prefix": "Hi! I", "monuments": ["she", "he", "it"], "survey_mode": "monument", "compare_think": false, "max_new_tokens": 6, "steering": {"enabled": false, …}, "frame_squaring": "gram_schmidt", "pole_ranking": "activation", "thread_score": "direct"}}'
               }
             </M>{" "}
             (what the instrument sends by default; old callers that send only a prompt get the server’s bare-text defaults)
