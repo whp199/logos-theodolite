@@ -2,7 +2,7 @@
 
 A geometry and circuit instrument for **Gemma-4-31B-it**, and a study it was used for: **is Gemma 4 "female-coded"?**
 
-- **The instrument** (`backend/`, `frontend/`): a FastAPI server with a React Three Fiber UI. It reads Gemma-4-31B-it
+- **The instrument** (`backend/`, `frontend/`): a FastAPI server with a React UI. It reads Gemma-4-31B-it
   (QAT W4A16) through the J++ and Jacobian lenses. It shows layer trajectories, an attention/FFN split, GeGLU neuron "poles",
   reader "filaments", a 3D survey frame, steering, and a LARQL-style neuron vault. Tensor contracts are in
   [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -50,7 +50,9 @@ first commit and the patches as a separate commit.
   and `AddSpec(normalize=True)` has no position mask.
 - The direction at `server.py:171` uses `1/final_norm_weight.clamp(min=0.1)`, which puts 79% of its energy in 3
   negative-weight dimensions.
-- The frontend default (`frontend/src/store/useTheodoliteStore.ts:265`, scale 280) is also in the collapse regime.
+- The old frontend default (scale 280) was also in the collapse regime. The rebuilt frontend sends 0.01 × the median ‖h‖
+  of the weakest chosen layer (0.883 at layer 54, `SAFE_NUDGE_SCALE` in `frontend/src/store/useTheodoliteStore.ts`);
+  the server still builds the old direction.
 - Details are bug #1 in [`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md).
 
 **Also unfixed:**
@@ -68,7 +70,7 @@ Python. Its ".patch MEMIT" edit is a single-neuron column nudge, not MEMIT.
 | Path | Contents |
 |---|---|
 | `backend/` | `theodolite_math.py` (the four modules, CKA, unembed), `engine_runtime.py` (interp-engine runtime, lens loader, W4A16 dequantiser), `server.py` (FastAPI + WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py` |
-| `frontend/` | Vite + React + three.js UI |
+| `frontend/` | Vite + React UI: nine pages (instrument, layer leaf, neuron folio, landmarks, nudge, vault, lexicon, lineage, welcome) with "rubrics" and "apparatus" reading toggles; shows the study's recorded sighting (E6) when no server answers |
 | `scripts/` | `verify_optics.py` (CLI checks), `verify_e2e_ui_and_mcp.py` (server, MCP and headless-Chrome UI checks) |
 | `experiments/REPORT.md` | Main write-up |
 | `experiments/lab/` | `labd.py` (GPU daemon holding the model and lenses), `labclient.py` (submit jobs), `labkit.py` (lens readouts, gender scores, corrected decomposition, interventions, exact same-position VJPs through the 4-bit model) |

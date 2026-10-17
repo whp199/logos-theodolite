@@ -1,0 +1,491 @@
+import React from "react";
+import { Apparatus, IfApparatus, IfRubrics, Missing, Rubric } from "../../components/kit";
+import { useTheodoliteStore, type ActiveEdit, type LarqlEntry } from "../../store/useTheodoliteStore";
+import { INSERT_EXAMPLE, isFloat } from "./lql";
+import { editDescription, num, replyTo } from "./live";
+import { FaceMark, MONO, OwnWords, roman, sentenceInput, smallCaps } from "./bits";
+import { toConsole, useVaultUi } from "./ui";
+
+const radioStyle: React.CSSProperties = { width: 18, height: 18, accentColor: "var(--rubric)", margin: 0 };
+const radioLabel: React.CSSProperties = { display: "flex", alignItems: "center", gap: 10, minHeight: 44, fontSize: 18, cursor: "pointer" };
+const legendStyle: React.CSSProperties = { float: "left", padding: 0, marginRight: 8, ...smallCaps() };
+const fieldsetStyle: React.CSSProperties = {
+  border: 0,
+  margin: 0,
+  padding: 0,
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: "2px 28px",
+};
+
+/** The newest reply to ROLLBACK in the log, if any. */
+const lastRollback = (log: LarqlEntry[]) => log.find((e) => e.ok && (e.data as { status?: string } | null)?.status === "rolled_back") ?? null;
+
+export const EditPanel: React.FC = () => {
+  const ui = useVaultUi();
+  const conn = useTheodoliteStore((s) => s.conn);
+  const larqlLog = useTheodoliteStore((s) => s.larqlLog);
+  const larqlPending = useTheodoliteStore((s) => s.larqlPending);
+  const activeEdits = useTheodoliteStore((s) => s.activeEdits);
+  const executeLarql = useTheodoliteStore((s) => s.executeLarql);
+
+  // ---------- the form (board: renderVals, "edit")
+  const eN = num(ui.eN);
+  const eL = num(ui.eLayer);
+  const eNOk = eN !== null && eN >= 0 && eN <= 21503;
+  const eLOk = eL !== null && eL >= 1 && eL <= 60;
+  const eWord = ui.eWord.trim();
+  const eS = ui.eStrength.trim();
+  const eSOk = isFloat(eS);
+  const isUpd = ui.eKind === "update";
+  const posFace = ui.ePol !== "-";
+  const wordOk = eWord !== "" && !/['"]/.test(eWord);
+  const valid = eNOk && eLOk && (!isUpd || (wordOk && eSOk));
+  const nTxt = eNOk ? String(eN) : "…";
+  const lTxt = eLOk ? String(eL) : "…";
+  const sTxt = eSOk ? eS : "…";
+  const wq = "“" + (eWord || "…") + "”";
+  // layer number -> repo index at the boundary: the vault counts from nought
+  const eLql = isUpd
+    ? "UPDATE LAYER " +
+      (eLOk ? eL - 1 : "…") +
+      " SLOT " +
+      nTxt +
+      " SET object = '" +
+      (eWord || "…") +
+      "' STRENGTH " +
+      sTxt +
+      " POLARITY " +
+      (posFace ? "+" : "-")
+    : "DELETE FROM LAYER " + (eLOk ? eL - 1 : "…") + " WHERE slot = " + nTxt;
+  const plain = isUpd
+    ? "Neuron " +
+      nTxt +
+      " of layer " +
+      lTxt +
+      " will gain a push toward " +
+      wq +
+      ", " +
+      sTxt +
+      " times as strong as its own voice, felt whenever its " +
+      (posFace ? "positive" : "negative") +
+      " face fires. When its " +
+      (posFace ? "negative" : "positive") +
+      " face fires, the push runs the other way, away from " +
+      wq +
+      ". Nothing else in the model changes."
+    : "Neuron " + nTxt + " of layer " + lTxt + " will fall silent: whatever it would have written, on either face, becomes nothing. Nothing else in the model changes.";
+  const problems: string[] = [];
+  if (!eNOk) problems.push("neurons are numbered 0 to 21,503 in every layer");
+  if (!eLOk) problems.push("layers run from 1 to 60");
+  if (isUpd && eWord === "") problems.push("the edit needs a word");
+  if (isUpd && eWord !== "" && !wordOk) problems.push("the word may not contain a quotation mark");
+  if (isUpd && !eSOk) problems.push("the push needs a strength of 0 or more");
+  const read = !valid
+    ? "Complete the form above: " + problems.join("; ") + "."
+    : isUpd
+      ? "UPDATE at index " +
+        (eL! - 1) +
+        " (layer " +
+        eL +
+        "), slot i = " +
+        eN +
+        ", word t = “" +
+        eWord +
+        "”, α = " +
+        eS +
+        ", p = " +
+        (posFace ? "+1" : "−1") +
+        ": a push of length " +
+        eS +
+        " · max(‖c‖, 0.25) along d̂."
+      : "DELETE at index " + (eL! - 1) + " (layer " + eL + "), slot i = " + eN + ": c′ = 0.";
+
+  const make = () => {
+    if (!valid) return;
+    ui.set({ editSent: { lql: eLql, at: Date.now() } });
+    executeLarql(eLql);
+  };
+
+  // ---------- the vault's reply to this page's last edit
+  const editReply = ui.editSent ? replyTo(larqlLog, ui.editSent.lql, ui.editSent.at) : null;
+  const editPending = larqlPending && ui.editSent !== null && editReply === null;
+  const patch = editReply && editReply.ok ? ((editReply.data as { patch?: ActiveEdit } | null)?.patch ?? null) : null;
+
+  // ---------- the ledger: the edits in force, as the vault reports them
+  const none = activeEdits.length === 0;
+  const undoEnabled = !none || conn === "open";
+  const undo = () => {
+    ui.set({ undoAt: Date.now() });
+    executeLarql("ROLLBACK");
+  };
+  const undoReply = ui.undoAt !== null ? replyTo(larqlLog, "ROLLBACK", ui.undoAt) : null;
+  const undoPending = larqlPending && ui.undoAt !== null && undoReply === null;
+  const rolled = lastRollback(larqlLog);
+
+  return (
+    <section
+      role="tabpanel"
+      id="panel-edit"
+      aria-labelledby="tab-edit"
+      style={{ paddingTop: 34, display: "flex", flexWrap: "wrap", gap: "40px 72px", alignItems: "flex-start" }}
+    >
+      <div style={{ flex: "999 1 640px", minWidth: 0, display: "flex", flexDirection: "column", gap: 22 }}>
+        <h2 className="h-sec">ii · change one neuron</h2>
+        <Rubric style={{ maxWidth: 720 }}>Choose what to do, fill in the sentence, and read what it will do before you make the edit.</Rubric>
+        <fieldset style={fieldsetStyle}>
+          <legend style={legendStyle}>what to do</legend>
+          <label style={radioLabel}>
+            <input type="radio" name="e-kind" checked={isUpd} onChange={() => ui.set({ eKind: "update" })} style={radioStyle} />
+            make it say a word more strongly
+          </label>
+          <label style={radioLabel}>
+            <input type="radio" name="e-kind" checked={!isUpd} onChange={() => ui.set({ eKind: "delete" })} style={radioStyle} />
+            silence it
+          </label>
+        </fieldset>
+        {isUpd ? (
+          <>
+            <div style={{ fontSize: 28, lineHeight: 1.8, maxWidth: 820 }}>
+              <label htmlFor="e-n">Make neuron</label>{" "}
+              <input
+                id="e-n"
+                type="number"
+                min={0}
+                max={21503}
+                value={ui.eN}
+                onChange={(e) => ui.set({ eN: e.target.value })}
+                style={sentenceInput(28, "4.4em", { numeric: true })}
+              />{" "}
+              <label htmlFor="e-l">of layer</label>{" "}
+              <input
+                id="e-l"
+                type="number"
+                min={1}
+                max={60}
+                value={ui.eLayer}
+                onChange={(e) => ui.set({ eLayer: e.target.value })}
+                style={sentenceInput(28, "2.8em", { numeric: true })}
+              />{" "}
+              <label htmlFor="e-w">say</label>{" "}
+              <input
+                id="e-w"
+                type="text"
+                value={ui.eWord}
+                onChange={(e) => ui.set({ eWord: e.target.value })}
+                autoComplete="off"
+                spellCheck={false}
+                style={sentenceInput(28, "5em", { italic: true })}
+              />{" "}
+              <label htmlFor="e-s">more strongly, with a push of strength</label>{" "}
+              <input
+                id="e-s"
+                type="number"
+                min={0}
+                step={0.5}
+                value={ui.eStrength}
+                onChange={(e) => ui.set({ eStrength: e.target.value })}
+                style={sentenceInput(28, "3em", { numeric: true })}
+              />
+              .{" "}
+            </div>
+            <fieldset style={fieldsetStyle}>
+              <legend style={legendStyle}>felt when it fires on</legend>
+              <label style={radioLabel}>
+                <input type="radio" name="e-face" checked={posFace} onChange={() => ui.set({ ePol: "+" })} style={radioStyle} />
+                <FaceMark face={1} />
+                its positive face
+              </label>
+              <label style={radioLabel}>
+                <input type="radio" name="e-face" checked={!posFace} onChange={() => ui.set({ ePol: "-" })} style={radioStyle} />
+                <FaceMark face={-1} />
+                its negative face
+              </label>
+            </fieldset>
+          </>
+        ) : (
+          <div style={{ fontSize: 28, lineHeight: 1.8, maxWidth: 820 }}>
+            <label htmlFor="e-n2">Silence neuron</label>{" "}
+            <input
+              id="e-n2"
+              type="number"
+              min={0}
+              max={21503}
+              value={ui.eN}
+              onChange={(e) => ui.set({ eN: e.target.value })}
+              style={sentenceInput(28, "4.4em", { numeric: true })}
+            />{" "}
+            <label htmlFor="e-l2">of layer</label>{" "}
+            <input
+              id="e-l2"
+              type="number"
+              min={1}
+              max={60}
+              value={ui.eLayer}
+              onChange={(e) => ui.set({ eLayer: e.target.value })}
+              style={sentenceInput(28, "2.8em", { numeric: true })}
+            />
+            .{" "}
+          </div>
+        )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 760 }}>
+          <h3 className="h-sub">what this will do</h3>
+          <p style={{ margin: 0, fontSize: 20, lineHeight: 1.5 }}>{plain}</p>
+        </div>
+        <OwnWords
+          lql={eLql}
+          maxWidth={820}
+          note={eLOk ? `Layer ${eL} is written ${eL - 1}: the vault counts from nought. Neuron numbers are used as they are.` : "Choose a layer from 1 to 60."}
+        />
+        {problems.length ? (
+          <p style={{ margin: 0, fontStyle: "italic", fontSize: 17, color: "var(--rubric)" }}>Before you edit: {problems.join("; ")}.</p>
+        ) : null}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px 20px" }}>
+          <button className="btn-primary" type="button" onClick={make}>
+            {isUpd ? "make this edit" : "silence this neuron"}
+          </button>
+          <span style={{ fontSize: 15, color: "var(--muted)" }}>
+            The values filled in are the instrument’s own self-test edit, from{" "}
+            <span style={{ fontFamily: MONO, fontSize: 13, overflowWrap: "anywhere" }}>scripts/verify_optics.py</span>.
+          </span>
+        </div>
+        {editPending ? (
+          <p className="status-line" role="status">
+            The vault is making the edit…
+          </p>
+        ) : editReply && editReply.ok ? (
+          <p className="status-line" role="status">
+            The vault made the edit{patch ? `, patch ${patch.patch_id}` : ""}. It is now in force, listed under the edits in force.
+          </p>
+        ) : editReply && !editReply.ok ? (
+          conn === "open" ? (
+            <p className="error-line" role="alert">
+              The vault refused the edit: {editReply.error}
+            </p>
+          ) : (
+            <p className="status-line" role="status">
+              The server is not answering, so no edit was made.
+            </p>
+          )
+        ) : null}
+        <IfRubrics>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760, paddingTop: 4 }}>
+            {isUpd ? (
+              <Rubric>
+                This is a nudge to one neuron, not a change to what the model knows. The original tool calls it a MEMIT edit, but it is not
+                MEMIT: a single column of a single layer moves and nothing is solved for, so the model may say the word in places you never
+                meant.
+              </Rubric>
+            ) : null}
+            {isUpd && eLOk && eL >= 36 && eL <= 59 ? (
+              <Rubric>
+                Between layers 36 and 59, the direction this edit pushes along lies almost wholly in the model’s quiet dimensions, where the
+                study found that even a small push can derail it.
+              </Rubric>
+            ) : null}
+            {!isUpd ? (
+              <Rubric>
+                One silent neuron rarely changes much. In the study, silencing ten “she” neurons at once at layer 51 moved sentences about
+                women by −1.80 toward “he”; ten random neurons moved them by no more than 0.04.
+              </Rubric>
+            ) : null}
+            <Rubric>An edit stays in force for every sighting, landmark and nudge until you undo it. Read the model’s answer after each one.</Rubric>
+          </div>
+        </IfRubrics>
+        <Apparatus title="what an edit writes" label="Apparatus for an edit" style={{ maxWidth: 860 }}>
+          <dl className="dl">
+            <dt>technical name</dt>
+            <dd>
+              a “.patch” overlay, <span className="mono-wrap">LarqlVaultEngine.apply_patch_surgery</span>. The code calls it a MEMIT edit;
+              it is not MEMIT (Meng et al. 2023) [11]: one column of one layer’s down-projection moves, rank one, with no covariance solve
+              (REPORT §3.3; E6 §3, item 12).
+            </dd>
+            <dt>update</dt>
+            <dd>
+              c′ = c + p · α · max(‖c‖, 0.25) · d̂, where c = W<sub>down</sub>[:, i] of layer ℓ, unpacked from its 4-bit store; p = ±1, the
+              POLARITY; α the STRENGTH (2.5 when left out); and d̂ = normalise((W<sub>U</sub>[t] ⊙ g) · J<sub>ℓ</sub>), the word’s pullback
+              through the J++ lens [4], fitted on the base model.
+            </dd>
+            <dt>silence</dt>
+            <dd>DELETE writes c′ = 0: the neuron still fires, but what it writes is nothing.</dd>
+            <dt>insert</dt>
+            <dd>
+              INSERT chooses the neuron itself, the one whose input side W<sub>gate</sub>[i] lies nearest the subject’s pullback (largest
+              |cos|, whose sign sets p), then writes the object as UPDATE does. The docstring says gate_proj is edited too; only the
+              down-projection column changes (E6 §3, item 12). The reader’s form above has no INSERT; write one by hand.
+            </dd>
+            <dt>this edit</dt>
+            <dd className="num">{read}</dd>
+            <dt>its reply</dt>
+            {patch ? (
+              <dd className="num">
+                patch_id {patch.patch_id}, ‖c‖ (orig_norm) {patch.orig_norm ?? "—"} and ‖c′‖ (new_norm) {patch.new_norm ?? "—"}, at index{" "}
+                {patch.layer_idx} (layer {patch.layer_idx + 1}), slot {patch.neuron_idx}.
+              </dd>
+            ) : (
+              <dd style={{ margin: 0, color: "var(--muted)" }}>
+                patch_id, ‖c‖ (orig_norm) and ‖c′‖ (new_norm): <Missing />
+              </dd>
+            )}
+            <dt>where it lives</dt>
+            <dd>
+              in memory, as <span className="mono-wrap">down_proj._memit_col_overlays[i]</span> on the loaded model; the weights on disk are
+              never written. Every sighting reports the edits in force, under <span className="mono-wrap">larql_status</span>, and the MCP
+              scientist shares the same vault.
+            </dd>
+            <dt>caveat</dt>
+            <dd>
+              From layer 36 the pullback d̂ lies 99–100% in the quiet dimensions, where a small push can derail the model (E6 §4b), and the
+              lens it is pulled back through was fitted on another checkpoint (REPORT §3.4, bug 9). Of the vault’s edits, the study ran only
+              DELETE: silencing ten neurons at layer 51 moved sentences about women by −1.80 (E6 §2.3). It never put UPDATE or INSERT to a
+              causal test.
+            </dd>
+          </dl>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 12px", paddingTop: 4 }}>
+            <button className="btn-ghost" type="button" onClick={() => toConsole(eLql)}>
+              write this edit by hand
+            </button>
+            <button className="btn-ghost" type="button" onClick={() => toConsole(INSERT_EXAMPLE)}>
+              write an insert by hand
+            </button>
+          </div>
+        </Apparatus>
+      </div>
+
+      <aside aria-labelledby="force-head" style={{ flex: "1 1 380px", minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
+        <h3 className="h-sub" id="force-head">
+          edits in force
+        </h3>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 20, paddingBottom: 16, borderBottom: "1px solid var(--hair)" }}>
+          <div
+            style={{
+              fontSize: 104,
+              lineHeight: 0.8,
+              fontWeight: 500,
+              color: "var(--gilt-numeral)",
+              fontVariantNumeric: "lining-nums",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {activeEdits.length}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 4 }}>
+            <span style={smallCaps(15, "0.2em")}>{activeEdits.length === 1 ? "edit in force" : "edits in force"}</span>
+            <span style={{ fontSize: 16, fontStyle: "italic", color: "var(--muted)" }}>
+              {none ? "the model is as it was loaded" : "until you undo them"}
+            </span>
+          </div>
+        </div>
+        {none ? <p style={{ margin: 0, fontSize: 17, color: "var(--muted)" }}>None. The model is running on its own weights.</p> : null}
+        {activeEdits.map((e, i) => (
+          <div
+            key={`${e.patch_id}:${i}`}
+            style={{ display: "grid", gridTemplateColumns: "34px minmax(0, 1fr)", gap: "2px 10px", paddingBottom: 14, borderBottom: "1px solid var(--hair-faint)" }}
+          >
+            <span style={{ fontSize: 18, fontVariantCaps: "all-small-caps", letterSpacing: "0.06em", color: "var(--gilt-text)" }}>{roman(i)}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+              <span style={{ fontSize: 17 }}>{editDescription(e)}</span>
+              <code style={{ fontFamily: MONO, fontSize: 13, color: "var(--ink)", overflowWrap: "anywhere" }}>{e.statement}</code>
+              <IfApparatus>
+                <span className="num" style={{ fontSize: 14, color: "var(--muted)" }}>
+                  patch {e.patch_id}
+                  {e.orig_norm !== undefined && e.new_norm !== undefined ? ` · ‖c‖ ${e.orig_norm} → ‖c′‖ ${e.new_norm}` : ""}
+                </span>
+              </IfApparatus>
+              <Missing what="its voice before and after: not yet in the server’s reply" />
+            </div>
+          </div>
+        ))}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px 16px" }}>
+          <button
+            type="button"
+            onClick={undo}
+            disabled={!undoEnabled}
+            style={{
+              fontFamily: "inherit",
+              fontSize: 19,
+              fontVariantCaps: "all-small-caps",
+              letterSpacing: "0.16em",
+              background: "transparent",
+              color: undoEnabled ? "var(--rubric)" : "var(--muted)",
+              border: `1px solid ${undoEnabled ? "var(--rubric)" : "var(--control)"}`,
+              borderRadius: 2,
+              padding: "11px 24px",
+              minHeight: 48,
+              cursor: undoEnabled ? "pointer" : "default",
+            }}
+          >
+            undo every edit
+          </button>
+          <code style={{ fontFamily: MONO, fontSize: 15, color: "var(--muted)", overflowWrap: "anywhere" }}>ROLLBACK</code>
+        </div>
+        {undoPending ? (
+          <p className="status-line" role="status">
+            The vault is undoing every edit…
+          </p>
+        ) : undoReply && undoReply.ok ? (
+          <p className="status-line" role="status">
+            Every edit undone: {String((undoReply.data as { cleared_patches?: number } | null)?.cleared_patches ?? 0)} cleared.
+          </p>
+        ) : undoReply && !undoReply.ok ? (
+          conn === "open" ? (
+            <p className="error-line" role="alert">
+              The vault refused: {undoReply.error}
+            </p>
+          ) : (
+            <p className="status-line" role="status">
+              The server is not answering, so nothing was undone.
+            </p>
+          )
+        ) : null}
+        <Rubric>
+          Undo returns every neuron in all sixty layers to the model’s own weights. In the study, after undoing, the model’s readings matched
+          the untouched model exactly: the largest difference was 0.0.
+        </Rubric>
+        <Apparatus title="rollback" label="Apparatus for ROLLBACK" sources={false}>
+          <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "minmax(84px, 112px) minmax(0, 1fr)", gap: "6px 16px" }} className="dl">
+            <dt>what it does</dt>
+            <dd>
+              <span className="mono-wrap">rollback_patches()</span>: in each of the 60 layers, clears every column and row overlay on
+              down_proj, gate_proj and up_proj, then empties the list of patches.
+            </dd>
+            <dt>its reply</dt>
+            <dd>
+              <span className="mono-wrap" style={{ fontSize: 13 }}>
+                {'{"status": "rolled_back", "cleared_patches": n, "active_patches_count": 0}'}
+              </span>
+              , with n the edits it cleared.
+            </dd>
+            <dt>as recorded</dt>
+            <dd className="num">
+              after the twelve trials, the largest change in she-against-he log-odds from the untouched model, over sentences about women
+              and men, Gemma describing itself and a human friend named Gemma: 0.0 (
+              <span className="mono-wrap" style={{ fontSize: 13 }}>
+                rollback_check_max_abs_diff
+              </span>
+              ).
+            </dd>
+            {rolled ? (
+              <>
+                <dt>the last reply</dt>
+                <dd>
+                  <span className="mono-wrap" style={{ fontSize: 13 }}>
+                    {JSON.stringify(rolled.data)}
+                  </span>
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt>not recorded</dt>
+                <dd style={{ margin: 0, color: "var(--muted)" }}>
+                  each ROLLBACK’s own reply: <Missing />
+                </dd>
+              </>
+            )}
+          </dl>
+        </Apparatus>
+      </aside>
+    </section>
+  );
+};

@@ -1,0 +1,1060 @@
+import React from "react";
+import { Apparatus, Missing, Page, Rubric } from "../components/kit";
+import { href, type Route } from "../router";
+import { useTheodoliteStore } from "../store/useTheodoliteStore";
+import { wp } from "../lib/words";
+import { ALIASES, INDEX } from "./lexicon/entries";
+import { Cautions } from "./lexicon/Cautions";
+import {
+  Astrolabe,
+  FigApparatus,
+  FigBearing,
+  FigDoubleNegative,
+  FigEdit,
+  FigGathering,
+  FigGlobal,
+  FigJSpace,
+  FigKinship,
+  FigLandmarks,
+  FigLayer,
+  FigLens,
+  FigMatchedControl,
+  FigNeuron,
+  FigNudge,
+  FigRemembering,
+  FigSighting,
+  FigStream,
+  FigThreads,
+  FigVault,
+} from "./lexicon/figures";
+import {
+  Body,
+  Entry,
+  EntryApparatus,
+  EntryGrid,
+  Lede,
+  LexLink,
+  LexSection,
+  M,
+  Note,
+  Onward,
+  Query,
+  Sym,
+} from "./lexicon/parts";
+
+/*
+ * Lexicon — plain words for strange things (folio vii).
+ * Built from the approved canvas Lexicon.dc.html. The page is the instrument's glossary: almost all of it
+ * is static, sourced copy (README.md, ARCHITECTURE.md, REFERENCES.md, experiments/REPORT.md, the V6/V7/V8
+ * notes, E6_tool_audit_REPORT.md, N1_REPORT.md, R1_IT_LENS_REPORT.md and the backend code as audited).
+ * Every entry has a stable id (see ./lexicon/entries.ts) so other pages can link href.lexicon('<id>').
+ * Only one line reads the store: the sighting entry says which sighting is on the instrument page.
+ */
+
+/* ------------------------------------------------------------ recorded examples */
+
+/**
+ * "what it was thinking": the lens's top word-pieces after "Hi! I" in the study's demonstration sighting
+ * (E6_tool_audit_02_sweep_demo.json, prepend_bos=True; lensTop at index 50 = layer 51 and 59 = layer 60).
+ * Shares as the canvas prints them; `bar` is the probability in per cent.
+ */
+const AT_51: { word: string; gloss?: string; share: string; bar: number }[] = [
+  { word: "“bot”", share: "26%", bar: 25.7 },
+  { word: "“Bot”", gloss: "joined to the word before", share: "18%", bar: 18.2 },
+  { word: "“AI”", share: "9.1%", bar: 9.1 },
+];
+const AT_60: { word: string; gloss?: string; share: string; bar: number }[] = [
+  { word: "“am”", gloss: "the word it says next", share: "99.8%", bar: 99.8 },
+];
+
+const ReadoutRow: React.FC<{ word: string; gloss?: string; share: string; bar: number }> = ({ word, gloss, share, bar }) => (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1fr) 56px",
+      gap: "2px 14px",
+      alignItems: "baseline",
+      padding: "4px 0 6px",
+      borderBottom: "1px solid var(--hair-faint)",
+    }}
+  >
+    {gloss ? (
+      <span style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "2px 10px", minWidth: 0 }}>
+        <span style={{ fontSize: 21, lineHeight: 1.2 }}>{word}</span>
+        <span style={{ fontSize: 14, fontStyle: "italic", color: "var(--muted)" }}>{gloss}</span>
+      </span>
+    ) : (
+      <span style={{ fontSize: 21, lineHeight: 1.2 }}>{word}</span>
+    )}
+    <span className="num" style={{ textAlign: "right", fontSize: 15 }}>
+      {share}
+    </span>
+    <div className="bar-track" style={{ gridColumn: "1 / -1" }}>
+      <div className="bar-fill" style={{ width: `${bar}%` }} />
+    </div>
+  </div>
+);
+
+const READOUT_LABEL: React.CSSProperties = {
+  fontSize: 14,
+  fontVariantCaps: "all-small-caps",
+  letterSpacing: "0.16em",
+  color: "var(--muted)",
+};
+
+/* ------------------------------------------------------------ the one live line */
+
+/** Keep a long question readable inside a sentence: its last words, with an ellipsis. */
+function tail(s: string, n = 60): string {
+  const t = s.trim();
+  return t.length > n ? `…${t.slice(t.length - (n - 1)).trimStart()}` : t;
+}
+
+/**
+ * "The sighting on the instrument page follows “I” in “Hi! I”, and took 6.2 seconds." With the recorded
+ * sighting loaded this reads exactly as the canvas; after a live sighting it names that one.
+ */
+const SightingOnInstrument: React.FC = () => {
+  const s = useTheodoliteStore((st) => st.sighting);
+  if (!s) return <Note>No sighting is on the instrument page yet.</Note>;
+  const context = s.answerBegins.trim() ? s.answerBegins : s.question;
+  const secs = s.elapsedMs != null && Number.isFinite(s.elapsedMs) ? (s.elapsedMs / 1000).toFixed(1) : null;
+  return (
+    <Note>
+      The sighting on the instrument page follows {s.readAt != null ? wp(s.readAt) : <Missing />} in {wp(tail(context))}
+      , and took {secs != null ? `${secs} seconds` : <Missing what="not recorded" />}.
+    </Note>
+  );
+};
+
+/* ------------------------------------------------------------ the page */
+
+const STATS: [string, string][] = [
+  ["60", "layers, one above another"],
+  ["5,376", "numbers in the stream"],
+  ["21,504", "neurons in every layer"],
+  ["262,144", "word-pieces it knows"],
+];
+
+const INDEX_LINK: React.CSSProperties = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: 8,
+  minHeight: 44,
+  paddingTop: 8,
+  boxSizing: "border-box",
+  color: "var(--ink)",
+  textDecoration: "none",
+};
+
+const FOOTER = (
+  <>
+    Reading google/gemma-4-31b-it (4-bit) through the J++ lens · 60 layers · 5,376 dimensions ·{" "}
+    <a href={href.lineage()}>the lineage of these ideas</a>
+  </>
+);
+
+export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
+  <Page route={route} folio="folio vii" footer={FOOTER}>
+    {/* ---------------------------------------------------------------- the title leaf */}
+    <section
+      aria-labelledby="lex-title"
+      style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "36px 72px", padding: "52px 0 48px" }}
+    >
+      <div style={{ flex: "999 1 560px", minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
+        <p className="h-sec">the lexicon</p>
+        <h1
+          id="lex-title"
+          style={{
+            margin: 0,
+            fontSize: "clamp(42px, 5.2vw, 68px)",
+            lineHeight: 1.04,
+            fontWeight: 400,
+            letterSpacing: "-0.005em",
+            color: "var(--ink)",
+            maxWidth: 720,
+          }}
+        >
+          Plain words for strange things
+        </h1>
+        <p style={{ margin: 0, fontSize: 23, lineHeight: 1.5, maxWidth: 660 }}>
+          Inside Gemma 4 lies a country with no names on its map. This instrument surveys it, and gives its strange
+          features plain names. Each entry sets the name you will meet on the instrument beside the specialist’s, then
+          says in a sentence or two what the thing is.
+        </p>
+        <Rubric style={{ maxWidth: 640 }}>
+          Keep this leaf open beside the instrument. Lines in red, like this one, tell you what to do; switch them off
+          with the rubrics button above once you know the way. The apparatus button beside it adds each entry’s formula
+          and sources.
+        </Rubric>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "18px 44px",
+            marginTop: 10,
+            paddingTop: 20,
+            borderTop: "1px solid var(--hair)",
+          }}
+        >
+          {STATS.map(([n, what]) => (
+            <div key={what} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span className="num" style={{ fontSize: 42, lineHeight: 1, color: "var(--gilt-numeral)" }}>
+                {n}
+              </span>
+              <span style={{ fontSize: 15, color: "var(--muted)" }}>{what}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <figure
+        style={{
+          flex: "1 1 380px",
+          minWidth: 0,
+          margin: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          alignItems: "center",
+        }}
+      >
+        <Astrolabe />
+        <figcaption
+          style={{ fontSize: 15, fontStyle: "italic", color: "var(--muted)", textAlign: "center", maxWidth: 420 }}
+        >
+          The rete of an astrolabe carries pointers for the bright stars. Here its ring carries the words of this
+          lexicon.
+        </figcaption>
+      </figure>
+    </section>
+
+    <Apparatus
+      title="notation used beneath every entry"
+      label="Apparatus for the notation of this lexicon"
+      style={{ padding: "12px 0 28px" }}
+    >
+      <dl className="dl num">
+        <dt>counting</dt>
+        <dd>
+          layer ℓ = index + 1. Code, report and the vault’s query language count from 0, so the report’s L40–57 is
+          layers 41–58 here.
+        </dd>
+        <dt>the stream</dt>
+        <dd>
+          h<sub>ℓ</sub> ∈ ℝ<sup>5376</sup>, the residual stream leaving layer ℓ at the read position; h<sub>pre</sub>, h
+          <sub>mid</sub>, h<sub>post</sub> the hook points <M>resid_pre</M>, <M>resid_mid</M>, <M>resid_post</M>.
+        </dd>
+        <dt>the lens</dt>
+        <dd>
+          J<sub>ℓ</sub> ∈ ℝ<sup>5376 × 5376</sup>, the J++ matrix unless another is named, fp16 on disk and cast to bf16
+          on load, for layers 1–59; J<sub>60</sub> = I.
+        </dd>
+        <dt>the readout</dt>
+        <dd>
+          unembed(u) = 30 · tanh(W<sub>U</sub> · RMSNorm(u) / 30); W<sub>U</sub> the 262,144 unembedding rows (tied to
+          the embedding); fnw the final norm’s weight.
+        </dd>
+        <dt>the neuron</dt>
+        <dd>
+          a its activation, σ = sign(a) its pole; w<sub>gate</sub>, w<sub>up</sub> its read rows, w<sub>down</sub> its
+          write column; s the layer scalar of Gemma 4.
+        </dd>
+        <dt>references</dt>
+        <dd>
+          [n] as numbered in <M>REFERENCES.md</M> (41 entries); E1–E7, V1–V8, N1 and R1 are the study’s experiments,
+          verifiers, neuron-label study and lens refit, written up in <M>experiments/REPORT.md</M>.
+        </dd>
+      </dl>
+    </Apparatus>
+
+    {/* ---------------------------------------------------------------- i · the index */}
+    <section
+      aria-labelledby="index-head"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+        padding: "28px 0 8px",
+        borderTop: "1px solid var(--hair)",
+      }}
+    >
+      <div className="row-between">
+        <h2 className="h-sec" id="index-head">
+          i · the index
+        </h2>
+        <span style={{ fontSize: 15, color: "var(--muted)" }}>
+          twenty-four words and one cross-reference, in alphabetical order
+        </span>
+      </div>
+      <Rubric style={{ maxWidth: 760 }}>
+        Choose a word to go to it. Each entry gives the name you will meet on the instrument first, then the
+        specialist’s name in small capitals.
+      </Rubric>
+      <ul
+        style={{ listStyle: "none", margin: "4px 0 0", padding: 0, columns: "4 250px", columnGap: 48, fontSize: 18 }}
+      >
+        {INDEX.map((item) => (
+          <li key={item.label} style={{ breakInside: "avoid" }}>
+            <LexLink to={item.id} style={INDEX_LINK}>
+              <span>
+                {item.see ? (
+                  <>
+                    {item.label} <span style={{ fontStyle: "italic", color: "var(--muted)" }}>see</span> {item.see}
+                  </>
+                ) : (
+                  item.label
+                )}
+              </span>
+              <span
+                aria-hidden="true"
+                style={{ flex: "1 1 auto", minWidth: 12, borderBottom: "1px dotted var(--control)" }}
+              />
+              <span
+                style={{
+                  fontSize: 15,
+                  color: "var(--gilt-text)",
+                  fontVariantCaps: "all-small-caps",
+                  letterSpacing: "0.12em",
+                }}
+              >
+                {item.section}
+              </span>
+            </LexLink>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    {/* ---------------------------------------------------------------- ii · inside the model */}
+    <LexSection id="model-head" title="ii · inside the model" pad={60}>
+      <Lede cap="S">
+        ixty layers stand between the word that arrives and the word the model says next. At every one, the model
+        gathers from the words before, remembers what it learned in training, and adds both to a single running
+        stream. These are the names for what lives in there.
+      </Lede>
+      <Rubric style={{ maxWidth: 760 }}>New here? Read “layer” and “word-piece” first; the rest follow from them.</Rubric>
+      <EntryGrid>
+        <Entry id="layer" head="layer" tech="decoder layer · layers 1 to 60" figure={<FigLayer />}>
+          <Body>
+            One of the sixty stages each word-piece passes through on its way to becoming the next word. Every layer
+            reads the stream, gathers, remembers, and writes its change back. The instrument draws them as stacked
+            rings: layer 1 at the bottom, layer 60 at the top.
+          </Body>
+          <Rubric>
+            This instrument counts layers from 1. The study’s report counts from 0, so its “L35” is layer 36 here, and
+            its “L40–57” is layers 41–58.
+          </Rubric>
+          <EntryApparatus title="layer">
+            h<sub>mid</sub> = h<sub>pre</sub> + Attn(h<sub>pre</sub>), h<sub>post</sub> = s · (h<sub>mid</sub> + FFN(h
+            <sub>mid</sub>)), the sandwich norms folded into Attn and FFN; the layer scalar s is 0.03 at layer 60,
+            0.07–0.10 at layers 1–2 and 0.45–0.99 elsewhere (REPORT §0). Gemma 4 [1]; the stream as a sum of writes
+            after Elhage et al. 2021 [14].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="word-piece"
+          head="word-piece"
+          tech="token · 262,144 in the vocabulary"
+          figure={
+            <div
+              style={{
+                flex: "0 0 auto",
+                minWidth: 120,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                paddingTop: 4,
+              }}
+            >
+              <span lang="zh" style={{ fontSize: 36, lineHeight: 1.15 }}>
+                “是一个”
+              </span>
+              <span style={{ fontSize: 15, fontStyle: "italic", color: "var(--muted)" }}>Chinese: “is a”</span>
+              <span
+                style={{ fontSize: 13, fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", color: "var(--muted)" }}
+              >
+                one word-piece
+              </span>
+            </div>
+          }
+        >
+          <Body>
+            The unit the model reads and writes. A word-piece may be a whole word, part of one, or several words fused
+            together; the same word with and without a space before it counts as two different pieces.
+          </Body>
+          <Note>
+            On the instrument, word-pieces stand in curly quotes. Pieces in other languages carry an italic
+            translation, given only where we are sure of it.
+          </Note>
+          <EntryApparatus title="word-piece">
+            a token id in 0 … 262,143 of the Gemma 4 vocabulary [1]. A chat prompt now opens <M>[2, 105, …]</M>, one
+            start mark; before the V7 fix it opened <M>[2, 2, 105, …]</M> (REPORT §3.4, bug 6).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="stream"
+          aliases={ALIASES.stream}
+          head="stream strength"
+          tech={
+            <>
+              residual stream · residual norm <Sym>‖h‖</Sym>
+            </>
+          }
+          figure={<FigStream />}
+        >
+          <Body>
+            The stream is the model’s running draft: a list of 5,376 numbers for each word-piece, which every layer
+            reads and adds to. Its strength is the size of that draft at one layer, a single number.
+          </Body>
+          <Note>
+            Gemma 4 also scales the whole stream down at every layer, so it forgets: something written at layer 30
+            fades below a tenth within about five layers. That shrinking is about as large as what a layer remembers,
+            so since the study’s fix (V7) the instrument measures it on its own rather than counting it as remembering.
+          </Note>
+          <EntryApparatus title="stream strength">
+            ‖h<sub>ℓ</sub>‖<sub>2</sub> = (Σ<sub>d</sub> h<sub>ℓ,d</sub>
+            <sup>2</sup>)<sup>½</sup> over the 5,376 numbers. The figure’s values are medians over the study’s
+            positions, start marks excluded: 237, 269, 175, 142, 88 at layers 30, 36, 42, 48, 54 (V7, bug 1). The
+            rescale (s − 1) · h<sub>pre</sub> is reported apart as <M>rescale_norm</M>. Residual stream after [14];
+            RMSNorm [16].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="gathering"
+          head="gathering"
+          tech={
+            <>
+              attention · <Sym>Δ</Sym> attn
+            </>
+          }
+          figure={<FigGathering />}
+        >
+          <Body>
+            The part of each layer that looks back at the earlier word-pieces and draws in what it needs from them: the
+            subject of the sentence, the question that was asked. On the instrument, gathering is always drawn in lapis
+            blue.
+          </Body>
+          <Note>
+            Find it on <a href={href.instrument()}>the instrument</a>, in the leaf’s “gathering or remembering”.
+          </Note>
+          <EntryApparatus title="gathering">
+            Δ<sub>attn</sub> = s · (h<sub>mid</sub> − h<sub>pre</sub>) · J<sub>ℓ</sub>
+            <sup>⊤</sup>, the attention write as it lands in the stream (V7 fix; REPORT §3.4, bug 2). Before the fix
+            the tool reported it a factor of 1/s too large. Attention as an additive write after [14].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="remembering"
+          head="remembering"
+          tech={
+            <>
+              feed-forward network · FFN · <Sym>Δ</Sym> ffn
+            </>
+          }
+          figure={<FigRemembering />}
+        >
+          <Body>
+            The other part of each layer. It consults what the model learned in training, held in the layer’s 21,504
+            neurons, and writes what it recalls into the stream. On the instrument, remembering is always drawn in
+            gilt.
+          </Body>
+          <Note>
+            Since the study’s fix (V7) the instrument divides gathering from remembering correctly; before it, the
+            larger share was misjudged at 12 of the 60 layers.
+          </Note>
+          <EntryApparatus title="remembering">
+            Δ<sub>ffn</sub> = (h<sub>post</sub> − s · h<sub>mid</sub>) · J<sub>ℓ</sub>
+            <sup>⊤</sup>; remembering’s share = ‖Δ<sub>ffn</sub>‖ / (‖Δ<sub>attn</sub>‖ + ‖Δ<sub>ffn</sub>‖). The old h
+            <sub>post</sub> − h<sub>mid</sub> met the true write at a median cosine of 0.49; the patch reaches ≥ 0.9985
+            at all 60 layers (<M>V7_module1_fix.patch</M>; REPORT §3.4, bug 2). GeGLU block [15].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="global"
+          head="global and local attention"
+          tech={
+            <>
+              full and sliding-window attention ·{" "}
+              <span style={{ fontVariantCaps: "normal", fontStyle: "normal", color: "var(--gilt-text)" }}>✦</span>
+            </>
+          }
+          figure={<FigGlobal />}
+        >
+          <Body>
+            Fifty of the sixty layers gather only from the last 1,024 word-pieces: local attention. Every sixth layer,
+            marked <span style={{ color: "var(--gilt-text)" }}>✦</span> (layers 6, 12, 18 and so on to 60), looks back
+            over the whole conversation: global attention. On the instrument these ten are the gilded rings.
+          </Body>
+          <EntryApparatus title="global and local attention">
+            sliding window of 1,024 on 50 layers (head dimension 256); full attention at layers 6, 12, … 60, indices 5,
+            11, … 59 (head dimension 512, p-RoPE). From the Gemma 4 model card and config [1]; ARCHITECTURE §2.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="neuron"
+          aliases={ALIASES.neuron}
+          head="neuron and its two faces"
+          tech="GeGLU neuron · its two poles, after Cammarata [9] · 43,008 poles per layer"
+          figure={<FigNeuron />}
+        >
+          <Body>
+            Each layer remembers with 21,504 neurons. A neuron can fire forwards or in reverse, and each direction
+            carries its own meaning, so we speak of its two faces: the positive face, drawn as a filled lozenge, and the
+            negative face, a hollow one. The two faces answer to unrelated things, yet at layers 41–58 they push the
+            next word in mirror-image directions.
+          </Body>
+          <Note>
+            At layer 36, neuron 21189 showed its negative face, whose words are “myself”, “<span lang="hi">मुझ</span>”, “
+            <span lang="zh">的我</span>”: <span style={{ fontStyle: "italic" }}>English “myself”, Hindi “me”, Chinese “of me”.</span>
+          </Note>
+          <Note>
+            Specialists call the two faces poles, after Cammarata’s essay{" "}
+            <span style={{ fontStyle: "italic" }}>Neural Networks Are Already Clean</span> (Goodfire, 2026). Its place
+            among the instrument’s ideas is told in <a href={href.lineage()}>the lineage</a>.
+          </Note>
+          <Rubric>
+            Below layer 41, a neuron’s words are only a rumour. <LexLink to="labels">Read the first caution.</LexLink>
+          </Rubric>
+          <EntryApparatus title="neuron and its two poles" label="Apparatus for neuron and its two faces">
+            a = GELU<sub>tanh</sub>(x · w<sub>gate</sub>) · (x · w<sub>up</sub>), x the normed stream; pole σ =
+            sign(a), bipolar in practice through the sign of x · w<sub>up</sub>; the pole writes σ · w<sub>down</sub>,
+            labelled unembed((σ · w<sub>down</sub>) · J<sub>ℓ</sub>
+            <sup>⊤</sup>) against the naked eye’s unembed(σ · w<sub>down</sub>). Poles after Cammarata 2026 [9]; GeGLU
+            [15]. Output labels held at layers 41–58 only; one input label cannot describe both poles (REPORT §3.2).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="double-negative"
+          head="double-negative regime"
+          tech="gated feed-forward · a term from Cammarata [9]"
+          figure={<FigDoubleNegative />}
+        >
+          <Body>
+            Every neuron has a gate, and it usually fires hard only when the gate is open. A shut gate still lets a
+            small backward trickle through. If the neuron’s other input is negative too, the two negatives multiply into
+            a positive, and the neuron shows its positive face for an inverted reason.
+          </Body>
+          <Note>
+            The study found this rare: under one per cent of strong firing. It matters most among the very strongest
+            firings of neurons that seldom fire, which is one more reason a neuron’s label can mislead.
+          </Note>
+          <EntryApparatus title="double-negative regime">
+            g = x · w<sub>gate</sub> &lt; 0 and u = x · w<sub>up</sub> &lt; 0, so a = GELU<sub>tanh</sub>(g) · u &gt;
+            0, since GELU of a negative number is a small negative number. The gate is open (g &gt; 0) in 72–100% of
+            strong events; the regime holds &lt; 1% of strong-event mass, but closed-gate leak events make 13–33% of
+            the top-1% mass of sparse neurons at layers 11, 21, 56 and 58 (REPORT §3.2; N1). Term from Cammarata 2026
+            [9].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="strength"
+          head="strength"
+          tech={
+            <>
+              absolute activation <Sym>|a|</Sym>
+            </>
+          }
+        >
+          <Body>
+            How hard a neuron fired on this word-piece, whichever face it showed. At each layer the instrument lists the
+            fifteen strongest.
+          </Body>
+          {/* a recorded example: the demonstration sighting's loudest neuron at layer 36 (act −7.156) */}
+          <p
+            className="num"
+            style={{
+              margin: 0,
+              fontSize: 16,
+              color: "var(--ink)",
+              borderTop: "1px solid var(--hair-faint)",
+              borderBottom: "1px solid var(--hair-faint)",
+              padding: "6px 0",
+            }}
+          >
+            neuron 21189 · layer 36 · negative face · strength 7.2
+          </p>
+          <Note>
+            Those fifteen carry only 10–41% of what a layer remembers (layers 21–59): a sample of the layer’s work, not
+            the whole of it.
+          </Note>
+          <EntryApparatus title="strength">
+            |a| = |mlp_act<sub>ℓ</sub>[i]| at the read position; the instrument keeps the top 15 by |a| and σ = sign(a).
+            Magnitudes and shown shares are not calibrated (eps floor; softcap). Proposed: rank poles by write size |a|
+            · ‖w<sub>down</sub>‖ and show the fraction of the FFN write they explain (REPORT §3.4, bug 8). Poles after
+            Cammarata 2026 [9]; GeGLU [15].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="threads" head="threads" tech="reader filaments · coupling score" figure={<FigThreads />}>
+          <Body>
+            A thread joins a neuron to a later one, up to six layers on, that seems to listen to it: what the first
+            writes, the second reads. Trace a neuron’s threads to see where its influence may travel next.
+          </Body>
+          <Rubric>
+            Treat a thread as a hint of where to look. Its score agrees only weakly with measured effects.{" "}
+            <LexLink to="thread-score">Read the sixth caution.</LexLink>
+          </Rubric>
+          <EntryApparatus title="threads">
+            C<sub>(ℓ,i)→(ℓ′,j)</sub> = ⟨σ<sub>i</sub> w<sub>down</sub>
+            <sup>(ℓ,i)</sup>, w<sub>gate</sub>
+            <sup>(ℓ′,j)</sup>⟩ · |a<sub>ℓ′,j</sub>|, for ℓ &lt; ℓ′ ≤ ℓ + 6, norm weights folded in; a virtual-weight
+            score after [14]. ρ(|C|, measured effect) = +0.41; the direct-path estimate reaches +0.87, the true gradient
+            +0.93 (V7; REPORT §3.4, bug 4).
+          </EntryApparatus>
+        </Entry>
+      </EntryGrid>
+    </LexSection>
+
+    {/* ---------------------------------------------------------------- iii · the instrument */}
+    <LexSection id="inst-head" title="iii · the instrument">
+      <Lede cap="T">
+        he theodolite is a surveyor’s telescope set on graduated circles, made to measure the bearing and elevation of
+        distant landmarks. This one surveys a stream of 5,376 numbers instead of a hillside. These are its parts, and
+        the names of what it shows you.
+      </Lede>
+      <EntryGrid>
+        <Entry
+          id="lens"
+          aliases={ALIASES.lens}
+          head="the lens and the naked eye"
+          tech="J++ lens · Jacobian lens · logit lens"
+          figure={<FigLens />}
+        >
+          <Body>
+            To read what a layer holds, the instrument turns the stream into word-pieces. The naked eye reads it as if
+            it were already the last layer (the logit lens). The lens first translates each layer’s stream into the
+            last layer’s terms with a fitted matrix, then reads it (the J++ lens; its sibling, the Jacobian lens, served
+            the study for comparison but is not loaded by the instrument). From about layer 46 upward the two see
+            nearly the same thing.
+          </Body>
+          <Note>
+            The shipped J++ lens was fitted on the base model, from 64 short passages of Wikipedia text, not on the
+            instruct model you are reading. A lens refitted on the instruct model raised agreement with the model’s
+            real next word, in its own replies at layer 51, from 25% to 45% (the study’s R1 refit). The instrument does
+            not use that lens yet.
+          </Note>
+          <EntryApparatus title="the lens and the naked eye">
+            naked eye: unembed(h<sub>ℓ</sub>), the logit lens [8]. The lens: unembed(h<sub>ℓ</sub> · J<sub>ℓ</sub>
+            <sup>⊤</sup>) with J the J++ lens (Ayonrinde &amp; Lindsey 2026) [4], whose backward pass follows the
+            R-lens rules [5]; the study’s comparison lens is the Jacobian lens (Gurnee et al. 2026) [2, 3], on disk but
+            not loaded by the server (<M>load_jlens=False</M>, <M>backend/server.py:78</M>). Both were fitted on the
+            base model over WikiText-103 [7] (J++ on 64 passages of 128 word-pieces, the Jacobian lens on 861) and
+            hosted by Neuronpedia [6]. The published J++ readout also drops non-semantic word-pieces; this instrument
+            applies the matrix only (REPORT §3.1).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="j-space"
+          head="J-space"
+          tech="Jacobian space · the workspace the lens reads · Gurnee et al. [2]"
+          figure={<FigJSpace />}
+        >
+          <Body>
+            The common ground into which the lens carries every layer: the last layer’s own terms, where a stream can be
+            read directly as words. When the instrument says a layer was thinking a word, it means that layer’s stream,
+            carried into J-space, reads as that word.
+          </Body>
+          <Note>
+            The idea comes from Gurnee and colleagues at Anthropic (2026), in a paper titled{" "}
+            <span style={{ fontStyle: "italic" }}>
+              Verbalizable Representations Form a Global Workspace in Language Models
+            </span>
+            . At a word like “I”, the study found, J-space holds a default guess, usually the speaker, rather than the
+            person the model finally works out is meant.
+          </Note>
+          <EntryApparatus title="J-space">
+            h̃<sub>ℓ</sub> = h<sub>ℓ</sub> · J<sub>ℓ</sub>
+            <sup>⊤</sup> ∈ ℝ<sup>5376</sup>, J<sub>ℓ</sub> an averaged Jacobian of the final state with respect to
+            layer ℓ’s (the J-lens estimator sums cotangents over targets t′ ≥ t and averages over sources), read out by
+            unembed. Gurnee et al. 2026 [2], code [3], the J++ refinement [4], pre-fitted lenses [6]. Mid-layer pronoun
+            binding is a role default, not resolved reference (REPORT §2.1, E7, V5); the lenses are comparative, not
+            absolute, instruments (REPORT §3.1).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="thinking" head="what it was thinking" tech="J++ readout · the top five · once called plumes">
+          <Body>
+            The few word-pieces the model would say next if it stopped at this layer, read through the lens, each with
+            its share. Low in the model they are a murmur of many voices; near the top they settle on the word it
+            actually says.
+          </Body>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, maxWidth: 380, marginTop: 4 }}>
+            <span style={READOUT_LABEL}>after “Hi! I”, at layer 51</span>
+            {AT_51.map((r) => (
+              <ReadoutRow key={r.word} {...r} />
+            ))}
+            <span style={{ ...READOUT_LABEL, marginTop: 10 }}>and at layer 60</span>
+            {AT_60.map((r) => (
+              <ReadoutRow key={r.word} {...r} />
+            ))}
+          </div>
+          <Rubric>
+            A single reading is not a finding: compare it with a matched sighting before you believe it.{" "}
+            <LexLink to="single">Read the second caution.</LexLink>
+          </Rubric>
+          <EntryApparatus title="what it was thinking">
+            the top five of softmax(unembed(h<sub>ℓ</sub> · J<sub>ℓ</sub>
+            <sup>⊤</sup>)) at the read position, from the demonstration sighting (E6, “Hi! I”). Shares are not
+            calibrated probabilities (softcap 30; REPORT §3.4, bug 8). The lens’s top word matched the model’s real next
+            word at most 3% of the time through layer 50 and 28% at layer 59 (REPORT §3.1). J++ [4].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="landmarks"
+          head="landmarks"
+          tech="monuments · survey frame · Gram–Schmidt"
+          figure={<FigLandmarks />}
+        >
+          <Body>
+            Three word-pieces you choose, such as “she”, “he” and “it”, that fix the directions of the survey: the first
+            sets 0°, the second 90°, the third points straight up. Every layer’s stream is then measured against them.
+          </Body>
+          <Note>
+            Choose them on <a href={href.landmarks()}>the landmarks page</a>.
+          </Note>
+          <Rubric>
+            Keep the same three, in the same order, whenever you compare sightings: the order changes the bearings.{" "}
+            <LexLink to="frame">Read the fifth caution.</LexLink>
+          </Rubric>
+          <EntryApparatus title="landmarks">
+            e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt(W<sub>U</sub>[t<sub>1</sub>], W<sub>U</sub>[t
+            <sub>2</sub>], W<sub>U</sub>[t<sub>3</sub>]) in fp32, on raw W<sub>U</sub> without the final-norm weight;
+            the server’s default landmarks are “spider”, “eight”, “insect”, chosen for its default two-hop prompt, which
+            comes from [2]. A second mode locks the frame to one neuron: w<sub>gate</sub>, (σ · w<sub>down</sub>) · J
+            <sub>ℓ</sub>
+            <sup>⊤</sup> and the w<sub>gate</sub> of the reader on its first thread, up to six layers on, else of the
+            next layer’s loudest neuron (<M>"survey_mode": "pole_motif"</M>). Proposed: a Löwdin frame (W W<sup>⊤</sup>)
+            <sup>−½</sup> W on fnw ⊙ W<sub>U</sub> [33], order-free (REPORT §3.4, bug 3).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="bearing"
+          aliases={ALIASES.bearing}
+          head="bearing and elevation"
+          tech={
+            <>
+              azimuth <Sym>θ</Sym> · elevation <Sym>φ</Sym>
+            </>
+          }
+          figure={<FigBearing />}
+        >
+          <Body>
+            Where the stream points, measured against the landmarks the way a surveyor measures a hilltop. Bearing is
+            the direction around the plane of the first two landmarks; elevation is how far it rises toward the third,
+            from −90° to +90°.
+          </Body>
+          <Note>
+            The three landmarks catch only a sliver of the stream, 2.4–3.9% of it in the study, so a bearing is a rough
+            sketch of direction.
+          </Note>
+          <EntryApparatus title="bearing and elevation">
+            (x, y, z) = (⟨h̃<sub>ℓ</sub>, e<sub>1</sub>⟩, ⟨h̃<sub>ℓ</sub>, e<sub>2</sub>⟩, ⟨h̃<sub>ℓ</sub>, e
+            <sub>3</sub>⟩); θ = atan2(y, x), φ = asin(z / ‖(x, y, z)‖). The frame catches 2.4–3.9% of ‖h̃‖; reordering
+            the landmarks swings θ by a median of 58–99° (V7; REPORT §3.4, bug 3). The proposed order-free frame is
+            Löwdin’s symmetric orthonormalisation [33].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="kinship" head="kinship of layers" tech="linear CKA · the 60 × 60 map" figure={<FigKinship />}>
+          <Body>
+            How alike two layers arrange the same word-pieces, from 0, unrelated, to 1, identical. Every layer is
+            perfectly akin to itself, so the map’s diagonal is always full; look for blocks of close kin, stretches
+            where the model’s arrangement holds steady.
+          </Body>
+          <Note>
+            For a question of a single word-piece the instrument falls back to a simpler likeness than true CKA.
+          </Note>
+          <EntryApparatus title="kinship of layers">
+            CKA(X, Y) = ⟨H K<sub>X</sub> H, H K<sub>Y</sub> H⟩<sub>F</sub> / (‖H K<sub>X</sub> H‖<sub>F</sub> ‖H K
+            <sub>Y</sub> H‖<sub>F</sub>), K = X X<sup>⊤</sup> over the prompt’s word-pieces at <M>resid_post</M>, H the
+            centring matrix; with one word-piece, the squared cosine of feature-centred states. Linear CKA (Kornblith et
+            al. 2019) [13]. The doubled start mark raised mean kinship from 0.608 to 0.663 (V7; REPORT §3.4, bug 6).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="rubric"
+          head="rubric"
+          tech="from the Latin rubrica, red ochre"
+          figure={
+            <p
+              style={{
+                flex: "0 1 200px",
+                margin: 0,
+                paddingTop: 6,
+                fontStyle: "italic",
+                fontSize: 19,
+                lineHeight: 1.4,
+                color: "var(--rubric)",
+              }}
+            >
+              Take a sighting, then choose any layer to open it.
+            </p>
+          }
+        >
+          <Body>
+            A line in red italic that tells you what to do next. Scribes and early printers set their headings and
+            directions apart in red ink, so that a reader could find the way through a long book at a glance; the word
+            comes from the Latin <span style={{ fontStyle: "italic" }}>rubrica</span>, the red ochre they used. Rubrics
+            run through every page of the instrument; once you know the way, switch them off with the rubrics button at
+            the top of the page.
+          </Body>
+          <EntryApparatus title="rubric">
+            rubrica, red ochre: the headings, initials and directions that manuscripts and early printed books set in
+            red. On these pages every italic line in rubric red is guidance, never a reading; the rubrics setting (on by
+            default) shows or hides them all, on every page.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="apparatus"
+          head="apparatus"
+          tech="from the critical edition’s apparatus criticus"
+          figure={<FigApparatus />}
+        >
+          <Body>
+            The scholar’s notes. In a critical edition, the apparatus is the band of small print at the foot of the page
+            that records the variant readings, the sources and the editor’s reasoning. Here it is a band beneath each
+            section, ruled off by a double gilt line, that gives the formulas, the raw numbers, the sources and every
+            control the instrument has.
+          </Body>
+          <Note>
+            Switch it on with the apparatus button at the top of any page. Switch it off, and the page reads as plainly
+            as before; nothing on it is lost.
+          </Note>
+          <EntryApparatus title="apparatus">
+            each block gives, where they exist: the technical name, the formula, the raw values from the repository,
+            the reference numbers of REFERENCES.md, the study’s caveat with its section of <M>experiments/REPORT.md</M>,
+            and the controls for experts. A value the repository does not record is shown as <Missing />, never
+            estimated. The sources are gathered in <a href={href.lineage()}>the lineage</a>.
+          </EntryApparatus>
+        </Entry>
+      </EntryGrid>
+    </LexSection>
+
+    {/* ---------------------------------------------------------------- iv · acts of the reader */}
+    <LexSection id="acts-head" title="iv · acts of the reader">
+      <Lede cap="F">
+        ive things you can do here. The first three only look. The last two push on the model, and both pushes can be
+        undone.
+      </Lede>
+      <EntryGrid>
+        <Entry id="sighting" head="a sighting" tech="sweep · all sixty layers" figure={<FigSighting />}>
+          <Body>
+            Write a question, and if you like the start of an answer; then take a sighting. The instrument follows the
+            last word-piece up through all sixty layers and records, at each one, what it was thinking, how much it
+            gathered and remembered, and which neurons fired.
+          </Body>
+          <SightingOnInstrument />
+          <Onward to={href.instrument()}>take a sighting on the instrument →</Onward>
+          <EntryApparatus title="a sighting">
+            sent over the WebSocket <M>/ws/theodolite</M> as{" "}
+            <M>
+              {
+                '{"action": "sweep", "payload": {"prompt": "…", "monuments": ["spider", "eight", "insect"], "compare_think": false, "max_new_tokens": 6}}'
+              }
+            </M>
+            ; the reply is a binary THEO frame (path, split, kinship, 15 poles a layer, threads) and a JSON frame of
+            word-pieces (ARCHITECTURE §4). The demonstration sighting is E6’s, 6,237 ms, taken before the two V7 fixes.
+            Served by FastAPI [40] over interp-engine’s hook points [36].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="matched-control"
+          head="a matched control"
+          tech="matched control · background correction"
+          figure={<FigMatchedControl />}
+        >
+          <Body>
+            A second sighting, taken to read the first against. It differs in only the one thing you are asking about:
+            the same question with no name in it, say, or a plain background word in place of yours. Read the
+            difference between the two; that difference, not either reading on its own, is what the study trusted.
+          </Body>
+          <Note>
+            A surveyor checks a bearing against a known mark before writing it in the field book. A sighting needs its
+            control for the same reason.
+          </Note>
+          <Rubric>On the instrument, open the apparatus beneath your question to choose a control sighting.</Rubric>
+          <EntryApparatus title="a matched control">
+            Δ = (r<sub>sighting</sub> − r<sub>control</sub>) / (r<sub>woman</sub> − r<sub>man</sub>): a readout’s
+            shift, mean-centred, in units of the woman–man persona span (or another concept’s span). For example, the
+            default against a nameless AI at layers 31–40: +0.6 [+0.2, +0.9]% of the span (E1). A single-condition
+            readout is uninterpretable without matched controls and background correction (REPORT §3.1; §3.5,
+            recommendation 2).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="vault" head="the vault" tech="LARQL · VINDEX3 · LQL queries" figure={<FigVault />}>
+          <Body>
+            A catalogue of every neuron in the model, sixty layers of 21,504, that you can question in a small query
+            language: which neurons lean toward a word, or what one neuron’s two faces say.
+          </Body>
+          <Query>DESCRIBE POLE LAYER 50 SLOT 5313</Query>
+          <Note>
+            The vault’s language counts layers from 0, so this asks after neuron 5313 at layer 51: a two-faced neuron
+            for “she” and “he” that the study confirmed is real.
+          </Note>
+          <Note>
+            Its answers are suggestions, not tests: of 102 gender neurons it proposed, 35 proved selective. The queries
+            run in Python; LARQL lends only its name.
+          </Note>
+          <Onward to={href.vault()}>open the vault →</Onward>
+          <EntryApparatus title="the vault">
+            <M>SELECT * FROM POLES NEAREST 'she' WHERE layer = 50 LIMIT 10</M> ranks the 21,504 neurons of the vault’s
+            layer 50, layer 51 here, by |cos(w<sub>down,i</sub>, (fnw ⊙ W<sub>U</sub>[t]) · J<sub>ℓ</sub>)|, the write
+            column scaled by the post-feed-forward norm weight, the sign naming the pole; <M>EDGES NEAREST</M> runs the
+            same query; <M>DESCRIBE POLE</M> decodes both poles by lens and naked eye. Also as the MCP tools{" "}
+            <M>query_larql_vault</M>, <M>inspect_pole</M>, <M>trace_downstream_readers</M>,{" "}
+            <M>test_motif_hypothesis</M>. Named after LARQL / VINDEX3 (chrishayuk) [10]; a projected contribution, not a
+            counterfactual (REPORT §3.3). Proposed: activation contexts stored per pole (REPORT §3.4, bug 7).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="nudge" head="nudge" tech="steering · once called the laser" figure={<FigNudge />}>
+          <Body>
+            Push the stream at chosen layers toward one word and away from another, then watch what the model says
+            instead. A nudge leaves nothing behind: turn it off and the model answers as before.
+          </Body>
+          <Rubric>
+            Keep a nudge small, about a hundredth of the stream’s strength. The old defaults break the model:{" "}
+            <LexLink to="nudge-defaults">read the seventh caution</LexLink> before you nudge.
+          </Rubric>
+          <Onward to={href.nudge()}>open the nudge →</Onward>
+          <EntryApparatus title="nudge">
+            h<sub>ℓ</sub> ← h<sub>ℓ</sub> + k · v / ‖v‖ at <M>resid_post</M> of each chosen layer, with v = ((W
+            <sub>U</sub>[t<sub>+</sub>] − W<sub>U</sub>[t<sub>−</sub>]) / max(fnw, 0.1)) · J<sub>ℓ</sub>, or one
+            pole’s write σ · w<sub>down</sub>. Server defaults: “six” against “eight”, k = 650 at layers 30, 36, 42, 48,
+            54, every position (the old interface’s default k was 280; this one sends k = 0.01 × the median ‖h‖ of the
+            weakest chosen layer, 0.883 at layer 54). Proposed: v = fnw ⊙ ΔW<sub>U</sub> with the
+            quiet dimensions masked, k about 0.01–0.02 of ‖h‖, the start mark spared (REPORT §3.4, bug 1; §3.5,
+            recommendation 4). Activation addition [21, 22].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="edit" head="an edit" tech=".patch · a single-neuron column nudge, not MEMIT" figure={<FigEdit />}>
+          <Body>
+            Change what one neuron writes, in the model’s own weights, and see what follows. An edit stays until you
+            undo it; one command undoes them all:
+          </Body>
+          <Query>ROLLBACK</Query>
+          <Note>
+            The study tested the vault’s top ten “she” neurons at layer 51 this way, deleting them and rolling back: the
+            pull toward “she” in passages about women fell by 1.80 log-odds, while ten random neurons moved it by 0.04
+            at most.
+          </Note>
+          <Note>
+            Despite its old label, an edit is not MEMIT: it rewrites one neuron’s output column and solves for nothing
+            else.
+          </Note>
+          <EntryApparatus title="an edit">
+            <M>UPDATE LAYER l SLOT i SET object = 't' [STRENGTH α] [POLARITY ±]</M>: w<sub>down,i</sub> ← w
+            <sub>down,i</sub> + σ · α · max(‖w<sub>down,i</sub>‖, 0.25) · (fnw ⊙ W<sub>U</sub>[t]) · J<sub>ℓ</sub> /
+            ‖(fnw ⊙ W<sub>U</sub>[t]) · J<sub>ℓ</sub>‖, α = 2.5 by default; <M>INSERT</M> picks the slot whose gate
+            best matches the subject; <M>DELETE FROM LAYER l WHERE slot = i</M> sets the column to zero;{" "}
+            <M>ROLLBACK</M> clears every overlay. Not MEMIT [11]: no covariance solve (REPORT §3.3); rank-one editing
+            as background [12].
+          </EntryApparatus>
+        </Entry>
+      </EntryGrid>
+    </LexSection>
+
+    {/* ---------------------------------------------------------------- v · where the instrument can mislead you */}
+    <Cautions />
+
+    {/* ---------------------------------------------------------------- vi · about the study */}
+    <section aria-labelledby="study-head" style={{ display: "flex", flexWrap: "wrap", gap: "32px 72px", paddingTop: 64 }}>
+      <div style={{ flex: "999 1 560px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+        <h2 className="h-sec" id="study-head">
+          vi · about the study
+        </h2>
+        <p style={{ margin: 0, fontSize: 21, lineHeight: 1.55, maxWidth: 760 }}>
+          This instrument was built alongside a study that asked a single question: is Gemma 4 “female-coded”? By
+          default, no. Along the way the study turned the instrument on itself: seven experiments, eight adversarial
+          verifiers that re-tested every headline, a study of neuron labels against their real effects, and a refit of
+          the lens on the instruct model, 314 GPU jobs in all. Every caution on this page comes from that work.
+        </p>
+        <p style={{ margin: 0, maxWidth: 760 }}>
+          To read more, open <code style={{ fontFamily: "var(--mono)", fontSize: 16 }}>experiments/REPORT.md</code> in
+          the repository, and read the README’s “Status and known issues” before you trust a reading.
+        </p>
+        <p style={{ margin: 0, maxWidth: 760 }}>
+          The ideas this instrument joins together, from the Jacobian lens and J-space to the neuron’s two poles and the
+          vault’s names, are set out with their makers in <a href={href.lineage()}>the lineage</a>.
+        </p>
+        <Apparatus
+          title="about the study"
+          style={{ maxWidth: 760, gap: 0, fontVariantNumeric: "lining-nums tabular-nums" }}
+        >
+          <p style={{ margin: "2px 0 0" }}>
+            E1–E7 experiments, V1–V8 adversarial verifiers, the N1 neuron-label study with two verifiers, and the R1 lens
+            refit: 314 GPU jobs through one lab daemon, on Gemma-4-31B-it (QAT W4A16) [1] and one RTX 5090. The study’s
+            verdict on the synthesis of [2], [4], [9] and [10]: neat as a question, oversold as built (REPORT §3.3).
+            Statistics use bootstrap intervals [30] and Wilson intervals [29]; the full list of 41 references is{" "}
+            <M>REFERENCES.md</M>.
+          </p>
+        </Apparatus>
+        <p style={{ margin: 0, fontSize: 16, color: "var(--muted)", maxWidth: 760 }}>
+          The experiments and reports were designed, run and written by Claude Code agents, directed by the repository
+          owner. Claims that did not survive verification are listed in §4 of the report.
+        </p>
+      </div>
+      <div style={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 22 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: 18,
+            paddingBottom: 16,
+            borderBottom: "1px solid var(--hair)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 96,
+              lineHeight: 0.8,
+              fontWeight: 500,
+              color: "var(--gilt-numeral)",
+              fontVariantNumeric: "lining-nums",
+            }}
+          >
+            0
+          </span>
+          <span style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 2 }}>
+            <span
+              style={{
+                fontSize: 15,
+                fontVariantCaps: "all-small-caps",
+                letterSpacing: "0.2em",
+                color: "var(--muted)",
+                fontVariantNumeric: "lining-nums",
+              }}
+            >
+              of 320 samples
+            </span>
+            <span style={{ fontSize: 17 }}>in which Gemma 4, given no system prompt, called itself “she”</span>
+          </span>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <h3 className="h-sub">a note on counting</h3>
+          <p style={{ margin: 0, fontSize: 17 }}>
+            The report numbers layers from 0; this instrument numbers them from 1. Every layer named on this page has
+            been converted: the report’s “L40–57” is layers 41–58 here.
+          </p>
+        </div>
+      </div>
+    </section>
+  </Page>
+);

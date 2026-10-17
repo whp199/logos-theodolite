@@ -27,17 +27,21 @@ theodolite2/
     ├── package.json
     ├── vite.config.ts
     ├── index.html
+    ├── scripts/make_fixture.py        # builds src/fixtures/e6-demo-sighting.json from the E6 demo sweep
     └── src/
         ├── main.tsx
-        ├── App.tsx
+        ├── App.tsx                    # hash routes -> pages (each page its own chunk)
+        ├── index.css                  # the visual system: vellum, ink, rubric red, gilt, lapis; EB Garamond
+        ├── reading.ts                 # "rubrics" / "apparatus" reading toggles, remembered per viewer
+        ├── router.ts                  # #/instrument, #/layer/36, #/neuron/54/15491/pos, #/landmarks, ...
+        ├── lib/words.ts               # plain-word helpers (word-pieces, glosses, certainty, layer trust)
+        ├── fixtures/e6-demo-sighting.json # the recorded sighting shown when no server answers
         ├── store/
-        │   └── useTheodoliteStore.ts # Zustand state & Binary WebSocket frame decoder
-        └── components/
-            ├── AstrolabeScene.tsx    # React Three Fiber 60-layer 3D astrolabe canvas
-            ├── LayerRings.tsx        # 60 horizontal glass rings (L6..L60 Global Attention in gold/cyan)
-            ├── BallisticTrajectory.tsx # Token trajectory, delta_attn_J (cyan) & delta_ffn_J (gold), plumes
-            ├── DipoleFilaments.tsx   # Oriented Bipolar GeGLU needles (+ North / - South) & reader filaments
-            └── ReticleHUD.tsx        # Theodolite HUD: Azimuth θ, Elevation φ, ||h_l||_2, 60x60 CKA, Laser Steer, LARQL console
+        │   ├── useTheodoliteStore.ts  # Zustand state, WebSocket + HTTP wiring, nudge defaults
+        │   └── sighting.ts            # one normalised "sighting" from a live frame pair or the fixture
+        ├── components/kit.tsx         # page frame, nav, reading toggles, <Rubric>, <Apparatus>, <Missing>, <NotYet>
+        └── screens/                   # Incipit, Instrument, LayerLeaf, NeuronFolio, Landmarks, Nudge, Vault,
+                                       # Lexicon, Lineage (+ a folder of parts for each)
 ```
 
 ---

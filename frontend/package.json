@@ -6,8 +6,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
-    "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 4173"
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "fixture": "python3 -I scripts/make_fixture.py"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.4",

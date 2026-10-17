@@ -5,11 +5,12 @@ Runs inside a single process/network namespace to verify:
 1. FastAPI + Binary Float32 WebSocket (`/ws/theodolite`) wire format (`0x5448454F`) & JSON metadata
 2. FastMCP Scientist Tools (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`)
 3. LARQL / VINDEX3 FFN Vault queries (`/api/larql`)
-4. Headless Chrome WebGL2 / React Three Fiber 3D Theodolite UI inspection loop via CDP:
-   - Zero console or WebGL errors
-   - 60-Layer Astrolabe, Ballistic Trajectory (`delta_attn_J` cyan / `delta_ffn_J` gold),
-     Bipolar GeGLU Dipole Needles, Downstream Reader Filaments, and 60x60 CKA HUD rendered
-   - Interactive screenshots saved to $THEODOLITE_ARTIFACT_DIR (default: artifacts/e2e/)
+4. Headless Chrome inspection of the UI (frontend/dist, built first) via CDP:
+   - Zero console errors or page exceptions
+   - the first live sighting replaces the recorded one and the 60-ring drawing renders
+   - on every page, the "rubrics" and "apparatus" reading toggles show and hide their blocks
+   - a gentle nudge (×0.01 of the stream) round-trips; screenshots saved to $THEODOLITE_ARTIFACT_DIR
+     (default: artifacts/e2e/)
 """
 
 from __future__ import annotations
@@ -275,9 +276,9 @@ async def main() -> int:
             )
 
         # -------------------------------------------------------------------------
-        # Step 3: Headless Chrome WebGL2 + React Three Fiber 3D Theodolite Inspection
+        # Step 3: Headless Chrome inspection of the instrument's pages (reader and scholar views)
         # -------------------------------------------------------------------------
-        print("\n[4/4] Launching Headless Chrome WebGL2 Inspection & Screenshot Loop...")
+        print("\n[4/4] Launching Headless Chrome page inspection & screenshot loop...")
         chrome_Data_dir = Path(tempfile.mkdtemp(prefix="theodolite_chrome_"))
         chrome_cmd = [
             os.environ.get("CHROME_BIN") or shutil.which("google-chrome-stable") or shutil.which("chromium") or "google-chrome-stable",
@@ -324,135 +325,107 @@ async def main() -> int:
             cdp = CDPClient(ws_debug_url)
             await cdp.connect()
 
-            # Wait for the initial WebSocket sweep to finish streaming and rendering in the 3D scene
-            for _ in range(90):
-                state_info = await cdp.eval_js(
-                    """(() => {
-                        const bodyText = document.body ? document.body.innerText : "";
-                        const canvas = document.querySelector("canvas");
-                        return {
-                            hasStreamOnline: bodyText.includes("WS STREAM LIVE"),
-                            hasGenerated: bodyText.includes("8."),
-                            isSweeping: bodyText.includes("SWEEPING 60 LAYERS"),
-                            hasCanvas: !!canvas,
-                            canvasW: canvas ? canvas.width : 0,
-                            canvasH: canvas ? canvas.height : 0,
-                        };
-                    })()"""
-                )
-                if (
-                    state_info
-                    and state_info.get("hasStreamOnline")
-                    and state_info.get("hasGenerated")
-                    and not state_info.get("isSweeping")
-                ):
-                    break
-                await asyncio.sleep(0.5)
-            else:
-                raise RuntimeError(f"Frontend did not finish initial sweep render in time: {state_info}")
+            async def wait_for(js: str, what: str, tries: int = 120, delay: float = 0.5) -> Any:
+                last = None
+                for _ in range(tries):
+                    last = await cdp.eval_js(js)
+                    if last:
+                        return last
+                    await asyncio.sleep(delay)
+                raise RuntimeError(f"Timed out waiting for {what}: {last}")
 
-            # Trigger LARQL Nearest 'spider' query so the LARQL console shows live results in Screenshot #1
-            await cdp.eval_js(
+            async def go(route: str) -> None:
+                await cdp.eval_js(f"(() => {{ location.hash = {json.dumps(route)}; }})()")
+                await asyncio.sleep(0.8)
+
+            # The instrument: wait until the first live sighting has replaced the recorded one (E6 fixture)
+            await go("#/instrument")
+            await wait_for(
                 """(() => {
-                    const buttons = Array.from(document.querySelectorAll("button"));
-                    const larqlBtn = buttons.find(b => b.innerText.includes("Nearest 'spider'"));
-                    if (larqlBtn) larqlBtn.click();
+                    const t = document.body ? document.body.innerText : "";
+                    return t.includes("· ready") && t.includes("it went on") && !t.includes("the study’s recorded sighting");
+                })()""",
+                "the first live sighting",
+            )
+            figure = await cdp.eval_js(
+                """(() => {
+                    const svg = document.querySelector('svg[role="img"][aria-label^="Sixty stacked rings"]');
+                    return { found: !!svg, paths: svg ? svg.querySelectorAll("path").length : 0 };
                 })()"""
             )
-            await asyncio.sleep(1.2)
+            print(f"  • Instrument drawing: found={figure['found']} paths={figure['paths']}")
+            assert figure["found"] and figure["paths"] > 10, f"Instrument drawing missing: {figure}"
 
-            # Let Three.js render several frames and measure WebGL2 context health & rAF FPS
-            webgl_report = await cdp.eval_js(
-                """new Promise((resolve) => {
-                    const canvases = Array.from(document.querySelectorAll("canvas"));
-                    const mainCanvas = canvases[0];
-                    const gl = mainCanvas.getContext("webgl2") || mainCanvas.getContext("webgl");
-                    const glErr = gl ? gl.getError() : -1;
-                    const renderer = gl ? gl.getParameter(gl.RENDERER) : "none";
-                    let frames = 0;
-                    const t0 = performance.now();
-                    function tick() {
-                        frames++;
-                        if (frames < 30) {
-                            requestAnimationFrame(tick);
-                        } else {
-                            const elapsed = performance.now() - t0;
-                            resolve({
-                                canvasCount: canvases.length,
-                                width: mainCanvas.width,
-                                height: mainCanvas.height,
-                                glError: glErr,
-                                renderer: renderer,
-                                measuredFps: Math.round((frames * 1000) / Math.max(elapsed, 1)),
-                            });
-                        }
-                    }
-                    requestAnimationFrame(tick);
-                })"""
-            )
-            print(
-                f"  • WebGL2 Context Health: canvases={webgl_report['canvasCount']} "
-                f"({webgl_report['width']}x{webgl_report['height']}) | "
-                f"gl.getError()={webgl_report['glError']} | rAF={webgl_report['measuredFps']} FPS | "
-                f"renderer={webgl_report['renderer']}"
-            )
-            assert webgl_report["glError"] == 0, f"WebGL error code: {webgl_report['glError']}"
-            assert webgl_report["canvasCount"] >= 2, "Expected 3D Astrolabe canvas + 60x60 CKA canvas"
+            # How to read these pages: rubrics (red italic guidance) and apparatus (double-gilt-ruled blocks)
+            count_js = """(() => {
+                const all = Array.from(document.querySelectorAll("main *"));
+                const red = all.filter((e) => {
+                    const cs = getComputedStyle(e);
+                    return cs.fontStyle === "italic" && cs.color === "rgb(143, 43, 30)" && e.offsetParent !== null
+                        && Array.from(e.childNodes).some((n) => n.nodeType === 3 && n.textContent.trim().length > 20);
+                }).length;
+                // apparatus blocks: ruled off by a double gilt line (some decorative frames use one too)
+                const ruled = all.filter((e) => getComputedStyle(e).borderTopStyle === "double" && e.offsetParent !== null);
+                const app = ruled.length;
+                const notes = ruled.filter((e) => e.getAttribute("role") === "note").length;
+                return { red, app, notes };
+            })()"""
+            click_js = """((name) => {
+                const b = Array.from(document.querySelectorAll('[aria-label="How to read these pages"] button'))
+                    .find((x) => x.textContent.includes(name));
+                b.click();
+                return b.getAttribute("aria-pressed");
+            })"""
+            routes = ["#/", "#/instrument", "#/layer/36", "#/neuron/54/15491/pos", "#/landmarks", "#/nudge",
+                      "#/vault", "#/lexicon", "#/lineage"]
+            for route in routes:
+                await go(route)
+                reader = await cdp.eval_js(count_js)  # rubrics on, apparatus off (fresh profile)
+                await cdp.eval_js(f"{click_js}('apparatus')")
+                await cdp.eval_js(f"{click_js}('rubrics')")
+                await asyncio.sleep(0.3)
+                scholar = await cdp.eval_js(count_js)  # rubrics off, apparatus on
+                await cdp.eval_js(f"{click_js}('apparatus')")
+                await cdp.eval_js(f"{click_js}('rubrics')")
+                await asyncio.sleep(0.3)
+                print(f"  • {route:<22} rubric lines {reader['red']:>3} → {scholar['red']:>3} | "
+                      f"apparatus blocks {reader['app']:>3} → {scholar['app']:>3}")
+                # a few red italic lines are warnings the canvas keeps visible; the rubrics must all go
+                assert reader["red"] > 0 and scholar["red"] < reader["red"], f"{route}: rubrics toggle did not work"
+                assert reader["notes"] == 0 and scholar["app"] > reader["app"], f"{route}: apparatus toggle did not work"
 
-            # Capture Screenshot #1 (Monument Mode 60-Layer Astrolabe)
-            shot1 = ARTIFACT_DIR / "theodolite_monument_view.png"
+            # Screenshot #1: the instrument, scholar's view
+            await go("#/instrument")
+            await cdp.eval_js(f"{click_js}('apparatus')")
+            await asyncio.sleep(0.5)
+            shot1 = ARTIFACT_DIR / "theodolite_instrument_scholar_view.png"
             await cdp.screenshot(shot1)
-            print(f"  • Saved Screenshot #1 (Monument Mode 60-Layer Astrolabe): {shot1}")
+            print(f"  • Saved Screenshot #1 (the instrument, apparatus open): {shot1}")
+            await cdp.eval_js(f"{click_js}('apparatus')")
 
-            # Trigger Pole-Locked Motif Mode (automatically triggers 60-layer sweep)
-            await cdp.eval_js(
+            # Screenshot #2: arm a gentle nudge (×0.01 of the stream) and wait for the nudged sighting
+            await go("#/nudge")
+            armed = await cdp.eval_js(
                 """(() => {
-                    const buttons = Array.from(document.querySelectorAll("button"));
-                    const poleBtn = buttons.find(b => b.innerText.includes("Pole-Locked Motif"));
-                    if (poleBtn) poleBtn.click();
+                    const b = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "arm the nudge");
+                    if (b && !b.disabled) { b.click(); return true; }
+                    return false;
                 })()"""
             )
-            await asyncio.sleep(1.0)
-            for _ in range(60):
-                is_ready = await cdp.eval_js(
-                    """!document.body.innerText.includes("SWEEPING 60 LAYERS") && document.body.innerText.includes("Write L")"""
-                )
-                if is_ready:
-                    break
-                await asyncio.sleep(0.5)
-            await asyncio.sleep(0.8)
-            shot2 = ARTIFACT_DIR / "theodolite_pole_motif_view.png"
+            assert armed, "Could not find an enabled 'arm the nudge' button"
+            # the page first takes a plain sighting of its question, then the nudged one; stay on it meanwhile
+            await wait_for(
+                """(() => { const t = document.body.innerText;
+                    return !t.includes("TAKE A SIGHTING TO SEE THE NUDGED ANSWER") && !t.includes("taking a sighting"); })()""",
+                "the nudged sighting",
+            )
+            await go("#/instrument")
+            nudged = await cdp.eval_js("""document.body.innerText.includes("nudged")""")
+            assert nudged, "The instrument does not mark the sighting as nudged"
+            await go("#/nudge")
+            shot2 = ARTIFACT_DIR / "theodolite_nudge_view.png"
             await cdp.screenshot(shot2)
-            print(f"  • Saved Screenshot #2 (Pole-Locked Motif Frame): {shot2}")
-
-            # Trigger Click-to-Steer Causal Laser (+six / -eight) in Monument Mode and capture Screenshot #3
-            await cdp.eval_js(
-                """(() => {
-                    const buttons = Array.from(document.querySelectorAll("button"));
-                    const monBtn = buttons.find(b => b.innerText.includes("Monument Mode"));
-                    if (monBtn) monBtn.click();
-                })()"""
-            )
-            await asyncio.sleep(0.3)
-            await cdp.eval_js(
-                """(() => {
-                    const buttons = Array.from(document.querySelectorAll("button"));
-                    const fireBtn = buttons.find(b => b.innerText.includes("FIRE LASER"));
-                    if (fireBtn) fireBtn.click();
-                })()"""
-            )
-            await asyncio.sleep(1.0)
-            for _ in range(60):
-                steered_ready = await cdp.eval_js(
-                    """!document.body.innerText.includes("SWEEPING 60 LAYERS") && document.body.innerText.includes("LASER STEERED")"""
-                )
-                if steered_ready:
-                    break
-                await asyncio.sleep(0.5)
-            await asyncio.sleep(0.8)
-            shot3 = ARTIFACT_DIR / "theodolite_steered_laser_view.png"
-            await cdp.screenshot(shot3)
-            print(f"  • Saved Screenshot #3 (Live SteeringSpec Laser Flipped to 'six'): {shot3}")
+            print(f"  • Saved Screenshot #2 (after a gentle nudge): {shot2}")
 
             print(
                 f"  • Console Errors: {len(cdp.console_errors)} | Page Exceptions: {len(cdp.page_exceptions)}"
@@ -477,7 +450,7 @@ async def main() -> int:
         # Final VRAM check
         health_after = (await client.get("/api/health")).json()
         print(
-            f"\n[SUMMARY] Peak GPU VRAM across E2E Server + FastMCP + 3D UI Sweeps: "
+            f"\n[SUMMARY] Peak GPU VRAM across E2E Server + FastMCP + UI sweeps: "
             f"{health_after['vram_peak_gb']:.2f} GB (< 30.00 GB limit)"
         )
         assert health_after["vram_peak_gb"] < 30.0
@@ -486,7 +459,7 @@ async def main() -> int:
     await asyncio.sleep(0.5)
     server_task.cancel()
     print("=" * 92)
-    print("ALL PHASE 2 BACKEND, FASTMCP & 3D FRONTEND VERIFICATION CHECKS PASSED (ZERO ERRORS)")
+    print("ALL BACKEND, FASTMCP & FRONTEND VERIFICATION CHECKS PASSED (ZERO ERRORS)")
     print("=" * 92)
     return 0
 
