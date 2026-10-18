@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Apparatus, IfRubrics, Missing, Page, Rubric, Wp } from "../components/kit";
+import { Apparatus, IfRubrics, LensCaution, LensRecord, Missing, Page, Rubric, Wp } from "../components/kit";
 import { ControlSighting } from "../components/ControlSighting";
 import { href, navigate, type Route } from "../router";
 import {
@@ -18,6 +18,7 @@ import {
 } from "../store/useTheodoliteStore";
 import { certainty, comma, gloss, kindOf, minus, ms, signed, wp } from "../lib/words";
 import { describeFrame } from "../lib/frame";
+import { lensLabel, useReadingLens } from "../lib/lens";
 import { Dial } from "./layerLeaf/Dial";
 import {
   L36_COS_ATTN,
@@ -209,11 +210,13 @@ const AskedStrip: React.FC<{ s: Sighting }> = ({ s }) => {
   const begun = s.answerBegins;
   const underline = read !== "" && begun.endsWith(read);
   const went = s.continuation.trim();
+  const { lens } = useReadingLens(s);
   const facts = [
     `read at the word ${lastWord(s)}`,
     s.elapsedMs != null ? `${N_LAYERS} layers surveyed in ${ms(s.elapsedMs)}` : `${N_LAYERS} layers surveyed`,
-    "J++ lens",
+    lensLabel(lens),
   ];
+  if (s.source === "fixture") facts.push("the study’s recorded sighting, taken through the same lens");
   if (s.isNudged) facts.push("a nudged sighting");
   return (
     <div
@@ -255,16 +258,26 @@ const AskedStrip: React.FC<{ s: Sighting }> = ({ s }) => {
 
 /* ---------------------------------------------------------- the leaf head */
 
-function thinkingClause(c: Ctx): string {
+/** The head sentence's reading. Through a lens the readout, not the model, is the subject: its shares describe the lens's
+ * guess, uncalibrated (erratum E30). At the last layer the lens is the identity, and the odds are the model's own. */
+function thinkingClause(c: Ctx, lensName: string): string {
   const t = top1(c.L);
   if (!t) return c.live ? "the server sent no reading through the lens" : "the lens’s reading was not kept in this sighting";
   const w = wordOrPicto(t.token);
   const p = t.prob;
-  if (p == null) return `the lens’s strongest guess is ${w}`;
-  if (p < 0.1) return `the model has not yet settled on a word: its strongest guess, ${w}, holds less than a tenth of the vote`;
-  if (p < 0.2) return `the model is undecided: its strongest guess, ${w}, holds ${pct1(p)} of the vote`;
-  if (p < 0.6) return `the model leans toward ${w}, which holds ${pct1(p)} of the vote`;
-  return `the model is all but certain of ${w}, which holds ${pct1(p)} of the vote`;
+  if (c.no >= N_LAYERS) {
+    if (p == null) return `the model’s likeliest next word is ${w}`;
+    if (p < 0.1) return `the model’s own odds are spread thin: its likeliest word, ${w}, holds less than a tenth of them`;
+    if (p < 0.2) return `the model’s own odds are divided: its likeliest word, ${w}, holds ${pct1(p)}`;
+    if (p < 0.6) return `the model’s own odds lean toward ${w}, which holds ${pct1(p)} of them`;
+    return `the model is all but certain of ${w}, which holds ${pct1(p)} of its odds`;
+  }
+  const through = `through the ${lensName} lens`;
+  if (p == null) return `${through} the strongest word is ${w}`;
+  if (p < 0.1) return `${through} no word stands out: the strongest, ${w}, holds less than a tenth of the readout`;
+  if (p < 0.2) return `${through} the readout is divided: its strongest word, ${w}, holds ${pct1(p)}`;
+  if (p < 0.6) return `${through} the readout leans toward ${w}, which holds ${pct1(p)} of it`;
+  return `${through}, ${w} holds ${pct1(p)} of the readout`;
 }
 
 function subtitle(c: Ctx): string {
@@ -276,17 +289,22 @@ function subtitle(c: Ctx): string {
   const p = t.prob;
   const verb =
     p == null ? `turns to ${w}` : p < 0.1 ? `murmurs of ${w}, among many voices` : p < 0.2 ? `wavers, with ${w} in front` : p < 0.6 ? `leans toward ${w}` : `all but says ${w}`;
-  return `where, through the lens, the word ${at} ${verb}`;
+  // at layer 60 the lens is the identity: these are the model's own odds
+  return c.no === 60 ? `where, in the model’s own odds, the word ${at} ${verb}` : `where, through the lens, the word ${at} ${verb}`;
 }
 
 const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
   const { L, s, no } = c;
+  const { lens } = useReadingLens(s);
   const [a, b, lc] = s.landmarks;
   const kind = L.isGlobal
     ? { kind: "global attention", gloss: "looks back over the whole conversation, not only the last 1,024 word-pieces" }
     : { kind: kindOf(false).kind, gloss: kindOf(false).gloss };
   const recall = recallOf(L.ffnShare);
   const loud = loudestOf(L);
+  // the caught share is of the lens-read state, or of the raw stream when each layer has its own frame (lib/frame.tsx)
+  const F = describeFrame(s);
+  const caught = F.raw || F.centred ? F.denomWords : "of that reading";
   const aria =
     `The numeral ${no} at the hub of an engraved dial. ` +
     (L.az != null
@@ -334,9 +352,21 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
             </span>
           </div>
           <Rubric style={{ fontSize: 16, maxWidth: 660, textAlign: "center" }}>
-            Bearing and elevation place the thought among three landmark words, “{a}”, “{b}” and “{lc}”. Read them loosely: here the
-            three landmarks catch only {L.projFrac != null ? `${(Math.round(L.projFrac * 1000) / 10).toFixed(1)}%` : <M c={c} />} of the
-            thought as the lens sees it, and the study found that merely reordering them can swing the bearing by 58–99° (REPORT §3.4).
+            {F.raw ? (
+              <>
+                Bearing and elevation place this layer’s stream among three landmark words, “{a}”, “{b}” and “{lc}”, each carried back
+                to this layer through the {lens.name} lens.
+              </>
+            ) : (
+              <>
+                Bearing and elevation place this layer’s stream, as the {lens.name} lens reads it, among three landmark words,{" "}
+                “{a}”, “{b}” and “{lc}”.
+              </>
+            )}{" "}
+            Read them loosely: here the three landmarks catch only{" "}
+            {L.projFrac != null ? `${(Math.round(L.projFrac * 1000) / 10).toFixed(1)}%` : <M c={c} />} {caught}
+            {F.lowdin ? ", " : "; in the study, merely reordering them swung the bearing by 58–99° (REPORT §3.4); "}and no bearing was
+            checked against what the model does, at any layer.
           </Rubric>
         </figcaption>
       </figure>
@@ -375,10 +405,11 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
           <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>{kind.gloss}</span>
         </div>
         <p style={{ margin: 0 }}>
-          {wayUp(no)}, {thinkingClause(c)}.{" "}
+          {wayUp(no)}, {thinkingClause(c, lens.name)}.{" "}
           {recall != null ? (
             <>
-              Of what changed here, {recall}% came from memory and {100 - recall}% was gathered from the words before.
+              Of what changed here, as the {lens.name} lens weighs the two writes, {recall}% came from memory and {100 - recall}% was
+              gathered from the words before.
             </>
           ) : (
             <>
@@ -397,10 +428,13 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
             </>
           )}
         </p>
+        {/* Where the lens's words are weakest (below layer 31, and its late lean at 51-59: erratum E49), the red line stands
+            in the head beside the dial, not only in section i. It speaks of the words; the dial's own rubric covers bearings. */}
+        {no <= 30 || (no >= 51 && no <= 59) ? <LensCaution sighting={s} no={no} style={{ margin: 0, maxWidth: "none" }} /> : null}
         <Rubric style={{ maxWidth: "none" }}>
-          This is the leaf for one layer. Read it from top to bottom: what the model was thinking here, where that thought came from, how far
-          some telling words were from being said, which neurons fired, and which other layers think alike. The links above step to the
-          neighbouring layers.
+          This is the leaf for one layer. Read it from top to bottom: what the lens reads here, how the layer’s writing splits between
+          gathering and remembering, how far some telling words were from being said, which neurons fired, and which other layers think
+          alike. The links above step to the neighbouring layers.
         </Rubric>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 18px", alignItems: "center" }}>
           {loud ? (
@@ -618,7 +652,7 @@ const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
   );
 };
 
-/* ------------------------------------------------- i · what it was thinking */
+/* ------------------------------------------------- i · through the lens */
 
 const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
   const { L, s, no, live } = c;
@@ -634,15 +668,16 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
     return [below, above].filter((n): n is number => n !== undefined);
   })();
   const logitsKnown = !!top && top.length > 0 && top.every((t) => t.logit != null);
+  const { lens } = useReadingLens(s);
 
   return (
     <section aria-labelledby="think-head" style={{ flex: "999 1 560px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="row-between" style={{ gap: "6px 24px" }}>
         <h2 id="think-head" className="h-sec">
-          i · what it was thinking
+          i · {no >= N_LAYERS ? "its own odds" : "through the lens"}
         </h2>
         {top && top[0]?.prob != null ? (
-          <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>{certainty(top[0].prob)}</span>
+          <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>{certainty(top[0].prob, no >= N_LAYERS)}</span>
         ) : null}
       </div>
       {top ? (
@@ -701,12 +736,22 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
         </p>
       ))}
       <Rubric style={{ margin: "2px 0 0" }}>
-        These are the words the model would say if it stopped at this layer, read through the J++ lens. Take them as the drift of a thought,
-        not a forecast: on ordinary prose, the lens’s first choice{" "}
-        {no <= 50 ? "at this depth matched" : "matched"} the model’s real next word at most 3% of the time
-        {no <= 50 ? "" : " up to layer 50"} (REPORT §3.1).{said ? ` In the end it said ${said}.` : ""}{" "}
+        {no >= N_LAYERS ? (
+          <>
+            At the last layer no lens stands between: these are the model’s own odds for its next word.
+            {said ? ` In the end it said ${said}.` : ""}{" "}
+          </>
+        ) : (
+          <>
+            These are the words read from this layer’s stream through the {lens.name} lens: its guess at what the model would say if it
+            stopped here. Take them as glimpses, not a forecast: on ordinary prose, the lens’s first choice{" "}
+            {no <= 50 ? "at this depth matched" : "matched"} the model’s real next word at most about 5% of the time
+            {no <= 50 ? "" : " up to layer 50"} (E3).{said ? ` In the end it said ${said}.` : ""}{" "}
+          </>
+        )}
         <a href={href.lexicon("lens")}>What is a lens?</a>
       </Rubric>
+      <LensCaution sighting={s} no={no} style={{ margin: 0 }} />
       <Apparatus title="the readout" label="Apparatus for the readout">
         <dl className="dl num">
           <dt>readout</dt>
@@ -722,6 +767,7 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
             WikiText-103 passages [7], and is applied here to the instruct 4-bit checkpoint (REPORT §0; §3.4, bug 9). The Jacobian lens is
             on disk; the server does not load it.
           </dd>
+          <LensRecord sighting={s} />
           <dt>raw values</dt>
           <dd>
             {top && top.length ? (
@@ -757,15 +803,17 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
           </dd>
           <dt>fidelity</dt>
           <dd>
-            On prose, the lens’s first choice was the real next word at most 3% of the time up to layer 50. On assistant turns at layers 31–40
-            it leads the naked eye by 3.1 nats, against 9.1 on prose. It orders conditions well from about layer 21, but compresses the scale
-            8–14 times (REPORT §3.1).
+            On prose, the lens’s first choice was the real next word at most about 5% of the time up to layer 50 (5.1–5.2% at layers 46–47 in
+            E3’s per-layer data; the report’s “3%” understates it), and 28% at layer 59. On assistant turns at layers 31–40 it leads the
+            naked eye by 3.1 nats of KL, against 9.1 on prose. It orders conditions well from about layer 21, but compresses the scale 8–14
+            times (REPORT §3.1). A lens refitted on the instruct model matched the model’s own replies at layer 51 45% of the time, against
+            25% for J++ (R1).
           </dd>
           <dt>caveat</dt>
           <dd>
-            The published J++ readout also drops punctuation and whitespace tokens [4]; this instrument applies the lens matrix alone. A
-            Jacobian lens refitted on the instruct model does not help at layers 11–36 (R1). Read a single sighting only beside a matched
-            control (§3.5).
+            The published J++ readout also drops punctuation and whitespace tokens [4]; this instrument applies the lens matrix alone. Below
+            layer 31 no averaged-Jacobian lens the study fitted was stable, and none improved next-word agreement below layer 41 (R1). Read a
+            single sighting only beside a matched control (§3.5).
           </dd>
         </dl>
       </Apparatus>
@@ -791,20 +839,23 @@ const Split: React.FC<{ c: Ctx }> = ({ c }) => {
       neighbours[1].no
     } ${neighbours[1].r}%.`;
   })();
+  const { lens } = useReadingLens(s);
+  // the shares are of the two writes mapped through the lens (theodolite_math: Δ·Jᵀ), so the lens is named with them
+  const weighed = `as the ${lens.name} lens weighs the two writes`;
   const leaned =
     recall == null
       ? ""
       : L.isGlobal
         ? recall > 50
-          ? " This layer may look back over the whole conversation, yet it leaned on memory."
+          ? ` This layer may look back over the whole conversation, yet, ${weighed}, it leaned on memory.`
           : recall < 50
-            ? " This layer may look back over the whole conversation, and it leaned on what it gathered."
-            : " This layer may look back over the whole conversation; it drew on both alike."
+            ? ` This layer may look back over the whole conversation, and, ${weighed}, it leaned on what it gathered.`
+            : ` This layer may look back over the whole conversation; ${weighed}, it drew on both alike.`
         : recall > 50
-          ? " This layer leaned on memory."
+          ? ` ${capital(weighed)}, this layer leaned on memory.`
           : recall < 50
-            ? " This layer leaned on what it gathered from the words before."
-            : " This layer drew on both alike.";
+            ? ` ${capital(weighed)}, this layer leaned on what it gathered from the words before.`
+            : ` ${capital(weighed)}, this layer drew on both alike.`;
   const sl = L.layerScalar;
   const after = s.layers.slice(idx + 1).map((l) => l.layerScalar);
   const leak = idx < N_LAYERS - 1 && after.every((v) => v != null) ? after.reduce<number>((p, v) => p * (v as number), 1) : null;
@@ -813,9 +864,12 @@ const Split: React.FC<{ c: Ctx }> = ({ c }) => {
 
   return (
     <section aria-labelledby="split-head" style={{ flex: "1 1 420px", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-      <h2 id="split-head" className="h-sec">
-        ii · gathering or remembering
-      </h2>
+      <div className="row-between" style={{ gap: "6px 24px" }}>
+        <h2 id="split-head" className="h-sec">
+          ii · gathering or remembering
+        </h2>
+        <span style={{ fontSize: 15, color: MUTED }}>weighed through the {lens.name} lens</span>
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, paddingTop: 6 }}>
         <span style={{ ...big, color: "#2E4A7D" }}>{gather != null ? `${gather}%` : <M c={c} />}</span>
         <span style={{ ...big, color: "#8A6A2C" }}>{recall != null ? `${recall}%` : <M c={c} />}</span>
@@ -860,8 +914,8 @@ const Split: React.FC<{ c: Ctx }> = ({ c }) => {
         </div>
       ) : null}
       <Rubric style={{ maxWidth: "none" }}>
-        Every layer adds two things to the stream of thought: what it gathers from the words before, and what it recalls from its own
-        memory.{leaned}
+        Every layer adds two things to the stream: what it gathers from the words before, and what it recalls from its own memory.
+        {leaned}
       </Rubric>
       <Apparatus title="the split" label="Apparatus for gathering and remembering">
         <dl className="dl tight num">
@@ -1026,7 +1080,8 @@ const Ranks: React.FC<{ c: Ctx }> = ({ c }) => {
         </p>
       ) : null}
       <Rubric style={{ maxWidth: 900 }}>
-        Each line is one word. The further right its mark, the further that word was from being said; each faint gridline is ten times
+        Each line is one word. The further right its mark, the lower the lens ranks that word (at layer 60, the further the model was
+        from saying it); each faint gridline is ten times
         further than the last, and the right edge is the {ordinal(VOCAB)}, the least likely of all. One sighting cannot show a lean toward any
         of these words: the study found such readings meaningful only beside a matched comparison (REPORT §3.1).
       </Rubric>
@@ -1354,9 +1409,9 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             stream the opposite way to the other.
           </p>
           <p className="rubric" style={{ flex: "1 1 380px", maxWidth: "none" }}>
-            Read these words as rumours, not findings. Below layer 41 the study found no stable single-neuron effect to label; labels held up
-            only at layers 41 to 58 (REPORT §3.2). One free sign of trust is when the lens and the naked eye share a word: within layers 41 to
-            58, that agreement ranked a trustworthy label above an untrustworthy one 84 times in 100{" "}
+            Read these words as rumours, not findings. Labels held up at the layers the study sampled from 41 to 58, and were at chance at
+            11 to 31; layers 32 to 40 were not sampled (REPORT §3.2; N1). One free sign of trust is when the lens and the naked eye share a
+            word: within layers 41 to 58, that agreement ranked a trustworthy label above an untrustworthy one 84 times in 100{" "}
             <span style={{ fontStyle: "normal" }}>(AUC 0.84)</span>. The study compared ten words a side
             {shownWords && shownWords < 10 ? `; here only ${cardinal(shownWords)} are shown` : ""}.
           </p>
@@ -1599,10 +1654,11 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           </dd>
           <dt>what held up</dt>
           <dd>
-            At layers 11–31 the two eyes’ labels are equal, and at chance; below layer 41 single-neuron effects had a split-half reliability of
-            0.00–0.07. At layers 41–58 labels predicted causal effects (P@10 0.35–0.69, against a null of at most 0.003); J++ gained 0.04–0.12
-            over the naked eye at layers 41–46, was equal at 51–58, and the Jacobian lens matched or beat it. There, agreement of the two eyes’
-            top ten scored AUC 0.84 (REPORT §3.2).{" "}
+            At layers 11–31 the two eyes’ labels are equal, and at chance; at the layers sampled there (11, 21 and 31) single-neuron effects
+            had a split-half reliability of 0.00–0.07, and layers 32–40 were not sampled (erratum E43). At layers 41–58 J++ labels predicted
+            causal effects (P@10 0.35–0.67, against a null of at most 0.003); J++ gained 0.04–0.12 over the naked eye at layers 41–46, was
+            equal or slightly behind at 51–58 (erratum E41), and the Jacobian lens matched or beat it. There, agreement of the two eyes’ top
+            ten scored AUC 0.84 (REPORT §3.2).{" "}
             {N1_LAYERS.includes(no)
               ? `This layer was sampled: N1 took layers ${listAnd(N1_LAYERS.map(String))}.`
               : `This layer was not sampled: N1 took layers ${listAnd(N1_LAYERS.map(String))}.`}
@@ -1683,10 +1739,10 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
               </>
             )}{" "}
             {idx === L36_IDX
-              ? "From this layer up to layer 59, every lens covector puts 99–100% of its energy in the quiet carry channel (REPORT §2.2)."
+              ? "From this layer up to layer 59, every lens covector puts 99–100% of its energy in the quietest tenth of dimensions, most of it in the quiet carry channel (REPORT §2.2; erratum E7)."
               : idx > L36_IDX && idx <= 58
-                ? "Here, as everywhere from layer 36 up to layer 59, every lens covector puts 99–100% of its energy in the quiet carry channel (REPORT §2.2)."
-                : "From layer 36 up to layer 59, every lens covector puts 99–100% of its energy in the quiet carry channel (REPORT §2.2)."}{" "}
+                ? "Here, as everywhere from layer 36 up to layer 59, every lens covector puts 99–100% of its energy in the quietest tenth of dimensions, most of it in the quiet carry channel (REPORT §2.2; erratum E7)."
+                : "From layer 36 up to layer 59, every lens covector puts 99–100% of its energy in the quietest tenth of dimensions, most of it in the quiet carry channel (REPORT §2.2; erratum E7)."}{" "}
             Push with the final-norm direction, the quiet dimensions masked and the start mark spared, at 0.005–0.01 of ‖h‖: masked that
             way the study’s nudge read fluently there and broke at 0.02 (§3.4, §3.5; V7); activation steering after Turner et al. and
             Panickssery et al. [21][22]. <a href={href.nudge()}>the nudge</a>

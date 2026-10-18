@@ -126,8 +126,8 @@ export const Pillars: React.FC = () => (
       numeral="pillar i"
       title="The Jacobian lens and J-space"
       makers="Gurnee, Sofroniew, Pearce and thirteen others · Anthropic · 2026"
-      about="Halfway up the model, a thought is not yet a word: each layer holds 5,376 numbers. The Jacobian lens asks how a small change at one layer would change the model’s last layer, averaged over many texts, and uses that answer to translate any layer into the words it is getting ready to say. Its authors call the space it reads J-space, and argue that what can be read there forms a workspace shared across the model."
-      rubric="Every list headed “what it was thinking” is read with this idea."
+      about="Halfway up the model there are no words yet: each layer holds 5,376 numbers. The Jacobian lens asks how a small change at one layer would change the model’s last layer, averaged over many texts, and uses that answer to translate any layer into the last layer’s terms, where it can be read as words. Its authors call the space it reads J-space, and argue that what can be read there forms a workspace shared across the model."
+      rubric="Every list of words headed “through the lens” is read with this idea."
       lends="The idea of reading every layer as words, and the formula beneath each layer’s list of words. The landmarks are taken in J-space: each layer is carried through the lens before its bearing is measured. The server’s default sighting, about the legs of the animal that spins webs, is the paper’s own example. The Jacobian lens itself sits on disk for comparison; the instrument reads through the J++ lens and does not load it."
       links={[
         ["instrument", "the instrument →"],
@@ -136,11 +136,12 @@ export const Pillars: React.FC = () => (
       ]}
       found={
         <>
-          Good for comparing, poor for telling. The Jacobian lenses put conditions in the right order, but a single
-          reading on its own (“J-space says <i>she</i>”) means little unless a comparison reading stands beside it. At
-          the word “I”, J-space carries the gender of the role being played, not of the person meant: in quoted speech
-          the two come apart, while the model’s own next-word guesses name the right person. As a map of what neurons
-          write, the Jacobian lenses add little over the naked eye, and only at layers 41 to 46.
+          Good for comparing, poor for telling. The two Jacobian lenses here, both fitted on the base model, put
+          conditions in the right order, but a single reading on its own (“J-space says <i>she</i>”) means little unless
+          a comparison reading stands beside it. At the word “I” in the middle layers, the gender read there, through the
+          lenses, the naked eye, a probe and a lens-free direction alike, is that of the role being played, not of the
+          person meant: in quoted speech the two come apart, while the model’s own next-word guesses name the right
+          person. As a map of what neurons write, these lenses add little over the naked eye, and only at layers 41 to 46.
         </>
       }
       foundWhere="REPORT §2.1, §3.1, §3.3"
@@ -192,14 +193,14 @@ export const Pillars: React.FC = () => (
           </dd>
           <dt>in the server</dt>
           <dd>
-            <M>TheodoliteRuntime(load_jlens=False)</M> (backend/server.py:78): not loaded; the lab daemon loads both
+            <M>TheodoliteRuntime(load_jlens=False)</M> (backend/server.py:76): not loaded; the lab daemon loads both
             lenses.
           </dd>
           <dt>values</dt>
           <dd className="num">
-            For neuron labels, J++ beats the naked eye only at index 40–45 (layers 41–46), by +0.04 to +0.12 P@10, and
-            equals it at 50–57; JLens ≥ J++ (§3.2). Pronoun-token J-space follows the role default, not the referent
-            (E7, refuted as reference by V5; §2.1).
+            For neuron labels, J++ beats the naked eye only at index 40–45 (layers 41–46), by +0.04 to +0.12 P@10, and is
+            equal or slightly worse at 50–57; JLens ≥ J++ (§3.2; erratum E41). Pronoun-token J-space follows the role
+            default, not the referent (E7, refuted as reference by V5; §2.1).
           </dd>
           <dt>caveat</dt>
           <dd>
@@ -223,14 +224,14 @@ export const Pillars: React.FC = () => (
       title="The J++ lens"
       makers="Ayonrinde & Lindsey · Anthropic · 2026 · after the Jacobian lens and the R-lens"
       about="J++ is a sharper grinding of the same lens. It trusts the measurements less where the lens is known to read poorly, traces them back with relevance rules borrowed from the R-lens, and leaves out word-pieces that mean nothing, such as stray punctuation. The instrument uses the lens itself but not that last step."
-      rubric="When a page says “read through the lens”, this is the lens."
-      lends="It is the instrument’s main lens. The words along the path of thought, every layer’s “what it was thinking”, the bearings of the landmarks and what each neuron writes are all read through it, with the naked eye kept beside it for comparison."
+      rubric="When a page says “read through the lens”, this is the lens, as fitted on the base model."
+      lends="It is the instrument’s main lens. The words that label the word’s path, every layer’s list “through the lens”, the bearings of the landmarks and what each neuron writes are all read through it, with the naked eye kept beside it for comparison. It is the fit made on the base model; the study’s refit on the instruct model is not loaded."
       links={[
         ["instrument", "the instrument →"],
         ["layer", "a layer’s leaf →"],
         ["neuron", "a neuron’s folio →"],
       ]}
-      found="The shipped lens was fitted on the base model and is used here on the instruct model. It ranks one condition against another well from about layer 21, some 15 to 20 layers before the naked eye, but it is poor at saying what the model will actually say: on ordinary prose its first guess matched the model’s at most 3% of the time up to layer 50, and 28% at layer 59. From layer 46 up it reads much like the naked eye. A lens refitted on the instruct model (R1) agrees far better with how the model itself responds in the late layers, and lifts first-guess agreement on the assistant’s words at layer 51 from 25% to 45%. At layers 11 to 36 no lens of this averaged kind proved reliable."
+      found="The shipped lens was fitted on the base model and is used here on the instruct model. It ranks one condition against another well from about layer 21, where the naked eye cannot yet, but it is poor at saying what the model will actually say: on ordinary prose its first guess matched the model’s at most about 5% of the time up to layer 50, and 28% at layer 59. From layer 46 up it reads much like the naked eye, and its first guess is right no more often. A lens refitted on the instruct model (R1) agrees far better with how the model itself responds in the late layers, and lifts first-guess agreement on the assistant’s words at layer 51 from 25% to 45%; the instrument does not load it. Below layer 31 no lens of this averaged kind proved stable, and none improved next-word agreement below layer 41."
       foundWhere="REPORT §0, §3.1; R1_IT_LENS_REPORT"
       source={
         <>
@@ -276,28 +277,39 @@ export const Pillars: React.FC = () => (
           </dd>
           <dt>fidelity</dt>
           <dd className="num">
-            prose KL 16–18 nats; top-1 ≤ 3% through index 49, 28% at 58; ≈ logit lens at 45–58. Advantage over the
+            prose KL 16–18 nats; top-1 at most about 5% through index 49 (0.051–0.052 at 45–46, E3 per layer; §3.1’s
+            “≤ 3%” understates it, erratum E30), 28% at 58; ≈ logit lens in KL at 45–58, below it in top-1 at about 33–54. Advantage over the
             logit lens on assistant turns: +9.1 nats (prose) falls to +3.1 at index 30–39 and turns negative at 40–49.
             Conditions ranked from ~index 20 (r ≈ 0.9), scale compressed 8–14×.
           </dd>
           <dt>geometry</dt>
           <dd className="num">
             cos with the true IT average gradient (gender direction) 0.15 / 0.26 / 0.33 at index 30–39 / 40–49 / 50–58;
-            0.84–0.86 at 40–58 with the quiet carry dimensions masked. Top-100 of 5,376 directions hold 68–93% of the
-            energy; isotropic noise decodes to <M>{"</h2>"}</M>, <M>{"</em>"}</M>.
+            for the pronoun direction only, 0.84–0.86 at 40–58 with the quietest tenth of dimensions masked; the same masking
+            gives 0.62 / 0.73 at 40–49 / 50–58 for 98 random token pairs (ceiling 0.99; R1 §2.2). Top-100 of 5,376
+            directions hold 68–93% of the energy, a prior of the J++ fit: the IT average Jacobian puts 10–17% there (R1
+            §3.2). Isotropic noise decodes to{" "}
+            <M>{"</h2>"}</M>, <M>{"</em>"}</M>.
           </dd>
           <dt>R1 refit</dt>
           <dd className="num">
-            exact same-position VJPs on the instruct model; split-half 0.96–0.99 at index 30–58; agreement with IT
-            average gradients 0.85–0.95; top-1 on assistant tokens at index 50: 0.25 → 0.45; no help at index 10–35.
-            Likeliest cause of J++’s disagreement: the weights (base bf16 vs instruct W4A16-QAT), after ruling out the
-            fitting data and the method variants tested (R1 §2.4).
+            exact same-position VJPs on the instruct model, in two forms. Directional (128 fixed directions, all
+            indices): split-half 0.96–0.99 at 30–58, ≤ 0.63 below; agreement with held-out IT average gradients
+            0.85–0.95. Full matrix at 11 indices (10, 15 … 55, 58), noise-dominated below 40: top-1 on assistant tokens
+            at index 50: 0.25 → 0.45. Neither improves next-token fidelity below index 40. Likeliest remaining cause of
+            J++’s disagreement: the weights (base bf16 vs instruct W4A16-QAT; fine-tuning and quantisation cannot be
+            separated), after ruling out the fitting data and the method variants tested; J++’s published R-lens rules,
+            cluster weighting and word-piece filter were not tested (R1 §2.4, §6). The instrument loads neither form.
           </dd>
           <dt>recommended</dt>
           <dd>
-            prefer layers 21–50 (index 20–49) for lens comparisons and flag pronoun readouts at layers 51–59; consider
-            refitting J++ on the instruct checkpoint, now feasible with <M>labkit.same_pos_vjp</M> at ~2 s per VJP
-            (§3.5, items 3 and 6).
+            with the base-fitted J++, use layers 31–50 (index 30–49) for condition contrasts and confirm them with an
+            instruct-fitted readout; at 21–30 trust only orderings checked against behaviour (r 0.88–0.99 in E1, E2 and
+            E5), and below 21 even orderings did not hold reliably (index 10–19: r 0.31 in E2, 0.92 in E1); flag
+            pronoun readouts at layers 51–59 unless an instruct-fitted readout agrees (§3.5, item 3, as corrected by
+            erratum E49). R1 has since refitted the lens: directional at layers 31–59, a full matrix usable at only five
+            layers (41, 46, 51, 56 and 59); not yet loaded, so the instrument names the base-fitted J++ at the head and
+            foot of every page.
           </dd>
         </>
       }
@@ -326,7 +338,7 @@ export const Pillars: React.FC = () => (
         ["layer", "a layer’s leaf →"],
         ["instrument", "the instrument →"],
       ]}
-      found="The two faces are real: which way a neuron fires is set by the second of its two readings, the up-projection, and the “double-negative” case the essay describes carries under 1% of strong firings. But the two faces wake on unrelated inputs, while what they write is a mirror image at layers 41 to 58, so one label cannot describe both. Labels of what a neuron writes predicted its real effect only at layers 41 to 58; at layers 11 to 31 they were no better than chance, and their tidiness was the lens’s own habit, since random mixtures decode just as neatly. In one reader’s audit of 48 faces, 46% had one clear job, against the essay’s preliminary figure of about 90% for Qwen3-32B; the methods differ too much for a direct comparison."
+      found="The two faces are real: which way a neuron fires is set by the second of its two readings, the up-projection, and the “double-negative” case the essay describes carries under 1% of strong firings. But the two faces wake on unrelated inputs, while what they write is a mirror image at layers 41 to 58, so one label cannot describe both. Labels of what a neuron writes, read through the base-fitted J++ lens (the naked eye did as well), predicted its real effect at the layers tested from 41 to 58; at layers 11 to 31 they were no better than chance, and their tidiness was the J++ lens’s own habit, since random mixtures decode just as neatly. In one reader’s audit of 48 faces, 46% had one clear job, against the essay’s preliminary figure of about 90% for Qwen3-32B; the methods differ too much for a direct comparison."
       foundWhere="REPORT §3.2, §3.3; N1_REPORT"
       source={
         <>
@@ -366,10 +378,11 @@ export const Pillars: React.FC = () => (
           </dd>
           <dt>values</dt>
           <dd className="num">
-            P@10 in the causal top-100: ≈0 at index 10–30, 0.35–0.69 at 40–57 (null ≤ 0.003); J++ over naive +0.04 to
-            +0.12 at 40–45, equal at 50–57; agreement of the J-VINDEX and naive top-10 predicts validity, AUC 0.84 within
-            40–57. Gate open in 72–100% of strong events; double-negative &lt; 1% of strong-event mass (13–33% of top-1%
-            mass in sparse layers). Cleanliness, single rater, 48 poles: 46% one clear job (62% strong, 29% weak).
+            P@10 in the causal top-100: ≈0 at index 10–30, 0.35–0.67 for J-VINDEX at 40–57, naive and JLens about the
+            same (null ≤ 0.003; N1 T1); 31–39 not sampled; labels through an IT-fitted lens untested; J++ over naive +0.04 to
+            +0.12 at 40–45, equal or slightly worse at 50–57 (erratum E41); agreement of the J-VINDEX and naive top-10
+            predicts validity, AUC 0.84 within 40–57. Gate open in 72–100% of strong events; double-negative &lt; 1% of
+            strong-event mass (13–33% of top-1% mass in sparse layers). Cleanliness, single rater, 48 poles: 46% one clear job (62% strong, 29% weak).
           </dd>
           <dt>caveat</dt>
           <dd className="num">
@@ -380,7 +393,9 @@ export const Pillars: React.FC = () => (
           <dt>recommended</dt>
           <dd>
             activation contexts stored per pole; output labels only at layers 41 and up (index ≥ 40), gated by
-            J++/naive agreement (§3.5, item 5).
+            J++/naive agreement (§3.5, item 5). That gate was validated for base-fitted J++ labels only and must be
+            re-validated for any new lens; spot-checks should steer in the linear regime (k ≈ 10), since 60× saturates
+            the post-FFN norm at index 20–50 (erratum E47).
           </dd>
           <dt>reports</dt>
           <dd>
@@ -410,10 +425,11 @@ export const Pillars: React.FC = () => (
           neurons it found were partly real: 35 of 102 were selective; deleting the top ten at layer 51 clearly
           weakened the model’s pull toward <i>she</i> after a woman’s name, where ten random neurons did nothing; neuron
           5313 at layer 51 alone swings <i>she</i> against <i>he</i> strongly; neuron 16757 at layer 41, listed as a
-          “he” neuron, in fact pushes toward <i>she</i>; and the picks at layer 31 were not about gender at all.
+          “he” neuron, in fact pushes toward <i>she</i>; and the picks at layer 31 had only tiny effects on gender, at most a sixtieth
+          of neuron 5313’s, measured with a push too strong to be reliable at that depth.
         </>
       }
-      foundWhere="REPORT §3.3; E6_tool_audit_REPORT §2.3"
+      foundWhere="REPORT §3.3 and erratum E46; E6_tool_audit_REPORT §2.3; N1A"
       source={
         <>
           [10] Hayuk, C. (chrishayuk). <i>LARQL: reference implementation of VINDEX3.</i> Apache-2.0.{" "}
@@ -475,7 +491,9 @@ export const Pillars: React.FC = () => (
             0.8). DELETE of the top-10 “she” neurons at index 50, rolled back: female contexts −1.80 log-odds (baseline
             7.26), male +0.90, human-Gemma −2.28, Gemma-self −0.33; ten random neurons |Δ| ≤ 0.04. Index 50 n5313 moves
             she/he by +13.8 nats (it is in the “he” list too); index 40 n16757, listed under “he”, causally pushes{" "}
-            <i>she</i>; the index-30 picks are not gendered (E6 §2.3; REPORT §3.3).
+            <i>she</i> (E6 §2.3; REPORT §3.3). The index-30 picks have only tiny effects, she−he ≤ 0.22 nats: the “she” pick n12173
+            moves it +0.16 and +0.22 (92nd and 100th percentile against random neurons), with “ feminine” and “girl” in its causal
+            top 10, measured with 60× steering, outside the linear regime at that depth (N1A; erratum E46).
           </dd>
           <dt>caveat</dt>
           <dd>

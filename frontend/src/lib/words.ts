@@ -75,13 +75,23 @@ export function pct(p: number | null | undefined): string {
   return (v >= 10 ? String(Math.round(v)) : String(Math.round(v * 10) / 10)) + "%";
 }
 
-/** How sure the model is at a layer, from the lens's top probability. */
-export function certainty(top: number | null | undefined): string {
+/**
+ * How a readout leans, from the share of its top word-piece. Through a lens that share describes the lens's readout, not
+ * the model's confidence (and the shares are uncalibrated: erratum E30). At the last layer (`own`) no lens stands
+ * between, and the share is the model's own odds for its next word.
+ */
+export function certainty(top: number | null | undefined, own = false): string {
   if (top == null) return "";
-  if (top >= 0.6) return "all but certain";
-  if (top >= 0.2) return "leaning one way";
-  if (top >= 0.1) return "undecided";
-  return "a murmur of many voices";
+  if (own) {
+    if (top >= 0.6) return "all but certain";
+    if (top >= 0.2) return "leaning one way";
+    if (top >= 0.1) return "undecided";
+    return "spread thin";
+  }
+  if (top >= 0.6) return "the readout leans hard one way";
+  if (top >= 0.2) return "the readout leans one way";
+  if (top >= 0.1) return "the readout is divided";
+  return "a murmur of many words";
 }
 
 export const comma = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -107,11 +117,16 @@ export function kindOf(isGlobal: boolean) {
     : { kind: "local attention", gloss: "looks back over the last 1,024 word-pieces" };
 }
 
-/** How far a neuron's label can be trusted at a layer (REPORT: labels held up at layers 41-58). */
+/** How far a neuron's label can be trusted at a layer, by its code index (N1 sampled code layers 10, 20, 30, 40, 45, 50,
+ * 55 and 57: labels held up at UI 41-58 and were at chance at 11-31; 1-10 and 32-40 were not sampled; erratum E9). */
 export function labelTrust(idx: number): string {
-  if (idx >= 58) return "At the last layers the lens and the naked eye see much the same thing.";
+  if (idx >= 58) return "At the last layers the J++ lens and the naked eye see much the same thing.";
   if (idx >= 40) return "Layers 41 to 58 are where neuron labels held up under causal tests.";
-  return "A rumour, not a finding: below layer 41, neuron labels proved unreliable in the study.";
+  if (idx >= 31) {
+    return "A rumour, not a finding: the study did not test labels at layers 32 to 40, and found them no better than chance below.";
+  }
+  if (idx >= 10) return "A rumour, not a finding: at layers 11 to 31 the study found neuron labels no better than chance.";
+  return "A rumour, not a finding: the study did not test labels below layer 11.";
 }
 
 const ORD = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];

@@ -17,6 +17,11 @@ Supported LQL & .patch Operations:
   - `INSERT INTO LAYER <l> (subject, object) VALUES ('<subj>', '<obj>') [STRENGTH <alpha>]`
   - `DELETE FROM LAYER <l> WHERE slot = <i>`
   - `ROLLBACK`
+
+The statements that read words through the J++ lens (the two NEAREST searches and DESCRIBE POLE) or write an edit along
+a direction pulled back through it (UPDATE, INSERT) name the lens in their reply, under "lens" (the last key;
+`TheodoliteRuntime.lens_card`, with a `caution` on how far to trust its words), as the scientist tools do. The reply is
+otherwise unchanged. DESCRIBE, DELETE and ROLLBACK touch no lens and reply as they always have.
 """
 
 from __future__ import annotations
@@ -376,8 +381,13 @@ class LarqlVaultEngine:
         self.active_patches.clear()
         return {"status": "rolled_back", "cleared_patches": cleared, "active_patches_count": 0}
 
+    def _through_lens(self, reply: Dict[str, Any]) -> Dict[str, Any]:
+        """`reply` with the lens its words were read, or its edit written, through named last, under "lens"."""
+        return {**reply, "lens": self.runtime.lens_card()}
+
     def execute_lql(self, query: str) -> Dict[str, Any]:
-        """Parse and execute a LARQL / `.patch` statement string."""
+        """Parse and execute a LARQL / `.patch` statement string. NEAREST, DESCRIBE POLE, UPDATE and INSERT go through
+        the J++ lens, so their replies also carry "lens" (see the module docstring); the rest reply as before."""
         q = query.strip().rstrip(";")
         q_upper = q.upper()
 
@@ -399,7 +409,7 @@ class LarqlVaultEngine:
             _kind, concept, layer_s, limit_s = m_nearest.groups()
             layer_idx = int(layer_s) if layer_s is not None else 35
             top_k = int(limit_s) if limit_s is not None else 10
-            return self.query_nearest_edges(concept=concept, layer_idx=layer_idx, top_k=top_k)
+            return self._through_lens(self.query_nearest_edges(concept=concept, layer_idx=layer_idx, top_k=top_k))
 
         # DESCRIBE POLE LAYER <l> SLOT <i> [POLARITY +|-]
         m_pole = re.search(
@@ -410,7 +420,7 @@ class LarqlVaultEngine:
         if m_pole:
             l_s, i_s, pol_s = m_pole.groups()
             pol = -1.0 if pol_s == "-" else 1.0
-            return self.inspect_bipolar_slot(layer_idx=int(l_s), neuron_idx=int(i_s), polarity=pol)
+            return self._through_lens(self.inspect_bipolar_slot(layer_idx=int(l_s), neuron_idx=int(i_s), polarity=pol))
 
         # DELETE FROM LAYER <l> WHERE slot = <i>
         m_del = re.search(
@@ -437,14 +447,16 @@ class LarqlVaultEngine:
         )
         if m_upd:
             l_s, i_s, obj_c, str_s, pol_s = m_upd.groups()
-            return self.apply_patch_surgery(
-                op_type="UPDATE",
-                layer_idx=int(l_s),
-                neuron_idx=int(i_s),
-                target_concept=obj_c,
-                strength=float(str_s) if str_s else 2.5,
-                polarity=-1.0 if pol_s == "-" else 1.0,
-                statement=q,
+            return self._through_lens(
+                self.apply_patch_surgery(
+                    op_type="UPDATE",
+                    layer_idx=int(l_s),
+                    neuron_idx=int(i_s),
+                    target_concept=obj_c,
+                    strength=float(str_s) if str_s else 2.5,
+                    polarity=-1.0 if pol_s == "-" else 1.0,
+                    statement=q,
+                )
             )
 
         # INSERT INTO LAYER <l> (subject, object) VALUES ('<subj>', '<obj>') [STRENGTH <alpha>]
@@ -456,14 +468,16 @@ class LarqlVaultEngine:
         )
         if m_ins:
             l_s, subj_c, obj_c, str_s = m_ins.groups()
-            return self.apply_patch_surgery(
-                op_type="INSERT",
-                layer_idx=int(l_s),
-                neuron_idx=None,
-                subject_concept=subj_c,
-                target_concept=obj_c,
-                strength=float(str_s) if str_s else 2.5,
-                statement=q,
+            return self._through_lens(
+                self.apply_patch_surgery(
+                    op_type="INSERT",
+                    layer_idx=int(l_s),
+                    neuron_idx=None,
+                    subject_concept=subj_c,
+                    target_concept=obj_c,
+                    strength=float(str_s) if str_s else 2.5,
+                    statement=q,
+                )
             )
 
         raise ValueError(

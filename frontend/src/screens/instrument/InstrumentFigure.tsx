@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Sighting } from "../../store/useTheodoliteStore";
 import { bare } from "../../lib/words";
+import { lensBand } from "../../lib/lens";
 import {
   BASE_TILT,
   CX,
@@ -182,7 +183,7 @@ export const InstrumentFigure: React.FC<{
         viewBox={`${box.x} ${box.y} ${box.w} ${box.w}`}
         role="img"
         tabIndex={0}
-        aria-label={`Sixty stacked rings, one per layer, with the path of the model’s thought winding upward through them. Layer ${sel + 1} is ringed in red. Drag or use the arrow keys to turn and tilt; scroll or press plus and minus to draw near; press 0 to reset.`}
+        aria-label={`Sixty stacked rings, one per layer, with the word’s path as the lens reads it winding upward through them; the lens’s words below layer 21, where the study could validate none, are drawn faint. Layer ${sel + 1} is ringed in red. Drag or use the arrow keys to turn and tilt; scroll or press plus and minus to draw near; press 0 to reset.`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -250,13 +251,17 @@ export const InstrumentFigure: React.FC<{
         <g display={shown.words ? "inline" : "none"}>
           <path d={geo.leaders} fill="none" stroke="#7A5C28" strokeOpacity="0.55" strokeWidth="0.7" strokeDasharray="2 3" />
           <g fontFamily="EB Garamond, Garamond, serif" fontStyle="italic" fontSize="17">
-            {stations.map((s) =>
-              topOf(s) != null ? (
-                <text key={s} x="548" y={ringY(s) + 5} fill={wordColor(s)}>
-                  “{bare(topOf(s))}”
+            {stations.map((s) => {
+              const w = topOf(s);
+              if (w == null) return null;
+              // below layer 21 the study validated nothing the lens reads (lib/lens.ts, lensBand): drawn faint
+              const faint = lensBand(s + 1) === "untested";
+              return (
+                <text key={s} x="548" y={ringY(s) + 5} fill={faint && s !== sel ? "#6B5D4D" : wordColor(s)} fillOpacity={faint ? 0.6 : 1}>
+                  {faint ? <title>{`Layer ${s + 1}: below layer 21 the study could validate nothing the lens reads`}</title> : null}“{bare(w)}”
                 </text>
-              ) : null,
-            )}
+              );
+            })}
           </g>
         </g>
         {split ? (

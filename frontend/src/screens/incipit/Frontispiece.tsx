@@ -1,6 +1,7 @@
 import React from "react";
 import { Rubric } from "../../components/kit";
 import { bare, gloss, numberWord, wp } from "../../lib/words";
+import { lensPhrase, useReadingLens } from "../../lib/lens";
 import { type Sighting, N_LAYERS, isGlobalIdx } from "../../store/useTheodoliteStore";
 
 /*
@@ -175,7 +176,7 @@ export function frontispieceOf(s: Sighting | null): Frontispiece {
       ? `A dark path winds upward through them: the word ${word} rising from layer ${firstIdx + 1} to layer ${lastIdx + 1}. `
       : "No bearings were recorded, so no path is drawn. ") +
     (stations.length
-      ? `Beside the path, what the model was thinking: ${listPhrase(stations.map(stationPhrase))}.`
+      ? `Beside the path, the words the lens reads there: ${listPhrase(stations.map(stationPhrase))}.`
       : "The lens was not recorded at any layer, so no words stand beside it.");
 
   return {
@@ -200,6 +201,7 @@ const SERIF = "EB Garamond, Garamond, serif";
 
 export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Frontispiece }> = ({ sighting, geo }) => {
   const s = sighting;
+  const { lens } = useReadingLens(sighting);
   const said = s ? s.continuation.trim() : "";
   return (
     <figure style={{ flex: "1 1 460px", minWidth: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -293,7 +295,7 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
             {said ? <>“{said}”</> : <span className="placeholder">[NO CONTINUATION RECORDED]</span>}. Here that last{" "}
             {s.readAt != null ? wp(s.readAt) : "word"} climbs all sixty layers
             {geo.stations.length ? (
-              <>, and beside its path stands what the model was thinking at {numberWord(geo.stations.length)} of them</>
+              <>, and beside its path stand the words the lens reads at {numberWord(geo.stations.length)} of them</>
             ) : null}
             . The gilded rings are every sixth layer, where it looks back over the whole conversation.
             {s.isNudged ? " This sighting was taken with a nudge in place." : null}
@@ -304,7 +306,8 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
           </span>
         )}
         <Rubric as="span" style={{ fontSize: 16 }}>
-          Read the middle words as glimpses, not speech: the lens is far less faithful there than near the top.
+          Read the middle words as glimpses, not the model’s own speech: {lensPhrase(lens)}, is far less faithful there than
+          near the top, and below layer 21 nothing it reads was validated.
         </Rubric>
       </figcaption>
     </figure>

@@ -2,9 +2,11 @@
 """End-to-End Verification Suite (`scripts/verify_e2e_ui_and_mcp.py`) for Logos Theodolite.
 
 Runs inside a single process/network namespace to verify:
+0. The lens card on the CPU, before anything loads (scripts/check_lens_card.py, in its own process): the shipped file,
+   incomplete files and other lenses, and which vault statements name the lens.
 1. FastAPI + Binary Float32 WebSocket (`/ws/theodolite`) wire format (`0x5448454F`) & JSON metadata
 2. FastMCP Scientist Tools (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`)
-3. LARQL / VINDEX3 FFN Vault queries (`/api/larql`)
+3. LARQL / VINDEX3 FFN Vault queries (`query_larql_vault`, `/api/larql`, the WebSocket `larql` action)
 4. Headless Chrome inspection of the UI (frontend/dist, built first) via CDP:
    - Zero console errors or page exceptions
    - the first live sighting replaces the recorded one and the 60-ring drawing renders
@@ -14,6 +16,12 @@ Runs inside a single process/network namespace to verify:
 5. The options added for V7 bugs 1, 3, 4, 5 and 8 (chat template and system turn, Löwdin / weighted / per-layer /
    centred survey frames with proj_frac, the mended nudge, the direct-path thread score, write-size pole ranking),
    over the WebSocket and the MCP tools, and the formerly disabled UI controls that drive them.
+6. The lens is named: /api/health, every sweep, every scientist tool reply (called as MCP tools, over HTTP and over
+   the WebSocket) and every vault statement that reads words or writes an edit through the lens (NEAREST, DESCRIBE
+   POLE, UPDATE; over MCP, HTTP and the WebSocket) carry "lens", fitted on the base model google/gemma-4-31B as the
+   file's own provenance says, with a caution, while DESCRIBE and ROLLBACK reply as before; the instrument names the
+   lens the server sent (page head, status line, footer, red line) and shows the server's own record of it in its
+   apparatus.
 """
 
 from __future__ import annotations
@@ -49,6 +57,7 @@ import websockets
 
 from backend.mcp_scientist import (
     inspect_pole,
+    query_larql_vault,
     test_motif_hypothesis,
     trace_downstream_readers,
 )
@@ -62,6 +71,28 @@ async def ws_sweep(ws: Any, payload: Dict[str, Any]) -> tuple[bytes, Dict[str, A
     meta = json.loads(await ws.recv())
     assert isinstance(bin_msg, bytes), f"expected a binary frame first, got {str(bin_msg)[:200]}"
     return bin_msg, meta
+
+
+def assert_base_lens(lens: Any, model_id: str | None = None) -> None:
+    """The server's "lens": the J++ lens fitted on the base model google/gemma-4-31B (as the file's own provenance
+    says, not a fallback), applied to the served model, with a caution."""
+    assert isinstance(lens, dict), f"no lens object: {lens!r}"
+    assert lens["fitted_on"].split(" (")[0] == "google/gemma-4-31B", f"lens.fitted_on: {lens['fitted_on']!r}"
+    assert "base" in lens["fitted_on"] and lens["id"] == "jpp-base" and lens["name"] == "J++", lens
+    prov = lens.get("provenance") or {}
+    assert prov.get("hf_model_name") == "google/gemma-4-31B" and prov.get("method") == "jpp", f"lens.provenance: {prov}"
+    assert lens["method"] and lens["fit_data"] and lens["source"] and lens["file"] and lens["caution"], lens
+    if model_id is not None:
+        assert lens["applied_to"] == model_id, f"lens.applied_to {lens['applied_to']!r} != {model_id!r}"
+
+
+def lens_phrase(lens: Dict[str, Any], named: bool = False) -> str:
+    """What the pages print for a lens card (frontend/src/lib/lens.ts, lensPhrase), computed from the server's card."""
+    if lens["id"] == "jpp-base" or "(base" in lens["fitted_on"]:
+        model = f" {lens['fitted_on'].split(' (')[0]}" if named else ""
+        return f"the {lens['name']} lens, fitted on the base model{model}"
+    return f"the {lens['name']} lens, fitted on {lens['fitted_on']}"
+
 
 ARTIFACT_DIR = Path(os.environ.get("THEODOLITE_ARTIFACT_DIR", str(ROOT_DIR / "artifacts" / "e2e")))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -163,24 +194,39 @@ async def main() -> int:
     print("LOGOS THEODOLITE — PHASE 2 END-TO-END SERVER, FASTMCP & 3D FRONTEND VERIFICATION")
     print("=" * 92)
 
+    # The lens card's branches for other files never run below (the server loads the shipped file), so they are
+    # checked first, on the CPU, in a process of their own that loads neither the model nor the lens.
+    print("[0/4] Checking the lens card on the CPU (scripts/check_lens_card.py)...")
+    lens_check = subprocess.run(
+        [sys.executable, "-I", str(ROOT_DIR / "scripts" / "check_lens_card.py")],
+        capture_output=True, text=True, timeout=300, check=False,
+    )
+    print("  • " + (lens_check.stdout.strip().splitlines() or ["(no output)"])[-1])
+    assert lens_check.returncode == 0, f"the lens card check failed:\n{lens_check.stdout}\n{lens_check.stderr}"
+
     config = uvicorn.Config(app, host=HOST, port=PORT, log_level="warning")
     server = uvicorn.Server(config)
     server_task = asyncio.create_task(server.serve())
 
     # Wait for server startup (loads Gemma-4-31B + J++ Lens via lifespan)
     async with httpx.AsyncClient(base_url=f"http://{HOST}:{PORT}", timeout=60.0, trust_env=False) as client:
+        health: Dict[str, Any] = {}
         for _ in range(120):
             try:
                 r = await client.get("/api/health")
                 if r.status_code == 200:
                     health = r.json()
-                    print(f"[1/4] FastAPI Server Healthy: model={health['model_id']} | VRAM={health['vram_allocated_gb']:.2f} GB")
                     break
             except Exception:
                 pass
             await asyncio.sleep(0.5)
         else:
             raise RuntimeError("FastAPI server did not become healthy within 60 seconds.")
+        print(f"[1/4] FastAPI Server Healthy: model={health['model_id']} | VRAM={health['vram_allocated_gb']:.2f} GB")
+        # checked once the server answers, so a wrong or missing lens fails here, by name
+        assert_base_lens(health.get("lens"), health["model_id"])
+        lens = health["lens"]
+        print(f"  • lens: {lens['name']}, fitted on {lens['fitted_on']} ({lens['source']})")
 
         # -------------------------------------------------------------------------
         # Step 1: Verify FastMCP Autonomous Circuit Scientist Tools
@@ -196,6 +242,9 @@ async def main() -> int:
         print(f"      North Pole (+) J-VINDEX : {north_toks}")
         print(f"      Upstream Gate Triggers  : {gate_toks}")
         assert len(south_toks) > 0 and any("Sp" in t or "sp" in t.lower() for t in south_toks)
+        # the MCP tools name the lens their words went through, as /api/health does
+        assert_base_lens(pole_res.get("lens"), health["model_id"])
+        assert pole_res["lens"] == lens, "inspect_pole and /api/health name different lenses"
 
         # Tool 2: trace_downstream_readers on Layer 35 (1-based L36) Neuron 9482
         readers_res = await trace_downstream_readers(
@@ -212,6 +261,8 @@ async def main() -> int:
             f"[{top_readers[0]['dst_polarity']}] C={top_readers[0]['coupling_score']:.2f})"
         )
         assert len(top_readers) > 0
+        assert_base_lens(readers_res.get("lens"), health["model_id"])
+        assert readers_res["lens"] == lens, "trace_downstream_readers and /api/health name different lenses"
 
         # Tool 3: test_motif_hypothesis on Layer 53 Neuron 16383 (Spider/Arachnid South-Pole neuron)
         hyp_res = await test_motif_hypothesis(
@@ -234,6 +285,9 @@ async def main() -> int:
             f"mean_pos={hyp_res['mean_pos_signed_act']:.3f} vs mean_neg={hyp_res['mean_neg_signed_act']:.3f}"
         )
         assert abs(hyp_res["cohens_d"]) > 0.8, f"Expected strong selectivity, got {hyp_res['cohens_d']}"
+        assert_base_lens(hyp_res.get("lens"), health["model_id"])
+        assert hyp_res["lens"] == lens, "test_motif_hypothesis and /api/health name different lenses"
+        print(f"  • the three MCP tools name the lens: {lens['name']}, fitted on {lens['fitted_on']}")
 
         # -------------------------------------------------------------------------
         # Step 2: Verify Binary Float32 WebSocket (`/ws/theodolite`) Wire Contract
@@ -292,6 +346,9 @@ async def main() -> int:
             assert json_msg["pole_ranking"] == "activation"
             assert json_msg["prompt_token_ids"][0] == 2 and json_msg["prompt_token_ids"][1] != 2
             assert all(0.0 < p["proj_frac"] <= 1.0 for p in json_msg["layer_plumes"])
+            # the sweep names the lens its readings went through, as /api/health does
+            assert_base_lens(json_msg.get("lens"), health["model_id"])
+            assert json_msg["lens"] == lens, "the sweep and /api/health name different lenses"
 
             # ---------------------------------------------------------------------
             # Step 2b: the options added for V7 bugs 1, 3, 4, 5 and 8
@@ -378,9 +435,19 @@ async def main() -> int:
             trd = tr["data"]
             rs = trd["top_downstream_readers"]
             assert trd["max_layer_hop"] == 3 and trd["score_kind"] == "direct" and 0 < len(rs) <= 4
+            assert_base_lens(trd.get("lens"), health["model_id"])
+            assert trd["lens"] == lens, "the WebSocket trace_readers reply and /api/health name different lenses"
             assert all(36 <= r["dst_layer"] <= 38 for r in rs)
             assert all(abs(rs[i]["score"]) >= abs(rs[i + 1]["score"]) for i in range(len(rs) - 1))
             print(f"  • WS trace_readers(hop=3, k=4, direct): top D={rs[0]['direct_gate']:+.4f} (C={rs[0]['coupling_score']:+.4f})")
+
+            await ws.send(json.dumps({"action": "larql", "query": "DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -"}))
+            lq = json.loads(await ws.recv())
+            assert lq["type"] == "larql_result" and lq["ok"], lq
+            # the vault's DESCRIBE POLE is inspect_pole's reading, and names the same lens, last
+            assert list(lq["data"]) == list(pole_res), f"WS DESCRIBE POLE keys {list(lq['data'])} != {list(pole_res)}"
+            assert lq["data"]["lens"] == lens, "the WebSocket larql reply names a different lens"
+            print("  • WS larql DESCRIBE POLE: inspect_pole's keys, the lens named last")
 
         mcp_direct = await trace_downstream_readers(
             layer=35, neuron_idx=9482, prompt="How many legs does a spider have?", chat=True,
@@ -388,11 +455,52 @@ async def main() -> int:
         )
         assert mcp_direct["chat"] and mcp_direct["prompt"].startswith("<bos><|turn>user\n")
         assert all("direct_act" in r for r in mcp_direct["top_downstream_readers"])
+        assert_base_lens(mcp_direct.get("lens"), health["model_id"])
+        pole_http = (await client.post("/api/scientist/inspect_pole", json={"layer": 53, "neuron_idx": 16383, "polarity": -1.0})).json()
+        # the HTTP route passes the tool's reply on as it is: the same keys, the same words, the same lens
+        assert list(pole_http) == list(pole_res), f"HTTP keys {list(pole_http)} != MCP keys {list(pole_res)}"
+        assert pole_http["lens"] == pole_res["lens"] == lens, "the HTTP reply names a different lens"
+        assert [t["token"] for t in pole_http["south_pole"]["j_vindex_tokens"]] == [
+            t["token"] for t in pole_res["south_pole"]["j_vindex_tokens"]
+        ], "the HTTP reply's words differ from the MCP tool's"
+        print("  • HTTP inspect_pole: the same reply as the MCP tool, the lens named in both")
+
+        # The vault's statements that read words or write an edit through the lens name it last, under "lens", over
+        # MCP and HTTP (the WebSocket is checked above); the rest of each reply is as it always was, and the
+        # statements that touch no lens (DESCRIBE, ROLLBACK) reply exactly as before.
+        nearest_keys = ["command", "concept", "resolved_token_id", "resolved_token_str", "layer", "matrix", "use_jpp",
+                        "elapsed_ms", "results"]
+        vault_pole = query_larql_vault("DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -")
+        assert list(vault_pole) == list(pole_res), f"MCP DESCRIBE POLE keys {list(vault_pole)} != {list(pole_res)}"
+        assert vault_pole["lens"] == lens, "query_larql_vault DESCRIBE POLE names a different lens"
+        assert [t["token"] for t in vault_pole["south_pole"]["j_vindex_tokens"]] == [
+            t["token"] for t in pole_res["south_pole"]["j_vindex_tokens"]
+        ], "the vault's DESCRIBE POLE words differ from inspect_pole's"
+        nearest_q = "SELECT * FROM EDGES NEAREST 'she' WHERE layer = 35 LIMIT 3"
+        r_near = await client.post("/api/larql", json={"query": nearest_q})
+        assert r_near.status_code == 200, r_near.text
+        near = r_near.json()
+        assert list(near) == nearest_keys + ["lens"], f"HTTP NEAREST keys {list(near)}"
+        assert near["lens"] == lens and len(near["results"]) == 3, "HTTP NEAREST: wrong lens or rows"
+        assert all(row["j_vindex_top_tokens"] for row in near["results"]), near["results"]
+        r_desc = await client.post("/api/larql", json={"query": "DESCRIBE"})
+        assert r_desc.status_code == 200 and r_desc.json()["command"] == "DESCRIBE", r_desc.text
+        assert "lens" not in r_desc.json(), "DESCRIBE reads no words through the lens, yet names one"
+        upd = query_larql_vault("UPDATE LAYER 35 SLOT 9482 SET object = 'she' STRENGTH 0.5")
+        try:
+            assert list(upd) == ["status", "patch", "active_patches_count", "lens"], f"UPDATE keys {list(upd)}"
+            assert upd["status"] == "applied" and upd["lens"] == lens, upd
+        finally:
+            rolled = query_larql_vault("ROLLBACK")
+        assert list(rolled) == ["status", "cleared_patches", "active_patches_count"], f"ROLLBACK keys {list(rolled)}"
+        assert rolled["status"] == "rolled_back" and rolled["cleared_patches"] >= 1, rolled
+        print("  • vault: MCP DESCRIBE POLE and UPDATE, HTTP NEAREST name the lens; DESCRIBE and ROLLBACK as before")
         hyp_chat = await test_motif_hypothesis(
             layer=53, neuron_idx=16383, chat=True,
             pos_prompts=["What animal spins silk webs to catch insects?"], neg_prompts=["What is the capital of France?"],
         )
         assert hyp_chat["chat"] is True
+        assert_base_lens(hyp_chat.get("lens"), health["model_id"])
         print(f"  • MCP trace_downstream_readers(chat, direct) and test_motif_hypothesis(chat): ok")
 
         # -------------------------------------------------------------------------
@@ -467,6 +575,28 @@ async def main() -> int:
                 })()""",
                 "the first live sighting",
             )
+            # the head of the page, the sighting's status line and the footer print what the server's card says
+            # (computed here from the card), and a base-fitted lens gets its red line; that the page parsed the card,
+            # rather than falling back to the lens it loads by default, is checked on its apparatus record below
+            lens_ui = await cdp.eval_js(
+                """(() => {
+                    const spans = Array.from(document.querySelectorAll("span")).filter((e) => e.textContent.includes("60 layers surveyed"));
+                    spans.sort((a, b) => a.textContent.length - b.textContent.length);
+                    const foot = document.querySelector("footer");
+                    const head = document.querySelector('.site-header [role="status"]');
+                    return { header: head ? head.textContent.replace(/\\s+/g, " ") : null,
+                             status: spans.length ? spans[0].textContent.replace(/\\s+/g, " ") : null,
+                             footer: foot ? foot.textContent.replace(/\\s+/g, " ") : null,
+                             caution: document.body.innerText.includes("fitted on the base model, not on the") };
+                })()"""
+            )
+            want_status = lens_phrase(lens)[len("the "):]
+            want_footer = f"through {lens_phrase(lens, named=True)}"
+            assert lens_ui["header"] and want_status in lens_ui["header"], f"page head {lens_ui['header']!r} lacks {want_status!r}"
+            assert lens_ui["status"] and want_status in lens_ui["status"], f"status line {lens_ui['status']!r} lacks {want_status!r}"
+            assert lens_ui["footer"] and want_footer in lens_ui["footer"], f"footer {lens_ui['footer']!r} lacks {want_footer!r}"
+            assert lens_ui["caution"], "the instrument shows no red line that its lens was fitted on the base model"
+            print(f"  • Instrument: page head, status line and footer name {lens_phrase(lens)!r}, with its red line")
             figure = await cdp.eval_js(
                 """(() => {
                     const svg = document.querySelector('svg[role="img"][aria-label^="Sixty stacked rings"]');
@@ -521,6 +651,21 @@ async def main() -> int:
             shot1 = ARTIFACT_DIR / "theodolite_instrument_scholar_view.png"
             await cdp.screenshot(shot1)
             print(f"  • Saved Screenshot #1 (the instrument, apparatus open): {shot1}")
+            # The apparatus prints the lens record the page parsed. Its fallback (the lens the instrument loads, when
+            # no record arrived) prints the same names, so require the line that says the record came with this
+            # sighting, and every field of the server's card.
+            record = await cdp.eval_js(
+                """(() => {
+                    const dt = Array.from(document.querySelectorAll("dt")).find((e) => e.textContent.trim() === "lens record");
+                    const dd = dt ? dt.nextElementSibling : null;
+                    return dd ? dd.textContent.replace(/\\s+/g, " ") : null;
+                })()"""
+            )
+            assert record, "the instrument's apparatus shows no lens record"
+            missing = [k for k in ("name", "fitted_on", "applied_to", "source", "file") if lens[k] not in record]
+            assert not missing, f"the lens record lacks the server's {missing}: {record!r}"
+            assert "As the server reported it with this sighting" in record, f"the lens record is not the server's: {record!r}"
+            print("  • Instrument apparatus: the lens record is the server's own, as sent with the sighting")
             await cdp.eval_js(f"{click_js}('apparatus')")
 
             # Screenshot #2: arm a gentle nudge (×0.01 of the stream) and wait for the nudged sighting

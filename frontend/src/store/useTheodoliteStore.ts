@@ -2,10 +2,12 @@ import { create } from "zustand";
 import {
   type ActiveEdit,
   type FixtureFile,
+  type LensInfo,
   type LiveBinary,
   type PoleRanking,
   type Sighting,
   type ThreadScore,
+  lensOf,
   parseBinaryFrame,
   sightingFromFixture,
   sightingFromLive,
@@ -74,6 +76,8 @@ export interface Health {
   vram_allocated_gb: number;
   vram_peak_gb: number;
   larql_cli: Record<string, string>;
+  /** the lens the server reads through (its `lens`, parsed); null when it does not name one */
+  lens: LensInfo | null;
 }
 
 export interface LarqlEntry {
@@ -512,7 +516,10 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   fetchHealth: async () => {
     try {
       const r = await fetch("/api/health");
-      if (r.ok) set({ health: (await r.json()) as Health });
+      if (r.ok) {
+        const h = await r.json();
+        set({ health: { ...h, lens: lensOf(h?.lens) } as Health });
+      }
     } catch {
       // health is decorative; the connection state already says what matters
     }

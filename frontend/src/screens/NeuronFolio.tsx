@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Apparatus, IfRubrics, Missing, NotYet, Page, Rubric } from "../components/kit";
+import { Apparatus, IfRubrics, LensRecord, Missing, NotYet, Page, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
 import {
   type Conn,
@@ -16,6 +16,7 @@ import {
 } from "../store/useTheodoliteStore";
 import { andList, agreement, cap, count, glossFor, scoresText, shortToken, signedRaw, type Agreement } from "./NeuronFolio/util";
 import { faceWord, numberWord, pct, signed, wp } from "../lib/words";
+import { lensLabel, useReadingLens } from "../lib/lens";
 import {
   ACTS,
   CMP,
@@ -439,6 +440,7 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
     setRenaming(false);
   };
   const s = m.sighting;
+  const { lens } = useReadingLens(s);
   const words = m.focus.lens?.slice(0, 3).map((t) => t.token) ?? null;
   const btn: React.CSSProperties = { fontSize: "16px", padding: "0 18px" };
 
@@ -557,8 +559,8 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
           One of 21,504 neurons in layer {m.layerNo}. {firedLine}{" "}
           {m.recorded ? (
             <>
-              The words it writes are all one verb, <i>to be</i>, in several tongues: English “Am”, Polish “jestem”, Czech “jsem”, Spanish
-              “Somos”, French “êtes”.
+              Through the {lens.name} lens its positive face reads as English “Am”, Polish “jestem” and Spanish “Somos”; to the naked eye,
+              as Polish “jestem”, Czech “jsem” and French “êtes”. Both readings are forms of one verb, <i>to be</i>, in several tongues.
             </>
           ) : words ? (
             <>
@@ -567,7 +569,9 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
           ) : null}
         </p>
         <p style={{ margin: 0, maxWidth: "660px", fontStyle: "italic", color: MUTED }}>
-          {m.recorded ? "One small cell of an unfamiliar mind, holding a single idea across languages." : "One small cell of an unfamiliar mind."}
+          {m.recorded
+            ? "One small cell of an unfamiliar model. At layers 41 to 58, a third to two-thirds of such a reading’s top ten words were among those the neuron pushed when the study made it louder: a guide to what it pushes toward, not to what it does in running text."
+            : "One small cell of an unfamiliar model."}
         </p>
         {m.pole && m.pole.face !== m.routeFace ? (
           <p className="status-line" role="status" style={{ margin: 0, maxWidth: "660px" }}>
@@ -1356,21 +1360,33 @@ function comparisonPick(m: Model) {
   return best;
 }
 
+/** How far labels held at a layer. N1 sampled layers 11, 21, 31, 41, 46, 51, 56 and 58 (counting from 1): labels held up at 41–58,
+ * were at chance at 11–31, and were not tested at 32–40 or below 11 (N1_REPORT; REPORT errata E9, E43). */
 function trustText(n: number): string {
+  const rumour = "Read both columns as a rumour, not a finding.";
   if (n >= 41 && n <= 58) {
     let s =
       `Layer ${n} lies inside the band where the study’s labels held up when single neurons were steered: between a third and two-thirds of a ` +
-      `label’s top ten words were among the hundred words the neuron most pushed. Below layer 41 the study found no stable single-neuron effect ` +
-      `to label; at layers 11 to 31, labels did no better than chance.`;
+      `label’s top ten words were among the hundred words the neuron most pushed. At the layers it sampled below 41 (11, 21 and 31) the study ` +
+      `found no stable single-neuron effect to label, and labels did no better than chance; layers 32 to 40 were not sampled.`;
     if (n >= 51) s += ` From layer 51 on, the lens did no better than the naked eye, so at layer ${n} neither column outranks the other.`;
     else if (n <= 46) s += ` At layers 41 to 46 the lens did a little better than the naked eye.`;
     return s;
   }
-  if (n < 41)
+  if (n >= 32 && n <= 40)
     return (
-      `Layer ${n} lies below the band where the study’s labels held up when single neurons were steered, layers 41 to 58. Below layer 41 the ` +
-      `study found no stable single-neuron effect to label; at layers 11 to 31, labels did no better than chance. Read both columns as a rumour, ` +
-      `not a finding.`
+      `Layer ${n} lies in a stretch the study did not sample, layers 32 to 40. Its labels held up at layers 41 to 58 and did no better than ` +
+      `chance at 11 to 31; here nobody has tested them. ${rumour}`
+    );
+  if (n >= 11 && n <= 31)
+    return (
+      `Layer ${n} lies in the stretch where the study’s labels did no better than chance: at the layers it sampled there (11, 21 and 31) it ` +
+      `found no stable single-neuron effect to label. Of the layers sampled, labels held up only at 41 to 58; 32 to 40 were not sampled. ${rumour}`
+    );
+  if (n < 11)
+    return (
+      `Layer ${n} lies below every layer the study tested; the lowest was layer 11, where labels did no better than chance. Of the layers ` +
+      `sampled, labels held up only at 41 to 58. ${rumour}`
     );
   return `Layer ${n} lies above the band the study tested, layers 41 to 58. At the last layers the lens and the naked eye see much the same thing.`;
 }
@@ -1390,8 +1406,18 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
   const agr = m.agr;
   const cmp = m.recorded ? null : comparisonPick(m);
   const x = rx(m.layerNo);
-  const band = m.layerNo < 41 ? "below the band" : m.layerNo > 58 ? "above the band" : "inside the band";
+  const band =
+    m.layerNo > 58
+      ? "above the band"
+      : m.layerNo >= 41
+        ? "inside the band"
+        : m.layerNo >= 32
+          ? "in the stretch the study did not sample"
+          : m.layerNo >= 11
+            ? "in the stretch where labels did no better than chance"
+            : "below every layer the study tested";
   const sealLines = !agr ? ["not yet", "read"] : agr.verdict === "partly agree" ? ["partly", "agree"] : [agr.verdict];
+  const { lens } = useReadingLens(m.sighting);
 
   return (
     <section aria-labelledby="says-head" style={SECTION}>
@@ -1406,11 +1432,12 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
         same face seen with the naked eye. A word that stands in both is marked ◆.
       </Rubric>
       <div style={{ columns: "2 340px", columnGap: "88px", columnRule: `1px solid ${HAIR}`, paddingTop: "6px" }}>
-        <WordColumn title="through the lens" sub="(J++ lens)" toks={m.focus.lens} sharedWith={m.focus.eye} missing={missing} />
+        <WordColumn title="through the lens" sub={`(${lensLabel(lens)})`} toks={m.focus.lens} sharedWith={m.focus.eye} missing={missing} />
         <WordColumn title="to the naked eye" sub="(logit lens)" toks={m.focus.eye} sharedWith={m.focus.lens} missing={missing} />
       </div>
       <Rubric style={{ maxWidth: "760px" }}>
-        These are the words this face pushes the model toward when it fires. They are not a forecast: in the study, the words that follow when a
+        These are the words each reading says this face pushes the model toward when it fires; how far to trust them depends on the layer, as
+        set out below. They are not a forecast: in the study, the words that follow when a
         neuron fires on its own were mostly not its label. Scores sit near 30, the ceiling where the model squashes them, and a label looks as
         confident as noise does, so read the order, not the size.
       </Rubric>
@@ -1516,17 +1543,29 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
             <svg
               viewBox="0 0 900 96"
               role="img"
-              aria-label={`A ruler of the sixty layers. Layers 41 to 58 are marked as the band where labels held up; below layer 41 the study found no stable effect to label. This neuron sits at layer ${m.layerNo}, ${band}.`}
+              aria-label={`A ruler of the sixty layers. Layers 41 to 58 are marked as the band where labels held up; at layers 11 to 31 they did no better than chance, and layers 32 to 40 were not sampled. This neuron sits at layer ${m.layerNo}, ${band}.`}
               style={{ width: "100%", height: "auto", display: "block" }}
             >
               <g fontFamily={SERIF} fontSize="14" textAnchor="middle">
-                <text x="312" y="28" fontStyle="italic" fill={MUTED}>
-                  below layer 41: no stable effect to label
+                <text x={rx(21)} y="28" fontStyle="italic" fill={MUTED} style={NUM}>
+                  11–31: no better than chance
+                </text>
+                <text x={rx(36)} y="28" fontStyle="italic" fill={MUTED} style={NUM}>
+                  32–40: not sampled
                 </text>
                 <text x="724.4" y="28" fill={GILT_TEXT} style={NUM}>
                   labels held up · layers 41–58
                 </text>
               </g>
+              <path
+                d={`M${rx(11)},36 L${rx(11)},44 M${rx(31)},36 L${rx(31)},44`}
+                fill="none"
+                stroke={INK}
+                strokeOpacity="0.45"
+                strokeWidth="1"
+              />
+              <line x1={rx(11)} y1="40" x2={rx(31)} y2="40" stroke={INK} strokeOpacity="0.45" strokeWidth="1" />
+              <line x1={rx(32)} y1="40" x2={rx(40)} y2="40" stroke={INK} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="1 4" />
               <path d="M601.6,34 L601.6,46 M847.1,34 L847.1,46" fill="none" stroke={GILT} strokeWidth="1" />
               <line x1="601.6" y1="40" x2="847.1" y2="40" stroke={GILT} strokeWidth="3" />
               <line x1="24" y1="60" x2="876" y2="60" stroke={INK} strokeOpacity="0.35" strokeWidth="1" />
@@ -1534,7 +1573,7 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
               <path d={ruler.global} fill="none" stroke={GILT} strokeWidth="1" />
               <path d={`M${x},51 L${f1(x + 9)},60 L${x},69 L${f1(x - 9)},60 Z`} fill={RED} />
               <g fontFamily={SERIF} fontSize="13" textAnchor="middle" fill={MUTED} style={NUM}>
-                {[1, 41, 58, 60]
+                {[1, 11, 31, 41, 58, 60]
                   .filter((l) => Math.abs(l - m.layerNo) > 2)
                   .map((l) => (
                     <text key={l} x={rx(l)} y="86">
@@ -1626,10 +1665,14 @@ const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreeme
         <dt>lens</dt>
         <dd>
           J = the J++ lens (Ayonrinde &amp; Lindsey 2026) [4], an LRP backward pass after the R-lens rules [5] on the Jacobian lens (Gurnee et
-          al. 2026) [2]. It was fitted on the base bf16 model and is applied to the instruct W4A16 one (REPORT §3.4, bug 9); the proposed fix is
-          to refit it on the instruct checkpoint (§3.5 item 6). The published J++ readout also drops non-semantic word-pieces; the instrument
-          applies only the matrix (REPORT §3.1). The naked eye is the logit lens (nostalgebraist 2020) [8].
+          al. 2026) [2]. It was fitted on the base bf16 model and is applied to the instruct W4A16 one (REPORT §3.4, bug 9). Whether its
+          disagreement with the instruct model comes from the chat training or the 4-bit rounding could not be told apart, and J++’s
+          published recipe, cluster weighting and word-piece filter were not tested (R1). R1 refitted a lens on the instruct model: along 128
+          fixed directions, stable at layers 31–59, and as a full matrix usable only at layers 41, 46, 51, 56 and 59. The server loads
+          neither, and neuron labels through it were not tested. The published J++ readout also drops non-semantic word-pieces; the
+          instrument applies only the matrix (REPORT §3.1). The naked eye is the logit lens (nostalgebraist 2020) [8].
         </dd>
+        <LensRecord sighting={m.sighting} reply={m.focus.from === "inspection" ? m.insp?.data : undefined} />
         <dt>raw scores</dt>
         <dd>
           {lensRaw || eyeRaw ? (
@@ -1677,8 +1720,10 @@ const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreeme
         </dd>
         <dt>validity</dt>
         <dd>
-          P@10 in the causal top 100 is 0.35–0.69 at layers 41–58 (45–80% of the reliability ceiling; null ≤ 0.003) and about 0 at layers 11–31.
-          J++ beats the naked eye by 0.04 to 0.12 only at layers 41–46, and they are equal at 51–58 (REPORT §3.2).
+          P@10 in the causal top 100 for J++ labels is 0.35–0.67 at layers 41–58 (null ≤ 0.003; over the whole vocabulary the
+          rank-correlation lift is 45–77% of the split-half reliability ceiling) and about 0 at layers 11–31; layers 32–40 were not sampled
+          (N1). J++ beats the naked eye by 0.04 to 0.12 only at layers 41–46; at 51–58 it is equal or slightly worse (−0.04 [−0.07, −0.01]
+          in N1’s sample, about 0 in a fresh one) (REPORT §3.2; errata E40, E41).
         </dd>
         <dt>caveat</dt>
         <dd>
@@ -3016,10 +3061,10 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
       <p style={{ margin: 0, maxWidth: "760px", padding: "10px 0", borderTop: `1px solid ${HAIR_FAINT}`, borderBottom: `1px solid ${HAIR_FAINT}` }}>
         <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", fontSize: "16px", color: MUTED }}>so far ·</span>{" "}
         {m.focus.from === "recorded" ? (
-          <>Its positive face writes forms of “to be”</>
+          <>Through the lens and to the naked eye, its positive face reads as forms of “to be”</>
         ) : top ? (
           <>
-            Its {faceWord(m.focusFace)} face writes {andList(top.map(wp))}
+            Through the lens, its {faceWord(m.focusFace)} face writes {andList(top.map(wp))}
           </>
         ) : null}
         {top ? (m.agr ? <>, and the two readings {m.agr.verdict}. </> : <>. </>) : <>What its faces write has not been read yet. </>}

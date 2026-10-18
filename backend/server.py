@@ -495,6 +495,8 @@ def pack_binary_and_json_frames(
         "pole_ranking": sweep.pole_ranking,
         "thread_score": sweep.thread_score,
         "frame": sweep.frame_info,
+        # which lens produced every reading below: what it was fitted on, what it reads, how, its source, and a caution
+        "lens": runtime.lens_card(),
         "layer_plumes": layer_plumes,
         "poles_labels": poles_labels,
         "filaments_meta": filaments_meta,
@@ -618,6 +620,7 @@ async def api_health() -> Dict[str, Any]:
         "vram_allocated_gb": round(vram_alloc, 2),
         "vram_peak_gb": round(vram_peak, 2),
         "larql_cli": vault.cli_versions(),
+        "lens": runtime.lens_card(),
     }
 
 
@@ -633,6 +636,7 @@ async def api_larql(req: LarqlRequest) -> Dict[str, Any]:
 
 @app.post("/api/scientist/inspect_pole")
 async def api_inspect_pole(req: PoleInspectRequest) -> Dict[str, Any]:
+    # the scientist tools name their lens themselves ("lens"); these routes pass their replies on unchanged
     _runtime, _vault = get_app_state()
     async with _GPU_LOCK:
         return inspect_pole(layer=req.layer, neuron_idx=req.neuron_idx, polarity=req.polarity)

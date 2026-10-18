@@ -4,8 +4,8 @@ import { pct, wp } from "../lib/words";
 
 /**
  * The matched control, as an apparatus row's content: which sighting is kept, a button to keep or clear
- * it, and (given a layer) what the control was thinking there. The study reads lens outputs against a
- * matched control (a nameless or background condition), never alone (REPORT §3.5).
+ * it, and (given a layer) what the lens read the control as there, worded as on the instrument. The study reads
+ * lens outputs against a matched control (a nameless or background condition), never alone (REPORT §3.5).
  */
 export const ControlSighting: React.FC<{ layerIdx?: number }> = ({ layerIdx }) => {
   const sighting = useTheodoliteStore((s) => s.sighting);
@@ -26,7 +26,7 @@ export const ControlSighting: React.FC<{ layerIdx?: number }> = ({ layerIdx }) =
       )}
       {at ? (
         <span>
-          At layer {at.no} the control was thinking{" "}
+          At layer {at.no} the lens read the control as{" "}
           {at.lensTop?.[0] ? (
             <>
               {wp(at.lensTop[0].token)} ({pct(at.lensTop[0].prob)})

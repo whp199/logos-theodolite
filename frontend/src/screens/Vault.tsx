@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Apparatus, Page, Rubric } from "../components/kit";
+import { Apparatus, LensRecord, Page, ReadingThrough, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
 import { useTheodoliteStore } from "../store/useTheodoliteStore";
 import { Alidade } from "./vault/Alidade";
@@ -71,7 +71,7 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
       folio="folio vi"
       footer={
         <>
-          Reading google/gemma-4-31b-it (4-bit) through the J++ lens · 60 layers · 5,376 dimensions ·{" "}
+          <ReadingThrough /> · 60 layers · 5,376 dimensions ·{" "}
           <a href={href.lineage()}>the lineage of these ideas</a>
         </>
       }
@@ -112,8 +112,8 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
           <dt>technical name</dt>
           <dd>
             <span className="mono-wrap">LarqlVaultEngine</span> in <span className="mono-wrap">backend/larql_vault.py</span>: a static index of
-            the GeGLU feed-forward neurons (Shazeer 2020) [15] of all sixty layers, read through the J++ lens, with edits held in memory. The
-            code calls it a J-VINDEX3 engine.
+            the GeGLU feed-forward neurons (Shazeer 2020) [15] of all sixty layers, read through the J++ lens (fitted on the base model),
+            with edits held in memory. The code calls it a J-VINDEX3 engine.
           </dd>
           <dt>its names</dt>
           <dd>
@@ -133,6 +133,7 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
             model and applied here to the instruct model (REPORT §3.4, bug 9). The naked eye is the logit lens, unembed(h) (nostalgebraist
             2020) [8].
           </dd>
+          <LensRecord />
           <dt>as recorded</dt>
           <dd className="num">
             DESCRIBE, 16 October 2026: d<sub>model</sub> 5,376 · 60 layers · 21,504 neurons in each, 1,290,240 in all · 262,144 word-pieces ·

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import gc
 import logging
+import re
 import time
 import types
 from contextlib import nullcontext
@@ -66,6 +67,58 @@ CANONICAL_MODEL_ID = "google/gemma-4-31b-it"
 LENS_REPO_ID = "neuronpedia/jacobian-lens"
 JPP_LENS_FILENAME = "gemma-4-31b/jpp/Salesforce-wikitext/gemma-4-31B_jpp_lens.pt"
 JLENS_FILENAME = "gemma-4-31b/jlens/Salesforce-wikitext/gemma-4-31B_jacobian_lens.pt"
+# The lens every reading goes through, as GET /api/health, every sweep, every scientist tool reply (MCP, HTTP and
+# WebSocket) and every vault statement that reads words or writes an edit through it (`LarqlVaultEngine.execute_lql`)
+# name it ("lens", from `TheodoliteRuntime.lens_card`). The shipped J++ file was fitted by its authors on the
+# BASE model in bf16 and is applied here to the instruct W4A16 checkpoint (REPORT §0, §3.4 bug 9; R1). Its own
+# "provenance" block (source, method, lrp_mode, source_config.hf_model_name, n_prompts, max_seq_len) names the model
+# and the recipe but neither the dtype nor the corpus. The facts below fill those gaps, and only for a file whose
+# provenance says it is that kind of file (hf_model_name google/gemma-4-31B, method jpp); any other file is described
+# by its own provenance alone, with None for what it does not record.
+JPP_FITTED_MODEL = "google/gemma-4-31B"
+JPP_LENS_FALLBACK: Dict[str, Any] = {
+    "id": "jpp-base",
+    "name": "J++",
+    "fitted_on": f"{JPP_FITTED_MODEL} (base, bf16)",
+    "method": "J++, R-lens LRP backward pass",
+    # the corpus is the file's Salesforce-wikitext folder (WikiText-103, REPORT §0); the counts are its provenance's
+    "fit_data": "64 WikiText passages of 128 word-pieces",
+    # Layers count from 0, as everywhere in this API (the pages count from 1). The bands are the study's: condition
+    # means track behaviour at r 0.88 at L20-29, and at L10-19 at 0.92 in E1 but 0.31 in E2 (E1 table, E2 §6); no
+    # average-Jacobian lens is stable below L30 (E3, R1); contrasts at L30-49 and the L50-58 pronoun flag are erratum
+    # E49; the she-lean is erratum E2; neuron labels were sampled at L10/20/30/40/45/50/55/57 (N1).
+    "caution": (
+        "Fitted on the base model, not on the model it reads: compare its readings between matched sightings; do not "
+        "take its words as this model's own. Layers count from 0 here (the pages count from 1). The order of "
+        "conditions it gives was checked against the model's behaviour from layer 20; at layers 20-29 trust only that "
+        "order; below layer 20 the study's two checks disagreed, so treat even comparisons there as unconfirmed. Use "
+        "layers 30-49 for condition contrasts. At layers 50-58 this lens reads 'she' at or above a woman persona for "
+        "6-7 of the 9 AI personas the study tried: flag pronoun readouts there unless a lens fitted on the instruct "
+        "model agrees. Neuron-pole word labels predicted causal effects only at the sampled layers 40-57; they were at "
+        "chance at 10-30, and 31-39 were not sampled."
+    ),
+}
+_LENS_METHOD_NAMES = {"jpp": "J++"}
+# The name sent for a file whose provenance records no method. The pages print "the {name} lens", so it reads "the
+# unnamed lens"; it is never None, so a card that is present but incomplete is not mistaken for no card at all.
+UNNAMED_LENS = "unnamed"
+_LRP_MODE_NAMES = {"rlens": "R-lens LRP backward pass"}
+_PROVENANCE_KEYS = ("source", "method", "lrp_mode", "hf_model_name", "n_prompts", "max_seq_len")
+# For a lens file other than the shipped one: the study's checks were made on that one and do not carry over.
+_OTHER_LENS_CAUTION = (
+    "Until it is checked against this model's behaviour, compare its readings between matched sightings and do not "
+    "take its words as this model's own; the instrument's checks were made with another lens file."
+)
+
+
+def _fitted_kind(hf_model_name: str) -> Optional[str]:
+    """"base" or "instruct" where the model's name says so (the base model is known by name); None otherwise."""
+    if hf_model_name == JPP_FITTED_MODEL:
+        return "base"
+    if re.search(r"-it\b|instruct", hf_model_name, re.IGNORECASE):
+        return "instruct"
+    return None
+
 # The 181 residual dims that are deep-quiet at every layer L42-57 (V6; REPORT §2.2), a [5376] bool mask.
 QUIET_DIMS_PATH = Path(__file__).resolve().parent.parent / "experiments" / "results" / "V6_quiet_dims_pers181.npy"
 # A fixed reference set for each layer's quietest tenth of dims (the q10 set of E6/V6, which holds 99-100% of a J++
@@ -83,6 +136,50 @@ QUIET_REFERENCE_CHAT: Tuple[Tuple[str, str], ...] = (
     ("Tell me a story about a king.", "Once upon a time, a king"),
 )
 QUIET_QUANTILE = 0.10
+
+
+def _provenance_text(v: Any) -> Optional[str]:
+    """A provenance field as text; None when absent or blank (so a blank field counts as not recorded)."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    return s or None
+
+
+def _provenance_count(v: Any) -> Optional[int]:
+    """A provenance count as a plain int (a file may hold a one-element tensor); None unless a positive whole number."""
+    try:
+        n = v.item() if hasattr(v, "item") else v
+        if isinstance(n, bool) or float(n) != int(n):
+            return None
+        n = int(n)
+    except (TypeError, ValueError, RuntimeError, OverflowError):
+        return None
+    return n if n > 0 else None
+
+
+def _read_lens_provenance(payload: Any) -> Dict[str, Any]:
+    """The fields of a lens file's "provenance" block that name what it was fitted on and how, flattened, as text and
+    plain ints (they go out as JSON in every lens card); {} if none. A field that is absent, blank or not a usable
+    value is left out, as not recorded."""
+    if not isinstance(payload, dict):
+        return {}
+    prov = payload.get("provenance")
+    prov = prov if isinstance(prov, dict) else {}
+    cfg = prov.get("source_config")
+    cfg = cfg if isinstance(cfg, dict) else {}
+    out = {
+        "source": _provenance_text(prov.get("source")),
+        "method": _provenance_text(prov.get("method")),
+        "lrp_mode": _provenance_text(prov.get("lrp_mode")) or _provenance_text(cfg.get("lrp_mode")),
+        "hf_model_name": _provenance_text(cfg.get("hf_model_name")),
+        "n_prompts": (
+            _provenance_count(payload.get("n_prompts")) or _provenance_count(cfg.get("num_prompts_trained_on"))
+        ),
+        "max_seq_len": _provenance_count(cfg.get("max_seq_len")),
+    }
+    return {k: v for k, v in out.items() if v is not None}
+
 
 _SHIFTS_CACHE: Dict[torch.device, torch.Tensor] = {}
 
@@ -289,6 +386,8 @@ class TheodoliteRuntime:
 
         self.jpp_lenses: Dict[int, torch.Tensor] = {}
         self.jlens_lenses: Dict[int, torch.Tensor] = {}
+        # the J++ file's own "provenance" block (plus its top-level n_prompts), as loaded; {} until then
+        self.jpp_provenance: Dict[str, Any] = {}
 
         self._decoder_layers: Optional[nn.ModuleList] = None
         self._final_norm_weight: Optional[torch.Tensor] = None
@@ -378,6 +477,7 @@ class TheodoliteRuntime:
         logger.info("Loading J++ Lens from %s...", jpp_path)
         jpp_payload = torch.load(jpp_path, map_location="cpu", weights_only=True)
         raw_jpp = jpp_payload["J"] if isinstance(jpp_payload, dict) and "J" in jpp_payload else jpp_payload
+        self.jpp_provenance = _read_lens_provenance(jpp_payload)
 
         for l in range(N_LAYERS - 1):
             self.jpp_lenses[l] = validate_and_cast_lens(
@@ -389,6 +489,7 @@ class TheodoliteRuntime:
         # Final layer 59 is the target unembedding frame (Identity)
         self.jpp_lenses[N_LAYERS - 1] = torch.eye(D_MODEL, dtype=torch.bfloat16, device=self.device)
         del raw_jpp, jpp_payload
+        logger.info("J++ lens: %s", self.lens_card())
         gc.collect()
 
         if self.load_jlens:
@@ -417,6 +518,63 @@ class TheodoliteRuntime:
                 gc.collect()
             except Exception as exc:
                 logger.warning("Optional JLens load skipped: %s", exc)
+
+    def lens_card(self) -> Optional[Dict[str, Any]]:
+        """The lens every reading goes through, named for the API: what it was fitted on, what it is applied to, how,
+        on what, where the file came from, and how far to trust its words (`caution`, always sent). For the shipped
+        kind of file (provenance: hf_model_name google/gemma-4-31B, method jpp) the provenance is completed from
+        `JPP_LENS_FALLBACK`; any other file is described by its provenance alone, None where it records nothing,
+        except `name`, which is `UNNAMED_LENS` when the file records no method. `provenance` repeats the file's own
+        fields (None where absent). None before `load()`. scripts/check_lens_card.py checks every branch on the CPU."""
+        if not self.jpp_lenses:
+            return None
+        p = self.jpp_provenance
+        hf, method, lrp = p.get("hf_model_name"), p.get("method"), p.get("lrp_mode")
+        n, seq = p.get("n_prompts"), p.get("max_seq_len")
+        how = None
+        if method:
+            how = _LENS_METHOD_NAMES.get(method, method)
+            if lrp:
+                how = f"{how}, {_LRP_MODE_NAMES.get(lrp, f'{lrp} LRP backward pass')}"
+        card: Dict[str, Any] = {
+            "id": None,
+            "name": _LENS_METHOD_NAMES.get(method, method) if method else UNNAMED_LENS,
+            "fitted_on": None,
+            "applied_to": self.model_id,
+            "method": how,
+            "fit_data": None,
+            "source": p.get("source"),
+            # the file the server loaded (for the shipped lens, Neuronpedia's copy of the source above)
+            "file": f"{self.lens_repo_id}:{JPP_LENS_FILENAME}",
+            "caution": _OTHER_LENS_CAUTION,
+            "provenance": {k: p.get(k) for k in _PROVENANCE_KEYS},
+        }
+        if hf == JPP_FITTED_MODEL and method == "jpp":
+            fb = JPP_LENS_FALLBACK
+            card.update(
+                id=fb["id"],
+                name=fb["name"],
+                fitted_on=fb["fitted_on"],
+                method=how or fb["method"],
+                fit_data=(
+                    f"{n} WikiText passages of {seq} word-pieces" if n and seq
+                    else f"{n} WikiText passages" if n
+                    else fb["fit_data"]
+                ),
+                caution=fb["caution"],
+            )
+            return card
+        if hf:
+            kind = _fitted_kind(hf)
+            card["fitted_on"] = f"{hf} ({kind})" if kind else hf
+            card["id"] = f"{method}-{kind}" if method and kind else method
+            card["caution"] = f"Fitted on {hf}, read here on {self.model_id}. {_OTHER_LENS_CAUTION}"
+        else:
+            card["id"] = method
+            card["caution"] = f"The file does not say which model it was fitted on. {_OTHER_LENS_CAUTION}"
+        if n:
+            card["fit_data"] = f"{n} prompts of up to {seq} word-pieces" if seq else f"{n} prompts"
+        return card
 
     @property
     def final_norm_weight(self) -> torch.Tensor:

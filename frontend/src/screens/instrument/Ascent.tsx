@@ -2,6 +2,7 @@ import React from "react";
 import type { Sighting } from "../../store/useTheodoliteStore";
 import { IfApparatus, Rubric } from "../../components/kit";
 import { bare } from "../../lib/words";
+import { lensBand, useReadingLens } from "../../lib/lens";
 import { useApparatus } from "../../reading";
 
 const f = (n: number) => Math.round(n * 10) / 10;
@@ -14,6 +15,7 @@ export const Ascent: React.FC<{ sighting: Sighting; sel: number; stations: numbe
   onPick,
 }) => {
   const apparatus = useApparatus();
+  const { lens } = useReadingLens(sighting);
   const read = sighting.readAt != null ? `“${bare(sighting.readAt)}”` : "the last word";
   return (
     <section aria-labelledby="ascent-head" style={{ marginTop: 44, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -50,7 +52,10 @@ export const Ascent: React.FC<{ sighting: Sighting; sel: number; stations: numbe
         </div>
       </div>
       <Rubric style={{ margin: 0 }}>
-        Read left to right, the word {read} rising through the model. Choose any marked layer to open it above.
+        Read left to right, the word {read} rising through the model. Each bar is how the {lens.name} lens weighs what that layer gathered
+        and remembered, and the words above are that lens’s readings. Below layer 21 the study could validate none of them, so those words
+        are drawn faint; at layers 21 to 30 trust only how sightings rank against one another, not the words themselves. Choose any marked
+        layer to open it above.
       </Rubric>
       <div style={{ overflowX: "auto", paddingBottom: 6 }}>
         <div style={{ minWidth: 980, position: "relative", paddingTop: 74 }}>
@@ -58,13 +63,22 @@ export const Ascent: React.FC<{ sighting: Sighting; sel: number; stations: numbe
             {stations.map((s) => {
               const word = sighting.layers[s]?.lensTop?.[0]?.token;
               const on = s === sel;
+              // below layer 21 the study validated nothing the lens reads (lib/lens.ts, lensBand): drawn faint
+              const faint = word != null && lensBand(s + 1) === "untested";
               return (
                 <button
                   key={s}
                   type="button"
                   onClick={() => onPick(s)}
                   aria-pressed={on}
-                  aria-label={`Layer ${s + 1}${word != null ? `, thinking “${bare(word)}”` : ""}`}
+                  aria-label={`Layer ${s + 1}${
+                    word == null
+                      ? ""
+                      : s === 59
+                        ? `, its own likeliest next word “${bare(word)}”`
+                        : `, through the lens “${bare(word)}”${faint ? ", where the study could validate nothing" : ""}`
+                  }`}
+                  title={faint ? "Below layer 21 the study could validate nothing the lens reads" : undefined}
                   style={{
                     position: "absolute",
                     left: `${f(((s + 0.5) / 60) * 100)}%`,
@@ -83,7 +97,15 @@ export const Ascent: React.FC<{ sighting: Sighting; sel: number; stations: numbe
                     color: on ? "#8F2B1E" : "#2B2117",
                   }}
                 >
-                  <span style={{ fontSize: 19, fontStyle: "italic", whiteSpace: "nowrap", lineHeight: 1.3 }}>
+                  <span
+                    style={{
+                      fontSize: 19,
+                      fontStyle: "italic",
+                      whiteSpace: "nowrap",
+                      lineHeight: 1.3,
+                      ...(faint ? { opacity: 0.6, color: on ? undefined : "#6B5D4D" } : null),
+                    }}
+                  >
                     {word != null ? `“${bare(word)}”` : "·"}
                   </span>
                   <span className="num" style={{ fontSize: 13, letterSpacing: "0.08em", color: "#6B5D4D" }}>

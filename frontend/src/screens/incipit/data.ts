@@ -28,9 +28,11 @@ export interface FirstQuestion {
 
 /*
  * Questions. Row 1: the instrument's own sighting (E6_tool_audit_02_sweep_demo.json, a chat prompt: ids
- * begin 2, 2, 105). Rows 2-6: experiments/results/V7_tool_bugs_08_diag.json "gens": hf_greedy for plain
- * text; chat_template_hf_greedy is the same text as the assistant's reply to "Continue this text."
- * (V7_tool_bugs_08_diag.py, labkit.chat). Continuations are cut at the first sentence; nothing is added.
+ * begin 2, 2, 105; J++ top-1 at index 10, 20, 40 and 45 is the same with prepend_bos=False). Index 10-29 is
+ * below where R1 found any averaged lens stable, hence the note's caveat. Rows 2-6:
+ * experiments/results/V7_tool_bugs_08_diag.json "gens": hf_greedy for plain text; chat_template_hf_greedy is
+ * the same text as the assistant's reply to "Continue this text." (V7_tool_bugs_08_diag.py, labkit.chat).
+ * Continuations are cut at the first sentence; nothing is added.
  */
 export const FIRST_QUESTIONS: FirstQuestion[] = [
   {
@@ -42,7 +44,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     send: { question: "Tell me about yourself.", answerBegins: "Hi! I", chat: true },
     begins: "“Hi! I”",
     follows: "“I”",
-    note: "Follow the word “I”. On its way to “am” it passes through a given name, a company, and the Chinese for “is a”.",
+    note: "Follow the word “I”. Through the lens, fitted on the base model, it shows “Iman” at layer 11 and “HUAWEI” at layer 21, where no lens of this kind proved reliable, then the Chinese for “is a” at layers 41–46, before “am”. With no control beside it, this is a lead, not a finding.",
     wentLabel: "it went on",
     went: "“… am a large language model,”",
     plain: "",

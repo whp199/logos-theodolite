@@ -1,6 +1,6 @@
 <p align="center">
   <img src="docs/readme/frontispiece.png" width="100%"
-       alt="The opening page of Logos Theodolite: an engraved initial L beside the title, and sixty stacked rings with the path of one word winding up through them, labelled with what the model was thinking at a few of its layers.">
+       alt="The opening page of Logos Theodolite: an engraved initial L beside the title, and sixty stacked rings with the path of one word winding up through them, labelled with what a lens makes of it at a few of its layers.">
 </p>
 
 <p align="center">
@@ -27,16 +27,16 @@
 
 Between a question and its answer, a language model carries each word up through all of its layers, and little of that
 country has been mapped. **Logos Theodolite** lets you follow a single word as it rises through the sixty layers of
-**Gemma-4-31B-it**, and read, at every layer, what the model was thinking: sometimes in words you never wrote, in languages
-you never used.
+**Gemma-4-31B-it**, and read, at every layer, what a lens makes of it: sometimes words you never wrote, in languages you
+never used.
 
 The repository holds two things.
 
 - **The instrument** (`backend/`, `frontend/`). A FastAPI server and a React interface that read Gemma-4-31B-it (QAT W4A16)
-  through the J++ and Jacobian lenses: the path of a word through the layers, what each layer gathers from the words before
-  and recalls from memory, the neurons that fire, the threads between them, a survey frame of three landmark words, a
-  nudge on the model's stream of thought, and a vault of neurons you can search and edit. The tensor contracts are in
-  [`ARCHITECTURE.md`](ARCHITECTURE.md).
+  through the J++ lens, fitted on the base model, and the plain logit lens: the path of a word through the layers, what
+  each layer gathers from the words before and recalls from memory, the neurons that fire, the threads between them, a
+  survey frame of three landmark words, a nudge on the model's stream, and a vault of neurons you can search and edit.
+  The tensor contracts are in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - **The study** (`experiments/`). Is Gemma 4 "female-coded"? Seven experiments, eight adversarial verifiers, a
   neuron-label validation study and a lens refit on the instruct model: 314 GPU jobs through a shared lab daemon.
   **Start with [`experiments/REPORT.md`](experiments/REPORT.md).**
@@ -61,17 +61,18 @@ instrument has. Both are switches at the top of every page; nothing is hidden fr
 </p>
 
 **The instrument.** One ring for each layer, the first at the bottom. The dark thread is the path of the word "I", in the
-reply "Hi! I", as it rises; beside it stands what the model was thinking at a few layers, read through the J++ lens. The
-gilded rings, every sixth, are the layers that look back over the whole conversation. On the right is the leaf of the chosen
-layer: its likeliest words, and how much of its change was **gathered** from the words before (attention, lapis) or
-**recalled** from memory (the feed-forward block, gilt).
+reply "Hi! I", as it rises; beside it stand the words a lens makes of it at a few layers. That lens is J++, fitted on the
+base model: the head of every page names it, and a red line beside each layer's words says what the reading can bear
+there. The gilded rings, every sixth, are the layers that look back over the whole conversation. On the right is the leaf
+of the chosen layer: its likeliest words through the lens, and how much of its change was **gathered** from the words
+before (attention, lapis) or **recalled** from memory (the feed-forward block, gilt).
 
 <table>
   <tr>
     <td width="50%" valign="top">
       <img src="docs/readme/layer-leaf.png" alt="A layer's leaf: the numeral 36 at the hub of an engraved dial, with its bearing of 14 degrees and elevation of 52 degrees against the landmark words she, he and it, and a paragraph saying the model has not yet settled on a word.">
-      <p><b>A layer’s leaf.</b> Where the thought points at one layer, as a bearing round the horizon and an elevation toward the
-      third landmark, and what the model would say if it stopped there.</p>
+      <p><b>A layer’s leaf.</b> Where the stream points at one layer, read through the lens as a bearing round the horizon and
+      an elevation toward the third landmark, and the lens’s guess at what the model would say if it stopped there.</p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/readme/neuron-folio.png" alt="A neuron's folio for neuron 15491 at layer 54, titled the I am neuron, with the particulars of the sighting it fired in.">
@@ -81,13 +82,13 @@ layer: its likeliest words, and how much of its change was **gathered** from the
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/readme/landmarks-frame.png" alt="The survey frame drawn as an engraved armillary: the landmark words she, he and it as axes, the thought at layer 36 marked with its bearing and elevation, and beside it the angles between each pair of words.">
-      <p><b>Landmarks.</b> Three words fix a frame, as a surveyor sights known landmarks. Each layer’s thought is read as a
-      bearing and an elevation against them, with the angles between the words beside it.</p>
+      <img src="docs/readme/landmarks-frame.png" alt="The survey frame drawn as an engraved armillary: the landmark words she, he and it as axes, the stream at layer 36 as the lens reads it, marked with its bearing and elevation, and beside it the angles between each pair of words.">
+      <p><b>Landmarks.</b> Three words fix a frame, as a surveyor sights known landmarks. Each layer’s stream, carried through
+      the lens, is read as a bearing and an elevation against them, with the angles between the words beside it.</p>
     </td>
     <td width="50%" valign="top">
       <img src="docs/readme/nudge-dial.png" alt="The strength dial of the nudge, from times 0.001 to times 10 of the stream's own strength, clear up to times 0.01, gilded where the study's fluent nudge sat, and hatched red where it collapses, with the old defaults of 280 and 650 marked in the red.">
-      <p><b>The nudge.</b> A small push on the stream of thought while the model reads, measured as a share of the stream’s own
+      <p><b>The nudge.</b> A small push on the model’s stream while it reads, measured as a share of the stream’s own
       strength, with the old defaults marked where the study found they break the model.</p>
     </td>
   </tr>
@@ -99,7 +100,7 @@ layer: its likeliest words, and how much of its change was **gathered** from the
     </td>
     <td width="50%" valign="top">
       <p><b>Also in the instrument</b></p>
-      <p><b>Lexicon</b>: every word of the instrument in plain terms, with its formula, and eleven cautions on where it can
+      <p><b>Lexicon</b>: every word of the instrument in plain terms, with its formula, and the cautions on where it can
       mislead you. <b>Lineage</b>: the research it is made from, pillar by pillar, each with what the study found about it.</p>
       <p><sub>Every view above is a live sighting from the running server: “Tell me about yourself.”, its answer begun
       “Hi! I”, sent as a chat. With no server running, the pages show the study’s recorded sighting (E6) and say so.</sub></p>
@@ -113,7 +114,7 @@ layer: its likeliest words, and how much of its change was **gathered** from the
 |---|---|
 | a **sighting** | one 60-layer sweep of a prompt, read at its last word-piece |
 | **layers 1–60** | decoder layers, counted from 1 (the code counts 0–59) |
-| **the lens** · **the naked eye** | the J++ lens readout `unembed(h·Jₗᵀ)` · the logit lens `unembed(h)` |
+| **the lens** · **the naked eye** | the J++ lens readout `unembed(h·Jₗᵀ)`, with Jₗ fitted on the base model `google/gemma-4-31B` · the logit lens `unembed(h)` |
 | **gathering** · **remembering** | the attention write · the feed-forward (GeGLU) write, with Gemma 4’s layer scalar |
 | a neuron’s **two faces** | the positive and negative poles of a GeGLU neuron (Cammarata 2026) |
 | **threads** | reader filaments: a later neuron whose gate reads an earlier neuron’s write |
@@ -125,32 +126,70 @@ layer: its likeliest words, and how much of its change was **gathered** from the
 
 ## iii · what the study found
 
+> [!CAUTION]
+> **Where the findings below rest on J++ or the Jacobian lens, they rest on lenses fitted on the base model.** Most of
+> the study’s lens readings, and every reading the instrument calls “the lens”, go through J++: a lens fitted on the
+> *base* model, `google/gemma-4-31B` in bf16, from 64 WikiText prompts of up to 128 tokens, and applied here to the
+> instruct model in 4 bits. On the instruct model it is good for comparing and poor on its own: from about layer 21 it
+> puts conditions in the order the model’s behaviour does (r ≈ 0.9 or better), but through layer 50 its top word matches
+> the model’s next word on prose at most about 5% of the time. Results reached without a lens (what the model says,
+> activation geometry, weights, patching, and steering measured on the output) are untouched by this caution. Most stand
+> as they are, the behaviour counts and the AI-versus-human offset in the raw stream among them; a few carry precision
+> fixes of their own in the report’s [errata](experiments/REPORT.md#errata-and-cautions-2026-10-17): where the
+> self-gender the model predicts from is held (erratum E22), what share of a covector’s energy the ~180 quiet dimensions
+> take (E7, E27), how far binding fades in the raw stream at layers 41–59 (E21), and what single neurons do at layers
+> 21–31, which the study’s 60-fold push overdrove (E43, E46). Each lens finding below names its readout and its layers;
+> the report’s caution on the lens, in [`experiments/REPORT.md`](experiments/REPORT.md), gives the detail.
+
 - **Gemma-4-31B is not female-coded by default.** With no system prompt it calls itself *it* (0/320 *she* across
-  single- and multi-turn samples). Under the J++ and Jacobian lenses, its self-token gender readout equals a nameless AI’s
-  to within about 1–3% of the woman–man persona span.
+  single- and multi-turn samples). Read at its own *I*/*me*/*my* tokens, its gender readout sits with a nameless AI’s:
+  within about 1–3% of the woman–man persona span through the base-fitted J++ and Jacobian lenses at layers 21–50, and
+  within about 5% through a lens refitted on the instruct model (R1, layers 31–59; 8–9% against neutral-named AIs,
+  and 10%, toward *male*, on one full-matrix reading at 51–59). Where it sits on that span depends on the readout; only
+  the comparison holds.
 - **The "female" readings trace to other causes:**
   - the bare name **"Gemma" written as an antecedent**; "Gemma 4" stays *it*;
   - a forced-choice format that defaults to *woman*, plus an "assistant" stereotype;
-  - late-layer lens artifacts;
+  - late-layer (51–59) pronoun readings of the J++ lens, where 6 or 7 of 9 AI personas read at or above the woman
+    persona. R1 found this mostly a quirk of J++’s fit: under the base-fitted Jacobian lens and under lenses refitted on
+    the instruct model, none or one of the nine does. The default still leans toward the woman persona under each of them
+    (0.54–0.80, man 0 to woman 1), just as the nameless AI does, which R1 reads as the offset in the next line rather than
+    as the model’s own gender;
   - a raw persona axis contaminated by an AI/service-role offset.
-- **J-space at pronoun tokens encodes a role default, not resolved reference.** Quoted speech dissociates the two, while
-  the model’s actual predictions resolve the referent.
-- **A "quiet carry channel" in Gemma 4.** About 180 early-loud residual dimensions are read with up to 1700× RMSNorm
-  gain. Every Jacobian or gradient covector concentrates there, which is why lens-derived steering vectors break the model.
-- **Neuron-pole labels are valid only at layers 41–58** (the report's L40–57, counted from 0), where J++ ≈ the plain logit lens. Input-side labels are
-  near-useless.
-- **The shipped J++ lens was fitted on the base model.** An instruct-fitted lens fixes late-layer fidelity
+- **At pronoun tokens the gender the stream carries is a role default, not the resolved referent**: at *I*, *me* and *my*
+  in layers 21–40, and at *you* from about layer 31 (at 21–30 it is only partly there). Quoted speech dissociates the
+  two, while the model’s actual predictions resolve the referent. The base-fitted J++ and Jacobian lenses, the plain
+  logit lens, a probe trained on prose and a direction read without any lens agree in sign; it has not been re-read
+  through a lens refitted on the instruct model.
+- **A "quiet carry channel" in Gemma 4.** About 180 early-loud residual dimensions are read, through RMSNorm, with up to
+  1700× the gain of the others. Every Jacobian or gradient covector, the instruct model’s own included, puts 99–100% of
+  its energy in the quietest tenth of dimensions at layers 36–59, which contain these (the ~180 alone hold 56–98% at
+  layers 31 and 41); that is why lens-derived steering vectors break the model.
+- **Neuron-pole output labels predicted the neurons’ real effects only at the sampled layers 41–58** (the report's
+  L40–57, counted from 0), read through the base-fitted J++ lens or the plain logit lens, which did as well except at
+  41–46, where J++ was a little ahead. At the sampled layers 11–31 no single neuron had a stable effect to label; layers
+  32–40 were not sampled. Input-side labels are near-useless. Labels read through a lens refitted on the instruct model
+  are untested.
+- **The shipped J++ lens, and the Jacobian lens it was checked against, were fitted on the base model.** Most of the
+  study’s lens readings went through J++, and the instrument still reads through it. A lens refitted on the instruct
+  model predicts the next word better at the five late layers where its full matrix is usable, 41, 46, 51, 56 and 59
+  (top-1 on the model’s own reply at layer 51: 25% → 45%; at layer 59: 69% → 85%), but not below layer 41, and on prose
+  it stays poor, at most 17% top-1 through layer 56
   ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)).
 
-Every headline claim was re-tested by an independent verifier; the claims that did not survive are listed in §4 of the
-report.
+Every headline claim was re-tested by an independent verifier with new controls, but the verifiers that read a lens read
+through the same base-fitted ones. One of them (V6) measured J++ against the instruct model’s own gradients and put the
+gap down, untested, to the quiet dimensions; the later refit (R1) found it is not confined there. R1 re-read only the
+self-gender readouts and the lens’s own fidelity with a lens fitted on the instruct model. The claims that did not survive
+are listed in §4 of the report.
 
 <br>
 
 ## iv · how far to trust it
 
-*This is research code. Read a single sighting as a lead, never as a finding: the study reads lens outputs against a
-matched control (REPORT §3.5), and the instrument can keep one for you.*
+*This is research code, and its lens was fitted on the base model (fault 9 below): good for comparing, poor on its own.
+Read a single sighting as a lead, never as a finding: the study reads lens outputs against a matched control
+(REPORT §3.5), and the instrument can keep one for you.*
 
 The study audited its own instrument ([`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md),
 REPORT §3.4). Where each fault stands now:
@@ -165,7 +204,7 @@ REPORT §3.4). Where each fault stands now:
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
 | **7** | One input label for a neuron’s two faces | Open |
 | **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **An option**: `pole_ranking="write"`; every layer reports each neuron’s write size and the share they explain |
-| **9** | The J++ lens was fitted on the base model and is applied to the instruct model | Open in the instrument; the refit is in [`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md) |
+| **9** | The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is applied to the instruct model (4-bit QAT), where it agrees with the model’s own average gradients at only cos 0.15–0.33 for the pronoun direction (layers 31–59) | **Open, and the largest accuracy fault left; now labelled.** Everywhere the instrument uses the lens, it still reads through this base-fitted J++: the words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. R1 refitted a lens on the instruct model ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)): its directional form is stable from layer 31; its full matrix exists at only 11 layers (11, 16, …, 56, 59) and is usable at only five of them, 41, 46, 51, 56 and 59, where it beats J++ (top-1 on the model’s own reply at layer 51: 25% → 45%); below layer 31 no averaged lens tested was reliable. The instrument does not load it. The head and the foot of every page name the lens and say it was fitted on the base model, a red line beside each layer's words says what the reading can bear there, and `/api/health` and every sweep reply carry a `lens` object (`id`, `fitted_on`, `method`, `applied_to`, `caution`) |
 
 - The E6/V7 audit numbers were measured on the backend before these fixes. The history keeps the original instrument as
   its first commit.
@@ -321,7 +360,8 @@ refer to [`REFERENCES.md`](REFERENCES.md), the full, web-checked list; the inter
 **Provenance and AI assistance.** The experiments, analyses and reports in `experiments/` were designed, run and written by
 Claude Code agents (Anthropic), directed by the repository owner: parallel experiment agents, independent adversarial
 verifiers, and a separate lens-refit session. Every headline claim in `experiments/REPORT.md` was re-tested by an independent
-verifier, and the claims that failed are listed in §4 of that report.
+verifier, though the verifiers that read a lens used the same base-fitted ones (see
+[what the study found](#iii--what-the-study-found)), and the claims that failed are listed in §4 of that report.
 
 **License.** Code is licensed under the **Apache License 2.0** ([`LICENSE`](LICENSE)); third-party attributions and
 exceptions are in [`NOTICE`](NOTICE). This repository does **not** redistribute model weights, lens tensors or third-party

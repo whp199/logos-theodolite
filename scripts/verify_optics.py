@@ -3,8 +3,8 @@
 
 Runs the multi-hop prompt `"The number of legs on the animal that spins webs is"` (the two-hop example from
 Gurnee et al. 2026, REFERENCES.md [2])
-(with `<|think|>` disabled vs. enabled) through `interp-engine` + `J++ Lens` on
-`google/gemma-4-31b-it` (4-bit W4A16) and verifies:
+(with `<|think|>` disabled vs. enabled) through `interp-engine` + the `J++ Lens` (fitted on the base model
+`google/gemma-4-31B`, bf16) on `google/gemma-4-31b-it` (4-bit W4A16) and verifies:
   (a) Intermediate bridge tokens (`"spider"`, `"arachnid"`) rising in J++-Space across
       global-attention layers (`L24, L30, L36, L42`) before transitioning to `"eight"` / `"8"`
       at `L54-L60`;
@@ -14,7 +14,9 @@ Gurnee et al. 2026, REFERENCES.md [2])
       trajectory during `capture_generation`;
   (d) Peak VRAM staying safely under 30.0 GB on a single 32GB GPU;
   (e) LARQL / VINDEX3 FFN Vault (`DESCRIBE`, `SELECT * FROM EDGES NEAREST`) and `.patch`
-      MEMIT weight surgery (`UPDATE`, `ROLLBACK`).
+      MEMIT weight surgery (`UPDATE`, `ROLLBACK`);
+  (f) the lens named by `TheodoliteRuntime.lens_card()` (the API's "lens"): J++, fitted on google/gemma-4-31B as the
+      file's own provenance says, with its caution.
 """
 
 from __future__ import annotations
@@ -74,6 +76,16 @@ async def main() -> int:
     torch.cuda.reset_peak_memory_stats()
     runtime = TheodoliteRuntime(load_jlens=True).load()
     vault = LarqlVaultEngine(runtime)
+
+    # (f) the lens every reading below goes through, as /api/health, every sweep and the scientist tools name it;
+    # the base model is what the file's own provenance says, not a fallback
+    lens = runtime.lens_card()
+    assert lens is not None and lens["fitted_on"].split(" (")[0] == "google/gemma-4-31B", f"lens: {lens}"
+    assert lens["provenance"]["hf_model_name"] == "google/gemma-4-31B" and lens["provenance"]["method"] == "jpp", f"lens: {lens}"
+    assert lens["id"] == "jpp-base" and lens["applied_to"] == runtime.model_id and lens["caution"], f"lens: {lens}"
+    print(f"  Lens              : {lens['name']}, fitted on {lens['fitted_on']}, read on {lens['applied_to']}")
+    print(f"                      {lens['method']}; {lens['fit_data']}; source {lens['source']}")
+    print(f"                      caution: {lens['caution']}")
 
     # -------------------------------------------------------------------------
     # 1. Sweep A: Silent / Direct Completion (`<|think|>` disabled)

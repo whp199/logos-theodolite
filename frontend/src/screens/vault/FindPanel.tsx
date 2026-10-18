@@ -387,7 +387,7 @@ export const FindPanel: React.FC = () => {
                   <span role="columnheader">neuron</span>
                   <span role="columnheader">face</span>
                   <span role="columnheader">nearness</span>
-                  <span role="columnheader">its words, through the lens</span>
+                  <span role="columnheader">its words, through the J++ lens</span>
                   <span role="columnheader">naked eye agrees</span>
                   <span role="columnheader">when tested</span>
                 </div>
@@ -548,8 +548,9 @@ export const FindPanel: React.FC = () => {
             <dt>caveat</dt>
             <dd>
               A projected contribution, not a counterfactual (REPORT §3.3). At layers 31–59 nearness ran 0.0004–0.02, at or below
-              chance: from layer 36 the pullback puts 99–100% of its energy in the model’s quiet dimensions (E6 §4b). Output labels held
-              up only at layers 41–58 (REPORT §3.2), where lens and naked-eye agreement predicts a real effect (AUC 0.84).
+              chance: from layer 36 the pullback puts 99–100% of its energy in the quietest tenth of the model’s dimensions (E6 §4b).
+              Output labels held up at layers 41–58 and were at chance at 11–31; layers 32–40 were not sampled (REPORT §3.2; N1). Within
+              41–58, agreement of the J++ lens and the naked eye predicts a real effect (AUC 0.84).
             </dd>
             <dt>not reachable</dt>
             <dd>
@@ -643,7 +644,8 @@ const ReadingKey: React.FC = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 14, borderBottom: "1px solid var(--hair-faint)" }}>
       <span style={{ fontSize: 18 }}>naked eye agrees</span>
       <span style={{ fontSize: 15, color: "var(--muted)" }}>
-        How many of its five words the plain reading, without the lens, also finds. More agreement, more trust.
+        How many of its five words the plain reading, without the lens, also finds. More agreement, more trust, at layers 41 to 58, where
+        the study tested it.
       </span>
     </div>
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

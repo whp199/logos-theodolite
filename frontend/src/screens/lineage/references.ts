@@ -79,7 +79,7 @@ export const refsA: Reference[] = [
     "J++ Lens: Jacobian Filtering Enables More Faithful Workspace Lenses.",
     "LessWrong, 8 October 2026.",
     "https://www.lesswrong.com/posts/nc9dHfcB22JdMzGbr/",
-    "The instrument’s main lens. The gemma-4-31b J++ lens was fitted on the base model; only the lens matrix is applied here, not the readout token filter.",
+    "The instrument’s main lens. The gemma-4-31b J++ lens was fitted on the base model and is applied here to the instruct model; only the lens matrix is applied, not the readout token filter.",
     [
       ["code", "https://github.com/safety-research/jpp_lens"],
       ["lenses", "https://huggingface.co/koayon/jpp-lenses"],
@@ -91,7 +91,7 @@ export const refsA: Reference[] = [
     "R-lens: Making J-lens More Faithful on Early Layers.",
     "Alignment Forum / LessWrong, 5 August 2026.",
     "https://www.alignmentforum.org/posts/nv8oedrnLXKRzNEL9",
-    "The LRP rules J++ uses: LN-rule on RMSNorm, identity and half rules on gated MLPs, plain gradients through attention (R1 §2.4).",
+    "The LRP rules J++ uses: LN-rule on RMSNorm, identity and half rules on gated MLPs, plain gradients through attention (as described in R1 §2.4, which did not test them).",
   ),
   R(
     6,
@@ -194,7 +194,7 @@ export const refsB: Reference[] = [
     "On Pixel-Wise Explanations for Non-Linear Classifier Decisions by Layer-Wise Relevance Propagation.",
     "PLoS ONE 10(7): e0130140, 2015.",
     "https://doi.org/10.1371/journal.pone.0130140",
-    "The origin of LRP, beneath the R-lens and the J++ backward pass, tested in R1 §2.4.",
+    "The origin of LRP, beneath the R-lens and the J++ backward pass. R1 §2.4 tested a frozen-attention linearisation, not these rules.",
   ),
   R(
     18,

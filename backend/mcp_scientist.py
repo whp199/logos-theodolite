@@ -5,6 +5,13 @@ Exposes three core mechanistic interpretability tools via FastMCP:
 2. `trace_downstream_readers(layer, neuron_idx, prompt)`
 3. `test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts)`
 Plus `query_larql_vault(lql_query)` for declarative VINDEX3 & `.patch` weight surgery.
+
+The three scientist tools decode words through the J++ lens, and each reply names it under "lens"
+(`TheodoliteRuntime.lens_card`: what it was fitted on, what it reads, its source, and a `caution` on how far to trust
+its words), so an agent calling them over MCP gets the same record as the HTTP and WebSocket replies, which pass these
+replies on unchanged. `query_larql_vault` does the same for the vault statements that read words or write an edit
+through that lens (NEAREST, DESCRIBE POLE, UPDATE, INSERT: `LarqlVaultEngine.execute_lql`, which also answers
+POST /api/larql and the WebSocket "larql" action).
 """
 
 from __future__ import annotations
@@ -62,14 +69,17 @@ def inspect_pole(
     Decodes both its North Pole (`+1`) and South Pole (`-1`) write vectors through the
     J-VINDEX (`(polarity * W_down[l, i]) @ J_pp[l].T`) and contrasts them against the naive
     Logit Lens (`W_U`), plus decodes the upstream `W_gate[l, i]` trigger tokens.
+
+    `lens` names the lens the J-VINDEX words went through; read its `caution` before trusting them.
     """
-    _rt, vault = get_runtime_and_vault()
-    return vault.inspect_bipolar_slot(
+    rt, vault = get_runtime_and_vault()
+    reply = vault.inspect_bipolar_slot(
         layer_idx=int(layer),
         neuron_idx=int(neuron_idx),
         polarity=float(polarity),
         top_k_tokens=8,
     )
+    return {**reply, "lens": rt.lens_card()}
 
 
 @mcp.tool()
@@ -97,6 +107,8 @@ async def trace_downstream_readers(
 
     `chat=True` wraps `prompt` in the chat template (optional `system` turn, thinking off) and appends
     `assistant_prefix`; otherwise `prompt` is read as given (an earlier sighting's echoed `prompt` is exact).
+
+    `lens` names the lens each reader's `dst_j_vindex_tokens` went through; read its `caution` before trusting them.
     """
     if score not in THREAD_SCORES:
         raise ValueError(f"Unknown score {score!r}; expected one of {THREAD_SCORES}")
@@ -220,6 +232,7 @@ async def trace_downstream_readers(
             "signed_activation_on_prompt": round(src_signed_act, 4),
         },
         "top_downstream_readers": candidates[: int(top_k)],
+        "lens": runtime.lens_card(),
     }
 
 
@@ -241,6 +254,8 @@ async def test_motif_hypothesis(
 
     `chat=True` wraps each prompt as the user turn of the chat template (optional `system` turn, thinking
     off); the last token is then the end of the model-turn header.
+
+    `lens` names the lens the `pole_j_vindex_signature` words went through; read its `caution` before trusting them.
     """
     runtime, vault = get_runtime_and_vault()
     assert runtime.eager_model is not None
@@ -305,12 +320,18 @@ async def test_motif_hypothesis(
         "pos_prompt_results": pos_records,
         "neg_prompt_results": neg_records,
         "pole_j_vindex_signature": pole_info["active_pole"]["j_vindex_tokens"],
+        "lens": runtime.lens_card(),
     }
 
 
 @mcp.tool()
 def query_larql_vault(lql_query: str) -> Dict[str, Any]:
-    """Execute a LARQL / VINDEX3 query or declarative `.patch` weight surgery statement."""
+    """Execute a LARQL / VINDEX3 query or declarative `.patch` weight surgery statement.
+
+    The statements that read words through the J++ lens (`SELECT * FROM EDGES|POLES NEAREST`, `DESCRIBE POLE`) or
+    write an edit along a direction pulled back through it (`UPDATE`, `INSERT`) also return `lens`, naming that lens;
+    read its `caution` before trusting the words. `DESCRIBE`, `DELETE` and `ROLLBACK` touch no lens and return none.
+    """
     _rt, vault = get_runtime_and_vault()
     return vault.execute_lql(lql_query)
 

@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { Apparatus, Missing, Page, Rubric, SweepError } from "../components/kit";
+import { Apparatus, LensRecord, Missing, Page, Rubric, SweepError } from "../components/kit";
 import type { FrameInfo } from "../store/sighting";
 import { ControlSighting } from "../components/ControlSighting";
 import { describeFrame } from "../lib/frame";
+import { isBaseFitted, lensLabel, lensPhrase, useReadingLens } from "../lib/lens";
 import { href, type Route } from "../router";
 import {
   type LayerReading,
@@ -297,8 +298,35 @@ const NeuronStone: React.FC<{ numeral: string; ordinal: string; name: string; va
 
 /* ------------------------------------------------------------- screen */
 
+/**
+ * The red line beside a bearing, in place of the per-layer LensCaution. The instrument's bands of layers (lib/lens.ts,
+ * lensBand) were measured on the lens's word readings (E1, E2, E5; R1; erratum E49). No experiment set a bearing against
+ * what the model does, at any layer; the study's only tests of bearings found them swinging 58-99° with the landmarks'
+ * order and catching 2.4-3.9% of the reading (V7; E6). So this line does not follow the chosen layer, and it stands at
+ * layer 60 too, where a bearing is still a projection on three words.
+ */
+const BearingCaution: React.FC<{ sighting: Sighting | null; chart?: boolean; style?: React.CSSProperties }> = ({
+  sighting,
+  chart = false,
+  style,
+}) => {
+  const { lens } = useReadingLens(sighting);
+  return (
+    <Rubric style={style}>
+      {isBaseFitted(lens) ? "This lens was fitted on the base model, not on the chat model you are reading. " : null}
+      Elsewhere a note in red beside the lens’s words says how far to trust them at each layer. Those bands of layers come from
+      the words, not from bearings,{" "}
+      {chart
+        ? "and none of them applies to these charts, at the sixtieth layer or any other."
+        : "and do not carry over here: no bearing was checked against what the model does, at this layer or any other."}{" "}
+      <a href={href.lexicon("frame")}>Read the caution.</a>
+    </Rubric>
+  );
+};
+
 export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const sighting = useTheodoliteStore((s) => s.sighting);
+  const { lens } = useReadingLens(sighting);
   const frameDesc = sighting ? describeFrame(sighting) : null;
   const landmarks = useTheodoliteStore((s) => s.landmarks);
   const setLandmarks = useTheodoliteStore((s) => s.setLandmarks);
@@ -436,7 +464,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
     `The survey frame: ${lab[0]} sets bearing 0°, ${lab[1]} bearing 90°, and ${lab[2]} points straight up.` +
     (ghost ? ` Dashed rays show where the second and third words truly point before squaring; the first two stand ${ghost.angle}° apart.` : "") +
     (showReading && azR !== null && elR !== null
-      ? ` At layer ${li + 1} the thought points at bearing ${sgn(azR)}°, elevation ${sgn(elR)}°.`
+      ? ` At layer ${li + 1} the stream, as the ${lens.name} lens reads it, points at bearing ${sgn(azR)}°, elevation ${sgn(elR)}°.`
       : " No reading yet for these landmarks.");
   const kind = kindOf(L?.isGlobal ?? li % 6 === 5);
   const pfs = layers.map((x) => x.projFrac).filter((v): v is number => v !== null);
@@ -444,6 +472,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const pfRangeWords = pfs.length
     ? `between ${(Math.min(...pfs) * 100).toFixed(1)} and ${(Math.max(...pfs) * 100).toFixed(1)} percent`
     : null;
+  // a share of the lens-read state, or of the raw stream when each layer has its own frame (lib/frame.tsx)
+  const caughtWords = frameDesc && (frameDesc.raw || frameDesc.centred) ? frameDesc.denomWords : "of that reading";
 
   /* ---- iii · how far apart they stand */
   const rayD = (t: number) => "M10,70 L" + f1(10 + 58 * Math.cos(t)) + "," + f1(70 - 58 * Math.sin(t));
@@ -596,9 +626,9 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             A
           </span>
           <span className="visually-hidden">A</span> surveyor fixes a position by sighting known landmarks. Here the
-          landmarks are three directions in the model’s mind, most often named by words, and at each of its sixty layers
-          the instrument measures where the thought points against them: its bearing round the horizon, and its elevation
-          toward the third.
+          landmarks are three directions in the model’s inner space, most often named by words, and at each of its sixty
+          layers the instrument measures where the stream points against them, as the {lens.name} lens reads it: its bearing
+          round the horizon, and its elevation toward the third.
         </p>
 
         {isWords ? (
@@ -738,7 +768,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 ordinal="second landmark"
                 name="what it writes"
                 value={lp ? poleLabel(lp) : "[NO NEURON CHOSEN]"}
-                how="what it adds to the stream, read through the lens"
+                how="what it adds to the stream, read through the J++ lens"
               />
               <NeuronStone
                 numeral="III"
@@ -825,6 +855,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             J++ lens (Ayonrinde &amp; Lindsey 2026) [4], a refinement of the Jacobian lens (Gurnee et al. 2026) [2]. It was
             fitted on the base model and is applied here to the instruct model (REPORT §3.4, bug 9).
           </dd>
+          <LensRecord sighting={sighting} />
           <dt>where it is taken</dt>
           <dd>
             As built, the word frame is taken at the last layer, and every layer’s h̃<sub>ℓ</sub> is read in it. A frame
@@ -998,8 +1029,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         ) : null}
         {sighting ? (
           <span style={{ marginLeft: "auto", fontSize: "15px", color: "#6B5D4D", fontVariantNumeric: "lining-nums tabular-nums" }}>
-            {layers.length} layers surveyed in {sighting.elapsedMs !== null ? ms(sighting.elapsedMs) : <Missing what={NOT_HERE} />} ·
-            J++ lens{sighting.isNudged ? " · nudged" : ""}
+            {layers.length} layers surveyed in {sighting.elapsedMs !== null ? ms(sighting.elapsedMs) : <Missing what={NOT_HERE} />} ·{" "}
+            {lensLabel(lens)}
+            {sighting.source === "fixture" ? " · the study’s recorded sighting, taken through the same lens" : ""}
+            {sighting.isNudged ? " · nudged" : ""}
           </span>
         ) : null}
       </div>
@@ -1124,7 +1157,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               <span aria-hidden="true" style={{ color: "#A07A2E" }}>
                 ◆
               </span>
-              <span>red: the thought at the chosen layer, and its bearing on the rim</span>
+              <span>red: the stream at the chosen layer, as the lens reads it, and its bearing on the rim</span>
             </figcaption>
           </figure>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 18px" }}>
@@ -1163,7 +1196,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                   bearing {sgn(azR)}° · elevation {sgn(elR)}°
                 </span>
                 <span style={{ fontSize: "15px", fontStyle: "italic", color: "#6B5D4D" }}>{kind.gloss}</span>
-                <span style={{ fontSize: "16px", fontStyle: "italic", color: "#6B5D4D" }}>in this frame the thought leans most {lean}</span>
+                <span style={{ fontSize: "16px", fontStyle: "italic", color: "#6B5D4D" }}>in this frame the reading leans most {lean}</span>
               </div>
               <div style={{ flex: "1 1 220px", minWidth: "0", display: "flex", flexDirection: "column", gap: "8px", paddingBottom: "4px" }}>
                 <span style={{ fontSize: "16px", color: "#6B5D4D" }}>
@@ -1171,7 +1204,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                   <span style={{ color: "#2B2117", fontVariantNumeric: "lining-nums tabular-nums" }}>
                     {L?.projFrac != null ? pct1(L.projFrac) : <Missing what={NOT_HERE} />}
                   </span>{" "}
-                  of the thought here
+                  {frameDesc ? frameDesc.denomWords : "of the reading"} here
                 </span>
                 <div aria-hidden="true" className="bar-track">
                   {L?.projFrac != null ? <div className="bar-fill" style={{ width: `${Math.min(100, L.projFrac * 100)}%` }} /> : null}
@@ -1184,13 +1217,14 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             </p>
           )}
           <Rubric style={{ maxWidth: "720px" }}>
-            The red point is the thought at the chosen layer; the faint dots are the other fifty-nine. It shows only a
-            direction.{" "}
+            The red point is the stream at the chosen layer, as the {lens.name} lens reads it; the faint dots are the other
+            fifty-nine. It shows only a direction.{" "}
             {pfRangeWords
-              ? `In this sighting the three landmarks catch ${pfRangeWords} of the thought at any layer, and the rest lies in directions they do not name.`
-              : "In the study three landmarks caught only 2.4–3.9 percent of the thought, by stretch of layers, and the rest lies in directions they do not name."}{" "}
+              ? `In this sighting the three landmarks catch ${pfRangeWords} ${caughtWords} at any layer, and the rest lies in directions they do not name.`
+              : "In the study three landmarks caught only 2.4–3.9 percent of that reading, by stretch of layers, and the rest lies in directions they do not name."}{" "}
             Read a bearing as a hint, never a verdict.
           </Rubric>
+          <BearingCaution sighting={sighting} style={{ maxWidth: "720px" }} />
 
           <Apparatus
             title={
@@ -1695,15 +1729,20 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           </div>
         </div>
         <Rubric style={{ maxWidth: "860px" }}>
-          Read left to right, from the first layer to the sixtieth. A bearing of 0° points at the first landmark and 90° at
-          the second; an elevation of 90° points straight at the third. Move the layer above, and the red line follows.
+          These charts follow the stream as the {lens.name} lens reads it; read them left to right, from the first layer to the
+          sixtieth. A bearing of 0° points at the first landmark and 90° at the second; an elevation of 90° points straight at
+          the third. Move the layer above, and the red line follows. No bearing was checked against what the model does, at any
+          layer: in the study, bearings swung 58–99° when the landmarks were reordered
+          {frameDesc?.lowdin ? " (in a frame squared in order; this one is squared all at once)" : ""}, and the landmarks caught only a
+          few percent of the reading.
         </Rubric>
+        <BearingCaution sighting={sighting} chart style={{ maxWidth: "860px" }} />
         <div style={{ overflowX: "auto", paddingBottom: "6px" }}>
           <div style={{ minWidth: "940px" }}>
             <svg
               viewBox="0 0 1280 456"
               role="img"
-              aria-label="Two engraved line charts across the sixty layers of the last sighting. Above, the bearing of the model’s thought, from minus 180 to 180 degrees; below, its elevation, from minus 90 to 90 degrees. The chosen layer is marked in red."
+              aria-label={`Two engraved line charts across the sixty layers of the last sighting. Above, the bearing of the stream as the ${lens.name} lens reads it, from minus 180 to 180 degrees; below, its elevation, from minus 90 to 90 degrees. The chosen layer is marked in red.`}
               style={{ width: "100%", height: "auto", display: "block" }}
             >
               <g fontFamily="EB Garamond, Garamond, serif">
@@ -1797,11 +1836,12 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
       {/* ------------------------------------------------ vi · how close each came to being said */}
       <section aria-labelledby="said-head" style={{ marginTop: "48px", display: "flex", flexDirection: "column", gap: "14px" }}>
         <h2 className="h-sec" id="said-head">
-          vi · how close each came to being said
+          vi · how near each word came, through the lens
         </h2>
         <Rubric style={{ maxWidth: "860px" }}>
-          A rank is a word’s place in the model’s queue of 262,144 word-pieces: rank 1 is the word it is about to say.
-          Higher on each little chart means nearer to being said.
+          A rank is a word’s place among 262,144 word-pieces as the J++ lens reads the stream at each layer: rank 1 is the
+          lens’s top word. Only at layer 60 is it the model’s own queue. Higher on each little chart means the lens ranks
+          that word nearer the top.
         </Rubric>
         {sf?.kind === "words" ? (
           <div style={{ overflowX: "auto", paddingBottom: "6px" }}>
@@ -1890,8 +1930,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         {sf?.kind === "words" ? (
           <>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
-              Gilt lozenge: the nearest each word came. Hollow ring: where it stood at the last layer. Read through the lens{" "}
-              <span style={{ fontStyle: "italic" }}>(J++)</span> at the word{" "}
+              Gilt lozenge: the nearest each word came. Hollow ring: where it stood at the last layer. Read through {lensPhrase(lens)},
+              at the word{" "}
               {sighting?.readAt != null ? wp(sighting.readAt) : <Missing what={NOT_HERE} />} in the last sighting.
             </p>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D", maxWidth: "900px" }}>
@@ -1960,8 +2000,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           </>
         ) : null}
         <Rubric style={{ maxWidth: "860px" }}>
-          Compare the landmarks with one another, not with certainty. The study found that at layers 51 to 59 the lens
-          leans toward “she” for almost any AI: an artifact of the lens, not a trait of the model.
+          Compare the landmarks with one another, not with certainty. The study found that at layers 51 to 59 the J++ lens
+          leans toward “she” for most of the AIs it tried (six or seven of nine), far more than the other lenses it tried: mostly a quirk of the J++ recipe,
+          for the Jacobian lens, also fitted on the base model, removes it almost as well as a lens fitted on the instruct
+          model (R1). Do not read it as how the model sees itself.
         </Rubric>
         <Apparatus title="ranks" label="Apparatus for the ranks">
           <dl className="dl num">

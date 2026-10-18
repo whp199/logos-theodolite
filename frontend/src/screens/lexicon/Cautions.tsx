@@ -6,7 +6,9 @@ import { Lede, LexLink, LexSection, M } from "./parts";
  * v · where the instrument can mislead you. Eleven cautions, each a finding of the study told in plain
  * words, with what it means for the reader; the apparatus gives the measured values, where the code was
  * audited, and the proposed fix. All of it is recorded text from README.md, experiments/REPORT.md
- * (§2.2, §3.1–3.5), the V6/V7/V8 notes, the E6 tool-audit report, N1 and R1, as the canvas sets it out.
+ * (its caution on the lenses, §2.2, §3.1–3.5 and the errata), the V6/V7/V8 notes, the E6 tool-audit report,
+ * N1 and R1, as the canvas sets it out, corrected where the errata qualify it. The second caution ("single")
+ * is the one the red line beside each layer's words links to: it covers the lens's fit on the base model.
  * The line numbers under "where (as audited)" are the audit's, not today's.
  */
 
@@ -104,14 +106,15 @@ export const Cautions: React.FC = () => (
       <Caution
         id="labels"
         n={1}
-        title="Neuron labels hold only at layers 41–58"
+        title="Neuron labels held up at layers 41–58, not at 11–31"
         status="a limit of the method"
         found={
           <>
-            Between layers 41 and 58, a neuron’s words predicted what it really does far above chance. At layers 11–31
-            they were no better than chance: their tidy look comes from the lens itself, for random mixtures of neurons,
-            and even pure noise, read out as clusters just as neat, such as “Elon”, “Tesla”, “aerospace”, “SpaceX”. The
-            words said to make a neuron fire were nearly useless at every layer.
+            Between layers 41 and 58, a neuron’s words, read through the J++ lens (fitted on the base model) or the naked
+            eye alike, predicted what it really does far above chance. At layers 11–31 they were no better than chance:
+            their tidy look comes from the J++ lens itself, for random mixtures of neurons read out as clusters just as
+            neat, and even pure noise yields neat-looking ones, such as “Elon”, “Tesla”, “aerospace”, “SpaceX”. Layers
+            32–40 were not tested. The words said to make a neuron fire were nearly useless at every layer.
           </>
         }
         means={
@@ -125,9 +128,13 @@ export const Cautions: React.FC = () => (
           [
             "measured",
             <>
-              384 poles (192 random neurons × 2 signs, 8 layers) against causal steering and contexts from a 147k-token
-              corpus. P@10 in the causal top 100: ≈ 0 at layers 11–31; 0.35–0.69 at layers 41–58 (null ≤ 0.003).
-              Agreement of the lens’s and the naked eye’s top ten predicts a valid label, AUC 0.84 (REPORT §3.2).
+              384 poles (192 random neurons × 2 signs, at layers 11, 21, 31, 41, 46, 51, 56, 58) against causal steering
+              and contexts from a 147k-token corpus. P@10 in the causal top 100: ≈ 0 at layers 11–31; 0.35–0.67 at layers
+              41–58 for J++ labels, about the same for the naked eye’s (null ≤ 0.003; N1 T1). Within layers 41–58,
+              agreement of the lens’s and the naked eye’s top ten predicts a valid label, AUC 0.84 (REPORT §3.2). Labels
+              through a lens fitted on the instruct model were not tested. Tightness of a label’s top ten at layers 21 /
+              31: neurons 0.090 / 0.087, random 512-neuron mixtures 0.080 / 0.090, isotropic noise 0.054 / 0.040 (N1 T5;
+              erratum E44).
             </>,
           ],
           [
@@ -143,31 +150,53 @@ export const Cautions: React.FC = () => (
       <Caution
         id="single"
         n={2}
-        title="A single reading is not a finding"
+        title="The lens was fitted on the base model, and a single reading is not a finding"
         status="a limit of the lens"
         found={
           <>
-            Read on its own, the lens is poor: up to layer 50 its top word matched the model’s real next word at most 3%
-            of the time, and only 28% of the time at layer 59. Read by comparison, it is good: given several versions of
-            a question, it ranked them in the order of the model’s eventual answers from about layer 21, fifteen to
-            twenty layers before the naked eye could. Even pure noise reads out as confident nonsense, such as “
-            {"</h2>"}”.
+            The lens the instrument reads through, J++, was fitted on the base model, google/gemma-4-31B in 16-bit:
+            Gemma 4 as it was before it was trained to converse. You are reading the chat model, its weights stored in 4
+            bits, and the study could not tell which of the two differences matters more. Read on its own, the lens is
+            poor: up to layer 50 its top word matched the model’s real next word on ordinary prose at most about 5% of
+            the time, and only 28% of the time at layer 59. A lens the study refitted on the chat model did better near
+            the top, yet on prose it still matched at most 17% of the time up to layer 56, so the fault is not the base
+            model’s alone. Read by comparison, J++ is good: given several versions of a question, it ranked them in the
+            order of the model’s eventual answers from about layer 21, where the naked eye could not yet, though on a
+            scale squeezed eight- to fourteen-fold. Even pure noise reads out as confident nonsense,
+            such as “{"</h2>"}”.
           </>
         }
         means={
           <>
-            Trust the difference between two matched sightings, such as the same question with one word changed, more
-            than the words of any one sighting. Confidence is not evidence.
+            Read the lens’s words as its view of this model’s stream, not as a report from the model. Trust the
+            difference between two matched sightings, such as the same question with one word changed, more than the
+            words of any one sighting, and most at layers 31–50. At layers 21–30 trust only the order of the conditions, and only
+            where you can check it against what the model goes on to say; below layer 21 even that order did not hold up
+            reliably. Confidence is not evidence.
           </>
         }
-        from="From the report’s §3.1."
+        from="From the report’s caution on the lenses, §3.1, §3.4 (bug 9) and errata E32 and E49, and the R1 lens report."
         notes={[
+          [
+            "the lens",
+            <>
+              J++ fitted on <M>google/gemma-4-31B</M> in bf16 over 64 WikiText-103 passages of 128 word-pieces, with the
+              R-lens rules (the lens file’s provenance; REPORT §0), and applied to Gemma-4-31B-it in QAT W4A16, so chat
+              training and quantisation cannot be told apart (R1 §6). Its pronoun direction meets the instruct model’s
+              own average gradient at cos 0.07–0.15 at layers 21–40 and 0.26 / 0.33 at 41–50 / 51–59 (E3; R1 §2.1). The
+              comparison lens, the Jacobian lens, was also fitted on the base model (861 passages) and is not loaded.
+            </>,
+          ],
           [
             "measured",
             <>
-              prose KL 16–18 nats under J++; top-1 ≤ 3% through layer 50 and 28% at layer 59; J++ ≈ the logit lens at
-              layers 46–59. J++ orders conditions correctly from about layer 21 (r ≈ 0.9), but compresses the scale
-              8–14×. Isotropic noise decodes to “{"</h2>"}” and “{"</em>"}” (REPORT §3.1).
+              prose KL 16–18 nats under J++; top-1 at most about 5% through layer 50 (5.1–5.2% at layers 46–47, E3 per
+              layer; REPORT §3.1’s “≤ 3%” understates it, erratum E30) and 28% at layer 59; J++ ≈ the logit lens in KL at
+              layers 46–59, and below it in top-1 from about layer 34 to 55 (E3). A lens refitted on the instruct model
+              reaches only 9–17% on prose at layers 41–56 (R1 §4.2). J++ orders conditions as behaviour does at layers
+              21–30 (r 0.88–0.99 across E1, E2 and E5) and compresses the scale 8–14×; at layers 11–20 the ordering held
+              in E1 (r 0.92) and failed in E2 (r 0.31). No averaged lens the study tried was stable below layer 31 (R1
+              split-half ≤ 0.63). Isotropic noise decodes to “{"</h2>"}” and “{"</em>"}” (REPORT §3.1).
             </>,
           ],
           [
@@ -175,7 +204,18 @@ export const Cautions: React.FC = () => (
             <>
               show every readout against a matched control, mean-centred, with the concept’s span as the unit; never a
               raw single-condition readout as a finding (REPORT §3.5, recommendation 2). See{" "}
-              <LexLink to="matched-control">a matched control</LexLink>.
+              <LexLink to="matched-control">a matched control</LexLink>. With the base-fitted J++, use layers 31–50 for
+              condition contrasts and confirm them with an instruct-fitted readout (erratum E49); label every readout
+              with the lens it came from (erratum E48).
+            </>,
+          ],
+          [
+            "fix, applied",
+            <>
+              the server names its lens in <M>GET /api/health</M> and every sweep reply (<M>"lens"</M>: id, fitted on,
+              method, applied to, and a caution); the head and the foot of every page name it, and a red line beside
+              each layer’s words says what the reading can bear there. R1’s refit is not loaded, so every reading still
+              goes through the base-fitted J++.
             </>,
           ],
         ]}
@@ -187,35 +227,48 @@ export const Cautions: React.FC = () => (
         status="a limit of the lens"
         found={
           <>
-            At layers 51–59, nearly every AI persona the study tried read at or above a woman persona on the lens’s
-            pronoun scale, while the lens’s noun scale disagreed and nothing was specific to the model itself. Across
-            layers 31–59 of twelve prompts in which Gemma wrote about itself, the instrument showed “she” as its top word
-            in 50 places and “he” in 2, yet the model itself chose “she” less than once in a hundred. The shipped lens
-            was fitted on the base model; a lens refitted on the instruct model repairs much of the late-layer fidelity
-            (R1), but it is not yet the one the instrument uses.
+            At layers 51–59, six or seven of the nine AI personas the study tried read at or above a woman persona on the J++ lens’s
+            pronoun scale. Under the Jacobian lens, which was also fitted on the base model, none did, and under a lens
+            refitted on the instruct model at most one; so R1 traced this mostly to the J++ recipe itself, not to fitting
+            on the base model. A smaller lean toward the woman persona remains under most readings, as much for a
+            nameless AI as for the model left to its default. Across layers 31–59 of twelve prompts in which Gemma wrote
+            about itself, the instrument showed “she” as its top word in 50 places and “he” in 2, yet the model itself
+            chose “she” less than once in a hundred. R1 refitted the lens on the instruct model, along fixed directions
+            at layers 31–59 and in full at only a few layers; the instrument still reads through the base-fitted J++, and
+            names it at the head and foot of every page.
           </>
         }
         means={
           <>
-            Do not read a late-layer pronoun as the model’s description of itself. For comparisons, prefer layers 21–50,
-            and treat pronoun readings at layers 51–59 as unreliable.
+            Do not read a late-layer pronoun as the model’s description of itself. Compare conditions at layers 31–50,
+            against a matched control (below layer 31, read the second caution first), and treat J++ pronoun readings at
+            layers 51–59 as unreliable.
           </>
         }
-        from="From the README’s headline findings, the report’s summary, §3.1 and §3.5, the E6 tool-audit report and the R1 lens report."
+        from="From the README’s headline findings, the report’s summary, §3.1, §3.5 and errata E2 and E49, the E4 and E6 reports and the R1 lens report."
         notes={[
           [
             "measured",
             <>
-              J++ against the instruct model’s true average gradient: cos 0.15, 0.26, 0.33 at layers 31–40, 41–50,
-              51–59; a lens refitted on the instruct model reaches 0.85–0.95 (R1). E6: “she” the top word in 50 layer ×
+              AI personas (of 9) at or above the woman persona at layers 51–59: J++ 6–7 (mean 1.04), the Jacobian lens
+              0, R1’s directional refit 1 (mean 0.79), its full matrix 0 (0.67). The default sits at 0.96 under J++ and
+              0.54–0.80 under the others, within 0.07 of the nameless AI under all; R1 puts the remaining lean down to
+              the AI-versus-human offset, untested under its own readout (R1 §5). J++’s noun scale puts the default at
+              0.33, R1’s at 0.68. Lens-free, self tokens there still carry up to 2.1× the woman–man gap of other
+              assistant tokens (E4). J++ against the instruct model’s true average gradient: cos 0.15, 0.26, 0.33 at
+              layers 31–40, 41–50, 51–59; R1’s directional refit reaches 0.85–0.95. E6: “she” the top word in 50 layer ×
               prompt cells and “he” in 2 (12 prompts, layers 31–59), while the real P(she) was 0.009.
             </>,
           ],
           [
             "proposed fix",
             <>
-              prefer layers 21–50 for lens comparisons and flag pronoun readouts at layers 51–59; consider refitting J++
-              on the instruct checkpoint (REPORT §3.5, recommendations 3 and 6).
+              with the base-fitted J++, use layers 31–50 for condition contrasts and confirm them with an instruct-fitted
+              readout; at 21–30 trust only orderings checked against behaviour; flag pronoun readouts at layers 51–59
+              unless an instruct-fitted readout agrees (REPORT §3.5, recommendation 3, as corrected by erratum E49; R1’s
+              recommendations). R1 has refitted the lens on the instruct checkpoint: along 128 fixed directions at every
+              layer, stable at 31–59, and as a full matrix at 11 layers, usable only at 41, 46, 51, 56 and 59. The
+              instrument loads neither, and names the base-fitted J++ at the head and foot of every page.
             </>,
           ],
         ]}
@@ -229,9 +282,10 @@ export const Cautions: React.FC = () => (
           <>
             About 180 of the stream’s 5,376 numbers are among the loudest at layers 6–21, then fall almost silent, yet
             the model reads them back with up to 1,700 times the gain it gives the others. They ferry early content to
-            late layers. At layers 36–59, every lens and every gradient puts nearly all its weight there, which is why
-            nudges built straight from the lens break the model: a push of 1% there disturbed the next word about a
-            hundred times more than a push of 30% elsewhere (10–11 nats against 0.1).
+            late layers. At layers 36–59, every lens and every gradient puts nearly all its weight in the quietest tenth
+            of the stream, most of it on these few, which is why nudges built straight from the lens break the model: a
+            push of 1% there disturbed the next word about a hundred times more than a push of 30% elsewhere (10–11 nats
+            against 0.1).
           </>
         }
         means={
@@ -247,9 +301,12 @@ export const Cautions: React.FC = () => (
             <>
               181 dimensions quiet at every layer 43–58; norm weights on them up to 1,248 (input norm), 860
               (pre-feed-forward norm) and 512 (final norm), a read gain 260–1,700× the median dimension’s at layers 41–59
-              (V6). Every covector puts 99–100% of its energy there at layers 36–59. A 1% push there gives KL ≈ 10–11
-              nats; 30% in loud dimensions gives ≈ 0.1. Masking them raises J++ ↔ gradient agreement at layers 41–59
-              from 0.26 / 0.33 to 0.84 / 0.86 (REPORT §2.2).
+              (V6). Every covector puts 99–100% of its energy in the quietest tenth of dimensions, which holds the 181,
+              at layers 36–59; the 181 alone hold 56–98% at layers 31 and 41 (V6). A 1% push into that tenth gives
+              KL ≈ 10–11 nats; 30% in loud dimensions gives ≈ 0.1. For the pronoun direction, masking the quiet
+              dimensions raises J++ ↔ gradient agreement at layers 41–59 from 0.26 / 0.33 to 0.84 / 0.86 (REPORT
+              §2.2); for random word-pair directions it reaches only 0.62 / 0.73 against a ceiling of 0.99, so the
+              lens’s error is not confined to them (R1 §2.2).
             </>,
           ],
           [
@@ -520,10 +577,18 @@ export const Cautions: React.FC = () => (
         found={
           <>
             Before the V7 fix the instrument ignored Gemma 4’s shrinking of the stream at each layer, and judged the
-            larger share wrongly at 12 of the 60 layers. The fix is now applied.
+            larger share wrongly at 12 of the 60 layers. The fix is now applied: the two writes are separated
+            correctly. Their shares, though, are weighed after both pass through the J++ lens, fitted on the base model,
+            and how a lens fitted on this model would weigh them was not measured.
           </>
         }
-        means={<>Today’s split holds; but the study’s own tool-audit numbers were measured before the fix.</>}
+        means={
+          <>
+            Trust the division of each layer’s change into its two writes; read the shares as the lens’s weighing of
+            them, not as a measured fact about the model. The study’s own tool-audit numbers were measured before the
+            fix.
+          </>
+        }
         from="From the README’s “Status and known issues” and the V7 notes (bug 2)."
         notes={[
           [
@@ -543,7 +608,10 @@ export const Cautions: React.FC = () => (
             "fix, applied",
             <>
               <M>V7_module1_fix.patch</M>: Δ<sub>attn</sub> = s · (mid − pre), Δ<sub>ffn</sub> = post − s · mid, Δ
-              <sub>rescale</sub> = (s − 1) · pre; cosine ≥ 0.9985 at all 60 layers (REPORT §3.4, bug 2).
+              <sub>rescale</sub> = (s − 1) · pre; cosine ≥ 0.9985 at all 60 layers (REPORT §3.4, bug 2). The patch
+              checks the decomposition, not the weighting: the shares are ‖Δ<sub>ffn</sub> · J<sup>⊤</sup>‖ / (‖Δ
+              <sub>attn</sub> · J<sup>⊤</sup>‖ + ‖Δ<sub>ffn</sub> · J<sup>⊤</sup>‖) through the base-fitted J++ (
+              <M>backend/theodolite_math.py:186-197</M>), untested against an instruct-fitted lens.
             </>,
           ],
         ]}

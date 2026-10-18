@@ -14,7 +14,11 @@ export interface IndexItem {
   section: "ii" | "iii" | "iv" | "v";
 }
 
-/** "twenty-four words and one cross-reference, in alphabetical order" (the canvas's index). */
+/**
+ * "twenty-four words and two cross-references, in alphabetical order": the canvas's index, with the readout of words
+ * renamed "through the lens", as the instrument and the layer's leaf now head it. Its old name, "what it was thinking",
+ * stays as a cross-reference, and its anchor stays `thinking`, so older links still land on it.
+ */
 export const INDEX: IndexItem[] = [
   { label: "apparatus", id: "apparatus", section: "iii" },
   { label: "bearing and elevation", id: "bearing", section: "iii" },
@@ -38,8 +42,9 @@ export const INDEX: IndexItem[] = [
   { label: "stream strength", id: "stream", section: "ii" },
   { label: "strength", id: "strength", section: "ii" },
   { label: "threads", id: "threads", section: "ii" },
+  { label: "through the lens", id: "thinking", section: "iii" },
   { label: "vault, the", id: "vault", section: "iv" },
-  { label: "what it was thinking", id: "thinking", section: "iii" },
+  { label: "what it was thinking", see: "through the lens", id: "thinking", section: "iii" },
   { label: "word-piece", id: "word-piece", section: "ii" },
 ];
 
@@ -52,6 +57,7 @@ export const ALIASES: Record<string, string[]> = {
   neuron: ["faces", "pole"],
   stream: ["stream-strength"],
   bearing: ["elevation"],
+  thinking: ["through-the-lens"],
 };
 
 /**
@@ -60,5 +66,5 @@ export const ALIASES: Record<string, string[]> = {
  *           lens j-space thinking landmarks bearing kinship rubric apparatus
  *           sighting matched-control vault nudge edit
  * cautions  labels single late quiet frame thread-score nudge-defaults template think split bos
- * aliases   naked-eye faces pole stream-strength elevation
+ * aliases   naked-eye faces pole stream-strength elevation through-the-lens
  */

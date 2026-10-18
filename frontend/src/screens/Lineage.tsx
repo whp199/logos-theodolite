@@ -1,5 +1,5 @@
 import React from "react";
-import { IfApparatus, Page, Rubric, SectionHead } from "../components/kit";
+import { IfApparatus, Page, ReadingThrough, Rubric, SectionHead } from "../components/kit";
 import type { Route } from "../router";
 import { Cartouche, Stemma } from "./lineage/figures";
 import { Pillars } from "./lineage/Pillars";
@@ -139,8 +139,11 @@ const PageApparatus: React.FC = () => (
     <dt>provenance</dt>
     <dd>
       The study’s experiments, analyses and reports were run and written by Claude Code agents directed by the
-      repository’s owner; every headline was re-tested by an independent verifier, and the claims that failed are
-      listed in REPORT §4 (README).
+      repository’s owner. Every headline was re-tested by an independent verifier with new controls, but through the
+      same base-fitted lenses; one verifier (V6) measured J++ against the instruct model’s own gradients and traced
+      the gap to the quiet dimensions, which R1 later found was only part of it. R1 re-read only the self-gender
+      readings and the lens-fidelity measures through an instruct-fitted lens. The claims that failed are listed in
+      REPORT §4 (README).
     </dd>
     <dt>Cammarata</dt>
     <dd>The essay [9] is paraphrased throughout, never quoted; read it in full at its source.</dd>
@@ -192,7 +195,7 @@ const Foundations: React.FC = () => (
         title="The logit lens"
         makers="nostalgebraist · LessWrong · 2020 · [8]"
         what="Read any layer as if it were the last, with no lens at all. The instrument calls this the naked eye and keeps it beside the lens wherever a neuron is read."
-        found="The study: from layer 46 up the two read much alike; where they agree on a neuron, that agreement was the best free sign of a sound label (§3.1, §3.2)."
+        found="The study: from layer 46 up the J++ lens, fitted on the base model, reads much like it and is no more faithful; a lens fitted on the instruct model does better there (R1). Within layers 41–58, where the two agree on a neuron, that agreement was a good free sign of a sound label, tested for J++ labels only (§3.1, §3.2)."
         links={
           <>
             <Go dest="neuron" size={16}>
@@ -243,7 +246,7 @@ const Foundations: React.FC = () => (
         title="Relevance propagation, and the R-lens"
         makers="Bach et al. 2015 · [17]; Blank, Bhatia & Nanda 2026 · [5]"
         what="Relevance propagation shares out the credit for an answer among the parts that produced it. The R-lens adapted its rules to make the Jacobian lens truer in early layers, and J++ uses those rules."
-        found="The study: R1 tested these rules; the likeliest cause of J++’s disagreement with the instruct model is the weights, not the method (§3.1)."
+        found="The study did not test these rules themselves. R1 tested a frozen-attention linearisation and cross-position terms, and neither explained J++’s disagreement with the instruct model; the likeliest remaining cause is the weights (the chat training and the 4-bit rounding, which could not be told apart), but J++’s own rules, cluster weighting and word-piece filter were never tested (R1 §2.4, §6)."
         links={
           <>
             <Go dest="lexicon-lens" size={16}>
@@ -382,8 +385,9 @@ const Keep: React.FC = () => (
       </KeepRow>
       <KeepRow n={3} state="in part" condition="A label counts only when the lens and the naked eye agree.">
         <To dest="layer">A layer’s leaf</To> and a <To dest="neuron">neuron’s folio</To> set the two readings side by
-        side, say how far they agree, and tell you to doubt those that share nothing. In the study this agreement
-        predicted a sound label (AUC 0.84). Labels that disagree are still shown, not yet held back.
+        side, say how far they agree, and tell you to doubt those that share nothing. In the study, within layers 41
+        to 58, this agreement predicted a sound label (AUC 0.84, for J++ labels). Labels that disagree are still shown,
+        not yet held back.
       </KeepRow>
       <KeepRow
         n={4}
@@ -717,8 +721,9 @@ const Sources: React.FC<{ anchor: string | undefined }> = ({ anchor }) => (
 
 const Footer: React.FC = () => (
   <>
-    Sources numbered as in REFERENCES.md · findings from experiments/REPORT.md §3.1–3.5 and the reports it names ·
-    layers counted 1 to 60 here; the report counts from 0 · <To dest="lexicon">plain words for strange things</To>
+    Sources numbered as in REFERENCES.md · findings from experiments/REPORT.md §3.1–3.5 and the reports it names ·{" "}
+    <ReadingThrough /> · layers counted 1 to 60 here; the report counts from 0 ·{" "}
+    <To dest="lexicon">plain words for strange things</To>
   </>
 );
 

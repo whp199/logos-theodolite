@@ -1,5 +1,5 @@
 import React from "react";
-import { Apparatus, Missing, Page, Rubric } from "../components/kit";
+import { Apparatus, Missing, Page, ReadingThrough, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
 import { useTheodoliteStore } from "../store/useTheodoliteStore";
 import { wp } from "../lib/words";
@@ -54,8 +54,9 @@ import {
 /* ------------------------------------------------------------ recorded examples */
 
 /**
- * "what it was thinking": the lens's top word-pieces after "Hi! I" in the study's demonstration sighting
- * (E6_tool_audit_02_sweep_demo.json, prepend_bos=True; lensTop at index 50 = layer 51 and 59 = layer 60).
+ * "through the lens" (once "what it was thinking"): the lens's top word-pieces after "Hi! I" in the study's
+ * demonstration sighting (E6_tool_audit_02_sweep_demo.json, prepend_bos=True; lensTop at index 50 = layer 51 and
+ * 59 = layer 60).
  * Shares as the canvas prints them; `bar` is the probability in per cent.
  */
 const AT_51: { word: string; gloss?: string; share: string; bar: number }[] = [
@@ -149,7 +150,7 @@ const INDEX_LINK: React.CSSProperties = {
 
 const FOOTER = (
   <>
-    Reading google/gemma-4-31b-it (4-bit) through the J++ lens · 60 layers · 5,376 dimensions ·{" "}
+    <ReadingThrough /> · 60 layers · 5,376 dimensions ·{" "}
     <a href={href.lineage()}>the lineage of these ideas</a>
   </>
 );
@@ -246,8 +247,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         </dd>
         <dt>the lens</dt>
         <dd>
-          J<sub>ℓ</sub> ∈ ℝ<sup>5376 × 5376</sup>, the J++ matrix unless another is named, fp16 on disk and cast to bf16
-          on load, for layers 1–59; J<sub>60</sub> = I.
+          J<sub>ℓ</sub> ∈ ℝ<sup>5376 × 5376</sup>, the J++ matrix (fitted on the base model) unless another is named, fp16
+          on disk and cast to bf16 on load, for layers 1–59; J<sub>60</sub> = I.
         </dd>
         <dt>the readout</dt>
         <dd>
@@ -283,7 +284,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           i · the index
         </h2>
         <span style={{ fontSize: 15, color: "var(--muted)" }}>
-          twenty-four words and one cross-reference, in alphabetical order
+          twenty-four words and two cross-references, in alphabetical order
         </span>
       </div>
       <Rubric style={{ maxWidth: 760 }}>
@@ -464,8 +465,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             gilt.
           </Body>
           <Note>
-            Since the study’s fix (V7) the instrument divides gathering from remembering correctly; before it, the
-            larger share was misjudged at 12 of the 60 layers.
+            Since the study’s fix (V7) the instrument separates the two writes correctly; before it, the larger share
+            was misjudged at 12 of the 60 layers. Each share is weighed after both writes pass through the J++ lens,
+            fitted on the base model; how a lens fitted on this model would weigh them was not measured.
           </Note>
           <EntryApparatus title="remembering">
             Δ<sub>ffn</sub> = (h<sub>post</sub> − s · h<sub>mid</sub>) · J<sub>ℓ</sub>
@@ -511,8 +513,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             next word in mirror-image directions.
           </Body>
           <Note>
-            At layer 36, neuron 21189 showed its negative face, whose words are “myself”, “<span lang="hi">मुझ</span>”, “
-            <span lang="zh">的我</span>”: <span style={{ fontStyle: "italic" }}>English “myself”, Hindi “me”, Chinese “of me”.</span>
+            At layer 36, neuron 21189 showed its negative face; through the lens its words are “myself”, “
+            <span lang="hi">मुझ</span>”, “<span lang="zh">的我</span>”:{" "}
+            <span style={{ fontStyle: "italic" }}>English “myself”, Hindi “me”, Chinese “of me”.</span> Layer 36 lies
+            below the layers where the study found such labels held up, so read them as a rumour.
           </Note>
           <Note>
             Specialists call the two faces poles, after Cammarata’s essay{" "}
@@ -527,7 +531,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             sign(a), bipolar in practice through the sign of x · w<sub>up</sub>; the pole writes σ · w<sub>down</sub>,
             labelled unembed((σ · w<sub>down</sub>) · J<sub>ℓ</sub>
             <sup>⊤</sup>) against the naked eye’s unembed(σ · w<sub>down</sub>). Poles after Cammarata 2026 [9]; GeGLU
-            [15]. Output labels held at layers 41–58 only; one input label cannot describe both poles (REPORT §3.2).
+            [15]. Output labels held up at layers 41–58 and were at chance at 11–31; layers 32–40 were not sampled
+            (N1). One input label cannot describe both poles (REPORT §3.2).
           </EntryApparatus>
         </Entry>
 
@@ -636,23 +641,30 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             To read what a layer holds, the instrument turns the stream into word-pieces. The naked eye reads it as if
             it were already the last layer (the logit lens). The lens first translates each layer’s stream into the
             last layer’s terms with a fitted matrix, then reads it (the J++ lens; its sibling, the Jacobian lens, served
-            the study for comparison but is not loaded by the instrument). From about layer 46 upward the two see
-            nearly the same thing.
+            the study for comparison but is not loaded by the instrument). From about layer 46 upward the J++ lens,
+            fitted on the base model, reads much like the naked eye and is no more faithful to what the model says; a
+            lens fitted on the instruct model does better there (R1).
           </Body>
           <Note>
             The shipped J++ lens was fitted on the base model, from 64 short passages of Wikipedia text, not on the
             instruct model you are reading. A lens refitted on the instruct model raised agreement with the model’s
-            real next word, in its own replies at layer 51, from 25% to 45% (the study’s R1 refit). The instrument does
-            not use that lens yet.
+            real next word, in its own replies at layer 51, from 25% to 45% (the study’s R1 refit). That refit is usable
+            as a full lens at only five layers (41, 46, 51, 56 and 59), and the instrument does not load it: every reading
+            here goes through the base-fitted J++. The head of every page names it, and a red line beside each layer’s
+            words says what the reading can bear there.
           </Note>
           <EntryApparatus title="the lens and the naked eye">
             naked eye: unembed(h<sub>ℓ</sub>), the logit lens [8]. The lens: unembed(h<sub>ℓ</sub> · J<sub>ℓ</sub>
             <sup>⊤</sup>) with J the J++ lens (Ayonrinde &amp; Lindsey 2026) [4], whose backward pass follows the
             R-lens rules [5]; the study’s comparison lens is the Jacobian lens (Gurnee et al. 2026) [2, 3], on disk but
-            not loaded by the server (<M>load_jlens=False</M>, <M>backend/server.py:78</M>). Both were fitted on the
-            base model over WikiText-103 [7] (J++ on 64 passages of 128 word-pieces, the Jacobian lens on 861) and
-            hosted by Neuronpedia [6]. The published J++ readout also drops non-semantic word-pieces; this instrument
-            applies the matrix only (REPORT §3.1).
+            not loaded by the server (<M>load_jlens=False</M>, <M>backend/server.py:76</M>). Both were fitted on the
+            base model, <M>google/gemma-4-31B</M> in bf16, over WikiText-103 [7] (J++ on 64 passages of 128 word-pieces,
+            the Jacobian lens on 861) and hosted by Neuronpedia [6]; the instrument reads the instruct model in 4-bit (QAT
+            W4A16), so chat training and quantisation cannot be told apart in any gap (R1 §6). The server names its lens
+            in <M>GET /api/health</M> and every sighting (<M>"lens"</M>). R1’s refit: along 128 fixed directions, stable
+            from layer 31; as a full matrix at 11 layers, usable at 41, 46, 51, 56 and 59 (assistant-reply top-1 at
+            layer 51: 0.45 against J++’s 0.25). The published J++ readout also drops non-semantic word-pieces; this
+            instrument applies the matrix only (REPORT §3.1).
           </EntryApparatus>
         </Entry>
 
@@ -664,16 +676,18 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         >
           <Body>
             The common ground into which the lens carries every layer: the last layer’s own terms, where a stream can be
-            read directly as words. When the instrument says a layer was thinking a word, it means that layer’s stream,
-            carried into J-space, reads as that word.
+            read directly as words. When the instrument shows a word through the lens at a layer, it means only that the
+            layer’s stream, carried into J-space by the lens, reads as that word. The carrying was learned on the base
+            model, so this is the lens’s reading, not the model’s own report.
           </Body>
           <Note>
             The idea comes from Gurnee and colleagues at Anthropic (2026), in a paper titled{" "}
             <span style={{ fontStyle: "italic" }}>
               Verbalizable Representations Form a Global Workspace in Language Models
             </span>
-            . At a word like “I”, the study found, J-space holds a default guess, usually the speaker, rather than the
-            person the model finally works out is meant.
+            . At a word like “I”, in the middle layers (21–40), the study found the gender carried there is a default
+            guess, usually the speaker’s, rather than the person the model finally works out is meant. The lens, the
+            naked eye, a trained probe and a direction read without any lens agree.
           </Note>
           <EntryApparatus title="J-space">
             h̃<sub>ℓ</sub> = h<sub>ℓ</sub> · J<sub>ℓ</sub>
@@ -681,15 +695,23 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             layer ℓ’s (the J-lens estimator sums cotangents over targets t′ ≥ t and averages over sources), read out by
             unembed. Gurnee et al. 2026 [2], code [3], the J++ refinement [4], pre-fitted lenses [6]. Mid-layer pronoun
             binding is a role default, not resolved reference (REPORT §2.1, E7, V5); the lenses are comparative, not
-            absolute, instruments (REPORT §3.1).
+            absolute, instruments (REPORT §3.1). J++’s pronoun direction stands nearly at right angles to the instruct
+            model’s own average gradient at layers 21–40 (cos 0.07–0.15; E3, R1 §2.1), so a base-fitted lens is not shown
+            to read this model’s own J-space there.
           </EntryApparatus>
         </Entry>
 
-        <Entry id="thinking" head="what it was thinking" tech="J++ readout · the top five · once called plumes">
+        <Entry
+          id="thinking"
+          aliases={ALIASES.thinking}
+          head="through the lens"
+          tech="J++ readout · the top five · once called plumes, then “what it was thinking”"
+        >
           <Body>
-            The few word-pieces the model would say next if it stopped at this layer, read through the lens, each with
-            its share. Low in the model they are a murmur of many voices; near the top they settle on the word it
-            actually says.
+            The few word-pieces the J++ lens, fitted on the base model, reads in this layer’s stream, each with its
+            share: its guess at what the model would say next if it stopped here. Low in the model they are a murmur of
+            many words; at the top, where no lens is needed, they are the model’s own odds for its next word. Below the
+            top they are the lens’s reading of the stream, not a report from the model.
           </Body>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, maxWidth: 380, marginTop: 4 }}>
             <span style={READOUT_LABEL}>after “Hi! I”, at layer 51</span>
@@ -702,14 +724,16 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             ))}
           </div>
           <Rubric>
-            A single reading is not a finding: compare it with a matched sighting before you believe it.{" "}
+            A single reading is not a finding: compare it with a{" "}
+            <LexLink to="matched-control">matched sighting</LexLink> before you believe it.{" "}
             <LexLink to="single">Read the second caution.</LexLink>
           </Rubric>
-          <EntryApparatus title="what it was thinking">
+          <EntryApparatus title="through the lens">
             the top five of softmax(unembed(h<sub>ℓ</sub> · J<sub>ℓ</sub>
             <sup>⊤</sup>)) at the read position, from the demonstration sighting (E6, “Hi! I”). Shares are not
-            calibrated probabilities (softcap 30; REPORT §3.4, bug 8). The lens’s top word matched the model’s real next
-            word at most 3% of the time through layer 50 and 28% at layer 59 (REPORT §3.1). J++ [4].
+            calibrated probabilities (softcap 30; REPORT §3.4, bug 8). On prose the lens’s top word matched the model’s
+            real next word at most about 5% of the time through layer 50 (5.1–5.2% at layers 46–47 in E3’s per-layer
+            data; REPORT §3.1’s “3%” understates it) and 28% at layer 59. J++ [4].
           </EntryApparatus>
         </Entry>
 
@@ -858,8 +882,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         <Entry id="sighting" head="a sighting" tech="sweep · all sixty layers" figure={<FigSighting />}>
           <Body>
             Write a question, and if you like the start of an answer; then take a sighting. The instrument follows the
-            last word-piece up through all sixty layers and records, at each one, what it was thinking, how much it
-            gathered and remembered, and which neurons fired.
+            last word-piece up through all sixty layers and records, at each one, the words the lens reads there, how
+            the layer’s change divides between gathering and remembering, and which neurons fired.
           </Body>
           <SightingOnInstrument />
           <Onward to={href.instrument()}>take a sighting on the instrument →</Onward>
@@ -892,13 +916,18 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             A surveyor checks a bearing against a known mark before writing it in the field book. A sighting needs its
             control for the same reason.
           </Note>
-          <Rubric>On the instrument, open the apparatus beneath your question to choose a control sighting.</Rubric>
+          <Rubric>
+            To keep one, switch on the apparatus at the top of the page. On the instrument, take the control first and
+            keep it with the button beneath your question; then change the one thing and take your sighting. Each
+            layer’s apparatus then shows the control’s reading beside yours.
+          </Rubric>
           <EntryApparatus title="a matched control">
             Δ = (r<sub>sighting</sub> − r<sub>control</sub>) / (r<sub>woman</sub> − r<sub>man</sub>): a readout’s
             shift, mean-centred, in units of the woman–man persona span (or another concept’s span). For example, the
-            default against a nameless AI at layers 31–40: +0.6 [+0.2, +0.9]% of the span (E1). A single-condition
-            readout is uninterpretable without matched controls and background correction (REPORT §3.1; §3.5,
-            recommendation 2).
+            default against a nameless AI at layers 31–40: +0.6 [+0.2, +0.9]% of the span through the base-fitted J++
+            lens (E1), and +3 [+2, +4]% through a lens refitted on the instruct model (R1): the sign holds, the size
+            depends on the lens. A single-condition readout is uninterpretable without matched controls and background
+            correction (REPORT §3.1; §3.5, recommendation 2).
           </EntryApparatus>
         </Entry>
 
@@ -989,8 +1018,16 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         <p style={{ margin: 0, fontSize: 21, lineHeight: 1.55, maxWidth: 760 }}>
           This instrument was built alongside a study that asked a single question: is Gemma 4 “female-coded”? By
           default, no. Along the way the study turned the instrument on itself: seven experiments, eight adversarial
-          verifiers that re-tested every headline, a study of neuron labels against their real effects, and a refit of
-          the lens on the instruct model, 314 GPU jobs in all. Every caution on this page comes from that work.
+          verifiers that re-tested every headline with new controls, a study of neuron labels against their real
+          effects, and a lens fitted afresh on the instruct model, 314 GPU jobs in all. Every caution on this page comes
+          from that work.
+        </p>
+        <p style={{ margin: 0, maxWidth: 760 }}>
+          Where the verifiers read through a lens, it was one of the two the experiments used, J++ and the Jacobian
+          lens: published lenses, both fitted on the base model outside the study. One
+          of them (V6) measured the J++ lens against the instruct model’s own gradients and put the gap down to a small
+          set of quiet numbers, which the refit later found too narrow. The refit (R1) re-read only the self-gender
+          readings and the lens’s faithfulness, with a lens fitted on the instruct model.
         </p>
         <p style={{ margin: 0, maxWidth: 760 }}>
           To read more, open <code style={{ fontFamily: "var(--mono)", fontSize: 16 }}>experiments/REPORT.md</code> in
@@ -1006,7 +1043,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         >
           <p style={{ margin: "2px 0 0" }}>
             E1–E7 experiments, V1–V8 adversarial verifiers, the N1 neuron-label study with two verifiers, and the R1 lens
-            refit: 314 GPU jobs through one lab daemon, on Gemma-4-31B-it (QAT W4A16) [1] and one RTX 5090. The study’s
+            refit: 314 GPU jobs through one lab daemon, on Gemma-4-31B-it (QAT W4A16) [1] and one RTX 5090. Its lens
+            readings went mostly through lenses fitted on the base model <M>google/gemma-4-31B</M> in bf16; E3 and V6
+            also took the instruct model’s own average gradients, and R1 fitted a lens on it. The study’s
             verdict on the synthesis of [2], [4], [9] and [10]: neat as a question, oversold as built (REPORT §3.3).
             Statistics use bootstrap intervals [30] and Wilson intervals [29]; the full list of 41 references is{" "}
             <M>REFERENCES.md</M>.

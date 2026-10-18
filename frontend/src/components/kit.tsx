@@ -1,8 +1,26 @@
 import React from "react";
 import { useReading } from "../reading";
 import { href, type Route } from "../router";
-import { useTheodoliteStore } from "../store/useTheodoliteStore";
+import {
+  LENS_MODEL_NOT_SENT,
+  LENS_NAME_NOT_SENT,
+  lensOf,
+  useTheodoliteStore,
+  type LensInfo,
+  type Sighting,
+} from "../store/useTheodoliteStore";
 import { wp } from "../lib/words";
+import {
+  isBaseFitted,
+  isShippedLens,
+  lensBand,
+  lensLabel,
+  lensPhrase,
+  lensShort,
+  useInstrumentLens,
+  useReadingLens,
+  type LensBand,
+} from "../lib/lens";
 
 /* ------------------------------------------------------------------ marks */
 
@@ -71,27 +89,59 @@ export const ReadingToggles: React.FC = () => {
   );
 };
 
+/** True while the viewport is at most `px` wide (a phone); false where media queries cannot be read. */
+function useNarrow(px = 560): boolean {
+  const query = `(max-width: ${px}px)`;
+  const subscribe = React.useCallback(
+    (on: () => void) => {
+      try {
+        const mq = window.matchMedia(query);
+        mq.addEventListener("change", on);
+        return () => mq.removeEventListener("change", on);
+      } catch {
+        return () => {};
+      }
+    },
+    [query],
+  );
+  const read = () => {
+    try {
+      return window.matchMedia(query).matches;
+    } catch {
+      return false;
+    }
+  };
+  return React.useSyncExternalStore(subscribe, read, () => false);
+}
+
 export const ServerStatus: React.FC = () => {
   const conn = useTheodoliteStore((s) => s.conn);
   const health = useTheodoliteStore((s) => s.health);
   const sighting = useTheodoliteStore((s) => s.sighting);
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
+  const { lens } = useInstrumentLens();
+  const narrow = useNarrow();
   const model = "Gemma-4-31B-it";
-  let line: string;
+  // the head of every page names the lens every reading goes through, from the server's own record where it sent one,
+  // and says "lens not identified" when that record leaves out its name or its model
+  const through = narrow ? lensShort(lens) : lensLabel(lens);
+  let state: string;
   let fill = "#A07A2E";
-  if (conn === "open") line = isSweeping ? `${model} · taking a sighting…` : `${model} · ready`;
+  if (conn === "open") state = isSweeping ? "taking a sighting…" : "ready";
   else if (conn === "connecting" || conn === "idle") {
-    line = `${model} · reaching the server…`;
+    state = "reaching the server…";
     fill = "#C9BEAC";
   } else {
-    line = sighting?.source === "fixture" ? "server not answering · recorded sighting" : "server not answering";
+    state = sighting?.source === "fixture" ? "server not answering · recorded sighting" : "server not answering";
     fill = "#8F2B1E";
   }
   return (
     <>
       <span style={{ display: "flex", alignItems: "center", gap: 8 }} role="status" aria-live="polite">
         <Diamond fill={fill} />
-        {line}
+        <span>
+          {model} · <span title={`Every reading goes through ${lensPhrase(lens, true)}`}>{through}</span> · {state}
+        </span>
       </span>
       {conn === "open" && health ? <span>memory {health.vram_allocated_gb.toFixed(1)} GB in use</span> : null}
     </>
@@ -128,8 +178,13 @@ export const SiteFooter: React.FC<{ folio: string; children?: React.ReactNode }>
       <span>
         {children ?? (
           <>
-            Reading google/gemma-4-31b-it (4-bit) through the J++ lens · 60 layers · 5,376 dimensions ·{" "}
-            {sighting?.source === "live" ? "a live sighting" : sighting ? sighting.provenance : "no sighting yet"} ·{" "}
+            <ReadingThrough /> · 60 layers · 5,376 dimensions ·{" "}
+            {sighting?.source === "live"
+              ? "a live sighting"
+              : sighting
+                ? `${sighting.provenance}, read through the same lens`
+                : "no sighting yet"}{" "}
+            ·{" "}
             <a href={href.lineage()}>the lineage of these ideas</a>
           </>
         )}
@@ -239,6 +294,180 @@ export const Wp: React.FC<{ token: string | null | undefined; style?: React.CSSP
     {wp(token)}
   </span>
 );
+
+/* ------------------------------------------------------------- the lens */
+
+/** "Reading google/gemma-4-31b-it (4-bit) through the J++ lens, fitted on the base model google/gemma-4-31B" */
+export const ReadingThrough: React.FC = () => {
+  const sighting = useTheodoliteStore((s) => s.sighting);
+  const { lens } = useReadingLens(sighting);
+  return <>Reading google/gemma-4-31b-it (4-bit) through {lensPhrase(lens, true)}</>;
+};
+
+/** The bands a red line can speak for: one per layer (lib/lens.ts, lensBand; none at layer 60), or `all` at once. */
+type CautionBand = Exclude<LensBand, "own"> | "all";
+
+/** Erratum E2: at layers 51-59, 6-7 of the 9 AI conditions read at or above the woman persona through J++ (R1). */
+const sheLean = (where: "here" | "there") =>
+  `the J++ lens leans toward “she” for most of the AIs the study tried, so a pronoun read ${where} does not tell you how ` +
+  "the model sees itself";
+
+/** What a reading through the shipped lens can bear, in plain words, by the study's bands of layers (erratum E49). */
+const SHIPPED_BANDS: Record<CautionBand, string> = {
+  untested:
+    "Below layer 21 the study’s two checks of even how sightings rank against each other disagreed, and no lens it tried " +
+    "was reliable here: treat what you read as unconfirmed.",
+  order:
+    "At layers 21 to 30 trust only how several versions of a question rank against one another, and only where what the model " +
+    "goes on to say bears it out; not the words themselves.",
+  compare: "Compare two sightings, one of them a matched control, rather than read a single word as the model’s own.",
+  late:
+    "Compare two sightings, one of them a matched control, rather than read a single word as the model’s own. At layers 51 to 59 " +
+    `${sheLean("here")}.`,
+  all:
+    "Compare two sightings, one of them a matched control, rather than read a single word as the model’s own. Below layer 21 " +
+    "even comparisons are unconfirmed; at 21 to 30 trust only how several versions of a question rank against one another; at 51 to 59 " +
+    `${sheLean("there")}.`,
+};
+
+/** For any other lens: the same bands, reported as what the study measured with the shipped lens, not with this one. */
+const OTHER_LEAD =
+  "What these pages say a layer can bear was measured with the shipped J++ lens, fitted on the base model, not with this one:";
+const OTHER_BANDS: Record<CautionBand, string> = {
+  untested: "below layer 21 even how two sightings rank against each other was not reliably confirmed with it.",
+  order:
+    "at layers 21 to 30 only how several versions of a question rank against one another held up with it, not the words " +
+    "themselves.",
+  compare: "from layer 31 the study compared two sightings, one of them a matched control, and did not trust single words.",
+  late: "the study compared sightings at layers 31 to 50; at 51 to 59 that lens leaned toward “she” for most of the AIs the study tried.",
+  all:
+    "below layer 21 not even comparisons were reliably confirmed with it; at 21 to 30 only how several versions of a question rank; from 31 the " +
+    "study compared sightings against a matched control rather than trust single words; at 51 to 59 that lens leaned toward " +
+    "“she” for most of the AIs the study tried.",
+};
+
+/** What the line says of a lens that is not the shipped one when its card carries no caution of its own. */
+const OTHER_NO_CAUTION =
+  "This lens has not been checked against this model’s behaviour; compare matched sightings and do not read its words as the " +
+  "model’s own.";
+
+const BASE_SENTENCE = "This lens was fitted on the base model, not on the chat model you are reading.";
+
+/** The band's words for `lens`: the study's advice for the shipped lens, and for any other what it measured with that one. */
+function bandWords(lens: LensInfo, band: CautionBand): string {
+  return isShippedLens(lens) ? SHIPPED_BANDS[band] : `${OTHER_LEAD} ${OTHER_BANDS[band]}`;
+}
+
+/**
+ * The red line beside every readout of words, for the layer `no` (counted 1-60): what the study found a reading through
+ * the shipped J++ lens, fitted on the base model, can bear there. For any other lens (or a card that does not identify
+ * its lens) it gives the server's own caution and reports the bands as measured with the shipped lens, not with this
+ * one. Every lens gets the line, since even one fitted on the instruct model was poor on single words and unstable below
+ * layer 31 (R1; erratum E39). Nothing at layer 60, where the lens is the identity and the words are the model's own
+ * odds; without `no`, all the bands at once. It ends by pointing to how a control is taken, since keeping one is done in
+ * the apparatus.
+ */
+export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; style?: React.CSSProperties }> = ({
+  sighting,
+  no,
+  style,
+}) => {
+  const { lens } = useReadingLens(sighting);
+  const band = no != null ? lensBand(no) : "all";
+  if (band === "own") return null;
+  const shipped = isShippedLens(lens);
+  return (
+    <Rubric style={style}>
+      {shipped ? (
+        `${BASE_SENTENCE} `
+      ) : (
+        <>
+          {isBaseFitted(lens) && !lens.caution ? `${BASE_SENTENCE} ` : null}
+          {lens.caution ? `The server says of this lens: ${lens.caution} ` : `${OTHER_NO_CAUTION} `}
+        </>
+      )}
+      {bandWords(lens, band)} <a href={href.lexicon(band === "late" ? "late" : "single")}>Read the caution.</a>
+      {band !== "untested" ? (
+        <>
+          {" "}
+          <a href={href.lexicon("matched-control")}>How to take a matched control.</a>
+        </>
+      ) : null}
+    </Rubric>
+  );
+};
+
+const LENS_FROM = {
+  sighting: "As the server reported it with this sighting.",
+  server: "As the server reports it (GET /api/health).",
+  recorded: "The recorded sighting keeps no record of its lens; the study took it through this same file (E6).",
+  unnamed:
+    "No lens record has come from the server (it is not answering, or it is an older one that sends none); this is the lens " +
+    "the instrument loads.",
+} as const;
+
+/** What an incomplete card leaves out, for the record's opening words. */
+function leftOut(lens: LensInfo): string {
+  const noName = lens.name === LENS_NAME_NOT_SENT;
+  const noModel = lens.fittedOn === LENS_MODEL_NOT_SENT;
+  if (noName && noModel) return "the lens’s name and the model it was fitted on";
+  return noName ? "the lens’s name" : "the model it was fitted on";
+}
+
+/**
+ * The apparatus line naming the lens, from the server's own record where it sent one: a <dt>/<dd> pair for a <dl>.
+ * `reply` is a scientist reply (inspect_pole, trace_readers, test_hypothesis) whose own `lens` comes first. A card that
+ * does not identify its lens is printed as sent, with what it leaves out marked. With the rubrics off, the red line
+ * beside each readout is hidden, so the bands follow here once, as a second pair.
+ */
+export const LensRecord: React.FC<{ sighting?: Sighting | null; reply?: unknown; term?: string }> = ({
+  sighting,
+  reply,
+  term = "lens record",
+}) => {
+  const read = useReadingLens(sighting);
+  const rubrics = useReading((s) => s.rubrics);
+  const replied = reply && typeof reply === "object" ? lensOf((reply as { lens?: unknown }).lens) : null;
+  const lens = replied ?? read.lens;
+  return (
+    <>
+      <dt>{term}</dt>
+      <dd>
+        {lens.identified ? null : <>Lens not identified: the server’s card leaves out {leftOut(lens)}. As sent: </>}
+        {lens.name === LENS_NAME_NOT_SENT ? <Missing what="no name sent" /> : lens.name}, fitted on{" "}
+        {lens.fittedOn === LENS_MODEL_NOT_SENT ? <Missing what="not sent" /> : <span className="mono-wrap">{lens.fittedOn}</span>}
+        {lens.appliedTo ? (
+          <>
+            {" "}
+            and read here on <span className="mono-wrap">{lens.appliedTo}</span>
+          </>
+        ) : null}
+        ; method: {lens.method || <Missing what="not sent" />}; fit data: {lens.fitData || <Missing what="not sent" />}; source{" "}
+        {lens.source ? <span className="mono-wrap">{lens.source}</span> : <Missing what="not sent" />}
+        {lens.file ? (
+          <>
+            , loaded from <span className="mono-wrap">{lens.file}</span>
+          </>
+        ) : null}
+        . {replied ? "As the server reported it with this reply." : LENS_FROM[read.from]}
+        {isShippedLens(lens)
+          ? " Base model in bf16, read on the instruct model in 4-bit: two changes at once, which the study could not tell apart (R1)."
+          : null}
+        {lens.caution ? <> The server’s caution, as sent: “{lens.caution}”</> : null}
+      </dd>
+      {rubrics ? null : (
+        <>
+          <dt>what to trust, by layer</dt>
+          <dd>
+            {bandWords(lens, "all")} The words at layer 60 are the model’s own odds.{" "}
+            <a href={href.lexicon("single")}>Read the caution</a>, and{" "}
+            <a href={href.lexicon("matched-control")}>how to take a matched control</a>.
+          </dd>
+        </>
+      )}
+    </>
+  );
+};
 
 /** A notice shown wherever a live server is needed but the page is reading the recorded sighting. */
 export const RecordedNotice: React.FC<{ children?: React.ReactNode }> = ({ children }) => {

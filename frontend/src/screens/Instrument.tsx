@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Apparatus, IfApparatus, Missing, Page, RecordedNotice, Rubric, SweepError } from "../components/kit";
+import { Apparatus, IfApparatus, LensCaution, LensRecord, Missing, Page, RecordedNotice, Rubric, SweepError } from "../components/kit";
 import { useApparatus } from "../reading";
 import { href, type Route } from "../router";
 import {
@@ -16,6 +16,7 @@ import { Ascent } from "./instrument/Ascent";
 import { Kinship } from "./instrument/Kinship";
 import { CANVAS_STATIONS, RECORDED_POLE_NOTES } from "./instrument/recorded";
 import { describeFrame } from "../lib/frame";
+import { lensLabel, useReadingLens } from "../lib/lens";
 import { ControlSighting } from "../components/ControlSighting";
 
 const sci = (v: number) => minus(Math.abs(v) >= 0.01 ? v.toFixed(3) : v.toExponential(1));
@@ -41,6 +42,7 @@ export const Instrument: React.FC<{ route: Route }> = ({ route }) => {
     rings: true,
   }));
   const stations = useMemo(() => (sighting ? stationsOf(sighting) : []), [sighting]);
+  const { lens } = useReadingLens(sighting);
 
   return (
     <Page route={route} folio="folio i">
@@ -65,8 +67,8 @@ export const Instrument: React.FC<{ route: Route }> = ({ route }) => {
                 </legend>
                 {(
                   [
-                    ["path", "path of thought"],
-                    ["words", "words it was thinking"],
+                    ["path", "the word’s path"],
+                    ["words", "words through the lens"],
                     ["split", "gathering & remembering"],
                     ["neurons", "neurons that fired"],
                     ["threads", "threads"],
@@ -81,8 +83,10 @@ export const Instrument: React.FC<{ route: Route }> = ({ route }) => {
                 ))}
               </fieldset>
               <Rubric style={{ margin: 0, maxWidth: 700 }}>
-                Each ring is one layer: the first at the bottom, the sixtieth at the top. The dark thread is the path of the model’s thought. On
-                the gilded rings, every sixth, the model looks back over the whole conversation, not only the recent words.
+                Each ring is one layer: the first at the bottom, the sixtieth at the top. The dark thread is the word’s path as the{" "}
+                {lens.name} lens reads it, and the words beside it are that lens’s readings. Below layer 21 the study could validate none
+                of them, so those words are drawn faint; at layers 21 to 30 trust only how sightings rank against one another, not the words
+                themselves. On the gilded rings, every sixth, the model looks back over the whole conversation, not only the recent words.
               </Rubric>
               <WhatIsDrawn sighting={sighting} />
             </section>
@@ -192,7 +196,7 @@ const Question: React.FC = () => {
           </div>
           <Rubric style={{ margin: "2px 0 0", maxWidth: 640 }}>
             Write anything you like, then take a sighting. The instrument follows the model’s last word up through all sixty of its layers,
-            and shows what it was thinking at each one.
+            and shows at each one what the lens reads there.
           </Rubric>
           <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
         </form>
@@ -353,31 +357,34 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
   );
 };
 
-const WentOn: React.FC<{ sighting: Sighting }> = ({ sighting }) => (
-  <div
-    style={{
-      display: "flex",
-      flexWrap: "wrap",
-      alignItems: "baseline",
-      gap: "8px 22px",
-      padding: "16px 0 18px",
-      borderTop: "1px solid #E3DACA",
-      borderBottom: "1px solid #E3DACA",
-    }}
-  >
-    <span className="label-sc">it went on</span>
-    <span style={{ fontSize: 26, fontStyle: "italic" }}>“… {sighting.continuation.trim()}”</span>
-    {sighting.isNudged ? (
-      <a href={href.nudge()} className="sc" style={{ fontSize: 15, letterSpacing: "0.14em" }}>
-        nudged
-      </a>
-    ) : null}
-    <span className="num" style={{ marginLeft: "auto", fontSize: 15, color: "#6B5D4D" }}>
-      60 layers surveyed{sighting.elapsedMs != null ? ` in ${ms(sighting.elapsedMs)}` : ""} · J++ lens
-      {sighting.source === "fixture" ? " · the study’s recorded sighting" : ""}
-    </span>
-  </div>
-);
+const WentOn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
+  const { lens } = useReadingLens(sighting);
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "baseline",
+        gap: "8px 22px",
+        padding: "16px 0 18px",
+        borderTop: "1px solid #E3DACA",
+        borderBottom: "1px solid #E3DACA",
+      }}
+    >
+      <span className="label-sc">it went on</span>
+      <span style={{ fontSize: 26, fontStyle: "italic" }}>“… {sighting.continuation.trim()}”</span>
+      {sighting.isNudged ? (
+        <a href={href.nudge()} className="sc" style={{ fontSize: 15, letterSpacing: "0.14em" }}>
+          nudged
+        </a>
+      ) : null}
+      <span className="num" style={{ marginLeft: "auto", fontSize: 15, color: "#6B5D4D" }}>
+        60 layers surveyed{sighting.elapsedMs != null ? ` in ${ms(sighting.elapsedMs)}` : ""} · {lensLabel(lens)}
+        {sighting.source === "fixture" ? " · the study’s recorded sighting, taken through the same lens" : ""}
+      </span>
+    </div>
+  );
+};
 
 /* ------------------------------------------------------- apparatus: what is drawn */
 
@@ -533,6 +540,7 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
   const top = L.lensTop?.[0]?.prob ?? null;
   const gather = L.ffnShare != null ? Math.round((1 - L.ffnShare) * 100) : null;
   const note = poleNote(sighting, L);
+  const { lens } = useReadingLens(sighting);
   return (
     <aside aria-labelledby="leaf-head" style={{ flex: "1 1 400px", minWidth: 0, display: "flex", flexDirection: "column", gap: 22 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
@@ -562,8 +570,8 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
 
       <div className="stack">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-          <h3 className="h-sub">what it was thinking</h3>
-          <span style={{ fontSize: 15, fontStyle: "italic", color: "#6B5D4D" }}>{certainty(top)}</span>
+          <h3 className="h-sub">{sel === 59 ? "its own odds" : "through the lens"}</h3>
+          <span style={{ fontSize: 15, fontStyle: "italic", color: "#6B5D4D" }}>{certainty(top, sel === 59)}</span>
         </div>
         {L.lensTop ? (
           L.lensTop.slice(0, 5).map((t, i) => (
@@ -592,18 +600,29 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
           </p>
         )}
         <Rubric style={{ margin: "4px 0 0", fontSize: 16 }}>
-          These are the words the model would say if it stopped at this layer, read through the J++ lens.{" "}
+          {sel === 59 ? (
+            <>At the last layer no lens stands between: these are the model’s own odds for its next word. </>
+          ) : (
+            <>
+              These are the words read from this layer’s stream through the {lens.name} lens: its guess at what the model would say
+              if it stopped here.{" "}
+            </>
+          )}
           <a href={href.lexicon("lens")}>What is a lens?</a>
         </Rubric>
+        <LensCaution sighting={sighting} no={L.no} style={{ margin: 0, fontSize: 16 }} />
       </div>
 
       <div className="stack">
-        <h3 className="h-sub">gathering or remembering</h3>
+        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "baseline", gap: "2px 12px" }}>
+          <h3 className="h-sub">gathering or remembering</h3>
+          <span style={{ fontSize: 15, fontStyle: "italic", color: "#6B5D4D" }}>as the {lens.name} lens weighs the two writes</span>
+        </div>
         {gather != null ? (
           <>
             <div
               role="img"
-              aria-label={`${gather} percent gathered from earlier words, ${100 - gather} percent recalled from memory`}
+              aria-label={`${gather} percent gathered from earlier words, ${100 - gather} percent recalled from memory, as the lens weighs them`}
               style={{ display: "flex", height: 14, borderRadius: 1, overflow: "hidden" }}
             >
               <div style={{ width: `${gather}%`, background: "#2E4A7D" }} />
@@ -718,6 +737,7 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
           <sup>⊤</sup>), unembed(u) = 30 · tanh(W<sub>U</sub> · RMSNorm(u) / 30); J = the J++ lens (Ayonrinde &amp; Lindsey 2026), fitted on the
           base model. The Jacobian lens (Gurnee et al. 2026) is on disk; the server does not load it.
         </dd>
+        <LensRecord sighting={sighting} />
         <dt>split</dt>
         <dd>
           {L.ffnShare != null ? (
@@ -771,13 +791,14 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
         <dt>poles</dt>
         <dd>
           signed a of the {L.poles.length} strongest: {L.poles.map((p) => signed(p.act)).join("  ")}. Labels: unembed((σ · w<sub>down</sub>) · J
-          <sup>⊤</sup>), against the naked eye’s unembed(σ · w<sub>down</sub>). Output labels held up at layers 41–58 only.
+          <sup>⊤</sup>), against the naked eye’s unembed(σ · w<sub>down</sub>). Output labels held up at layers 41–58, were at chance at
+          11–31, and were not tested at 1–10 or 32–40 (N1; erratum E9).
         </dd>
         {ctl ? (
           <>
             <dt>control</dt>
             <dd>
-              at this layer the control was thinking {ctl.lensTop?.[0] ? <>{wp(ctl.lensTop[0].token)} ({pct(ctl.lensTop[0].prob)})</> : <Missing what="not recorded" />}
+              at this layer the lens read the control as {ctl.lensTop?.[0] ? <>{wp(ctl.lensTop[0].token)} ({pct(ctl.lensTop[0].prob)})</> : <Missing what="not recorded" />}
               {ctl.ffnShare != null ? <>; remembering {Math.round(ctl.ffnShare * 100)}%</> : null}.
             </dd>
           </>

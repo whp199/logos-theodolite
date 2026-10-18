@@ -106,6 +106,38 @@ export interface FrameInfo {
   } | null;
 }
 
+/** What `name` holds when the server's card leaves out the lens's name (see LensInfo.identified); pages that print
+ * "the {name} lens" then read "the unnamed lens". */
+export const LENS_NAME_NOT_SENT = "unnamed";
+/** What `fittedOn` holds when the server's card leaves out the model the lens was fitted on. */
+export const LENS_MODEL_NOT_SENT = "a model its file does not name";
+
+/**
+ * The lens a reading was taken through, as the server names it (`lens` in GET /api/health, in every sweep and in the
+ * scientist replies): the J++ lens, fitted on the base model google/gemma-4-31B and applied to the instruct 4-bit one.
+ */
+export interface LensInfo {
+  /** "jpp-base" for the J++ lens fitted on the base model; "" = not sent */
+  id: string;
+  /** the method's name, e.g. "J++"; LENS_NAME_NOT_SENT when the card leaves it out */
+  name: string;
+  /** what it was fitted on, e.g. "google/gemma-4-31B (base, bf16)"; LENS_MODEL_NOT_SENT when the card leaves it out */
+  fittedOn: string;
+  /** the served checkpoint it reads; null = not sent */
+  appliedTo: string | null;
+  method: string;
+  fitData: string;
+  /** where the fitted file comes from (its provenance); null = not sent */
+  source: string | null;
+  /** the file the server loaded; null = not sent */
+  file: string | null;
+  /** the server's own word on how far to trust this lens (its card's `caution`); null = not sent */
+  caution: string | null;
+  /** false when the server sent a card without the lens's name or without the model it was fitted on: the pages then
+   * say the lens is not identified, and never take it for the shipped base-fitted J++ */
+  identified: boolean;
+}
+
 /** What the server pushed, when a sighting was nudged (the server's `steering_applied`). */
 export interface SteeringApplied {
   mode: "words" | "neuron";
@@ -146,6 +178,9 @@ export interface Sighting {
   poleRanking: PoleRanking;
   threadScore: ThreadScore;
   frame: FrameInfo | null;
+  /** the lens the server says it read through; null for the recorded sighting, which keeps no such record (it was
+   * taken through the same J++ lens, fitted on the base model), and for an older server whose reply has no `lens` */
+  lens: LensInfo | null;
   steeringApplied: SteeringApplied | null;
   /** the nudge settings this page sent with the request (live only), to tell this nudge from an earlier one */
   steeringSent: Record<string, unknown> | null;
@@ -406,6 +441,7 @@ export function sightingFromLive(
     poleRanking: meta.pole_ranking === "write" ? "write" : "activation",
     threadScore,
     frame: frameOf(meta.frame),
+    lens: lensOf(meta.lens),
     steeringApplied: steeringOf(meta.steering_applied),
     steeringSent: req.steering ?? null,
     layers,
@@ -437,6 +473,34 @@ function frameOf(f: Json | null | undefined): FrameInfo | null {
             selfCos: Array.isArray(g.self_cos) ? g.self_cos.map(Number) : [],
           }
         : null,
+  };
+}
+
+/**
+ * The server's `lens` card, or null when it sent none (an older server, or one whose lens is not loaded yet; the pages
+ * then fall back to the lens the instrument loads). A card that leaves out the lens's name or the model it was fitted
+ * on is kept, as sent, with `identified` false: it describes some other lens file, which must not be taken for the
+ * shipped one (backend/engine_runtime.py, lens_card).
+ */
+export function lensOf(l: unknown): LensInfo | null {
+  if (!l || typeof l !== "object" || Array.isArray(l)) return null;
+  const o = l as Json;
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : null);
+  // the server sends "unnamed" when the file records no method (engine_runtime.UNNAMED_LENS): not a name
+  const sentName = str(o.name);
+  const name = sentName === LENS_NAME_NOT_SENT ? null : sentName;
+  const fittedOn = str(o.fitted_on);
+  return {
+    id: str(o.id) ?? "",
+    name: name ?? LENS_NAME_NOT_SENT,
+    fittedOn: fittedOn ?? LENS_MODEL_NOT_SENT,
+    appliedTo: str(o.applied_to),
+    method: str(o.method) ?? "",
+    fitData: str(o.fit_data) ?? "",
+    source: str(o.source),
+    file: str(o.file),
+    caution: str(o.caution),
+    identified: name !== null && fittedOn !== null,
   };
 }
 
@@ -564,6 +628,7 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     poleRanking: "activation",
     threadScore: "coupling",
     frame: null,
+    lens: null,
     steeringApplied: null,
     steeringSent: null,
     layers,

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Apparatus, IfRubrics, Missing, Page, Rubric, SweepError } from "../components/kit";
 import { href, type Route } from "../router";
 import { SAFE_NUDGE_SCALE, composeText, loudnessRank, useTheodoliteStore, type Sighting, type SteeringConfig } from "../store/useTheodoliteStore";
-import { faceWord, wp } from "../lib/words";
+import { faceWord, labelTrust, wp } from "../lib/words";
+import { isBaseFitted, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
 import {
   DIAL,
   EDGE,
@@ -309,6 +310,9 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
   const setSteering = useTheodoliteStore((s) => s.setSteering);
   const takeSighting = useTheodoliteStore((s) => s.takeSighting);
+  // the lens a neuron's words were read through (the sighting's), and the one the server builds a word push through
+  const { lens: readLens } = useReadingLens(sighting);
+  const { lens: pushLens } = useInstrumentLens();
 
   const [init] = useState(initialState);
   const [question, setQuestion] = useState(init.question);
@@ -695,7 +699,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             />
           </div>
           <Rubric style={{ margin: "2px 0 0 170px", maxWidth: 640 }}>
-            A nudge is a small push on the model’s stream of thought while it reads. Begin with a question whose answer you know: here the
+            A nudge is a small push on the model’s stream while it reads. Begin with a question whose answer you know: here the
             model counts a spider’s legs, and says eight. We will try to tip it toward six.
           </Rubric>
         </div>
@@ -784,7 +788,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               </div>
               <Rubric style={{ maxWidth: 520 }}>
                 Use one short word in each. The instrument reads each as a single word-piece, and a longer word is quietly cut to its first
-                piece.
+                piece. The push between the two is carried to each chosen layer through {lensPhrase(pushLens)}: the same lens the
+                instrument reads through.
               </Rubric>
             </>
           ) : (
@@ -846,13 +851,15 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                     loudest in layer {pl}.{" "}
                     {lensWords ? (
                       <>
-                        Its {faceWord(poleHere.face)} face writes{" "}
+                        Through the {readLens.name} lens (
+                        {isBaseFitted(readLens) ? "fitted on the base model" : `fitted on ${readLens.fittedOn}`}), its{" "}
+                        {faceWord(poleHere.face)} face writes {lensWords}
                         {pn === 15491 && pl === 54 ? (
                           <>
-                            forms of <i>to be</i>:{" "}
+                            , which read as forms of <i>to be</i>
                           </>
                         ) : null}
-                        {lensWords}.
+                        .
                       </>
                     ) : (
                       <>
@@ -861,6 +868,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                       </>
                     )}
                   </p>
+                  {lensWords ? <Rubric style={{ margin: 0, maxWidth: 520 }}>{labelTrust(pl - 1)}</Rubric> : null}
                   {(facePos ? 1 : -1) !== poleHere.face ? (
                     <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
                       Pushing with its {faceW} face sends the same push the other way.
@@ -1059,7 +1067,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           <dd>
             A lens or gradient pullback is a covector, a way of reading the stream; adding it as though it were a displacement is a units error
             in Gemma 4 (REPORT §2.2, after the causal inner product of Park et al. 2024 [24]). Such covectors put 99–100% of their energy in the
-            quiet dimensions at layers 36–59. A neuron’s write column is a vector the model itself adds, not a pullback; whether its push
+            quietest tenth of dimensions (about 540) at layers 36–59; the 181 of the carry channel alone hold 56–98% at layers 31 and 41
+            (V6; erratum E7). A neuron’s write column is a vector the model itself adds, not a pullback; whether its push
             reaches the quiet dimensions was not measured: <Missing what="not measured in the study" />
           </dd>
           <dt>measured</dt>
@@ -1070,10 +1079,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           </dd>
           <dt>trusting a neuron</dt>
           <dd>
-            Output labels held up only at layers 41–58 (REPORT §3.2), and best where the lens and the naked eye agree (AUC 0.84). Neuron 15491
-            at layer 54: the lens reads “Am”, “jestem”, “Somos”, the naked eye “jestem”, “jsem”, “êtes”; one word-piece shared. The study’s
-            own single-neuron test pushed the activation, not the stream: s · 60 · max|a| added to mlp_act at the last word-piece, over 36
-            contexts (N1A).
+            Output labels held up at layers 41–58, were at chance at 11–31 and were not tested at 32–40 (REPORT §3.2; N1); within 41–58 they
+            were likelier sound where the J++ lens and the naked eye agree (AUC 0.84). Neuron 15491 at layer 54: the lens reads “Am”,
+            “jestem”, “Somos”, the naked eye “jestem”, “jsem”, “êtes”; one word-piece shared. The study’s own single-neuron test pushed the
+            activation, not the stream: s · 60 · max|a| added to mlp_act at the last word-piece, over 36 contexts (N1A).
           </dd>
           <dt>ask also for</dt>
           <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: 0 }}>
@@ -1871,8 +1880,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             <h3 className="h-sub">it fell into the quiet carry channel</h3>
             <p style={{ margin: 0, fontSize: 17 }}>
               About 180 dimensions are among the loudest in the early layers. Later the model stops writing to them, yet reads them with gains of
-              up to 1,700 times, carrying early content forward. Every direction read off a lens or a gradient gathers there, which is why
-              lens-derived nudges break Gemma 4.
+              up to 1,700 times, carrying early content forward. From layer 36 up, every direction read off a lens or a gradient gathers in
+              the quietest tenth of the stream, mostly on these few, which is why lens-derived nudges break Gemma 4.
             </p>
             <div
               role="img"
@@ -1923,8 +1932,9 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           <div style={{ flex: "999 1 560px", minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
             <h3 className="h-sub">how this page nudges instead</h3>
             <p style={{ margin: 0, fontSize: 18, maxWidth: 760 }}>
-              Strength is a share of the stream, not a fixed number. The direction is taken from the norm weights themselves, with no inverse and
-              no clamp; the quiet channel is masked; and the start mark <span style={{ fontStyle: "italic", color: C.muted }}>(BOS)</span> is left
+              Strength is a share of the stream, not a fixed number. The direction between two words is weighted by the norm weights
+              themselves, with no inverse and no clamp, and still carried to each layer through {lensPhrase(pushLens)}; the quiet channel
+              is masked; and the start mark <span style={{ fontStyle: "italic", color: C.muted }}>(BOS)</span> is left
               alone. These are the tool audit’s fixes. The window that works is narrow, which is why the dial shows it.
             </p>
             <p style={{ margin: 0, fontSize: 17, color: C.muted, maxWidth: 760 }}>
@@ -1966,8 +1976,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             </dd>
             <dt>the lens</dt>
             <dd>
-              masking the quiet dimensions raises J++ ↔ true-gradient agreement at layers 41–59 from cos 0.26 / 0.33 to 0.84 / 0.86 (ceiling
-              0.97–0.99): the lens’s late disagreement with the chat model lives in this subspace (REPORT §2.2).
+              for the pronoun direction, masking the quiet dimensions raises J++ ↔ true-gradient agreement at layers 41–59 from cos 0.26 /
+              0.33 to 0.84 / 0.86 (ceiling 0.97–0.99; REPORT §2.2). For random word-pair directions, J++ and a lens refitted on the instruct
+              model agree in the loud dimensions only 0.62 / 0.73 (ceiling 0.99), so the base-fitted lens’s disagreement with the chat model
+              is not confined to this subspace (R1 §2.2).
             </dd>
             <dt>related</dt>
             <dd>Briggs 2026 [26] notes, independently, that the skewed final gain makes plain Euclidean influence misleading.</dd>

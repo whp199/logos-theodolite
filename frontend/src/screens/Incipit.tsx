@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { Apparatus, Lozenge, Missing, Page, Rubric } from "../components/kit";
+import { Apparatus, Lozenge, Missing, Page, ReadingThrough, Rubric } from "../components/kit";
 import { useReading } from "../reading";
 import { href, navigate, type Route } from "../router";
 import { type Sighting, useTheodoliteStore } from "../store/useTheodoliteStore";
 import { comma, numberWord, wp } from "../lib/words";
 import { describeFrame } from "../lib/frame";
+import { isBaseFitted, useInstrumentLens } from "../lib/lens";
 import {
   FIRST_QUESTIONS,
   HOW_PUT,
@@ -94,8 +95,8 @@ const TitleColumn: React.FC = () => {
 
       <p style={{ margin: 0, fontSize: 22, lineHeight: 1.55, maxWidth: 640 }}>
         Between a question and its answer, this model carries each word up through sixty layers, and little of that country
-        has been mapped. This instrument lets you follow a single word as it rises, and read, at every layer, what the model
-        was thinking: sometimes in words you never wrote, in languages you never used.
+        has been mapped. This instrument lets you follow a single word as it rises and, at every layer, read what a lens makes
+        of it: sometimes words you never wrote, in languages you never used.
       </p>
 
       <p className="num" style={{ margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 16px", fontSize: 16, color: MUTED }}>
@@ -293,8 +294,10 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
 
           <dt>caveat</dt>
           <dd className="num">
-            On prose, the lens’s first choice matched the model’s own at most 3% of the time through layer 50, and 28% at layer 59
-            (REPORT §3.1). The middle stations are glimpses, and this lone sighting has no matched control beside it (§3.5).
+            On prose, the lens’s first choice matched the model’s own at most about 5% of the time through layer 50, and 28% at
+            layer 59 (E3 per layer; REPORT §3.1’s “3%” understates the first: erratum E30). Below layer 31 no lens of this averaged
+            kind proved stable (R1), and below layer 21 not even comparisons through it were validated (E2; E3). The middle
+            stations are glimpses, and this lone sighting has no matched control beside it (§3.5).
           </dd>
 
           {haveStrength && stations.length > 0 ? (
@@ -393,6 +396,9 @@ const WORDS: { term: React.ReactNode; def: React.ReactNode }[] = [
       <>
         Turns a layer’s inner state into the words the model might say there <span style={{ fontStyle: "italic" }}>(the J++ lens)</span>.
         The plainer reading, without that correction, is the naked eye <span style={{ fontStyle: "italic" }}>(the logit lens)</span>.
+        The lens was fitted on this model as it was before its training to chat{" "}
+        <span style={{ fontStyle: "italic" }}>(the base model)</span>: a fair guide when you compare two sightings, a rough one for
+        any single word, and unproven below layer 21.
       </>
     ),
   },
@@ -405,7 +411,7 @@ const WORDS: { term: React.ReactNode; def: React.ReactNode }[] = [
     def: (
       <>
         Each layer gathers from the words before <span style={{ fontStyle: "italic" }}>(attention)</span> and remembers what it
-        knows <span style={{ fontStyle: "italic" }}>(feed-forward)</span>, in different measure.
+        knows <span style={{ fontStyle: "italic" }}>(feed-forward)</span>, in a measure the instrument weighs through the lens.
       </>
     ),
   },
@@ -445,9 +451,9 @@ const HowItWorks: React.FC<{ s: Sighting | null }> = ({ s }) => (
         <span className="num">{s?.elapsedMs != null ? `${(s.elapsedMs / 1000).toFixed(1)} seconds` : <Missing />}</span>.
       </Step>
       <Step icon={<StepRead />} numeral="iii" title="read the ascent">
-        Climb the layers one at a time. At each, read what the model was thinking, and whether it was{" "}
-        <span style={{ color: "#2E4A7D" }}>gathering</span> from the words before or <span style={{ color: "#7A5C28" }}>remembering</span>{" "}
-        what it knows.
+        Climb the layers one at a time. At each, read what the lens makes of the word, and whether, as the lens weighs it, the
+        layer was <span style={{ color: "#2E4A7D" }}>gathering</span> from the words before or{" "}
+        <span style={{ color: "#7A5C28" }}>remembering</span> what it knows.
       </Step>
     </ol>
 
@@ -806,10 +812,13 @@ const NowRow: React.FC<{ term: string; children: React.ReactNode }> = ({ term, c
 
 const CAUTIONS: React.ReactNode[] = [
   <>
-    Words read in the middle layers are glimpses. Up to layer 50, on ordinary prose, the lens’s first guess matched the model’s own
-    final choice at most three times in a hundred.
+    Words read in the middle layers are glimpses. Up to layer 50, on ordinary prose, the lens, fitted on the base model, matched the
+    model’s own final choice at most about five times in a hundred, and from about layer 34 to 55 less often than the naked eye.
   </>,
-  <>Labels on single neurons held up only from layer 41 to layer 58. Below that, treat them as rumours.</>,
+  <>
+    Labels on single neurons, read through the lens or the naked eye, held up at the layers tested from 41 to 58, and not at 11 to
+    31. Elsewhere, treat them as rumours.
+  </>,
   <>
     A bearing, the compass direction the instrument gives a reading <span style={{ fontStyle: "italic", color: MUTED }}>(azimuth)</span>,
     depends on the order of the three landmark words. In the study, reordering them typically swung it by 58 to 99 degrees.
@@ -844,6 +853,7 @@ const BeforeYouSetOut: React.FC = () => {
     stateFill = "#8F2B1E";
   }
   const vram = conn === "open" && health ? health.vram_allocated_gb : null;
+  const { lens } = useInstrumentLens();
 
   return (
     <section aria-labelledby="set-out-head" style={{ display: "flex", flexDirection: "column", gap: 22, padding: "34px 0 8px", borderTop: `1px solid ${HAIR}` }}>
@@ -885,9 +895,11 @@ const BeforeYouSetOut: React.FC = () => {
             </NowRow>
             <NowRow term="the lens">
               <dd style={{ margin: 0, fontSize: 18 }}>
-                J++{" "}
+                {lens.name}{" "}
                 <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>
-                  fitted on the base model, here used on its chat-trained sibling (the instruct model)
+                  {isBaseFitted(lens)
+                    ? "fitted on the base model, here used on its chat-trained sibling (the instruct model)"
+                    : `fitted on ${lens.fittedOn}`}
                 </span>
               </dd>
             </NowRow>
@@ -954,19 +966,27 @@ const BeforeYouSetOut: React.FC = () => {
           <dd>
             J++ (Ayonrinde &amp; Lindsey 2026) [4], fitted on the base model in bf16 and used on the instruct model at 4-bit (REPORT
             §3.4, bug 9); only its matrix is applied, not its filter of non-semantic word-pieces. The Jacobian lens [2] is on disk;
-            the server starts with <span className="mono">load_jlens=False</span>. Proposed: refit on the instruct checkpoint; a lens
-            refitted there agrees with the model’s own average gradients at 0.85–0.95, where J++ reaches 0.15–0.33 (R1; §3.1, §3.5).
+            the server starts with <span className="mono">load_jlens=False</span>. R1 refitted a lens on the instruct checkpoint:
+            along 128 fixed directions, stable at layers 31–59, where it agrees with the model’s own average gradients at 0.85–0.95
+            against J++’s 0.15–0.33; and as a full matrix at 11 layers, usable only at 41, 46, 51, 56 and 59 (top-1 on the model’s
+            own reply at layer 51: 0.25 → 0.45). Neither is loaded; every lens reading here is through the base-fitted J++ (R1; §3.1).
           </dd>
           <dt>glimpses</dt>
           <dd>
-            top-1 at most 3% through layer 50 on prose, 28% at layer 59; J++ about equal to the naked eye at layers 46–59 (§3.1).
-            Prefer layers 21–50 for comparisons, against a matched control (§3.5).
+            top-1 at most about 5% through layer 50 on prose (5.1–5.2% at layers 46–47; §3.1’s “3%” matches only the average
+            over layers 41–50 and understates it: erratum E30), 28% at layer 59. J++ about equal to the naked eye at layers 46–59
+            in KL; in top-1 below it from about layer 34 to 55 and about equal above (E3). A lens fitted on the instruct model
+            beats the naked eye at layers 46–59 (R1). With the base-fitted J++, compare conditions at layers 31–50, against a
+            matched control, and confirm with an instruct-fitted reading where one exists; at layers 21–30 only the study’s
+            orderings checked against behaviour held, since no averaged lens is stable below layer 31 (R1); below layer 21
+            nothing was validated (erratum E49; §3.5).
           </dd>
           <dt>neuron labels</dt>
           <dd>
-            output labels against causal effect, P@10 0.35–0.69 at layers 41–58 (null ≤ 0.003), at chance at layers 11–31 (§3.2);
-            within layers 41–58, agreement between the lens and the naked eye predicts validity (AUC 0.84). Fix: stored activation
-            contexts for each pole; output labels only from layer 41, gated by that agreement (§3.5; bug 7).{" "}
+            output labels against causal effect, P@10 0.35–0.67 for J++ at the layers sampled from 41 to 58, the naked eye’s about
+            the same (null ≤ 0.003), at chance at layers 11–31; 32–40 not sampled; labels through an instruct-fitted lens untested
+            (§3.2; N1). Within layers 41–58, agreement between the lens and the naked eye predicts validity (AUC 0.84). Fix:
+            stored activation contexts for each pole; output labels only from layer 41, gated by that agreement (§3.5; bug 7).{" "}
             <a href={href.vault()}>the vault</a>
           </dd>
           <dt>bearing</dt>
@@ -1071,14 +1091,16 @@ const MakersMarks: React.FC = () => (
         <dd>
           Ayonrinde &amp; Lindsey 2026 [4], on the R-lens LRP rules (Blank, Bhatia &amp; Nanda 2026) [5]: it down-weights poorly read
           clusters, takes Jacobians by an LRP backward pass, and drops non-semantic word-pieces from the readout. Fitted on the base
-          model over 64 × 128-token WikiText-103 sequences [7]. The study: a good comparative instrument and a poor absolute one
-          (REPORT §3.1).
+          model over 64 × 128-token WikiText-103 sequences [7]. The study: fitted on the base model and used on the instruct model,
+          a good comparative instrument (from about layer 21 it orders conditions as the model’s behaviour does) and a poor
+          absolute one (REPORT §3.1).
         </dd>
         <dt>iii · poles</dt>
         <dd>
           Cammarata 2026 [9], on the GeGLU block (Shazeer 2020) [15]: each neuron’s positive and negative directions are its two
           poles. The study: Gemma-4’s neurons are truly two-poled, through the sign of the up-projection, and the two poles fire on
-          unrelated inputs; output labels held up at layers 41–58 only (REPORT §3.2).
+          unrelated inputs; output labels, read through J++ or the naked eye, held up at the layers sampled from 41 to 58 and not
+          at 11–31 (REPORT §3.2).
         </dd>
         <dt>iv · the vault</dt>
         <dd>
@@ -1123,7 +1145,7 @@ export const Incipit: React.FC<{ route: Route }> = ({ route }) => {
       folio="incipit"
       footer={
         <>
-          Reading google/gemma-4-31b-it (4-bit) through the J++ lens · 60 layers · 5,376 dimensions · {frontNote} ·{" "}
+          <ReadingThrough /> · 60 layers · 5,376 dimensions · {frontNote} ·{" "}
           <a href={href.lineage()}>the lineage of these ideas</a>
         </>
       }
