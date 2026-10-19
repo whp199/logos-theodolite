@@ -1,8 +1,18 @@
 import React from "react";
 import { Rubric } from "../../components/kit";
-import { bare, gloss, numberWord, wp } from "../../lib/words";
+import { bare, gloss, numberWord, pieceWord, wp } from "../../lib/words";
 import { lensPhrase, useReadingLens } from "../../lib/lens";
-import { type Sighting, N_LAYERS, isGlobalIdx } from "../../store/useTheodoliteStore";
+import { AnswerPositionCaution, OneDrawLine } from "../../lib/cautions";
+import {
+  type Sighting,
+  N_LAYERS,
+  chosenOf,
+  chosenPhrase,
+  isChosenRow,
+  isGlobalIdx,
+  ordinal,
+  readWhere,
+} from "../../store/useTheodoliteStore";
 
 /*
  * The frontispiece: a sighting drawn as sixty stacked rings, one per layer, with the path of the
@@ -27,7 +37,8 @@ export interface Station {
   token: string;
   prob: number | null;
   gloss: string;
-  /** the lens's first choice at the top is the word the model goes on to say */
+  /** the lens's first choice at the top is the word-piece the model chose there (by id), or, for the recorded sighting
+   * and an older server's first word-piece, written greedily, the first word it went on with */
   saysIt: boolean;
   labelY: number;
 }
@@ -88,7 +99,8 @@ function pickStations(s: Sighting): number[] {
   return out.sort((a, b) => a - b);
 }
 
-/** Whether a word-piece is the first word-piece of the continuation (a whole piece, not a prefix). */
+/** Whether a word-piece is the first word-piece of the continuation (a whole piece, not a prefix). Used only where no
+ * choice by id is known: the recorded sighting, and an older server's first word-piece, both written greedily. */
 function isFirstOf(token: string, continuation: string) {
   if (!token.trim() || !continuation.startsWith(token)) return false;
   const next = continuation.charAt(token.length);
@@ -99,7 +111,18 @@ function isFirstOf(token: string, continuation: string) {
 function stationPhrase(st: Station) {
   const m = /^(.+?): (“.+”)$/.exec(st.gloss);
   if (m && !st.saysIt) return `the ${m[1]} ${wp(st.token)}, meaning ${m[2]}, at layer ${st.no}`;
-  return `${wp(st.token)} at layer ${st.no}${st.saysIt ? ", the word it says" : ""}`;
+  return `${wp(st.token)} at layer ${st.no}${st.saysIt || st.gloss === "its likeliest" ? `, ${st.gloss}` : ""}`;
+}
+
+/** The top station's gloss: the word-piece it chose there, matched by id; for the recorded sighting (and an older server's
+ * first word-piece), written greedily, the first word it went on with; else, when it chose another, "its likeliest". */
+function topGloss(s: Sighting, top: { token: string }): { saysIt: boolean; gloss: string | null } {
+  const c = chosenOf(s);
+  const L = s.layers[LAST];
+  if (c) return isChosenRow(s, L, 0) ? { saysIt: true, gloss: c.endMark ? "where it ends its turn" : "the word it chose" } : { saysIt: false, gloss: "its likeliest" };
+  const greedyFirst = s.tokenIndex === 0 && (s.source === "fixture" || s.generation == null || s.generation.greedy);
+  if (greedyFirst && isFirstOf(top.token, s.continuation)) return { saysIt: true, gloss: "the word it said next" };
+  return { saysIt: false, gloss: null };
 }
 
 function listPhrase(items: string[]) {
@@ -144,13 +167,14 @@ export function frontispieceOf(s: Sighting | null): Frontispiece {
   const stationIdx = pickStations(s);
   const stations: Station[] = stationIdx.map((idx) => {
     const top = s.layers[idx].lensTop![0];
-    const saysIt = idx === LAST && isFirstOf(top.token, s.continuation);
+    const atTop = idx === LAST ? topGloss(s, top) : null;
+    const saysIt = atTop?.saysIt ?? false;
     return {
       idx,
       no: idx + 1,
       token: top.token,
       prob: top.prob,
-      gloss: saysIt ? "the word it says" : gloss(top.token),
+      gloss: atTop?.gloss ?? gloss(top.token),
       saysIt,
       labelY: Math.round(ringY(idx) + 5),
     };
@@ -169,7 +193,7 @@ export function frontispieceOf(s: Sighting | null): Frontispiece {
     .map((l) => "M" + pts[l]![0] + "," + pts[l]![1] + " L352," + f(ringY(l)))
     .join(" ");
 
-  const word = s.readAt != null ? wp(s.readAt) : "the last word";
+  const word = s.readAt != null ? pieceWord(s.readAt) : s.tokenIndex > 0 ? "its word-piece" : "the last word";
   const ariaLabel =
     "Frontispiece: a real sighting drawn as sixty stacked rings, one per layer, under the words terra incognita. " +
     (pathD
@@ -203,6 +227,8 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
   const s = sighting;
   const { lens } = useReadingLens(sighting);
   const said = s ? s.continuation.trim() : "";
+  // what this position chose, by id (“where it chose “am””); nothing for the recorded sighting, which keeps no ids
+  const chose = chosenPhrase(s);
   return (
     <figure style={{ flex: "1 1 460px", minWidth: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
       <svg
@@ -281,7 +307,7 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
           </text>
         )}
         <text x="200" y="744" textAnchor="middle" fontFamily={SERIF} fontStyle="italic" fontSize="16" fill="#6B5D4D">
-          {s?.readAt != null ? `the word ${wp(s.readAt)} arrives` : "the last word arrives"}
+          {s?.readAt != null ? `the word ${pieceWord(s.readAt)} arrives` : s && s.tokenIndex > 0 ? "its word-piece arrives" : "the last word arrives"}
         </text>
       </svg>
       <figcaption style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 490, margin: "0 auto" }}>
@@ -292,13 +318,26 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
           <span style={{ fontSize: 17, lineHeight: 1.5 }}>
             Asked “{s.question}”
             {s.answerBegins ? <>, with its answer begun for it as “{s.answerBegins}”</> : null}, the model went on{" "}
-            {said ? <>“{said}”</> : <span className="placeholder">[NO CONTINUATION RECORDED]</span>}. Here that last{" "}
-            {s.readAt != null ? wp(s.readAt) : "word"} climbs all sixty layers
+            {said ? <>“{said}”</> : <span className="placeholder">[NO CONTINUATION RECORDED]</span>}.{" "}
+            {readWhere(s).role === "written" ? (
+              <>
+                Here {s.readAt != null ? pieceWord(s.readAt) : "a word-piece"}, the {ordinal(s.tokenIndex)} word-piece of its own answer,
+                climbs all sixty layers
+              </>
+            ) : (
+              <>Here that last {s.readAt != null ? pieceWord(s.readAt) : "word"} climbs all sixty layers</>
+            )}
+            {chose ? <>, to {chose}</> : null}
             {geo.stations.length ? (
               <>, and beside its path stand the words the lens reads at {numberWord(geo.stations.length)} of them</>
             ) : null}
             . The gilded rings are every sixth layer, where it looks back over the whole conversation.
             {s.isNudged ? " This sighting was taken with a nudge in place." : null}
+            {s.generation && !s.generation.greedy ? (
+              <>
+                {" "}Its answer was <OneDrawLine generation={s.generation} />
+              </>
+            ) : null}
           </span>
         ) : (
           <span style={{ fontSize: 17, lineHeight: 1.5 }}>
@@ -309,6 +348,7 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
           Read the middle words as glimpses, not the model’s own speech: {lensPhrase(lens)}, is far less faithful there than
           near the top, and below layer 21 nothing it reads was validated.
         </Rubric>
+        {s && s.tokenIndex >= 1 ? <AnswerPositionCaution k={s.tokenIndex} /> : null}
       </figcaption>
     </figure>
   );

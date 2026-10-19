@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Apparatus, LensRecord, Missing, Page, Rubric, SweepError } from "../components/kit";
+import { AnswerPositionCaution, TemplateEndCaution } from "../lib/cautions";
 import type { FrameInfo } from "../store/sighting";
 import { ControlSighting } from "../components/ControlSighting";
 import { describeFrame } from "../lib/frame";
@@ -8,11 +9,18 @@ import { href, type Route } from "../router";
 import {
   type LayerReading,
   type Sighting,
+  SIGHT_CAP,
   VOCAB,
+  chosenOf,
+  chosenPhrase,
+  isChosenRow,
+  ordinal,
+  readWhere,
   sweepPayload,
+  useShownSet,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
-import { comma, faceWord, kindOf, minus, ms, wp } from "../lib/words";
+import { comma, faceWord, kindOf, minus, ms, pct, pieceWord, wp } from "../lib/words";
 import {
   ORDERS,
   ORDER_STRETCHES,
@@ -91,7 +99,7 @@ function frameWords(f: FrameInfo | null): string {
 }
 
 /**
- * The angles and squareness the server computed for the last sighting's words (V7 frame_stats definitions),
+ * The angles and squareness the server computed for the shown sighting's words (V7 frame_stats definitions),
  * in the shape of the study's recorded frames. Pairs are keyed by the sighting's own order.
  */
 function liveFrame(sf: { norm: string[] } | null, f: FrameInfo | null): RecordedFrame | null {
@@ -154,6 +162,31 @@ function sightFrame(s: Sighting | null): SightFrame | null {
     names: words.map((w, i) => (w ? q(w) : `[${ORDINALS[i]} landmark]`)) as Triple,
     pole: null,
   };
+}
+
+/** Where a sighting was read, for a line of facts: “read at “I”, in its reply “Hi! I”” at its first word-piece, “read at
+ * “am”, the 2nd word-piece of its own answer” after (readWhere's phrase, with the piece named once). */
+function readFact(s: Sighting): string {
+  const w = readWhere(s);
+  const at = s.readAt != null ? pieceWord(s.readAt) : "the last word-piece";
+  return w.k >= 1 ? `read at ${at}, the ${ordinal(w.k)} word-piece of its own answer` : `read at ${at}${w.phrase}`;
+}
+
+/** What the server centred a sighting on, from its echo (frame.centre_kind); null when it did not say (an older server). */
+function centreWords(s: Sighting): string | null {
+  switch (s.centreKind) {
+    case "control_prompt_end":
+      return "centred on the kept control, read where it chose its first word-piece";
+    case "control_reading_same_answer":
+      return "centred on the control’s state at the same word-piece, reading your sighting’s own answer";
+    case "none":
+      // controls were sent (n_centre_prompts), yet none was subtracted here: a later word-piece without centre_answer
+      return (s.frame?.nCentre ?? 0) > 0 && s.tokenIndex >= 1
+        ? "not centred, since a control read where its question ends is never subtracted from a later word-piece"
+        : "not centred";
+    default:
+      return null;
+  }
 }
 
 function rankOf(L: LayerReading, w: string) {
@@ -299,6 +332,37 @@ const NeuronStone: React.FC<{ numeral: string; ordinal: string; name: string; va
 /* ------------------------------------------------------------- screen */
 
 /**
+ * Whether the old space-then-digit rule moved any rank of this sighting: the server's flags (tracked_from_next, per layer and
+ * word) and whether the rule was allowed at all (rank_lookahead; the instrument sends false). The recorded sighting and an
+ * older server keep no such record, so for them the page says it is not known rather than guess from the layer-60 top word.
+ */
+const SpaceRule: React.FC<{ s: Sighting | null; L: LayerReading | null; li: number }> = ({ s, L, li }) => {
+  if (!s) return <Missing what={NOT_HERE} />;
+  const moved = s.layers
+    .map((x) => ({ no: x.no, words: x.rankFromNext ? Object.keys(x.rankFromNext).filter((w) => x.rankFromNext![w]) : [] }))
+    .filter((x) => x.words.length);
+  const anyFlags = s.layers.some((x) => x.rankFromNext !== null);
+  if (moved.length) {
+    const here = L?.rankFromNext ? Object.keys(L.rankFromNext).filter((w) => L.rankFromNext![w]) : [];
+    return (
+      <>
+        Here it applied: at {moved.length === 1 ? "one layer" : `${moved.length} layers`} some ranks were taken from the next position
+        {here.length ? <>, at layer {li + 1} those of {here.map(q).join(", ")}</> : <>, none of them at layer {li + 1}</>}. Read the lens’s
+        ranks with care.
+      </>
+    );
+  }
+  if (s.rankLookahead === false) return <>This sighting was taken with the rule off (rank_lookahead false): every rank is read at its own position.</>;
+  if (anyFlags) return <>Here it did not apply: no rank was taken from the next position.</>;
+  return (
+    <>
+      {s.source === "fixture" ? "The recorded sighting" : "This server"} does not record whether it applied:{" "}
+      <Missing what={NOT_HERE} />
+    </>
+  );
+};
+
+/**
  * The red line beside a bearing, in place of the per-layer LensCaution. The instrument's bands of layers (lib/lens.ts,
  * lensBand) were measured on the lens's word readings (E1, E2, E5; R1; erratum E49). No experiment set a bearing against
  * what the model does, at any layer; the study's only tests of bearings found them swinging 58-99° with the landmarks'
@@ -338,7 +402,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const question = useTheodoliteStore((s) => s.question);
   const answerBegins = useTheodoliteStore((s) => s.answerBegins);
   const compareThink = useTheodoliteStore((s) => s.compareThink);
-  const maxNewTokens = useTheodoliteStore((s) => s.maxNewTokens);
+  const writing = useTheodoliteStore((s) => s.writing);
   const steering = useTheodoliteStore((s) => s.steering);
   const chat = useTheodoliteStore((s) => s.chat);
   const system = useTheodoliteStore((s) => s.system);
@@ -347,10 +411,28 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const threadScore = useTheodoliteStore((s) => s.threadScore);
   const control = useTheodoliteStore((s) => s.control);
-  // centring on the very question being sighted would subtract its state from itself and leave nothing to read
-  const controlIsThis =
-    !!control && control.question.trim() === question.trim() && control.answerBegins.trim() === answerBegins.trim() && control.chatWrapped === chat;
-  const canCentre = !!control && control.source === "live" && !!control.textSent && !controlIsThis;
+  const shownSet = useShownSet();
+  const k = sighting?.tokenIndex ?? 0;
+  const chosen = chosenOf(sighting);
+  // whether a control can be centred on is the store's own rule (sweepPayload): the request it would send with centring
+  // on carries the control's exact ids (or its text), unless the control is this very question, whose state less itself
+  // leaves nothing to read
+  const reqState = {
+    chat,
+    system,
+    landmarks: landmarks.map((w) => w.trim()) as Triple,
+    surveyMode,
+    lockedPole,
+    compareThink,
+    writing,
+    frame: frameOpts,
+    poleRanking,
+    threadScore,
+    control,
+  };
+  const probe = sweepPayload({ ...reqState, frame: { ...frameOpts, centre: true } }, question, answerBegins, steering);
+  const canCentre = (probe.centre_token_ids?.length ?? 0) > 0 || probe.centre_prompts.length > 0;
+  const controlIsThis = !!control && !canCentre && (!!control.promptIds?.length || !!control.textSent);
   const selectedLayer = useTheodoliteStore((s) => s.selectedLayer);
   const setSelectedLayer = useTheodoliteStore((s) => s.setSelectedLayer);
   const [rawOpen, setRawOpen] = useState(false);
@@ -359,7 +441,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const isWords = surveyMode === "monument";
   const words = landmarks;
   const nw = words.map(norm);
-  // the frame's angles and squareness: the server's, when the last sighting used these words; else the study's record
+  // the frame's angles and squareness: the server's, when the shown sighting used these words; else the study's record
   const sfEarly = useMemo(() => sightFrame(sighting), [sighting]);
   const live = isWords && sfEarly?.kind === "words" && sfEarly.norm.slice().sort().join("|") === nw.slice().sort().join("|")
     ? liveFrame(sfEarly, sighting?.frame ?? null)
@@ -370,7 +452,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const lp: Pole | null = lockedPole ? { idx: lockedPole[0], neuron: lockedPole[1], face: sameFace(lockedPole[2]) } : null;
   const anyEmpty = isWords && words.some((w) => !w.trim());
 
-  /* ---- the frame of the last sighting */
+  /* ---- the frame of the sighting shown */
   const sf = useMemo(() => sightFrame(sighting), [sighting]);
   const SN: Triple = sf?.names ?? ["[first landmark]", "[second landmark]", "[third landmark]"];
   const matches =
@@ -409,11 +491,23 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   };
   const ab = answerBegins.trim();
   const lastWord = ab.split(/\s+/).pop() ?? "";
-  const readsAt = ab
+  // where the next sighting reads, in readWhere's three phrasings for a first word-piece; then, with "sight each" on, every
+  // word-piece it writes
+  const readsFirst = ab
     ? /^[\p{L}\p{N}]+$/u.test(lastWord)
       ? `it will read the word “${lastWord}” in the reply “${ab}”`
       : `it will read the last word-piece of the reply “${ab}”`
-    : `it will read the last word-piece of “${question.trim()}”`;
+    : chat
+      ? `it will read the end of the chat template, after “${question.trim()}”`
+      : `it will read the last word-piece of “${question.trim()}”`;
+  // a sighting of word-piece k is taken where the model chose it, reading the piece before: the first is the reading above
+  const readsAt = !writing.sightEach
+    ? readsFirst
+    : writing.length === 1
+      ? `${readsFirst}, where it chooses the one word-piece it writes`
+      : `${readsFirst}, then one sighting for each of the up to ${writing.length} word-pieces it writes, taken where it chose it${
+          writing.length > SIGHT_CAP ? ` (at most ${SIGHT_CAP} sighted)` : ""
+        }`;
 
   const nm = (i: number) => (words[i].trim() ? q(words[i].trim()) : `[${ORDINALS[i]} landmark]`);
   const lab: Triple = isWords ? [nm(0), nm(1), nm(2)] : NEURON_NAMES;
@@ -429,10 +523,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const notice = !sf
     ? `No sighting yet. Take one to measure against ${named}.`
     : isWords
-      ? `These readings belong to the last sighting, ${sightDesc}. Take a new sighting to measure against ${named}.`
+      ? `These readings belong to the sighting shown, ${sightDesc}. Take a new sighting to measure against ${named}.`
       : lp
-        ? `These readings belong to the last sighting, ${sightDesc}. Take a sighting in the frame of ${poleLabel(lp)} to measure against it.`
-        : `These readings belong to the last sighting, ${sightDesc}. Choose a neuron, then take a sighting in its frame.`;
+        ? `These readings belong to the sighting shown, ${sightDesc}. Take a sighting in the frame of ${poleLabel(lp)} to measure against it.`
+        : `These readings belong to the sighting shown, ${sightDesc}. Choose a neuron, then take a sighting in its frame.`;
 
   // "choose a neuron": the locked neuron's folio, else the loudest neuron at the chosen layer
   const loud = L?.poles?.[0] ?? null;
@@ -530,7 +624,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const anyRanks = rows.some((r) => r.best !== null);
   const eyeKnown = rows.length > 0 && rows.every((r) => r.eyeBest !== null);
   const lastIdx = layers.length - 1;
-  const top60 = layers[lastIdx]?.lensTop?.[0] ?? null;
+  const L60: LayerReading | null = layers[lastIdx] ?? null;
+  const top60 = L60?.lensTop?.[0] ?? null;
   const lastRanked = rows
     .map((r) => ({ w: r.w, last: r.lens[lastIdx] ?? null }))
     .filter((r): r is { w: string; last: number } => r.last !== null);
@@ -538,28 +633,11 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const furthest = lastRanked.length ? lastRanked.reduce((a, b) => (b.last > a.last ? b : a)) : null;
   const studySet = sf?.kind === "words" && sf.norm.slice().sort().join("|") === "he|it|she";
 
-  /* ---- apparatus · the request this page sends */
-  const payload = sweepPayload(
-    {
-      chat,
-      system,
-      landmarks: words.map((w) => w.trim()) as Triple,
-      surveyMode,
-      lockedPole,
-      compareThink,
-      maxNewTokens,
-      frame: frameOpts,
-      poleRanking,
-      threadScore,
-      control,
-    },
-    question,
-    answerBegins,
-    steering,
-  );
+  /* ---- apparatus · the request this page sends: the store's own payload, how it writes included */
+  const payload = sweepPayload(reqState, question, answerBegins, steering);
   const request = JSON.stringify({ action: "sweep", payload }, null, 2);
   const requestNote = isWords
-    ? "The four frame options above go as frame_squaring, frame_per_layer, frame_fnw and centre_prompts (the kept control’s exact text)."
+    ? "The four frame options above go as frame_squaring, frame_per_layer, frame_fnw and centre_token_ids (the kept control’s exact prompt ids), with centre_answer, which centres each later word-piece on the control reading this very answer. How it writes (max_new_tokens, sampler, sight_every_token) is set under the question on the instrument page; a request_id is added when it is sent."
     : lp
       ? `locked_pole takes [layer index, neuron, polarity]: layer ${lp.idx + 1} is index ${lp.idx}.`
       : `locked_pole takes [layer index, neuron, polarity]. Without it the server quietly falls back to the word frame, here ${words.map((w) => q(w.trim())).join(" · ")}; its own default is “spider” · “eight” · “insect”.`;
@@ -573,7 +651,11 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         layer: li + 1,
         index: li,
         survey_labels: sighting?.landmarks ?? null,
+        token_index: sighting?.tokenIndex ?? null,
         read_at: sighting?.readAt ?? null,
+        read_pos: sighting?.readPos ?? null,
+        chosen: chosen ? { token_id: chosen.id, token: chosen.token } : null,
+        centre_kind: sighting?.centreKind ?? null,
         xyz,
         proj_norm: pn !== null ? Number(pn.toPrecision(3)) : null,
         [frameDesc?.exportKey ?? "proj_frac_of_hJ"]: L.projFrac,
@@ -582,6 +664,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         ...(isFixture ? { single_bos: { azimuth_deg: SINGLE_MARK_AZ[li], elevation_deg: SINGLE_MARK_EL[li] } } : {}),
         jpp_tracked_rank: Object.fromEntries(rows.map((r) => [r.w, r.lens[li]])),
         naive_tracked_rank: Object.fromEntries(rows.map((r) => [r.w, r.eye[li]])),
+        rank_from_next: L.rankFromNext,
         residual_norm: L.streamStrength ?? "[MEASURED IN A LIVE SIGHTING]",
       }
     : null;
@@ -869,7 +952,13 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <dd>
             Weighted rows: fnw ⊙ W<sub>U</sub>[t], the directions the model reads just before speaking (logit<sub>t</sub> = ⟨h / rms(h), fnw ⊙ W
             <sub>U</sub>[t]⟩); the rms is one number per layer, so it moves no angle and no fraction. Centring subtracts a matched control’s state
-            at its last word-piece from every layer’s state before it is read (REPORT §3.5); the control is read without a nudge.
+            from every layer’s state before it is read (REPORT §3.5): at the first word-piece, the control’s state where it chose its own
+            first word-piece (the last of its prompt, sent as its exact ids); at each later word-piece, the control’s state at the same
+            word-piece, reading your sighting’s own answer (its prompt, then this answer’s word-pieces up to there,{" "}
+            <span className="mono">centre_answer</span>), so the two differ only in what was asked. The control is read without a nudge.
+            {sighting?.source === "live" ? (
+              <> The sighting shown: {centreWords(sighting) ?? <Missing what="not sent" />}.</>
+            ) : null}
           </dd>
           <dt>known fault</dt>
           <dd>
@@ -969,13 +1058,15 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         <p id="frame-note" style={{ margin: 0, maxWidth: "900px", fontSize: "15px", color: "#6B5D4D" }}>
           {isWords ? "" : "The final-norm weights and the per-layer lens apply to a frame of words, not to a neuron’s frame. "}
           {canCentre
-            ? "Centring reads against the matched control kept on the instrument’s first page. "
+            ? "Centring reads against the matched control kept on the instrument’s first page: the first word-piece against the control where it chose its own first, each later one against the control reading the same answer up to there. "
             : controlIsThis
               ? "The control kept is this very question; centring on it would subtract its state from itself and leave nothing to read. Keep a different sighting as the control to centre. "
               : "To centre, take and keep a matched control first (the question’s apparatus on the instrument page). "}
           The options go with the next sighting.{" "}
           {sighting?.source === "live"
-            ? `The last sighting was squared ${frameWords(sighting.frame)}.`
+            ? `The sighting shown was squared ${frameWords(sighting.frame)}${
+                (sighting.frame?.nCentre ?? 0) > 0 && centreWords(sighting) ? ` (at this word-piece: ${centreWords(sighting)})` : ""
+              }.`
             : "The recorded sighting was squared in order, from raw rows, at the final layer."}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "4px", paddingTop: "4px" }}>
@@ -1005,7 +1096,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         </div>
       </Apparatus>
 
-      {/* ------------------------------------------------ the last sighting */}
+      {/* ------------------------------------------------ the sighting shown */}
       <div
         style={{
           display: "flex",
@@ -1017,19 +1108,31 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           borderBottom: "1px solid #E3DACA",
         }}
       >
-        <span style={smallCaps}>last sighting</span>
+        <span style={smallCaps}>sighting shown</span>
         <span style={{ fontSize: "26px", fontStyle: "italic" }}>
           {!sf ? <Missing what="no sighting yet" /> : sf.kind === "neuron" && sf.pole ? poleLabel(sf.pole) : SN.join(" · ")}
         </span>
         {sighting ? (
           <span style={{ fontSize: "16px", color: "#6B5D4D" }}>
-            read at {sighting.readAt !== null ? wp(sighting.readAt) : <Missing what={NOT_HERE} />}
-            {sighting.answerBegins.trim() ? `, in reply to “${sighting.question}”` : `, the end of “${sighting.question}”`}
+            {sighting.readAt !== null ? readFact(sighting) : <>read at <Missing what={NOT_HERE} /></>}
+            {chosenPhrase(sighting) ? `, ${chosenPhrase(sighting)}` : ""}
+            {shownSet?.pieces && shownSet.pieces.length > 1 ? ` · word-piece ${k + 1} of ${shownSet.pieces.length}` : ""} · you asked “
+            {sighting.question}”
           </span>
         ) : null}
         {sighting ? (
           <span style={{ marginLeft: "auto", fontSize: "15px", color: "#6B5D4D", fontVariantNumeric: "lining-nums tabular-nums" }}>
-            {layers.length} layers surveyed in {sighting.elapsedMs !== null ? ms(sighting.elapsedMs) : <Missing what={NOT_HERE} />} ·{" "}
+            {sighting.timing?.analyseMs != null ? (
+              <>
+                {layers.length} layers analysed in {ms(sighting.timing.analyseMs)}
+                {sighting.timing.totalMs != null ? `, ${ms(sighting.timing.totalMs)} after it was asked` : ""}
+              </>
+            ) : (
+              <>
+                {layers.length} layers surveyed in {sighting.elapsedMs !== null ? ms(sighting.elapsedMs) : <Missing what={NOT_HERE} />}
+              </>
+            )}{" "}
+            ·{" "}
             {lensLabel(lens)}
             {sighting.source === "fixture" ? " · the study’s recorded sighting, taken through the same lens" : ""}
             {sighting.isNudged ? " · nudged" : ""}
@@ -1325,11 +1428,22 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 <dd>
                   a live sighting from the running server (backend/server.py: the binary trajectory and{" "}
                   <span className="mono">layer_plumes[{li}]</span>). The text sent:{" "}
-                  <span className="mono-wrap">{JSON.stringify(sighting.textSent ?? "")}</span>, read at{" "}
-                  {sighting.readAt !== null ? `“${sighting.readAt}”` : <Missing what={NOT_HERE} />}
-                  {sighting.readPos !== null && sighting.nTokens !== null
-                    ? `, position ${sighting.readPos} of ${sighting.nTokens}, counting from 0`
-                    : ""}
+                  <span className="mono-wrap">{JSON.stringify(sighting.textSent ?? "")}</span>
+                  {k >= 1 ? (
+                    <>
+                      , then its own answer up to here:{" "}
+                      {sighting.answerStrs ? (
+                        <span className="mono-wrap">{JSON.stringify(sighting.answerStrs.slice(0, k).join(""))}</span>
+                      ) : (
+                        <Missing what="not sent" />
+                      )}
+                    </>
+                  ) : null}
+                  ; read at {sighting.readAt !== null ? JSON.stringify(sighting.readAt) : <Missing what={NOT_HERE} />}
+                  {sighting.readPos !== null ? `, position ${sighting.readPos} counting from 0` : ""}
+                  {sighting.nTokens !== null ? `, ${comma(sighting.nTokens)} word-pieces read up to here` : ""}
+                  {k >= 1 ? `, the ${ordinal(k)} word-piece of its own answer` : ""}
+                  {chosen ? `; it chose ${JSON.stringify(chosen.token)} (id ${chosen.id}) there` : ""}
                   .
                 </dd>
               ) : (
@@ -1463,7 +1577,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 <dd>
                   {frameFromServer ? (
                     <>
-                      the server, for the last sighting (<span className="mono">frame.geometry</span>, the definitions of V7’s frame_stats); word-pieces{" "}
+                      the server, for the sighting shown (<span className="mono">frame.geometry</span>, the definitions of V7’s frame_stats); word-pieces{" "}
                       {(sighting?.frame?.tokens ?? nw.map((w) => " " + w)).map((w) => "“" + w + "”").join(" · ")}.
                     </>
                   ) : (
@@ -1742,7 +1856,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             <svg
               viewBox="0 0 1280 456"
               role="img"
-              aria-label={`Two engraved line charts across the sixty layers of the last sighting. Above, the bearing of the stream as the ${lens.name} lens reads it, from minus 180 to 180 degrees; below, its elevation, from minus 90 to 90 degrees. The chosen layer is marked in red.`}
+              aria-label={`Two engraved line charts across the sixty layers of the sighting shown. Above, the bearing of the stream as the ${lens.name} lens reads it, from minus 180 to 180 degrees; below, its elevation, from minus 90 to 90 degrees. The chosen layer is marked in red.`}
               style={{ width: "100%", height: "auto", display: "block" }}
             >
               <g fontFamily="EB Garamond, Garamond, serif">
@@ -1919,7 +2033,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <p style={{ margin: 0, fontSize: "17px", color: "#6B5D4D" }}>
             {sf ? (
               <>
-                The landmarks of the last sighting are a neuron’s directions, not words, so they have no rank:{" "}
+                The landmarks of the sighting shown are a neuron’s directions, not words, so they have no rank:{" "}
                 <Missing what={NOT_HERE} />
               </>
             ) : (
@@ -1932,7 +2046,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
               Gilt lozenge: the nearest each word came. Hollow ring: where it stood at the last layer. Read through {lensPhrase(lens)},
               at the word{" "}
-              {sighting?.readAt != null ? wp(sighting.readAt) : <Missing what={NOT_HERE} />} in the last sighting.
+              {sighting?.readAt != null ? wp(sighting.readAt) : <Missing what={NOT_HERE} />}
+              {k >= 1 ? `, the ${ordinal(k)} word-piece of its own answer,` : ""} in the sighting shown.
             </p>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D", maxWidth: "900px" }}>
               To the naked eye <span style={{ fontStyle: "italic" }}>(the logit lens)</span>{" "}
@@ -1979,6 +2094,13 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 ) : (
                   <Missing what={NOT_HERE} />
                 )}
+                {chosen && top60 && L60
+                  ? isChosenRow(sighting, L60, 0)
+                    ? ", the one it chose"
+                    : chosen.endMark
+                      ? "; it ended its turn instead"
+                      : `; it chose ${wp(chosen.token)}${chosen.modelProb != null ? ` (${pct(chosen.modelProb)} of its own odds as it wrote)` : ""}`
+                  : ""}
                 .{" "}
                 {nearest && furthest ? (
                   <>
@@ -2003,8 +2125,11 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           Compare the landmarks with one another, not with certainty. The study found that at layers 51 to 59 the J++ lens
           leans toward “she” for most of the AIs it tried (six or seven of nine), far more than the other lenses it tried: mostly a quirk of the J++ recipe,
           for the Jacobian lens, also fitted on the base model, removes it almost as well as a lens fitted on the instruct
-          model (R1). Do not read it as how the model sees itself.
+          model (R1). Do not read it as how the model sees itself. Compare a landmark across versions of a question at the same
+          word-piece, not across the word-pieces of one answer.
         </Rubric>
+        <AnswerPositionCaution k={k} />
+        {sighting && readWhere(sighting).role === "template_end" ? <TemplateEndCaution /> : null}
         <Apparatus title="ranks" label="Apparatus for the ranks">
           <dl className="dl num">
             <dt>rank</dt>
@@ -2029,26 +2154,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             </dd>
             <dt>caveat</dt>
             <dd>
-              When the model’s first new word-piece is a bare space, the lens’s ranks take the better of two positions and
-              the naked eye’s do not, which flatters the lens (E6 report, item 9).{" "}
-              {top60 ? (
-                top60.token.trim() === "" ? (
-                  <>
-                    Here the next word-piece was a bare space
-                    {top60.prob !== null ? ` (${pct1(top60.prob)} at layer 60)` : ""}, so it applies: read the lens’s ranks
-                    with care.
-                  </>
-                ) : (
-                  <>
-                    Here the next word-piece was “{top60.token}”
-                    {top60.prob !== null ? ` (${pct1(top60.prob)} at layer 60)` : ""}, so it does not apply.
-                  </>
-                )
-              ) : (
-                <>
-                  The next word-piece here: <Missing what={NOT_HERE} />
-                </>
-              )}
+              When the word-piece chosen here is a bare space, the old rule took each of the lens’s ranks from the better of
+              this position and the next, and left the naked eye’s alone, which flatters the lens (E6 report, item 9). Whether it
+              applied is read from the server’s own record of each rank, never from the likeliest word at layer 60.{" "}
+              <SpaceRule s={sighting} L={L} li={li} />
             </dd>
             <dt>read with care</dt>
             <dd>

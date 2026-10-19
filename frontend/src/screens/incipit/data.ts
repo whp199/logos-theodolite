@@ -16,6 +16,10 @@ export interface FirstQuestion {
   /** exactly how the study put it, and so how the instrument sends it: the user's turn, the begun answer, and
    * whether as a chat (the tokenizer's template) or as bare text (one start mark, then the words) */
   send: { question: string; answerBegins: string; chat: boolean };
+  /** how many word-pieces the study let it write, its likeliest each time: 6 in E6's sweep, 12 in V7's diagnosis (HF
+   * generate, max_new_tokens=12; V7_tool_bugs_08_diag.py:19 and :38). The first sighting is written the same way, so its
+   * answer can be set beside the one recorded here. */
+  recordedLength: number;
   /** as shown, in quotes ("" = none) */
   begins: string;
   follows: string;
@@ -42,6 +46,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     question: "Tell me about yourself.",
     answerBegins: "Hi! I",
     send: { question: "Tell me about yourself.", answerBegins: "Hi! I", chat: true },
+    recordedLength: 6,
     begins: "“Hi! I”",
     follows: "“I”",
     note: "Follow the word “I”. Through the lens, fitted on the base model, it shows “Iman” at layer 11 and “HUAWEI” at layer 21, where no lens of this kind proved reliable, then the Chinese for “is a” at layers 41–46, before “am”. With no control beside it, this is a lead, not a finding.",
@@ -57,6 +62,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     question: "The number of legs on the animal that spins webs is",
     answerBegins: "",
     send: { question: "The number of legs on the animal that spins webs is", answerBegins: "", chat: false },
+    recordedLength: 12,
     begins: "",
     follows: "“is”",
     note: "The animal that spins webs is the spider, and a spider has eight legs. This is the instrument’s own first question.",
@@ -72,6 +78,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     question: "The capital city of Japan is",
     answerBegins: "",
     send: { question: "The capital city of Japan is", answerBegins: "", chat: false },
+    recordedLength: 12,
     begins: "",
     follows: "“is”",
     note: "Watch for the layer where “Tokyo” first surfaces.",
@@ -87,6 +94,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     question: "The opposite of hot is",
     answerBegins: "",
     send: { question: "The opposite of hot is", answerBegins: "", chat: false },
+    recordedLength: 12,
     begins: "",
     follows: "“is”",
     note: "Does “cold” rise early, or arrive only near the top?",
@@ -102,6 +110,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     question: "Water boils at a temperature of",
     answerBegins: "",
     send: { question: "Water boils at a temperature of", answerBegins: "", chat: false },
+    recordedLength: 12,
     begins: "",
     follows: "“of”",
     note: "The answer begins with a number. See what the layers hold before it is chosen.",
@@ -118,6 +127,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     answerBegins: "",
     // recorded as lab.chat("Continue this text.", assistant=p): the text is the begun reply, not the user's turn
     send: { question: "Continue this text.", answerBegins: "My friend Gemma is a software engineer. Yesterday", chat: true },
+    recordedLength: 12,
     begins: "",
     follows: "“Yesterday”",
     note: "The model’s own name, given to a friend. The study found that the bare name “Gemma”, written like this, reads as a woman’s name; describing itself, with no instructions set beforehand, the model says “it”.",

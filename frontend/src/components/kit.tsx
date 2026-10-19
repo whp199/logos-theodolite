@@ -8,6 +8,7 @@ import {
   useTheodoliteStore,
   type LensInfo,
   type Sighting,
+  type SweepProgress,
 } from "../store/useTheodoliteStore";
 import { wp } from "../lib/words";
 import {
@@ -21,6 +22,8 @@ import {
   useReadingLens,
   type LensBand,
 } from "../lib/lens";
+// cautions.tsx draws its lines with this file's <Rubric>; both are used only at render time, so the cycle is harmless
+import { AnswerPositionCaution } from "../lib/cautions";
 
 /* ------------------------------------------------------------------ marks */
 
@@ -114,11 +117,23 @@ function useNarrow(px = 560): boolean {
   return React.useSyncExternalStore(subscribe, read, () => false);
 }
 
+/**
+ * Where the request in flight stands, for the head of every page: "writing 3 of up to 6…" while it writes (it may end its
+ * turn sooner), "sighting 2 of 6…" while it sights, "taking a sighting…" before the server says (and for an older server,
+ * which sends no progress).
+ */
+function inFlightWords(p: SweepProgress | null): string {
+  if (p?.phase === "writing" && p.of > 0) return `writing ${p.done} of up to ${p.of}…`;
+  if (p?.phase === "sighting" && p.of > 0) return `sighting ${Math.min(p.done + 1, p.of)} of ${p.of}…`;
+  return "taking a sighting…";
+}
+
 export const ServerStatus: React.FC = () => {
   const conn = useTheodoliteStore((s) => s.conn);
   const health = useTheodoliteStore((s) => s.health);
   const sighting = useTheodoliteStore((s) => s.sighting);
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
+  const progress = useTheodoliteStore((s) => s.incoming?.progress ?? null);
   const { lens } = useInstrumentLens();
   const narrow = useNarrow();
   const model = "Gemma-4-31B-it";
@@ -127,7 +142,7 @@ export const ServerStatus: React.FC = () => {
   const through = narrow ? lensShort(lens) : lensLabel(lens);
   let state: string;
   let fill = "#A07A2E";
-  if (conn === "open") state = isSweeping ? "taking a sighting…" : "ready";
+  if (conn === "open") state = isSweeping ? inFlightWords(progress) : "ready";
   else if (conn === "connecting" || conn === "idle") {
     state = "reaching the server…";
     fill = "#C9BEAC";
@@ -365,35 +380,42 @@ function bandWords(lens: LensInfo, band: CautionBand): string {
  * one. Every lens gets the line, since even one fitted on the instruct model was poor on single words and unstable below
  * layer 31 (R1; erratum E39). Nothing at layer 60, where the lens is the identity and the words are the model's own
  * odds; without `no`, all the bands at once. It ends by pointing to how a control is taken, since keeping one is done in
- * the apparatus.
+ * the apparatus. For a sighting of a later word-piece of the answer (k ≥ 1), where the model reads text it wrote itself,
+ * the line that says what the study measured there follows it (lib/cautions.tsx, AnswerPositionCaution). The sighting is
+ * the one given, else the one shown.
  */
 export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; style?: React.CSSProperties }> = ({
   sighting,
   no,
   style,
 }) => {
+  const shown = useTheodoliteStore((s) => s.sighting);
   const { lens } = useReadingLens(sighting);
   const band = no != null ? lensBand(no) : "all";
   if (band === "own") return null;
   const shipped = isShippedLens(lens);
+  const k = (sighting !== undefined ? sighting : shown)?.tokenIndex ?? 0;
   return (
-    <Rubric style={style}>
-      {shipped ? (
-        `${BASE_SENTENCE} `
-      ) : (
-        <>
-          {isBaseFitted(lens) && !lens.caution ? `${BASE_SENTENCE} ` : null}
-          {lens.caution ? `The server says of this lens: ${lens.caution} ` : `${OTHER_NO_CAUTION} `}
-        </>
-      )}
-      {bandWords(lens, band)} <a href={href.lexicon(band === "late" ? "late" : "single")}>Read the caution.</a>
-      {band !== "untested" ? (
-        <>
-          {" "}
-          <a href={href.lexicon("matched-control")}>How to take a matched control.</a>
-        </>
-      ) : null}
-    </Rubric>
+    <>
+      <Rubric style={style}>
+        {shipped ? (
+          `${BASE_SENTENCE} `
+        ) : (
+          <>
+            {isBaseFitted(lens) && !lens.caution ? `${BASE_SENTENCE} ` : null}
+            {lens.caution ? `The server says of this lens: ${lens.caution} ` : `${OTHER_NO_CAUTION} `}
+          </>
+        )}
+        {bandWords(lens, band)} <a href={href.lexicon(band === "late" ? "late" : "single")}>Read the caution.</a>
+        {band !== "untested" ? (
+          <>
+            {" "}
+            <a href={href.lexicon("matched-control")}>How to take a matched control.</a>
+          </>
+        ) : null}
+      </Rubric>
+      {k >= 1 ? <AnswerPositionCaution k={k} /> : null}
+    </>
   );
 };
 

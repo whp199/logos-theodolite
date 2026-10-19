@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import type { Sighting } from "../../store/useTheodoliteStore";
 import { Missing } from "../../components/kit";
+import { pieceWord } from "../../lib/words";
 
 const SHADES = ["#E5DCCA", "#D7CBB5", "#C8BA9F", "#BAA989", "#AC9874", "#9E875E", "#8F7648", "#816533"];
 const TICKS = [1, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60];
@@ -22,6 +23,8 @@ export const Kinship: React.FC<{ sighting: Sighting; sel: number }> = ({ sightin
   }, [k]);
   const st = sighting.kinStats;
   const c = 45 + 10 * sel;
+  // the server reads kinship over every state up to the position read (kinship_n_states = read_pos + 1)
+  const piece = sighting.tokenIndex;
   return (
     <section
       aria-labelledby="kin-head"
@@ -34,8 +37,10 @@ export const Kinship: React.FC<{ sighting: Sighting; sel: number }> = ({ sightin
           v · kinship of layers
         </h2>
         <p style={{ margin: 0, fontSize: 17 }}>
-          Each cell compares two layers: how alike they arrange the {sighting.nTokens ?? "[N]"} word-pieces of this conversation, from 0.2
-          (pale) to 1 (deep gilt). The red cross marks layer {sel + 1}.
+          Each cell compares two layers: how alike they arrange the {sighting.nTokens ?? "[N]"} word-pieces read up to here
+          {piece >= 1 ? `, the prompt’s ${sighting.promptLen ?? "[P]"} and the first ${piece} of its own answer` : ""}
+          {sighting.readAt != null ? `, the last of them ${pieceWord(sighting.readAt)}` : ""}, from 0.2 (pale) to 1 (deep gilt). The red
+          cross marks layer {sel + 1}.
         </p>
         <dl className="num" style={{ margin: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "4px 16px", fontSize: 15 }}>
           <dt style={{ color: "#6B5D4D" }}>mean, off the diagonal</dt>
@@ -46,10 +51,13 @@ export const Kinship: React.FC<{ sighting: Sighting; sel: number }> = ({ sightin
           <dd style={{ margin: 0, textAlign: "right" }}>{st ? st.l11vs51.toFixed(2) : <Missing />}</dd>
         </dl>
         <p style={{ margin: 0, fontSize: 15, color: "#6B5D4D" }}>
-          Linear CKA (Kornblith et al. 2019), on the resid_post states.
+          Linear CKA (Kornblith et al. 2019), on the resid_post states of every word-piece read up to here.
           {sighting.source === "fixture"
             ? " This sighting was taken before the single-BOS fix, which lowers kinship by about 0.06 on average (E6, V7)."
             : " Taken by the running server, with the single start mark."}
+          {piece >= 1 || sighting.generation?.sightEvery
+            ? " Each later word-piece of the answer brings one more word-piece into the comparison, so the map can change from one word-piece to the next only because there is more text: do not read such a change as a finding about the word-piece."
+            : null}
         </p>
         <div className="num" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 10px", fontSize: 14, color: "#6B5D4D" }}>
           <span>0.2</span>

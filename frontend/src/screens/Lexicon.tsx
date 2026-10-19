@@ -1,8 +1,19 @@
 import React from "react";
 import { Apparatus, Missing, Page, ReadingThrough, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
-import { useTheodoliteStore } from "../store/useTheodoliteStore";
-import { wp } from "../lib/words";
+import {
+  MAX_WRITE,
+  MODEL_SAMPLING,
+  SIGHT_CAP,
+  STUDY_WRITING,
+  chosenPhrase,
+  ordinal,
+  readWhere,
+  sweepPayload,
+  useTheodoliteStore,
+} from "../store/useTheodoliteStore";
+import { NotAMatchedPair, strings } from "../lib/cautions";
+import { pieceWord } from "../lib/words";
 import { ALIASES, INDEX } from "./lexicon/entries";
 import { Cautions } from "./lexicon/Cautions";
 import {
@@ -65,7 +76,7 @@ const AT_51: { word: string; gloss?: string; share: string; bar: number }[] = [
   { word: "“AI”", share: "9.1%", bar: 9.1 },
 ];
 const AT_60: { word: string; gloss?: string; share: string; bar: number }[] = [
-  { word: "“am”", gloss: "the word it says next", share: "99.8%", bar: 99.8 },
+  { word: "“am”", gloss: "the word it said next in the recorded, greedy sighting", share: "99.8%", bar: 99.8 },
 ];
 
 const ReadoutRow: React.FC<{ word: string; gloss?: string; share: string; bar: number }> = ({ word, gloss, share, bar }) => (
@@ -105,28 +116,47 @@ const READOUT_LABEL: React.CSSProperties = {
 
 /* ------------------------------------------------------------ the one live line */
 
-/** Keep a long question readable inside a sentence: its last words, with an ellipsis. */
-function tail(s: string, n = 60): string {
-  const t = s.trim();
-  return t.length > n ? `…${t.slice(t.length - (n - 1)).trimStart()}` : t;
-}
-
 /**
- * "The sighting on the instrument page follows “I” in “Hi! I”, and took 6.2 seconds." With the recorded
- * sighting loaded this reads exactly as the canvas; after a live sighting it names that one.
+ * "The sighting on the instrument page follows “I”, in its reply “Hi! I”; its sweep took 6.2 seconds." With the
+ * recorded sighting loaded this reads as the canvas did; after a live sighting it names that one: which word-piece of
+ * its answer, where it was read and what it chose there, and how long it took from the request to that word-piece.
  */
 const SightingOnInstrument: React.FC = () => {
   const s = useTheodoliteStore((st) => st.sighting);
   if (!s) return <Note>No sighting is on the instrument page yet.</Note>;
-  const context = s.answerBegins.trim() ? s.answerBegins : s.question;
-  const secs = s.elapsedMs != null && Number.isFinite(s.elapsedMs) ? (s.elapsedMs / 1000).toFixed(1) : null;
+  const w = readWhere(s);
+  const n = s.answerIds?.length ?? null;
+  const chose = chosenPhrase(s);
+  const total = s.source === "live" ? (s.timing?.totalMs ?? null) : null;
+  const secs = (v: number) => `${(v / 1000).toFixed(1)} seconds`;
   return (
     <Note>
-      The sighting on the instrument page follows {s.readAt != null ? wp(s.readAt) : <Missing />} in {wp(tail(context))}
-      , and took {secs != null ? `${secs} seconds` : <Missing what="not recorded" />}.
+      The sighting on the instrument page{n ? <> is word-piece {s.tokenIndex + 1} of the {n} its answer holds; it</> : null} follows{" "}
+      {s.readAt != null ? pieceWord(s.readAt) : <Missing />}
+      {w.role === "written" ? `, the ${ordinal(w.k)} word-piece of its own answer` : w.phrase}
+      {chose ? `, ${chose}` : ""};{" "}
+      {total != null ? (
+        <>it came back {secs(total)} after it was asked for, the answer written and read again first.</>
+      ) : s.elapsedMs != null && Number.isFinite(s.elapsedMs) ? (
+        <>its sweep took {secs(s.elapsedMs)}.</>
+      ) : (
+        <>
+          its time: <Missing what="not recorded" />.
+        </>
+      )}
     </Note>
   );
 };
+
+/** What the instrument sends by default, from the store's own sweepPayload and its first state (the study's writing),
+ * never typed by hand; each request also carries a request id of its own. */
+const DEFAULT_REQUEST = (() => {
+  const st = useTheodoliteStore.getInitialState();
+  return JSON.stringify({
+    action: "sweep",
+    payload: sweepPayload({ ...st, writing: STUDY_WRITING }, st.question, st.answerBegins, st.steering),
+  });
+})();
 
 /* ------------------------------------------------------------ the page */
 
@@ -262,7 +292,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         </dd>
         <dt>references</dt>
         <dd>
-          [n] as numbered in <M>REFERENCES.md</M> (41 entries); E1–E7, V1–V8, N1 and R1 are the study’s experiments,
+          [n] as numbered in <M>REFERENCES.md</M> (44 entries); E1–E7, V1–V8, N1 and R1 are the study’s experiments,
           verifiers, neuron-label study and lens refit, written up in <M>experiments/REPORT.md</M>.
         </dd>
       </dl>
@@ -284,7 +314,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           i · the index
         </h2>
         <span style={{ fontSize: 15, color: "var(--muted)" }}>
-          twenty-four words and two cross-references, in alphabetical order
+          twenty-eight words and three cross-references, in alphabetical order
         </span>
       </div>
       <Rubric style={{ maxWidth: 760 }}>
@@ -711,7 +741,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             The few word-pieces the J++ lens, fitted on the base model, reads in this layer’s stream, each with its
             share: its guess at what the model would say next if it stopped here. Low in the model they are a murmur of
             many words; at the top, where no lens is needed, they are the model’s own odds for its next word. Below the
-            top they are the lens’s reading of the stream, not a report from the model.
+            top they are the lens’s reading of the stream, not a report from the model. The word it then writes is its
+            likeliest only when it writes greedily: <LexLink to="chosen">the word it chose and its likeliest</LexLink>.
           </Body>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, maxWidth: 380, marginTop: 4 }}>
             <span style={READOUT_LABEL}>after “Hi! I”, at layer 51</span>
@@ -734,6 +765,34 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             calibrated probabilities (softcap 30; REPORT §3.4, bug 8). On prose the lens’s top word matched the model’s
             real next word at most about 5% of the time through layer 50 (5.1–5.2% at layers 46–47 in E3’s per-layer
             data; REPORT §3.1’s “3%” understates it) and 28% at layer 59. J++ [4].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="chosen"
+          head="the word it chose and its likeliest"
+          tech="the token written · the argmax · layer 60, the model’s own odds"
+        >
+          <Body>
+            At layer 60 the instrument shows the model’s own odds for what comes next; its likeliest is the first of them.
+            The word it chose is the word-piece it actually wrote there. Written greedily, the two are one, and the page
+            marks it. Drawn by chance, it can choose any word-piece the sampler lets it draw: the page then names both, and
+            when the word it chose is not among the five likeliest it adds it below them, with its rank and its share of
+            the odds.
+          </Body>
+          <Note>
+            Earlier the page called layer 60’s first word “the word it says next”. That holds only for the first word-piece
+            of an answer written greedily, as in the recorded sighting; the word it chose is matched by its id, never by
+            its spelling or by the answer’s first word.
+          </Note>
+          <EntryApparatus title="the word it chose and its likeliest">
+            chosen, sent with every sighting as <M>chosen</M>: its id, its share of the model’s own odds softmax(z)[t] and
+            its rank 1 + #{"{"}z &gt; z<sub>t</sub>{"}"} from the raw last-layer scores z at the writing, ties counted, and its
+            chance under the sampler (after the penalty, the temperature, top-k and top-p), null when greedy. The readout
+            at layer 60 comes from the instrument’s second reading of the whole text, a separate 4-bit computation: it
+            can, rarely, put another word-piece first where two were all but tied, and the page says so (
+            <M>recapture_check</M>: the re-read’s first id and its score for the chosen piece, against the writing’s).
+            Rows are matched by token id (<M>jpp_top_ids</M>).
           </EntryApparatus>
         </Entry>
 
@@ -806,9 +865,104 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Note>
           <EntryApparatus title="kinship of layers">
             CKA(X, Y) = ⟨H K<sub>X</sub> H, H K<sub>Y</sub> H⟩<sub>F</sub> / (‖H K<sub>X</sub> H‖<sub>F</sub> ‖H K
-            <sub>Y</sub> H‖<sub>F</sub>), K = X X<sup>⊤</sup> over the prompt’s word-pieces at <M>resid_post</M>, H the
+            <sub>Y</sub> H‖<sub>F</sub>), K = X X<sup>⊤</sup> over the word-pieces read up to the sighting’s position at <M>resid_post</M> (the prompt’s,
+            then, for a later word-piece, its answer’s up to it), H the
             centring matrix; with one word-piece, the squared cosine of feature-centred states. Linear CKA (Kornblith et
             al. 2019) [13]. The doubled start mark raised mean kinship from 0.608 to 0.663 (V7; REPORT §3.4, bug 6).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="how-it-writes" head="how it writes" tech="decoding · greedy, or sampled · max_new_tokens">
+          <Body>
+            Before the instrument sights an answer, the model writes it, one word-piece at a time, up to as many as you
+            allow (1 to {MAX_WRITE}); it stops sooner when it ends its turn. By default it writes its likeliest word-piece
+            every time, as the study did (greedy). Drawn by chance, each word-piece is picked at random, weighted by its
+            odds, as chat apps do, and four settings shape the draw, in the order the sampler applies them:
+          </Body>
+          <dl className="dl" style={{ margin: 0, fontSize: 17 }}>
+            <dt>hold back repeats</dt>
+            <dd>
+              takes a fixed amount off the score of every word-piece it has already written, once each, so it repeats
+              itself less; your question and its begun answer do not count. It applies to the likeliest word too{" "}
+              <i>(presence penalty)</i>.
+            </dd>
+            <dt>temperature</dt>
+            <dd>
+              divides every score: below 1 the likeliest gain, above 1 the odds even out; 0 is the same as its likeliest
+              word.
+            </dd>
+            <dt>from its likeliest</dt>
+            <dd>
+              only the K likeliest can be drawn; 0 sets no limit <i>(top-k)</i>.
+            </dd>
+            <dt>within</dt>
+            <dd>
+              only the fewest likeliest whose odds add up to P can be drawn; 1 sets no limit <i>(top-p, or nucleus)</i>.
+            </dd>
+          </dl>
+          <Note>
+            Then one word-piece is drawn. The model’s makers suggest temperature {MODEL_SAMPLING.temperature}, top-k{" "}
+            {MODEL_SAMPLING.topK} and top-p {MODEL_SAMPLING.topP}. The study’s counts of what the model says were drawn that
+            way, many times over; the answers of its own on which the study checked the lens (E3, R1) were written greedily.
+          </Note>
+          <Rubric>{strings.drawAdvice}</Rubric>
+          <Onward to={href.instrument()}>set it on the instrument, under the question →</Onward>
+          <EntryApparatus title="how it writes">
+            for each word-piece, from the raw last-layer scores z: z<sub>t</sub> ← z<sub>t</sub> − p for each t already
+            written; greedy, argmax z; else z / T, then every score below the k-th highest set to −∞, softmax, then the
+            fewest likeliest whose odds reach top-p kept and renormalised, and one drawn by <M>torch.multinomial</M> after{" "}
+            <M>torch.manual_seed(seed)</M> (interp-engine <M>steer._sample_next</M> [36]). Top-k after Fan, Lewis &amp;
+            Dauphin 2018 [42]; top-p after Holtzman et al. 2020 [43]; the penalty on written word-pieces only and before the
+            temperature, as vLLM orders it [44]. The page sends every field, <M>"sampler": {"{"}temperature, top_k, top_p,
+            presence_penalty, seed{"}"}</M>; the server takes one left out as off (greedy, no limit, no penalty) and passes each
+            on explicitly, since interp-engine reads a missing one as the checkpoint’s own setting. The writing stops at
+            the checkpoint’s end marks (ids 1, 106 <M>{"<turn|>"}</M> and 50), and that mark is the answer’s last word-piece.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="seed" head="the seed" tech="random seed · torch.manual_seed">
+          <Body>
+            The number the chance in a drawn answer starts from. Leave it blank and the server draws one and sends it back
+            with the sighting; keep it to draw with it again. The same seed, settings and question draw the same
+            word-pieces again only if the model’s scores come out exactly as before, which a GPU does not promise.
+          </Body>
+          <Note>
+            So to read one answer again (after a change of landmarks, say), the instrument does not draw it again: it
+            reads the very word-pieces it wrote, by their ids, with nothing written. The nudge page draws its nudged answer
+            with the plain answer’s own seed, so the two share their chance up to where they part.
+          </Note>
+          <EntryApparatus title="the seed">
+            <M>seed</M> 0 to 2<sup>53</sup> − 1, or null: the server then draws one below 2<sup>31</sup> and echoes it with{" "}
+            <M>seed_drawn: true</M>. A greedy answer uses none (null). The sighting with thinking turned on is drawn with
+            the same settings, and with the same seed when the server drew it (<M>think_seed</M>).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="each-word-piece"
+          head="a sighting of each word-piece"
+          tech="one sighting per token written · read_pos = P − 1 + k · one frame pair each"
+        >
+          <Body>
+            With “sight each word-piece it writes” ticked, one sweep gives a sighting of each word-piece the model wrote,
+            the first {SIGHT_CAP} at most, each taken where the model chose it: there the stream had just read the
+            word-piece before it. Choose a word-piece of the answer on the instrument to see its sighting. The last one it
+            wrote is chosen, but never read.
+          </Body>
+          <NotAMatchedPair />
+          <Note>
+            Inside its own answers the study found the lens’s lead over the naked eye a third of its lead on prose at
+            layers 31 to 40, and gone from layer 41 (E3).
+          </Note>
+          <EntryApparatus title="a sighting of each word-piece">
+            <M>sight_every_token</M> (or <M>sight_tokens</M>, a list of k), at most <M>max_sighted</M> = {SIGHT_CAP}. The
+            answer w<sub>0</sub> … w<sub>n−1</sub> is written once and read again once, the prompt’s P word-pieces and w
+            <sub>0</sub> … w<sub>n−2</sub>, under the same nudge; the sighting of k reads position P − 1 + k, where layer 60
+            chose w<sub>k</sub>. Kinship runs over positions 0 to P − 1 + k. With a kept control and centring, word-piece k
+            ≥ 1 is centred on the control reading this same answer (<M>centre_answer</M>), never on the control’s own last
+            word-piece. The space-then-digit rule, which took a rank from the next position, is off (
+            <M>rank_lookahead: false</M>). The server holds its GPU lock from the writing to the last pair, so no vault
+            edit lands between two word-pieces of one answer; each further word-piece sighted takes about 0.7 s.
           </EntryApparatus>
         </Entry>
 
@@ -881,23 +1035,22 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
       <EntryGrid>
         <Entry id="sighting" head="a sighting" tech="sweep · all sixty layers" figure={<FigSighting />}>
           <Body>
-            Write a question, and if you like the start of an answer; then take a sighting. The instrument follows the
-            last word-piece up through all sixty layers and records, at each one, the words the lens reads there, how
-            the layer’s change divides between gathering and remembering, and which neurons fired.
+            Write a question, and if you like the start of an answer; then take a sighting. A sighting is the stream at
+            one word-piece, read up through all sixty layers: at each one, the words the lens reads there, how the
+            layer’s change divides between gathering and remembering, and which neurons fired. One sweep gives one where
+            the model read your last word-piece, and one for each word-piece it writes, taken where it chose that piece.
           </Body>
           <SightingOnInstrument />
           <Onward to={href.instrument()}>take a sighting on the instrument →</Onward>
           <EntryApparatus title="a sighting">
-            sent over the WebSocket <M>/ws/theodolite</M> as{" "}
-            <M>
-              {
-                '{"action": "sweep", "payload": {"prompt": "Tell me about yourself.", "chat": true, "system": null, "assistant_prefix": "Hi! I", "monuments": ["she", "he", "it"], "survey_mode": "monument", "compare_think": false, "max_new_tokens": 6, "steering": {"enabled": false, …}, "frame_squaring": "gram_schmidt", "pole_ranking": "activation", "thread_score": "direct"}}'
-              }
-            </M>{" "}
-            (what the instrument sends by default; old callers that send only a prompt get the server’s bare-text defaults)
-            ; the reply is a binary THEO frame (path, split, kinship, 15 poles a layer, threads) and a JSON frame of
-            word-pieces (ARCHITECTURE §4). The demonstration sighting is E6’s, 6,237 ms, taken before the two V7 fixes.
-            Served by FastAPI [40] over interp-engine’s hook points [36].
+            sent over the WebSocket <M>/ws/theodolite</M> as <span className="mono-wrap">{DEFAULT_REQUEST}</span> (what the
+            instrument sends by default, generated from its own request builder, with a <M>request_id</M> of its own; old
+            callers that send only a prompt get the server’s bare-text defaults). The reply streams{" "}
+            <M>theodolite_progress</M> while it writes, <M>theodolite_written</M> with the answer once written, then one
+            frame pair for each word-piece sighted, a binary THEO frame (path, split, kinship, 15 poles a layer, threads) and
+            a JSON frame of word-pieces (ARCHITECTURE §4), then <M>theodolite_sweep_end</M>; a request with no{" "}
+            <M>request_id</M> gets one pair, as before. The demonstration sighting is E6’s, 6,237 ms, taken before the two V7
+            fixes. Served by FastAPI [40] over interp-engine’s hook points [36].
           </EntryApparatus>
         </Entry>
 
@@ -1047,7 +1200,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             readings went mostly through lenses fitted on the base model <M>google/gemma-4-31B</M> in bf16; E3 and V6
             also took the instruct model’s own average gradients, and R1 fitted a lens on it. The study’s
             verdict on the synthesis of [2], [4], [9] and [10]: neat as a question, oversold as built (REPORT §3.3).
-            Statistics use bootstrap intervals [30] and Wilson intervals [29]; the full list of 41 references is{" "}
+            Statistics use bootstrap intervals [30] and Wilson intervals [29]; the full list of 44 references is{" "}
             <M>REFERENCES.md</M>.
           </p>
         </Apparatus>

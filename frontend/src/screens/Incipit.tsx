@@ -2,8 +2,17 @@ import React, { useMemo, useState } from "react";
 import { Apparatus, Lozenge, Missing, Page, ReadingThrough, Rubric } from "../components/kit";
 import { useReading } from "../reading";
 import { href, navigate, type Route } from "../router";
-import { type Sighting, useTheodoliteStore } from "../store/useTheodoliteStore";
-import { comma, numberWord, wp } from "../lib/words";
+import {
+  type GenerationEcho,
+  type Sighting,
+  type SweepProgress,
+  generationWords,
+  ordinal,
+  readWhere,
+  useShownSet,
+  useTheodoliteStore,
+} from "../store/useTheodoliteStore";
+import { comma, ms, numberWord, pieceWord, wp } from "../lib/words";
 import { describeFrame } from "../lib/frame";
 import { isBaseFitted, useInstrumentLens } from "../lib/lens";
 import {
@@ -52,6 +61,52 @@ function andList(items: (string | number)[]) {
 }
 
 const pct1 = (p: number) => `${(p * 100).toFixed(1)}%`;
+
+/** Where a sighting was read, after “read at”: “I”, in its reply “Hi! I” (the first word-piece, read where your words
+ * end); “am”, the 3rd word-piece of its own answer (a later one). */
+function readAtWords(s: Sighting): string | null {
+  if (s.readAt == null) return null;
+  const w = readWhere(s);
+  return w.role === "written" ? `${pieceWord(s.readAt)}, the ${ordinal(w.k)} word-piece of its own answer` : `${pieceWord(s.readAt)}${w.phrase}`;
+}
+
+/** Why the server stopped writing, in plain words (from its echo). */
+function stopWords(r: GenerationEcho["stopReason"] | undefined): string | null {
+  switch (r) {
+    case "end_mark":
+      return "it ended its turn";
+    case "length":
+      return "the length ran out";
+    case "stopped":
+      return "stopped by you";
+    case "given":
+      return "given, not written";
+    case "none":
+      return "asked to write none";
+    default:
+      return null;
+  }
+}
+
+/** Where a request in flight has got: “writing 3 of 6…”, “sighting 2 of 6…”. */
+function progressWords(p: SweepProgress | null | undefined): string | null {
+  if (!p) return null;
+  if (p.phase === "writing") return `writing ${p.done} of ${p.of}…`;
+  if (p.phase === "sighting") return `sighting ${Math.min(p.done + 1, Math.max(p.of, 1))} of ${Math.max(p.of, 1)}…`;
+  return null;
+}
+
+/** How long a sighting took, and which time that is: for a live one, from the request to this word-piece’s sighting
+ * (writing the answer, reading it again, this position’s sixty layers); for the recorded one, its sweep. */
+function tookWords(s: Sighting | null): { secs: string; what: string } | null {
+  if (!s) return null;
+  const total = s.timing?.totalMs ?? null;
+  if (s.source === "live" && total != null) {
+    return { secs: `${(total / 1000).toFixed(1)} seconds`, what: "from asking to this word-piece’s sighting, its answer written and read again first" };
+  }
+  if (s.elapsedMs != null) return { secs: `${(s.elapsedMs / 1000).toFixed(1)} seconds`, what: "its whole sweep" };
+  return null;
+}
 
 /* ------------------------------------------------------------ the title and frontispiece */
 
@@ -157,7 +212,8 @@ const TitleColumn: React.FC = () => {
 
 const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s, geo }) => {
   const [callOpen, setCallOpen] = useState(false);
-  const maxNewTokens = useTheodoliteStore((st) => st.maxNewTokens);
+  // the request this sighting answers, exactly as the page sent it (null for the recorded sighting)
+  const set = useShownSet();
   const apparatus = useReading((st) => st.apparatus);
   const toggleApparatus = useReading((st) => st.toggleApparatus);
   const recorded = s?.source === "fixture";
@@ -172,18 +228,26 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
   if (s && !haveStrength) notRecorded.push("‖h‖ at each layer");
   if (s && stations.length > 0 && !haveEyes) notRecorded.push(`the naked eye’s words at the ${numberWord(stations.length)} stations`);
 
+  // the call as sent: the request this sighting's answer was taken with; without one (an older page state), rebuilt from
+  // the sighting's own echo, never from the form's settings
+  const g = s?.generation ?? null;
   const call = recorded || !s
     ? RECORDED_CALL
-    : '{"action": "sweep",\n' +
-      (s.chatWrapped
-        ? ' "payload": {"prompt": ' + JSON.stringify(s.question) +
-          ', "chat": true' +
-          (s.system ? ', "system": ' + JSON.stringify(s.system) : "") +
-          ', "assistant_prefix": ' + JSON.stringify(s.answerBegins)
-        : ' "payload": {"prompt": ' + JSON.stringify(s.textSent ?? "")) +
-      ', "monuments": ' + JSON.stringify(s.landmarks) +
-      ', "survey_mode": ' + JSON.stringify(s.surveyMode) +
-      ', "max_new_tokens": ' + maxNewTokens + "}\n}";
+    : set
+      ? JSON.stringify({ action: "sweep", payload: set.payload }, null, 1)
+      : '{"action": "sweep",\n' +
+        (s.chatWrapped
+          ? ' "payload": {"prompt": ' + JSON.stringify(s.question) +
+            ', "chat": true' +
+            (s.system ? ', "system": ' + JSON.stringify(s.system) : "") +
+            ', "assistant_prefix": ' + JSON.stringify(s.answerBegins)
+          : ' "payload": {"prompt": ' + JSON.stringify(s.textSent ?? "")) +
+        ', "monuments": ' + JSON.stringify(s.landmarks) +
+        ', "survey_mode": ' + JSON.stringify(s.surveyMode) +
+        (g?.maxNewTokens != null ? ', "max_new_tokens": ' + g.maxNewTokens : "") +
+        "}\n}";
+  const k = s?.tokenIndex ?? 0;
+  const nAnswer = s?.answerIds?.length ?? g?.nWritten ?? null;
 
   const lm = s?.landmarks ?? ["she", "he", "it"];
 
@@ -213,9 +277,10 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
 
           <dt>word-pieces</dt>
           <dd className="num">
-            {s?.nTokens != null ? s.nTokens : <Missing />} in all; read at the last,{" "}
-            {s?.readAt != null ? <>“{s.readAt}”</> : <Missing />} (position {s?.readPos != null ? s.readPos : <Missing />},
-            counting from 0).
+            {s?.nTokens != null ? s.nTokens : <Missing />} read up to here; read at{" "}
+            {s && readAtWords(s) != null ? readAtWords(s) : <Missing />} (position {s?.readPos != null ? s.readPos : <Missing />},
+            counting from 0)
+            {s && k > 0 && nAnswer != null ? <>, word-piece {k + 1} of the {nAnswer} it wrote</> : null}.
             {recorded && s?.firstIds ? (
               <>
                 {" "}Start marks <span className="mono">[{s.firstIds.join(", ")}]</span>: the start mark doubled, as the instrument
@@ -231,17 +296,52 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
             ) : null}
             {!recorded && s?.promptTokens ? (
               <>
-                {" "}The word-pieces: <span className="mono-wrap">{s.promptTokens.map((t) => JSON.stringify(t)).join(", ")}</span>.
+                {" "}The word-pieces of the question: <span className="mono-wrap">{s.promptTokens.map((t) => JSON.stringify(t)).join(", ")}</span>
+                {k > 0 && s.answerStrs ? (
+                  <>
+                    , then of its own answer up to here:{" "}
+                    <span className="mono-wrap">{s.answerStrs.slice(0, k).map((t) => JSON.stringify(t)).join(", ")}</span>
+                  </>
+                ) : null}
+                .
               </>
             ) : null}
           </dd>
 
           <dt>continuation</dt>
           <dd className="num">
-            greedy, <span className="mono">max_new_tokens={recorded ? RECORDED_MAX_NEW_TOKENS : maxNewTokens}</span>:{" "}
-            {s ? <>“{s.continuation}”</> : <Missing />}. The sweep took{" "}
-            {s?.elapsedMs != null ? `${comma(s.elapsedMs)} ms` : <Missing />}
-            {recorded ? " (6.25 s by the wall clock)" : null}.
+            {recorded ? (
+              <>
+                greedy, <span className="mono">max_new_tokens={RECORDED_MAX_NEW_TOKENS}</span>
+              </>
+            ) : g ? (
+              <>
+                {generationWords(g)}
+                {g.source === "given" ? ", read again from its word-pieces" : ""};{" "}
+                {g.nWritten ?? nAnswer ?? <Missing what="not sent" />} written of at most{" "}
+                <span className="mono">max_new_tokens={g.maxNewTokens ?? "[not sent]"}</span>
+                {stopWords(g.stopReason) ? ` (${stopWords(g.stopReason)})` : ""}
+                {g.capped ? `; sighted the first ${set?.order.length ?? g.maxSighted ?? "[not sent]"} of them` : ""}
+              </>
+            ) : (
+              <>
+                as an older server writes, its likeliest word-piece each time; how many: <Missing what="not sent by this server" />
+              </>
+            )}
+            : {s ? <>“{s.continuation}”</> : <Missing />}.{" "}
+            {recorded ? (
+              <>
+                The sweep took {s?.elapsedMs != null ? `${comma(s.elapsedMs)} ms` : <Missing />} (6.25 s by the wall clock).
+              </>
+            ) : s?.timing ? (
+              <>
+                Writing took {ms(s.timing.generateMs) || "[not sent]"}, reading it again {ms(s.timing.captureMs) || "[not sent]"}, this
+                word-piece’s sixty layers {ms(s.timing.analyseMs) || "[not sent]"}; it came back {ms(s.timing.totalMs) || "[not sent]"} after
+                the request.
+              </>
+            ) : (
+              <>The sweep took {s?.elapsedMs != null ? `${comma(s.elapsedMs)} ms` : <Missing />}.</>
+            )}
           </dd>
 
           <dt>readout</dt>
@@ -363,9 +463,11 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
               <span style={{ color: MUTED, overflowWrap: "anywhere" }}>
                 {recorded || !s
                   ? "excerpted from experiments/scripts/E6_tool_audit_02_sweep_demo.py; the result is E6_tool_audit_02_sweep_demo.json, key “prepend_bos=True”."
-                  : s.chatWrapped
-                    ? "rebuilt from this sighting’s own record (its question, begun answer, landmarks and survey mode); the page sends it over /ws/theodolite with the nudge and frame settings, and the server wraps it in the chat template."
-                    : "rebuilt from this sighting’s own record (its prompt, landmarks and survey mode); the page sends it over /ws/theodolite with the nudge and frame settings, as bare text."}
+                  : set
+                    ? `exactly as the page sent it over /ws/theodolite, with its own request id${s.chatWrapped ? "; the server wraps the question in the chat template" : ", as bare text"}. How it was written, as the server resolved it, is under “continuation”.`
+                    : s.chatWrapped
+                      ? "rebuilt from this sighting’s own record (its question, begun answer, landmarks, survey mode and length); the page sends it over /ws/theodolite with the nudge, frame and writing settings, and the server wraps it in the chat template."
+                      : "rebuilt from this sighting’s own record (its prompt, landmarks, survey mode and length); the page sends it over /ws/theodolite with the nudge, frame and writing settings, as bare text."}
               </span>
             </div>
           ) : null}
@@ -443,12 +545,14 @@ const HowItWorks: React.FC<{ s: Sighting | null }> = ({ s }) => (
     <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: "36px 56px" }}>
       <Step icon={<StepAsk />} numeral="i" title="ask a question">
         Write a question in your own words and, if you like, the first words of its answer. The instrument follows the last word
-        you give it.
+        you give it, then each word-piece the model writes.
       </Step>
       <Step icon={<StepSight />} numeral="ii" title="take a sighting">
-        The model reads your words once, and the instrument takes a reading at each of its sixty layers. The sighting on this
-        page took{" "}
-        <span className="num">{s?.elapsedMs != null ? `${(s.elapsedMs / 1000).toFixed(1)} seconds` : <Missing />}</span>.
+        The model writes its answer, reads your words and its own once more, and the instrument takes a reading at each of its
+        sixty layers: where it read your last word, and where it chose each word-piece it wrote (unless you ask for the first
+        alone). The sighting on this page took{" "}
+        <span className="num">{tookWords(s)?.secs ?? <Missing />}</span>
+        {tookWords(s) ? <>, {tookWords(s)!.what}</> : null}.
       </Step>
       <Step icon={<StepRead />} numeral="iii" title="read the ascent">
         Climb the layers one at a time. At each, read what the lens makes of the word, and whether, as the lens weighs it, the
@@ -573,6 +677,7 @@ const BeginWithAQuestion: React.FC = () => {
   const setAnswerBegins = useTheodoliteStore((s) => s.setAnswerBegins);
   const setChat = useTheodoliteStore((s) => s.setChat);
   const takeSighting = useTheodoliteStore((s) => s.takeSighting);
+  const sightEach = useTheodoliteStore((s) => s.writing.sightEach);
   const [sel, setSel] = useState(() => {
     const st = useTheodoliteStore.getState();
     const i = FIRST_QUESTIONS.findIndex((x) => x.send.question === st.question && x.send.answerBegins === st.answerBegins);
@@ -587,8 +692,17 @@ const BeginWithAQuestion: React.FC = () => {
     setQuestion(question);
     setAnswerBegins(answerBegins);
     setChat(chat);
-    // a first sighting only reads the model: no nudge, whatever the nudge page holds
-    takeSighting({ question, answerBegins, chat, steering: { enabled: false } });
+    // a first sighting only reads the model: no nudge, whatever the nudge page holds; and it is written as the study wrote
+    // this question (its likeliest word-piece each time, as many as it recorded, no system prompt, no repeat penalty),
+    // whatever the instrument is set to, so the live answer can be set beside the recorded one
+    takeSighting({
+      question,
+      answerBegins,
+      chat,
+      system: "",
+      steering: { enabled: false },
+      writing: { mode: "greedy", presencePenalty: 0, seed: null, length: cur.recordedLength },
+    });
     // if the server is not answering, the store has set sweepError and the instrument shows it
     navigate(href.instrument());
   };
@@ -682,7 +796,12 @@ const BeginWithAQuestion: React.FC = () => {
           </div>
           <p style={{ margin: 0, fontSize: 17, color: MUTED }}>
             The instrument will follow the last word, <span style={{ color: INK, borderBottom: "2px solid #A07A2E" }}>{cur.follows}</span>,
-            up through all sixty layers. The model went on <span style={{ fontStyle: "italic", color: INK }}>{cur.went}</span>
+            up through all sixty layers{sightEach ? ", then each word-piece the model writes" : ""}. The model went on{" "}
+            <span style={{ fontStyle: "italic", color: INK }}>{cur.went}</span>
+          </p>
+          <p style={{ margin: 0, fontSize: 15, color: MUTED }}>
+            Taken as the study took it: its likeliest word-piece each time, up to {cur.recordedLength}, with no system prompt and no
+            nudge, whatever the instrument is set to.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
             <button type="button" className="btn-primary" onClick={takeIt}>
@@ -736,6 +855,16 @@ const BeginWithAQuestion: React.FC = () => {
             The instrument’s own generator gave HF’s words on every bare prompt; on the capital of Japan it also prints the marks{" "}
             <span className="mono">{"<channel|>"}</span> and <span className="mono">{"<turn|>"}</span> that HF’s decoder hides. A
             nudged call left nothing behind: 0 hooks before it and 0 after, all six continuations unchanged.
+          </dd>
+          <dt>taken here</dt>
+          <dd>
+            “take this sighting” sends the question as the study put it and writes the answer as the study wrote it, whatever the
+            instrument is set to for its own sightings: its likeliest word-piece each time (<span className="mono">temperature 0</span>,
+            no repeat penalty), {FIRST_QUESTIONS[0].recordedLength} word-pieces for the first question as E6 wrote it and 12 for the
+            others as V7 did (<span className="mono">max_new_tokens</span>), no system prompt and no nudge. The instrument’s own writing
+            and system prompt are left as they were; “sight each word-piece it writes” follows the instrument’s setting. So the live
+            answer can be set beside the recorded one (the checks below found the instrument’s generator giving HF’s words on every bare
+            prompt). The request as sent is in the frontispiece’s apparatus above, once the sighting is back.
           </dd>
           <dt>the fix</dt>
           <dd>
@@ -839,11 +968,12 @@ const BeforeYouSetOut: React.FC = () => {
   const conn = useTheodoliteStore((s) => s.conn);
   const health = useTheodoliteStore((s) => s.health);
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
+  const progress = useTheodoliteStore((s) => s.incoming?.progress);
 
   let stateWord: string;
   let stateFill: string;
   if (conn === "open") {
-    stateWord = isSweeping ? "taking a sighting…" : "ready";
+    stateWord = isSweeping ? (progressWords(progress) ?? "taking a sighting…") : "ready";
     stateFill = "#A07A2E";
   } else if (conn === "connecting" || conn === "idle") {
     stateWord = "reaching the server…";
@@ -1132,9 +1262,13 @@ export const Incipit: React.FC<{ route: Route }> = ({ route }) => {
   const sighting = useTheodoliteStore((s) => s.sighting);
   const geo = useMemo(() => frontispieceOf(sighting), [sighting]);
 
+  // name the word-piece shown: a sweep can sight every word-piece it writes, and the frontispiece draws one of them
+  const nShown = sighting?.answerIds?.length ?? null;
   const frontNote =
     sighting?.source === "live"
-      ? "the frontispiece is the latest live sighting"
+      ? `the frontispiece is the live sighting shown${
+          nShown ? `, word-piece ${sighting.tokenIndex + 1} of ${nShown}` : ""
+        }${sighting.readAt != null ? `, reading ${pieceWord(sighting.readAt)}` : ""}`
       : sighting
         ? "the frontispiece is the study’s demonstration sighting (E6), taken before the two V7 fixes"
         : "no sighting yet";

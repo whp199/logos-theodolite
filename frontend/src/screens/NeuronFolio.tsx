@@ -2,20 +2,27 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Apparatus, IfRubrics, LensRecord, Missing, NotYet, Page, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
 import {
+  type AnswerSet,
   type Conn,
   type LayerReading,
   type Pending,
   type PoleReading,
   type Sighting,
+  chosenOf,
+  chosenPhrase,
   isGlobalIdx,
   loudnessRank,
   maxAct,
+  ordinal as nth,
   poleKey,
+  readWhere,
   retakeIfLive,
+  useShownSet,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { andList, agreement, cap, count, glossFor, scoresText, shortToken, signedRaw, type Agreement } from "./NeuronFolio/util";
-import { faceWord, numberWord, pct, signed, wp } from "../lib/words";
+import { faceWord, numberWord, pct, pieceWord, signed, wp } from "../lib/words";
+import { AnswerMarks, useAnswerPieces } from "./layerLeaf/AnswerMarks";
 import { lensLabel, useReadingLens } from "../lib/lens";
 import {
   ACTS,
@@ -126,6 +133,17 @@ const SERIF = "EB Garamond, Garamond, serif";
 
 /* ------------------------------------------------------------------ the model */
 
+/**
+ * What follows “the word X” where a sighting was read: readWhere's phrase (“, in its reply “Hi! I””, “, at the end of the
+ * chat template”, “, at the end of your question”); for a later word-piece of the answer, whose piece is already named, only
+ * its place: “, the 2nd word-piece of its own answer”.
+ */
+function afterTheWord(s: Sighting | null): string {
+  if (!s) return "";
+  const w = readWhere(s);
+  return w.k >= 1 ? `, the ${nth(w.k)} word-piece of its own answer` : w.phrase;
+}
+
 interface Labels {
   lens: Tok[] | null;
   eye: Tok[] | null;
@@ -208,12 +226,8 @@ function useModel(route: NeuronRoute): Model {
       focus = { lens: tokFromReading(pole.lens), eye: tokFromReading(pole.eye), from: "sighting" };
     const other = pick(inspection, otherFace);
     const agr = focus.lens && focus.eye ? agreement(focus.lens, focus.eye) : null;
-    const readAt = sighting?.readAt != null ? wp(sighting.readAt) : "";
-    const inReply = sighting?.answerBegins?.trim()
-      ? `, in its reply “${sighting.answerBegins.trim()}”`
-      : sighting?.chatWrapped
-        ? ", at the end of the chat template"
-        : ", at the end of your question";
+    const readAt = sighting?.readAt != null ? pieceWord(sighting.readAt) : "";
+    const inReply = afterTheWord(sighting);
     return {
       idx,
       layerNo: route.layerNo,
@@ -441,6 +455,7 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
   };
   const s = m.sighting;
   const { lens } = useReadingLens(s);
+  const pieces = useAnswerPieces(s);
   const words = m.focus.lens?.slice(0, 3).map((t) => t.token) ?? null;
   const btn: React.CSSProperties = { fontSize: "16px", padding: "0 18px" };
 
@@ -603,18 +618,32 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
               <>
                 the word <span style={{ borderBottom: `2px solid ${GILT}` }}>{m.readAt}</span>
                 {m.inReply}
+                {chosenPhrase(s) ? `, ${chosenPhrase(s)}` : ""}
               </>
             ) : (
               <Missing />
             )}
           </Particular>
           <Particular dt="it went on" ddStyle={{ fontStyle: "italic" }}>
-            {s && s.continuation.trim() ? `“… ${s.continuation.trim()}”` : <Missing />}
+            {s && pieces && pieces.length ? (
+              <>
+                “…
+                <AnswerMarks s={s} pieces={pieces} />”
+                <span style={{ fontStyle: "normal", fontSize: "15px", color: MUTED }}>
+                  {" "}
+                  · {s.tokenIndex >= 1 ? "gilt: the word-piece read · " : ""}red: the one it chose there
+                </span>
+              </>
+            ) : s && s.continuation.trim() ? (
+              `“… ${s.continuation.trim()}”`
+            ) : (
+              <Missing />
+            )}
             {s?.isNudged ? (
               <span style={{ fontStyle: "normal", color: "var(--rubric)" }}>
                 {" "}
                 · nudged: this sighting was taken with a <a href={href.nudge()}>nudge</a> armed, so what this folio reads of it is the nudged
-                model, not its plain behaviour
+                model, not its plain behaviour; only its readers are traced without the nudge, on this very text
               </span>
             ) : null}
           </Particular>
@@ -684,9 +713,13 @@ function rawReadout(m: Model) {
     layer: m.layerNo,
     index: m.idx,
     neuron: m.neuron,
+    token_index: s?.tokenIndex ?? null,
     read_at: s?.readAt ?? null,
     position: s?.readPos ?? null,
     n_tokens: s?.nTokens ?? null,
+    chosen: s?.chosen ? { token_id: s.chosen.id, token: s.chosen.token, model_prob: s.chosen.modelProb, model_rank: s.chosen.modelRank } : null,
+    generation: s?.generation ?? null,
+    context_ids: s?.contextIds ?? null,
     signed_activation: m.pole ? m.pole.act : null,
     polarity: m.pole ? (m.pole.face > 0 ? "+" : "-") : null,
     rank_by_abs: m.loudRank != null ? m.loudRank + 1 : null,
@@ -702,6 +735,7 @@ function rawReadout(m: Model) {
 const NeuronApparatus: React.FC<{ m: Model; saved: FolioSaved }> = ({ m, saved }) => {
   const [rawOpen, setRawOpen] = useState(false);
   const s = m.sighting;
+  const chosen = chosenOf(s);
   const L = m.layer;
   const raw = rawReadout(m);
   const exportFolio = () => {
@@ -749,8 +783,28 @@ const NeuronApparatus: React.FC<{ m: Model; saved: FolioSaved }> = ({ m, saved }
             </>
           ) : (
             <>
-              a live sighting from the running server: {s.nTokens ?? <Missing />} word-pieces, read at the last, “{s.readAt ?? ""}” (position{" "}
-              {s.readPos ?? "?"}, counting from 0). Text sent: <span className="mono-wrap">{JSON.stringify(s.textSent ?? "")}</span>
+              a live sighting from the running server, read at position {s.readPos ?? <Missing what="not sent" />} (counting from 0),{" "}
+              <span className="mono-wrap">{JSON.stringify(s.readAt ?? "")}</span>
+              {s.tokenIndex >= 1
+                ? `, the ${nth(s.tokenIndex)} word-piece of its own answer`
+                : s.promptLen != null && s.readPos === s.promptLen - 1
+                  ? ", the last of the prompt"
+                  : ""}
+              ; {s.nTokens ?? <Missing what="not sent" />} word-pieces read up to there
+              {chosen ? `; it chose ${JSON.stringify(chosen.token)} (id ${chosen.id}) there` : ""}. Text sent:{" "}
+              <span className="mono-wrap">{JSON.stringify(s.textSent ?? "")}</span>
+              {s.tokenIndex >= 1 ? (
+                <>
+                  , then its own answer up to there:{" "}
+                  {s.answerStrs ? (
+                    <span className="mono-wrap">{JSON.stringify(s.answerStrs.slice(0, s.tokenIndex).join(""))}</span>
+                  ) : (
+                    <Missing what="not sent" />
+                  )}
+                </>
+              ) : null}
+              . The exact ids read, up to the one read:{" "}
+              {s.contextIds ? <span className="mono-wrap">[{s.contextIds.join(", ")}]</span> : <Missing what="not sent" />}
             </>
           )}
         </dd>
@@ -1751,12 +1805,53 @@ const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreeme
 
 /* ------------------------------------------------------ iii · who listens */
 
+/**
+ * Why a trace kept for this neuron is set aside for the sighting shown: it was read at another word-piece of the same
+ * question (named, from the ids it sent, or from the sighting it was asked for), on another answer to that question, with
+ * other options on this very text, or for another question. A trace depends only on the text read up to its position and on
+ * the vault, never on the frame or the ranking, but a re-reading is a new sighting, so the page asks for it again.
+ */
+function staleWhy(stored: Pending<unknown>, s: Sighting, set: AnswerSet | null): string {
+  const again = "Trace again to read them for this one.";
+  const sent = stored.sent ?? {};
+  // the sighting it was asked for, when it is another word-piece of the answer shown
+  const traced = set ? (Object.values(set.sightings).find((x) => x.id === stored.sightingId) ?? null) : null;
+  if (traced && traced.tokenIndex !== s.tokenIndex) {
+    return (
+      `Its readers were traced at another word-piece (${traced.readAt != null ? pieceWord(traced.readAt) : "word-piece " + (traced.tokenIndex + 1)}) ` +
+      `of this answer, so they are set aside here. ${again}`
+    );
+  }
+  const prompt = typeof sent.prompt === "string" ? sent.prompt : null;
+  if (prompt === null || s.textSent === null || prompt !== s.textSent) {
+    return `Its readers were traced for an earlier sighting; the question has changed since, so they are set aside. ${again}`;
+  }
+  // the same question: the word-piece read was the last of the ids sent, or, with none sent, the prompt's own last
+  const ids = Array.isArray(sent.token_ids) ? (sent.token_ids as unknown[]) : null;
+  const P = s.promptLen ?? s.promptIds?.length ?? null;
+  const context = s.promptIds && s.answerIds ? [...s.promptIds, ...s.answerIds] : s.promptIds;
+  const pos = ids ? ids.length - 1 : P !== null ? P - 1 : null;
+  const onThisAnswer = !ids || (!!context && ids.length <= context.length && ids.every((v, i) => v === context[i]));
+  if (!onThisAnswer || pos === null || P === null) {
+    return `Its readers were traced on another answer to this same question, so they are set aside. ${again}`;
+  }
+  if (pos === s.readPos) {
+    return `Its readers were traced on this very text, up to the same word-piece, for a sighting taken with other options. ${again}`;
+  }
+  const piece = pos < P ? (s.promptTokens?.[pos] ?? null) : (s.answerStrs?.[pos - P] ?? null);
+  return `Its readers were traced at another word-piece${piece != null ? ` (${pieceWord(piece)})` : ""} of this question, so they are set aside. ${again}`;
+}
+
 const Listen: React.FC<{ m: Model }> = ({ m }) => {
   const traceReaders = useTheodoliteStore((s) => s.traceReaders);
   const storeScore = useTheodoliteStore((s) => s.threadScore);
   const stored = useTheodoliteStore((s) => s.readers[poleKey(m.idx, m.neuron)]) as Pending<unknown> | undefined;
-  // a trace answers for the question it was traced on: one asked of an earlier sighting is set aside, not shown as this one's
+  const shownSet = useShownSet();
+  // a trace answers for the text it was traced on, up to the word-piece read: one asked of another sighting is set aside, not
+  // shown as this one's (stepping back to the word-piece it was traced at shows it again)
   const stale = !!stored && stored.sightingId != null && m.sighting != null && stored.sightingId !== m.sighting.id;
+  const s = m.sighting;
+  const exact = s?.source === "live" && !!s.contextIds?.length;
   const entry = stale ? undefined : stored;
   const reply: Readers | null = entry?.data ? parseReaders(entry.data) : null;
   const pending = entry?.pending;
@@ -1843,13 +1938,21 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
               {pending ? "tracing…" : "trace its readers"}
             </button>
             <span style={{ fontSize: "16px", color: MUTED }}>
-              uses the same question and the same word{m.readAt ? `, ${m.readAt}` : ""}
+              {exact
+                ? `reads this very text, up to the same word-piece${m.readAt ? `, ${m.readAt}${m.inReply}` : ""}`
+                : `uses the same question and the same word${m.readAt ? `, ${m.readAt}` : ""}`}
+              {s?.isNudged ? "; the trace reads the model without the nudge, on this very text" : ""}
             </span>
           </div>
-          {stale ? (
+          {stale && stored && s ? (
             <p className="status-line" style={{ margin: 0 }}>
-              Its readers were traced for an earlier sighting; the question has changed since, so they are set aside. Trace again to read
-              them for this one.
+              {staleWhy(stored, s, shownSet)}
+            </p>
+          ) : null}
+          {reply && s && s.tokenIndex >= 1 && reply.idsGiven !== true ? (
+            <p className="error-line" role="alert" style={{ margin: 0 }}>
+              This server read the text sent, not the exact word-pieces: its trace was read at the end of the question
+              {reply.readPos != null ? ` (position ${reply.readPos})` : ""}, not at this word-piece (position {s.readPos ?? "?"}).
             </p>
           ) : null}
           <ReplyError m={m} error={entry?.error} what="trace" />
@@ -2103,13 +2206,16 @@ const ThreadsApparatus: React.FC<{
   const range = hopN === 1 ? `${m.layerNo + 1}` : `${m.layerNo + 1}–${last}`;
   const idxRange = hopN === 1 ? `${m.idx + 1}` : `${m.idx + 1}–${last - 1}`;
   const pol = m.focusFace > 0 ? "1.0" : "-1.0";
+  // a live sighting is traced at its exact ids up to the word-piece read, as the instrument sends it (store, traceReaders)
+  const ids = m.sighting?.source === "live" && m.sighting.contextIds?.length ? m.sighting.contextIds : null;
+  const idList = ids ? `[${ids.join(", ")}]` : null;
   const code =
     "# MCP (backend/mcp_scientist.py)\n" +
     `trace_downstream_readers(layer=${m.idx}, neuron_idx=${m.neuron},\n` +
-    `    prompt="<SIGHTING_PROMPT>", polarity=${pol},\n` +
+    (idList ? `    token_ids=${idList}, polarity=${pol},\n` : `    prompt="<SIGHTING_PROMPT>", polarity=${pol},\n`) +
     `    max_layer_hop=${ask.hop}, top_k=${ask.k}, score="${ask.score}")\n\n` +
     "# HTTP\nPOST /api/scientist/trace_readers\n" +
-    `{"layer": ${m.idx}, "neuron_idx": ${m.neuron}, "prompt": "<SIGHTING_PROMPT>",\n` +
+    `{"layer": ${m.idx}, "neuron_idx": ${m.neuron}, ${idList ? `"token_ids": ${idList}` : `"prompt": "<SIGHTING_PROMPT>"`},\n` +
     ` "polarity": ${pol}, "max_layer_hop": ${ask.hop}, "top_k": ${ask.k}, "score": "${ask.score}"}`;
   const direct = (reply?.scoreKind ?? ask.score) === "direct";
   return (
@@ -2218,9 +2324,20 @@ const ThreadsApparatus: React.FC<{
                 when “send it as a chat” is ticked, which is the lab script’s wrapping; as bare text otherwise), so a live trace
                 of the recorded sighting reads the same text only with the chat template on.
               </>
+            ) : ids ? (
+              <>
+                It reads this sighting’s exact word-pieces, {ids.length} ids up to the one read here,{" "}
+                {m.sighting?.readAt != null ? JSON.stringify(m.sighting.readAt) : ""} at position {ids.length - 1}
+                {m.sighting && m.sighting.tokenIndex >= 1 ? `, the ${nth(m.sighting.tokenIndex)} word-piece of its own answer` : ""}: no
+                template is applied and nothing is tokenized again, and it reads at the last of them. The text sent beside them, which an
+                older server reads instead (at its last word-piece):{" "}
+                <span className="mono-wrap">{JSON.stringify(m.sighting?.textSent ?? "")}</span>.
+                {m.sighting?.isNudged ? " The trace reads the model without the nudge, on this very text." : ""}
+              </>
             ) : (
               <>
                 The prompt sent is this sighting’s text: <span className="mono-wrap">{JSON.stringify(m.sighting?.textSent ?? "")}</span>
+                {m.sighting?.isNudged ? ". The trace reads the model without the nudge, on this very text." : ""}
               </>
             )}
           </span>
@@ -2231,6 +2348,11 @@ const ThreadsApparatus: React.FC<{
             <dt>the reply</dt>
             <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
               <span>
+                {reply.idsGiven === true
+                  ? `read at position ${reply.readPos ?? "?"}, the last of the ids given, without a nudge; `
+                  : reply.idsGiven === false
+                    ? `read at the last word-piece of the text sent${reply.readPos != null ? `, position ${reply.readPos}` : ""}, without a nudge; `
+                    : "the server did not say where it read (an older server reads the text sent, at its last word-piece); "}
                 source a on the prompt = {reply.srcAct !== null ? signedRaw(reply.srcAct) : "?"}, pole{" "}
                 {reply.srcFace !== null ? (reply.srcFace > 0 ? "+" : "−") : "?"}.{" "}
                 {reply.readers
@@ -2980,6 +3102,14 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
             ) : (
               <>
                 , sent as <span className="mono-wrap">{JSON.stringify(m.sighting.textSent ?? "")}</span>
+                {m.sighting.tokenIndex >= 1 && m.sighting.answerIds ? (
+                  <>
+                    . A sweep writes its answer afresh after it; to read this very word-piece of this answer instead, add{" "}
+                    <span className="mono-wrap">
+                      "answer_token_ids": [{m.sighting.answerIds.join(", ")}], "sight_tokens": [{m.sighting.tokenIndex}]
+                    </span>
+                  </>
+                ) : null}
               </>
             )}
           </dd>

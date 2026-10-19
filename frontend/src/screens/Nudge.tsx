@@ -1,8 +1,29 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Apparatus, IfRubrics, Missing, Page, Rubric, SweepError } from "../components/kit";
-import { href, type Route } from "../router";
-import { SAFE_NUDGE_SCALE, composeText, loudnessRank, useTheodoliteStore, type Sighting, type SteeringConfig } from "../store/useTheodoliteStore";
-import { faceWord, labelTrust, wp } from "../lib/words";
+import { QuestionBox } from "../components/QuestionBoxes";
+import { SavedShelf } from "../components/SavedShelf";
+import { href, parseHash, type Route } from "../router";
+import {
+  MODEL_SAMPLING,
+  SAFE_NUDGE_SCALE,
+  composeText,
+  loudnessRank,
+  ordinal,
+  piecesOf,
+  readWhere,
+  samplerPayload,
+  sweepPayload,
+  useShownSet,
+  useTheodoliteStore,
+  type AnswerPiece,
+  type GenerationEcho,
+  type Sighting,
+  type SteeringConfig,
+  type SweepProgress,
+  type Writing,
+} from "../store/useTheodoliteStore";
+import { NudgePartLine, OneDrawLine, PenaltyLine } from "../lib/cautions";
+import { faceWord, firstWords, labelTrust, pieceWord, wp } from "../lib/words";
 import { isBaseFitted, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
 import {
   DIAL,
@@ -303,19 +324,200 @@ function describeArmed(x: SteeringConfig): string {
   return `${where}, ${size}`;
 }
 
+/* ------------------------------------------------------------------ the two answers: written alike */
+
+/** Two settings as the server echoed them: the same number (or both unsent). */
+const sameNum = (a: number | null | undefined, b: number | null | undefined) =>
+  a == null || b == null ? a == null && b == null : Math.abs(a - b) < 1e-6;
+
+/**
+ * How the nudged answer is written: as the plain answer was, from the server's echo of it (its way of choosing, its
+ * length, its repeat penalty and, drawn by chance, its very seed), so the two differ by the nudge and not by chance. An
+ * older server sends no echo, and always wrote its likeliest word-piece.
+ */
+function writingFrom(g: GenerationEcho | null, length: number): Partial<Writing> {
+  const len = g?.maxNewTokens != null && g.maxNewTokens > 0 ? g.maxNewTokens : length;
+  if (!g || g.greedy) return { mode: "greedy", presencePenalty: g?.presencePenalty ?? 0, seed: null, length: len };
+  return {
+    mode: "sampled",
+    temperature: g.temperature ?? MODEL_SAMPLING.temperature,
+    // the echo says null for a limit that is off
+    topK: g.topK ?? 0,
+    topP: g.topP ?? 1,
+    presencePenalty: g.presencePenalty ?? 0,
+    seed: g.seed,
+    length: len,
+  };
+}
+
+/** Whether an answer was written as the page's settings now ask: the same way of choosing and length, the same seed when
+ * one is set. An older server sends no echo; it always wrote its likeliest word-piece, with no penalty. */
+function writtenAs(g: GenerationEcho | null, w: Writing): boolean {
+  const greedy = w.mode === "greedy" || w.temperature === 0;
+  if (!g) return greedy && w.presencePenalty === 0;
+  if (g.maxNewTokens != null && g.maxNewTokens !== w.length) return false;
+  if (!sameNum(g.presencePenalty ?? 0, w.presencePenalty)) return false;
+  if (g.greedy || greedy) return g.greedy === greedy;
+  return sameNum(g.temperature, w.temperature) && (g.topK ?? 0) === w.topK && sameNum(g.topP ?? 1, w.topP) && (w.seed == null || g.seed === w.seed);
+}
+
+/** Whether two answers were written alike: the same way of choosing, length and penalty, and, drawn by chance, the same
+ * settings and seed. */
+function writtenAlike(a: GenerationEcho | null, b: GenerationEcho | null): boolean {
+  if (!a || !b) return !a && !b;
+  if (a.greedy !== b.greedy || a.maxNewTokens !== b.maxNewTokens || !sameNum(a.presencePenalty ?? 0, b.presencePenalty ?? 0)) return false;
+  if (a.greedy) return true;
+  return sameNum(a.temperature, b.temperature) && sameNum(a.topK, b.topK) && sameNum(a.topP, b.topP) && a.seed === b.seed;
+}
+
+/** Where two answers part: the token index of the first word-piece at which their ids differ; `same` when they never do;
+ * null when either answer's ids were not sent. */
+function partOf(a: number[] | null, b: number[] | null): { j: number | null; same: boolean } | null {
+  if (!a || !b) return null;
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) if (a[i] !== b[i]) return { j: i, same: false };
+  return a.length === b.length ? { j: null, same: true } : { j: n, same: false };
+}
+
+/** Where a request in flight has got, in words (as the word-pieces strip on the instrument says it). */
+function progressWords(p: SweepProgress | null | undefined): string | null {
+  if (!p) return null;
+  if (p.phase === "writing") return `writing ${p.done} of ${p.of}…`;
+  if (p.phase === "sighting") return `sighting ${Math.min(p.done + 1, Math.max(p.of, 1))} of ${Math.max(p.of, 1)}…`;
+  return null;
+}
+
+/** A word-piece's own text with each new line as a gilt ¶ (a bare space alone as ␣ when it is the piece marked). */
+function pieceText(str: string, marked: boolean): React.ReactNode {
+  if (marked && str !== "" && str.trim() === "" && !str.includes("\n")) return "␣";
+  const lines = str.split("\n");
+  return lines.map((line, i) => (
+    <React.Fragment key={i}>
+      {i > 0 ? (
+        <span style={{ color: C.giltText, fontStyle: "normal" }} aria-label="new line">
+          {" "}¶{" "}
+        </span>
+      ) : null}
+      {line}
+    </React.Fragment>
+  ));
+}
+
+/**
+ * An answer as the word-pieces it wrote, set like <Answer/> (large when short, smaller when long), with the piece at token
+ * index `j`, where the two answers part, underlined in rubric red. Its end of turn, when it wrote one, in small capitals.
+ */
+const PartedAnswer: React.FC<{ pieces: AnswerPiece[]; j: number | null }> = ({ pieces, j }) => {
+  if (!pieces.length) return <Missing what="the server returned no words" />;
+  const text = pieces.map((p) => (p.endMark ? "" : p.str)).join("");
+  const short = !text.includes("\n") && text.trim().length <= 24;
+  return (
+    <p style={{ margin: 0, fontSize: short ? 44 : 22, lineHeight: short ? 1.1 : 1.4, fontStyle: "italic", overflowWrap: "anywhere" }}>
+      “…
+      {pieces.map((p) => {
+        const marked = p.index === j;
+        if (p.endMark) {
+          return (
+            <span
+              key={p.index}
+              style={{
+                fontStyle: "normal",
+                fontSize: 15,
+                fontVariantCaps: "all-small-caps",
+                letterSpacing: "0.14em",
+                color: C.muted,
+                ...(marked ? { textDecoration: `underline 2px ${C.rubric}`, textUnderlineOffset: 6 } : null),
+              }}
+            >
+              {" "}it ends its turn
+            </span>
+          );
+        }
+        const lead = marked ? (/^[ \t]+/.exec(p.str)?.[0] ?? "") : "";
+        return (
+          <React.Fragment key={p.index}>
+            {lead}
+            {marked ? (
+              <span
+                title={`${JSON.stringify(p.str)}: the first word-piece where the two answers differ`}
+                style={{ textDecoration: `underline 2px ${C.rubric}`, textUnderlineOffset: short ? 9 : 6 }}
+              >
+                {pieceText(p.str.slice(lead.length) || p.str, true)}
+                <span className="visually-hidden"> (the two answers part here)</span>
+              </span>
+            ) : (
+              pieceText(p.str, false)
+            )}
+          </React.Fragment>
+        );
+      })}{" "}
+      …”
+    </p>
+  );
+};
+
 export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const sighting = useTheodoliteStore((s) => s.sighting);
+  const shownSet = useShownSet();
   const plainSighting = useTheodoliteStore((s) => s.plainSighting);
   const armed = useTheodoliteStore((s) => s.steering.enabled);
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
+  const incoming = useTheodoliteStore((s) => s.incoming);
+  const answerSet = useTheodoliteStore((s) => s.answer);
   const setSteering = useTheodoliteStore((s) => s.setSteering);
   const takeSighting = useTheodoliteStore((s) => s.takeSighting);
-  // the lens a neuron's words were read through (the sighting's), and the one the server builds a word push through
-  const { lens: readLens } = useReadingLens(sighting);
+  const chat = useTheodoliteStore((st) => st.chat);
+  const system = useTheodoliteStore((st) => st.system);
+  const writing = useTheodoliteStore((st) => st.writing);
+  const storeQuestion = useTheodoliteStore((st) => st.question);
+  const storeBegins = useTheodoliteStore((st) => st.answerBegins);
   const { lens: pushLens } = useInstrumentLens();
 
   const [init] = useState(initialState);
   const [question, setQuestion] = useState(init.question);
+
+  // The saved questions' shelf reads, saves and fills the store's question. This page keeps a question of its own (it
+  // opens on the spider) and sends no begun answer, so while it is open the store holds this page's question with no
+  // begun answer, and the shelf saves and names what this box holds. A visit that changes nothing (no typing, no saved
+  // question chosen, no sighting taken) puts back the question and begun answer that were there before.
+  const touched = useRef(false);
+  useEffect(() => {
+    const st = useTheodoliteStore.getState();
+    const before = { question: st.question, answerBegins: st.answerBegins };
+    const mine = init.question;
+    st.setQuestion(mine);
+    st.setAnswerBegins("");
+    const restore = () => {
+      const now = useTheodoliteStore.getState();
+      if (!touched.current && now.question === mine && now.answerBegins === "") {
+        now.setQuestion(before.question);
+        now.setAnswerBegins(before.answerBegins);
+      }
+    };
+    // put it back as the address leaves this page, before the next page is drawn (an unmount comes after that), and
+    // again on unmount in case it left another way
+    const onHash = () => {
+      if (parseHash(window.location.hash).name !== "nudge") restore();
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => {
+      window.removeEventListener("hashchange", onHash);
+      restore();
+    };
+  }, [init]);
+  // a saved question chosen from the shelf fills the store's question: this box takes it
+  useEffect(() => {
+    const q = useTheodoliteStore.getState().question;
+    if (q !== question) {
+      setQuestion(q);
+      touched.current = true;
+    }
+  }, [storeQuestion]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ask = (v: string) => {
+    setQuestion(v);
+    useTheodoliteStore.getState().setQuestion(v);
+    touched.current = true;
+  };
   const [v, setV] = useState(init.v);
   const [toward, setToward] = useState(init.toward);
   const [away, setAway] = useState(init.away);
@@ -332,8 +534,32 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   // typed text is kept as typed, so a half-written number is never snapped back while it is being written
   const [exactText, setExactText] = useState<string | null>(null);
   const [lengthText, setLengthText] = useState<string | null>(null);
-  // when a plain sighting of this question is taken first, for comparison, the question waiting for its nudged one
-  const [plainFirst, setPlainFirst] = useState<string | null>(null);
+  // when a plain sighting of this question is taken first, for comparison: its request, and the question waiting for its
+  // nudged one
+  const [plainFirst, setPlainFirst] = useState<{ id: string; question: string } | null>(null);
+
+  /* ---- the plain answer and the nudged one, matched: the same text, system prompt and writing */
+  const prompt = composeText(question, "");
+  const systemSent = chat ? system.trim() : "";
+  /** a live sighting of this page's question, as this page sends it (no begun answer; chat as set) */
+  const ofThis = (x: Sighting | null | undefined): x is Sighting =>
+    !!x && x.source === "live" && composeText(x.question, x.answerBegins) === prompt && x.chatWrapped === chat;
+  const sameSystem = (x: Sighting) => (x.system ?? "").trim() === systemSent;
+  const plainCand = ofThis(plainSighting) && !plainSighting.isNudged ? plainSighting : null;
+  // shown only when taken with the settings as they are now: the same system prompt, length and way of writing
+  const plainNow = plainCand && sameSystem(plainCand) && writtenAs(plainCand.generation, writing) ? plainCand : null;
+  const plainOther = plainCand !== null && plainNow === null ? plainCand : null;
+  // the sighting the neuron and the stream strength are read from: the plain one when there is one, so the push being
+  // sized is not already in it
+  const readS = plainNow ?? sighting;
+  const { lens: readLens } = useReadingLens(readS);
+  const readWords = (() => {
+    if (!readS || readS.readAt == null) return null;
+    const w = readWhere(readS);
+    return w.role === "written"
+      ? `${pieceWord(readS.readAt)}, the ${ordinal(w.k)} word-piece of its own answer`
+      : `${pieceWord(readS.readAt)}${w.phrase}`;
+  })();
 
   /* ---- strength */
   const s = strengthOf(v);
@@ -370,8 +596,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const okPole = okL && okN;
   const facePos = poleFace !== "negative";
   const faceW = facePos ? "positive" : "negative";
-  // what this sighting read of the named neuron, if it was among the loudest at its layer
-  const poleHere = okPole && sighting ? (sighting.layers[pl - 1]?.poles.find((p) => p.neuron === pn) ?? null) : null;
+  // what the sighting read of the named neuron, if it was among the loudest at its layer
+  const poleHere = okPole && readS ? (readS.layers[pl - 1]?.poles.find((p) => p.neuron === pn) ?? null) : null;
   const known = poleHere !== null;
   const unknown = okPole && !known;
 
@@ -407,13 +633,20 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const scaleUnknown = !blocked && !fixes.share && scaleNum === null;
   const cantArm = blocked || scaleUnknown;
 
-  // a live sighting's own stream strength at the chosen layers, shown beside the recorded medians
-  const liveH =
-    sighting && sighting.source === "live"
-      ? (isNeuron ? (okL ? [pl] : []) : chosen)
-          .map((n) => ({ n, h: sighting.layers[n - 1]?.streamStrength ?? null }))
-          .filter((x): x is { n: number; h: number } => x.h !== null)
-      : [];
+  // a live sighting's own stream strength at the chosen layers, shown beside the recorded medians: a plain one (a nudged
+  // stream already holds the push it is meant to size), this question's when there is one
+  const hFrom = plainNow ?? (plainSighting?.source === "live" && !plainSighting.isNudged ? plainSighting : null);
+  const liveH = hFrom
+    ? (isNeuron ? (okL ? [pl] : []) : chosen)
+        .map((n) => ({ n, h: hFrom.layers[n - 1]?.streamStrength ?? null }))
+        .filter((x): x is { n: number; h: number } => x.h !== null)
+    : [];
+  const hWhere = (() => {
+    if (!hFrom || hFrom.readAt == null) return null;
+    const w = readWhere(hFrom);
+    const at = w.role === "written" ? `${pieceWord(hFrom.readAt)}, the ${ordinal(w.k)} word-piece of its own answer` : `${pieceWord(hFrom.readAt)}${w.phrase}`;
+    return hFrom === plainNow ? `as it read ${at}` : `of “${firstWords(hFrom.question, 40)}”, as it read ${at}`;
+  })();
 
   /* ---- the nudge as set */
   const tw = toward.trim();
@@ -597,47 +830,109 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
     if (!same) setSteering(next);
   }, [cfgKey, setSteering]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const prompt = composeText(question, "");
-  const chat = useTheodoliteStore((st) => st.chat);
-  const samePrompt = (x: Sighting | null): x is Sighting =>
-    !!x && x.source === "live" && composeText(x.question, x.answerBegins) === prompt && x.chatWrapped === chat;
+  /* ---- before and after */
+  // the nudged answer's sighting of its first word-piece (the one read where both answers read the same text)
+  const head = sighting && sighting.tokenIndex !== 0 ? (shownSet?.sightings[0] ?? null) : sighting;
+  const nudgedCand = head && head.isNudged && ofThis(head) ? head : null;
+  // only a sighting taken with the nudge set now, and written as the plain one beside it was, is shown under its description
+  const nudgedNow =
+    nudgedCand &&
+    nudgedCand.steeringSent &&
+    steeringKey(nudgedCand.steeringSent) === cfgKey &&
+    sameSystem(nudgedCand) &&
+    (plainNow ? writtenAlike(nudgedCand.generation, plainNow.generation) : writtenAs(nudgedCand.generation, writing))
+      ? nudgedCand
+      : null;
+  const nudgedEarlier = nudgedCand !== null && nudgedNow === null;
+  const nudgedDrawn = nudgedNow?.generation != null && !nudgedNow.generation.greedy;
+  // the tool audit's plain answer was written greedily, as bare text: never set against a drawn answer
+  const recordedPlain = !plainNow && !plainOther && question.trim() === SPIDER && !nudgedDrawn && writing.mode === "greedy";
+  const pair = plainNow && nudgedNow ? { plain: plainNow, nudged: nudgedNow } : null;
+  // each answer as word-pieces (null from an older server, which sends its words as one text)
+  const plainPieces = plainNow ? piecesOf(plainNow) : null;
+  const nudgedPieces = nudgedNow ? piecesOf(nudgedNow) : null;
+  const part = pair ? partOf(pair.plain.answerIds, pair.nudged.answerIds) : null;
+  const partJ = part?.j ?? null;
+  const pairGen = pair?.plain.generation ?? null;
+  const sampledNow = writing.mode === "sampled" && writing.temperature > 0;
+  /** what differs between a sighting of this question and the settings as they are now, in words */
+  const otherSettings = (x: Sighting): string => {
+    const why: string[] = [];
+    if (!sameSystem(x)) why.push("another system prompt");
+    const g = x.generation;
+    if (g?.maxNewTokens != null && g.maxNewTokens !== writing.length) why.push(`up to ${g.maxNewTokens} word-pieces, not ${writing.length}`);
+    if (!writtenAs(g ? { ...g, maxNewTokens: null } : g, writing)) why.push(g && !g.greedy ? "drawn by chance with other settings" : "written another way");
+    return why.length ? why.join(", ") : "other settings";
+  };
+  const nudgedWhy = !nudgedCand
+    ? null
+    : !nudgedCand.steeringSent || steeringKey(nudgedCand.steeringSent) !== cfgKey
+      ? "another nudge"
+      : plainNow && sameSystem(nudgedCand)
+        ? "written otherwise than the plain answer beside it: another length, setting or seed"
+        : otherSettings(nudgedCand);
 
-  /** Arm (or keep armed) and take a sighting of this question with the nudge. If there is no live plain
-   * sighting of the same question to compare with, one is taken first, without the nudge. */
+  /** Take the nudged answer: its first word-piece sighted only, written as the plain answer was (its sampler and seed). */
+  const takeNudged = (q: string, plainGen: GenerationEcho | null, steering: Partial<SteeringConfig>) =>
+    takeSighting({
+      question: q,
+      answerBegins: "",
+      steering,
+      sightEach: false,
+      writing: writingFrom(plainGen, useTheodoliteStore.getState().writing.length),
+    });
+
+  /**
+   * Arm (or keep armed) and take a sighting of this question with the nudge. Without a live plain sighting of the same
+   * question, taken with the settings as they are now, one is taken first, without the nudge; the nudged one follows when
+   * it has finished, written with its sampler and seed. Drawn by chance with no seed set, once this nudge has been set
+   * beside a plain answer, another plain draw is taken first, so each press gives a fresh pair. Both sight only the first
+   * word-piece: the comparison is of the two answers and of the moment where both read the same text.
+   */
   const sight = () => {
     if (!cfg) return;
+    touched.current = true;
     setSteering({ ...cfg, enabled: true });
     const st = useTheodoliteStore.getState();
     if (st.isSweeping) return;
-    const p = st.plainSighting;
-    const havePlain = samePrompt(p) && !p.isNudged;
-    if (st.conn === "open" && !havePlain) {
-      if (takeSighting({ question, answerBegins: "", steering: { ...cfg, enabled: false } })) setPlainFirst(question);
+    const redraw = !!pair && st.writing.mode === "sampled" && st.writing.seed == null;
+    const plain = redraw ? null : plainNow;
+    if (st.conn === "open" && !plain) {
+      if (takeSighting({ question, answerBegins: "", steering: { ...cfg, enabled: false }, sightEach: false })) {
+        // nothing else was in flight, so the request just sent is the one coming in
+        const id = useTheodoliteStore.getState().incoming?.requestId;
+        if (id) setPlainFirst({ id, question });
+      }
       return;
     }
-    takeSighting({ question, answerBegins: "", steering: { ...cfg, enabled: true } });
+    takeNudged(question, plain?.generation ?? null, { ...cfg, enabled: true });
   };
   const release = () => {
     setPlainFirst(null);
     setSteering({ enabled: false });
   };
+  /** Enter in the question: what the main button does when that is only to take a sighting. Armed, a nudged sighting
+   * (with its plain one first when needed); disarmed, a plain one. Arming is left to the buttons below. */
+  const enterTakes = () => {
+    if (armed) {
+      if (!changedWhileArmed && !cantArm) sight();
+      return;
+    }
+    touched.current = true;
+    takeSighting({ question, answerBegins: "", steering: { enabled: false }, sightEach: false });
+  };
 
-  // once the plain sighting is back, take the nudged one
+  // once the plain request has finished (its set done, not a pause between requests), take the nudged one
   useEffect(() => {
-    if (plainFirst === null || isSweeping) return;
-    setPlainFirst(null);
+    if (plainFirst === null) return;
     const st = useTheodoliteStore.getState();
-    if (st.sweepError || st.conn !== "open" || !st.steering.enabled) return;
-    takeSighting({ question: plainFirst, answerBegins: "", steering: { enabled: true } });
-  }, [plainFirst, isSweeping, takeSighting]);
-
-  /* ---- before and after */
-  const nudgedAny = sighting && sighting.isNudged && samePrompt(sighting) ? sighting : null;
-  // only a sighting taken with the nudge set now is shown under its description
-  const nudgedNow = nudgedAny && nudgedAny.steeringSent && steeringKey(nudgedAny.steeringSent) === cfgKey ? nudgedAny : null;
-  const nudgedEarlier = nudgedAny !== null && nudgedNow === null;
-  const plainNow = samePrompt(plainSighting) && !plainSighting.isNudged ? plainSighting : null;
-  const recordedPlain = !plainNow && question.trim() === SPIDER;
+    const set = st.answer?.requestId === plainFirst.id ? st.answer : null;
+    // still on its way: shown but not finished, or not shown yet while anything is in flight
+    if (set ? !set.done : st.isSweeping) return;
+    setPlainFirst(null);
+    if (!set || set.error || set.cancelled || st.conn !== "open" || !st.steering.enabled) return;
+    takeNudged(plainFirst.question, set.wrote ?? set.generation ?? set.sightings[0]?.generation ?? null, { enabled: true });
+  }, [plainFirst, answerSet, isSweeping]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---- the strength apparatus */
   const sExact = exactText === null ? String(Number(s.toPrecision(3))) : exactText;
@@ -675,6 +970,21 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
 
   const lensWords = poleHere?.lens ? poleHere.lens.slice(0, 3).map((t) => wp(t.token)).join(", ") : null;
 
+  // what the two requests send of the text and the writing, from the store's own sweepPayload (the rest is the nudge,
+  // shown below, and the reading options of the instrument)
+  const WRITING_KEYS = ["prompt", "chat", "system", "assistant_prefix", "max_new_tokens", "sampler", "sight_every_token", "stop_at_end_of_turn"];
+  const plainSent = JSON.stringify(
+    Object.fromEntries(
+      Object.entries(
+        sweepPayload({ ...useTheodoliteStore.getState(), writing: { ...writing, sightEach: false } }, question, "", storeSteering, { chat, system }),
+      ).filter(([k]) => WRITING_KEYS.includes(k)),
+    ),
+  );
+  const nudgedWriting: Writing | null = plainNow ? { ...writing, ...writingFrom(plainNow.generation, writing.length), sightEach: false } : null;
+  const nudgedSent = nudgedWriting
+    ? JSON.stringify({ max_new_tokens: nudgedWriting.length, sampler: samplerPayload(nudgedWriting), sight_every_token: false })
+    : null;
+
   return (
     <Page route={route} folio="folio v">
       {/* i · the question */}
@@ -687,16 +997,38 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             i · the question
           </h2>
           <div style={{ display: "grid", gridTemplateColumns: "150px minmax(0, 1fr)", gap: "10px 20px", alignItems: "baseline" }}>
-            <label htmlFor="ask" style={labelSc}>
+            <label htmlFor="ask" style={{ ...labelSc, alignSelf: "start", paddingTop: 18 }}>
               you ask
             </label>
-            <input
-              id="ask"
-              type="text"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              style={bigInput({ lineHeight: 1.25, padding: "4px 0 8px", outlineOffset: 6 })}
-            />
+            <QuestionBox id="ask" kind="ask" value={question} onChange={ask} onTake={enterTakes} />
+            <span aria-hidden="true" />
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+              <SavedShelf kind="question" />
+              {storeBegins.trim() ? (
+                <p style={{ margin: 0, fontSize: 16, color: C.muted }}>
+                  This page sends no begun answer, so “{storeBegins.trim()}”, kept with that question, is not used here.
+                </p>
+              ) : null}
+              <p style={{ margin: 0, fontSize: 16, color: C.muted }}>
+                {chat ? (
+                  systemSent ? (
+                    <>
+                      Sent as a chat after the system prompt{" "}
+                      <span title={systemSent} style={{ color: C.ink }}>
+                        “{firstWords(systemSent, 120)}”
+                      </span>
+                      , with no begun answer
+                    </>
+                  ) : (
+                    "Sent as a chat with no system prompt and no begun answer"
+                  )
+                ) : (
+                  "Sent as bare text, with no chat template, no system prompt and no begun answer"
+                )}
+                , the plain answer and the nudged one alike.{" "}
+                <a href={href.instrument()}>Change the chat and the system prompt on the instrument.</a>
+              </p>
+            </div>
           </div>
           <Rubric style={{ margin: "2px 0 0 170px", maxWidth: 640 }}>
             A nudge is a small push on the model’s stream while it reads. Begin with a question whose answer you know: here the
@@ -841,11 +1173,11 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                 <>
                   <p style={{ margin: 0, fontSize: 17, maxWidth: 520 }}>
                     Neuron {pn} fired
-                    {sighting?.readAt != null ? <> as the model read {wp(sighting.readAt)}</> : null}
-                    {sighting?.answerBegins.trim() ? <> in its reply, “{sighting.answerBegins.trim()}”</> : null}: the{" "}
+                    {readWords ? <> as the model read {readWords}</> : null}
+                    {readS?.isNudged ? <>, in the nudged sighting</> : readS === plainNow ? <>, in the plain sighting of this question</> : null}: the{" "}
                     {(() => {
                       // by |a|, whatever order the server ranked the poles in
-                      const r = sighting ? (loudnessRank(sighting.layers[pl - 1], pn) ?? poleHere.rank) : poleHere.rank;
+                      const r = readS ? (loudnessRank(readS.layers[pl - 1], pn) ?? poleHere.rank) : poleHere.rank;
                       return r === 0 ? "" : (ORDINAL[r] ?? `number ${r + 1}`) + " ";
                     })()}
                     loudest in layer {pl}.{" "}
@@ -864,7 +1196,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                     ) : (
                       <>
                         What its {faceWord(poleHere.face)} face writes:{" "}
-                        <Missing what={sighting?.source === "live" ? "not labelled in this sighting" : "measured in a live sighting"} />
+                        <Missing what={readS?.source === "live" ? "not labelled in this sighting" : "measured in a live sighting"} />
                       </>
                     )}
                   </p>
@@ -1339,6 +1671,19 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               part of the dial. The edges are rough: they come from one small test of six questions, with the model always taking its likeliest
               next word. <a href={href.lexicon("strength")}>What is the stream’s strength?</a>
             </Rubric>
+            {sampledNow || nudgedDrawn ? (
+              <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 760 }}>
+                The edges were measured with the model always taking its likeliest word.{" "}
+                {sampledNow ? (
+                  <>
+                    Its answers are set to be drawn by chance (under “how it writes” on <a href={href.instrument()}>the instrument</a>)
+                  </>
+                ) : (
+                  "The nudged answer shown was drawn by chance"
+                )}
+                , and where a drawn answer breaks was not measured.
+              </p>
+            ) : null}
             {isNeuron ? (
               <Rubric>
                 The dial’s clear and gilded parts were found with two words pushing at five layers. The study did not measure a single neuron’s
@@ -1397,8 +1742,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             {blocked ? <p style={{ margin: 0, fontSize: 16, color: C.muted }}>{blockedAside}</p> : null}
             {liveH.length ? (
               <p className="num" style={{ margin: 0, fontSize: 15, color: C.muted }}>
-                This sighting’s own stream strength, at the word-piece it read:{" "}
-                {liveH.map((x) => "layer " + x.n + ", " + x.h.toFixed(1)).join(" · ")}.
+                The stream’s own strength in the last plain sighting{hWhere ? ` ${hWhere}` : ""}:{" "}
+                {liveH.map((x) => "layer " + x.n + ", " + x.h.toFixed(1)).join(" · ")}. It differs from one word-piece to the next.
               </p>
             ) : null}
             <p style={{ margin: 0, fontSize: 15, color: C.muted }}>
@@ -1612,8 +1957,9 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             {isSweeping ? (
               <p className="status-line" role="status" style={{ margin: 0 }}>
                 {plainFirst !== null
-                  ? "Taking a sighting without the nudge first, to compare; the nudged one follows."
+                  ? "Taking a sighting without the nudge first, to compare; the nudged one follows, written the same way."
                   : "Taking a sighting…"}
+                {progressWords(incoming?.progress) ? ` ${progressWords(incoming?.progress)}` : null}
               </p>
             ) : null}
             <SweepError />
@@ -1633,6 +1979,18 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               (<span className="mono">server.py:574–577</span>). None of the four MCP tools (inspect_pole, trace_downstream_readers,
               test_motif_hypothesis, query_larql_vault) takes a nudge.
             </dd>
+            <dt>how it writes</dt>
+            <dd className="num">
+              the plain answer, when one is taken: <span className="mono-wrap">{plainSent}</span>; then the nudged one, written as that plain
+              answer was, by the server’s own echo of it (its way of choosing, length, repeat penalty and, drawn by chance, its seed):{" "}
+              {nudgedSent ? (
+                <span className="mono-wrap">{nudgedSent}</span>
+              ) : (
+                <Missing what="read from the plain answer when it is back" />
+              )}
+              . Each sights only its first word-piece: the two are compared where both read the same text. A request id of its own goes
+              with each.
+            </dd>
             <dt>scale as sent</dt>
             <dd className="num">{scaleRule}</dd>
             <dt>ignored</dt>
@@ -1642,7 +2000,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             <dt>leaves no trace</dt>
             <dd>
               In the audit the model carried no hooks before or after a nudged run, and the plain spider question came back word for word as
-              before (V7, bug 5).
+              before (V7, bug 5), written with its likeliest word each time.
+              {sampledNow ? " Drawn by chance, two plain answers can differ with no nudge at all; only the same seed and settings can be compared word for word." : null}
             </dd>
           </dl>
           <div role="group" aria-label="Which request to show" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 10px", paddingTop: 4 }}>
@@ -1665,7 +2024,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
 
         <Rubric style={{ maxWidth: 860 }}>
           A nudge lasts only while it is armed, and it changes nothing in the model itself: in the study, after a nudged sighting, all six test
-          questions were answered exactly as before. Release it when you are done.
+          questions were answered exactly as before, each written with its likeliest word. Release it when you are done.
         </Rubric>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "32px 56px", paddingTop: 6 }}>
@@ -1687,7 +2046,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             </div>
             {plainNow ? (
               <>
-                <Answer text={plainNow.continuation} />
+                {plainPieces ? <PartedAnswer pieces={plainPieces} j={partJ} /> : <Answer text={plainNow.continuation} />}
                 <p style={{ margin: 0, fontSize: 15, fontStyle: "italic", color: C.muted, maxWidth: 520 }}>
                   From a live sighting, without the nudge.
                   {plainNow.continuation.includes("\n") ? " ¶ marks where it began a new line." : ""}
@@ -1701,12 +2060,25 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                   where it began a new line.
                 </p>
                 <p style={{ margin: 0, fontSize: 14, color: C.muted }}>
-                  From the tool audit (V7), with the model always taking its likeliest word.
+                  From the tool audit (V7), as bare text, with the model always taking its likeliest word
+                  {chat ? "; this page sends the question as a chat, so take a sighting to see its own plain answer" : ""}.
                 </p>
               </>
             ) : (
               <div style={placeholderBox}>[TAKE A SIGHTING TO SEE THE PLAIN ANSWER]</div>
             )}
+            {plainOther ? (
+              <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
+                The last plain sighting of this question was taken with other settings ({otherSettings(plainOther)}), so it is not shown here;
+                take a sighting to see it with these.
+              </p>
+            ) : null}
+            {!plainNow && !plainOther && !recordedPlain && question.trim() === SPIDER ? (
+              <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
+                The tool audit’s plain answer to this question was written with its likeliest word, so it is not set against an answer drawn by
+                chance.
+              </p>
+            ) : null}
           </div>
 
           {/* as nudged */}
@@ -1727,7 +2099,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             </div>
             {nudgedNow ? (
               <>
-                <Answer text={nudgedNow.continuation} />
+                {nudgedPieces ? <PartedAnswer pieces={nudgedPieces} j={partJ} /> : <Answer text={nudgedNow.continuation} />}
                 <p style={{ margin: 0, fontSize: 15, fontStyle: "italic", color: C.muted, maxWidth: 520 }}>
                   From a live sighting, with the nudge armed.
                   {nudgedNow.continuation.includes("\n") ? " ¶ marks where it began a new line." : ""}
@@ -1736,10 +2108,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             ) : !isCollapse ? (
               <div style={placeholderBox}>[TAKE A SIGHTING TO SEE THE NUDGED ANSWER]</div>
             ) : null}
-            {nudgedEarlier ? (
+            {nudgedEarlier && nudgedWhy ? (
               <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
-                The last nudged sighting of this question was taken with other settings, so it is not shown here; take a sighting to see
-                this nudge.
+                The last nudged sighting of this question was taken with other settings ({nudgedWhy}), so it is not shown here; take a
+                sighting to see this nudge.
               </p>
             ) : null}
             {!isCollapse && !armed ? (
@@ -1781,6 +2153,44 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             )}
           </div>
         </div>
+
+        {pair ? (
+          <div
+            aria-live="polite"
+            style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 860, paddingTop: 12, borderTop: `1px solid ${C.hairSoft}` }}
+          >
+            {part && partJ !== null ? (
+              <div style={{ fontSize: 17 }}>
+                <NudgePartLine j={partJ} />
+              </div>
+            ) : part?.same ? (
+              <p style={{ margin: 0, fontSize: 17 }}>
+                The two answers are the same, word-piece for word-piece: the nudge changed no word it wrote.
+              </p>
+            ) : (
+              <p style={{ margin: 0, fontSize: 16, color: C.muted }}>
+                This server sends each answer as one text, not as word-pieces, so where the two part is not marked.
+              </p>
+            )}
+            {pairGen ? (
+              <p style={{ margin: 0, fontSize: 16, color: C.muted }}>
+                <span style={labelSc}>how both were written</span>{" "}
+                {!pairGen.greedy && pairGen.seed != null ? <>One draw each, the same seed, {pairGen.seed}: </> : <>Both: </>}
+                <OneDrawLine generation={pairGen} />
+                {pairGen.presencePenalty ? (
+                  <>
+                    {" "}
+                    <PenaltyLine penalty={pairGen.presencePenalty} />
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+            <Rubric style={{ margin: 0, fontSize: 16 }}>
+              {partJ !== null ? "Up to the word-piece marked in red, both answers read the same text and differ only by the nudge. " : null}
+              The sighting taken here of each is of its first word-piece, where both read your question alone.
+            </Rubric>
+          </div>
+        ) : null}
       </section>
 
       <div aria-hidden="true" style={{ display: "flex", alignItems: "center", gap: 18, margin: "52px 0 0" }}>

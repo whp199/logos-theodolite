@@ -334,8 +334,10 @@ class SweepLayerTokenReadout:
 # The most word-pieces one sweep may hold, prompt and answer together (the server refuses more, in plain words): a
 # capture holds all 300 of its addresses at every position on the GPU, about 5.2 MB per position
 # (60 x (4 x 5376 + 21504) x 2 bytes), before it moves to the CPU, and the writing's first forward builds full-length
-# logits (0.5 MB per position) besides.
-MAX_SWEEP_POSITIONS = 768
+# logits (0.5 MB per position) besides. Measured on this RTX 5090 (32.6 GB) with the desktop holding about 4.5 GB
+# (2026-10-18): 621 positions peaked at 31.5 GB and about 750 ran out of memory, so 512 leaves about 1.5 GB spare.
+# A sweep that still runs out is refused in plain words and the socket keeps answering (server._stream_sweep).
+MAX_SWEEP_POSITIONS = 512
 
 
 @dataclass

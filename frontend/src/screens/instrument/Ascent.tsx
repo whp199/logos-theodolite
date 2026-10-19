@@ -1,9 +1,10 @@
 import React from "react";
-import type { Sighting } from "../../store/useTheodoliteStore";
+import { chosenOf, type Sighting } from "../../store/useTheodoliteStore";
 import { IfApparatus, Rubric } from "../../components/kit";
-import { bare } from "../../lib/words";
+import { bare, pieceWord } from "../../lib/words";
 import { lensBand, useReadingLens } from "../../lib/lens";
 import { useApparatus } from "../../reading";
+import { momentWords } from "./moment";
 
 const f = (n: number) => Math.round(n * 10) / 10;
 
@@ -16,13 +17,22 @@ export const Ascent: React.FC<{ sighting: Sighting; sel: number; stations: numbe
 }) => {
   const apparatus = useApparatus();
   const { lens } = useReadingLens(sighting);
-  const read = sighting.readAt != null ? `“${bare(sighting.readAt)}”` : "the last word";
+  const read = sighting.readAt != null ? pieceWord(sighting.readAt) : "the word-piece read";
+  const c = chosenOf(sighting);
+  // where the ascent ends: the word-piece its layer 60 chose (by id, from the server's echo), when one is recorded
+  const upTo = c ? (c.endMark ? ", up to where it ends its turn" : `, up to where it chooses ${pieceWord(c.token)}`) : "";
   return (
     <section aria-labelledby="ascent-head" style={{ marginTop: 44, display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="row-between">
-        <h2 id="ascent-head" className="h-sec">
-          iv · the ascent of one word
-        </h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <h2 id="ascent-head" className="h-sec">
+            iv · the ascent of one word
+          </h2>
+          <p className="ascent-at">
+            {momentWords(sighting)}
+            {sighting.nTokens != null ? ` · ${sighting.nTokens} word-pieces read up to here` : ""}
+          </p>
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 22px", fontSize: 15, color: "#6B5D4D" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span aria-hidden="true" className="legend-swatch" style={{ background: "#2E4A7D" }} />
@@ -52,7 +62,7 @@ export const Ascent: React.FC<{ sighting: Sighting; sel: number; stations: numbe
         </div>
       </div>
       <Rubric style={{ margin: 0 }}>
-        Read left to right, the word {read} rising through the model. Each bar is how the {lens.name} lens weighs what that layer gathered
+        Read left to right, the word-piece {read} rising through the model{upTo}. Each bar is how the {lens.name} lens weighs what that layer gathered
         and remembered, and the words above are that lens’s readings. Below layer 21 the study could validate none of them, so those words
         are drawn faint; at layers 21 to 30 trust only how sightings rank against one another, not the words themselves. Choose any marked
         layer to open it above.

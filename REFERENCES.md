@@ -1,6 +1,6 @@
 # References
 
-This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16.
+This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18.
 
 ## A. Model, lenses and lens methods
 
@@ -135,3 +135,17 @@ The N1B activation corpus (local `/usr/share/doc` and package sources) is not di
 39. **compressed-tensors** (https://github.com/neuralmagic/compressed-tensors) — loading the W4A16 QAT checkpoint.
 40. **FastAPI** (https://fastapi.tiangolo.com) and **Uvicorn** — server.
 41. **React, React Three Fiber / drei, three.js, Zustand, Vite** — frontend (see `frontend/package.json`).
+
+## G. Sampling: how the instrument writes
+
+Where the study read the lens on answers the model wrote itself, they were written greedily, its likeliest word-piece each time (E3, R1). The instrument can also draw its answers by chance, as chat apps do. These are the methods it then applies, in the order it applies them: the presence penalty [44], the temperature, top-k [42], top-p [43], then one draw.
+
+42. **Fan, A., Lewis, M., Dauphin, Y. *Hierarchical Neural Story Generation.* ACL 2018, pp. 889–898. arXiv:1805.04833.** https://aclanthology.org/P18-1082/
+    - arXiv: https://arxiv.org/abs/1805.04833
+    - *Use:* top-k sampling, drawing only from the k likeliest word-pieces ("from its likeliest K" on the instrument; `top_k`, 0 = no limit).
+
+43. **Holtzman, A., Buys, J., Du, L., Forbes, M., Choi, Y. *The Curious Case of Neural Text Degeneration.* ICLR 2020. arXiv:1904.09751.** https://arxiv.org/abs/1904.09751
+    - *Use:* nucleus (top-p) sampling, drawing only from the fewest likeliest word-pieces whose odds add up to p ("within P of its odds"; `top_p`, 1 = no limit).
+
+44. **vLLM project. *SamplingParams* (`vllm/sampling_params.py`). Apache-2.0.** https://github.com/vllm-project/vllm/blob/main/vllm/sampling_params.py
+    - *Use:* the presence penalty as vLLM defines it: a fixed amount taken off the score of every token that has appeared in the generated text so far, the prompt not counted ("hold back repeats"; `presence_penalty`). interp-engine [36] applies it the same way, on the raw scores before the temperature and on the greedy path too, which its code gives as vLLM's order (`interp_engine.sampling.apply_presence_penalty`, `interp_engine.steer._sample_next`).

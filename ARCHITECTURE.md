@@ -169,7 +169,7 @@ at k = 0 and gives an old caller the same numbers bit for bit (scripts/check_swe
 
 Which indices are sighted: `sight_tokens` if given, else 0..min(n, max_sighted)−1 with `sight_every_token`, else
 [0]; never empty ([0] when nothing asked for exists). `prompt`, `system` and `assistant_prefix` are at most 32000
-characters, and P + max(max_new_tokens, len(answer_token_ids)) must stay within `MAX_SWEEP_POSITIONS` = 768 (a
+characters, and P + max(max_new_tokens, len(answer_token_ids)) must stay within `MAX_SWEEP_POSITIONS` = 512 (a
 capture holds ~5.2 MB per position on the GPU before it moves to the CPU; the thinking prompt is held to the same).
 A refused id, control or length is answered in plain words.
 
@@ -224,7 +224,7 @@ edit lands between two positions of one answer. The thinking comparison is writt
 ### 4.4 Exact ids for `trace_readers`, and saved prompts
 
 - `trace_readers` (WebSocket, `POST /api/scientist/trace_readers`, MCP `trace_downstream_readers`) takes
-  `token_ids` (1–768 ids): read exactly as given, at the last (a sighting's ids up to its read position), echoing
+  `token_ids` (1–512 ids): read exactly as given, at the last (a sighting's ids up to its read position), echoing
   `token_ids_given`, `read_pos` and `prompt` (the ids decoded); every reply says `steered: false` (a trace reads the
   model without a nudge).
 - Saved questions and system prompts (`backend/saved_prompts.py`, declared above the static mount): `GET

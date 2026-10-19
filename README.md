@@ -112,7 +112,7 @@ before (attention, lapis) or **recalled** from memory (the feed-forward block, g
 
 | In the instrument | In the literature |
 |---|---|
-| a **sighting** | one 60-layer sweep of a prompt, read at its last word-piece |
+| a **sighting** | the stream at one word-piece, read through all 60 layers; one sweep gives one where the model read your last word-piece and (as the interface asks by default) one for each word-piece it writes, read where it chose it |
 | **layers 1–60** | decoder layers, counted from 1 (the code counts 0–59) |
 | **the lens** · **the naked eye** | the J++ lens readout `unembed(h·Jₗᵀ)`, with Jₗ fitted on the base model `google/gemma-4-31B` · the logit lens `unembed(h)` |
 | **gathering** · **remembering** | the attention write · the feed-forward (GeGLU) write, with Gemma 4’s layer scalar |
@@ -121,6 +121,33 @@ before (attention, lapis) or **recalled** from memory (the feed-forward block, g
 | **landmarks** | the survey frame: three directions, usually words, squared into axes |
 | **the nudge** | additive activation steering on the residual stream |
 | **the vault** | a LARQL/VINDEX-style catalogue of neurons, queried in Python |
+| **how it writes** | decoding: greedy (its likeliest word-piece) by default, or sampled with a presence penalty, temperature, top-k and top-p |
+
+**A sighting of each word-piece.** The model first writes its answer, then the instrument reads the whole text once more and
+follows a word-piece up through the sixty layers. By default it follows each word-piece the model wrote, at most 64: the
+sighting of word-piece *k* is taken where the model chose it, at position *P* − 1 + *k* after the question's *P* word-pieces,
+where the stream had just read the word-piece before it. The first is read where your words end, as every sighting once was,
+and it is the one shown first; choose another word-piece of the answer to see its own. The last word-piece it wrote is chosen
+but never read. Two word-pieces of one answer are not a matched pair: they read different word-pieces after different amounts
+of text, and the lens leans differently at different kinds of word; only layer 60, the model’s own odds, compares cleanly from
+one to the next. Inside its own answers the study found the lens’s lead over the naked eye a third of its lead on prose at
+layers 31 to 40, and gone from layer 41 (E3). Compare the same word-piece across matched sightings instead.
+
+**How it writes.** Under the question, the band *how it writes* sets how the answer is written before it is sighted: its
+likeliest word-piece every time, as the study wrote, or drawn by chance as chat apps do, with a repeat penalty, a temperature,
+top-k and top-p, applied in that order, and a seed (blank, the server draws one and sends it back); and how long it may run,
+1 to 256 word-pieces, stopping sooner when it ends its turn. Greedy is the default everywhere, including the sighting taken
+when the page first connects. A drawn answer is one draw of many it could give, and the pages say so; the sampler changes which
+words are written, never how a word is read. What the pages say of how an answer was written comes from the server’s echo of
+it (`generation`, and `chosen` for each word-piece), never from the form. The methods are [42]–[44] in
+[`REFERENCES.md`](REFERENCES.md).
+
+**Saved questions and system prompts.** Nothing you write is kept unless you save it. *save this*, under the question or the
+system prompt, keeps it under a name you give; the count beside it opens the list, and choosing an entry fills the boxes
+(a question restores its chat setting too) without sending anything. They are kept by the instrument’s server, in
+`$THEODOLITE_SAVED_PROMPTS` if it is set, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/saved_prompts.json`, outside the
+repository, so every checkout and every browser shares one list (`GET`, `POST` and `DELETE /api/saved_prompts`; refused to
+pages from any other host than this machine).
 
 <br>
 
@@ -189,7 +216,9 @@ are listed in §4 of the report.
 
 *This is research code, and its lens was fitted on the base model (fault 9 below): good for comparing, poor on its own.
 Read a single sighting as a lead, never as a finding: the study reads lens outputs against a matched control
-(REPORT §3.5), and the instrument can keep one for you.*
+(REPORT §3.5), and the instrument can keep one for you. A later word-piece of an answer is read inside text the model wrote
+itself, where the lens’s lead over the naked eye shrinks (E3); compare it across matched sightings, not with the other
+word-pieces of its answer.*
 
 The study audited its own instrument ([`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md),
 REPORT §3.4). Where each fault stands now:
@@ -266,12 +295,22 @@ is optional, and each default reproduces the instrument as first built):
   "monuments": ["she", "he", "it"],                 // the three landmarks
   "frame_squaring": "lowdin", "frame_fnw": true,    // an order-free frame on the weighted rows
   "pole_ranking": "write", "thread_score": "direct",
-  "steering": {"enabled": false, "direction": "fnw", "mask_quiet": true, "spare_bos": true, "strength": 0.01}
+  "steering": {"enabled": false, "direction": "fnw", "mask_quiet": true, "spare_bos": true, "strength": 0.01},
+  "max_new_tokens": 6,                              // how many word-pieces it may write (0–256)
+  "sampler": {"temperature": 0, "top_k": 0, "top_p": 1, "presence_penalty": 0, "seed": null},   // 0: greedy
+  "sight_every_token": true, "rank_lookahead": false,   // a sighting of each word-piece written, up to max_sighted (64)
+  "request_id": "r1"                                // stream the answer, and stop it with {"action": "cancel_sweep", "request_id": "r1"}
 }}
 ```
 
-It answers with one binary frame (the path, the split, kinship between layers, fifteen neurons a layer, the threads) and
-one JSON frame of words and readings; [`ARCHITECTURE.md`](ARCHITECTURE.md) gives both. The circuit tools
+Without a `request_id` it answers as it always did, with one binary frame (the path, the split, kinship between layers,
+fifteen neurons a layer, the threads) and one JSON frame of words and readings; [`ARCHITECTURE.md`](ARCHITECTURE.md) gives
+both. With one, it streams `theodolite_progress` while it writes, `theodolite_written` with the answer once it is written,
+one such pair for each word-piece sighted (each JSON frame naming its `token_index`, `read_pos`, `chosen` word-piece and the
+`generation` echo), and `theodolite_sweep_end` last. A sampler field left out is off: temperature 0 (greedy), top-k 0 and
+top-p 1 (no limit), no penalty, the seed drawn when it samples. The server passes every one on explicitly, since interp-engine
+reads a missing one as the checkpoint’s own setting (temperature 1, top-k 64, top-p 0.95). It holds its GPU lock for the whole
+sweep, so no vault edit lands between two word-pieces of one answer. The circuit tools
 (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`, `query_larql_vault`) are served over HTTP and as
 FastMCP tools from `backend/mcp_scientist.py`. To check a build end to end, server, tools and pages together:
 `.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.

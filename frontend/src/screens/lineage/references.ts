@@ -1,10 +1,12 @@
 /**
- * The reference list of the Lineage folio, sections A to C of the repository's REFERENCES.md.
+ * The reference list of the Lineage folio, sections A to C and G of the repository's REFERENCES.md.
  *
  * Transcribed from the approved canvas (Lineage.dc.html, renderVals()), whose entries were in turn transcribed
  * from REFERENCES.md: numbers, authors, titles, venues and links are those of that file (links checked there on
  * 2026-10-16). The "use" notes are short paraphrases of that file's own notes, in the pages' plain words.
  * Sections D to F ([29]–[41]: statistics, data and software) are not listed on the page; they are in REFERENCES.md.
+ * Section G ([42]–[44], added 2026-10-18 with its links checked that day) holds the sampling methods the instrument applies
+ * when it draws an answer by chance.
  */
 
 export interface Reference {
@@ -290,8 +292,37 @@ export const refsC: Reference[] = [
   ),
 ];
 
+/** G · sampling: how the instrument writes, when it draws an answer by chance */
+export const refsG: Reference[] = [
+  R(
+    42,
+    "Fan, A., Lewis, M., Dauphin, Y.",
+    "Hierarchical Neural Story Generation.",
+    "ACL 2018, pp. 889–898. arXiv:1805.04833.",
+    "https://aclanthology.org/P18-1082/",
+    "Top-k sampling: drawing only from the k likeliest word-pieces, “from its likeliest K” on the instrument (0 sets no limit).",
+    [["arXiv", "https://arxiv.org/abs/1805.04833"]],
+  ),
+  R(
+    43,
+    "Holtzman, A., Buys, J., Du, L., Forbes, M., Choi, Y.",
+    "The Curious Case of Neural Text Degeneration.",
+    "ICLR 2020. arXiv:1904.09751.",
+    "https://arxiv.org/abs/1904.09751",
+    "Nucleus (top-p) sampling: drawing only from the fewest likeliest word-pieces whose odds add up to p, “within P of its odds” (1 sets no limit).",
+  ),
+  R(
+    44,
+    "vLLM project.",
+    "SamplingParams (vllm/sampling_params.py).",
+    "Apache-2.0.",
+    "https://github.com/vllm-project/vllm/blob/main/vllm/sampling_params.py",
+    "The presence penalty as vLLM defines it, “hold back repeats” on the instrument: a fixed amount off the score of every word-piece already written, the prompt not counted; interp-engine [36] applies it before the temperature and on the greedy path too.",
+  ),
+];
+
 /** Numbers of the REFERENCES.md entries in sections D to F, named on the page but listed only in that file. */
 export const REFS_D_TO_F = Array.from({ length: 13 }, (_, i) => 29 + i);
 
-/** Total entries in REFERENCES.md (A to F). */
-export const REFERENCE_COUNT = 41;
+/** Total entries in REFERENCES.md (A to G). */
+export const REFERENCE_COUNT = 44;

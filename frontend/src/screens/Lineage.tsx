@@ -14,19 +14,20 @@ import {
   To,
   type Dest,
 } from "./lineage/bits";
-import { REFERENCE_COUNT, REFS_D_TO_F, refId, refsA, refsB, refsC, type Reference } from "./lineage/references";
+import { REFERENCE_COUNT, REFS_D_TO_F, refId, refsA, refsB, refsC, refsG, type Reference } from "./lineage/references";
 
 /**
  * Lineage — the synthesis and its makers (folio viii).
  *
  * A static folio: where each part of the instrument comes from, what the study found about it, and the
- * REFERENCES.md entries A–C. Nothing here reads the current sighting; every figure is a recorded finding of the
+ * REFERENCES.md entries A–C and G. Nothing here reads the current sighting; every figure is a recorded finding of the
  * study (experiments/REPORT.md and the reports it names), as on the approved canvas.
  *
  * Anchors for href.lineage('<id>'):
  *   sections   stemma · pillars · jacobian-lens · jpp-lens · poles · larql · foundations · logit-lens · circuits ·
  *              glu · lrp · cka · steering · keep · practices · conventions · sources (apparatus)
- *   references ref-1 … ref-28 (apparatus); ref-29 … ref-41 land on the line that says they are in REFERENCES.md
+ *   references ref-1 … ref-28 and ref-42 … ref-44 (apparatus); ref-29 … ref-41 land on the line that says they are in
+ *   REFERENCES.md
  *   (the canvas's heading ids lin-title, stemma-head, pillars-head, p1-head … p4-head, found-head, keep-head,
  *   ask-head, conv-head and src-head also work.)
  */
@@ -123,8 +124,8 @@ const PageApparatus: React.FC = () => (
   <LinApparatus title="this page" label="Apparatus for this page" style={{ paddingBottom: 26 }}>
     <dt>numbering</dt>
     <dd>
-      Bracketed numbers are those of <M>REFERENCES.md</M> ({REFERENCE_COUNT} entries, links checked 2026-10-16); the
-      full list of A–C is at the foot of this page.
+      Bracketed numbers are those of <M>REFERENCES.md</M> ({REFERENCE_COUNT} entries, links checked 2026-10-16, those of G on
+      2026-10-18); the full list of A–C and G is at the foot of this page.
     </dd>
     <dt>layers</dt>
     <dd className="num">
@@ -703,7 +704,7 @@ const Sources: React.FC<{ anchor: string | undefined }> = ({ anchor }) => (
         vii · the sources
       </h2>
       <p style={{ margin: 0, fontSize: 16, maxWidth: 900 }}>
-        Numbered as in <M>REFERENCES.md</M>, sections A to C. Sections D to F (statistics, data and software,
+        Numbered as in <M>REFERENCES.md</M>, sections A to C and G. Sections D to F (statistics, data and software,
         [29]–[41]) are listed there.
         {/* anchors for links to [29]–[41], which are listed only in REFERENCES.md: they land on this line */}
         {REFS_D_TO_F.map((n) => (
@@ -713,6 +714,7 @@ const Sources: React.FC<{ anchor: string | undefined }> = ({ anchor }) => (
       <RefGroup head="a · model, lenses and lens methods" refs={refsA} anchor={anchor} />
       <RefGroup head="b · interpretability methods and concepts" refs={refsB} anchor={anchor} />
       <RefGroup head="c · related work, acknowledged but not relied on" refs={refsC} anchor={anchor} />
+      <RefGroup head="g · sampling: how the instrument writes, when it draws by chance" refs={refsG} anchor={anchor} />
     </section>
   </IfApparatus>
 );

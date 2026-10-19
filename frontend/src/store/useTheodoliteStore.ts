@@ -57,7 +57,8 @@ export interface Writing {
 }
 
 /** The checkpoint's own recommendation (generation_config.json: do_sample true, temperature 1.0, top_k 64, top_p 0.95).
- * A sampler field sent blank would take these values unseen, so the page always sends every one. */
+ * The server treats a missing sampler field as off, and passes every field on to interp-engine, which would otherwise fill
+ * a missing one from these values; the page still sends every one, so what was asked is on the record. */
 export const MODEL_SAMPLING = { temperature: 1, topK: 64, topP: 0.95 } as const;
 /** The study's writing: its likeliest word-piece each time, six of them; each word-piece sighted. */
 export const STUDY_WRITING: Writing = {
@@ -998,8 +999,8 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   },
 }));
 
-/** The sampler fields of a sweep, every one sent: a field left blank would be filled in from the checkpoint's own
- * recommendation (temperature 1, top-k 64, top-p 0.95) without saying so. Greedy is temperature 0 (argmax); top-k 0 and
+/** The sampler fields of a sweep, every one sent (the server would treat a missing one as off, and interp-engine, left to
+ * itself, would fill it from the checkpoint's own recommendation: temperature 1, top-k 64, top-p 0.95). Greedy is temperature 0 (argmax); top-k 0 and
  * top-p 1 are "no limit"; the seed null asks the server to draw one, which it sends back. */
 export function samplerPayload(w: Writing) {
   return w.mode === "greedy"

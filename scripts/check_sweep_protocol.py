@@ -150,7 +150,7 @@ def check_rules() -> None:
         server.check_sweep_positions(MAX_SWEEP_POSITIONS - 5, 6)
         check(False, "one position too many accepted")
     except ValueError as exc:
-        check("more than the 768 one sweep can hold" in str(exc), f"the positions refusal: {exc}")
+        check(f"more than the {MAX_SWEEP_POSITIONS} one sweep can hold" in str(exc), f"the positions refusal: {exc}")
     tr = server.TraceReadersRequest(token_ids=[2, 5, 7])
     check(tr.token_ids == [2, 5, 7], "trace token_ids")
     for bad in ([], ["2"], [2.5], list(range(MAX_SWEEP_POSITIONS + 1))):

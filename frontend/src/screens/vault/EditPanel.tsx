@@ -332,7 +332,8 @@ export const EditPanel: React.FC = () => {
             <dd>
               in memory, as <span className="mono-wrap">down_proj._memit_col_overlays[i]</span> on the loaded model; the weights on disk are
               never written. Every sighting reports the edits in force, under <span className="mono-wrap">larql_status</span>, and the MCP
-              scientist shares the same vault.
+              scientist shares the same vault. An edit waits for any sighting in progress to finish, so every word-piece of one answer is
+              read under the same edits.
             </dd>
             <dt>caveat</dt>
             <dd>

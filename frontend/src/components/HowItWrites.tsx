@@ -274,8 +274,9 @@ export const WritingApparatus: React.FC = () => {
           For each word-piece, from the raw scores z of the model’s last layer: the presence penalty, z − p for each piece already
           written (once each; the prompt’s pieces do not count); then z / T; then only the k highest; then softmax; then the fewest
           whose odds add up to top-p, renormalised; drawn by torch.multinomial after torch.manual_seed(seed) (interp_engine
-          steer.generate_stream, _sample_next). Greedy is the argmax of z after the penalty, as the study wrote. Every field is sent:
-          a blank one would take the checkpoint’s value without saying so.
+          steer.generate_stream, _sample_next). Greedy is the argmax of z after the penalty, as the answers the study read its lenses on were written (E3, R1). Every
+          field is sent, and the server passes each one on: interp-engine itself would fill a missing one from the checkpoint’s
+          own values (below), so none is ever left to it.
         </dd>
         <dt>the model’s own</dt>
         <dd>

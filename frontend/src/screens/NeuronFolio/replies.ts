@@ -82,6 +82,13 @@ export interface Readers {
   scoreKind: "coupling" | "direct";
   hop: number | null;
   topK: number | null;
+  /** the server read the exact word-piece ids sent (token_ids_given); false: it read the prompt's text; null: not said (an
+   * older server, which reads the text) */
+  idsGiven: boolean | null;
+  /** the position it read at, counting from 0 (read_pos); null = not sent */
+  readPos: number | null;
+  /** whether the trace read a nudged model (steered: always false, the trace takes no nudge); null = not sent */
+  steered: boolean | null;
   raw: unknown;
 }
 
@@ -119,6 +126,9 @@ export function parseReaders(d: unknown): Readers | null {
     scoreKind: o.score_kind === "direct" ? "direct" : "coupling",
     hop: num(o.max_layer_hop),
     topK: num(o.top_k),
+    idsGiven: typeof o.token_ids_given === "boolean" ? o.token_ids_given : null,
+    readPos: num(o.read_pos),
+    steered: typeof o.steered === "boolean" ? o.steered : null,
     raw: d,
   };
 }

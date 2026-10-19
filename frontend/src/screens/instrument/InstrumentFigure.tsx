@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { Sighting } from "../../store/useTheodoliteStore";
+import { chosenOf, isChosenRow, type Sighting } from "../../store/useTheodoliteStore";
 import { bare } from "../../lib/words";
 import { lensBand } from "../../lib/lens";
 import {
@@ -278,11 +278,11 @@ export const InstrumentFigure: React.FC<{
         ) : null}
       </svg>
       <figcaption style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "6px 22px", fontSize: 15, color: "#6B5D4D", marginTop: 4 }}>
-        <span>bottom: the word {sighting.readAt != null ? `“${bare(sighting.readAt)}”` : "read"} arrives</span>
+        <span>bottom: the word-piece {sighting.readAt != null ? `“${bare(sighting.readAt)}”` : "read"} arrives</span>
         <span aria-hidden="true" style={{ color: "#A07A2E" }}>
           ◆
         </span>
-        <span>top: it will say {topOf(59) != null ? `“${bare(topOf(59))}”` : sighting.continuation ? `“${bare(sighting.continuation.trim().split(/\s+/)[0])}”` : "its next word"}</span>
+        <span>top: {topWords(sighting)}</span>
         {turned ? (
           <button type="button" className="btn-link" style={{ fontSize: 15, minHeight: 0, padding: 0 }} onClick={reset}>
             reset the view
@@ -292,6 +292,21 @@ export const InstrumentFigure: React.FC<{
     </figure>
   );
 };
+
+/**
+ * The top of the figure: the word-piece layer 60 chose here, matched by id, and its likeliest when that is another
+ * (drawn by chance, after a repeat penalty, or a near-tie when read again). Without a recorded choice (the study's
+ * sighting, an older server) only its likeliest is named: never the answer's first word, which is the wrong word for
+ * any later word-piece.
+ */
+function topWords(s: Sighting): string {
+  const L = s.layers[59];
+  const top = L?.lensTop?.[0]?.token ?? null;
+  const c = chosenOf(s);
+  if (!c) return top != null ? `its likeliest “${bare(top)}”` : "its own odds";
+  const chose = c.endMark ? "it ended its turn" : `it chose “${bare(c.token)}”`;
+  return L && top != null && !isChosenRow(s, L, 0) ? `${chose}; its likeliest was “${bare(top)}”` : chose;
+}
 
 function zoomCentre(b: { x: number; y: number; w: number }, factor: number) {
   const w = Math.max(MIN_W, Math.min(FULL, b.w / factor));

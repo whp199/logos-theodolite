@@ -6,20 +6,28 @@ import {
   DEFAULT_NUDGE_LAYERS,
   N_LAYERS,
   VOCAB,
+  chosenOf,
+  chosenPhrase,
+  exportAnswer,
   exportSighting,
+  isChosenRow,
   loudestOf,
   maxAct,
+  readWhere,
   retakeIfLive,
+  useShownSet,
   useTheodoliteStore,
   type LayerReading,
   type PoleReading,
   type Sighting,
   type TokenReading,
 } from "../store/useTheodoliteStore";
-import { certainty, comma, gloss, kindOf, minus, ms, signed, wp } from "../lib/words";
+import { certainty, comma, firstWords, gloss, kindOf, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
 import { describeFrame } from "../lib/frame";
 import { lensLabel, useReadingLens } from "../lib/lens";
+import { OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
 import { Dial } from "./layerLeaf/Dial";
+import { AnswerMarks, CHOSEN_MARK, READ_MARK, useAnswerPieces } from "./layerLeaf/AnswerMarks";
 import {
   L36_COS_ATTN,
   L36_COS_FFN,
@@ -106,10 +114,41 @@ const Mono: React.FC<{ children: React.ReactNode }> = ({ children }) => <span cl
 const two = (v: number) => minus(v.toFixed(2));
 const fmt3 = (v: number) => minus(v.toPrecision(3));
 const top1 = (L: LayerReading): TokenReading | null => (L.lensTop && L.lensTop.length ? L.lensTop[0] : null);
-const lastWord = (s: Sighting) => (s.readAt ? wp(s.readAt) : "the last word-piece");
-const firstWordSaid = (s: Sighting) => {
-  const w = s.continuation.trim().split(/\s+/)[0];
-  return w ? `“${w}”` : null;
+/** The word-piece read, quoted; a new line or a bare space read later in the answer says which (“¶”, “␣”). */
+const lastWord = (s: Sighting) => (s.readAt ? pieceWord(s.readAt) : "the last word-piece");
+/**
+ * What it went on to say from here, by the piece this position chose (matched by id, never by the continuation's first
+ * word, which is the wrong word for every later word-piece): “It chose “a”.” The recorded sighting keeps no chosen id, so
+ * its recorded words follow instead (it was read where it chose its first word-piece, greedily).
+ */
+const saidHere = (s: Sighting): string | null => {
+  const c = chosenOf(s);
+  if (c) return c.endMark ? "Here it ended its turn." : `It chose ${pieceWord(c.token)}.`;
+  const went = s.continuation.trim();
+  return s.tokenIndex === 0 && went ? `It went on “… ${firstWords(went, 40)}”.` : null;
+};
+/** Where the sighting was read, for a line of facts: “read at “I”, in its reply “Hi! I”” or “read at “am”, the 2nd
+ * word-piece of its own answer” (readWhere's phrase, with the piece named once). */
+const readFact = (s: Sighting): string => {
+  const w = readWhere(s);
+  const at = s.readAt != null ? pieceWord(s.readAt) : "the last word-piece";
+  return w.k >= 1 ? `read at ${at}, the ${ordinal(w.k)} word-piece of its own answer` : `read at ${at}${w.phrase}`;
+};
+/**
+ * How long it took, named for what was timed: a streamed sighting says how long this word-piece took to analyse and how far
+ * into the request it came (writing, reading again and the word-pieces before it included); an older one, its whole sweep.
+ */
+const surveyedIn = (s: Sighting): string => {
+  const t = s.timing;
+  if (t?.analyseMs != null) {
+    return `${N_LAYERS} layers analysed in ${ms(t.analyseMs)}${t.totalMs != null ? `, ${ms(t.totalMs)} after it was asked` : ""}`;
+  }
+  return s.elapsedMs != null ? `${N_LAYERS} layers surveyed in ${ms(s.elapsedMs)}` : `${N_LAYERS} layers surveyed`;
+};
+/** Drawn by chance (or with a repeat penalty): the server's echo says so; greedy, as the study wrote, needs no line here. */
+const drawn = (s: Sighting) => {
+  const g = s.generation;
+  return g != null && g.source !== "recorded" && (!g.greedy || (g.presencePenalty ?? 0) !== 0) ? g : null;
 };
 const recallOf = (share: number | null) => (share == null ? null : 100 - Math.round((1 - share) * 100));
 
@@ -204,54 +243,137 @@ const Breadcrumb: React.FC<{ no: number }> = ({ no }) => (
   </nav>
 );
 
+/** `text` with its last `tail` letters underlined in gilt, when it ends with them: the word read, at the first word-piece. */
+const withReadTail = (text: string, tail: string): React.ReactNode =>
+  tail !== "" && text.endsWith(tail) ? (
+    <>
+      {text.slice(0, text.length - tail.length)}
+      <span style={READ_MARK}>{tail}</span>
+    </>
+  ) : (
+    text
+  );
+
+/**
+ * What was asked and what it wrote, with the word-piece read here underlined in gilt and the one chosen here marked in red;
+ * the system prompt when there was one; and, when more than one word-piece of the answer was sighted, a step to the
+ * word-piece before or after, so the leaf follows one layer along the answer.
+ */
 const AskedStrip: React.FC<{ s: Sighting }> = ({ s }) => {
   const label: React.CSSProperties = { ...SMALL_CAPS, letterSpacing: "0.16em", fontSize: 16, color: MUTED };
-  const read = s.readAt ? s.readAt.replace(/^\s+/, "") : "";
-  const begun = s.answerBegins;
-  const underline = read !== "" && begun.endsWith(read);
+  const k = s.tokenIndex;
+  // at the first word-piece the piece read is the prompt's own last: in the begun answer, or the question's end when it was
+  // sent bare (as a chat with no begun answer, the template's own closing mark is read, which is not on the page)
+  const read = k === 0 && s.readAt ? s.readAt.replace(/^\s+/, "") : "";
+  const begun = s.answerBegins.trim();
+  const bareQuestion = !begun && !s.chatWrapped;
+  const readShown = read !== "" && (begun ? begun.endsWith(read) : bareQuestion && s.question.trim().endsWith(read));
+  const pieces = useAnswerPieces(s);
+  const set = useShownSet();
+  const pickToken = useTheodoliteStore((st) => st.pickToken);
   const went = s.continuation.trim();
   const { lens } = useReadingLens(s);
+  const chose = chosenPhrase(s);
   const facts = [
-    `read at the word ${lastWord(s)}`,
-    s.elapsedMs != null ? `${N_LAYERS} layers surveyed in ${ms(s.elapsedMs)}` : `${N_LAYERS} layers surveyed`,
+    readFact(s),
+    ...(chose ? [chose] : []),
+    surveyedIn(s),
     lensLabel(lens),
   ];
   if (s.source === "fixture") facts.push("the study’s recorded sighting, taken through the same lens");
   if (s.isNudged) facts.push("a nudged sighting");
+  // stepping along the answer goes through the word-pieces sighted so far, in order
+  const sighted = set
+    ? Object.keys(set.sightings)
+        .map(Number)
+        .sort((x, y) => x - y)
+    : [];
+  const before = [...sighted].reverse().find((i) => i < k);
+  const after = sighted.find((i) => i > k);
+  const g = drawn(s);
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        alignItems: "baseline",
-        gap: "6px 22px",
-        padding: "14px 0 16px",
-        borderTop: `1px solid ${HAIR_SOFT}`,
-        borderBottom: `1px solid ${HAIR_SOFT}`,
-      }}
-    >
-      <span style={label}>you asked</span>
-      <span style={{ fontSize: 21 }}>“{s.question}”</span>
-      {begun ? (
-        <>
-          <span style={label}>its answer began</span>
-          <span style={{ fontSize: 21, fontStyle: "italic" }}>
-            “
-            {underline ? (
+    <div style={{ padding: "14px 0 16px", borderTop: `1px solid ${HAIR_SOFT}`, borderBottom: `1px solid ${HAIR_SOFT}` }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "6px 22px" }}>
+        <span style={label}>you asked</span>
+        <span style={{ fontSize: 21 }}>“{bareQuestion ? withReadTail(s.question.trim(), read) : s.question}”</span>
+        {s.system ? (
+          <>
+            <span style={label}>its system prompt</span>
+            <span style={{ fontSize: 17, color: MUTED }} title={s.system}>
+              “{firstWords(s.system, 140)}”
+            </span>
+          </>
+        ) : null}
+        {begun ? (
+          <>
+            <span style={label}>its answer began</span>
+            <span style={{ fontSize: 21, fontStyle: "italic" }}>“{withReadTail(begun, read)}”</span>
+          </>
+        ) : null}
+        <span style={label}>it went on</span>
+        <span style={{ fontSize: 21, fontStyle: "italic" }}>
+          {pieces ? (
+            pieces.length ? (
               <>
-                {begun.slice(0, begun.length - read.length)}
-                <span style={{ borderBottom: "2px solid #A07A2E" }}>{read}</span>
+                “…
+                <AnswerMarks s={s} pieces={pieces} />”
               </>
             ) : (
-              begun
-            )}
-            ”
+              <span style={{ fontSize: 17, fontStyle: "normal", color: MUTED }}>nothing: it was asked to write no word-piece</span>
+            )
+          ) : went ? (
+            `“… ${went}”`
+          ) : (
+            <Missing what="no continuation recorded" />
+          )}
+        </span>
+        <span style={{ marginLeft: "auto", fontSize: 15, color: MUTED, ...NUM }}>{facts.join(" · ")}</span>
+      </div>
+      {pieces && pieces.length ? (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 18px", paddingTop: 8, fontSize: 15, color: MUTED }}>
+          <span>
+            {k >= 1 || readShown ? (
+              <>
+                <span style={{ ...READ_MARK, color: "#2B2117" }}>gilt</span>: the word-piece it had just read
+                {k === 0 ? ", the last of what it was given" : ""}
+              </>
+            ) : begun ? (
+              `it had just read ${lastWord(s)}, the last word-piece of its begun answer`
+            ) : s.chatWrapped ? (
+              "it had just read the end of the chat template, which the page does not show"
+            ) : (
+              `it had just read ${lastWord(s)}, the last word-piece of your question`
+            )}{" "}
+            · <span style={{ ...CHOSEN_MARK, color: "#2B2117" }}>red</span>: the one it chose there · word-piece {k + 1} of {pieces.length}
           </span>
-        </>
+          {sighted.length > 1 ? (
+            <span style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+              <button
+                type="button"
+                className="btn-ghost plain"
+                disabled={before === undefined}
+                onClick={() => before !== undefined && pickToken(before)}
+              >
+                ← earlier word-piece
+              </button>
+              <button type="button" className="btn-ghost plain" disabled={after === undefined} onClick={() => after !== undefined && pickToken(after)}>
+                later word-piece →
+              </button>
+            </span>
+          ) : null}
+        </div>
       ) : null}
-      <span style={label}>it went on</span>
-      <span style={{ fontSize: 21, fontStyle: "italic" }}>{went ? `“… ${went}”` : <Missing what="no continuation recorded" />}</span>
-      <span style={{ marginLeft: "auto", fontSize: 15, color: MUTED, ...NUM }}>{facts.join(" · ")}</span>
+      {g ? (
+        <p style={{ margin: "8px 0 0", fontSize: 15, color: MUTED, maxWidth: 980 }}>
+          {!g.greedy ? <OneDrawLine generation={g} /> : null}
+          {(g.presencePenalty ?? 0) !== 0 ? (
+            <>
+              {" "}
+              <PenaltyLine penalty={g.presencePenalty as number} />
+            </>
+          ) : null}
+        </p>
+      ) : null}
     </div>
   );
 };
@@ -266,11 +388,19 @@ function thinkingClause(c: Ctx, lensName: string): string {
   const w = wordOrPicto(t.token);
   const p = t.prob;
   if (c.no >= N_LAYERS) {
-    if (p == null) return `the model’s likeliest next word is ${w}`;
-    if (p < 0.1) return `the model’s own odds are spread thin: its likeliest word, ${w}, holds less than a tenth of them`;
-    if (p < 0.2) return `the model’s own odds are divided: its likeliest word, ${w}, holds ${pct1(p)}`;
-    if (p < 0.6) return `the model’s own odds lean toward ${w}, which holds ${pct1(p)} of them`;
-    return `the model is all but certain of ${w}, which holds ${pct1(p)} of its odds`;
+    // the likeliest and the piece it chose are two roles: by chance, a repeat penalty or a near-tie they part
+    const chosen = chosenOf(c.s);
+    const other =
+      chosen && !isChosenRow(c.s, c.L, 0)
+        ? chosen.endMark
+          ? ", yet here it ended its turn"
+          : `, yet it chose ${wordOrPicto(chosen.token)}`
+        : "";
+    if (p == null) return `the model’s likeliest next word is ${w}${other}`;
+    if (p < 0.1) return `the model’s own odds are spread thin: its likeliest word, ${w}, holds less than a tenth of them${other}`;
+    if (p < 0.2) return `the model’s own odds are divided: its likeliest word, ${w}, holds ${pct1(p)}${other}`;
+    if (p < 0.6) return `the model’s own odds lean toward ${w}, which holds ${pct1(p)} of them${other}`;
+    return `the model is all but certain of ${w}, which holds ${pct1(p)} of its odds${other}`;
   }
   const through = `through the ${lensName} lens`;
   if (p == null) return `${through} the strongest word is ${w}`;
@@ -511,11 +641,13 @@ function buildRaw(c: Ctx): string {
         layer: L.no,
         index: idx,
         is_global_attention: L.isGlobal,
+        token_index: s.tokenIndex,
         read_at: s.readAt,
         target_pos: s.readPos,
         n_tokens: s.nTokens,
         first_ids: s.firstIds,
         generated: s.continuation,
+        generation: s.generation,
         jpp_top5: L.lensTop ? L.lensTop.map((t) => [t.token, t.prob]) : null,
         m1_corrected_ffn_dominance: L.ffnShare,
         m1_tool_ffn_dominance: L.ffnShareBeforeFix,
@@ -543,13 +675,26 @@ function buildRaw(c: Ctx): string {
         layer: L.no,
         index: idx,
         is_global_attention: L.isGlobal,
-        read_at: s.readAt,
-        target_pos: s.readPos,
-        n_tokens: s.nTokens,
+        request_id: s.requestId,
+        token_index: s.tokenIndex,
+        read_pos: s.readPos,
+        read_token: s.readAt,
+        read_token_id: s.readAtId,
+        prompt_len: s.promptLen,
+        kinship_n_states: s.nTokens,
+        chosen: s.chosen,
+        generation: s.generation,
+        recapture_check: s.recaptureCheck,
+        rank_lookahead: s.rankLookahead,
+        centre_kind: s.centreKind,
+        timing: s.timing,
         generated: s.continuation,
         is_steered: s.isNudged,
         jpp_top_tokens: L.lensTop ? L.lensTop.map((t) => [t.token, t.prob, t.logit]) : null,
+        jpp_top_ids: L.lensTopIds,
         naive_top_token: L.eyeTop,
+        naive_top_id: L.eyeTopId,
+        rank_from_next: L.rankFromNext,
         ffn_dominance: L.ffnShare,
         attn_norm: L.attnNorm,
         ffn_norm: L.ffnNorm,
@@ -581,6 +726,8 @@ const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
   const [rawOpen, setRawOpen] = useState(false);
   const json = rawOpen ? buildRaw(c) : "";
   const pn = L.xyz ? Math.hypot(L.xyz[0], L.xyz[1], L.xyz[2]) : null;
+  const set = useShownSet();
+  const nSighted = set ? Object.keys(set.sightings).length : 0;
   return (
     <Apparatus
       title={
@@ -644,8 +791,13 @@ const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
           {rawOpen ? "hide the raw readout" : "show the raw readout"}
         </button>
         <button type="button" className="btn-ghost" onClick={() => exportSighting(s)}>
-          export the sighting (.json)
+          {s.source === "live" && nSighted > 1 ? "export this word-piece’s sighting (.json)" : "export the sighting (.json)"}
         </button>
+        {set && nSighted > 1 ? (
+          <button type="button" className="btn-ghost" onClick={() => exportAnswer(set)}>
+            export every word-piece’s sighting, all {nSighted} (.json)
+          </button>
+        ) : null}
       </div>
       {rawOpen ? <pre className="raw">{json}</pre> : null}
     </Apparatus>
@@ -657,9 +809,23 @@ const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
 const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
   const { L, s, no, live } = c;
   const top = L.lensTop;
-  const shown = top ? top.filter((t) => !isPicto(t.token)) : [];
-  const pictos = top ? top.map((t, i) => ({ t, i })).filter((x) => isPicto(x.t.token)) : [];
-  const said = firstWordSaid(s);
+  const at60 = no >= N_LAYERS;
+  // each row keeps its rank in the readout, so the piece it chose is found by id (isChosenRow), pictographs or not
+  const ranked = top ? top.map((t, rank) => ({ t, rank })) : [];
+  const shown = ranked.filter((r) => !isPicto(r.t.token));
+  const pictos = ranked.filter((r) => isPicto(r.t.token));
+  const chosen = chosenOf(s);
+  const chosenListed = !!chosen && ranked.some((r) => isChosenRow(s, L, r.rank));
+  // at layer 60 two roles: its likeliest, and the word-piece it chose (they part by chance, a repeat penalty or a near-tie)
+  const roleOf = (rank: number): string | null => {
+    if (!at60 || !chosen) return null;
+    if (isChosenRow(s, L, rank)) return rank === 0 ? "its likeliest, and the word it chose" : "the word it chose";
+    return rank === 0 ? "its likeliest" : null;
+  };
+  const said = saidHere(s);
+  const g = s.generation;
+  const sampled = !!g && g.source !== "recorded" && !g.greedy;
+  const penalised = !!g && g.source !== "recorded" && (g.presencePenalty ?? 0) !== 0;
   const kept = s.layers.filter((l) => l.lensTop && l.lensTop.length).map((l) => l.no);
   const nearest = (() => {
     if (top || kept.length === 0) return [] as number[];
@@ -669,41 +835,77 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
   })();
   const logitsKnown = !!top && top.length > 0 && top.every((t) => t.logit != null);
   const { lens } = useReadingLens(s);
+  const roleStyle = (role: string): React.CSSProperties => ({
+    ...SMALL_CAPS,
+    letterSpacing: "0.14em",
+    fontSize: 15,
+    color: role === "its likeliest" ? MUTED : "#8F2B1E",
+  });
 
   return (
     <section aria-labelledby="think-head" style={{ flex: "999 1 560px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="row-between" style={{ gap: "6px 24px" }}>
         <h2 id="think-head" className="h-sec">
-          i · {no >= N_LAYERS ? "its own odds" : "through the lens"}
+          i · {at60 ? "its own odds" : "through the lens"}
         </h2>
         {top && top[0]?.prob != null ? (
-          <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>{certainty(top[0].prob, no >= N_LAYERS)}</span>
+          <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>{certainty(top[0].prob, at60)}</span>
         ) : null}
       </div>
       {top ? (
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {shown.map((t, i) => (
+          {shown.map(({ t, rank }) => {
+            const role = roleOf(rank);
+            return (
+              <div
+                key={`${t.token}-${rank}`}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) 72px",
+                  gap: "2px 14px",
+                  alignItems: "baseline",
+                  padding: "8px 0 10px",
+                  borderBottom: `1px solid ${HAIR_FAINT}`,
+                }}
+              >
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "2px 14px", minWidth: 0 }}>
+                  <Wp token={t.token} style={{ fontSize: 28, lineHeight: 1.2, ...(role && role !== "its likeliest" ? CHOSEN_MARK : {}) }} />
+                  {role ? <span style={roleStyle(role)}>{role}</span> : null}
+                  <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>{gloss(t.token)}</span>
+                </div>
+                <span style={{ textAlign: "right", fontSize: 17, ...NUM }}>{t.prob != null ? pct1(t.prob) : <M c={c} />}</span>
+                <div aria-hidden="true" className="bar-track" style={{ gridColumn: "1 / -1" }}>
+                  <div className="bar-fill" style={{ width: `${t.prob != null ? Math.round(t.prob * 1000) / 10 : 0}%` }} />
+                </div>
+              </div>
+            );
+          })}
+          {at60 && chosen && !chosenListed ? (
             <div
-              key={`${t.token}-${i}`}
               style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) 72px",
-                gap: "2px 14px",
+                display: "flex",
+                flexWrap: "wrap",
                 alignItems: "baseline",
+                gap: "2px 14px",
                 padding: "8px 0 10px",
                 borderBottom: `1px solid ${HAIR_FAINT}`,
               }}
             >
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "2px 14px", minWidth: 0 }}>
-                <Wp token={t.token} style={{ fontSize: 28, lineHeight: 1.2 }} />
-                <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>{gloss(t.token)}</span>
-              </div>
-              <span style={{ textAlign: "right", fontSize: 17, ...NUM }}>{t.prob != null ? pct1(t.prob) : <M c={c} />}</span>
-              <div aria-hidden="true" className="bar-track" style={{ gridColumn: "1 / -1" }}>
-                <div className="bar-fill" style={{ width: `${t.prob != null ? Math.round(t.prob * 1000) / 10 : 0}%` }} />
-              </div>
+              {chosen.endMark ? (
+                <span style={{ fontSize: 20, ...CHOSEN_MARK }}>its end of turn</span>
+              ) : (
+                <Wp token={chosen.token} style={{ fontSize: 28, lineHeight: 1.2, ...CHOSEN_MARK }} />
+              )}
+              <span style={roleStyle("the word it chose")}>the word it chose</span>
+              <span style={{ fontSize: 16, color: MUTED, ...NUM }}>
+                not among the five shown here:{" "}
+                {chosen.modelRank != null ? `its ${ordinal(chosen.modelRank)} likeliest` : "its place in its odds was not sent"}
+                {chosen.modelProb != null ? `, ${pct(chosen.modelProb)} of its own odds` : ""}
+                {chosen.source === "given" ? ", in the re-reading" : ", as it wrote"}
+                {sampled ? "; the sampler drew it" : ""}.
+              </span>
             </div>
-          ))}
+          ) : null}
         </div>
       ) : (
         <div className="stack" style={{ gap: 6, padding: "8px 0 10px", borderBottom: `1px solid ${HAIR_FAINT}` }}>
@@ -729,29 +931,44 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
           ) : null}
         </div>
       )}
-      {pictos.map(({ t, i }) => (
-        <p key={`picto-${i}`} style={{ margin: 0, fontSize: 15, color: MUTED }}>
-          {capital(`a ${ORDW[i] ?? `${i + 1}th`}`)} word-piece, {pictoWords(t.token)}, held {t.prob != null ? pct1(t.prob) : <M c={c} />};
-          it is described here rather than shown.
+      {pictos.map(({ t, rank }) => (
+        <p key={`picto-${rank}`} style={{ margin: 0, fontSize: 15, color: MUTED }}>
+          {capital(`a ${ORDW[rank] ?? `${rank + 1}th`}`)} word-piece, {pictoWords(t.token)}, held {t.prob != null ? pct1(t.prob) : <M c={c} />};
+          it is described here rather than shown{roleOf(rank) ? `. It is ${roleOf(rank)}` : ""}.
         </p>
       ))}
       <Rubric style={{ margin: "2px 0 0" }}>
-        {no >= N_LAYERS ? (
+        {at60 ? (
           <>
-            At the last layer no lens stands between: these are the model’s own odds for its next word.
-            {said ? ` In the end it said ${said}.` : ""}{" "}
+            At the last layer no lens stands between: these are the model’s own odds for its next word-piece
+            {sampled && penalised
+              ? ", before the repeat penalty and the sampler"
+              : sampled
+                ? ", before the sampler drew one by chance"
+                : penalised
+                  ? ", before the repeat penalty"
+                  : ""}
+            .{said ? ` ${said}` : ""}{" "}
+          </>
+        ) : s.tokenIndex >= 1 ? (
+          // inside its own answer the study measured the lens apart from prose: the red line below (LensCaution) gives that
+          <>
+            These are the words read from this layer’s stream through the {lens.name} lens: its guess at what the model would say if it
+            stopped here. Take them as glimpses, not a forecast.{said ? ` ${said}` : ""}{" "}
           </>
         ) : (
           <>
             These are the words read from this layer’s stream through the {lens.name} lens: its guess at what the model would say if it
             stopped here. Take them as glimpses, not a forecast: on ordinary prose, the lens’s first choice{" "}
             {no <= 50 ? "at this depth matched" : "matched"} the model’s real next word at most about 5% of the time
-            {no <= 50 ? "" : " up to layer 50"} (E3).{said ? ` In the end it said ${said}.` : ""}{" "}
+            {no <= 50 ? "" : " up to layer 50"} (E3).{said ? ` ${said}` : ""}{" "}
           </>
         )}
         <a href={href.lexicon("lens")}>What is a lens?</a>
       </Rubric>
       <LensCaution sighting={s} no={no} style={{ margin: 0 }} />
+      {/* the end of the chat template, with no begun answer: the study never read the lens there */}
+      {!at60 && readWhere(s).role === "template_end" ? <TemplateEndCaution /> : null}
       <Apparatus title="the readout" label="Apparatus for the readout">
         <dl className="dl num">
           <dt>readout</dt>
@@ -1301,7 +1518,11 @@ const Ranks: React.FC<{ c: Ctx }> = ({ c }) => {
           <dt>matched control</dt>
           <dd style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "4px 14px" }}>
             <ControlSighting layerIdx={c.idx} />
-            <span style={{ color: MUTED }}>a nameless or background condition, read at the same word-piece.</span>
+            {s.tokenIndex === 0 ? (
+              <span style={{ color: MUTED }}>
+                a nameless or background condition, read where it chose its first word-piece, as this sighting is.
+              </span>
+            ) : null}
           </dd>
         </dl>
       </Apparatus>
@@ -1365,6 +1586,9 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
   const byWrite = c.s.poleRanking === "write";
   const loudScores = loud?.lens && loud.lens.every((t) => t.logit != null) ? loud.lens.map((t) => (t.logit as number).toFixed(2)) : null;
   const touching = threads.filter((t) => t.src.idx === idx || t.dst.idx === idx);
+  // a trace by hand reads the exact ids up to the position read, as the instrument now sends it (store, traceReaders)
+  const traceIds = c.live && c.s.contextIds && c.s.contextIds.length ? c.s.contextIds : null;
+  const traceText = traceIds ? `"token_ids": [${traceIds.join(", ")}]` : `"prompt": "[THIS SIGHTING]"`;
   const srcLayers = threads.map((t) => t.src.idx + 1);
 
   const aside = poles.length
@@ -1797,12 +2021,15 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             <>
               <dt>by hand</dt>
               <dd style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-                <span style={{ color: MUTED }}>the loudest neuron, three ways; these count layers from 0:</span>
+                <span style={{ color: MUTED }}>
+                  the loudest neuron, three ways; these count layers from 0
+                  {traceIds ? "; the trace reads this sighting’s exact word-piece ids, up to the one read here, without any nudge" : ""}:
+                </span>
                 <pre style={PRE}>
                   {`DESCRIBE POLE LAYER ${idx} SLOT ${loud.neuron} POLARITY ${loud.face > 0 ? "+" : "-"}
 inspect_pole(layer=${idx}, neuron_idx=${loud.neuron}, polarity=${loud.face > 0 ? "1.0" : "-1.0"})
 POST /api/scientist/trace_readers
-{"layer": ${idx}, "neuron_idx": ${loud.neuron}, "polarity": ${loud.face > 0 ? "1.0" : "-1.0"}, "max_layer_hop": 6, "top_k": 10, "prompt": "[THIS SIGHTING]"}`}
+{"layer": ${idx}, "neuron_idx": ${loud.neuron}, "polarity": ${loud.face > 0 ? "1.0" : "-1.0"}, "max_layer_hop": 6, "top_k": 10, ${traceText}}`}
                 </pre>
               </dd>
             </>
@@ -1859,7 +2086,9 @@ const Kinship: React.FC<{ c: Ctx }> = ({ c }) => {
     () => (kinship && kinship.length === N_LAYERS * N_LAYERS ? kinship.slice(idx * N_LAYERS, (idx + 1) * N_LAYERS) : null),
     [kinship, idx],
   );
-  const words = s.nTokens != null ? `the ${comma(s.nTokens)} word-pieces` : "the word-pieces";
+  // CKA runs over every position read up to this one (kinship_n_states = read_pos + 1), the answer's own pieces included
+  const words =
+    s.nTokens != null ? `the ${comma(s.nTokens)} word-pieces of this conversation read up to here` : "the word-pieces of this conversation read up to here";
   const beforeBos = !c.live;
 
   const facts = useMemo(() => {
@@ -1939,7 +2168,7 @@ const Kinship: React.FC<{ c: Ctx }> = ({ c }) => {
         )}
       </p>
       <Rubric style={{ maxWidth: 920 }}>
-        Each cell is one layer, shaded by how closely it arranges {words} of this conversation the way layer {no} does{" "}
+        Each cell is one layer, shaded by how closely it arranges {words} the way layer {no} does{" "}
         <span style={{ fontStyle: "normal" }}>(linear CKA, where 1 is the same arrangement)</span>. Darker gilt is closer kin.
         {beforeBos ? (
           <>
@@ -2019,8 +2248,18 @@ const Kinship: React.FC<{ c: Ctx }> = ({ c }) => {
           <dt>measure</dt>
           <dd>
             linear CKA (Kornblith et al. 2019) [13]: CKA(K, L) = ⟨K̃, L̃⟩ / (‖K̃‖ · ‖L̃‖), where K = X X<sup>⊤</sup> is the Gram matrix of one
-            layer’s {s.nTokens != null ? comma(s.nTokens) : ""} word-piece states <Mono>resid_post</Mono>, centred over the word-pieces, and
-            K̃ = HKH.
+            layer’s word-piece states <Mono>resid_post</Mono>
+            {s.nTokens != null ? (
+              <>
+                {" "}
+                over the {comma(s.nTokens)} word-pieces read up to here (positions 0 to {s.readPos ?? comma(s.nTokens - 1)}
+                {s.tokenIndex >= 1
+                  ? `, the prompt and the first ${s.tokenIndex} word-piece${s.tokenIndex === 1 ? "" : "s"} of its answer`
+                  : ""}
+                )
+              </>
+            ) : null}
+            , centred over the word-pieces, and K̃ = HKH.
           </dd>
           <dt>this row</dt>
           <dd>

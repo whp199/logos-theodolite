@@ -246,7 +246,7 @@ def record_mode(repo: Path, out_path: Path, cases: List[str]) -> int:
         "repo": str(repo),
         "git_head": head,
         "dirty": dirty,
-        "torch": torch.__version__,
+        "torch": str(torch.__version__),
         "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
         "cases": list(flat),
     }

@@ -1,6 +1,6 @@
 import React from "react";
 import { Apparatus, Missing } from "./kit";
-import { AnswerPositionCaution, NotAMatchedPair, OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
+import { NotAMatchedPair, OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
 import { ms, pct, pieceWord } from "../lib/words";
 import {
   CONNECTION_CLOSED,
@@ -302,7 +302,6 @@ export const WordsItWrote: React.FC<{
         </p>
       ) : null}
       {note ? <p className="went-note">{note}</p> : null}
-      <AnswerPositionCaution k={k} />
       {k === 0 && readWhere(s).role === "template_end" ? <TemplateEndCaution /> : null}
       {sightedIdx.length > 1 ? <NotAMatchedPair /> : null}
       <Apparatus title="the word-pieces it wrote" sources={false}>

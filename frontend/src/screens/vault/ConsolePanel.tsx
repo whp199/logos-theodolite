@@ -133,7 +133,9 @@ export const ConsolePanel: React.FC = () => {
       caption = "The server refused it, in the words of larql_vault.py.";
     } else if (pending) {
       ph = LIVE_PH;
-      phNote = "Sent. Each statement waits its turn behind any sighting under the server’s one GPU lock.";
+      phNote =
+        "Sent. Each statement waits its turn behind any sighting under the server’s one GPU lock. A sighting of every word-piece " +
+        "an answer holds can take a minute or more, and an edit never lands between two word-pieces of one answer.";
     } else {
       if (entry && !entry.ok) unanswered = entry.error ?? "no reason given";
       // no live reply: either the server is not answering, or this statement's request failed on the way
@@ -410,7 +412,10 @@ export const ConsolePanel: React.FC = () => {
           <dd>
             a statement that fits no form, or fails, comes back as HTTP 400 with the error as <span className="mono-wrap">detail</span>, or
             over the WebSocket as <span style={monoSmall}>{'{"type": "larql_result", "ok": false, "error": …}'}</span>. Each statement waits
-            its turn behind any sighting under the server’s one GPU lock.
+            its turn behind any sighting under the server’s one GPU lock, which a sweep holds from writing its answer to sending its
+            last word-piece’s sighting: with every word-piece sighted that can take a minute or more (about 0.7 s for each), and an
+            edit never lands between two word-pieces of one answer. Over the WebSocket a statement also waits behind the sweeps sent
+            before it on the same socket.
           </dd>
           <dt>recorded here</dt>
           <dd>
