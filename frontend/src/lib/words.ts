@@ -51,6 +51,25 @@ export function wp(token: string | null | undefined): string {
   return `“${t.replace(/\n/g, "↵")}”`;
 }
 
+/** A word-piece as wp() shows it, except that a piece of white space alone says which: “␣” a space, “¶” a new line. */
+export function pieceWord(token: string | null | undefined): string {
+  if (token == null) return "";
+  if (token !== "" && token.trim() === "") {
+    const lines = (token.match(/\n/g) ?? []).length;
+    return lines ? `“${"¶".repeat(lines)}”` : "“␣”";
+  }
+  return wp(token);
+}
+
+/** The first words of a text, for a name: whole words, at most `max` letters, with "…" when cut. */
+export function firstWords(text: string, max = 40): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return `${sp > 12 ? cut.slice(0, sp) : cut}…`;
+}
+
 /** The bare word-piece without quotes (leading space dropped). */
 export function bare(token: string | null | undefined): string {
   if (token == null) return "";

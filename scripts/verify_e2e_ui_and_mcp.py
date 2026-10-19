@@ -22,6 +22,14 @@ Runs inside a single process/network namespace to verify:
    file's own provenance says, with a caution, while DESCRIBE and ROLLBACK reply as before; the instrument names the
    lens the server sent (page head, status line, footer, red line) and shows the server's own record of it in its
    apparatus.
+7. A sighting of every word-piece (the CPU checks scripts/check_sampler_mirror.py, check_saved_prompts.py and
+   check_sweep_protocol.py run first, beside the lens card): over the WebSocket, a stream with a request_id gives
+   progress, the answer once, one pair per word-piece (read at P - 1 + k, reading answer[k - 1], having chosen
+   answer[k]) and an end; its token 0 is the one-pair reading byte for byte; a chat answer stops at its end of turn;
+   a sampled answer echoes its seed and the same seed writes the same words; a retake of given ids reads the same
+   states; cancels (while writing, and of a queued request) and refusals stay on their own request; the thinking
+   comparison rides on the first pair only; trace_readers on exact ids reads what the text did. Saved prompts over
+   HTTP, in a temporary file (THEODOLITE_SAVED_PROMPTS is pointed away from the reader's own list).
 """
 
 from __future__ import annotations
@@ -71,6 +79,187 @@ async def ws_sweep(ws: Any, payload: Dict[str, Any]) -> tuple[bytes, Dict[str, A
     meta = json.loads(await ws.recv())
     assert isinstance(bin_msg, bytes), f"expected a binary frame first, got {str(bin_msg)[:200]}"
     return bin_msg, meta
+
+
+def frame_floats(n_filaments: int, think: bool = False) -> int:
+    """The float32 count of one binary frame's payload (WIRE_VERSION 1), with the thinking path when it rides along."""
+    return 60 * 3 + 60 * 3 + 60 * 4 + 60 * 4 + 60 * 60 + 60 * 15 * 6 + n_filaments * 7 + (60 * 3 if think else 0)
+
+
+async def ws_collect(
+    ws: Any, rids: List[str], first: List[Any] | None = None, on_end: Any = None
+) -> Dict[str, Dict[str, Any]]:
+    """Every frame of the streamed requests `rids` until each has its theodolite_sweep_end, sorted by request:
+    progress, the answer written, the (binary, JSON) pairs, errors and the end, with "ended" giving the order the
+    ends came in. A binary frame must be followed at once by its own metadata, and every JSON frame must name one of
+    `rids`. `on_end(rid)` (async) is awaited as each end arrives."""
+    got: Dict[str, Dict[str, Any]] = {
+        r: {"progress": [], "written": None, "pairs": [], "errors": [], "end": None, "order": []} for r in rids
+    }
+    pending: bytes | None = None
+    queue = list(first or [])
+    ended: List[str] = []
+    while any(g["end"] is None for g in got.values()):
+        msg = queue.pop(0) if queue else await asyncio.wait_for(ws.recv(), timeout=900)
+        if isinstance(msg, bytes):
+            assert pending is None, "two binary frames in a row"
+            pending = msg
+            continue
+        obj = json.loads(msg)
+        rid = obj.get("request_id")
+        assert rid in got, f"a frame for an unknown request: {str(obj)[:200]}"
+        g = got[rid]
+        g["order"].append(obj.get("type"))
+        if pending is not None:
+            assert obj.get("type") == "theodolite_metadata", f"a binary frame was followed by {obj.get('type')}"
+            g["pairs"].append((pending, obj))
+            pending = None
+        elif obj["type"] == "theodolite_progress":
+            g["progress"].append(obj)
+        elif obj["type"] == "theodolite_written":
+            assert g["written"] is None, "the answer came twice"
+            g["written"] = obj
+        elif obj["type"] == "error":
+            g["errors"].append(obj)
+        elif obj["type"] == "theodolite_sweep_end":
+            g["end"] = obj
+            ended.append(rid)
+            if on_end is not None:
+                await on_end(rid)
+        else:
+            raise AssertionError(f"an unexpected frame {obj.get('type')}")
+    for g in got.values():
+        g["ended"] = ended
+    return got
+
+
+async def ws_stream(ws: Any, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """One streamed sweep (`payload` carries its request_id), collected to its end."""
+    await ws.send(json.dumps({"action": "sweep", "payload": payload}))
+    return (await ws_collect(ws, [payload["request_id"]]))[payload["request_id"]]
+
+
+async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str, Any]) -> None:
+    """A sighting of every word-piece, over the WebSocket (see the module docstring, item 7)."""
+    prompt = "The number of legs on the animal that spins webs is"
+    # the one-pair reply carries the additive fields too, read at token 0
+    assert legacy_meta["request_id"] is None and legacy_meta["token_index"] == 0 and legacy_meta["last"] is True
+    assert legacy_meta["n_to_sight"] == 1 and legacy_meta["read_pos"] == len(legacy_meta["prompt_token_ids"]) - 1
+    assert legacy_meta["answer"]["text"] == legacy_meta["generated_text"] and legacy_meta["generation"]["greedy"] is True
+    assert all("jpp_top_ids" in p and "naive_top_id" in p and "tracked_from_next" in p for p in legacy_meta["layer_plumes"])
+
+    every = await ws_stream(ws, {"request_id": "e2e-every", "prompt": prompt, "max_new_tokens": 6, "sight_every_token": True})
+    w, end, pairs = every["written"], every["end"], every["pairs"]
+    ans = w["answer"]
+    n = ans["n_written"]
+    assert n >= 3, f"the default prompt wrote only {ans['token_strs']}"
+    assert not every["errors"] and end["error"] is None and not end["cancelled"], every["errors"] or end
+    assert [p["done"] for p in every["progress"] if p["phase"] == "writing"] == list(range(1, n + 1))
+    assert every["order"].index("theodolite_written") < every["order"].index("theodolite_metadata")
+    assert w["sight_order"] == list(range(n)) and w["n_to_sight"] == n == end["n_sent"] == len(pairs)
+    P = w["prompt_len"]
+    ids = w["prompt_token_ids"] + ans["token_ids"]
+    assert ans["token_ids"] == legacy_meta["answer"]["token_ids"], "the stream wrote other words than the one-pair reply"
+    mismatch = []
+    for k, (b, m) in enumerate(pairs):
+        magic, version, _nl, _np, n_fil, flags = struct.unpack("<6I", b[:24])
+        assert magic == MAGIC_THEO and version == WIRE_VERSION and flags & 4 and not flags & 1, (k, flags)
+        assert len(b) == 24 + 4 * frame_floats(n_fil), f"pair {k}: {len(b)} bytes"
+        assert m["token_index"] == k and m["sight_index"] == k and m["last"] == (k == n - 1)
+        assert m["read_pos"] == P - 1 + k and m["read_token_id"] == ids[P - 1 + k] and m["kinship_n_states"] == P + k
+        assert m["chosen"]["token_id"] == ans["token_ids"][k] and m["chosen"]["source"] == "written"
+        # greedy with no penalty writes the step's likeliest piece
+        assert m["chosen"]["model_rank"] == 1 and m["chosen"]["sampler_prob"] is None, m["chosen"]
+        rc = m["recapture_check"]
+        assert abs(rc["chosen_logit_diff"]) < 0.5, f"pair {k}: the re-read and the writing disagree by {rc['chosen_logit_diff']}"
+        if not rc["top1_is_chosen"]:
+            mismatch.append((k, rc["top1_token"], m["chosen"]["token"], rc["chosen_logit_diff"]))
+        assert m["frame"]["centre_kind"] == "none" and m["prompt_token_ids"] == w["prompt_token_ids"]
+    assert len(mismatch) <= 1, f"the layer-60 re-read's top piece is not the piece written at {mismatch}"
+    # token 0 of the stream is the one-pair reading, float for float (only flags bit 2 differs)
+    assert pairs[0][0][24:] == legacy_bin[24:], "the stream's token 0 differs from the one-pair reading"
+    blank_first = ans["token_strs"][0].strip() == "" and n >= 2
+    merged = sum(v for p in pairs[0][1]["layer_plumes"] for v in p["tracked_from_next"].values())
+    print(f"  • every word-piece: wrote {ans['token_strs']} ({ans['stop_reason']}), {n} pairs, read at P-1+k; token 0 = "
+          f"the one-pair reading; space-then-digit rule {'took ' + str(merged) + ' ranks from the next piece' if blank_first else 'not needed'}"
+          + (f"; re-read top-1 differs at {mismatch}" if mismatch else ""))
+
+    retake = await ws_stream(ws, {"request_id": "e2e-retake", "prompt": prompt, "answer_token_ids": ans["token_ids"],
+                                  "sight_tokens": [2, 0, 99], "max_new_tokens": 6})
+    rw = retake["written"]
+    assert rw["answer"]["source"] == "given" and rw["answer"]["stop_reason"] == "given" and rw["sight_order"] == [2, 0]
+    assert [m["token_index"] for _b, m in retake["pairs"]] == [2, 0]
+    assert all(m["sight_dropped"] == [99] for _b, m in retake["pairs"])
+    assert retake["pairs"][0][0][24:] == pairs[2][0][24:], "a retake of the same ids reads other states"
+    # a given piece's odds are the re-read's own layer-60 readout
+    assert abs(retake["pairs"][0][1]["recapture_check"]["chosen_logit_diff"]) < 1e-3
+    print("  • a retake of the given ids reads the same states (word-piece 2, byte for byte); 99 dropped and reported")
+
+    turn = await ws_stream(ws, {"request_id": "e2e-turn", "prompt": "Say only the word yes.", "chat": True,
+                                "max_new_tokens": 32, "sight_tokens": [0]})
+    ta = turn["written"]["answer"]
+    assert ta["stop_reason"] == "end_mark" and ta["token_ids"][-1] in ta["stop_token_ids"] and ta["steps"][-1]["end_mark"], ta
+    assert 106 in ta["stop_token_ids"] and len(turn["pairs"]) == 1
+    print(f"  • a chat answer stops at its end of turn: {ta['token_strs']} ({ta['n_written']} of 32)")
+
+    draw = {"request_id": "e2e-draw", "prompt": prompt, "max_new_tokens": 8, "sight_tokens": [0],
+            "sampler": {"temperature": 1.0, "top_k": 64, "top_p": 0.95}}
+    d1 = await ws_stream(ws, draw)
+    g1 = d1["written"]["generation"]
+    assert g1["greedy"] is False and g1["seed_drawn"] is True and isinstance(g1["seed"], int)
+    assert g1["settings"] == {"temperature": 1.0, "top_k": 64, "top_p": 0.95, "presence_penalty": 0.0}, g1["settings"]
+    for st in d1["written"]["answer"]["steps"]:
+        assert 0.0 < st["sampler_prob"] <= 1.0 and 1 <= st["sampler_support"], st
+    d2 = await ws_stream(ws, {**draw, "request_id": "e2e-redraw", "sampler": {**draw["sampler"], "seed": g1["seed"]}})
+    assert d2["written"]["generation"]["seed"] == g1["seed"] and d2["written"]["generation"]["seed_drawn"] is False
+    assert d2["written"]["answer"]["token_ids"] == d1["written"]["answer"]["token_ids"], "the same seed wrote other words"
+    print(f"  • drawn at random (seed {g1['seed']}): {d1['written']['answer']['token_strs']}; the same seed wrote the same")
+
+    think = await ws_stream(ws, {"request_id": "e2e-think", "prompt": prompt, "max_new_tokens": 3,
+                                 "sight_every_token": True, "compare_think": True})
+    tp = think["pairs"]
+    assert len(tp) == think["written"]["n_to_sight"] >= 2
+    f0 = struct.unpack("<6I", tp[0][0][:24])
+    assert f0[5] & 1 and len(tp[0][0]) == 24 + 4 * frame_floats(f0[4], think=True)
+    assert all(not struct.unpack("<6I", b[:24])[5] & 1 and m["think_generated_text"] is None and m["think_seed"] is None
+               for b, m in tp[1:])
+    assert tp[0][1]["think_generated_text"] and tp[0][1]["think_read_token"] is not None
+    print(f"  • the thinking comparison rides on the first pair only (it read {tp[0][1]['think_read_token']!r})")
+
+    # cancels: while writing; and a queued request, dropped at once while another runs
+    await ws.send(json.dumps({"action": "sweep", "payload": {"request_id": "e2e-cancel", "prompt": prompt,
+                                                             "max_new_tokens": 64, "sight_every_token": True}}))
+    first = await asyncio.wait_for(ws.recv(), timeout=600)
+    await ws.send(json.dumps({"action": "cancel_sweep", "request_id": "e2e-cancel"}))
+    c = (await ws_collect(ws, ["e2e-cancel"], [first]))["e2e-cancel"]
+    assert c["end"]["cancelled"] is True and c["end"]["n_sent"] == len(c["pairs"]) <= 1, c["end"]
+    assert c["written"]["answer"]["stop_reason"] in ("stopped", "end_mark") and c["written"]["n_to_sight"] == 1
+    await ws.send(json.dumps({"action": "sweep", "payload": {"request_id": "e2e-long", "prompt": prompt,
+                                                             "max_new_tokens": 64, "sight_every_token": True}}))
+    await ws.send(json.dumps({"action": "sweep", "payload": {"request_id": "e2e-queued", "prompt": prompt, "max_new_tokens": 2}}))
+    await ws.send(json.dumps({"action": "cancel_sweep", "request_id": "e2e-queued"}))
+
+    async def then_stop_the_long_one(rid: str) -> None:
+        if rid == "e2e-queued":
+            await ws.send(json.dumps({"action": "cancel_sweep", "request_id": "e2e-long"}))
+
+    both = await ws_collect(ws, ["e2e-long", "e2e-queued"], on_end=then_stop_the_long_one)
+    qend, lg = both["e2e-queued"]["end"], both["e2e-long"]
+    assert qend == {"type": "theodolite_sweep_end", "request_id": "e2e-queued", "n_sent": 0, "n_to_sight": 0,
+                    "cancelled": True, "error": None}, qend
+    assert both["e2e-queued"]["order"] == ["theodolite_sweep_end"], "the cancelled queued request ran"
+    assert lg["ended"] == ["e2e-queued", "e2e-long"], f"the queued cancel waited for the running request: {lg['ended']}"
+    assert lg["end"]["cancelled"] is True
+    print(f"  • cancels: while writing ({c['written']['answer']['n_written']} written, {c['end']['n_sent']} sighted); "
+          f"a queued request dropped at once; the running one stopped ({lg['end']['n_sent']} sent)")
+
+    refused = await ws_stream(ws, {"request_id": "e2e-refuse", "max_new_tokens": 300})
+    assert refused["errors"] and refused["errors"][0]["recoverable"] and refused["end"]["error"] and refused["end"]["n_sent"] == 0
+    too_long = await ws_stream(ws, {"request_id": "e2e-too-long", "prompt": "word " * 800})
+    assert "one sweep can hold" in too_long["errors"][0]["message"], too_long["errors"]
+    b_after, m_after = await ws_sweep(ws, {"prompt": prompt, "max_new_tokens": 6})
+    assert m_after["token_index"] == 0 and b_after[24:] == legacy_bin[24:], "the socket after the refusals"
+    print("  • refusals stay on their request (error, then its end), in plain words; the socket still answers")
 
 
 def assert_base_lens(lens: Any, model_id: str | None = None) -> None:
@@ -203,6 +392,17 @@ async def main() -> int:
     )
     print("  • " + (lens_check.stdout.strip().splitlines() or ["(no output)"])[-1])
     assert lens_check.returncode == 0, f"the lens card check failed:\n{lens_check.stdout}\n{lens_check.stderr}"
+    # the sampler's mirrored odds, the saved-prompts routes and the sweep's wire protocol, on the CPU too
+    for cpu_check in ("check_sampler_mirror.py", "check_saved_prompts.py", "check_sweep_protocol.py"):
+        res = subprocess.run(
+            [sys.executable, "-I", str(ROOT_DIR / "scripts" / cpu_check)],
+            capture_output=True, text=True, timeout=600, check=False,
+        )
+        print("  • " + (res.stdout.strip().splitlines() or ["(no output)"])[-1])
+        assert res.returncode == 0, f"{cpu_check} failed:\n{res.stdout}\n{res.stderr}"
+    # the saved prompts the pages read and write here go to a temporary file, never the reader's own list
+    saved_dir = Path(tempfile.mkdtemp(prefix="theodolite_e2e_saved_"))
+    os.environ["THEODOLITE_SAVED_PROMPTS"] = str(saved_dir / "saved_prompts.json")
 
     config = uvicorn.Config(app, host=HOST, port=PORT, log_level="warning")
     server = uvicorn.Server(config)
@@ -449,6 +649,12 @@ async def main() -> int:
             assert lq["data"]["lens"] == lens, "the WebSocket larql reply names a different lens"
             print("  • WS larql DESCRIBE POLE: inspect_pole's keys, the lens named last")
 
+            # ---------------------------------------------------------------------
+            # Step 3c: a sighting of every word-piece (request ids, the stream, cancels, the sampler)
+            # ---------------------------------------------------------------------
+            print("\n[3c/4] Verifying a sighting of every word-piece over the WebSocket...")
+            await check_answer_streams(ws, bin_msg, json_msg)
+
         mcp_direct = await trace_downstream_readers(
             layer=35, neuron_idx=9482, prompt="How many legs does a spider have?", chat=True,
             assistant_prefix="A spider has", max_layer_hop=2, top_k=3, score="direct",
@@ -502,6 +708,39 @@ async def main() -> int:
         assert hyp_chat["chat"] is True
         assert_base_lens(hyp_chat.get("lens"), health["model_id"])
         print(f"  • MCP trace_downstream_readers(chat, direct) and test_motif_hypothesis(chat): ok")
+
+        # trace_readers on exact ids (a sighting's ids up to its read position) reads what the text did at token 0
+        by_text = await trace_downstream_readers(layer=35, neuron_idx=9482, prompt=json_msg["prompt"], max_layer_hop=3, top_k=5)
+        by_ids = await trace_downstream_readers(layer=35, neuron_idx=9482, prompt="", max_layer_hop=3, top_k=5,
+                                                token_ids=json_msg["prompt_token_ids"])
+        assert by_ids["token_ids_given"] is True and by_text["token_ids_given"] is False
+        assert by_ids["read_pos"] == len(json_msg["prompt_token_ids"]) - 1 == by_text["read_pos"]
+        # the ids decoded, for reading: the start mark the tokenizer added, then the text
+        assert by_ids["steered"] is False and by_ids["prompt"].endswith(json_msg["prompt"])
+        assert by_ids["top_downstream_readers"] == by_text["top_downstream_readers"], "exact ids read another stream"
+        r_ids = await client.post("/api/scientist/trace_readers", json={"layer": 35, "neuron_idx": 9482, "max_layer_hop": 3,
+                                                                         "top_k": 5, "token_ids": json_msg["prompt_token_ids"]})
+        assert r_ids.status_code == 200 and r_ids.json()["top_downstream_readers"] == by_text["top_downstream_readers"]
+        r_bad = await client.post("/api/scientist/trace_readers", json={"layer": 35, "neuron_idx": 9482, "token_ids": [2, 262144]})
+        assert r_bad.status_code == 400 and "not a word-piece id" in r_bad.text, r_bad.text
+        print("  • trace_readers on exact ids (MCP and HTTP) reads what the text read; a bad id refused in plain words")
+
+        # saved prompts, in the temporary file set at the start
+        sp = (await client.get("/api/saved_prompts")).json()
+        assert sp["file"] == os.environ["THEODOLITE_SAVED_PROMPTS"] and sp["questions"] == [] and sp["systems"] == []
+        r = await client.post("/api/saved_prompts", json={"kind": "question", "name": "Spider legs",
+                                                          "question": "How many legs does a spider have?", "chat": True})
+        assert r.status_code == 200 and r.json()["questions"][0]["chat"] is True, r.text
+        qid = r.json()["questions"][0]["id"]
+        r = await client.post("/api/saved_prompts", json={"kind": "question", "name": " spider LEGS", "question": "x"})
+        assert r.status_code == 409, r.text
+        r = await client.get("/api/saved_prompts", headers={"Origin": "https://example.com"})
+        assert r.status_code == 403, r.text
+        r = await client.get("/api/saved_prompts", headers={"Origin": f"http://{HOST}:{PORT}"})
+        assert r.status_code == 200 and len(r.json()["questions"]) == 1
+        r = await client.delete(f"/api/saved_prompts/question/{qid}")
+        assert r.status_code == 200 and r.json()["questions"] == []
+        print(f"  • saved prompts over HTTP: kept, a same name refused (409), another site refused (403), forgotten")
 
         # -------------------------------------------------------------------------
         # Step 3: Headless Chrome inspection of the instrument's pages (reader and scholar views)
@@ -823,4 +1062,12 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    argparse.ArgumentParser(
+        description="End-to-end check of the server, the MCP tools and the pages (loads the model on the GPU and serves "
+        f"on {HOST}:{PORT}: stop the running server first).",
+        epilog=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    ).parse_args()
     raise SystemExit(asyncio.run(main()))

@@ -143,3 +143,95 @@ Each sweep over WebSocket `/ws/theodolite` transmits:
      word geometry), `steering_applied`; per layer `proj_frac`, `pole_write_sizes`, `poles_ffn_explained`; per filament
      `direct_gate`, `direct_act`, `score`, `score_kind` (binary column 4 carries `score`, which is C unless
      `thread_score="direct"`).
+
+### 4.1 A sighting of every word-piece (request fields, all optional)
+
+A sweep writes an answer of n word-pieces w_0 … w_{n-1} after the prompt's P (ids 0..P-1), then reads prompt +
+w_0..w_{n-2} back in one forward, inside the same steering block as the writing. Token index k (0..n-1) is read at
+`read_pos = P - 1 + k`: the stream that has just read `read_token` (the prompt's last piece for k = 0, else w_{k-1})
+and whose layer 60 chose `chosen` = w_k. The last piece is chosen but never read; with nothing written there is one
+position, P-1, and `chosen` is null. In the runtime this is `capture_for_sweep` (write and read back once) +
+`prepare_sweep` (tracked words, the frame, the controls) + `analyse_position(k)`; `run_theodolite_sweep` is the three
+at k = 0 and gives an old caller the same numbers bit for bit (scripts/check_sweep_refactor.py checks it on the GPU).
+
+| field | default | meaning |
+|---|---|---|
+| `request_id` | null | client's id (≤ 64 chars), echoed on every frame; with it the reply is a stream (4.2) |
+| `sampler` | greedy | `{temperature 0–2 (0 = argmax), top_k 0–262144 (0 = off), top_p (0, 1] (1 = off), presence_penalty −2–2, seed 0–2^53−1 or null}`; every knob is passed explicitly (interp_engine reads a missing one as the checkpoint's T 1, top-k 64, top-p 0.95); the penalty is subtracted from pieces already written, not the prompt's; a sampled request without a seed gets one drawn and echoed |
+| `max_new_tokens` | 6 | 0–256 |
+| `stop_at_end_of_turn` | true | stop after the checkpoint's end marks (generation_config.eos_token_id: 1 `<eos>`, 106 `<turn|>`, 50 `<|tool_response>`); false: interp_engine's rule, `<eos>` only |
+| `sight_every_token` | false | one pair per written piece, the first `max_sighted` (1–64, default 64) |
+| `sight_tokens` | null | these token indices, in this order (≤ 64; repeats dropped; indices outside 0..max(n,1)−1 dropped and echoed in `sight_dropped`) |
+| `answer_token_ids` | null | a given answer (≤ 256 ids): nothing is written; the ids are read back teacher-forced (a retake), their odds taken from the re-read's layer 60 |
+| `rank_lookahead` | true | the old space-then-digit rule: where the chosen piece is blank, a tracked word's J++ rank is taken from the next position when better there (`tracked_from_next` says where); the new pages send false |
+| `centre_token_ids` | [] | matched controls as exact ids (≤ 16 lists, each non-empty), beside `centre_prompts`' texts |
+| `centre_answer` | false | centre token k ≥ 1 on the controls reading this very answer (control ids + w_0..w_{n-2}, row len(control)−1+k); without it a position past token 0 is not centred at all |
+
+Which indices are sighted: `sight_tokens` if given, else 0..min(n, max_sighted)−1 with `sight_every_token`, else
+[0]; never empty ([0] when nothing asked for exists). `prompt`, `system` and `assistant_prefix` are at most 32000
+characters, and P + max(max_new_tokens, len(answer_token_ids)) must stay within `MAX_SWEEP_POSITIONS` = 768 (a
+capture holds ~5.2 MB per position on the GPU before it moves to the CPU; the thinking prompt is held to the same).
+A refused id, control or length is answered in plain words.
+
+### 4.2 Messages, server → client
+
+Without `request_id`: exactly one (binary, JSON) pair, read at token 0, as before (with the fields below added to the
+JSON), and nothing else. With one, in this order:
+1. `{"type":"theodolite_progress","request_id","phase":"writing","done":i,"of":max_new_tokens}` after each written
+   piece; after the read-back, `{... "phase":"sighting","done":0,"of":m}`.
+2. `{"type":"theodolite_written","request_id","answer","generation","sight_order":[k…],"n_to_sight":m,
+   "prompt_token_ids","prompt_len"}` once, before the first pair.
+3. One pair per sighted index, in sight order: the binary frame, then its `theodolite_metadata` JSON, back to back.
+   Layout and `WIRE_VERSION` 1 unchanged; flags bit 0 (thinking path) on the first pair only, bit 1 steered, bit 2 (4)
+   on every pair of a request that sights more than one index.
+4. `{"type":"theodolite_sweep_end","request_id","n_sent","n_to_sight","cancelled","error"}`, always last.
+
+Added to every pair's JSON (the one-pair reply too; `generated_text` is the whole answer, `prompt*` the prompt only):
+`request_id, token_index, sight_index, n_to_sight, last, read_pos, read_token, read_token_id, prompt_len, chosen
+(STEP | null), answer, generation, recapture_check, kinship_n_states (= read_pos + 1), rank_lookahead, sight_dropped,
+timing {generate_ms, capture_ms, analyse_ms, total_ms}, think_seed, think_read_token` (the last two, and
+`think_generated_text`, on the first pair only); `frame.centre_kind` ("none" | "control_prompt_end" |
+"control_reading_same_answer") and, for a pole-motif frame, `frame.reader {layer, neuron, from_token_index}` (built
+at the first position analysed and kept for the whole answer); per layer `jpp_top_ids` (5), `naive_top_id`,
+`tracked_from_next {word: bool}`.
+- STEP = `{index, token_id, token, model_prob, model_logprob, model_rank, n_tied, chosen_logit, top:[{token_id, token,
+  prob}]×5, sampler_prob, sampler_support, end_mark, source}`: the model's own odds at that step (float32 softmax of
+  the writing's raw logits; a given piece: of the re-read's layer 60) and the sampler's chance for it, replayed on the
+  same logits op for op (`sampler_chances`; null when greedy; scripts/check_sampler_mirror.py).
+- ANSWER = `{token_ids, token_strs (each id decoded alone), text, n_written, stop_reason ("end_mark" | "length" |
+  "stopped" | "given" | "none"), stop_token_ids, source ("written" | "given"), steps: [STEP]}`.
+- GENERATION = `{greedy, settings {temperature, top_k, top_p, presence_penalty} as resolved and applied (top_k / top_p
+  null when off or greedy), seed, seed_drawn, max_new_tokens, sight_every_token, max_sighted, capped,
+  stop_at_end_of_turn}`.
+- `recapture_check` = `{top1_id, top1_token, top1_is_chosen, chosen_logit_recapture, chosen_logit_diff}` at layer 60
+  (J = I): the reading forward against the writing one, which agree to bf16 rounding.
+
+Errors: a request with a `request_id` that is refused or fails gets `{"type":"error","action":"sweep","request_id",
+"recoverable":true,"message","n_sent","token_index"}` and then its `theodolite_sweep_end`; the socket stays open
+(the request_id of a refused payload is read from the raw message). Without one, the old refusal
+`{"type":"error","message","action","recoverable","layer","neuron_idx"}`.
+
+### 4.3 Cancel, client → server
+
+`{"action":"cancel_sweep","request_id":R}`. A receiver task reads the socket into a queue and handles a cancel at
+once: a running request stops at its next check (after each written piece: the writing stops, `stop_reason`
+"stopped", and only the first index of the sight order is sighted; between pairs: after the current pair), ending
+`cancelled: true`; a queued one is dropped and its end (`n_sent` 0) sent at once. Other actions keep their order.
+`_GPU_LOCK` is held for the whole stream (writing, read-back, every position, the thinking comparison), so no vault
+edit lands between two positions of one answer. The thinking comparison is written with the same sampler and seed
+(length max(min(n, 64), 10)), read at its token 0 in the main sweep's frame and centre, and rides on the first pair.
+
+### 4.4 Exact ids for `trace_readers`, and saved prompts
+
+- `trace_readers` (WebSocket, `POST /api/scientist/trace_readers`, MCP `trace_downstream_readers`) takes
+  `token_ids` (1–768 ids): read exactly as given, at the last (a sighting's ids up to its read position), echoing
+  `token_ids_given`, `read_pos` and `prompt` (the ids decoded); every reply says `steered: false` (a trace reads the
+  model without a nudge).
+- Saved questions and system prompts (`backend/saved_prompts.py`, declared above the static mount): `GET
+  /api/saved_prompts` → `{questions, systems, file, warning}`; `POST` `{kind: "question" | "system", name, question?,
+  answer_begins?, chat?, text?, replace_id?}` → the lists (409 for a name already used in that list, trimmed and in any
+  case); `DELETE /api/saved_prompts/{kind}/{id}` → the lists (404 when absent). One file outside every checkout
+  (`$THEODOLITE_SAVED_PROMPTS`, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/saved_prompts.json`), written
+  atomically under its own lock (never the GPU's); an unreadable file is moved aside to `<file>.corrupt-<UTC stamp>` and
+  reported once. Requests from a page on another host get 403 (CORS is "*"); no Origin (a script) or 127.0.0.1 /
+  localhost / [::1] on any port are allowed.

@@ -1,12 +1,17 @@
 /**
- * A "sighting" is one sweep of the instrument: the model's last word-piece followed up through all
- * sixty layers. It is built either from a live sweep (binary frame + JSON metadata from
- * /ws/theodolite) or from the recorded demonstration sweep of the study (E6), which is what the
- * approved design canvas shows.
+ * A "sighting" is one position of a sweep followed up through all sixty layers. A sweep writes an answer of n
+ * word-pieces w_0 … w_{n-1} after the prompt's P word-pieces; the sighting of word-piece k is read at position
+ * read_pos = P - 1 + k, where the stream has just READ the prompt's last piece (k = 0) or w_{k-1}, and where its
+ * layer 60 CHOSE w_k. Token index 0 is the sighting the instrument always took, read at the prompt's last
+ * word-piece. It is built either from a live sweep (binary frame + JSON metadata from /ws/theodolite, one pair per
+ * word-piece sighted) or from the recorded demonstration sweep of the study (E6), which is what the approved design
+ * canvas shows.
  *
  * Every field that a source does not record is `null`. Screens must show such values as bracketed
  * placeholders (see <Missing/>), never as an invented number.
  */
+
+import { pieceWord } from "../lib/words";
 
 export const N_LAYERS = 60;
 export const D_FF = 21504;
@@ -61,10 +66,17 @@ export interface LayerReading {
   rescaleNorm: number | null;
   /** what it was thinking, through the lens; null = not recorded at this layer */
   lensTop: TokenReading[] | null;
+  /** the token ids of lensTop, rank for rank (the server's jpp_top_ids); null = not sent (an older server) */
+  lensTopIds: number[] | null;
   /** the naked eye's top word-piece; null = not recorded */
   eyeTop: string | null;
+  /** its token id (naive_top_id); null = not sent */
+  eyeTopId: number | null;
   /** tracked word-piece ranks of 262,144, with their softcapped logits where recorded */
   ranks: Record<string, { lens: number | null; eye: number | null; lensLogit?: number | null; eyeLogit?: number | null }>;
+  /** for each tracked word, whether its rank was taken from the next position (the legacy space-then-digit rule,
+   * tracked_from_next); null = not sent */
+  rankFromNext: Record<string, boolean> | null;
   poles: PoleReading[];
   /** share of the layer's feed-forward write the listed poles explain, ⟨Σ c_i, f⟩ / ⟨f, f⟩ (E3); null = not sent */
   ffnExplained: number | null;
@@ -149,25 +161,121 @@ export interface SteeringApplied {
   layers: number[];
 }
 
+/**
+ * The word-piece a position chose (the server's STEP): w_k, written there by the model or, for a re-reading of an
+ * answer already written, given to it. Its odds are the model's own, from the raw last-layer scores.
+ */
+export interface ChosenPiece {
+  id: number;
+  token: string;
+  /** its share of the model's own odds, and its rank there (1 = the likeliest); null = not sent */
+  modelProb: number | null;
+  modelRank: number | null;
+  /** how many other word-pieces had exactly its score */
+  nTied: number | null;
+  /** its raw last-layer score (chosen_logit); null = not sent */
+  logit: number | null;
+  /** its chance under the sampler that drew it (after presence penalty, temperature, top-k, top-p); null when greedy */
+  samplerProb: number | null;
+  /** how many word-pieces the sampler could have drawn; null when greedy */
+  samplerSupport: number | null;
+  /** one of the checkpoint's end-of-turn marks: it ended its turn here */
+  endMark: boolean;
+  source: "written" | "given" | "recorded";
+  /** the five likeliest in the model's own odds at that moment; null = not sent */
+  top: { id: number; token: string; prob: number }[] | null;
+}
+
+/** How an answer was written, as the server resolved and applied it (GENERATION and ANSWER in the wire protocol). */
+export interface GenerationEcho {
+  /** its likeliest word-piece each time (argmax), as the study wrote */
+  greedy: boolean;
+  temperature: number | null;
+  /** null when greedy (unused) or off */
+  topK: number | null;
+  topP: number | null;
+  presencePenalty: number | null;
+  seed: number | null;
+  /** the server drew the seed (none was sent) */
+  seedDrawn: boolean;
+  maxNewTokens: number | null;
+  sightEvery: boolean;
+  maxSighted: number | null;
+  /** more word-pieces were written than were sighted */
+  capped: boolean;
+  stopAtEndOfTurn: boolean | null;
+  source: "written" | "given" | "recorded";
+  stopReason: "end_mark" | "length" | "stopped" | "given" | "none" | null;
+  nWritten: number | null;
+}
+
+/** One word-piece of the answer, as the row of word-pieces shows it. */
+export interface AnswerPiece {
+  /** its token index k: the sighting of k is read where the model chose it */
+  index: number;
+  id: number;
+  /** the piece decoded alone */
+  str: string;
+  endMark: boolean;
+  step: ChosenPiece | null;
+}
+
+export type CentreKind = "none" | "control_prompt_end" | "control_reading_same_answer";
+
 export interface Sighting {
   /** a number unique to this sighting in this page's life, so results asked of it can be told from older ones */
   id: number;
   source: "live" | "fixture";
   /** one line saying where this sighting came from */
   provenance: string;
+  /** the request it answers, as the server echoed it; null for the fixture and an older server */
+  requestId: string | null;
+  /** which word-piece of the answer it is the sighting of (k): 0 for the fixture and an older server */
+  tokenIndex: number;
   question: string;
   answerBegins: string;
   /** the exact text sent to the server; null when it was not recorded (the fixture's chat-wrapped prompt) */
   textSent: string | null;
   chatWrapped: boolean;
+  /** the prompt's word-pieces (the prompt only, not the answer) */
   promptTokens: string[] | null;
+  /** word-pieces read up to and including the one read here (kinship_n_states = read_pos + 1); an older server: the
+   * prompt's length */
   nTokens: number | null;
+  /** the position read, counting from 0 (read_pos = P - 1 + k) */
   readPos: number | null;
+  /** the word-piece the stream had just read there: the prompt's last for k = 0, else w_{k-1} */
   readAt: string | null;
+  readAtId: number | null;
+  /** the prompt's length in word-pieces (P) */
+  promptLen: number | null;
   firstIds: number[] | null;
+  /** the exact ids up to and including read_pos: the prompt's, then the answer's first k */
+  contextIds: number[] | null;
+  /** the prompt's ids */
+  promptIds: number[] | null;
+  /** the word-piece chosen here (w_k); null when nothing was written, or not sent */
+  chosen: ChosenPiece | null;
+  /** the whole answer, as ids and as each id decoded alone; null = not sent */
+  answerIds: number[] | null;
+  answerStrs: string[] | null;
+  /** each answer piece's stats, by token index; null = not sent */
+  answerSteps: (ChosenPiece | null)[] | null;
+  generation: GenerationEcho | null;
+  /** layer 60 of the re-reading at this position: does its top-1 equal the piece chosen? (writing and re-reading are
+   * different 4-bit computations); null = not sent */
+  recaptureCheck: { top1Id: number; top1Token: string; top1IsChosen: boolean; chosenLogitDiff: number | null } | null;
+  /** whether the legacy space-then-digit rank rule was allowed; null = not sent */
+  rankLookahead: boolean | null;
+  /** what the frame was centred on at this position; null = not sent */
+  centreKind: CentreKind | null;
+  timing: { generateMs: number | null; captureMs: number | null; analyseMs: number | null; totalMs: number | null } | null;
   continuation: string;
   thinkingContinuation: string | null;
   thinkingPath: [number, number, number][] | null;
+  /** the seed the thinking answer was drawn with, and the word-piece it was read at (first pair sent only) */
+  thinkSeed: number | null;
+  thinkReadAt: string | null;
   landmarks: [string, string, string];
   surveyMode: string;
   elapsedMs: number | null;
@@ -278,6 +386,9 @@ type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-ex
 let nextSightingId = 1;
 
 const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+/** A list of whole numbers (token ids), or null when the server did not send one. */
+const idsOrNull = (v: unknown): number[] | null =>
+  Array.isArray(v) && v.every((x) => typeof x === "number" && Number.isInteger(x)) ? (v as number[]).slice() : null;
 /** A list of word-pieces, or null when none were read: the server sends [] for poles it did not decode, and an
  * empty list must not read as "read, and no word in common". */
 const toks = (list: unknown): TokenReading[] | null =>
@@ -401,8 +512,14 @@ export function sightingFromLive(
       layerScalar: numOrNull(p.layer_scalar),
       rescaleNorm: numOrNull(p.rescale_norm),
       lensTop: toks(p.jpp_top_tokens),
+      lensTopIds: idsOrNull(p.jpp_top_ids),
       eyeTop: typeof p.naive_top_token === "string" ? p.naive_top_token : null,
+      eyeTopId: numOrNull(p.naive_top_id),
       ranks,
+      rankFromNext:
+        p.tracked_from_next && typeof p.tracked_from_next === "object"
+          ? Object.fromEntries(Object.entries(p.tracked_from_next as Json).map(([k, v]) => [k, v === true]))
+          : null,
       poles,
       ffnExplained: numOrNull(p.poles_ffn_explained),
     });
@@ -412,24 +529,76 @@ export function sightingFromLive(
   const kinship = bin && bin.ckaMatrix.length === N_LAYERS * N_LAYERS ? Array.from(bin.ckaMatrix) : null;
   const tokensList: string[] | null = Array.isArray(meta.prompt_token_strs) ? meta.prompt_token_strs : null;
   const think = bin?.thinkTrajXyz;
+  const promptIds = idsOrNull(meta.prompt_token_ids);
+  const answer = answerOf(meta.answer);
+  const k = numOrNull(meta.token_index) ?? 0;
+  // where it was read: the server's own read_pos; an older server reads the prompt's last word-piece
+  const sentPos = numOrNull(meta.read_pos);
+  const readPos = sentPos ?? (tokensList ? tokensList.length - 1 : null);
+  const readAt =
+    sentPos !== null
+      ? typeof meta.read_token === "string"
+        ? meta.read_token
+        : null
+      : tokensList && tokensList.length
+        ? tokensList[tokensList.length - 1]
+        : null;
+  const contextIds =
+    promptIds && answer && k <= answer.ids.length ? [...promptIds, ...answer.ids.slice(0, k)] : promptIds && k === 0 ? promptIds : null;
+  const rc: Json | null = meta.recapture_check && typeof meta.recapture_check === "object" ? meta.recapture_check : null;
+  const tm: Json | null = meta.timing && typeof meta.timing === "object" ? meta.timing : null;
+  const centreKind = meta.frame?.centre_kind;
   return {
     id: nextSightingId++,
     source: "live",
     provenance: "a live sighting from the running server",
+    requestId: typeof meta.request_id === "string" ? meta.request_id : null,
+    tokenIndex: k,
     question: req.question,
     answerBegins: req.answerBegins,
     textSent: typeof meta.prompt === "string" ? meta.prompt : req.textSent,
     chatWrapped: meta.chat === true,
     promptTokens: tokensList,
-    nTokens: tokensList ? tokensList.length : null,
-    readPos: tokensList ? tokensList.length - 1 : null,
-    readAt: tokensList && tokensList.length ? tokensList[tokensList.length - 1] : null,
-    firstIds: Array.isArray(meta.prompt_token_ids) ? (meta.prompt_token_ids as number[]).slice(0, 4) : null,
+    nTokens: numOrNull(meta.kinship_n_states) ?? (sentPos !== null ? sentPos + 1 : tokensList ? tokensList.length : null),
+    readPos,
+    readAt,
+    readAtId: numOrNull(meta.read_token_id),
+    promptLen: numOrNull(meta.prompt_len) ?? (promptIds ? promptIds.length : null),
+    firstIds: promptIds ? promptIds.slice(0, 4) : null,
+    contextIds,
+    promptIds,
+    chosen: stepOf(meta.chosen),
+    answerIds: answer ? answer.ids : null,
+    answerStrs: answer ? answer.strs : null,
+    answerSteps: answer ? answer.steps : null,
+    generation: generationOf(meta.generation, meta.answer),
+    recaptureCheck:
+      rc && numOrNull(rc.top1_id) !== null
+        ? {
+            top1Id: Number(rc.top1_id),
+            top1Token: String(rc.top1_token ?? ""),
+            top1IsChosen: rc.top1_is_chosen === true,
+            chosenLogitDiff: numOrNull(rc.chosen_logit_diff),
+          }
+        : null,
+    rankLookahead: typeof meta.rank_lookahead === "boolean" ? meta.rank_lookahead : null,
+    centreKind:
+      centreKind === "none" || centreKind === "control_prompt_end" || centreKind === "control_reading_same_answer" ? centreKind : null,
+    timing: tm
+      ? {
+          generateMs: numOrNull(tm.generate_ms),
+          captureMs: numOrNull(tm.capture_ms),
+          analyseMs: numOrNull(tm.analyse_ms),
+          totalMs: numOrNull(tm.total_ms),
+        }
+      : null,
     continuation: String(meta.generated_text ?? ""),
     thinkingContinuation: typeof meta.think_generated_text === "string" ? meta.think_generated_text : null,
     thinkingPath: think
       ? Array.from({ length: N_LAYERS }, (_, l) => [think[l * 3], think[l * 3 + 1], think[l * 3 + 2]] as [number, number, number])
       : null,
+    thinkSeed: numOrNull(meta.think_seed),
+    thinkReadAt: typeof meta.think_read_token === "string" ? meta.think_read_token : null,
     landmarks: (Array.isArray(meta.survey_labels) && meta.survey_labels.length === 3
       ? meta.survey_labels
       : ["", "", ""]) as [string, string, string],
@@ -517,6 +686,89 @@ function steeringOf(a: Json | null | undefined): SteeringApplied | null {
   };
 }
 
+/** A STEP from the server (the piece chosen at one position, with its odds), or null when none was sent. */
+function stepOf(j: unknown): ChosenPiece | null {
+  if (!j || typeof j !== "object" || Array.isArray(j)) return null;
+  const o = j as Json;
+  const id = numOrNull(o.token_id);
+  if (id === null) return null;
+  return {
+    id,
+    token: typeof o.token === "string" ? o.token : "",
+    modelProb: numOrNull(o.model_prob),
+    modelRank: numOrNull(o.model_rank),
+    nTied: numOrNull(o.n_tied),
+    logit: numOrNull(o.chosen_logit),
+    samplerProb: numOrNull(o.sampler_prob),
+    samplerSupport: numOrNull(o.sampler_support),
+    endMark: o.end_mark === true,
+    source: o.source === "given" ? "given" : "written",
+    top: Array.isArray(o.top)
+      ? o.top
+          .filter((t: Json) => t && numOrNull(t.token_id) !== null)
+          .map((t: Json) => ({ id: Number(t.token_id), token: String(t.token ?? ""), prob: numOrNull(t.prob) ?? 0 }))
+      : null,
+  };
+}
+
+/** The server's ANSWER: its ids, each id decoded alone, and each piece's stats; null when it sent none. */
+function answerOf(a: unknown): { ids: number[]; strs: string[] | null; steps: (ChosenPiece | null)[] | null } | null {
+  if (!a || typeof a !== "object" || Array.isArray(a)) return null;
+  const o = a as Json;
+  const ids = idsOrNull(o.token_ids);
+  if (!ids) return null;
+  const strs = Array.isArray(o.token_strs) && o.token_strs.length === ids.length ? o.token_strs.map((t: unknown) => String(t ?? "")) : null;
+  const steps = Array.isArray(o.steps) ? ids.map((_, i) => stepOf(o.steps[i])) : null;
+  return { ids, strs, steps };
+}
+
+const STOP_REASONS = ["end_mark", "length", "stopped", "given", "none"] as const;
+
+/**
+ * How the answer was written, from the server's GENERATION and ANSWER echoes (sent with theodolite_written and with
+ * every pair); null when the server sent no GENERATION (an older server, which always wrote greedily).
+ */
+export function generationOf(gen: unknown, answer?: unknown): GenerationEcho | null {
+  if (!gen || typeof gen !== "object" || Array.isArray(gen)) return null;
+  const g = gen as Json;
+  const a: Json = answer && typeof answer === "object" && !Array.isArray(answer) ? (answer as Json) : {};
+  const st: Json = g.settings && typeof g.settings === "object" ? g.settings : {};
+  const reason = STOP_REASONS.find((r) => r === a.stop_reason) ?? null;
+  return {
+    greedy: g.greedy === true,
+    temperature: numOrNull(st.temperature),
+    topK: numOrNull(st.top_k),
+    topP: numOrNull(st.top_p),
+    presencePenalty: numOrNull(st.presence_penalty),
+    seed: numOrNull(g.seed),
+    seedDrawn: g.seed_drawn === true,
+    maxNewTokens: numOrNull(g.max_new_tokens),
+    sightEvery: g.sight_every_token === true,
+    maxSighted: numOrNull(g.max_sighted),
+    capped: g.capped === true,
+    stopAtEndOfTurn: typeof g.stop_at_end_of_turn === "boolean" ? g.stop_at_end_of_turn : null,
+    source: a.source === "given" ? "given" : "written",
+    stopReason: reason,
+    nWritten: numOrNull(a.n_written),
+  };
+}
+
+function piecesFrom(ids: number[], strs: string[], steps: (ChosenPiece | null)[] | null, endedOnMark: boolean): AnswerPiece[] {
+  return ids.map((id, i) => {
+    const step = steps?.[i] ?? null;
+    // without steps, the stop reason still says whether the last piece was an end mark
+    const endMark = step ? step.endMark : endedOnMark && i === ids.length - 1;
+    return { index: i, id, str: strs[i], endMark, step };
+  });
+}
+
+/** The pieces of a server ANSWER (theodolite_written's `answer`), or null when it sent none. */
+export function piecesFromAnswer(answer: unknown): AnswerPiece[] | null {
+  const a = answerOf(answer);
+  if (!a || !a.strs) return null;
+  return piecesFrom(a.ids, a.strs, a.steps, (answer as Json).stop_reason === "end_mark");
+}
+
 /* --------------------------------------------------------------- fixture */
 
 export interface FixtureFile {
@@ -549,6 +801,25 @@ export interface FixtureFile {
   kinStats: { meanOffDiag: number; adjacent: number; l11vs51: number };
   elapsedMs: number;
 }
+
+/** How the study's recorded sighting was written: greedily (HF greedy decoding), 6 word-pieces; nothing else recorded. */
+export const RECORDED_GENERATION: GenerationEcho = {
+  greedy: true,
+  temperature: null,
+  topK: null,
+  topP: null,
+  presencePenalty: null,
+  seed: null,
+  seedDrawn: false,
+  maxNewTokens: 6,
+  sightEvery: false,
+  maxSighted: null,
+  capped: false,
+  stopAtEndOfTurn: null,
+  source: "recorded",
+  stopReason: null,
+  nWritten: null,
+};
 
 export function sightingFromFixture(f: FixtureFile): Sighting {
   const layers: LayerReading[] = [];
@@ -597,8 +868,11 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
       layerScalar: f.layerScalar[l] ?? null,
       rescaleNorm: null,
       lensTop: top ? top.map(([token, prob]) => ({ token, prob, logit: null })) : null,
+      lensTopIds: null,
       eyeTop: null,
+      eyeTopId: null,
       ranks,
+      rankFromNext: null,
       poles,
       ffnExplained: null,
     });
@@ -607,6 +881,8 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     id: nextSightingId++,
     source: "fixture",
     provenance: f.source,
+    requestId: null,
+    tokenIndex: 0,
     question: f.question,
     answerBegins: f.answerBegins,
     textSent: f.textSent,
@@ -615,10 +891,27 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     nTokens: f.nTokens,
     readPos: f.readPos,
     readAt: f.readAt,
+    readAtId: null,
+    // the recorded sighting was read at the prompt's last word-piece, so its prompt is the word-pieces it read
+    promptLen: f.nTokens,
     firstIds: f.firstIds,
+    contextIds: null,
+    promptIds: null,
+    // the recording keeps the answer's text only, not its first piece's id: no choice is invented for it
+    chosen: null,
+    answerIds: null,
+    answerStrs: null,
+    answerSteps: null,
+    generation: RECORDED_GENERATION,
+    recaptureCheck: null,
+    rankLookahead: null,
+    centreKind: null,
+    timing: null,
     continuation: f.continuation,
     thinkingContinuation: null,
     thinkingPath: null,
+    thinkSeed: null,
+    thinkReadAt: null,
     landmarks: f.landmarks,
     surveyMode: "monument",
     elapsedMs: f.elapsedMs,
@@ -648,6 +941,86 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     activeEdits: [],
     raw: null,
   };
+}
+
+/* ------------------------------------------------- where it was read, what it chose */
+
+/** 1st, 2nd, 3rd, 4th, … 11th, 12th, 13th, 21st … */
+export function ordinal(n: number): string {
+  const m100 = Math.abs(n) % 100;
+  const m10 = Math.abs(n) % 10;
+  const suffix = m100 >= 11 && m100 <= 13 ? "th" : m10 === 1 ? "st" : m10 === 2 ? "nd" : m10 === 3 ? "rd" : "th";
+  return `${n}${suffix}`;
+}
+
+export type ReadRole = "question_end" | "template_end" | "begun_end" | "written" | "unknown";
+
+/**
+ * Where a sighting was read, in plain words, for every page to use instead of its own phrasing. For k = 0 the three
+ * phrasings the pages always used (the end of your question, the end of the chat template, the end of the begun
+ * answer); for k ≥ 1 the piece read is w_{k-1}, the k-th the model wrote itself: “, at “am”, the 3rd word-piece of its
+ * own answer”.
+ */
+export function readWhere(s: Sighting | null | undefined): { piece: string | null; role: ReadRole; k: number; phrase: string } {
+  if (!s) return { piece: null, role: "unknown", k: 0, phrase: "" };
+  const k = s.tokenIndex;
+  const piece = s.readAt;
+  if (k >= 1) {
+    return {
+      piece,
+      role: "written",
+      k,
+      phrase: `, at ${piece != null ? pieceWord(piece) : "a word-piece"}, the ${ordinal(k)} word-piece of its own answer`,
+    };
+  }
+  const begun = s.answerBegins.trim();
+  if (begun) return { piece, role: "begun_end", k, phrase: `, in its reply “${begun}”` };
+  if (s.chatWrapped) return { piece, role: "template_end", k, phrase: ", at the end of the chat template" };
+  return { piece, role: "question_end", k, phrase: ", at the end of your question" };
+}
+
+/** The word-piece this sighting's position chose (w_k), or null (nothing written, the recorded sighting, an older server). */
+export const chosenOf = (s: Sighting | null | undefined): ChosenPiece | null => s?.chosen ?? null;
+
+/** “where it chose “a”” / “where it ended its turn” / null when no choice is known. */
+export function chosenPhrase(s: Sighting | null | undefined): string | null {
+  const c = chosenOf(s);
+  if (!c) return null;
+  return c.endMark ? "where it ended its turn" : `where it chose ${pieceWord(c.token)}`;
+}
+
+/**
+ * Whether row `rank` of a layer's lens readout is the word-piece the position chose. Matched by token id; by the
+ * string only when the server sent no ids for the readout. Never by the continuation's first word, which is the
+ * wrong word for k ≥ 1 and can be a different piece with the same spelling.
+ */
+export function isChosenRow(s: Sighting | null | undefined, L: LayerReading, rank: number): boolean {
+  const c = chosenOf(s);
+  if (!c) return false;
+  if (L.lensTopIds) return L.lensTopIds[rank] === c.id;
+  const t = L.lensTop?.[rank];
+  return t != null && t.token === c.token;
+}
+
+/** The pieces of the answer this sighting belongs to, with their stats; null when the server sent no answer. */
+export function piecesOf(s: Sighting | null | undefined): AnswerPiece[] | null {
+  if (!s || !s.answerIds || !s.answerStrs) return null;
+  return piecesFrom(s.answerIds, s.answerStrs, s.answerSteps, s.generation?.stopReason === "end_mark");
+}
+
+/** How an answer was written, in plain words, from the server's echo (never from the form's current settings). */
+export function generationWords(g: GenerationEcho | null | undefined): string | null {
+  if (!g) return null;
+  if (g.source === "recorded") return "its likeliest word-piece each time (greedy), as the study recorded it";
+  const held = g.presencePenalty ? `, holding back repeats by ${g.presencePenalty}` : "";
+  if (g.greedy) return `its likeliest word-piece each time (greedy)${held}`;
+  const how = [
+    `temperature ${g.temperature ?? "[not sent]"}`,
+    g.topK != null ? `from its likeliest ${g.topK}` : "no top-k limit",
+    g.topP != null ? `within ${g.topP} of its odds` : "no top-p limit",
+  ];
+  const seed = g.seed != null ? `, seed ${g.seed}${g.seedDrawn ? ", drawn by the server" : ""}` : "";
+  return `drawn by chance (${how.join(", ")}${held}${seed})`;
 }
 
 /* ------------------------------------------------------------- loudness */

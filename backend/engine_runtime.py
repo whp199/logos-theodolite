@@ -13,12 +13,13 @@ from __future__ import annotations
 import gc
 import logging
 import re
+import secrets
 import time
 import types
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import torch
@@ -26,7 +27,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
 from interp_engine import Address, EagerModel
+from interp_engine.sampling import SamplingSettings, apply_presence_penalty
+from interp_engine.steer import generate_stream as ie_generate_stream
 from interp_engine.steer import steer as ie_steer
+from interp_engine.steer import steering_spec_to_eager_specs
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, OrthogonalDecompSpec, SteeringSpec
 from transformers import AutoTokenizer, Gemma4ForConditionalGeneration
 
@@ -327,6 +331,146 @@ class SweepLayerTokenReadout:
     tracked_token_ranks: Dict[str, int] = field(default_factory=dict)
 
 
+# The most word-pieces one sweep may hold, prompt and answer together (the server refuses more, in plain words): a
+# capture holds all 300 of its addresses at every position on the GPU, about 5.2 MB per position
+# (60 x (4 x 5376 + 21504) x 2 bytes), before it moves to the CPU, and the writing's first forward builds full-length
+# logits (0.5 MB per position) besides.
+MAX_SWEEP_POSITIONS = 768
+
+
+@dataclass
+class SamplerSettings:
+    """How an answer is written. The defaults are the study's greedy decoding: its likeliest word-piece each time.
+
+    Every knob goes to interp_engine as the value it means. A knob left None there takes the checkpoint's
+    recommendation (temperature 1, top-k 64, top-p 0.95), so "off" is top_k 0 and top_p 1.0, never None. The presence
+    penalty is subtracted from the logit of every word-piece already written (not the prompt's) before the temperature,
+    on the greedy path too. A temperature of 0 is greedy, and a seed does nothing there."""
+
+    temperature: float = 0.0
+    top_k: int = 0
+    top_p: float = 1.0
+    presence_penalty: float = 0.0
+    seed: Optional[int] = None
+
+    @property
+    def greedy(self) -> bool:
+        return float(self.temperature) <= 0.0
+
+
+@dataclass
+class WrittenStep:
+    """One word-piece of an answer and the odds it was chosen at (the wire's STEP).
+
+    The model's numbers are its own odds at that step, from the raw logits in float32 (temperature 1, no filter, no
+    penalty). The sampler's are the chance the sampler gave it, replayed op for op on the same logits
+    (`sampler_chances`); None when greedy. A written piece's logits are the writing's own step logits; a given
+    piece's are the recapture's layer-60 readout at its read position."""
+
+    index: int
+    token_id: int
+    token: str
+    model_prob: float
+    model_logprob: float
+    model_rank: int  # 1 + how many word-pieces had a higher logit
+    n_tied: int  # how many others had exactly its logit (greedy takes the lowest id of a tie)
+    chosen_logit: float
+    top: List[Tuple[int, str, float]]  # the model's five likeliest: (id, word-piece, prob)
+    sampler_prob: Optional[float]
+    sampler_support: Optional[int]  # how many word-pieces the sampler could have drawn
+    end_mark: bool  # one of the end marks that stop the writing
+    source: str  # "written" (by this sweep) | "given" (by the request)
+
+    def as_wire(self) -> Dict[str, Any]:
+        return {
+            "index": self.index,
+            "token_id": self.token_id,
+            "token": self.token,
+            "model_prob": self.model_prob,
+            "model_logprob": self.model_logprob,
+            "model_rank": self.model_rank,
+            "n_tied": self.n_tied,
+            "chosen_logit": self.chosen_logit,
+            "top": [{"token_id": i, "token": s, "prob": p} for i, s, p in self.top],
+            "sampler_prob": self.sampler_prob,
+            "sampler_support": self.sampler_support,
+            "end_mark": self.end_mark,
+            "source": self.source,
+        }
+
+
+@torch.no_grad()
+def sampler_draw_distribution(
+    logits: torch.Tensor, settings: SamplingSettings, generated: Sequence[int]
+) -> Optional[Tuple[torch.Tensor, Optional[torch.Tensor]]]:
+    """The distribution interp_engine's sampler (`steer._sample_next`, private) draws the next word-piece from,
+    replayed op for op in the logits' own dtype: the presence penalty on the raw logits, then / temperature, the
+    top-k mask (ties at the k-th value kept), softmax, then top-p (sorted, `cum - p > top_p` masked, renormalised).
+
+    Returns (probs, None) when it draws in word-piece order, or (sorted_probs, sorted_idx) when top-p is on (it then
+    draws in sorted order, so `torch.multinomial` on these, after the same `torch.manual_seed`, picks what it picks:
+    scripts/check_sampler_mirror.py). None when greedy (temperature 0: the argmax of the penalised logits).
+    `settings` is the resolved form (`EagerModel.sampling_settings`), whose top_k / top_p are None when off."""
+    logits = apply_presence_penalty(logits, generated, settings.presence_penalty)
+    if settings.temperature <= 0:
+        return None
+    logits = logits / settings.temperature
+    if settings.top_k:
+        kth = torch.topk(logits, settings.top_k).values[..., -1, None]
+        logits = torch.where(logits < kth, torch.full_like(logits, float("-inf")), logits)
+    probs = F.softmax(logits, dim=-1)
+    if settings.top_p and settings.top_p < 1.0:
+        sorted_probs, sorted_idx = torch.sort(probs, descending=True)
+        cum = torch.cumsum(sorted_probs, dim=-1)
+        mask = cum - sorted_probs > settings.top_p
+        sorted_probs[mask] = 0.0
+        sorted_probs = sorted_probs / sorted_probs.sum()
+        return sorted_probs, sorted_idx
+    return probs, None
+
+
+@torch.no_grad()
+def sampler_chances(
+    logits: torch.Tensor, settings: SamplingSettings, generated: Sequence[int]
+) -> Optional[torch.Tensor]:
+    """`[vocab]`: each word-piece's chance under the sampler (`sampler_draw_distribution`, scattered back to
+    word-piece order); None when greedy."""
+    drawn = sampler_draw_distribution(logits, settings, generated)
+    if drawn is None:
+        return None
+    probs, order = drawn
+    return probs if order is None else torch.zeros_like(probs).scatter_(-1, order, probs)
+
+
+@torch.no_grad()
+def step_numbers(
+    logits: torch.Tensor,
+    chosen: int,
+    settings: SamplingSettings,
+    generated_before: Sequence[int],
+    top_n: int = 5,
+) -> Dict[str, Any]:
+    """The numbers of a `WrittenStep`, from one step's `[vocab]` logits: the model's own odds in float32 (prob and
+    logprob of the chosen id, its rank, its exact ties, its logit, the top `top_n`) and the sampler's chance for it."""
+    lf = logits.float()
+    probs = F.softmax(lf, dim=-1)
+    logprobs = F.log_softmax(lf, dim=-1)
+    c = int(chosen)
+    c_logit = lf[c]
+    top_p, top_i = torch.topk(probs, k=min(int(top_n), probs.numel()))
+    q = sampler_chances(logits, settings, generated_before)
+    return {
+        "model_prob": float(probs[c].item()),
+        "model_logprob": float(logprobs[c].item()),
+        "model_rank": int((lf > c_logit).sum().item()) + 1,
+        "n_tied": int((lf == c_logit).sum().item()) - 1,
+        "chosen_logit": float(c_logit.item()),
+        "top": [(int(i), float(p)) for i, p in zip(top_i.cpu().tolist(), top_p.cpu().tolist())],
+        "sampler_prob": float(q[c].item()) if q is not None else None,
+        "sampler_support": int((q > 0).sum().item()) if q is not None else None,
+    }
+
+
 @dataclass
 class TheodoliteSweepBundle:
     """Complete result of a 60-layer Theodolite optical & circuit sweep."""
@@ -361,6 +505,82 @@ class TheodoliteSweepBundle:
     poles_ffn_explained: Dict[int, Optional[float]] = field(default_factory=dict)
     pole_ranking: str = "activation"
     thread_score: str = "coupling"
+    # Which word-piece of the answer this sighting belongs to (all defaulted, so a caller that reads only the fields
+    # above is untouched). Token index k reads at target_pos = P - 1 + k: the stream that has just read
+    # `read_token` (the prompt's last piece for k = 0, else answer[k - 1]) and whose layer 60 chose `chosen`
+    # (answer[k]; None when nothing was written).
+    token_index: int = 0
+    read_token_id: Optional[int] = None
+    read_token: Optional[str] = None
+    chosen: Optional[WrittenStep] = None
+    # At layer 60 (J = I): the readout's top word-piece, whether it is the chosen one, and the readout's logit for the
+    # chosen one less the writing's own (the reading forward and the writing forward agree to bf16 rounding).
+    recapture_check: Optional[Dict[str, Any]] = None
+    kinship_n_states: Optional[int] = None  # the word-pieces kinship (CKA) is taken over: target_pos + 1
+    # "none" | "control_prompt_end" (k = 0: the controls' own last piece) | "control_reading_same_answer" (k >= 1)
+    centre_kind: str = "none"
+    # The pole-motif frame's dominant reader {layer, neuron, from_token_index}: the position its frame was built at.
+    frame_reader: Optional[Dict[str, Any]] = None
+    # Per layer, per tracked word: True where its J++ rank, logit and prob were taken from the next position (the
+    # space-then-digit rule, `rank_lookahead`), not this one.
+    tracked_from_next: Dict[int, Dict[str, bool]] = field(default_factory=dict)
+    rank_lookahead: bool = True
+    analyse_ms: float = 0.0
+
+    @property
+    def read_pos(self) -> int:
+        """The read position, P - 1 + token_index (the same as `target_pos`)."""
+        return self.target_pos
+
+
+@dataclass
+class SweepCapture:
+    """What one sweep wrote, and the recapture that reads it: prompt + answer[:-1] in one forward, inside the same
+    steering block as the writing. Row P - 1 + k holds the stream that read prompt + answer[:k] and chose answer[k]
+    (`analyse_position(k)`); the last piece is chosen but never read. `caps` are CPU tensors."""
+
+    prompt: str
+    prompt_token_ids: List[int]
+    prompt_token_strs: List[str]
+    answer_token_ids: List[int]
+    answer_token_strs: List[str]  # each id decoded alone, clean_up_tokenization_spaces=False
+    answer_text: str
+    steps: List[WrittenStep]
+    caps: Dict[Address, torch.Tensor]
+    # The sampler as resolved and applied (`SamplingSettings.as_dict`); top_k / top_p None when off, or when greedy
+    # (unused there).
+    settings: Dict[str, Any]
+    greedy: bool
+    seed: Optional[int]
+    seed_drawn: bool
+    stop_reason: str  # "end_mark" | "length" | "stopped" | "given" | "none"
+    stop_token_ids: List[int]
+    answer_source: str  # "written" | "given"
+    max_new_tokens: int
+    generate_ms: float
+    capture_ms: float
+
+
+@dataclass
+class SweepShared:
+    """What every sighting of one sweep shares (`prepare_sweep`): the tracked words, the survey frame (a pole-motif
+    frame is built at the first position analysed and kept), and the matched controls' states."""
+
+    tracked_map: Dict[str, int]
+    survey_mode: str
+    locked_pole: Optional[Tuple[int, int, float]]
+    frame_squaring: str
+    basis: Optional[torch.Tensor]
+    basis_space: str
+    frame_info: Dict[str, Any]
+    survey_labels: Optional[Tuple[str, str, str]]
+    control_ids: List[List[int]]
+    # The controls' mean state at their own last piece, in the frame's space (the centre at token 0)
+    centre_k0: Optional[torch.Tensor]
+    centre_answer: bool
+    # [n - 1, 60, 5376] float32 CPU: the controls reading this very answer, rows k - 1 (filled on first need)
+    answer_centre_raw: Optional[torch.Tensor] = None
+    prepare_ms: float = 0.0
 
 
 class TheodoliteRuntime:
@@ -878,63 +1098,22 @@ class TheodoliteRuntime:
             point=point,
         )
 
-    async def run_theodolite_sweep(
-        self,
-        prompt: str,
-        *,
-        monument_concepts: Tuple[Union[str, int], Union[str, int], Union[str, int]] = ("spider", "eight", "web"),
-        survey_mode: str = "monument",
-        locked_pole: Optional[Tuple[int, int, float]] = None,
-        steering_spec: Optional[SteeringSpec] = None,
-        max_new_tokens: int = 6,
-        top_k_poles: int = 15,
-        tracked_concepts: Optional[Sequence[str]] = DEFAULT_TRACKED_CONCEPTS,
-        decode_all_pole_tokens: bool = False,
-        prepend_bos: bool = True,
-        steering_position_mask: Optional[Sequence[int]] = None,
-        pole_ranking: str = "activation",
-        thread_score: str = "coupling",
-        frame_squaring: str = "gram_schmidt",
-        frame_per_layer: bool = False,
-        frame_fnw: bool = False,
-        centre_prompts: Optional[Sequence[str]] = None,
-    ) -> TheodoliteSweepBundle:
-        """Run a full 60-layer Theodolite capture & generation sweep via `interp-engine`.
+    def end_of_turn_ids(self) -> List[int]:
+        """The word-pieces that end the model's turn: the checkpoint's generation_config.eos_token_id as a list
+        (1 <eos>, 106 <turn|>, 50 <|tool_response> on this checkpoint), with the tokenizer's eos added if missing.
+        interp_engine's own loop stops only at the tokenizer's eos, so a chat answer runs past its <turn|> without
+        these."""
+        gen_cfg = getattr(self.hf_model, "generation_config", None)
+        raw = getattr(gen_cfg, "eos_token_id", None) if gen_cfg is not None else None
+        ids: List[int] = [raw] if isinstance(raw, int) else [int(t) for t in (raw or [])]
+        eos = getattr(self.tokenizer, "eos_token_id", None)
+        if eos is not None:
+            ids.append(int(eos))
+        return list(dict.fromkeys(int(t) for t in ids))
 
-        Captures standardized hook addresses across all 60 layers:
-          - `Address("resid_pre", l)`
-          - `Address("resid_mid", l)`
-          - `Address("mlp_act", l)`
-          - `Address("mlp_out", l)` (y = W_down a, before the post-FFN norm; for write sizes and direct paths)
-          - `Address("resid_post", l)`
-        and executes all 4 mathematical modules in `backend/theodolite_math.py`.
-
-        Options (each default reproduces the instrument as first built):
-          steering_position_mask: prompt positions the steering leaves alone (e.g. [0], the start mark).
-          pole_ranking: "activation" (|a|) or "write" (|a| * ||w_down (.) w_post||).
-          thread_score: "coupling" (C) or "direct" (the direct-path estimate) for selecting the filaments.
-          frame_squaring: "gram_schmidt" (in order) or "lowdin" (all at once) for the survey frame.
-          frame_per_layer: square the word frame afresh at each layer from W_U rows pulled back by J_l, and read
-              the raw h_l in it (word frames only).
-          frame_fnw: build the word frame from the final-norm weighted rows fnw * W_U (word frames only).
-          centre_prompts: exact texts of matched controls; the mean of their states at their last position is
-              subtracted from every layer's state before it is projected (REPORT §3.5). Captured unsteered.
-        """
-        assert self.eager_model is not None, "Call runtime.load() first."
-        if pole_ranking not in POLE_RANKINGS:
-            raise ValueError(f"Unknown pole_ranking {pole_ranking!r}; expected one of {POLE_RANKINGS}")
-        if thread_score not in THREAD_SCORES:
-            raise ValueError(f"Unknown thread_score {thread_score!r}; expected one of {THREAD_SCORES}")
-        if frame_squaring not in FRAME_SQUARINGS:
-            raise ValueError(f"Unknown frame_squaring {frame_squaring!r}; expected one of {FRAME_SQUARINGS}")
-        t_start = time.perf_counter()
-
-        # 1. Tokenize prompt with exactly one BOS (see `tokenize_prompt`).
-        prompt_token_ids = self.tokenize_prompt(prompt, prepend_bos=prepend_bos)
-        prompt_token_strs = [self.tokenizer.decode([tid]) for tid in prompt_token_ids]
-        target_pos = len(prompt_token_ids) - 1
-
-        # 2. Build all 300 standardized interp-engine hook addresses across L=60 layers
+    @staticmethod
+    def _sweep_points() -> List[Address]:
+        """The 300 addresses every sweep captures: resid_pre, resid_mid, mlp_act, mlp_out, resid_post at each layer."""
         points: List[Address] = []
         for l in range(N_LAYERS):
             points.append(Address("resid_pre", l))
@@ -942,45 +1121,249 @@ class TheodoliteRuntime:
             points.append(Address("mlp_act", l))
             points.append(Address("mlp_out", l))
             points.append(Address("resid_post", l))
+        return points
 
-        # 3. Capture activations over prompt (and generate continuation if max_new_tokens > 0). A position mask
-        #    needs the steering opened here, around both the generation and its recapture (capture() declares
-        #    its forward to start at position 0, so the mask lands on the same rows in both).
-        if steering_spec is not None and steering_position_mask:
-            steer_ctx = ie_steer(
+    def _steering_context(
+        self,
+        prompt_token_ids: List[int],
+        steering_spec: Optional[SteeringSpec],
+        steering_position_mask: Optional[Sequence[int]],
+    ):
+        """The one steering block the writing and its recapture both run inside: exactly the block each of the old
+        two branches opened. With a position mask, `steer()` on the spec itself (it converts it with
+        `steering_spec_to_eager_specs`); without one, what `EagerModel.capture_generation` opened through
+        `_maybe_steer`: the spec converted to eager specs and `steer()` on that list, or no block at all when there
+        is nothing to steer. Either way the block is opened over the prompt, and the recapture declares its forward
+        to start at position 0 (`forward_from`), so a mask lands on the same rows in both forwards."""
+        if steering_spec is None:
+            return nullcontext()
+        if steering_position_mask:
+            return ie_steer(
                 self.eager_model,
                 steering_spec,
                 prompt_token_ids=torch.tensor([prompt_token_ids]),
                 position_mask=[int(p) for p in steering_position_mask],
             )
-            call_spec = None
-        else:
-            steer_ctx = nullcontext()
-            call_spec = steering_spec
-        with steer_ctx:
-            if max_new_tokens > 0:
-                completion, caps = await self.eager_model.capture_generation(
-                    prompt_token_ids,
-                    points,
-                    max_tokens=max_new_tokens,
-                    temperature=0.0,
-                    steering_spec=call_spec,
-                )
-                generated_text = completion.text
-                generated_token_ids = [int(t) for t in completion.token_ids]
-            else:
-                generated_text = ""
-                generated_token_ids = []
-                caps = await self.eager_model.capture(
-                    prompt_token_ids,
-                    points,
-                    steering_spec=call_spec,
-                )
+        specs = steering_spec_to_eager_specs(steering_spec)
+        if not specs:
+            return nullcontext()
+        return ie_steer(self.eager_model, specs, prompt_token_ids=torch.tensor([prompt_token_ids]))
 
-        has_leading_space_prefix = bool(
-            len(generated_token_ids) >= 2
-            and self.tokenizer.decode([generated_token_ids[0]]).strip() == ""
+    def _written_step(
+        self,
+        logits: torch.Tensor,
+        chosen: int,
+        settings: SamplingSettings,
+        generated_before: Sequence[int],
+        index: int,
+        source: str,
+        end_mark: bool,
+    ) -> WrittenStep:
+        """A `WrittenStep` from one step's `[vocab]` logits (`step_numbers`), with its word-pieces decoded alone."""
+        nums = step_numbers(logits, chosen, settings, generated_before)
+        decode = lambda i: self.tokenizer.decode([int(i)], clean_up_tokenization_spaces=False)  # noqa: E731
+        step = WrittenStep(
+            index=int(index),
+            token_id=int(chosen),
+            token=decode(chosen),
+            model_prob=nums["model_prob"],
+            model_logprob=nums["model_logprob"],
+            model_rank=nums["model_rank"],
+            n_tied=nums["n_tied"],
+            chosen_logit=nums["chosen_logit"],
+            top=[(i, decode(i), p) for i, p in nums["top"]],
+            sampler_prob=nums["sampler_prob"],
+            sampler_support=nums["sampler_support"],
+            end_mark=bool(end_mark),
+            source=source,
         )
+        if step.sampler_prob is not None and source == "written" and not step.sampler_prob > 0.0:
+            # the mirror disagrees with the sampler that drew it (scripts/check_sampler_mirror.py checks it on the CPU)
+            logger.warning("Sampler mirror gave the written word-piece %d at step %d no chance", step.token_id, index)
+        return step
+
+    async def capture_for_sweep(
+        self,
+        prompt: str,
+        *,
+        steering_spec: Optional[SteeringSpec] = None,
+        steering_position_mask: Optional[Sequence[int]] = None,
+        max_new_tokens: int = 6,
+        sampler: Optional[SamplerSettings] = None,
+        stop_token_ids: Optional[Sequence[int]] = None,
+        answer_token_ids: Optional[Sequence[int]] = None,
+        prepend_bos: bool = True,
+        on_written: Optional[Callable[[int], Awaitable[bool]]] = None,
+    ) -> SweepCapture:
+        """Write the answer, then read prompt + answer[:-1] back in one forward, both inside one steering block.
+
+        `sampler` (default: greedy) is passed to interp_engine's `generate_stream` with every knob explicit. With
+        `stop_token_ids`, the writing stops after the first of them it writes (`end_of_turn_ids` gives the
+        checkpoint's); None keeps interp_engine's own rule (its tokenizer's eos only), as the instrument always had.
+        With `answer_token_ids`, nothing is written: those ids are the answer, read back teacher-forced, and their odds
+        are taken from the recapture's layer-60 readout. `on_written(i)` is awaited after each written piece; False
+        stops the writing ("stopped"). When the temperature is above 0 and no seed is given, one is drawn
+        (`seed_drawn`) so the draw can be repeated on this server."""
+        assert self.eager_model is not None, "Call runtime.load() first."
+        sampler = sampler if sampler is not None else SamplerSettings()
+        temperature = float(sampler.temperature)
+        greedy = temperature <= 0.0
+        top_k = int(sampler.top_k or 0)
+        top_p = float(sampler.top_p) if sampler.top_p is not None else 1.0
+        penalty = float(sampler.presence_penalty or 0.0)
+        resolved = self.eager_model.sampling_settings(
+            temperature=temperature, top_k=top_k, top_p=top_p, presence_penalty=penalty
+        )
+        settings: Dict[str, Any] = dict(resolved.as_dict())
+        if greedy:
+            settings["top_k"] = None
+            settings["top_p"] = None
+        given = answer_token_ids is not None
+        writing = not given and int(max_new_tokens) > 0
+        seed: Optional[int] = None if greedy else sampler.seed
+        seed_drawn = False
+        if writing and not greedy and seed is None:
+            seed = secrets.randbelow(2**31)
+            seed_drawn = True
+
+        eos = getattr(self.tokenizer, "eos_token_id", None)
+        stop_set = {int(t) for t in stop_token_ids} if stop_token_ids is not None else set()
+        if eos is not None:
+            # interp_engine's loop always stops at its eos too (stop_at_eos=True)
+            stop_set.add(int(eos))
+        stop_list = (
+            list(dict.fromkeys([int(t) for t in stop_token_ids] + ([int(eos)] if eos is not None else [])))
+            if stop_token_ids is not None
+            else ([int(eos)] if eos is not None else [])
+        )
+
+        prompt_token_ids = self.tokenize_prompt(prompt, prepend_bos=prepend_bos)
+        prompt_token_strs = [self.tokenizer.decode([tid]) for tid in prompt_token_ids]
+        points = self._sweep_points()
+
+        answer: List[int] = []
+        answer_strs: List[str] = []
+        steps: List[WrittenStep] = []
+        stop_reason = "given" if given else "none"
+        t0 = time.perf_counter()
+        with self._steering_context(prompt_token_ids, steering_spec, steering_position_mask):
+            if writing:
+                stop_reason = "length"
+                gen = ie_generate_stream(
+                    self.eager_model,
+                    torch.tensor([prompt_token_ids], device=self.eager_model.device),
+                    max_tokens=int(max_new_tokens),
+                    temperature=temperature,
+                    top_k=top_k,
+                    top_p=top_p,
+                    presence_penalty=penalty,
+                    stop_at_eos=True,
+                    n_logprobs=0,
+                    seed=seed,
+                )
+                try:
+                    for i, st in enumerate(gen):
+                        tid = int(st.token_id)
+                        end = tid in stop_set
+                        # the step's numbers now, then drop the step: its logits are a view of the prefill's
+                        # [1, P, 262144] output and would keep it alive through the recapture
+                        steps.append(self._written_step(st.logits, tid, resolved, answer, i, "written", end))
+                        answer.append(tid)
+                        answer_strs.append(st.token_str)
+                        del st
+                        keep = True if on_written is None else bool(await on_written(i))
+                        if end:
+                            stop_reason = "end_mark"
+                            break
+                        if not keep and i + 1 < int(max_new_tokens):
+                            stop_reason = "stopped"
+                            break
+                finally:
+                    gen.close()  # frees the loop's KV cache before the recapture
+            elif given:
+                answer = [int(t) for t in answer_token_ids]  # type: ignore[union-attr]
+                answer_strs = [self.tokenizer.decode([t], clean_up_tokenization_spaces=False) for t in answer]
+            t1 = time.perf_counter()
+            # The last written piece is never fed back, so it has no state: rows P - 1 .. P + n - 2 are the n
+            # places a piece was chosen (as `EagerModel.capture_generation` recaptures).
+            caps = await self.eager_model.capture(prompt_token_ids + answer[: max(len(answer) - 1, 0)], points)
+            t2 = time.perf_counter()
+
+        if given:
+            P = len(prompt_token_ids)
+            r_post_59 = caps[Address("resid_post", N_LAYERS - 1)]
+            for j, tid in enumerate(answer):
+                logits = unembed_gemma4(
+                    r_post_59[P - 1 + j].to(self.device), self.final_norm_weight, self.lm_head_weight
+                )
+                steps.append(self._written_step(logits, tid, resolved, answer[:j], j, "given", tid in stop_set))
+
+        return SweepCapture(
+            prompt=prompt,
+            prompt_token_ids=prompt_token_ids,
+            prompt_token_strs=prompt_token_strs,
+            answer_token_ids=answer,
+            answer_token_strs=answer_strs,
+            answer_text="".join(answer_strs),
+            steps=steps,
+            caps=caps,
+            settings=settings,
+            greedy=greedy,
+            seed=seed,
+            seed_drawn=seed_drawn,
+            stop_reason=stop_reason,
+            stop_token_ids=stop_list,
+            answer_source="given" if given else "written",
+            max_new_tokens=int(max_new_tokens),
+            generate_ms=(t1 - t0) * 1000.0,
+            capture_ms=(t2 - t1) * 1000.0,
+        )
+
+    def _centre_in_frame_space(self, centre_raw: torch.Tensor, basis_space: str) -> torch.Tensor:
+        """`[60, 5376]` raw centre states, moved into the space the frame reads (raw, or h_l J_l^T)."""
+        if basis_space == "raw":
+            return centre_raw
+        return torch.stack(
+            [(centre_raw[l].to(self.jpp_lenses[l].dtype) @ self.jpp_lenses[l].T).float() for l in range(N_LAYERS)],
+            dim=0,
+        )
+
+    async def prepare_sweep(
+        self,
+        cap: SweepCapture,
+        *,
+        monument_concepts: Tuple[Union[str, int], Union[str, int], Union[str, int]],
+        survey_mode: str = "monument",
+        locked_pole: Optional[Tuple[int, int, float]] = None,
+        tracked_concepts: Optional[Sequence[str]] = DEFAULT_TRACKED_CONCEPTS,
+        frame_squaring: str = "gram_schmidt",
+        frame_per_layer: bool = False,
+        frame_fnw: bool = False,
+        centre_prompts: Optional[Sequence[str]] = None,
+        centre_token_ids: Optional[Sequence[Sequence[int]]] = None,
+        centre_answer: bool = False,
+        prepend_bos: bool = True,
+        frame_override: Optional[Tuple[torch.Tensor, str, Dict[str, Any], Tuple[str, str, str]]] = None,
+        centre_override: Optional[torch.Tensor] = None,
+    ) -> SweepShared:
+        """What every sighting of `cap` shares: the tracked words' ids, the survey frame and the matched controls.
+
+        A monument frame is built here (it reads no position). A pole-motif frame (`survey_mode="pole_motif"` with a
+        `locked_pole`) needs a position's poles and threads, so `analyse_position` builds it at the first position it
+        analyses and keeps it for the rest. `frame_override` = (basis, basis_space, frame_info, survey_labels) and
+        `centre_override` (a `[60, 5376]` centre in that space) reuse another sweep's frame and centre (the thinking
+        comparison is read in the main sweep's).
+
+        Controls: the texts `centre_prompts` (tokenized as the prompt is) and the exact ids `centre_token_ids`. Each
+        is captured alone, unsteered, and the mean of their states at their own last piece centres token 0, as the
+        instrument always did. With `centre_answer`, token k >= 1 is centred on the controls reading this very
+        answer: control_ids + answer[:-1], row len(control_ids) - 1 + k ("control_reading_same_answer"), captured on
+        first need. Without it, a position past token 0 is not centred: a control's state at its own last piece is
+        never subtracted from a state read mid-answer."""
+        assert self.eager_model is not None, "Call runtime.load() first."
+        if frame_squaring not in FRAME_SQUARINGS:
+            raise ValueError(f"Unknown frame_squaring {frame_squaring!r}; expected one of {FRAME_SQUARINGS}")
+        t_start = time.perf_counter()
 
         # Resolve tracked concepts to token IDs
         tracked_map: Dict[str, int] = {}
@@ -992,6 +1375,146 @@ class TheodoliteRuntime:
                 except ValueError:
                     pass
 
+        # Module 4's survey frame (Gram-Schmidt or Löwdin); the pole-motif one waits for its first position
+        basis: Optional[torch.Tensor] = None
+        basis_space = "J"
+        survey_labels: Optional[Tuple[str, str, str]] = None
+        frame_info: Dict[str, Any] = {"squaring": frame_squaring, "per_layer": False, "fnw_weighted": False}
+        if frame_override is not None:
+            basis, basis_space, override_info, survey_labels = frame_override
+            frame_info = dict(override_info)
+        elif not (survey_mode == "pole_motif" and locked_pole is not None):
+            t1_id, t1_str = self.resolve_concept_token_id(monument_concepts[0])
+            t2_id, t2_str = self.resolve_concept_token_id(monument_concepts[1])
+            t3_id, t3_str = self.resolve_concept_token_id(monument_concepts[2])
+            global_basis_J, layer_pullback_basis = build_monument_frame(
+                token_ids=(t1_id, t2_id, t3_id),
+                lm_head_weight=self.lm_head_weight,
+                jpp_lenses=self.jpp_lenses,
+                pullback_per_layer=bool(frame_per_layer),
+                squaring=frame_squaring,
+                final_norm_weight=self.final_norm_weight if frame_fnw else None,
+            )
+            if frame_per_layer:
+                basis = layer_pullback_basis
+                basis_space = "raw"
+            else:
+                basis = global_basis_J
+            survey_labels = (t1_str.strip() or str(monument_concepts[0]), t2_str.strip() or str(monument_concepts[1]), t3_str.strip() or str(monument_concepts[2]))
+            rows = self.lm_head_weight[torch.tensor([t1_id, t2_id, t3_id], device=self.lm_head_weight.device)]
+            frame_info.update(
+                {
+                    "per_layer": bool(frame_per_layer),
+                    "fnw_weighted": bool(frame_fnw),
+                    "token_ids": [int(t1_id), int(t2_id), int(t3_id)],
+                    "tokens": [t1_str, t2_str, t3_str],
+                    "geometry": frame_word_geometry(rows, self.final_norm_weight),
+                }
+            )
+        if frame_override is None:
+            frame_info["state"] = "h_raw" if basis_space == "raw" else "h_J"
+
+        # Matched controls: their mean state at their own last position, in the frame's space (REPORT §3.5)
+        control_ids: List[List[int]] = [
+            self.tokenize_prompt(c_text, prepend_bos=prepend_bos) for c_text in (centre_prompts or []) if c_text and c_text.strip()
+        ]
+        for ids in centre_token_ids or []:
+            ids = [int(t) for t in ids]
+            if not ids:
+                raise ValueError("A matched control given as word-piece ids has none: each needs at least one.")
+            control_ids.append(ids)
+        centre_k0 = centre_override
+        if centre_override is None and control_ids:
+            centre_raw = torch.zeros(N_LAYERS, D_MODEL, dtype=torch.float32, device=self.device)
+            for c_ids in control_ids:
+                c_caps = await self.eager_model.capture(c_ids, [Address("resid_post", l) for l in range(N_LAYERS)])
+                for l in range(N_LAYERS):
+                    centre_raw[l] += c_caps[Address("resid_post", l)][len(c_ids) - 1].to(self.device).float()
+                del c_caps
+            centre_raw /= len(control_ids)
+            centre_k0 = self._centre_in_frame_space(centre_raw, basis_space)
+
+        return SweepShared(
+            tracked_map=tracked_map,
+            survey_mode=survey_mode,
+            locked_pole=locked_pole,
+            frame_squaring=frame_squaring,
+            basis=basis,
+            basis_space=basis_space,
+            frame_info=frame_info,
+            survey_labels=survey_labels,
+            control_ids=control_ids,
+            centre_k0=centre_k0,
+            centre_answer=bool(centre_answer),
+            prepare_ms=(time.perf_counter() - t_start) * 1000.0,
+        )
+
+    async def _answer_centre(self, cap: SweepCapture, shared: SweepShared, token_index: int) -> torch.Tensor:
+        """The centre for token k >= 1: the controls reading this very answer (control_ids + answer[:-1], unsteered),
+        their mean state at row len(control_ids) - 1 + k, in the frame's space. One forward per control, on first
+        need, kept in `shared`."""
+        assert self.eager_model is not None, "Call runtime.load() first."
+        n = len(cap.answer_token_ids)
+        if shared.answer_centre_raw is None:
+            acc = torch.zeros(max(n - 1, 0), N_LAYERS, D_MODEL, dtype=torch.float32)
+            tail = cap.answer_token_ids[: max(n - 1, 0)]
+            for c_ids in shared.control_ids:
+                c_caps = await self.eager_model.capture(
+                    c_ids + tail, [Address("resid_post", l) for l in range(N_LAYERS)]
+                )
+                for l in range(N_LAYERS):
+                    acc[:, l] += c_caps[Address("resid_post", l)][len(c_ids) : len(c_ids) + n - 1].float()
+                del c_caps
+            shared.answer_centre_raw = acc / len(shared.control_ids)
+        centre_raw = shared.answer_centre_raw[int(token_index) - 1].to(self.device)
+        return self._centre_in_frame_space(centre_raw, shared.basis_space)
+
+    async def analyse_position(
+        self,
+        cap: SweepCapture,
+        shared: SweepShared,
+        token_index: int,
+        *,
+        top_k_poles: int = 15,
+        decode_all_pole_tokens: bool = False,
+        pole_ranking: str = "activation",
+        thread_score: str = "coupling",
+        rank_lookahead: bool = True,
+    ) -> TheodoliteSweepBundle:
+        """One sighting: all four modules at read position P - 1 + token_index, the stream that has just read the
+        prompt's last piece (token 0) or answer[k - 1], and whose layer 60 chose answer[k].
+
+        `rank_lookahead` is the space-then-digit rule: when the piece chosen here decodes blank (Gemma writes a digit
+        after a lone space) and the next position was read, each tracked word's J++ rank, logit and prob is taken
+        from the next position where it ranks better there (recorded in `tracked_from_next`). At token 0 this is the
+        rule the instrument always applied."""
+        assert self.eager_model is not None, "Call runtime.load() first."
+        if pole_ranking not in POLE_RANKINGS:
+            raise ValueError(f"Unknown pole_ranking {pole_ranking!r}; expected one of {POLE_RANKINGS}")
+        if thread_score not in THREAD_SCORES:
+            raise ValueError(f"Unknown thread_score {thread_score!r}; expected one of {THREAD_SCORES}")
+        t_start = time.perf_counter()
+
+        caps = cap.caps
+        k = int(token_index)
+        n = len(cap.answer_token_ids)
+        if not 0 <= k < max(n, 1):
+            raise ValueError(
+                f"There is no word-piece {k} to sight: the answer has {n} word-piece(s), numbered from 0."
+            )
+        P = len(cap.prompt_token_ids)
+        target_pos = P - 1 + k  # the read position
+        n_rows = int(caps[Address("resid_post", 0)].shape[0])
+        read_token_id = int((cap.prompt_token_ids + cap.answer_token_ids)[target_pos])
+        chosen = cap.steps[k] if k < len(cap.steps) else None
+        tracked_map = shared.tracked_map
+        lookahead = bool(
+            rank_lookahead
+            and k < n
+            and self.tokenizer.decode([cap.answer_token_ids[k]]).strip() == ""
+            and n_rows > target_pos + 1
+        )
+
         # 4. Execute Module 1 (Attn vs FFN Causal Split), J++ Readouts, and Module 2 (Bipolar Poles)
         causal_splits: Dict[int, CausalSplitResult] = {}
         bipolar_poles: Dict[int, BipolarPolesResult] = {}
@@ -999,6 +1522,7 @@ class TheodoliteRuntime:
         naive_layer_readouts: Dict[int, SweepLayerTokenReadout] = {}
         pole_top_tokens_jpp: Dict[Tuple[int, int], List[Tuple[str, float]]] = {}
         pole_top_tokens_naive: Dict[Tuple[int, int], List[Tuple[str, float]]] = {}
+        tracked_from_next: Dict[int, Dict[str, bool]] = {}
 
         resid_post_target_list: List[torch.Tensor] = []
         resid_post_J_target_list: List[torch.Tensor] = []
@@ -1012,21 +1536,19 @@ class TheodoliteRuntime:
         pole_write_sizes: Dict[int, List[float]] = {}
         poles_ffn_explained: Dict[int, Optional[float]] = {}
         layer_scalars = torch.zeros(N_LAYERS, dtype=torch.float32)
+        readout_60: Optional[torch.Tensor] = None
 
         for l in range(N_LAYERS):
             J_l = self.jpp_lenses[l]
-            r_pre_seq = caps[Address("resid_pre", l)].to(self.device)
-            r_mid_seq = caps[Address("resid_mid", l)].to(self.device)
-            r_post_seq = caps[Address("resid_post", l)].to(self.device)
-            mlp_act_seq = caps[Address("mlp_act", l)].to(self.device)
+            # rows are picked on the CPU and only they move to the GPU (the same values the whole sequence held)
+            r_post_cap = caps[Address("resid_post", l)]
+            r_pre_t = caps[Address("resid_pre", l)][target_pos].to(self.device)
+            r_mid_t = caps[Address("resid_mid", l)][target_pos].to(self.device)
+            r_post_t = r_post_cap[target_pos].to(self.device)
+            mlp_act_t = caps[Address("mlp_act", l)][target_pos].to(self.device)
             mlp_out_cap = caps.get(Address("mlp_out", l))
 
-            seq_states_list.append(r_post_seq[: target_pos + 1].float())
-
-            r_pre_t = r_pre_seq[target_pos]
-            r_mid_t = r_mid_seq[target_pos]
-            r_post_t = r_post_seq[target_pos]
-            mlp_act_t = mlp_act_seq[target_pos]
+            seq_states_list.append(r_post_cap[: target_pos + 1].to(self.device).float())
 
             # Module 1: Causal Vector Split (Gemma-4 multiplies every layer output by layer_scalar)
             s_l = self._decoder_layers[l].layer_scalar.detach().float()
@@ -1048,13 +1570,16 @@ class TheodoliteRuntime:
 
             # Layer l J++ Readout & Naive Logit Lens Readout
             jpp_logits = unembed_gemma4(split_l.resid_post_J, self.final_norm_weight, self.lm_head_weight)
+            if l == N_LAYERS - 1:
+                readout_60 = jpp_logits
             ro_jpp = self.decode_top_tokens(
                 jpp_logits, top_k=5, tracked_token_ids=tracked_map, layer_idx=l
             )
+            from_next = {lbl: False for lbl in ro_jpp.tracked_token_ranks}
             # In SentencePiece (Gemma-4), digits ('8', '6') are emitted after a standalone space token (' ').
             # When the model emits ' ' at target_pos, evaluate digit readout at target_pos + 1 as well.
-            if has_leading_space_prefix and r_post_seq.shape[0] > target_pos + 1:
-                r_post_next_J = r_post_seq[target_pos + 1].to(dtype=J_l.dtype) @ J_l.T
+            if lookahead:
+                r_post_next_J = r_post_cap[target_pos + 1].to(self.device).to(dtype=J_l.dtype) @ J_l.T
                 jpp_logits_next = unembed_gemma4(r_post_next_J, self.final_norm_weight, self.lm_head_weight)
                 ro_next = self.decode_top_tokens(
                     jpp_logits_next, top_k=5, tracked_token_ids=tracked_map, layer_idx=l
@@ -1064,7 +1589,9 @@ class TheodoliteRuntime:
                         ro_jpp.tracked_token_ranks[lbl] = ro_next.tracked_token_ranks[lbl]
                         ro_jpp.tracked_token_logits[lbl] = ro_next.tracked_token_logits[lbl]
                         ro_jpp.tracked_token_probs[lbl] = ro_next.tracked_token_probs[lbl]
+                        from_next[lbl] = True
             jpp_layer_readouts[l] = ro_jpp
+            tracked_from_next[l] = from_next
 
             naive_logits = unembed_gemma4(r_post_t, self.final_norm_weight, self.lm_head_weight)
             naive_layer_readouts[l] = self.decode_top_tokens(
@@ -1138,11 +1665,12 @@ class TheodoliteRuntime:
             direct=direct_inputs,
         )
 
-        # 6. Execute Module 4: Projective Theodolite Triangulation (survey frame: Gram-Schmidt or Löwdin)
-        basis_space = "J"
-        frame_info: Dict[str, Any] = {"squaring": frame_squaring, "per_layer": False, "fnw_weighted": False}
-        if survey_mode == "pole_motif" and locked_pole is not None:
-            p_layer, p_neuron, p_pol = locked_pole
+        # 6. Execute Module 4: Projective Theodolite Triangulation (survey frame: Gram-Schmidt or Löwdin). A pole-motif
+        #    frame's third axis is the locked pole's dominant reader at this position: built once, at the first
+        #    position analysed, and kept, so every word-piece of the answer is read in one frame.
+        if shared.basis is None:
+            assert shared.locked_pole is not None
+            p_layer, p_neuron, p_pol = shared.locked_pole
             n_idx_t = torch.tensor([p_neuron], device=self.device, dtype=torch.long)
             w_gate_v = self.slice_w_gate(p_layer, n_idx_t)[0]
             w_down_v = self.slice_w_down(p_layer, n_idx_t)[0]
@@ -1156,7 +1684,7 @@ class TheodoliteRuntime:
             dst_gate_v = self.slice_w_gate(
                 next_l, torch.tensor([dom_dst_neuron], device=self.device, dtype=torch.long)
             )[0]
-            basis = build_pole_motif_frame(
+            shared.basis = build_pole_motif_frame(
                 layer_idx=p_layer,
                 neuron_idx=p_neuron,
                 polarity=p_pol,
@@ -1164,73 +1692,39 @@ class TheodoliteRuntime:
                 w_down_vec=w_down_v,
                 J_l=self.jpp_lenses[p_layer],
                 downstream_gate_vec=dst_gate_v,
-                squaring=frame_squaring,
+                squaring=shared.frame_squaring,
             )
             pol_char = "+" if p_pol >= 0 else "-"
-            survey_labels = (
+            shared.survey_labels = (
                 f"Gate L{p_layer}:N{p_neuron}",
                 f"Write L{p_layer}:N{p_neuron}({pol_char})@J++",
                 f"Reader L{next_l}:N{dom_dst_neuron}",
             )
-        else:
-            t1_id, t1_str = self.resolve_concept_token_id(monument_concepts[0])
-            t2_id, t2_str = self.resolve_concept_token_id(monument_concepts[1])
-            t3_id, t3_str = self.resolve_concept_token_id(monument_concepts[2])
-            global_basis_J, layer_pullback_basis = build_monument_frame(
-                token_ids=(t1_id, t2_id, t3_id),
-                lm_head_weight=self.lm_head_weight,
-                jpp_lenses=self.jpp_lenses,
-                pullback_per_layer=bool(frame_per_layer),
-                squaring=frame_squaring,
-                final_norm_weight=self.final_norm_weight if frame_fnw else None,
-            )
-            if frame_per_layer:
-                basis = layer_pullback_basis
-                basis_space = "raw"
-            else:
-                basis = global_basis_J
-            survey_labels = (t1_str.strip() or str(monument_concepts[0]), t2_str.strip() or str(monument_concepts[1]), t3_str.strip() or str(monument_concepts[2]))
-            rows = self.lm_head_weight[torch.tensor([t1_id, t2_id, t3_id], device=self.lm_head_weight.device)]
-            frame_info.update(
-                {
-                    "per_layer": bool(frame_per_layer),
-                    "fnw_weighted": bool(frame_fnw),
-                    "token_ids": [int(t1_id), int(t2_id), int(t3_id)],
-                    "tokens": [t1_str, t2_str, t3_str],
-                    "geometry": frame_word_geometry(rows, self.final_norm_weight),
-                }
-            )
-        frame_info["state"] = "h_raw" if basis_space == "raw" else "h_J"
+            shared.frame_info["reader"] = {"layer": int(next_l), "neuron": int(dom_dst_neuron), "from_token_index": k}
+        basis = shared.basis
+        basis_space = shared.basis_space
+        survey_labels = shared.survey_labels
+        assert survey_labels is not None
 
         resid_post_layers_t = torch.stack(resid_post_target_list, dim=0)        # [60, 5376]
         resid_post_J_layers_t = torch.stack(resid_post_J_target_list, dim=0)    # [60, 5376]
         delta_attn_J_layers_t = torch.stack(delta_attn_J_target_list, dim=0)    # [60, 5376]
         delta_ffn_J_layers_t = torch.stack(delta_ffn_J_target_list, dim=0)      # [60, 5376]
 
-        # Matched-control centre: mean state over the control texts at their last position, in the frame's space
+        # Matched-control centre, in the frame's space: at token 0 the controls' own last piece; past it, the
+        # controls reading this very answer when asked for (`centre_answer`), else none
         centre_states: Optional[torch.Tensor] = None
-        centre_list = [c for c in (centre_prompts or []) if c and c.strip()]
-        if centre_list:
-            centre_raw = torch.zeros(N_LAYERS, D_MODEL, dtype=torch.float32, device=self.device)
-            for c_text in centre_list:
-                c_ids = self.tokenize_prompt(c_text, prepend_bos=prepend_bos)
-                c_caps = await self.eager_model.capture(c_ids, [Address("resid_post", l) for l in range(N_LAYERS)])
-                for l in range(N_LAYERS):
-                    centre_raw[l] += c_caps[Address("resid_post", l)][len(c_ids) - 1].to(self.device).float()
-                del c_caps
-            centre_raw /= len(centre_list)
-            if basis_space == "raw":
-                centre_states = centre_raw
-            else:
-                centre_states = torch.stack(
-                    [
-                        (centre_raw[l].to(self.jpp_lenses[l].dtype) @ self.jpp_lenses[l].T).float()
-                        for l in range(N_LAYERS)
-                    ],
-                    dim=0,
-                )
+        centre_kind = "none"
+        if k == 0:
+            centre_states = shared.centre_k0
+            centre_kind = "control_prompt_end" if centre_states is not None else "none"
+        elif shared.centre_answer and shared.control_ids:
+            centre_states = await self._answer_centre(cap, shared, k)
+            centre_kind = "control_reading_same_answer"
+        frame_info = dict(shared.frame_info)
         frame_info["centred"] = centre_states is not None
-        frame_info["n_centre_prompts"] = len(centre_list)
+        frame_info["n_centre_prompts"] = len(shared.control_ids)
+        frame_info["centre_kind"] = centre_kind
 
         trajectory_3d = project_trajectory_to_3d(
             resid_post_layers=resid_post_layers_t,
@@ -1244,22 +1738,36 @@ class TheodoliteRuntime:
             delta_ffn_raw_layers=torch.stack(delta_ffn_raw_list, dim=0),
         )
 
-        # 7. Compute 60x60 Linear CKA Similarity Matrix
+        # 7. Compute 60x60 Linear CKA Similarity Matrix (over the word-pieces read up to here)
         seq_states_t = torch.stack(seq_states_list, dim=0)  # [60, n_tokens, 5376]
         cka_matrix = compute_linear_cka_matrix(seq_states_t)
+
+        # The reading forward against the writing one, at layer 60 (J = I): the readout's top piece and its logit for
+        # the chosen piece, less the logit the writing chose it at
+        recapture_check: Optional[Dict[str, Any]] = None
+        if chosen is not None and readout_60 is not None:
+            top1_id = int(torch.argmax(readout_60).item())
+            chosen_logit_recapture = float(readout_60[chosen.token_id].item())
+            recapture_check = {
+                "top1_id": top1_id,
+                "top1_token": self.tokenizer.decode([top1_id], clean_up_tokenization_spaces=False),
+                "top1_is_chosen": top1_id == chosen.token_id,
+                "chosen_logit_recapture": chosen_logit_recapture,
+                "chosen_logit_diff": chosen_logit_recapture - chosen.chosen_logit,
+            }
 
         peak_vram_gb = (
             torch.cuda.max_memory_allocated(self.device) / (1024**3) if torch.cuda.is_available() else 0.0
         )
-        elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+        analyse_ms = (time.perf_counter() - t_start) * 1000.0
 
         return TheodoliteSweepBundle(
-            prompt=prompt,
-            prompt_token_ids=prompt_token_ids,
-            prompt_token_strs=prompt_token_strs,
+            prompt=cap.prompt,
+            prompt_token_ids=cap.prompt_token_ids,
+            prompt_token_strs=cap.prompt_token_strs,
             target_pos=target_pos,
-            generated_text=generated_text,
-            generated_token_ids=generated_token_ids,
+            generated_text=cap.answer_text,
+            generated_token_ids=cap.answer_token_ids,
             trajectory_3d=trajectory_3d,
             causal_splits=causal_splits,
             bipolar_poles=bipolar_poles,
@@ -1269,10 +1777,10 @@ class TheodoliteRuntime:
             naive_layer_readouts=naive_layer_readouts,
             pole_top_tokens_jpp=pole_top_tokens_jpp,
             pole_top_tokens_naive=pole_top_tokens_naive,
-            survey_mode=survey_mode,
+            survey_mode=shared.survey_mode,
             survey_labels=survey_labels,
             peak_vram_gb=peak_vram_gb,
-            elapsed_ms=elapsed_ms,
+            elapsed_ms=cap.generate_ms + cap.capture_ms + shared.prepare_ms + analyse_ms,
             survey_basis=basis,
             survey_basis_space=basis_space,
             frame_info=frame_info,
@@ -1280,4 +1788,173 @@ class TheodoliteRuntime:
             poles_ffn_explained=poles_ffn_explained,
             pole_ranking=pole_ranking,
             thread_score=thread_score,
+            token_index=k,
+            read_token_id=read_token_id,
+            read_token=self.tokenizer.decode([read_token_id], clean_up_tokenization_spaces=False),
+            chosen=chosen,
+            recapture_check=recapture_check,
+            kinship_n_states=target_pos + 1,
+            centre_kind=centre_kind,
+            frame_reader=shared.frame_info.get("reader"),
+            tracked_from_next=tracked_from_next,
+            rank_lookahead=bool(rank_lookahead),
+            analyse_ms=analyse_ms,
         )
+
+    async def run_theodolite_sweep(
+        self,
+        prompt: str,
+        *,
+        monument_concepts: Tuple[Union[str, int], Union[str, int], Union[str, int]] = ("spider", "eight", "web"),
+        survey_mode: str = "monument",
+        locked_pole: Optional[Tuple[int, int, float]] = None,
+        steering_spec: Optional[SteeringSpec] = None,
+        max_new_tokens: int = 6,
+        top_k_poles: int = 15,
+        tracked_concepts: Optional[Sequence[str]] = DEFAULT_TRACKED_CONCEPTS,
+        decode_all_pole_tokens: bool = False,
+        prepend_bos: bool = True,
+        steering_position_mask: Optional[Sequence[int]] = None,
+        pole_ranking: str = "activation",
+        thread_score: str = "coupling",
+        frame_squaring: str = "gram_schmidt",
+        frame_per_layer: bool = False,
+        frame_fnw: bool = False,
+        centre_prompts: Optional[Sequence[str]] = None,
+        sampler: Optional[SamplerSettings] = None,
+        stop_token_ids: Optional[Sequence[int]] = None,
+    ) -> TheodoliteSweepBundle:
+        """Run a full 60-layer Theodolite capture & generation sweep via `interp-engine`, read at the prompt's last
+        word-piece (token 0): `capture_for_sweep` + `prepare_sweep` + `analyse_position(0)`.
+
+        Captures standardized hook addresses across all 60 layers:
+          - `Address("resid_pre", l)`
+          - `Address("resid_mid", l)`
+          - `Address("mlp_act", l)`
+          - `Address("mlp_out", l)` (y = W_down a, before the post-FFN norm; for write sizes and direct paths)
+          - `Address("resid_post", l)`
+        and executes all 4 mathematical modules in `backend/theodolite_math.py`.
+
+        Options (each default reproduces the instrument as first built):
+          steering_position_mask: prompt positions the steering leaves alone (e.g. [0], the start mark).
+          pole_ranking: "activation" (|a|) or "write" (|a| * ||w_down (.) w_post||).
+          thread_score: "coupling" (C) or "direct" (the direct-path estimate) for selecting the filaments.
+          frame_squaring: "gram_schmidt" (in order) or "lowdin" (all at once) for the survey frame.
+          frame_per_layer: square the word frame afresh at each layer from W_U rows pulled back by J_l, and read
+              the raw h_l in it (word frames only).
+          frame_fnw: build the word frame from the final-norm weighted rows fnw * W_U (word frames only).
+          centre_prompts: exact texts of matched controls; the mean of their states at their last position is
+              subtracted from every layer's state before it is projected (REPORT §3.5). Captured unsteered.
+          sampler: how the continuation is written (default: greedy, as always; see `SamplerSettings`).
+          stop_token_ids: stop writing after any of these (e.g. `end_of_turn_ids()`); None keeps interp_engine's own
+              rule (its tokenizer's eos only).
+        """
+        assert self.eager_model is not None, "Call runtime.load() first."
+        if pole_ranking not in POLE_RANKINGS:
+            raise ValueError(f"Unknown pole_ranking {pole_ranking!r}; expected one of {POLE_RANKINGS}")
+        if thread_score not in THREAD_SCORES:
+            raise ValueError(f"Unknown thread_score {thread_score!r}; expected one of {THREAD_SCORES}")
+        if frame_squaring not in FRAME_SQUARINGS:
+            raise ValueError(f"Unknown frame_squaring {frame_squaring!r}; expected one of {FRAME_SQUARINGS}")
+        t_start = time.perf_counter()
+        cap = await self.capture_for_sweep(
+            prompt,
+            steering_spec=steering_spec,
+            steering_position_mask=steering_position_mask,
+            max_new_tokens=max_new_tokens,
+            sampler=sampler,
+            stop_token_ids=stop_token_ids,
+            prepend_bos=prepend_bos,
+        )
+        shared = await self.prepare_sweep(
+            cap,
+            monument_concepts=monument_concepts,
+            survey_mode=survey_mode,
+            locked_pole=locked_pole,
+            tracked_concepts=tracked_concepts,
+            frame_squaring=frame_squaring,
+            frame_per_layer=frame_per_layer,
+            frame_fnw=frame_fnw,
+            centre_prompts=centre_prompts,
+            prepend_bos=prepend_bos,
+        )
+        bundle = await self.analyse_position(
+            cap,
+            shared,
+            0,
+            top_k_poles=top_k_poles,
+            decode_all_pole_tokens=decode_all_pole_tokens,
+            pole_ranking=pole_ranking,
+            thread_score=thread_score,
+        )
+        bundle.elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+        return bundle
+
+    async def iter_theodolite_sweeps(
+        self,
+        prompt: str,
+        *,
+        token_indices: Optional[Sequence[int]] = None,
+        max_sighted: int = 64,
+        monument_concepts: Tuple[Union[str, int], Union[str, int], Union[str, int]] = ("spider", "eight", "web"),
+        survey_mode: str = "monument",
+        locked_pole: Optional[Tuple[int, int, float]] = None,
+        steering_spec: Optional[SteeringSpec] = None,
+        max_new_tokens: int = 6,
+        top_k_poles: int = 15,
+        tracked_concepts: Optional[Sequence[str]] = DEFAULT_TRACKED_CONCEPTS,
+        decode_all_pole_tokens: bool = False,
+        prepend_bos: bool = True,
+        steering_position_mask: Optional[Sequence[int]] = None,
+        pole_ranking: str = "activation",
+        thread_score: str = "coupling",
+        frame_squaring: str = "gram_schmidt",
+        frame_per_layer: bool = False,
+        frame_fnw: bool = False,
+        centre_prompts: Optional[Sequence[str]] = None,
+        centre_token_ids: Optional[Sequence[Sequence[int]]] = None,
+        centre_answer: bool = False,
+        sampler: Optional[SamplerSettings] = None,
+        stop_token_ids: Optional[Sequence[int]] = None,
+        answer_token_ids: Optional[Sequence[int]] = None,
+        rank_lookahead: bool = True,
+    ) -> AsyncIterator[TheodoliteSweepBundle]:
+        """For scripts: write once, then yield a sighting for each of `token_indices` (default: every written
+        word-piece, the first `max_sighted`; token 0 alone when nothing was written), all read in one frame."""
+        cap = await self.capture_for_sweep(
+            prompt,
+            steering_spec=steering_spec,
+            steering_position_mask=steering_position_mask,
+            max_new_tokens=max_new_tokens,
+            sampler=sampler,
+            stop_token_ids=stop_token_ids,
+            answer_token_ids=answer_token_ids,
+            prepend_bos=prepend_bos,
+        )
+        shared = await self.prepare_sweep(
+            cap,
+            monument_concepts=monument_concepts,
+            survey_mode=survey_mode,
+            locked_pole=locked_pole,
+            tracked_concepts=tracked_concepts,
+            frame_squaring=frame_squaring,
+            frame_per_layer=frame_per_layer,
+            frame_fnw=frame_fnw,
+            centre_prompts=centre_prompts,
+            centre_token_ids=centre_token_ids,
+            centre_answer=centre_answer,
+            prepend_bos=prepend_bos,
+        )
+        n = len(cap.answer_token_ids)
+        order = list(token_indices) if token_indices is not None else list(range(max(1, min(n, int(max_sighted)))))
+        for k in order:
+            yield await self.analyse_position(
+                cap,
+                shared,
+                int(k),
+                top_k_poles=top_k_poles,
+                decode_all_pole_tokens=decode_all_pole_tokens,
+                pole_ranking=pole_ranking,
+                thread_score=thread_score,
+                rank_lookahead=rank_lookahead,
+            )

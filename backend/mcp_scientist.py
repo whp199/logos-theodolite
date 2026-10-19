@@ -23,12 +23,13 @@ import torch
 from fastmcp import FastMCP
 from interp_engine import Address
 
-from backend.engine_runtime import TheodoliteRuntime
+from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
 from backend.larql_vault import LarqlVaultEngine
 from backend.theodolite_math import (
     D_FF,
     N_LAYERS,
     THREAD_SCORES,
+    VOCAB_SIZE,
     direct_path_reader_effects,
     direct_path_source_write,
     extract_bipolar_poles,
@@ -94,6 +95,7 @@ async def trace_downstream_readers(
     chat: bool = False,
     system: Optional[str] = None,
     assistant_prefix: str = "",
+    token_ids: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
     """Trace verified Live Downstream Reader poles for `(layer, neuron_idx)` on `prompt`.
 
@@ -108,6 +110,12 @@ async def trace_downstream_readers(
     `chat=True` wraps `prompt` in the chat template (optional `system` turn, thinking off) and appends
     `assistant_prefix`; otherwise `prompt` is read as given (an earlier sighting's echoed `prompt` is exact).
 
+    `token_ids` (1 to MAX_SWEEP_POSITIONS word-piece ids) are read exactly as given instead, with no composing and no
+    tokenizing, at the last of them: a sighting's own ids up to its read position, so the trace reads the stream that
+    sighting read (re-tokenizing a prompt and its answer as text need not give the same ids). `prompt`, `chat`,
+    `system` and `assistant_prefix` are then not used; the reply's `prompt` is those ids decoded, for reading only.
+    The trace always reads the model without any nudge (`steered: false`), on whatever text it is given.
+
     `lens` names the lens each reader's `dst_j_vindex_tokens` went through; read its `caution` before trusting them.
     """
     if score not in THREAD_SCORES:
@@ -119,8 +127,19 @@ async def trace_downstream_readers(
     n_src = max(0, min(int(neuron_idx), D_FF - 1))
     l_end = min(l_src + max(1, int(max_layer_hop)), N_LAYERS - 1)
 
-    text = runtime.compose_prompt(prompt, chat=chat, system=system, assistant_prefix=assistant_prefix)
-    prompt_ids = runtime.tokenize_prompt(text)
+    if token_ids is not None:
+        if isinstance(token_ids, (str, bytes)) or not 1 <= len(token_ids) <= MAX_SWEEP_POSITIONS:
+            raise ValueError(f"token_ids needs 1 to {MAX_SWEEP_POSITIONS} word-piece ids.")
+        for t in token_ids:
+            if isinstance(t, bool) or not isinstance(t, int) or not 0 <= t < VOCAB_SIZE:
+                raise ValueError(
+                    f"token_ids holds {t!r}, which is not a word-piece id: ids are whole numbers from 0 to {VOCAB_SIZE - 1}."
+                )
+        prompt_ids = [int(t) for t in token_ids]
+        text = runtime.tokenizer.decode(prompt_ids)
+    else:
+        text = runtime.compose_prompt(prompt, chat=chat, system=system, assistant_prefix=assistant_prefix)
+        prompt_ids = runtime.tokenize_prompt(text)
     target_pos = len(prompt_ids) - 1
 
     points = [Address("mlp_act", l) for l in range(l_src, l_end + 1)]
@@ -221,7 +240,11 @@ async def trace_downstream_readers(
     candidates.sort(key=lambda item: item["abs_score"], reverse=True)
     return {
         "prompt": text,
-        "chat": bool(chat),
+        "chat": bool(chat),  # as asked; with token_ids the template was not applied here (the ids may hold one)
+        "token_ids_given": token_ids is not None,
+        "read_pos": target_pos,
+        # read without any nudge, also when the sighting it reads for was nudged
+        "steered": False,
         "score_kind": score,
         "max_layer_hop": l_end - l_src,
         "top_k": int(top_k),

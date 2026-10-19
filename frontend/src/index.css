@@ -580,3 +580,414 @@ pre.raw {
     font-size: 26px;
   }
 }
+
+/* ---------- i · the question: boxes that grow with what is written, and can be drawn taller by hand ---------- */
+.q-box {
+  display: block;
+  width: 100%;
+  margin: 0;
+  font-family: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--control);
+  border-radius: 0;
+  resize: vertical;
+  /* grows as you write where the browser can; everywhere the corner draws it taller */
+  field-sizing: content;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.q-box::placeholder {
+  color: var(--muted);
+  font-style: italic;
+  opacity: 1;
+}
+/* the question's size stays in the .q-ask rules above (34px; 26px on a phone): no textarea.q-ask { font-size } here */
+.q-ask {
+  line-height: 1.25;
+  padding: 4px 0 8px;
+  min-height: calc(1.25em + 12px);
+  outline-offset: 6px;
+}
+.q-begin {
+  font-size: 26px;
+  font-style: italic;
+  line-height: 1.3;
+  padding: 2px 0 6px;
+  width: auto;
+  min-width: 180px;
+  max-width: 100%;
+  min-height: calc(1.3em + 8px);
+}
+.q-system {
+  font-size: 16px;
+  line-height: 1.35;
+  padding: 2px 0 6px;
+  min-height: calc(2.7em + 8px);
+}
+/* a textarea's baseline is not reliably its first line: each label is set to the first line by hand */
+.q-grid > .q-label {
+  align-self: start;
+}
+.q-grid > .q-label-ask {
+  padding-top: 18px;
+}
+.q-grid > .q-label-begin {
+  padding-top: 9px;
+}
+.q-begin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  min-width: 0;
+}
+.q-hint {
+  flex: 1 1 260px;
+  min-width: 0;
+  font-size: 16px;
+  color: var(--muted);
+}
+.q-hint .read {
+  color: var(--ink);
+  border-bottom: 2px solid var(--gilt);
+}
+.q-tools-cell {
+  grid-column: 2;
+  min-width: 0;
+}
+
+/* ---------- saved questions and system prompts: kept only when asked ---------- */
+.shelf-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+.q-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 18px;
+  font-size: 15px;
+  color: var(--muted);
+}
+.q-tools .btn-link {
+  font-size: 15px;
+}
+.shelf {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  border-top: 1px solid var(--hair-soft);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.shelf li {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 16px;
+  border-bottom: 1px solid var(--hair-faint);
+}
+.shelf-use {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+}
+.shelf-use:hover .shelf-name {
+  text-decoration: underline;
+  text-decoration-color: var(--gilt-rule);
+  text-underline-offset: 3px;
+}
+.shelf-name {
+  font-size: 17px;
+  line-height: 1.3;
+}
+.shelf-here {
+  font-size: 14px;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
+  color: var(--gilt-text);
+}
+.shelf-text {
+  max-width: 100%;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shelf-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 14px;
+}
+.shelf-form label {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 420px;
+}
+.shelf-form input {
+  font-size: 19px;
+  font-style: italic;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--control);
+  border-radius: 0;
+  padding: 4px 0 6px;
+  min-height: 44px;
+  width: 100%;
+}
+.shelf-warning {
+  margin: 0;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--rubric);
+}
+
+/* ---------- how it writes ---------- */
+.writes {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) minmax(0, 1fr);
+  gap: 8px 20px;
+  align-items: baseline;
+  padding: 14px 0 18px;
+  border-top: 1px solid var(--hair-soft);
+}
+.writes-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.writes-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 22px;
+}
+.writes-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.writes-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 16px;
+}
+.writes-now {
+  margin: 0;
+  font-size: 16px;
+  color: var(--muted);
+  max-width: 760px;
+}
+.writes-warn {
+  margin: 0;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--rubric);
+}
+.sampler {
+  display: grid;
+  grid-template-columns: minmax(120px, 170px) 6em minmax(0, 1fr);
+  gap: 2px 14px;
+  align-items: baseline;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hair-faint);
+}
+.sampler > label {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
+  font-size: 15px;
+  color: var(--muted);
+}
+.sampler .note {
+  font-size: 15px;
+  color: var(--muted);
+}
+.input-num {
+  font-size: 17px;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--control);
+  border-radius: 0;
+  padding: 6px 0;
+  min-height: 44px;
+  width: 5.5em;
+}
+.input-num[aria-invalid="true"] {
+  border-bottom-color: var(--rubric);
+}
+.input-num:disabled {
+  color: var(--muted);
+}
+
+/* ---------- it went on: the word-pieces it wrote, each a sighting to choose ---------- */
+.went-on {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 22px;
+  padding: 16px 0 10px;
+  border-top: 1px solid var(--hair-soft);
+}
+.went-block {
+  flex: 999 1 460px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.went-words {
+  min-width: 0;
+  font-size: 26px;
+  font-style: italic;
+  /* lines about 44px apart: each piece is a full touch target */
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.went-words .begun {
+  color: var(--muted);
+}
+.went-piece {
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  padding: 0 1px;
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--control);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 7px;
+}
+.went-piece:hover {
+  text-decoration-style: solid;
+  text-decoration-color: var(--gilt-rule);
+}
+.went-piece[aria-checked="true"] {
+  text-decoration-style: solid;
+  text-decoration-color: var(--gilt);
+  text-decoration-thickness: 2px;
+}
+/* another answer's sighting, drawn as text: its own word-piece marked as the selected one would be */
+.went-here {
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-color: var(--gilt);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 7px;
+}
+.went-piece.waiting {
+  color: var(--muted);
+  opacity: 0.55;
+  cursor: progress;
+}
+.went-piece.mark,
+.went-plain.mark {
+  font-style: normal;
+  color: var(--gilt-text);
+}
+.went-piece.stop,
+.went-plain.stop {
+  font-style: normal;
+  font-size: 15px;
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.went-plain {
+  color: var(--ink);
+}
+.went-moment,
+.went-how,
+.went-note,
+.went-progress {
+  margin: 0;
+  font-size: 16px;
+  max-width: 780px;
+}
+.went-how,
+.went-note {
+  color: var(--muted);
+}
+.went-progress {
+  font-style: italic;
+  color: var(--muted);
+}
+.went-progress .btn-link {
+  font-style: normal;
+}
+.went-facts {
+  margin-left: auto;
+  font-size: 15px;
+  color: var(--muted);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.went-shown {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 18px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--hair-soft);
+}
+.went-shown p {
+  margin: 0;
+  font-size: 16px;
+  max-width: 780px;
+}
+.leaf-at,
+.ascent-at {
+  margin: 0;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .q-grid > .q-label-ask,
+  .q-grid > .q-label-begin {
+    padding-top: 0;
+  }
+  .q-tools-cell {
+    grid-column: 1;
+  }
+  .writes {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 0;
+  }
+  .sampler {
+    grid-template-columns: minmax(0, 1fr) 6em;
+  }
+  .sampler .note {
+    grid-column: 1 / -1;
+    margin-bottom: 6px;
+  }
+  .went-words {
+    font-size: 22px;
+  }
+}

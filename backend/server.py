@@ -10,6 +10,10 @@ Streams packed Binary Float32 frames (`ArrayBuffer`) containing:
 
 Paired with a JSON metadata frame for token strings, J-VINDEX vs. Naive Logit Lens pole labels,
 live `SteeringSpec` laser interventions, LARQL `.patch` weight surgery, and FastMCP scientist endpoints.
+
+A sweep request with a `request_id` is answered as a stream: progress while the answer is written, the answer once,
+one (binary, JSON) pair per sighted word-piece, then an end; `cancel_sweep` stops it (ARCHITECTURE.md §4.1-4.3).
+Without one it gets the single pair it always got. Saved questions and system prompts: backend/saved_prompts.py.
 """
 
 from __future__ import annotations
@@ -18,9 +22,11 @@ import asyncio
 import logging
 import os
 import struct
+import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
@@ -30,9 +36,17 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, NormScaledAddSpec, SteeringSpec
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, StrictInt, ValidationError
 
-from backend.engine_runtime import DEFAULT_TRACKED_CONCEPTS, TheodoliteRuntime, TheodoliteSweepBundle
+from backend.engine_runtime import (
+    DEFAULT_TRACKED_CONCEPTS,
+    MAX_SWEEP_POSITIONS,
+    SamplerSettings,
+    SweepCapture,
+    SweepShared,
+    TheodoliteRuntime,
+    TheodoliteSweepBundle,
+)
 from backend.larql_vault import LarqlVaultEngine
 from backend.mcp_scientist import (
     bind_runtime,
@@ -40,6 +54,7 @@ from backend.mcp_scientist import (
     test_motif_hypothesis,
     trace_downstream_readers,
 )
+from backend.saved_prompts import router as saved_prompts_router
 from backend.theodolite_math import (
     D_FF,
     D_MODEL,
@@ -118,20 +133,49 @@ class SteeringLaserRequest(BaseModel):
     strength: Optional[float] = None
 
 
+class SamplerRequest(BaseModel):
+    # How the answer is written; the defaults are greedy, as the instrument always wrote and the study generated.
+    # Every knob is sent as the value it means: top_k 0 and top_p 1 are off (interp_engine reads a missing knob as
+    # the checkpoint's recommendation, temperature 1, top-k 64, top-p 0.95, so none is ever left missing).
+    temperature: float = Field(0.0, ge=0.0, le=2.0)  # 0 = greedy (argmax)
+    top_k: int = Field(0, ge=0, le=VOCAB_SIZE)  # 0 = off
+    top_p: float = Field(1.0, gt=0.0, le=1.0)  # 1 = off
+    presence_penalty: float = Field(0.0, ge=-2.0, le=2.0)  # subtracted from every piece already WRITTEN (not the prompt)
+    seed: Optional[int] = Field(None, ge=0, le=2**53 - 1)  # None: drawn by the server when sampling, and echoed
+
+
 class SweepRequest(BaseModel):
     # Default two-hop prompt is the example from Gurnee et al. 2026 (REFERENCES.md [2]).
-    prompt: str = "The number of legs on the animal that spins webs is"
+    prompt: str = Field("The number of legs on the animal that spins webs is", max_length=32000)
     monuments: List[str] = Field(default_factory=lambda: ["spider", "eight", "insect"])
     survey_mode: str = "monument"  # "monument" | "pole_motif"
     locked_pole: Optional[List[float]] = None  # [layer, neuron_idx, polarity]
     compare_think: bool = False
-    max_new_tokens: int = 6
+    max_new_tokens: int = Field(6, ge=0, le=256)
     steering: Optional[SteeringLaserRequest] = None
     # Chat template (bug 5): wrap `prompt` as the user turn, after an optional system turn, thinking off, and
     # append `assistant_prefix`, the begun answer (labkit.chat). Off: `prompt` is sent as bare text.
     chat: bool = False
-    system: Optional[str] = None
-    assistant_prefix: str = ""
+    system: Optional[str] = Field(None, max_length=32000)
+    assistant_prefix: str = Field("", max_length=32000)
+    # A sighting of every word-piece (all optional; the defaults answer as the instrument always did). With a
+    # request_id the reply is a stream (progress, the answer written, one pair per sighted word-piece, an end);
+    # without one, exactly one pair, read at token 0.
+    request_id: Optional[str] = Field(None, max_length=64)
+    sampler: SamplerRequest = Field(default_factory=SamplerRequest)
+    # stop on the checkpoint's end marks (generation_config.eos_token_id: 1 <eos>, 106 <turn|>, 50 <|tool_response>)
+    stop_at_end_of_turn: bool = True
+    sight_every_token: bool = False  # one pair per written word-piece, the first max_sighted
+    sight_tokens: Optional[List[StrictInt]] = Field(None, max_length=64)  # these token indices, in this order
+    max_sighted: int = Field(64, ge=1, le=64)
+    # a given answer: nothing is written; these ids are read back teacher-forced (a retake of the same answer)
+    answer_token_ids: Optional[List[StrictInt]] = Field(None, max_length=256)
+    # the space-then-digit rank merge (the instrument's old rule); a sighting of every word-piece sends False
+    rank_lookahead: bool = True
+    # matched controls as exact ids (beside centre_prompts' texts), and whether a word-piece past token 0 is centred
+    # on the controls reading this very answer (else it is not centred at all)
+    centre_token_ids: List[List[StrictInt]] = Field(default_factory=list, max_length=16)
+    centre_answer: bool = False
     # Survey frame (bug 3): "gram_schmidt" (in order, as built) | "lowdin" (all at once, order-free); a frame
     # pulled back by each layer's own lens; the final-norm weighted rows fnw * W_U; and matched controls whose
     # mean state is subtracted before projecting (exact texts, e.g. an earlier sighting's echoed `prompt`).
@@ -167,6 +211,9 @@ class TraceReadersRequest(BaseModel):
     chat: bool = False
     system: Optional[str] = None
     assistant_prefix: str = ""
+    # exact word-piece ids to read (a sighting's ids up to its read position): used as they are, read at the last;
+    # prompt, chat, system and assistant_prefix are then not used
+    token_ids: Optional[List[StrictInt]] = Field(None, min_length=1, max_length=MAX_SWEEP_POSITIONS)
 
 
 class MotifHypothesisRequest(BaseModel):
@@ -198,7 +245,7 @@ def _build_steering_spec_from_req(
         raise ValueError(f"Unknown steering direction {req.direction!r}; expected one of {STEERING_DIRECTIONS}")
 
     def keep(l_idx: int) -> Optional[torch.Tensor]:
-        # needs `await runtime.ensure_quiet_masks()` first (done by _execute_sweep_request)
+        # needs `await runtime.ensure_quiet_masks()` first (done by _stream_sweep)
         return (~runtime.layer_quiet_mask(l_idx)).float() if req.mask_quiet else None
 
     steer_layers: Dict[int, LayerSteeringSpec] = {}
@@ -279,11 +326,15 @@ def pack_binary_and_json_frames(
     think_sweep: Optional[TheodoliteSweepBundle] = None,
     is_steered: bool = False,
     request_echo: Optional[Dict[str, Any]] = None,
+    stream_info: Optional[Dict[str, Any]] = None,
+    flags_extra: int = 0,
 ) -> Tuple[bytes, Dict[str, Any]]:
     """Pack a `TheodoliteSweepBundle` into a deterministic Binary Float32 frame + JSON metadata.
 
     `basis_3d` defaults to the frame the sweep used (`sweep.survey_basis`); a per-layer frame (`[60, 3, 5376]`,
-    raw residual coordinates) projects each pole's raw write vector instead of its J++ image.
+    raw residual coordinates) projects each pole's raw write vector instead of its J++ image. `stream_info` (which
+    word-piece this pair sights, the answer, how it was written) is added to the JSON; `flags_extra` is OR-ed into the
+    header's flags (4: one of several pairs of one request).
     """
     if basis_3d is None:
         basis_3d = sweep.survey_basis
@@ -298,6 +349,7 @@ def pack_binary_and_json_frames(
         flags |= 1
     if is_steered:
         flags |= 2
+    flags |= int(flags_extra)
 
     header_bytes = struct.pack(
         "<6I",
@@ -449,9 +501,16 @@ def pack_binary_and_json_frames(
                     {"token": t, "prob": round(p, 4), "logit": round(lg, 2)}
                     for t, p, lg in zip(ro.top_token_strs, ro.top_probs, ro.top_logits)
                 ],
+                # the same words by id, so a page can match them to the word-piece written without comparing strings
+                "jpp_top_ids": [int(i) for i in ro.top_token_ids],
                 "naive_top_token": nro.top_token_strs[0] if nro.top_token_strs else "",
+                "naive_top_id": int(nro.top_token_ids[0]) if nro.top_token_ids else None,
                 "tracked_ranks": ro.tracked_token_ranks,
                 "tracked_logits": {k: round(v, 2) for k, v in ro.tracked_token_logits.items()},
+                # True where a tracked word's rank and logit were taken from the next position (rank_lookahead)
+                "tracked_from_next": {
+                    lbl: bool(sweep.tracked_from_next.get(l, {}).get(lbl, False)) for lbl in ro.tracked_token_ranks
+                },
                 "attn_norm": round(float(split_l.attn_norm.item()), 3),
                 "ffn_norm": round(float(split_l.ffn_norm.item()), 3),
                 "ffn_dominance": round(float(split_l.ffn_dominance_ratio.item()), 4),
@@ -515,14 +574,197 @@ def pack_binary_and_json_frames(
             ],
         },
     }
+    if stream_info:
+        json_frame.update({k: v for k, v in stream_info.items() if k != "type"})
     return binary_frame, json_frame
 
 
-async def _execute_sweep_request(
-    runtime: TheodoliteRuntime,
-    vault: LarqlVaultEngine,
-    req: SweepRequest,
-) -> Tuple[bytes, Dict[str, Any]]:
+def sight_order(
+    n_written: int,
+    sight_tokens: Optional[Sequence[int]],
+    sight_every_token: bool,
+    max_sighted: int,
+) -> Tuple[List[int], List[int]]:
+    """Which token indices a sweep sights, in order, and the asked-for ones it dropped.
+
+    `sight_tokens` given: those, without repeats, in the order asked, at most `max_sighted`, leaving out (and
+    reporting) any outside 0 .. max(n_written, 1) - 1; `sight_every_token`: 0 .. min(n_written, max_sighted) - 1;
+    else [0], the one pair the instrument always sent. Never empty: [0] when nothing asked for can be sighted."""
+    n_positions = max(int(n_written), 1)
+    if sight_tokens is not None:
+        order: List[int] = []
+        dropped: List[int] = []
+        seen: set = set()
+        for k in sight_tokens:
+            k = int(k)
+            if k in seen:
+                continue
+            seen.add(k)
+            if not 0 <= k < n_positions or len(order) >= max_sighted:
+                dropped.append(k)
+            else:
+                order.append(k)
+        return (order or [0]), dropped
+    if sight_every_token:
+        return (list(range(min(int(n_written), int(max_sighted)))) or [0]), []
+    return [0], []
+
+
+def check_sweep_ids(req: SweepRequest) -> None:
+    """Refuse, in plain words, word-piece ids no tokenizer could give (pydantic has already checked they are whole
+    numbers and how many there are)."""
+
+    def check(ids: Sequence[int], what: str) -> None:
+        for t in ids:
+            if not 0 <= int(t) < VOCAB_SIZE:
+                raise ValueError(f"{what} holds {t}, which is not a word-piece id: ids run from 0 to {VOCAB_SIZE - 1}.")
+
+    check(req.answer_token_ids or [], "The given answer")
+    for j, ids in enumerate(req.centre_token_ids):
+        if not ids:
+            raise ValueError(f"Matched control {j + 1} has no word-pieces: each control needs at least one.")
+        if len(ids) > MAX_SWEEP_POSITIONS:
+            raise ValueError(
+                f"Matched control {j + 1} has {len(ids)} word-pieces, more than the {MAX_SWEEP_POSITIONS} one capture "
+                "can hold."
+            )
+        check(ids, f"Matched control {j + 1}")
+
+
+def check_sweep_positions(n_prompt: int, n_answer: int, what: str = "The prompt") -> None:
+    """Refuse a sweep longer than `MAX_SWEEP_POSITIONS` word-pieces, prompt and answer together, in plain words."""
+    total = int(n_prompt) + int(n_answer)
+    if total > MAX_SWEEP_POSITIONS:
+        raise ValueError(
+            f"{what} is {n_prompt} word-pieces and the answer may run to {n_answer} more: {total} in all, more than "
+            f"the {MAX_SWEEP_POSITIONS} one sweep can hold (each word-piece's capture takes about 5 MB of the GPU's "
+            "memory). Shorten the question, the system prompt or the answer."
+        )
+
+
+def _plain_validation(exc: ValidationError) -> str:
+    """A pydantic refusal as one line: where, and what was wrong."""
+    parts = []
+    for err in exc.errors():
+        where = ".".join(str(p) for p in err.get("loc", ())) or "request"
+        parts.append(f"{where}: {err.get('msg', 'not accepted')}")
+    return "The sweep was refused. " + "; ".join(parts)
+
+
+def _plain_error(exc: BaseException) -> str:
+    if isinstance(exc, torch.cuda.OutOfMemoryError):
+        return "The GPU ran out of memory during this sweep. Try a shorter question or answer, or sight fewer word-pieces."
+    if isinstance(exc, ValueError):
+        return str(exc)
+    return f"The sweep failed: {type(exc).__name__}: {exc}"
+
+
+def _answer_wire(cap: SweepCapture) -> Dict[str, Any]:
+    """The answer as sent (ANSWER): its word-pieces, how the writing stopped, and every piece's odds."""
+    return {
+        "token_ids": list(cap.answer_token_ids),
+        "token_strs": list(cap.answer_token_strs),
+        "text": cap.answer_text,
+        "n_written": len(cap.answer_token_ids),
+        "stop_reason": cap.stop_reason,
+        "stop_token_ids": list(cap.stop_token_ids),
+        "source": cap.answer_source,
+        "steps": [s.as_wire() for s in cap.steps],
+    }
+
+
+def _generation_wire(cap: SweepCapture, req: SweepRequest, capped: bool) -> Dict[str, Any]:
+    """How the answer was written (GENERATION): the sampler as resolved and applied, and the seed it used."""
+    return {
+        "greedy": cap.greedy,
+        "settings": dict(cap.settings),
+        "seed": cap.seed,
+        "seed_drawn": cap.seed_drawn,
+        "max_new_tokens": int(req.max_new_tokens),
+        "sight_every_token": bool(req.sight_every_token),
+        "max_sighted": int(req.max_sighted),
+        "capped": bool(capped),
+        "stop_at_end_of_turn": bool(req.stop_at_end_of_turn),
+    }
+
+
+@dataclass
+class _Tally:
+    """How far one request's stream got, for its error and its sweep_end."""
+
+    n_sent: int = 0
+    n_to_sight: int = 0
+    token_index: Optional[int] = None
+    cancelled: bool = False
+
+
+class _Outbox:
+    """Every send on one socket goes through here, so a pair's binary frame and its JSON leave back to back: a reply
+    the receiver sends (a cancelled request's end) waits until a pair is out."""
+
+    def __init__(self, websocket: WebSocket) -> None:
+        self.websocket = websocket
+        self.lock = asyncio.Lock()
+
+    async def json(self, obj: Dict[str, Any]) -> None:
+        async with self.lock:
+            await self.websocket.send_json(obj)
+
+    async def pair(self, binary: bytes, meta: Dict[str, Any]) -> None:
+        async with self.lock:
+            await self.websocket.send_bytes(binary)
+            await self.websocket.send_json(meta)
+
+
+class _SocketState:
+    """What one /ws/theodolite connection knows about its sweep requests (request ids are the client's own, unique
+    per socket): the one running and whether it was asked to stop, those still queued, those cancelled while queued,
+    and whether the client has gone."""
+
+    def __init__(self) -> None:
+        self.running: Optional[str] = None
+        self.cancel_running = False
+        self.closed = False
+        self.queued: Dict[str, int] = {}
+        self.dropped: Dict[str, int] = {}
+
+    def cancel_requested(self, request_id: Optional[str]) -> bool:
+        return self.closed or (request_id is not None and self.running == request_id and self.cancel_running)
+
+    def enqueue(self, request_id: str) -> None:
+        self.queued[request_id] = self.queued.get(request_id, 0) + 1
+
+    def drop_queued(self, request_id: str) -> bool:
+        """Mark a queued request cancelled; False when none with this id is waiting."""
+        if self.queued.get(request_id, 0) > self.dropped.get(request_id, 0):
+            self.dropped[request_id] = self.dropped.get(request_id, 0) + 1
+            return True
+        return False
+
+    def dequeue(self, request_id: str) -> bool:
+        """Take a request off the queue; True when it was cancelled while waiting (its end has been sent)."""
+        n = self.queued.get(request_id, 0) - 1
+        if n > 0:
+            self.queued[request_id] = n
+        else:
+            self.queued.pop(request_id, None)
+        if self.dropped.get(request_id, 0) > 0:
+            self.dropped[request_id] -= 1
+            if not self.dropped[request_id]:
+                del self.dropped[request_id]
+            return True
+        return False
+
+
+async def _let_receiver_run() -> None:
+    """A few turns of the event loop for the socket's receiver task, so a cancel_sweep that has arrived is read before
+    the next GPU step (the GPU work itself never yields)."""
+    for _ in range(3):
+        await asyncio.sleep(0)
+
+
+def _sweep_options(req: SweepRequest) -> Tuple[Tuple[str, str, str], Optional[Tuple[int, int, float]], Tuple[str, ...]]:
+    """The landmarks, the locked pole and the tracked words a request asks for."""
     monuments = (
         req.monuments[0] if len(req.monuments) > 0 else "spider",
         req.monuments[1] if len(req.monuments) > 1 else "eight",
@@ -531,38 +773,42 @@ async def _execute_sweep_request(
     locked_pole = None
     if req.survey_mode == "pole_motif" and req.locked_pole and len(req.locked_pole) >= 3:
         locked_pole = (int(req.locked_pole[0]), int(req.locked_pole[1]), float(req.locked_pole[2]))
-
-    if req.steering is not None and req.steering.enabled and req.steering.mask_quiet:
-        await runtime.ensure_quiet_masks()
-    steering_spec = _build_steering_spec_from_req(runtime, req.steering)
-    position_mask = _steering_position_mask(req.steering) if steering_spec is not None else None
-    text = runtime.compose_prompt(
-        req.prompt, chat=req.chat, system=req.system, assistant_prefix=req.assistant_prefix
-    )
     # Track the landmarks too, so the pages can say how far they were; the default landmarks are already tracked,
     # so a request with the defaults gets exactly the tracked words it always got.
     tracked = tuple(DEFAULT_TRACKED_CONCEPTS) + tuple(
         m for m in dict.fromkeys(str(x) for x in monuments) if m and m not in DEFAULT_TRACKED_CONCEPTS
     )
-    options = dict(
-        monument_concepts=monuments,
-        tracked_concepts=tracked,
-        survey_mode=req.survey_mode,
-        locked_pole=locked_pole,
-        steering_spec=steering_spec,
-        steering_position_mask=position_mask,
-        top_k_poles=15,
-        pole_ranking=req.pole_ranking,
-        thread_score=req.thread_score,
-        frame_squaring=req.frame_squaring,
-        frame_per_layer=req.frame_per_layer,
-        frame_fnw=req.frame_fnw,
-        centre_prompts=req.centre_prompts,
+    return monuments, locked_pole, tracked
+
+
+async def _stream_sweep(
+    out: _Outbox,
+    conn: _SocketState,
+    runtime: TheodoliteRuntime,
+    vault: LarqlVaultEngine,
+    req: SweepRequest,
+    tally: _Tally,
+) -> None:
+    """Write the answer once, then send one (binary, JSON) pair per sighted word-piece, in sight order.
+
+    Holds `_GPU_LOCK` from the writing to the last pair (and the thinking comparison), so no vault edit can land
+    between two positions of one answer. With a request_id: progress after each written piece, the answer once it is
+    written and read back, then the pairs; a cancel stops the writing, then only the first index is sighted, and
+    between pairs the stream ends after the current one. Without one: one pair, nothing else."""
+    rid = req.request_id
+    stream = rid is not None
+    t_request = time.perf_counter()
+    check_sweep_ids(req)
+    monuments, locked_pole, tracked = _sweep_options(req)
+    text = runtime.compose_prompt(
+        req.prompt, chat=req.chat, system=req.system, assistant_prefix=req.assistant_prefix
     )
-
-    sweep = await runtime.run_theodolite_sweep(text, max_new_tokens=req.max_new_tokens, **options)
-
-    think_sweep = None
+    check_sweep_positions(
+        len(runtime.tokenize_prompt(text)), max(int(req.max_new_tokens), len(req.answer_token_ids or []))
+    )
+    think_prompt: Optional[str] = None
+    # the thinking comparison writes its own start, as long as the answer (at least 10, at most 64 word-pieces)
+    think_len = max(min(int(req.max_new_tokens), 64), 10)
     if req.compare_think:
         think_prompt = (
             runtime.compose_prompt(
@@ -571,25 +817,346 @@ async def _execute_sweep_request(
             if req.chat
             else f"<|think|>\n{text}"
         )
-        think_sweep = await runtime.run_theodolite_sweep(
-            think_prompt, max_new_tokens=max(req.max_new_tokens, 10), **options
-        )
-
-    request_echo = {
-        "chat": bool(req.chat),
-        "system": req.system if (req.chat and req.system) else None,
-        "user_prompt": req.prompt,
-        "assistant_prefix": req.assistant_prefix if req.assistant_prefix else None,
-        "steering_applied": _describe_steering(runtime, req.steering, steering_spec),
-    }
-    return pack_binary_and_json_frames(
-        runtime=runtime,
-        vault=vault,
-        sweep=sweep,
-        think_sweep=think_sweep,
-        is_steered=(steering_spec is not None),
-        request_echo=request_echo,
+        check_sweep_positions(len(runtime.tokenize_prompt(think_prompt)), think_len, "The thinking prompt")
+    sampler = SamplerSettings(
+        temperature=float(req.sampler.temperature),
+        top_k=int(req.sampler.top_k),
+        top_p=float(req.sampler.top_p),
+        presence_penalty=float(req.sampler.presence_penalty),
+        seed=req.sampler.seed,
     )
+    stop_ids = runtime.end_of_turn_ids() if req.stop_at_end_of_turn else None
+
+    def wants_stop() -> bool:
+        return stream and conn.cancel_requested(rid)
+
+    async def on_written(i: int) -> bool:
+        await out.json(
+            {"type": "theodolite_progress", "request_id": rid, "phase": "writing", "done": i + 1, "of": int(req.max_new_tokens)}
+        )
+        await _let_receiver_run()
+        return not wants_stop()
+
+    async def on_thought(_i: int) -> bool:
+        await _let_receiver_run()
+        return not wants_stop()
+
+    async with _GPU_LOCK:
+        if req.steering is not None and req.steering.enabled and req.steering.mask_quiet:
+            await runtime.ensure_quiet_masks()
+        steering_spec = _build_steering_spec_from_req(runtime, req.steering)
+        position_mask = _steering_position_mask(req.steering) if steering_spec is not None else None
+
+        cap = await runtime.capture_for_sweep(
+            text,
+            steering_spec=steering_spec,
+            steering_position_mask=position_mask,
+            max_new_tokens=int(req.max_new_tokens),
+            sampler=sampler,
+            stop_token_ids=stop_ids,
+            answer_token_ids=req.answer_token_ids,
+            on_written=on_written if stream else None,
+        )
+        n = len(cap.answer_token_ids)
+        order, dropped = sight_order(n, req.sight_tokens, req.sight_every_token, req.max_sighted)
+        capped = bool(req.sight_every_token and req.sight_tokens is None and n > len(order))
+        if not stream:
+            order = order[:1]
+        elif wants_stop():
+            # stopped while writing: sight only the first index of the order
+            order = order[:1]
+            tally.cancelled = True
+        m = len(order)
+        tally.n_to_sight = m
+
+        shared: SweepShared = await runtime.prepare_sweep(
+            cap,
+            monument_concepts=monuments,
+            survey_mode=req.survey_mode,
+            locked_pole=locked_pole,
+            tracked_concepts=tracked,
+            frame_squaring=req.frame_squaring,
+            frame_per_layer=req.frame_per_layer,
+            frame_fnw=req.frame_fnw,
+            centre_prompts=req.centre_prompts,
+            centre_token_ids=req.centre_token_ids,
+            centre_answer=req.centre_answer,
+        )
+        answer = _answer_wire(cap)
+        generation = _generation_wire(cap, req, capped)
+        request_echo = {
+            "chat": bool(req.chat),
+            "system": req.system if (req.chat and req.system) else None,
+            "user_prompt": req.prompt,
+            "assistant_prefix": req.assistant_prefix if req.assistant_prefix else None,
+            "steering_applied": _describe_steering(runtime, req.steering, steering_spec),
+        }
+        if stream:
+            await out.json(
+                {
+                    "type": "theodolite_written",
+                    "request_id": rid,
+                    "answer": answer,
+                    "generation": generation,
+                    "sight_order": order,
+                    "n_to_sight": m,
+                    "prompt_token_ids": list(cap.prompt_token_ids),
+                    "prompt_len": len(cap.prompt_token_ids),
+                }
+            )
+            await out.json({"type": "theodolite_progress", "request_id": rid, "phase": "sighting", "done": 0, "of": m})
+
+        for idx, k in enumerate(order):
+            if idx > 0 and stream:
+                await _let_receiver_run()
+                if wants_stop():
+                    tally.cancelled = True
+                    break
+            tally.token_index = k
+            bundle = await runtime.analyse_position(
+                cap,
+                shared,
+                k,
+                top_k_poles=15,
+                pole_ranking=req.pole_ranking,
+                thread_score=req.thread_score,
+                rank_lookahead=req.rank_lookahead,
+            )
+            think_cap: Optional[SweepCapture] = None
+            think_bundle: Optional[TheodoliteSweepBundle] = None
+            if idx == 0 and think_prompt is not None:
+                # written with the same sampler and seed, read in this sweep's frame and centre, at its token 0 only
+                think_cap = await runtime.capture_for_sweep(
+                    think_prompt,
+                    steering_spec=steering_spec,
+                    steering_position_mask=position_mask,
+                    max_new_tokens=think_len,
+                    sampler=SamplerSettings(
+                        temperature=sampler.temperature,
+                        top_k=sampler.top_k,
+                        top_p=sampler.top_p,
+                        presence_penalty=sampler.presence_penalty,
+                        seed=cap.seed,
+                    ),
+                    stop_token_ids=stop_ids,
+                    on_written=on_thought if stream else None,
+                )
+                assert shared.basis is not None and shared.survey_labels is not None
+                think_shared = await runtime.prepare_sweep(
+                    think_cap,
+                    monument_concepts=monuments,
+                    survey_mode=req.survey_mode,
+                    locked_pole=locked_pole,
+                    tracked_concepts=tracked,
+                    frame_squaring=req.frame_squaring,
+                    frame_per_layer=req.frame_per_layer,
+                    frame_fnw=req.frame_fnw,
+                    frame_override=(shared.basis, shared.basis_space, dict(shared.frame_info), shared.survey_labels),
+                    centre_override=shared.centre_k0,
+                )
+                think_bundle = await runtime.analyse_position(
+                    think_cap,
+                    think_shared,
+                    0,
+                    top_k_poles=15,
+                    pole_ranking=req.pole_ranking,
+                    thread_score=req.thread_score,
+                    rank_lookahead=req.rank_lookahead,
+                )
+            stop_after = False
+            if stream and idx + 1 < m:
+                await _let_receiver_run()
+                stop_after = wants_stop()
+            stream_info = {
+                "request_id": rid,
+                "token_index": bundle.token_index,
+                "sight_index": idx,
+                "n_to_sight": m,
+                "last": idx + 1 == m or stop_after,
+                "read_pos": bundle.target_pos,
+                "read_token": bundle.read_token,
+                "read_token_id": bundle.read_token_id,
+                "prompt_len": len(cap.prompt_token_ids),
+                "chosen": bundle.chosen.as_wire() if bundle.chosen is not None else None,
+                "answer": answer,
+                "generation": generation,
+                "recapture_check": bundle.recapture_check,
+                "kinship_n_states": bundle.kinship_n_states,
+                "rank_lookahead": bool(req.rank_lookahead),
+                "sight_dropped": list(dropped),
+                "timing": {
+                    "generate_ms": round(cap.generate_ms, 1),
+                    "capture_ms": round(cap.capture_ms, 1),
+                    "analyse_ms": round(bundle.analyse_ms, 1),
+                    "total_ms": round((time.perf_counter() - t_request) * 1000.0, 1),
+                },
+                "think_seed": think_cap.seed if think_cap is not None else None,
+                "think_read_token": (
+                    runtime.tokenizer.decode([think_cap.prompt_token_ids[-1]], clean_up_tokenization_spaces=False)
+                    if think_cap is not None
+                    else None
+                ),
+            }
+            binary_frame, json_frame = pack_binary_and_json_frames(
+                runtime=runtime,
+                vault=vault,
+                sweep=bundle,
+                think_sweep=think_bundle,
+                is_steered=(steering_spec is not None),
+                request_echo=request_echo,
+                stream_info=stream_info,
+                flags_extra=4 if m > 1 else 0,
+            )
+            await out.pair(binary_frame, json_frame)
+            tally.n_sent += 1
+            if stop_after:
+                tally.cancelled = True
+                break
+
+
+async def _run_sweep(
+    out: _Outbox,
+    conn: _SocketState,
+    runtime: TheodoliteRuntime,
+    vault: LarqlVaultEngine,
+    req: SweepRequest,
+) -> None:
+    """One sweep request. Without a request_id it is answered as the instrument always answered: one pair, and a
+    failure goes to the handler, which refuses it as before. With one, any failure is reported on this request alone
+    (an error, then its sweep_end) and the socket stays open; the sweep_end always comes last."""
+    tally = _Tally()
+    if req.request_id is None:
+        try:
+            await _stream_sweep(out, conn, runtime, vault, req, tally)
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            raise
+        return
+    rid = req.request_id
+    error: Optional[str] = None
+    try:
+        await _stream_sweep(out, conn, runtime, vault, req, tally)
+    except WebSocketDisconnect:
+        raise
+    except Exception as exc:
+        if conn.closed:
+            logger.info("Sweep %s stopped: the client has gone (%s)", rid, exc)
+            raise WebSocketDisconnect(code=1001) from exc
+        if isinstance(exc, torch.cuda.OutOfMemoryError) and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        error = _plain_error(exc)
+        if isinstance(exc, ValueError):
+            logger.warning("WebSocket sweep %s refused: %s", rid, exc)
+        else:
+            logger.exception("WebSocket sweep %s failed after %d pair(s)", rid, tally.n_sent)
+        await out.json(
+            {
+                "type": "error",
+                "action": "sweep",
+                "request_id": rid,
+                "recoverable": True,
+                "message": error,
+                "n_sent": tally.n_sent,
+                "token_index": tally.token_index,
+            }
+        )
+    await out.json(
+        {
+            "type": "theodolite_sweep_end",
+            "request_id": rid,
+            "n_sent": tally.n_sent,
+            "n_to_sight": tally.n_to_sight,
+            "cancelled": tally.cancelled,
+            "error": error,
+        }
+    )
+
+
+def _raw_request_id(raw_msg: Any) -> Optional[str]:
+    """A sweep message's request_id as sent, before any validation (so a refusal can name it)."""
+    if not isinstance(raw_msg, dict):
+        return None
+    payload = raw_msg.get("payload", raw_msg)
+    rid = payload.get("request_id") if isinstance(payload, dict) else None
+    return rid if isinstance(rid, str) else None
+
+
+async def _handle_sweep(
+    out: _Outbox,
+    conn: _SocketState,
+    runtime: TheodoliteRuntime,
+    vault: LarqlVaultEngine,
+    raw_msg: Dict[str, Any],
+) -> None:
+    rid = _raw_request_id(raw_msg)
+    if rid is not None and conn.dequeue(rid):
+        return  # cancelled while it waited: its sweep_end has been sent
+    try:
+        req = SweepRequest(**raw_msg.get("payload", raw_msg))
+    except ValidationError as exc:
+        if rid is None:
+            raise
+        message = _plain_validation(exc)
+        logger.warning("WebSocket sweep %s refused: %s", rid, message)
+        await out.json(
+            {
+                "type": "error",
+                "action": "sweep",
+                "request_id": rid,
+                "recoverable": True,
+                "message": message,
+                "n_sent": 0,
+                "token_index": None,
+            }
+        )
+        await out.json(
+            {"type": "theodolite_sweep_end", "request_id": rid, "n_sent": 0, "n_to_sight": 0, "cancelled": False, "error": message}
+        )
+        return
+    if req.request_id is None:
+        await _run_sweep(out, conn, runtime, vault, req)
+        return
+    conn.running, conn.cancel_running = req.request_id, False
+    try:
+        await _run_sweep(out, conn, runtime, vault, req)
+    finally:
+        conn.running, conn.cancel_running = None, False
+
+
+@dataclass
+class _Ended:
+    """Put on the queue when the receiver stops: the client left, or sent a frame that is not JSON."""
+
+    exc: BaseException
+
+
+async def _receive_into(websocket: WebSocket, queue: asyncio.Queue, conn: _SocketState, out: _Outbox) -> None:
+    """Read the socket into `queue`, handling cancel_sweep at once: a running request's cancel flag is set (it stops
+    at its next check), a queued one is dropped and its sweep_end sent now."""
+    try:
+        while True:
+            msg = await websocket.receive_json()
+            if isinstance(msg, dict) and msg.get("action") == "cancel_sweep":
+                rid = msg.get("request_id")
+                if not isinstance(rid, str):
+                    continue
+                if conn.running == rid:
+                    conn.cancel_running = True
+                elif conn.drop_queued(rid):
+                    await out.json(
+                        {"type": "theodolite_sweep_end", "request_id": rid, "n_sent": 0, "n_to_sight": 0, "cancelled": True, "error": None}
+                    )
+                continue
+            if isinstance(msg, dict) and msg.get("action", "sweep") == "sweep":
+                rid = _raw_request_id(msg)
+                if rid is not None:
+                    conn.enqueue(rid)
+            await queue.put(msg)
+    except WebSocketDisconnect as exc:
+        conn.closed = True
+        await queue.put(_Ended(exc))
+    except Exception as exc:
+        await queue.put(_Ended(exc))
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -658,6 +1225,7 @@ async def api_trace_readers(req: TraceReadersRequest) -> Dict[str, Any]:
                 chat=req.chat,
                 system=req.system,
                 assistant_prefix=req.assistant_prefix,
+                token_ids=req.token_ids,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -679,32 +1247,38 @@ async def api_test_hypothesis(req: MotifHypothesisRequest) -> Dict[str, Any]:
 
 @app.websocket("/ws/theodolite")
 async def ws_theodolite(websocket: WebSocket) -> None:
-    """Real-time Binary Float32 + JSON WebSocket stream for the 3D Theodolite frontend."""
+    """Real-time Binary Float32 + JSON WebSocket stream for the 3D Theodolite frontend.
+
+    A receiver task reads the socket into a queue, so a `cancel_sweep` is handled at once, even mid-sweep; every
+    other action is answered in the order it came. Every send goes through one outbox, so a pair's binary frame and
+    its JSON leave back to back."""
     await websocket.accept()
     runtime, vault = get_app_state()
     logger.info("WebSocket client connected to /ws/theodolite")
+    out = _Outbox(websocket)
+    conn = _SocketState()
+    queue: asyncio.Queue = asyncio.Queue()
+    receiver = asyncio.create_task(_receive_into(websocket, queue, conn, out))
 
     try:
         while True:
-            raw_msg = await websocket.receive_json()
+            raw_msg = await queue.get()
+            if isinstance(raw_msg, _Ended):
+                raise raw_msg.exc
             action = raw_msg.get("action", "sweep")
 
             try:
                 if action == "sweep":
-                    sweep_req = SweepRequest(**raw_msg.get("payload", raw_msg))
-                    async with _GPU_LOCK:
-                        binary_frame, json_frame = await _execute_sweep_request(runtime, vault, sweep_req)
-                    await websocket.send_bytes(binary_frame)
-                    await websocket.send_json(json_frame)
+                    await _handle_sweep(out, conn, runtime, vault, raw_msg)
 
                 elif action == "larql":
                     query = raw_msg.get("query", "DESCRIBE")
                     async with _GPU_LOCK:
                         try:
                             res = vault.execute_lql(query)
-                            await websocket.send_json({"type": "larql_result", "ok": True, "data": res})
+                            await out.json({"type": "larql_result", "ok": True, "data": res})
                         except Exception as exc:
-                            await websocket.send_json({"type": "larql_result", "ok": False, "error": str(exc)})
+                            await out.json({"type": "larql_result", "ok": False, "error": str(exc)})
 
                 elif action == "inspect_pole":
                     l_idx = int(raw_msg.get("layer", 35))
@@ -712,7 +1286,7 @@ async def ws_theodolite(websocket: WebSocket) -> None:
                     pol = float(raw_msg.get("polarity", 1.0))
                     async with _GPU_LOCK:
                         res = inspect_pole(layer=l_idx, neuron_idx=n_idx, polarity=pol)
-                    await websocket.send_json({"type": "pole_inspection", "data": res})
+                    await out.json({"type": "pole_inspection", "data": res})
 
                 elif action == "trace_readers":
                     tr = TraceReadersRequest(**{k: v for k, v in raw_msg.items() if k != "action"})
@@ -728,13 +1302,14 @@ async def ws_theodolite(websocket: WebSocket) -> None:
                             chat=tr.chat,
                             system=tr.system,
                             assistant_prefix=tr.assistant_prefix,
+                            token_ids=tr.token_ids,
                         )
-                    await websocket.send_json({"type": "downstream_readers", "data": res})
+                    await out.json({"type": "downstream_readers", "data": res})
             except (ValidationError, ValueError) as exc:
                 # A malformed request (a bad option value, say) fails alone and the socket stays open; the reply
                 # names the action and its neuron so the client can fail just that request.
                 logger.warning("WebSocket %s request refused: %s", action, exc)
-                await websocket.send_json(
+                await out.json(
                     {
                         "type": "error",
                         "message": str(exc),
@@ -753,7 +1328,14 @@ async def ws_theodolite(websocket: WebSocket) -> None:
             await websocket.send_json({"type": "error", "message": str(exc)})
         except Exception:
             pass
+    finally:
+        conn.closed = True
+        receiver.cancel()
 
+
+# Saved questions and system prompts (backend/saved_prompts.py): declared before the static mount below, which would
+# otherwise answer every path under "/".
+app.include_router(saved_prompts_router)
 
 _DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if _DIST_DIR.exists():
