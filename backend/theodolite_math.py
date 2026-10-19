@@ -899,12 +899,18 @@ def project_trajectory_to_3d(
 def compute_linear_cka_matrix(
     layer_seq_states: torch.Tensor,
     eps: float = 1e-8,
+    *,
+    overwrite: bool = False,
 ) -> torch.Tensor:
     """Compute the [60, 60] Linear CKA similarity matrix across all 60 layers (Kornblith et al. 2019).
 
     Args:
         layer_seq_states: Tensor of shape `[60, n_tokens, 5376]` (or `[60, 5376]` if single token,
             in which case centered feature cosine similarity is returned).
+        overwrite: a float32 `layer_seq_states` may be centred in place (the caller reads it no more), saving a
+            copy of it. The Gram matrices are centred and scaled in place either way: the same element-wise
+            operations in the same order as `G - row means - column means + mean`, so the result is the same,
+            bit for bit, with less memory ([60, n, n] once, not three times).
     Returns:
         `cka`: Tensor of shape `[60, 60]` in float32 with values in `[0, 1]` and diagonal `1.0`.
     """
@@ -919,13 +925,19 @@ def compute_linear_cka_matrix(
 
     # X is [L, N, D] where L=60, N=n_tokens, D=5376
     # Center across token dimension N
-    X_c = X - X.mean(dim=1, keepdim=True)  # [L, N, D]
+    token_mean = X.mean(dim=1, keepdim=True)
+    # in place when X is this function's own float32 copy, or the caller lets it overwrite theirs
+    X_c = X.sub_(token_mean) if overwrite or X is not layer_seq_states else X - token_mean  # [L, N, D]
     # Gram matrices G_l = X_c[l] @ X_c[l].T of shape [L, N, N]
     G = torch.bmm(X_c, X_c.transpose(1, 2))  # [L, N, N]
-    # Center Gram matrices: H G H
-    G = G - G.mean(dim=-1, keepdim=True) - G.mean(dim=-2, keepdim=True) + G.mean(dim=(-2, -1), keepdim=True)
+    del X_c, X
+    # Center Gram matrices: H G H (all three means of the uncentred G, then subtracted and added in that order)
+    row_mean = G.mean(dim=-1, keepdim=True)
+    col_mean = G.mean(dim=-2, keepdim=True)
+    all_mean = G.mean(dim=(-2, -1), keepdim=True)
+    G.sub_(row_mean).sub_(col_mean).add_(all_mean)
     flat_G = G.reshape(G.shape[0], -1)  # [L, N*N]
     norms = torch.linalg.vector_norm(flat_G, dim=-1, keepdim=True) + eps
-    unit_G = flat_G / norms
+    unit_G = flat_G.div_(norms)
     cka = unit_G @ unit_G.T
     return torch.clamp(cka, 0.0, 1.0)

@@ -70,7 +70,7 @@ from backend.mcp_scientist import (
     test_motif_hypothesis,
     trace_downstream_readers,
 )
-from backend.server import MAGIC_THEO, WIRE_VERSION, app
+from backend.server import MAGIC_THEO, MAX_SWEEP_POSITIONS, WIRE_VERSION, app
 
 
 async def ws_sweep(ws: Any, payload: Dict[str, Any]) -> tuple[bytes, Dict[str, Any]]:
@@ -266,7 +266,8 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
 
     refused = await ws_stream(ws, {"request_id": "e2e-refuse", "max_new_tokens": 300})
     assert refused["errors"] and refused["errors"][0]["recoverable"] and refused["end"]["error"] and refused["end"]["n_sent"] == 0
-    too_long = await ws_stream(ws, {"request_id": "e2e-too-long", "prompt": "word " * 800})
+    # one "word" per word-piece, so with the start mark and the answer this is past the limit
+    too_long = await ws_stream(ws, {"request_id": "e2e-too-long", "prompt": "word " * MAX_SWEEP_POSITIONS})
     assert "one sweep can hold" in too_long["errors"][0]["message"], too_long["errors"]
     b_after, m_after = await ws_sweep(ws, {"prompt": prompt, "max_new_tokens": 6})
     assert m_after["token_index"] == 0 and b_after[24:] == legacy_bin[24:], "the socket after the refusals"

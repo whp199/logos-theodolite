@@ -27,7 +27,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
 from interp_engine import Address, EagerModel
+from interp_engine.hooks import HookManager
 from interp_engine.sampling import SamplingSettings, apply_presence_penalty
+from interp_engine.steer import forward_from
 from interp_engine.steer import generate_stream as ie_generate_stream
 from interp_engine.steer import steer as ie_steer
 from interp_engine.steer import steering_spec_to_eager_specs
@@ -331,13 +333,35 @@ class SweepLayerTokenReadout:
     tracked_token_ranks: Dict[str, int] = field(default_factory=dict)
 
 
-# The most word-pieces one sweep may hold, prompt and answer together (the server refuses more, in plain words): a
-# capture holds all 300 of its addresses at every position on the GPU, about 5.2 MB per position
-# (60 x (4 x 5376 + 21504) x 2 bytes), before it moves to the CPU, and the writing's first forward builds full-length
-# logits (0.5 MB per position) besides. Measured on this RTX 5090 (32.6 GB) with the desktop holding about 4.5 GB
-# (2026-10-18): 621 positions peaked at 31.5 GB and about 750 ran out of memory, so 512 leaves about 1.5 GB spare.
+# The most word-pieces one sweep may hold, prompt and answer together (the server refuses more, in plain words).
+# It was 512 while the recapture held all 300 addresses at every position on the GPU (5.2 MB each). Now
+# `capture_rows` keeps resid_post at every row and the other 240 addresses at the read rows only, each moved to the
+# CPU as its hook fires, with logits for the last row only, so the recapture hardly grows. What grows is the
+# writing's first forward (full-length logits, 0.5 MB per position, twice over in its softcap, and its KV cache)
+# and kinship, which holds every state up to the read position in float32 (1.3 MB per position) and [60, n, n]
+# Gram matrices; and while the thinking comparison is written and read, the first pair's bundle (0.49 GiB of pole
+# logits) stays on the GPU. Measured on this RTX 5090 (31.4 GiB as torch counts it; the model and lens rest at
+# 21.2 GiB) on 2026-10-18, peak allocated over that rest, in GiB:
+#                                     512    1024   1536   2048
+#   recapture, 8 or 256 read rows     0.95   1.00   1.06   1.12   (the old one: 3.40 at 512)
+#   a matched control                 0.95   1.01   1.06   1.12   (the old one: 1.26 at 512)
+#   writing, 8 word-pieces            1.57   2.25   2.92   3.76
+#   reading the last one (kinship)    1.21   2.00   2.91   3.93   (the old one: 2.55 at 512)
+#   thinking comparison written with
+#   the first bundle alive              -    2.75   3.41   out of memory
+# The worst sweep the server runs, through the server itself at the limit (chat with a long system prompt, the
+# thinking comparison, all 32 word-pieces of the answer sighted, centred on a control as long reading the same
+# answer), with the desktop holding 3.9-4.0 GiB: the old code at 512 peaked at 25.09 GiB allocated and the card at
+# 31,968 of 32,607 MiB (0.6 GiB spare, not the 1.5 its comment hoped); this code at 1024 at 23.92 GiB and 31,400 MiB
+# (1.2 GiB spare); at 1536 at 24.58 GiB and 31,887 MiB (0.7 GiB spare, as tight as 512 was; the desktop held
+# 5.4 GiB that evening with a game's helpers open, which would take all of it). Hence 1024: twice the old length
+# with twice its margin. The recapture is still one forward: 1.1 s at 512 (it was 1.8 s), 1.3 s at 1024, 1.9 s at 2048.
 # A sweep that still runs out is refused in plain words and the socket keeps answering (server._stream_sweep).
-MAX_SWEEP_POSITIONS = 512
+MAX_SWEEP_POSITIONS = 1024
+
+# The points `TheodoliteRuntime.capture_rows` takes: those interp_engine's capture stores exactly as its hook sees them
+# (no scale, no split, no reshape on this model), so a row kept from the hook is the row capture would return.
+_ROW_CAPTURE_POINTS = frozenset({"resid_pre", "resid_mid", "resid_post", "mlp_act", "mlp_out"})
 
 
 @dataclass
@@ -540,7 +564,9 @@ class TheodoliteSweepBundle:
 class SweepCapture:
     """What one sweep wrote, and the recapture that reads it: prompt + answer[:-1] in one forward, inside the same
     steering block as the writing. Row P - 1 + k holds the stream that read prompt + answer[:k] and chose answer[k]
-    (`analyse_position(k)`); the last piece is chosen but never read. `caps` are CPU tensors."""
+    (`analyse_position(k)`); the last piece is chosen but never read. `caps` are CPU tensors: resid_post at every row
+    (P + n - 1 of them), and resid_pre, resid_mid, mlp_act and mlp_out at the read rows only, row k of those being
+    position P - 1 + k (max(n, 1) rows; `capture_rows`)."""
 
     prompt: str
     prompt_token_ids: List[int]
@@ -1115,16 +1141,78 @@ class TheodoliteRuntime:
         return list(dict.fromkeys(int(t) for t in ids))
 
     @staticmethod
-    def _sweep_points() -> List[Address]:
-        """The 300 addresses every sweep captures: resid_pre, resid_mid, mlp_act, mlp_out, resid_post at each layer."""
-        points: List[Address] = []
-        for l in range(N_LAYERS):
-            points.append(Address("resid_pre", l))
-            points.append(Address("resid_mid", l))
-            points.append(Address("mlp_act", l))
-            points.append(Address("mlp_out", l))
-            points.append(Address("resid_post", l))
-        return points
+    def _sweep_points() -> Tuple[List[Address], List[Address]]:
+        """The 300 addresses every sweep captures, as (every row, read rows only): resid_post at each layer at every
+        row (kinship reads every state up to the read position, the space-then-digit rule the next one), and
+        resid_pre, resid_mid, mlp_act, mlp_out at each layer at the read rows only (nothing reads them elsewhere)."""
+        every = [Address("resid_post", l) for l in range(N_LAYERS)]
+        read = [Address(name, l) for l in range(N_LAYERS) for name in ("resid_pre", "resid_mid", "mlp_act", "mlp_out")]
+        return every, read
+
+    def capture_rows(
+        self,
+        token_ids: Sequence[int],
+        *,
+        every: Sequence[Address] = (),
+        read: Sequence[Address] = (),
+        n_read: int = 1,
+    ) -> Dict[Address, torch.Tensor]:
+        """`EagerModel.capture` with far less of the GPU: the `every` addresses at every row and the `read` ones at
+        the last `n_read` rows only (row j of those is position len(token_ids) - n_read + j), each moved to the CPU
+        as its hook fires, so the GPU holds one address at a time, never the whole cache; and logits for the last row
+        only, which the capture never reads.
+
+        The forward is `EagerModel.capture`'s: one forward over the whole sequence from position 0 (`forward_from`),
+        inside whatever steering block is open, with no mask, read by `HookManager` hooks on the modules
+        `resolve_point` names, so every row kept holds the same values, bit for bit. Only points that capture
+        stores as the hook sees them are taken (`_ROW_CAPTURE_POINTS`); the copy to the CPU is synchronous, so the
+        value is the one at the hook, before any later kernel runs."""
+        assert self.eager_model is not None, "Call runtime.load() first."
+        model = self.eager_model
+        ids = [int(t) for t in token_ids]
+        seq = len(ids)
+        n_read = max(0, min(int(n_read), seq))
+        wanted = [(a, False) for a in every] + [(a, True) for a in read]
+        if len({a for a, _ in wanted}) != len(wanted):
+            raise ValueError("capture_rows was asked for an address twice.")
+        for a, _ in wanted:
+            if a.name not in _ROW_CAPTURE_POINTS or a.stream is not None:
+                raise ValueError(f"capture_rows takes only {sorted(_ROW_CAPTURE_POINTS)} with no stream, not {a}")
+        out: Dict[Address, torch.Tensor] = {}
+
+        def make_reader(keys: List[Address], tail: bool) -> Callable[[torch.Tensor], None]:
+            def _read(tensor: torch.Tensor) -> None:
+                for key in keys:
+                    if key in out:
+                        raise ValueError(f"{key} fired twice in one forward pass.")
+                if tensor.dim() < 2 or tuple(tensor.shape[:2]) != (1, seq):
+                    raise ValueError(f"{keys[0]} came back with shape {tuple(tensor.shape)}, not [1, {seq}, ...].")
+                rows = tensor[0, seq - n_read :] if tail else tensor[0]
+                held = rows.detach().to("cpu", copy=True)
+                for key in keys:
+                    out[key] = held
+
+            return _read
+
+        # one hook per (module, side), fanned out to every key it serves, as capture registers them
+        targets: Dict[Tuple[int, str, bool], Tuple[nn.Module, str, bool, List[Address]]] = {}
+        for a, tail in wanted:
+            module, point = model.resolve_point(a.name, a.layer, stream=None)
+            _, _, _, keys = targets.setdefault((id(module), point, tail), (module, point, tail, []))
+            keys.append(a)
+        input_ids = torch.tensor([ids], device=model.device)
+        with HookManager() as hm:
+            for module, point, tail, keys in targets.values():
+                hm.read(module, make_reader(keys, tail), point=point)
+            with forward_from(0), torch.no_grad():
+                output = model.hf_model(
+                    input_ids, attention_mask=None, output_attentions=False, use_cache=False, logits_to_keep=1
+                )
+            del output
+        missing = [str(a) for a, _ in wanted if a not in out]
+        if missing:
+            raise ValueError(f"Captured nothing at {missing}: the resolved module(s) did not run in this forward.")
+        return out
 
     def _steering_context(
         self,
@@ -1242,7 +1330,7 @@ class TheodoliteRuntime:
 
         prompt_token_ids = self.tokenize_prompt(prompt, prepend_bos=prepend_bos)
         prompt_token_strs = [self.tokenizer.decode([tid]) for tid in prompt_token_ids]
-        points = self._sweep_points()
+        every_row, read_rows = self._sweep_points()
 
         answer: List[int] = []
         answer_strs: List[str] = []
@@ -1288,8 +1376,14 @@ class TheodoliteRuntime:
                 answer_strs = [self.tokenizer.decode([t], clean_up_tokenization_spaces=False) for t in answer]
             t1 = time.perf_counter()
             # The last written piece is never fed back, so it has no state: rows P - 1 .. P + n - 2 are the n
-            # places a piece was chosen (as `EagerModel.capture_generation` recaptures).
-            caps = await self.eager_model.capture(prompt_token_ids + answer[: max(len(answer) - 1, 0)], points)
+            # places a piece was chosen (as `EagerModel.capture_generation` recaptures). They are the recapture's
+            # last max(n, 1) rows, and the only ones read for anything but resid_post.
+            caps = self.capture_rows(
+                prompt_token_ids + answer[: max(len(answer) - 1, 0)],
+                every=every_row,
+                read=read_rows,
+                n_read=max(len(answer), 1),
+            )
             t2 = time.perf_counter()
 
         if given:
@@ -1430,9 +1524,10 @@ class TheodoliteRuntime:
         if centre_override is None and control_ids:
             centre_raw = torch.zeros(N_LAYERS, D_MODEL, dtype=torch.float32, device=self.device)
             for c_ids in control_ids:
-                c_caps = await self.eager_model.capture(c_ids, [Address("resid_post", l) for l in range(N_LAYERS)])
+                # its last row only: row 0 is position len(c_ids) - 1
+                c_caps = self.capture_rows(c_ids, read=[Address("resid_post", l) for l in range(N_LAYERS)], n_read=1)
                 for l in range(N_LAYERS):
-                    centre_raw[l] += c_caps[Address("resid_post", l)][len(c_ids) - 1].to(self.device).float()
+                    centre_raw[l] += c_caps[Address("resid_post", l)][0].to(self.device).float()
                 del c_caps
             centre_raw /= len(control_ids)
             centre_k0 = self._centre_in_frame_space(centre_raw, basis_space)
@@ -1462,11 +1557,12 @@ class TheodoliteRuntime:
             acc = torch.zeros(max(n - 1, 0), N_LAYERS, D_MODEL, dtype=torch.float32)
             tail = cap.answer_token_ids[: max(n - 1, 0)]
             for c_ids in shared.control_ids:
-                c_caps = await self.eager_model.capture(
-                    c_ids + tail, [Address("resid_post", l) for l in range(N_LAYERS)]
+                # its last n - 1 rows only: positions len(c_ids) .. len(c_ids) + n - 2
+                c_caps = self.capture_rows(
+                    c_ids + tail, read=[Address("resid_post", l) for l in range(N_LAYERS)], n_read=n - 1
                 )
                 for l in range(N_LAYERS):
-                    acc[:, l] += c_caps[Address("resid_post", l)][len(c_ids) : len(c_ids) + n - 1].float()
+                    acc[:, l] += c_caps[Address("resid_post", l)].float()
                 del c_caps
             shared.answer_centre_raw = acc / len(shared.control_ids)
         centre_raw = shared.answer_centre_raw[int(token_index) - 1].to(self.device)
@@ -1533,7 +1629,6 @@ class TheodoliteRuntime:
         delta_ffn_J_target_list: List[torch.Tensor] = []
         delta_attn_raw_list: List[torch.Tensor] = []
         delta_ffn_raw_list: List[torch.Tensor] = []
-        seq_states_list: List[torch.Tensor] = []
         mlp_out_target: Dict[int, torch.Tensor] = {}
         resid_mid_target: Dict[int, torch.Tensor] = {}
         pole_write_sizes: Dict[int, List[float]] = {}
@@ -1543,15 +1638,14 @@ class TheodoliteRuntime:
 
         for l in range(N_LAYERS):
             J_l = self.jpp_lenses[l]
-            # rows are picked on the CPU and only they move to the GPU (the same values the whole sequence held)
+            # rows are picked on the CPU and only they move to the GPU (the same values the whole sequence held);
+            # resid_post is held at every row, the other four at the read rows only, where row k is target_pos
             r_post_cap = caps[Address("resid_post", l)]
-            r_pre_t = caps[Address("resid_pre", l)][target_pos].to(self.device)
-            r_mid_t = caps[Address("resid_mid", l)][target_pos].to(self.device)
+            r_pre_t = caps[Address("resid_pre", l)][k].to(self.device)
+            r_mid_t = caps[Address("resid_mid", l)][k].to(self.device)
             r_post_t = r_post_cap[target_pos].to(self.device)
-            mlp_act_t = caps[Address("mlp_act", l)][target_pos].to(self.device)
+            mlp_act_t = caps[Address("mlp_act", l)][k].to(self.device)
             mlp_out_cap = caps.get(Address("mlp_out", l))
-
-            seq_states_list.append(r_post_cap[: target_pos + 1].to(self.device).float())
 
             # Module 1: Causal Vector Split (Gemma-4 multiplies every layer output by layer_scalar)
             s_l = self._decoder_layers[l].layer_scalar.detach().float()
@@ -1564,7 +1658,7 @@ class TheodoliteRuntime:
             delta_ffn_raw_list.append(ffn_write_raw)
             resid_mid_target[l] = r_mid_t.float()
             if mlp_out_cap is not None:
-                mlp_out_target[l] = mlp_out_cap[target_pos].to(self.device).float()
+                mlp_out_target[l] = mlp_out_cap[k].to(self.device).float()
 
             resid_post_target_list.append(r_post_t)
             resid_post_J_target_list.append(split_l.resid_post_J)
@@ -1741,9 +1835,14 @@ class TheodoliteRuntime:
             delta_ffn_raw_layers=torch.stack(delta_ffn_raw_list, dim=0),
         )
 
-        # 7. Compute 60x60 Linear CKA Similarity Matrix (over the word-pieces read up to here)
-        seq_states_t = torch.stack(seq_states_list, dim=0)  # [60, n_tokens, 5376]
-        cka_matrix = compute_linear_cka_matrix(seq_states_t)
+        # 7. Compute 60x60 Linear CKA Similarity Matrix (over the word-pieces read up to here). The states are
+        #    gathered only now, into one float32 buffer the CKA centres in place: one [60, n_tokens, 5376] copy on the
+        #    GPU, not the three a per-layer list, its stack and a centred copy held (the same values, bit for bit).
+        seq_states_t = torch.empty(N_LAYERS, target_pos + 1, D_MODEL, dtype=torch.float32, device=self.device)
+        for l in range(N_LAYERS):
+            seq_states_t[l].copy_(caps[Address("resid_post", l)][: target_pos + 1].to(self.device))
+        cka_matrix = compute_linear_cka_matrix(seq_states_t, overwrite=True)
+        del seq_states_t
 
         # The reading forward against the writing one, at layer 60 (J = I): the readout's top piece and its logit for
         # the chosen piece, less the logit the writing chose it at. A given piece was never written here: its odds

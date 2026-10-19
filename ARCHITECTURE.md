@@ -169,8 +169,10 @@ at k = 0 and gives an old caller the same numbers bit for bit (scripts/check_swe
 
 Which indices are sighted: `sight_tokens` if given, else 0..min(n, max_sighted)−1 with `sight_every_token`, else
 [0]; never empty ([0] when nothing asked for exists). `prompt`, `system` and `assistant_prefix` are at most 32000
-characters, and P + max(max_new_tokens, len(answer_token_ids)) must stay within `MAX_SWEEP_POSITIONS` = 512 (a
-capture holds ~5.2 MB per position on the GPU before it moves to the CPU; the thinking prompt is held to the same).
+characters, and P + max(max_new_tokens, len(answer_token_ids)) must stay within `MAX_SWEEP_POSITIONS` = 1024 (the
+recapture keeps resid_post at every row and the other four points at the read rows only, moved to the CPU as each
+hook fires, so what grows with P is the writing's full-length logits and kinship's float32 states; the measurements
+are in the constant's comment; the thinking prompt is held to the same).
 A refused id, control or length is answered in plain words, and so is a `pole_ranking`, `thread_score` or
 `frame_squaring` the analysis does not know, before anything is written.
 

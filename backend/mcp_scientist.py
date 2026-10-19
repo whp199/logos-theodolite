@@ -144,9 +144,10 @@ async def trace_downstream_readers(
 
     points = [Address("mlp_act", l) for l in range(l_src, l_end + 1)]
     points += [Address("mlp_out", l_src)] + [Address("resid_mid", l) for l in range(l_src + 1, l_end + 1)]
-    caps = await runtime.eager_model.capture(prompt_ids, points)
+    # the last word-piece only (row 0 is target_pos): the rest of the sequence is never read
+    caps = runtime.capture_rows(prompt_ids, read=points, n_read=1)
 
-    src_mlp_act = caps[Address("mlp_act", l_src)].to(runtime.device)[target_pos]
+    src_mlp_act = caps[Address("mlp_act", l_src)][0].to(runtime.device)
     src_signed_act = float(src_mlp_act[n_src].item())
     sigma_i = (
         (1.0 if float(polarity) >= 0 else -1.0)
@@ -167,14 +168,14 @@ async def trace_downstream_readers(
     d_post = direct_path_source_write(
         src_mlp_act[n_src : n_src + 1],
         w_down_raw,
-        caps[Address("mlp_out", l_src)].to(runtime.device)[target_pos].float(),
+        caps[Address("mlp_out", l_src)][0].to(runtime.device).float(),
         runtime._post_ffn_norm_weights[l_src],
         layer_scalars[l_src],
     )  # [1, 5376]
 
     candidates: List[Dict[str, Any]] = []
     for l_dst in range(l_src + 1, l_end + 1):
-        dst_mlp_act = caps[Address("mlp_act", l_dst)].to(runtime.device)[target_pos]
+        dst_mlp_act = caps[Address("mlp_act", l_dst)][0].to(runtime.device)
         poles_dst = extract_bipolar_poles(
             mlp_act_l=dst_mlp_act,
             w_down_slice_fn=runtime.slice_w_down,
@@ -201,7 +202,7 @@ async def trace_downstream_readers(
             carry *= layer_scalars[k_l]
         d_gate, d_act = direct_path_reader_effects(
             carry * d_post,
-            caps[Address("resid_mid", l_dst)].to(runtime.device)[target_pos].float(),
+            caps[Address("resid_mid", l_dst)][0].to(runtime.device).float(),
             w_gate_dst,
             w_up_dst,
         )  # [1, 25] each

@@ -654,8 +654,8 @@ def check_sweep_positions(n_prompt: int, n_answer: int, what: str = "The prompt"
     if total > MAX_SWEEP_POSITIONS:
         raise ValueError(
             f"{what} is {n_prompt} word-pieces and the answer may run to {n_answer} more: {total} in all, more than "
-            f"the {MAX_SWEEP_POSITIONS} one sweep can hold (each word-piece's capture takes about 5 MB of the GPU's "
-            "memory). Shorten the question, the system prompt or the answer."
+            f"the {MAX_SWEEP_POSITIONS} one sweep can hold (the writing and the kinship of layers take more of the "
+            "GPU's memory with every word-piece). Shorten the question, the system prompt or the answer."
         )
 
 
@@ -935,6 +935,9 @@ async def _stream_sweep(
                     tally.cancelled = True
                     break
             tally.token_index = k
+            # the last pair is sent: let its bundles go before the next is read (each holds about 0.5 GB of pole
+            # logits on the GPU)
+            bundle = think_bundle = None  # type: ignore[assignment]
             bundle = await runtime.analyse_position(
                 cap,
                 shared,

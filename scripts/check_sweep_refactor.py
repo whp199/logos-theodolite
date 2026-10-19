@@ -16,6 +16,12 @@ imports `backend` from `--repo` (put first on sys.path, and checked), loads the 
       on she / he / it, centred on a control chat "Tell me about yourself." with no begun answer;
   (c) the pole-motif frame locked on case a's layer-35 strongest pole, nothing written;
   (d) the default prompt with threads scored by the direct path and poles ranked by write size.
+Two more read every word-piece of an answer through `iter_theodolite_sweeps` (the rows past token 0, which the
+four above never reach; the sweep's capture keeps most addresses at the read rows only):
+  (e) chat, with a system prompt of about 130 word-pieces, 8 word-pieces written, each sighted, centred on the
+      control chat reading this very answer (`centre_answer`), landmarks she / he / it;
+  (f) case a's answer given back as word-piece ids (teacher-forced, nothing written), each sighted in the pole-motif
+      frame of case c (built at token 0 and kept).
 Every tensor and list of each bundle is saved under a flat key (trajectory, deltas, CKA, poles, write sizes, pole
 words, threads, J++ and naked-eye readouts with the tracked ranks / logits / probs, the words written, the survey
 labels, frame_info); a tensor of more than 2^20 elements (the pole logits) is kept as the SHA-256 of its bytes.
@@ -45,7 +51,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 DEFAULT_PROMPT = "The number of legs on the animal that spins webs is"
-CASES = ("a", "b", "c", "d")
+CASES = ("a", "b", "c", "d", "e", "f")
+# case e's system prompt: this paragraph twice, about 150 word-pieces with the question and the chat marks
+LONG_SYSTEM_PARAGRAPH = (
+    "You are a careful assistant who answers questions about the natural world. When a question names an animal, "
+    "say what it eats, where it lives and how many legs it has, and keep each answer to a few plain sentences. If "
+    "you are not sure of a fact, say so instead of guessing, and never invent a source."
+)
 # above this many elements a tensor is kept as a digest of its bytes (the [15, 262144] pole logits)
 DIGEST_ABOVE = 1 << 20
 # fields that measure the run, not the reading
@@ -174,7 +186,7 @@ async def run_cases(repo: Path, cases: List[str]) -> Dict[str, Dict[str, Any]]:
         print(f"case {name}: {len(flat)} keys, wrote {bundle.generated_token_ids} in {time.perf_counter() - t0:.1f}s")
         return bundle
 
-    if "a" in cases or "c" in cases:
+    if "a" in cases or "c" in cases or "f" in cases:
         bundle_a = await record(
             "a", prompt=DEFAULT_PROMPT, monument_concepts=landmarks, tracked_concepts=tracked, max_new_tokens=6
         )
@@ -201,9 +213,25 @@ async def run_cases(repo: Path, cases: List[str]) -> Dict[str, Dict[str, Any]]:
             centre_prompts=[control],
             max_new_tokens=6,
         )
+    async def record_every(name: str, prompt: str, **kw: Any) -> None:
+        t0 = time.perf_counter()
+        flat: Dict[str, Any] = {}
+        n = 0
+        async for b in runtime.iter_theodolite_sweeps(prompt, **kw):
+            # flattened as it comes and dropped, as the server sends each one: a bundle holds its pole logits on
+            # the GPU (about 0.5 GB), so keeping all of them would run out of memory on a long answer
+            flatten(b, f"bundles[{n}]", flat)
+            n_prompt, written = len(b.prompt_token_ids), b.generated_token_ids
+            del b
+            n += 1
+        flat["bundles.len"] = n
+        out[name] = flat
+        print(f"case {name}: {len(flat)} keys over {n} sightings of {n_prompt} + {written} in "
+              f"{time.perf_counter() - t0:.1f}s")
+
+    neuron = int(bundle_a.bipolar_poles[35].neuron_indices[0].item()) if bundle_a is not None else None
     if "c" in cases:
-        assert bundle_a is not None
-        neuron = int(bundle_a.bipolar_poles[35].neuron_indices[0].item())
+        assert bundle_a is not None and neuron is not None
         await record(
             "c",
             prompt=DEFAULT_PROMPT,
@@ -222,6 +250,28 @@ async def run_cases(repo: Path, cases: List[str]) -> Dict[str, Dict[str, Any]]:
             thread_score="direct",
             pole_ranking="write",
             max_new_tokens=6,
+        )
+    if "e" in cases:
+        question = "Tell me about the animal that spins webs."
+        await record_every(
+            "e",
+            runtime.compose_prompt(question, chat=True, system=" ".join([LONG_SYSTEM_PARAGRAPH] * 2)),
+            monument_concepts=("she", "he", "it"),
+            tracked_concepts=tracked + ("she", "he", "it"),
+            centre_prompts=[runtime.compose_prompt(question, chat=True)],
+            centre_answer=True,
+            max_new_tokens=8,
+        )
+    if "f" in cases:
+        assert bundle_a is not None and neuron is not None
+        await record_every(
+            "f",
+            DEFAULT_PROMPT,
+            monument_concepts=landmarks,
+            tracked_concepts=tracked,
+            survey_mode="pole_motif",
+            locked_pole=(35, neuron, 1.0),
+            answer_token_ids=list(bundle_a.generated_token_ids),
         )
     if "a" not in cases:
         out.pop("a", None)
