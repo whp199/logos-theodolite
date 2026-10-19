@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { chosenOf, isChosenRow, type Sighting } from "../../store/useTheodoliteStore";
 import { bare } from "../../lib/words";
 import { lensBand } from "../../lib/lens";
+import { endedWords } from "./moment";
 import {
   BASE_TILT,
   CX,
@@ -304,7 +305,8 @@ function topWords(s: Sighting): string {
   const top = L?.lensTop?.[0]?.token ?? null;
   const c = chosenOf(s);
   if (!c) return top != null ? `its likeliest “${bare(top)}”` : "its own odds";
-  const chose = c.endMark ? "it ended its turn" : `it chose “${bare(c.token)}”`;
+  // a stop mark by which one it is: only <turn|> ends its turn (endedWords)
+  const chose = c.endMark ? endedWords(c.id, c.token) : `it chose “${bare(c.token)}”`;
   return L && top != null && !isChosenRow(s, L, 0) ? `${chose}; its likeliest was “${bare(top)}”` : chose;
 }
 

@@ -742,7 +742,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             share: its guess at what the model would say next if it stopped here. Low in the model they are a murmur of
             many words; at the top, where no lens is needed, they are the model’s own odds for its next word. Below the
             top they are the lens’s reading of the stream, not a report from the model. The word it then writes is its
-            likeliest only when it writes greedily: <LexLink to="chosen">the word it chose and its likeliest</LexLink>.
+            likeliest only when it writes greedily with no repeat penalty:{" "}
+            <LexLink to="chosen">the word it chose and its likeliest</LexLink>.
           </Body>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, maxWidth: 380, marginTop: 4 }}>
             <span style={READOUT_LABEL}>after “Hi! I”, at layer 51</span>
@@ -775,10 +776,12 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         >
           <Body>
             At layer 60 the instrument shows the model’s own odds for what comes next; its likeliest is the first of them.
-            The word it chose is the word-piece it actually wrote there. Written greedily, the two are one, and the page
-            marks it. Drawn by chance, it can choose any word-piece the sampler lets it draw: the page then names both, and
-            when the word it chose is not among the five likeliest it adds it below them, with its rank and its share of
-            the odds.
+            The word it chose is the word-piece it actually wrote there. Written greedily with no repeat penalty, the two
+            are one (bar a rare near-tie between the writing and the instrument’s second reading, which the page notes),
+            and the page marks it. With a repeat penalty, greedy takes the likeliest after the penalty, so the two can
+            differ. Drawn by chance, it can choose any word-piece the sampler lets it draw. Whenever the two differ the
+            page names both, and when the word it chose is not among the five likeliest it adds it below them, with its
+            rank and its share of the odds.
           </Body>
           <Note>
             Earlier the page called layer 60’s first word “the word it says next”. That holds only for the first word-piece
@@ -875,8 +878,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         <Entry id="how-it-writes" head="how it writes" tech="decoding · greedy, or sampled · max_new_tokens">
           <Body>
             Before the instrument sights an answer, the model writes it, one word-piece at a time, up to as many as you
-            allow (1 to {MAX_WRITE}); it stops sooner when it ends its turn. By default it writes its likeliest word-piece
-            every time, as the study did (greedy). Drawn by chance, each word-piece is picked at random, weighted by its
+            allow (1 to {MAX_WRITE}); it stops sooner when it writes one of its stop marks: the mark that ends its turn,
+            or another, such as the end of the text, which the page names, since a strong nudge can force one where the
+            answer should go on. By default it writes its likeliest word-piece every time, as in the answers the study
+            checked the lens on (greedy). Drawn by chance, each word-piece is picked at random, weighted by its
             odds, as chat apps do, and four settings shape the draw, in the order the sampler applies them:
           </Body>
           <dl className="dl" style={{ margin: 0, fontSize: 17 }}>
@@ -1037,8 +1042,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <Body>
             Write a question, and if you like the start of an answer; then take a sighting. A sighting is the stream at
             one word-piece, read up through all sixty layers: at each one, the words the lens reads there, how the
-            layer’s change divides between gathering and remembering, and which neurons fired. One sweep gives one where
-            the model read your last word-piece, and one for each word-piece it writes, taken where it chose that piece.
+            layer’s change divides between gathering and remembering, and which neurons fired. One sweep gives one for
+            each word-piece it writes (as the instrument asks by default), taken where it chose that piece: the first where it read your last word-piece, each
+            later one where it read the piece before; the last piece it writes is chosen but never read.
           </Body>
           <SightingOnInstrument />
           <Onward to={href.instrument()}>take a sighting on the instrument →</Onward>

@@ -27,8 +27,9 @@ Runs inside a single process/network namespace to verify:
    progress, the answer once, one pair per word-piece (read at P - 1 + k, reading answer[k - 1], having chosen
    answer[k]) and an end; its token 0 is the one-pair reading byte for byte; a chat answer stops at its end of turn;
    a sampled answer echoes its seed and the same seed writes the same words; a retake of given ids reads the same
-   states; cancels (while writing, and of a queued request) and refusals stay on their own request; the thinking
-   comparison rides on the first pair only; trace_readers on exact ids reads what the text did. Saved prompts over
+   states, and its recapture check has no logit diff (nothing was written to compare with); cancels (while writing,
+   and of a queued request) and refusals stay on their own request; the thinking comparison rides on the first pair
+   only and says how it ended; trace_readers on exact ids reads what the text did. Saved prompts over
    HTTP, in a temporary file (THEODOLITE_SAVED_PROMPTS is pointed away from the reader's own list).
 """
 
@@ -191,8 +192,13 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
     assert [m["token_index"] for _b, m in retake["pairs"]] == [2, 0]
     assert all(m["sight_dropped"] == [99] for _b, m in retake["pairs"])
     assert retake["pairs"][0][0][24:] == pairs[2][0][24:], "a retake of the same ids reads other states"
-    # a given piece's odds are the re-read's own layer-60 readout
-    assert abs(retake["pairs"][0][1]["recapture_check"]["chosen_logit_diff"]) < 1e-3
+    # a given piece's odds are the re-read's own layer-60 readout, so there is no writing to compare with: no diff
+    rrc = retake["pairs"][0][1]["recapture_check"]
+    assert rrc["chosen_logit_diff"] is None and rrc["chosen_logit_recapture"] is None, rrc
+    assert retake["pairs"][0][1]["chosen"]["source"] == "given"
+    given_logit = retake["pairs"][0][1]["chosen"]["chosen_logit"]
+    read_logit = pairs[2][1]["recapture_check"]["chosen_logit_recapture"]
+    assert abs(given_logit - read_logit) < 1e-3, f"a given piece's logit {given_logit} is not the layer-60 re-read's {read_logit}"
     print("  • a retake of the given ids reads the same states (word-piece 2, byte for byte); 99 dropped and reported")
 
     turn = await ws_stream(ws, {"request_id": "e2e-turn", "prompt": "Say only the word yes.", "chat": True,
@@ -224,7 +230,12 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
     assert all(not struct.unpack("<6I", b[:24])[5] & 1 and m["think_generated_text"] is None and m["think_seed"] is None
                for b, m in tp[1:])
     assert tp[0][1]["think_generated_text"] and tp[0][1]["think_read_token"] is not None
-    print(f"  • the thinking comparison rides on the first pair only (it read {tp[0][1]['think_read_token']!r})")
+    # left alone, the thought runs to its length or its end mark, and says which
+    assert tp[0][1]["think_stop_reason"] in ("length", "end_mark") and tp[0][1]["think_skipped"] is False, tp[0][1]["think_stop_reason"]
+    assert all(m["think_stop_reason"] is None and m["think_skipped"] is False for _b, m in tp[1:])
+    assert think["end"]["cancelled"] is False
+    print(f"  • the thinking comparison rides on the first pair only (it read {tp[0][1]['think_read_token']!r}, "
+          f"ended by {tp[0][1]['think_stop_reason']})")
 
     # cancels: while writing; and a queued request, dropped at once while another runs
     await ws.send(json.dumps({"action": "sweep", "payload": {"request_id": "e2e-cancel", "prompt": prompt,
@@ -738,9 +749,12 @@ async def main() -> int:
         assert r.status_code == 403, r.text
         r = await client.get("/api/saved_prompts", headers={"Origin": f"http://{HOST}:{PORT}"})
         assert r.status_code == 200 and len(r.json()["questions"]) == 1
+        # a DNS-rebinding page: another name that resolves here, a same-origin GET with no Origin
+        r = await client.get("/api/saved_prompts", headers={"Host": f"rebind.example:{PORT}"})
+        assert r.status_code == 403 and "Spider legs" not in r.text, r.text
         r = await client.delete(f"/api/saved_prompts/question/{qid}")
         assert r.status_code == 200 and r.json()["questions"] == []
-        print(f"  • saved prompts over HTTP: kept, a same name refused (409), another site refused (403), forgotten")
+        print(f"  • saved prompts over HTTP: kept, a same name refused (409), another site or Host refused (403), forgotten")
 
         # -------------------------------------------------------------------------
         # Step 3: Headless Chrome inspection of the instrument's pages (reader and scholar views)

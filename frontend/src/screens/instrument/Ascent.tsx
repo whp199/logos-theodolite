@@ -1,5 +1,5 @@
 import React from "react";
-import { chosenOf, type Sighting } from "../../store/useTheodoliteStore";
+import { chosenOf, chosenPhrase, type Sighting } from "../../store/useTheodoliteStore";
 import { IfApparatus, Rubric } from "../../components/kit";
 import { bare, pieceWord } from "../../lib/words";
 import { lensBand, useReadingLens } from "../../lib/lens";
@@ -20,7 +20,8 @@ export const Ascent: React.FC<{ sighting: Sighting; sel: number; stations: numbe
   const read = sighting.readAt != null ? pieceWord(sighting.readAt) : "the word-piece read";
   const c = chosenOf(sighting);
   // where the ascent ends: the word-piece its layer 60 chose (by id, from the server's echo), when one is recorded
-  const upTo = c ? (c.endMark ? ", up to where it ends its turn" : `, up to where it chooses ${pieceWord(c.token)}`) : "";
+  // at a stop mark, which one: only <turn|> ends its turn (chosenPhrase, by endMarkWords)
+  const upTo = c ? (c.endMark ? `, up to ${chosenPhrase(sighting)}` : `, up to where it chooses ${pieceWord(c.token)}`) : "";
   return (
     <section aria-labelledby="ascent-head" style={{ marginTop: 44, display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="row-between">

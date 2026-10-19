@@ -1,6 +1,8 @@
 import React from "react";
 import {
   chosenOf,
+  chosenPhrase,
+  endMarkWords,
   ordinal,
   readWhere,
   useShownSet,
@@ -41,14 +43,14 @@ function controlRead(c: Sighting): React.ReactNode {
     return (
       <>
         read at {read ?? "a word-piece"}, the {ordinal(where.k)} word-piece of its own answer
-        {chose ? <>, {chose.endMark ? "where it ended its turn" : <>where it chose {pieceWord(chose.token)}</>}</> : null}
+        {chose ? <>, {chose.endMark ? chosenPhrase(c) : <>where it chose {pieceWord(chose.token)}</>}</> : null}
       </>
     );
   }
   return (
     <>
       read where it chose its first word-piece
-      {chose ? <>, {chose.endMark ? "the end of its turn" : pieceWord(chose.token)}</> : null}
+      {chose ? (chose.endMark ? <>: {endMarkWords(chose.id, chose.token)}</> : <>, {pieceWord(chose.token)}</>) : null}
       {read ? <> (it read {read}{where.phrase})</> : where.phrase ? <> ({where.phrase.replace(/^, /, "")})</> : null}
     </>
   );

@@ -24,6 +24,7 @@ import { andList, agreement, cap, count, glossFor, scoresText, shortToken, signe
 import { faceWord, numberWord, pct, pieceWord, signed, wp } from "../lib/words";
 import { AnswerMarks, useAnswerPieces } from "./layerLeaf/AnswerMarks";
 import { lensLabel, useReadingLens } from "../lib/lens";
+import { OneDrawLine, PenaltyLine } from "../lib/cautions";
 import {
   ACTS,
   CMP,
@@ -639,6 +640,19 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
             ) : (
               <Missing />
             )}
+            {s?.generation && s.generation.source !== "recorded" && !s.generation.greedy ? (
+              // drawn by chance, the answer is one draw of many: said beside it, as on every page that shows one
+              <span style={{ fontStyle: "normal", fontSize: "15px", color: MUTED }}>
+                {" "}
+                · its answer was <OneDrawLine generation={s.generation} />
+              </span>
+            ) : null}
+            {(s?.generation?.presencePenalty ?? 0) !== 0 ? (
+              <span style={{ fontStyle: "normal", fontSize: "15px", color: MUTED }}>
+                {" "}
+                <PenaltyLine penalty={s!.generation!.presencePenalty as number} />
+              </span>
+            ) : null}
             {s?.isNudged ? (
               <span style={{ fontStyle: "normal", color: "var(--rubric)" }}>
                 {" "}

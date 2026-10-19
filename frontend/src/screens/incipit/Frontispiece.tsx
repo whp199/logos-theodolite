@@ -2,16 +2,18 @@ import React from "react";
 import { Rubric } from "../../components/kit";
 import { bare, gloss, numberWord, pieceWord, wp } from "../../lib/words";
 import { lensPhrase, useReadingLens } from "../../lib/lens";
-import { AnswerPositionCaution, OneDrawLine } from "../../lib/cautions";
+import { AnswerPositionCaution, OneDrawLine, TemplateEndCaution } from "../../lib/cautions";
 import {
   type Sighting,
   N_LAYERS,
   chosenOf,
   chosenPhrase,
+  endMarkWords,
   isChosenRow,
   isGlobalIdx,
   ordinal,
   readWhere,
+  readsInsideAnswer,
 } from "../../store/useTheodoliteStore";
 
 /*
@@ -119,7 +121,8 @@ function stationPhrase(st: Station) {
 function topGloss(s: Sighting, top: { token: string }): { saysIt: boolean; gloss: string | null } {
   const c = chosenOf(s);
   const L = s.layers[LAST];
-  if (c) return isChosenRow(s, L, 0) ? { saysIt: true, gloss: c.endMark ? "where it ends its turn" : "the word it chose" } : { saysIt: false, gloss: "its likeliest" };
+  // a stop mark by which one it is: only <turn|> ends its turn (endMarkWords)
+  if (c) return isChosenRow(s, L, 0) ? { saysIt: true, gloss: c.endMark ? endMarkWords(c.id, c.token) : "the word it chose" } : { saysIt: false, gloss: "its likeliest" };
   const greedyFirst = s.tokenIndex === 0 && (s.source === "fixture" || s.generation == null || s.generation.greedy);
   if (greedyFirst && isFirstOf(top.token, s.continuation)) return { saysIt: true, gloss: "the word it said next" };
   return { saysIt: false, gloss: null };
@@ -215,6 +218,13 @@ export function frontispieceOf(s: Sighting | null): Frontispiece {
   };
 }
 
+/** A station's gloss as the lines it is drawn on: the top station's, which can name a stop mark at length (“a control
+ * mark, <|tool_response>, where writing stops”), is broken after its commas and before a bracket, so it stays inside the
+ * figure; the others are one line. */
+function glossLines(st: Station): string[] {
+  return st.idx === LAST ? st.gloss.replace(/, /g, ",\n").replace(/ \(/g, "\n(").split("\n") : [st.gloss];
+}
+
 /** A station word as drawn: quoted, cut short if it would run off the leaf. */
 function drawnWord(token: string) {
   const b = bare(token);
@@ -297,7 +307,11 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
             .filter((st) => st.gloss)
             .map((st) => (
               <text key={st.idx} x="390" y={st.labelY + 17}>
-                {st.gloss}
+                {glossLines(st).map((line, i) => (
+                  <tspan key={i} x="390" dy={i ? 15 : 0}>
+                    {line}
+                  </tspan>
+                ))}
               </text>
             ))}
         </g>
@@ -348,7 +362,9 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
           Read the middle words as glimpses, not the model’s own speech: {lensPhrase(lens)}, is far less faithful there than
           near the top, and below layer 21 nothing it reads was validated.
         </Rubric>
-        {s && s.tokenIndex >= 1 ? <AnswerPositionCaution k={s.tokenIndex} /> : null}
+        {s && readsInsideAnswer(s) ? <AnswerPositionCaution sighting={s} /> : null}
+        {/* the end of the chat template, with no begun answer: the study never read the lens there */}
+        {s && readWhere(s).role === "template_end" ? <TemplateEndCaution /> : null}
       </figcaption>
     </figure>
   );

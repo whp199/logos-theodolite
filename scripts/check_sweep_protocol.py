@@ -5,19 +5,23 @@ The server's app is driven over `fastapi.testclient.TestClient`'s WebSocket with
 scripted word-pieces (calling the stream's `on_written` as the real one does, with a short sleep for the GPU) and
 returns small but complete sweep bundles, which the real `pack_binary_and_json_frames` packs. The app's lifespan
 (which loads the model) is replaced and the GPU hidden, so nothing heavy can load. It checks:
-1. which token indices are sighted (`sight_order`), and the request's limits and id checks, in plain words;
+1. which token indices are sighted (`sight_order`), and the request's limits, id checks and reading options (pole
+   ranking, thread score, frame squaring), in plain words;
 2. a request without request_id: exactly one binary + one JSON pair, today's keys plus the additive ones, nothing
    else (the next reply on the socket is the next action's);
-3. a stream: progress after each written piece, the answer once, a sighting progress, one pair per word-piece in
-   order (binary then its JSON, back to back), flags bit 2, `last` on the final pair, then theodolite_sweep_end;
+3. a stream: progress after each written piece, the answer once, then a sighting progress, one pair per word-piece
+   in order (binary then its JSON, back to back), flags bit 2, `last` on the final pair, then theodolite_sweep_end;
    an end mark stops the writing; a given answer with sight_tokens (repeats and out-of-range indices dropped);
 4. cancel_sweep: while writing (the writing stops, only the first index is sighted), between pairs (the stream ends
    after the current pair), and of a queued request (its end comes at once, n_sent 0, and it never runs);
 5. refusals and failures on one request alone: a pydantic refusal and a plain-words ValueError with a request_id
-   (error, then sweep_end), the legacy refusal without one, a failure mid-stream (error with n_sent and token_index,
-   then sweep_end) after which the socket still answers;
-6. the thinking comparison's path only on the first pair (flags bit 0, think_seed, think_read_token), and other
-   actions answered in the order they came.
+   (error, then sweep_end), an unknown reading option refused before anything is written, the legacy refusal
+   without one, a failure while the frame is built (the answer already sent), a failure mid-stream (error with
+   n_sent and token_index, then sweep_end) after which the socket still answers;
+6. the thinking comparison's path only on the first pair (flags bit 0, think_seed, think_read_token,
+   think_stop_reason, think_skipped); a stop asked while the answer is written or its first position read skips it
+   (think_skipped, cancelled), one asked while it is written cuts it short (think_stop_reason "stopped", cancelled
+   also with one sighting); and other actions answered in the order they came.
 
 Run: .venv/bin/python -I scripts/check_sweep_protocol.py   (exits 0 when every check holds)
 """
@@ -151,6 +155,21 @@ def check_rules() -> None:
         check(False, "one position too many accepted")
     except ValueError as exc:
         check(f"more than the {MAX_SWEEP_POSITIONS} one sweep can hold" in str(exc), f"the positions refusal: {exc}")
+    def option(payload: Dict[str, Any], words: str, what: str) -> None:
+        try:
+            server.check_sweep_options(server.SweepRequest(**payload))
+        except ValueError as exc:
+            check(words in str(exc), f"{what}: {exc}")
+        else:
+            check(False, f"{what}: accepted")
+
+    option({"pole_ranking": "loudest"}, 'pole_ranking is "loudest", which this instrument does not know: it must be '
+           '"activation" or "write"', "an unknown pole ranking")
+    option({"thread_score": "Direct"}, 'must be "coupling" or "direct"', "a thread score in the wrong case")
+    option({"frame_squaring": "qr"}, 'must be "gram_schmidt" or "lowdin"', "an unknown frame squaring")
+    for ok in ({}, {"pole_ranking": "write", "thread_score": "direct", "frame_squaring": "lowdin"}):
+        server.check_sweep_options(server.SweepRequest(**ok))
+        check(True, f"known reading options {ok}")
     tr = server.TraceReadersRequest(token_ids=[2, 5, 7])
     check(tr.token_ids == [2, 5, 7], "trace token_ids")
     for bad in ([], ["2"], [2.5], list(range(MAX_SWEEP_POSITIONS + 1))):
@@ -193,7 +212,17 @@ class FakeRuntime:
         self.write_s = 0.01
         self.read_s = 0.01
         self.fail_at: Optional[int] = None
+        self.fail_prepare = False
         self.writes: List[str] = []
+        # a stop asked at a given moment, as the socket's receiver would set it on a cancel_sweep:
+        # ("think", i) after the i-th thinking piece, ("analyse", k) while the answer's position k is read
+        self.stop_at: Optional[Tuple[str, int]] = None
+        self.conn: Any = None
+        self.analysed: List[Tuple[str, int]] = []
+
+    def _ask_stop(self, event: str, i: int) -> None:
+        if self.stop_at == (event, i) and self.conn is not None:
+            self.conn.cancel_running = True
 
     def lens_card(self) -> Dict[str, Any]:
         return {"id": "stand-in"}
@@ -245,6 +274,8 @@ class FakeRuntime:
                 end = tid in stop
                 steps.append(self._step(i, tid, "written", end, greedy))
                 answer.append(tid)
+                if prompt.startswith("<|think|>"):
+                    self._ask_stop("think", i)
                 keep = True if on_written is None else await on_written(i)
                 if end:
                     reason = "end_mark"
@@ -266,6 +297,8 @@ class FakeRuntime:
         )
 
     async def prepare_sweep(self, cap, *, monument_concepts, frame_override=None, centre_override=None, **_kw) -> SweepShared:
+        if self.fail_prepare:
+            raise ValueError("a stand-in frame that cannot be built")
         basis = frame_override[0] if frame_override else torch.eye(3, D)
         return SweepShared(
             tracked_map={"eight": 7}, survey_mode="monument", locked_pole=None, frame_squaring="gram_schmidt",
@@ -276,6 +309,10 @@ class FakeRuntime:
 
     async def analyse_position(self, cap, shared, k, *, rank_lookahead=True, **_kw) -> TheodoliteSweepBundle:
         time.sleep(self.read_s)  # the GPU
+        thinking = cap.prompt.startswith("<|think|>")
+        self.analysed.append(("think" if thinking else "answer", k))
+        if not thinking:
+            self._ask_stop("analyse", k)
         if self.fail_at is not None and k == self.fail_at:
             raise RuntimeError("a stand-in failure")
         return fake_bundle(cap, shared, k, rank_lookahead)
@@ -324,9 +361,11 @@ def fake_bundle(cap: SweepCapture, shared: SweepShared, k: int, rank_lookahead: 
         frame_info={**shared.frame_info, "centred": False, "n_centre_prompts": 0, "centre_kind": "none"},
         token_index=k, read_token_id=ids[P - 1 + k], read_token=FakeTokenizer().decode([ids[P - 1 + k]]),
         chosen=chosen,
+        # as the runtime sends it: a given piece has no writing to compare with, so no logit and no diff
         recapture_check=None if chosen is None else {
             "top1_id": chosen.token_id, "top1_token": chosen.token, "top1_is_chosen": True,
-            "chosen_logit_recapture": 20.0, "chosen_logit_diff": 0.0,
+            "chosen_logit_recapture": 20.0 if chosen.source == "written" else None,
+            "chosen_logit_diff": 0.0 if chosen.source == "written" else None,
         },
         kinship_n_states=P + k, tracked_from_next={l: {"eight": rank_lookahead and k == 0 and l == 59} for l in range(60)},
         rank_lookahead=rank_lookahead, analyse_ms=1.0,
@@ -397,7 +436,7 @@ LEGACY_KEYS = {
 NEW_KEYS = {
     "request_id", "token_index", "sight_index", "n_to_sight", "last", "read_pos", "read_token", "read_token_id",
     "prompt_len", "chosen", "answer", "generation", "recapture_check", "kinship_n_states", "rank_lookahead",
-    "sight_dropped", "timing", "think_seed", "think_read_token",
+    "sight_dropped", "timing", "think_seed", "think_read_token", "think_stop_reason", "think_skipped",
 }
 
 
@@ -405,6 +444,16 @@ def check_socket() -> None:
     rt = FakeRuntime()
     server._RUNTIME = rt  # type: ignore[assignment]
     server._VAULT = FakeVault()  # type: ignore[assignment]
+    # keep each socket's state, so the stand-in can ask a stop at an exact moment (as the receiver does on a cancel)
+    conns: List[Any] = []
+    real_state = server._SocketState
+
+    class KeptState(real_state):  # type: ignore[misc, valid-type]
+        def __init__(self) -> None:
+            super().__init__()
+            conns.append(self)
+
+    server._SocketState = KeptState  # type: ignore[misc]
 
     @asynccontextmanager
     async def no_lifespan(_app):  # the real one loads the model
@@ -447,6 +496,8 @@ def check_socket() -> None:
         check([p["done"] for p in prog if p["phase"] == "writing"] == [1, 2, 3, 4] and all(p["of"] == 4 for p in prog if p["phase"] == "writing"),
               f"writing progress {prog}")
         check(any(p["phase"] == "sighting" and p["done"] == 0 and p["of"] == 4 for p in prog), "sighting progress")
+        kinds = [o["type"] if o["type"] != "theodolite_progress" else o["phase"] for k, o in frames if k == "json"]
+        check(kinds.index("theodolite_written") < kinds.index("sighting"), f"the answer comes before the sighting progress: {kinds}")
         check(len(written) == 1 and written[0]["sight_order"] == [0, 1, 2, 3] and written[0]["n_to_sight"] == 4, "written")
         w = written[0]
         check(w["answer"]["token_ids"] == [10, 11, 12, 13] and w["answer"]["stop_reason"] == "length"
@@ -572,6 +623,26 @@ def check_socket() -> None:
         check(err.get("type") == "error" and err.get("action") == "sweep" and err.get("recoverable") is True
               and "request_id" not in err and set(err) == {"type", "message", "action", "recoverable", "layer", "neuron_idx"},
               f"the legacy refusal: {err}")
+        for opt, val in (("pole_ranking", "loudest"), ("thread_score", "Direct"), ("frame_squaring", "qr")):
+            n_writes = len(rt.writes)
+            s.sweep({"request_id": f"r7-{opt}", "prompt": "hi", "max_new_tokens": 5, "sight_every_token": True, opt: val})
+            frames = s.until_end(f"r7-{opt}")
+            types = [o.get("type") for k, o in frames if k == "json"]
+            err = next((o for k, o in frames if k == "json" and o.get("type") == "error"), {})
+            check(types == ["error", "theodolite_sweep_end"] and not any(k == "bytes" for k, _o in frames),
+                  f"an unknown {opt}: {types}")
+            check(f'{opt} is "{val}", which this instrument does not know' in err.get("message", ""), f"its words: {err}")
+            check(len(rt.writes) == n_writes, f"an unknown {opt} was refused only after writing")
+        rt.fail_prepare = True
+        s.sweep({"request_id": "r7b", "prompt": "hi", "max_new_tokens": 3, "sight_every_token": True})
+        frames = s.until_end("r7b")
+        types = [o.get("type") for k, o in frames if k == "json"]
+        w = next((o for k, o in frames if k == "json" and o.get("type") == "theodolite_written"), {})
+        check("theodolite_written" in types and "error" in types and types.index("theodolite_written") < types.index("error"),
+              f"a frame that fails after the writing: the answer still comes, first ({types})")
+        check(w.get("answer", {}).get("token_ids") == [10, 11, 12] and frames[-1][1]["n_sent"] == 0
+              and "cannot be built" in (frames[-1][1]["error"] or ""), f"its answer and end: {frames[-1][1]}")
+        rt.fail_prepare = False
         rt.fail_at = 2
         s.sweep({"request_id": "r8", "prompt": "hi", "max_new_tokens": 5, "sight_every_token": True})
         frames = s.until_end("r8")
@@ -600,7 +671,57 @@ def check_socket() -> None:
               f"think echo on the first pair: {m0['think_seed']}")
         check(m1["think_seed"] is None and m1["think_read_token"] is None and m1["think_generated_text"] is None,
               "no think echo on later pairs")
+        check(m0["think_stop_reason"] == "length" and m0["think_skipped"] is False, f"how the thought ended: {m0['think_stop_reason']}")
+        check(all(m["think_stop_reason"] is None and m["think_skipped"] is False for _b, m in pairs[1:]),
+              "no think stop reason on later pairs")
         check(rt.writes[-1].startswith("<|think|>"), "the thinking prompt was written")
+        check(frames[-1][1]["cancelled"] is False, "a thinking comparison left alone is not cancelled")
+
+        # a stop while the answer is written: the comparison is skipped, and the one pair says so
+        rt.write_s = 0.02
+        n_writes = len(rt.writes)
+        s.sweep({"request_id": "r9b", "prompt": "long", "max_new_tokens": 60, "sight_every_token": True, "compare_think": True})
+        first = s.recv()
+        s.send({"action": "cancel_sweep", "request_id": "r9b"})
+        frames = [first] + s.until_end("r9b")
+        pairs = pairs_of(frames, "r9b")
+        rt.write_s = 0.01
+        m0 = pairs[0][1] if pairs else {}
+        check(len(pairs) == 1 and m0.get("think_skipped") is True and m0.get("think_stop_reason") is None
+              and m0.get("think_generated_text") is None and m0.get("think_seed") is None and not header(pairs[0][0])[5] & 1,
+              f"a stop while writing skips the thinking comparison: {m0.get('think_skipped')} {m0.get('think_stop_reason')}")
+        check(not any(w.startswith("<|think|>") for w in rt.writes[n_writes:]), "the skipped thinking prompt was written")
+        check(frames[-1][1]["cancelled"] is True, f"its end: {frames[-1][1]}")
+
+        # a stop while the first position is read (it arrives before the comparison begins): skipped, the stream ends
+        rt.conn, rt.stop_at = conns[-1], ("analyse", 0)
+        n_writes = len(rt.writes)
+        s.sweep({"request_id": "r9c", "prompt": "hi", "max_new_tokens": 4, "sight_every_token": True, "compare_think": True})
+        frames = s.until_end("r9c")
+        pairs = pairs_of(frames, "r9c")
+        m0 = pairs[0][1] if pairs else {}
+        check(len(pairs) == 1 and m0.get("think_skipped") is True and m0.get("last") is True
+              and not any(w.startswith("<|think|>") for w in rt.writes[n_writes:]),
+              f"a stop before the comparison begins skips it: {len(pairs)} pairs, skipped {m0.get('think_skipped')}")
+        check(frames[-1][1]["cancelled"] is True and frames[-1][1]["n_sent"] == 1, f"its end: {frames[-1][1]}")
+
+        # a stop while the thought is written, with one sighting: cut short, said so, and the request cancelled
+        rt.stop_at = ("think", 2)
+        s.sweep({"request_id": "r9d", "prompt": "hi", "max_new_tokens": 4, "sight_tokens": [0], "compare_think": True})
+        frames = s.until_end("r9d")
+        pairs = pairs_of(frames, "r9d")
+        m0 = pairs[0][1] if pairs else {}
+        check(len(pairs) == 1 and m0.get("think_stop_reason") == "stopped" and m0.get("think_skipped") is False
+              and m0.get("think_generated_text") == "·10·11·12" and header(pairs[0][0])[5] & 1,
+              f"a stop while thinking cuts it short: {m0.get('think_stop_reason')} {m0.get('think_generated_text')!r}")
+        check(frames[-1][1]["cancelled"] is True and frames[-1][1]["n_sent"] == 1,
+              f"cancelled with one sighting: {frames[-1][1]}")
+        rt.stop_at, rt.conn = None, None
+        # the next request on the socket is not stopped by the last one's cancel
+        s.sweep({"request_id": "r9e", "prompt": "hi", "max_new_tokens": 2, "sight_tokens": [0], "compare_think": True})
+        frames = s.until_end("r9e")
+        m0 = (pairs_of(frames, "r9e") or [(b"", {})])[0][1]
+        check(m0.get("think_stop_reason") == "length" and frames[-1][1]["cancelled"] is False, f"the next request: {frames[-1][1]}")
         s.sweep({"request_id": "r10", "prompt": "a", "max_new_tokens": 1})
         s.send({"action": "larql", "query": "BETWEEN"})
         s.sweep({"request_id": "r11", "prompt": "b", "max_new_tokens": 1})

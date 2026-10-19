@@ -16,11 +16,14 @@ import {
   isChosenRow,
   ordinal,
   readWhere,
+  readsInsideAnswer,
+  retakeIfLive,
   sweepPayload,
   useShownSet,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { comma, faceWord, kindOf, minus, ms, pct, pieceWord, wp } from "../lib/words";
+import { endedWords } from "./instrument/moment";
 import {
   ORDERS,
   ORDER_STRETCHES,
@@ -485,9 +488,30 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const keepPole = lockedPole;
   const pickWords = () => setSurveyMode("monument", keepPole);
   const pickNeuron = () => setSurveyMode("pole_motif", keepPole);
+  // Landmarks change only how the answer is read (SPEC §3.2): when the shown sighting is a live one whose answer was
+  // written for the question the boxes still hold (its text, begun answer, chat and system prompt, nudged or not), it is
+  // read again from its own word-pieces with the new frame (retakeIfLive), keeping the word-piece in view; otherwise a new
+  // answer is written.
+  const rereads = (() => {
+    const a = shownSet;
+    const s0 = sighting;
+    if (!a || !s0 || s0.source !== "live" || !a.streamed || !s0.answerIds?.length) return null;
+    const asked =
+      a.question === question &&
+      a.answerBegins === answerBegins &&
+      a.chat === chat &&
+      a.system === (chat ? system.trim() : "") &&
+      a.nudged === steering.enabled;
+    if (!asked) return null;
+    // as retakeIfLive takes them: the word-piece wanted when it has arrived, else the one shown
+    const on = a.sightings[a.wanted] ? a.wanted : s0.tokenIndex;
+    const n = Math.min(Object.keys(a.sightings).length, SIGHT_CAP);
+    return { on, n };
+  })();
   const survey = () => {
     if (isWords) setLandmarks(words.map((w) => w.trim()) as Triple);
-    takeSighting();
+    if (rereads && useTheodoliteStore.getState().conn === "open") retakeIfLive();
+    else takeSighting();
   };
   const ab = answerBegins.trim();
   const lastWord = ab.split(/\s+/).pop() ?? "";
@@ -500,14 +524,20 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
     : chat
       ? `it will read the end of the chat template, after “${question.trim()}”`
       : `it will read the last word-piece of “${question.trim()}”`;
-  // a sighting of word-piece k is taken where the model chose it, reading the piece before: the first is the reading above
-  const readsAt = !writing.sightEach
-    ? readsFirst
-    : writing.length === 1
-      ? `${readsFirst}, where it chooses the one word-piece it writes`
-      : `${readsFirst}, then one sighting for each of the up to ${writing.length} word-pieces it writes, taken where it chose it${
-          writing.length > SIGHT_CAP ? ` (at most ${SIGHT_CAP} sighted)` : ""
-        }`;
+  // a sighting of word-piece k is taken where the model chose it, reading the piece before: the first is the reading above,
+  // where it chooses its first word-piece, so an answer of n word-pieces gives n sightings, not n + 1
+  const readsAt = rereads
+    ? `it will read the answer shown again from its own word-pieces, writing nothing anew: the ${
+        rereads.n === 1 ? "word-piece" : `${rereads.n} word-pieces`
+      } sighted so far, and word-piece ${rereads.on + 1} stays in view`
+    : !writing.sightEach
+      ? readsFirst
+      : writing.length === 1
+        ? `${readsFirst}, where it chooses the one word-piece it writes`
+        : `${readsFirst}, where it chooses its first word-piece; then one more where it chooses each later one, up to ${Math.min(
+            writing.length,
+            SIGHT_CAP,
+          )} sightings in all${writing.length > SIGHT_CAP ? ` (it may write ${writing.length}; the first ${SIGHT_CAP} are sighted)` : ""}`;
 
   const nm = (i: number) => (words[i].trim() ? q(words[i].trim()) : `[${ORDINALS[i]} landmark]`);
   const lab: Triple = isWords ? [nm(0), nm(1), nm(2)] : NEURON_NAMES;
@@ -2098,7 +2128,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                   ? isChosenRow(sighting, L60, 0)
                     ? ", the one it chose"
                     : chosen.endMark
-                      ? "; it ended its turn instead"
+                      ? `; ${endedWords(chosen.id, chosen.token)} instead`
                       : `; it chose ${wp(chosen.token)}${chosen.modelProb != null ? ` (${pct(chosen.modelProb)} of its own odds as it wrote)` : ""}`
                   : ""}
                 .{" "}
@@ -2128,7 +2158,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           model (R1). Do not read it as how the model sees itself. Compare a landmark across versions of a question at the same
           word-piece, not across the word-pieces of one answer.
         </Rubric>
-        <AnswerPositionCaution k={k} />
+        {readsInsideAnswer(sighting) ? <AnswerPositionCaution sighting={sighting} /> : null}
         {sighting && readWhere(sighting).role === "template_end" ? <TemplateEndCaution /> : null}
         <Apparatus title="ranks" label="Apparatus for the ranks">
           <dl className="dl num">

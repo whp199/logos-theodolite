@@ -17,8 +17,12 @@ Routes (an `APIRouter`, included by backend/server.py above its static mount):
 The text is kept exactly as given (only the name is trimmed); ids are made here; `saved_at` is ISO-8601 UTC. Writes
 take this module's own lock (never the GPU's: these routes answer while a sweep runs) and replace the file atomically.
 A file that cannot be read is moved aside to `<file>.corrupt-<UTC stamp>`, never written over, and the next reply says
-so once (`warning`). The server's CORS allows every origin, so these routes refuse a request from a web page served
-anywhere but this machine (403); a request with no Origin (a script) is allowed.
+so once (`warning`); so is a file that is not UTF-8 text or is nested too deeply to read. The server's CORS allows
+every origin, so these routes refuse a request from a web page served anywhere but this machine (403): its Host must
+name this machine (a page at another name that resolves here, DNS rebinding, sends its own name as the Host even on a
+same-origin GET, which carries no Origin), and so must its Origin when it sends one. A script sent to this machine
+(no Origin; curl, the checks) is allowed. A text holding half of a character (a lone surrogate) is refused with 422:
+it cannot be written as UTF-8.
 """
 
 from __future__ import annotations
@@ -68,17 +72,26 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _hostname(url: str) -> Optional[str]:
+    """The host a URL (or a bare `host[:port]`, given as `//host:port`) names; None when it names none."""
+    try:
+        return urlsplit(url).hostname
+    except ValueError:
+        return None
+
+
 def same_machine(request: Request) -> None:
     """Refuse a request sent by a page served from anywhere but this machine (403): global CORS is "*", so without
-    this any site the reader visits could read or change the lists. No Origin header (a script, curl) is allowed."""
+    this any site the reader visits could read or change the lists. The Host is checked first: a same-origin GET
+    sends no Origin, so a page at another name that resolves to this machine (DNS rebinding) is known only by the
+    Host its browser sends. Vite's proxy sends the server's own Host (changeOrigin). A script sent to this machine (no
+    Origin, a Host of 127.0.0.1, localhost or [::1], or none at all) is allowed."""
+    host_header = request.headers.get("host")
     origin = request.headers.get("origin")
-    if origin is None:
-        return
-    try:
-        host = urlsplit(origin).hostname
-    except ValueError:
-        host = None
-    if host not in LOCAL_HOSTS:
+    refused = (host_header is not None and _hostname("//" + host_header) not in LOCAL_HOSTS) or (
+        origin is not None and _hostname(origin) not in LOCAL_HOSTS
+    )
+    if refused:
         raise HTTPException(
             status_code=403,
             detail="Saved prompts answer only the instrument's own pages, served from this machine.",
@@ -109,12 +122,14 @@ def _valid_entry(kind: str, e: Any) -> bool:
     if not isinstance(e.get("saved_at"), str):
         return False
     if kind == "question":
-        return (
-            isinstance(e.get("question"), str)
-            and isinstance(e.get("answer_begins"), str)
-            and isinstance(e.get("chat"), bool)
-        )
-    return isinstance(e.get("text"), str)
+        texts = (e.get("question"), e.get("answer_begins"))
+        if not isinstance(e.get("chat"), bool):
+            return False
+    else:
+        texts = (e.get("text"),)
+    # a lone surrogate (a hand-written \ud83d escape) could be neither sent nor written back as UTF-8, so every
+    # reply would fail: such a file is moved aside like any other malformed entry
+    return all(isinstance(t, str) and not _has_broken(t) for t in (e["id"], e["name"], e["saved_at"], *texts))
 
 
 def _clean_entry(kind: str, e: Dict[str, Any]) -> Dict[str, Any]:
@@ -144,13 +159,19 @@ def _move_aside(path: Path, why: str) -> None:
 def _read(path: Path) -> Dict[str, Any]:
     """The lists as stored; empty when there is no file yet. An unreadable file is moved aside."""
     try:
-        raw = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
     except FileNotFoundError:
         return _empty()
     try:
-        data = json.loads(raw)
+        data = json.loads(raw.decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        _move_aside(path, f"not UTF-8 text: {exc.reason} at byte {exc.start}")
+        return _empty()
     except ValueError as exc:
         _move_aside(path, f"not JSON: {exc}")
+        return _empty()
+    except RecursionError:
+        _move_aside(path, "nested too deeply to read")
         return _empty()
     if not isinstance(data, dict) or data.get("version") != FILE_VERSION:
         _move_aside(path, f"not a version {FILE_VERSION} list")
@@ -203,6 +224,14 @@ def _has_control(s: str) -> bool:
     return any(unicodedata.category(ch) == "Cc" for ch in s)
 
 
+def _has_broken(s: str) -> bool:
+    """Half of a character: a lone surrogate (category Cs), which JSON can carry but UTF-8 cannot."""
+    return any(unicodedata.category(ch) == "Cs" for ch in s)
+
+
+BROKEN = "holds a broken character (half of an emoji, say), which cannot be kept"
+
+
 def _check_entry(body: SavePromptRequest) -> Tuple[str, Dict[str, Any]]:
     """The entry to keep (without id and date), or a 422 saying what is wrong."""
     if body.kind not in KINDS:
@@ -212,6 +241,8 @@ def _check_entry(body: SavePromptRequest) -> Tuple[str, Dict[str, Any]]:
         raise HTTPException(status_code=422, detail=f"A name needs 1 to {MAX_NAME} characters.")
     if _has_control(name):
         raise HTTPException(status_code=422, detail="A name cannot hold control characters (a new line or tab, say).")
+    if _has_broken(name):
+        raise HTTPException(status_code=422, detail=f"The name {BROKEN}.")
     if body.kind == "question":
         question = body.question
         if question is None or not 1 <= len(question) <= MAX_TEXT:
@@ -221,10 +252,16 @@ def _check_entry(body: SavePromptRequest) -> Tuple[str, Dict[str, Any]]:
             raise HTTPException(
                 status_code=422, detail=f"A begun answer can hold at most {MAX_ANSWER_BEGINS} characters."
             )
+        if _has_broken(question):
+            raise HTTPException(status_code=422, detail=f"The question {BROKEN}.")
+        if _has_broken(answer_begins):
+            raise HTTPException(status_code=422, detail=f"The begun answer {BROKEN}.")
         return "question", {"name": name, "question": question, "answer_begins": answer_begins, "chat": bool(body.chat)}
     text = body.text
     if text is None or not 1 <= len(text) <= MAX_TEXT:
         raise HTTPException(status_code=422, detail=f"A saved system prompt needs 1 to {MAX_TEXT} characters of text.")
+    if _has_broken(text):
+        raise HTTPException(status_code=422, detail=f"The system prompt {BROKEN}.")
     return "system", {"name": name, "text": text}
 
 

@@ -3,6 +3,15 @@ import type { Sighting } from "../../store/useTheodoliteStore";
 import { Missing } from "../../components/kit";
 import { pieceWord } from "../../lib/words";
 
+/**
+ * Kinship is read over every word-piece up to the one read (kinship_n_states = read_pos + 1), so each later word-piece of
+ * an answer adds one more row: the map can change between two word-pieces for that reason alone. Said wherever kinship
+ * is shown for a word-piece of the answer (here, and on the layer's leaf).
+ */
+export const KINSHIP_GROWS =
+  "Each later word-piece of the answer brings one more word-piece into the comparison, so the map can change from one " +
+  "word-piece to the next only because there is more text: do not read such a change as a finding about the word-piece.";
+
 const SHADES = ["#E5DCCA", "#D7CBB5", "#C8BA9F", "#BAA989", "#AC9874", "#9E875E", "#8F7648", "#816533"];
 const TICKS = [1, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60];
 
@@ -56,7 +65,7 @@ export const Kinship: React.FC<{ sighting: Sighting; sel: number }> = ({ sightin
             ? " This sighting was taken before the single-BOS fix, which lowers kinship by about 0.06 on average (E6, V7)."
             : " Taken by the running server, with the single start mark."}
           {piece >= 1 || sighting.generation?.sightEvery
-            ? " Each later word-piece of the answer brings one more word-piece into the comparison, so the map can change from one word-piece to the next only because there is more text: do not read such a change as a finding about the word-piece."
+            ? ` ${KINSHIP_GROWS}`
             : null}
         </p>
         <div className="num" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 10px", fontSize: 14, color: "#6B5D4D" }}>

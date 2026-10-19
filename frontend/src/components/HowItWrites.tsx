@@ -1,5 +1,6 @@
 import React from "react";
 import { Apparatus, IfApparatus, Missing, Rubric } from "./kit";
+import { stopWords } from "./WordsItWrote";
 import {
   MAX_WRITE,
   MODEL_SAMPLING,
@@ -15,13 +16,18 @@ import {
 
 /**
  * How it writes: the band under the question that says how the model writes its answer before the instrument sights
- * it. Its likeliest word-piece every time (greedy), as the study wrote, or drawn by chance as a chat app does; how many
+ * it. Its likeliest word-piece every time (greedy), as the study wrote the answers it checked the lens on, or drawn by
+ * chance as a chat app does; how many
  * word-pieces it may write; and whether each one it writes is sighted, not only the first. The fields are the page's
  * settings for the next sighting; what a sighting was taken with is read from the server's echo (the apparatus, and the
  * word-pieces it wrote), never from here.
  */
 
-/** A number box that keeps what is typed until it is a number in range, and only then sets it. */
+/**
+ * A number box that keeps what is typed until it is a number in range, and only then sets it. `signed`: the range goes
+ * below 0, so the box is a text box with the full keyboard, since a phone's decimal keypad (iOS) has no minus sign;
+ * "−" and a decimal comma are read as "-" and ".".
+ */
 const NumField: React.FC<{
   id: string;
   value: number;
@@ -29,33 +35,33 @@ const NumField: React.FC<{
   max: number;
   step: number;
   whole?: boolean;
+  signed?: boolean;
   onCommit: (v: number) => void;
   describedBy?: string;
-}> = ({ id, value, min, max, step, whole, onCommit, describedBy }) => {
+}> = ({ id, value, min, max, step, whole, signed, onCommit, describedBy }) => {
   const [draft, setDraft] = React.useState(String(value));
+  const read = (t: string) => Number(signed ? t.replace(/\u2212/g, "-").replace(",", ".") : t);
   // a value set from elsewhere (the model's own settings, a kept seed) replaces the draft
   React.useEffect(() => {
-    if (Number(draft) !== value) setDraft(String(value));
+    if (read(draft) !== value) setDraft(String(value));
   }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
   const fits = (t: string) => {
-    const n = Number(t);
+    const n = read(t);
     return t.trim() !== "" && Number.isFinite(n) && n >= min && n <= max && (!whole || Number.isInteger(n));
   };
   return (
     <input
       id={id}
       className="input-num"
-      type="number"
-      inputMode={whole ? "numeric" : "decimal"}
-      min={min}
-      max={max}
-      step={step}
+      type={signed ? "text" : "number"}
+      inputMode={whole ? "numeric" : signed ? "text" : "decimal"}
+      {...(signed ? { pattern: "[\\-\u2212]?[0-9]*[.,]?[0-9]*", autoComplete: "off", spellCheck: false } : { min, max, step })}
       value={draft}
       aria-invalid={fits(draft) ? undefined : true}
       aria-describedby={describedBy}
       onChange={(e) => {
         setDraft(e.target.value);
-        if (fits(e.target.value)) onCommit(Number(e.target.value));
+        if (fits(e.target.value)) onCommit(read(e.target.value));
       }}
       onBlur={() => {
         if (!fits(draft)) setDraft(String(value));
@@ -69,14 +75,21 @@ function drawnSeed(g: GenerationEcho | null | undefined): number | null {
   return g && !g.greedy && g.seedDrawn && g.seed != null ? g.seed : null;
 }
 
-/** "hold back repeats": the presence penalty, shown by default when drawn by chance and in the apparatus when greedy. */
+/** A repeat penalty in words: a positive one holds repeats back, a negative one favours them (as generationWords). */
+function repeatWords(p: number): string {
+  const by = String(Math.round(Math.abs(p) * 1000) / 1000);
+  return p > 0 ? `holding back repeats by ${by}` : `favouring repeats by ${by}`;
+}
+
+/** "hold back repeats": the presence penalty, shown by default when drawn by chance, and when greedy shown by default
+ * only while it is not 0 (it applies to the likeliest word too), else in the apparatus. */
 const PenaltyField: React.FC = () => {
   const w = useTheodoliteStore((s) => s.writing);
   const setW = useTheodoliteStore((s) => s.setWriting);
   return (
     <>
       <label htmlFor="w-pres">hold back repeats</label>
-      <NumField id="w-pres" value={w.presencePenalty} min={-2} max={2} step={0.1} onCommit={(v) => setW({ presencePenalty: v })} />
+      <NumField id="w-pres" value={w.presencePenalty} min={-2} max={2} step={0.1} signed onCommit={(v) => setW({ presencePenalty: v })} />
       <span className="note">
         taken off the score of each word-piece it has already written, before it chooses the next; your question and its begun
         answer do not count <i>(presence penalty, −2 to 2; 0 is off)</i>
@@ -133,7 +146,7 @@ const SamplerFields: React.FC = () => {
       <span className="note">
         {w.seed == null
           ? "blank: the server draws a new one each time, and it is shown here after"
-          : "the same seed, settings and question draw the same word-pieces again on this server"}
+          : "with the same question, system prompt, begun answer, nudge and settings, the same seed draws the same word-pieces again if the model’s scores come out exactly as before, which a GPU does not promise"}
         {drawn != null && w.seed == null ? (
           <>
             {" "}
@@ -166,6 +179,16 @@ export const HowItWrites: React.FC<{ apparatus?: boolean }> = ({ apparatus = tru
   const think = useTheodoliteStore((s) => s.compareThink);
   const sampled = w.mode === "sampled";
   const pace = paceOf(w, think);
+  // a repeat penalty applies with its likeliest word too (before the argmax): the field then stays in view, apparatus or
+  // not, so nothing sent is hidden, and stays while it is edited back to 0 (it goes back to the apparatus on the next
+  // change of mode)
+  const penalised = w.presencePenalty !== 0;
+  const [penaltyOut, setPenaltyOut] = React.useState(false);
+  React.useEffect(() => {
+    if (sampled) setPenaltyOut(false);
+    else if (penalised) setPenaltyOut(true);
+  }, [sampled, penalised]);
+  const repeats = repeatWords(w.presencePenalty);
   return (
     <section className="writes" aria-labelledby="writes-head">
       <span id="writes-head" className="label-sc">
@@ -194,11 +217,17 @@ export const HowItWrites: React.FC<{ apparatus?: boolean }> = ({ apparatus = tru
         <p className="writes-now">
           {sampled
             ? "Drawn by chance, the word-piece it writes need not be its likeliest, and two sightings of one question can go on differently."
-            : "Its likeliest word-piece every time, as in the study."}{" "}
-          It stops sooner if it ends its turn.
+            : penalised
+              ? `The likeliest word-piece each time after ${repeats}, so not always its own likeliest: the answers the study checked the lens on were written with no repeat penalty.`
+              : "Its likeliest word-piece every time, as in the answers the study checked the lens on."}{" "}
+          It stops sooner if it ends its turn, or writes another mark that stops the writing.
         </p>
         {sampled ? (
           <SamplerFields />
+        ) : penalised || penaltyOut ? (
+          <div className="sampler" role="group" aria-label="Repeats, with its likeliest word">
+            <PenaltyField />
+          </div>
         ) : (
           <IfApparatus>
             <div className="sampler" role="group" aria-label="Repeats, with its likeliest word">
@@ -226,8 +255,10 @@ export const HowItWrites: React.FC<{ apparatus?: boolean }> = ({ apparatus = tru
         ) : null}
         <Rubric style={{ margin: 0, fontSize: 16 }}>
           {sampled
-            ? "Drawn by chance, each word-piece is picked at random among the model’s likeliest, weighted by its odds, as chat apps do. A seed draws the same words again."
-            : "As in the study, the model writes its likeliest word-piece every time. Choose “drawn by chance” to let it write as a chat app does."}{" "}
+            ? "Drawn by chance, each word-piece is picked at random among the model’s likeliest, weighted by its odds, as chat apps do. A kept seed usually draws the same words again."
+            : penalised
+              ? "With a repeat penalty, the model writes the word-piece that is likeliest once the penalty is taken, which need not be its own likeliest. Set “hold back repeats” to 0 to write as the answers the study checked the lens on were written."
+              : "As in the answers the study checked the lens on, the model writes its likeliest word-piece every time. Choose “drawn by chance” to let it write as a chat app does."}{" "}
           {w.sightEach
             ? "Each word-piece it writes then gets a sighting of its own, taken where the model chose it."
             : "Only the moment it chooses its first word-piece is sighted."}
@@ -252,18 +283,7 @@ export const WritingApparatus: React.FC = () => {
   const g = last?.generation ?? null;
   const wrote = last?.wrote ?? null;
   const n = last?.pieces?.length ?? g?.nWritten ?? null;
-  const stop = (r: GenerationEcho["stopReason"]) =>
-    r === "end_mark"
-      ? "it ended its turn"
-      : r === "length"
-        ? "the length ran out"
-        : r === "stopped"
-          ? "it was stopped"
-          : r === "given"
-            ? "the word-pieces were given, not written"
-            : r === "none"
-              ? "it was asked to write none"
-              : null;
+  const stop = (r: GenerationEcho["stopReason"]) => stopWords(r, last?.pieces?.length ? last.pieces[last.pieces.length - 1] : null);
   return (
     <Apparatus title="how it writes" sources={false}>
       <dl className="dl">
@@ -274,15 +294,17 @@ export const WritingApparatus: React.FC = () => {
           For each word-piece, from the raw scores z of the model’s last layer: the presence penalty, z − p for each piece already
           written (once each; the prompt’s pieces do not count); then z / T; then only the k highest; then softmax; then the fewest
           whose odds add up to top-p, renormalised; drawn by torch.multinomial after torch.manual_seed(seed) (interp_engine
-          steer.generate_stream, _sample_next). Greedy is the argmax of z after the penalty, as the answers the study read its lenses on were written (E3, R1). Every
+          steer.generate_stream, _sample_next). Greedy is the argmax of z after the penalty; the answers the study read its lenses on were written as the argmax with no
+          penalty (E3, R1). Every
           field is sent, and the server passes each one on: interp-engine itself would fill a missing one from the checkpoint’s
           own values (below), so none is ever left to it.
         </dd>
         <dt>the model’s own</dt>
         <dd>
           the checkpoint’s generation_config.json: do_sample true, temperature {MODEL_SAMPLING.temperature}, top_k {MODEL_SAMPLING.topK},
-          top_p {MODEL_SAMPLING.topP}; it ends its turn on the ids it lists as its end marks (1, 106 “&lt;turn|&gt;”, 50), where the
-          writing stops.
+          top_p {MODEL_SAMPLING.topP}; the writing stops at any of the ids it lists as its end marks: 106 “&lt;turn|&gt;”, which
+          ends its turn; 1 “&lt;eos&gt;”, the end of the text; 50 “&lt;|tool_response&gt;”, a control mark. The word-pieces it
+          wrote name the mark it stopped at.
         </dd>
         <dt>the last answer</dt>
         <dd>
@@ -306,8 +328,8 @@ export const WritingApparatus: React.FC = () => {
         <dt>timing</dt>
         <dd className="num">
           estimated from this server: {PACE.base} s with nothing written, 5.9 s with 6, 19.2 s with 24: about {PACE.write} s a
-          word-piece written and {PACE.sight} s for each further one sighted. The estimate above is at most: it stops sooner if it
-          ends its turn.
+          word-piece written and {PACE.sight} s for each further one sighted. The estimate above is at most: it stops sooner at a
+          mark that stops the writing.
         </dd>
       </dl>
     </Apparatus>

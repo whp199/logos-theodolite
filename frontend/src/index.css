@@ -752,6 +752,15 @@ pre.raw {
   min-height: 44px;
   width: 100%;
 }
+.shelf-clash {
+  flex-basis: 100%;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--muted);
+}
+.shelf-clash.red {
+  color: var(--rubric);
+}
 .shelf-warning {
   margin: 0;
   font-size: 15px;
@@ -883,6 +892,20 @@ pre.raw {
   text-decoration-thickness: 1px;
   text-underline-offset: 7px;
 }
+/* a narrow piece (a comma, a one-letter word, ¶ or ␣) is a few px wide: its touch target reaches past its edges, over
+   its neighbours' (WCAG 2.5.8, 24px), and is drawn above them; the text keeps its place in the line */
+.went-piece.narrow {
+  position: relative;
+  z-index: 1;
+}
+.went-piece.narrow::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -9px;
+  right: -9px;
+}
 .went-piece:hover {
   text-decoration-style: solid;
   text-decoration-color: var(--gilt-rule);
@@ -939,6 +962,21 @@ pre.raw {
 }
 .went-progress .btn-link {
   font-style: normal;
+}
+/* the line that says each underlined piece can be chosen, with "← earlier word-piece · later word-piece →" */
+.went-choose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+}
+.went-choose .went-note {
+  flex: 1 1 320px;
+}
+.went-step {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
 }
 .went-facts {
   margin-left: auto;

@@ -13,19 +13,24 @@
  * - E3 measured the lens on 24 encyclopedic paragraphs and on 24 chats whose greedy default answers (110 word-pieces)
  *   were read back (E3_lens_validation_REPORT.md:69-70; E3_lens_validation_02_genchats.py:6). Its answer class runs
  *   from the piece after the template's closing mark "<channel|>" to the end of the answer
- *   (E3_lens_validation_fidlib.py:9-11). So it holds every piece a sighting at k >= 1 reads (w_0 … w_{n-2}), and not
- *   the mark that a chat sighting with no begun answer reads at k = 0.
+ *   (E3_lens_validation_fidlib.py:9-11). So it holds every piece a sighting at k >= 1 reads (w_0 … w_{n-2}), and, in a
+ *   chat, the last piece of an answer begun for the model, which a sighting reads at k = 0 (it comes after
+ *   "<channel|>"); not the mark that a chat sighting with no begun answer reads at k = 0, nor the end of a bare-text
+ *   prompt (store/sighting.ts, readsInsideAnswer).
  * - R1's held-out tests use E3's classes (R1_06_evaldir.py:34, R1_10_evalfull.py:46). Only R1's fit corpus leaves out
  *   the first answer piece and every "<…>" piece (R1_02_prep.py:27).
  * - The checks against behaviour also read inside answer text: self tokens (E1_self_readout_common.py:104), the last
  *   piece of a begun answer at the pronoun slot (E2_behavior_b_teacherforced.py:55, 75), and the last piece of a
- *   passage begun in the model's turn (E5_name_common.py:59-64; E5_name_A_thirdperson.py:29). The template's own
- *   pieces were only patched, with no lens (E7_binding_REPORT.md:184).
+ *   passage begun in the model's turn (E5_name_common.py:59-64; E5_name_A_thirdperson.py:29).
+ * - E1 also read condition contrasts at the model-header token, the "model" piece after "<|turn>", five pieces before
+ *   "<channel|>" (E1_self_readout_common.py e1_build, label "header"; E1_self_readout_REPORT.md §5), with no check of
+ *   the lens's fidelity there. E7 patched template pieces with no lens (E7_binding_REPORT.md:184). No study read
+ *   "<channel|>" itself.
  */
 import React from "react";
 import { Rubric } from "../components/kit";
 import { href } from "../router";
-import type { GenerationEcho } from "../store/sighting";
+import { readsInsideAnswer, type GenerationEcho, type Sighting } from "../store/sighting";
 import { useTheodoliteStore } from "../store/useTheodoliteStore";
 import { isShippedLens, useReadingLens } from "./lens";
 
@@ -38,7 +43,10 @@ const signed = (x: number): string => (x < 0 ? `−${num(-x)}` : num(x));
 /* ------------------------------------------------------- inside its own answer */
 
 /**
- * The line for a sighting at k >= 1, in three parts: the text before the link, the link's words, the text after.
+ * The line for a sighting read inside the model's answer, in three parts: the text before the link, the link's words,
+ * the text after. `where`: "answer" for a word-piece it wrote (k >= 1) in a chat; "raw" for one it wrote without the
+ * chat template; "begun" for the last piece of an answer begun for it in a chat (k = 0), which E3's answer class holds
+ * too (the file's head).
  * - The lens's lead over the naked eye at answer pieces: REPORT.md:292 (§3.1, "Assistant-turn positions": J++'s
  *   advantage over the logit lens shrinks from +9.1 nats on prose to +3.1 at L30-39, and turns negative at L40-49).
  *   By band, E3_lens_validation_REPORT.md:17-24, 109-112: +3.1 [2.3, 3.9] at L30-39, −0.95 [−1.4, −0.5] at L40-49,
@@ -59,27 +67,41 @@ const signed = (x: number): string => (x < 0 ? `−${num(-x)}` : num(x));
  * - The raw wording (no chat template): the study measured the model's own writing only in chat answers, E3's answer
  *   class above and R1's held-out positions, which come from E3's chats (R1_IT_LENS_REPORT.md:387-388).
  */
-function answerPositionParts(raw: boolean, shipped: boolean): [string, string, string] {
+type AnswerWhere = "answer" | "raw" | "begun";
+
+function answerPositionParts(where: AnswerWhere, shipped: boolean): [string, string, string] {
   const lens = shipped ? "the lens" : "the shipped J++ lens";
-  const lead = raw
-    ? `Here the model is reading text it wrote itself, without the chat template. The study measured ${lens} inside ` +
-      "the model’s own writing in chat answers, where its lead over the naked eye was a third of its lead on prose " +
-      "at layers 31 to 40, and gone from layer 41 (E3): compare this word-piece across "
-    : `Here the model is reading its own answer. In its answers the study found ${lens}’s lead over the naked eye a ` +
-      "third of its lead on prose at layers 31 to 40, and gone from layer 41 (E3): compare this word-piece across ";
+  const lead =
+    where === "raw"
+      ? `Here the model is reading text it wrote itself, without the chat template. The study measured ${lens} inside ` +
+        "the model’s own writing in chat answers, where its lead over the naked eye was a third of its lead on prose " +
+        "at layers 31 to 40, and gone from layer 41 (E3): compare this word-piece across "
+      : where === "begun"
+        ? "Here the model reads the answer begun for it, inside its own turn. In answers the study found " +
+          `${lens}’s lead over the naked eye a third of its lead on prose at layers 31 to 40, and gone from layer 41 ` +
+          "(E3): compare this word-piece across "
+        : `Here the model is reading its own answer. In its answers the study found ${lens}’s lead over the naked eye a ` +
+          "third of its lead on prose at layers 31 to 40, and gone from layer 41 (E3): compare this word-piece across ";
   return [lead, "matched sightings", " rather than read it alone."];
 }
 
 /**
- * For a sighting of word-piece k >= 1 (it reads w_{k-1}, a piece the model wrote): what the study found the lens can
- * bear inside the model's own answers. Nothing for k = 0. The words and their sources are at answerPositionParts.
- * The lens is the shown sighting's (else the server's); the wording follows the shown sighting's chat setting.
+ * For a sighting read inside the model's answer (readsInsideAnswer: a word-piece it wrote, k >= 1, or in a chat the
+ * last piece of an answer begun for it, k = 0): what the study found the lens can bear inside the model's own answers.
+ * Nothing elsewhere: the end of the chat template, or the end of a bare-text prompt. The words and their sources are
+ * at answerPositionParts. The sighting is `sighting` when given, else the one shown; `k` (older callers) is its token
+ * index, and when it is not the given or shown sighting's own, the line goes by k alone (k >= 1). The lens is the
+ * sighting's (else the server's); the wording follows its chat setting.
  */
-export const AnswerPositionCaution: React.FC<{ k: number }> = ({ k }) => {
-  const sighting = useTheodoliteStore((s) => s.sighting);
+export const AnswerPositionCaution: React.FC<{ k?: number; sighting?: Sighting | null }> = ({ k, sighting: given }) => {
+  const shown = useTheodoliteStore((s) => s.sighting);
+  const sighting = given !== undefined ? given : shown;
   const { lens } = useReadingLens(sighting);
-  if (!(k >= 1)) return null;
-  const [lead, link, tail] = answerPositionParts(sighting ? !sighting.chatWrapped : false, isShippedLens(lens));
+  const at = k ?? sighting?.tokenIndex ?? 0;
+  const own = sighting != null && sighting.tokenIndex === at;
+  if (!(own ? readsInsideAnswer(sighting) : at >= 1)) return null;
+  const where: AnswerWhere = at >= 1 ? (sighting && !sighting.chatWrapped ? "raw" : "answer") : "begun";
+  const [lead, link, tail] = answerPositionParts(where, isShippedLens(lens));
   return (
     <Rubric>
       {lead}
@@ -286,12 +308,14 @@ const joined = (parts: [string, string, string]) => parts.join("");
 
 /**
  * The same texts as plain strings, for titles and aria labels. The lines that depend on a value are functions; each
- * returns null where its component renders nothing. answerPosition and answerPositionRaw are the shipped lens's
- * wording (chat and without the chat template); oneDraw gives the fact and the advice together.
+ * returns null where its component renders nothing. answerPosition, answerPositionRaw and answerPositionBegun are the
+ * shipped lens's wording (a word-piece it wrote in a chat, one written without the chat template, and the last piece of
+ * an answer begun for it in a chat); oneDraw gives the fact and the advice together.
  */
 export const strings = {
-  answerPosition: joined(answerPositionParts(false, true)),
-  answerPositionRaw: joined(answerPositionParts(true, true)),
+  answerPosition: joined(answerPositionParts("answer", true)),
+  answerPositionRaw: joined(answerPositionParts("raw", true)),
+  answerPositionBegun: joined(answerPositionParts("begun", true)),
   notAMatchedPair: joined(NOT_A_PAIR),
   oneDraw: (generation: GenerationEcho | null): string | null => {
     const line = oneDrawParts(generation);

@@ -5,6 +5,7 @@ import {
   LENS_MODEL_NOT_SENT,
   LENS_NAME_NOT_SENT,
   lensOf,
+  readsInsideAnswer,
   useTheodoliteStore,
   type LensInfo,
   type Sighting,
@@ -154,9 +155,9 @@ export const ServerStatus: React.FC = () => {
     <>
       <span style={{ display: "flex", alignItems: "center", gap: 8 }} role="status" aria-live="polite">
         <Diamond fill={fill} />
-        <span>
-          {model} · <span title={`Every reading goes through ${lensPhrase(lens, true)}`}>{through}</span> · {state}
-        </span>
+        {/* one run of text, so the lens's name is read with the rest (a separate titled span was read apart from it, leaving
+            "Gemma-4-31B-it · · writing…"), and an empty part never doubles a separator */}
+        <span title={`Every reading goes through ${lensPhrase(lens, true)}`}>{[model, through, state].filter((x) => x.trim() !== "").join(" · ")}</span>
       </span>
       {conn === "open" && health ? <span>memory {health.vram_allocated_gb.toFixed(1)} GB in use</span> : null}
     </>
@@ -380,9 +381,9 @@ function bandWords(lens: LensInfo, band: CautionBand): string {
  * one. Every lens gets the line, since even one fitted on the instruct model was poor on single words and unstable below
  * layer 31 (R1; erratum E39). Nothing at layer 60, where the lens is the identity and the words are the model's own
  * odds; without `no`, all the bands at once. It ends by pointing to how a control is taken, since keeping one is done in
- * the apparatus. For a sighting of a later word-piece of the answer (k ≥ 1), where the model reads text it wrote itself,
- * the line that says what the study measured there follows it (lib/cautions.tsx, AnswerPositionCaution). The sighting is
- * the one given, else the one shown.
+ * the apparatus. For a sighting read inside the model's answer (readsInsideAnswer: a word-piece it wrote, k ≥ 1, or at
+ * k = 0 the end of an answer begun for it inside a chat turn), the line that says what the study measured there follows
+ * it (lib/cautions.tsx, AnswerPositionCaution). The sighting is the one given, else the one shown.
  */
 export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; style?: React.CSSProperties }> = ({
   sighting,
@@ -394,7 +395,7 @@ export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; st
   const band = no != null ? lensBand(no) : "all";
   if (band === "own") return null;
   const shipped = isShippedLens(lens);
-  const k = (sighting !== undefined ? sighting : shown)?.tokenIndex ?? 0;
+  const read = sighting !== undefined ? sighting : shown;
   return (
     <>
       <Rubric style={style}>
@@ -414,7 +415,7 @@ export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; st
           </>
         ) : null}
       </Rubric>
-      {k >= 1 ? <AnswerPositionCaution k={k} /> : null}
+      {readsInsideAnswer(read) ? <AnswerPositionCaution sighting={read} /> : null}
     </>
   );
 };

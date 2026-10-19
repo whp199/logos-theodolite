@@ -61,13 +61,18 @@ export function pieceWord(token: string | null | undefined): string {
   return wp(token);
 }
 
-/** The first words of a text, for a name: whole words, at most `max` letters, with "…" when cut. */
+/**
+ * The first words of a text, for a name: whole words, at most `max` characters, with "…" when cut. Counted and cut by
+ * code points, never by UTF-16 units, so an emoji or another character beyond the first 65,536 is never cut in half
+ * (half of one is not text: the server cannot write it to its file).
+ */
 export function firstWords(text: string, max = 40): string {
   const t = text.trim().replace(/\s+/g, " ");
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max);
+  const chars = Array.from(t);
+  if (chars.length <= max) return t;
+  const cut = chars.slice(0, max);
   const sp = cut.lastIndexOf(" ");
-  return `${sp > 12 ? cut.slice(0, sp) : cut}…`;
+  return `${(sp > 12 ? cut.slice(0, sp) : cut).join("")}…`;
 }
 
 /** The bare word-piece without quotes (leading space dropped). */

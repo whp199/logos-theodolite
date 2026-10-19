@@ -110,6 +110,10 @@ export interface FrameInfo {
   /** "h_J": h·Jᵀ read in a frame from the last layer; "h_raw": the raw h read in each layer's own frame */
   state: "h_J" | "h_raw";
   tokens: string[] | null;
+  /** a neuron frame (pole_motif) only: its third landmark, the locked pole's dominant reader (layer as a repo index,
+   * 0-59), and the word-piece whose position it was found at (k; the frame is built once, at the first position the
+   * request analyses, and kept for the rest); null for a frame from words, or not sent */
+  reader: { layer: number; neuron: number; fromTokenIndex: number } | null;
   /** angles and squareness of the three words, raw and final-norm weighted (V7 frame_stats definitions) */
   geometry: {
     raw: { cond: number; cos: Record<string, number> };
@@ -179,7 +183,8 @@ export interface ChosenPiece {
   samplerProb: number | null;
   /** how many word-pieces the sampler could have drawn; null when greedy */
   samplerSupport: number | null;
-  /** one of the checkpoint's end-of-turn marks: it ended its turn here */
+  /** one of the checkpoint's stop marks (generation_config.eos_token_id: 106 <turn|>, 1 <eos>, 50 <|tool_response>):
+   * writing stopped here. Only <turn|> ends its turn; endMarkWords says which mark it was */
   endMark: boolean;
   source: "written" | "given" | "recorded";
   /** the five likeliest in the model's own odds at that moment; null = not sent */
@@ -188,7 +193,8 @@ export interface ChosenPiece {
 
 /** How an answer was written, as the server resolved and applied it (GENERATION and ANSWER in the wire protocol). */
 export interface GenerationEcho {
-  /** its likeliest word-piece each time (argmax), as the study wrote */
+  /** the top-scoring word-piece each time (argmax), as the study wrote the answers it checked the lens on; with a
+   * repeat penalty (presencePenalty not 0) the argmax is taken after it, so not always the model's own likeliest */
   greedy: boolean;
   temperature: number | null;
   /** null when greedy (unused) or off */
@@ -263,7 +269,9 @@ export interface Sighting {
   answerSteps: (ChosenPiece | null)[] | null;
   generation: GenerationEcho | null;
   /** layer 60 of the re-reading at this position: does its top-1 equal the piece chosen? (writing and re-reading are
-   * different 4-bit computations); null = not sent */
+   * different 4-bit computations); null = not sent. chosenLogitDiff is the re-read's score for the chosen piece less
+   * the writing's own: null for a given answer (chosen.source "given"), whose odds are the re-reading's own, so there
+   * is no writing to compare with (an older server sent 0 there; read it only when chosen.source is "written") */
   recaptureCheck: { top1Id: number; top1Token: string; top1IsChosen: boolean; chosenLogitDiff: number | null } | null;
   /** whether the legacy space-then-digit rank rule was allowed; null = not sent */
   rankLookahead: boolean | null;
@@ -276,6 +284,12 @@ export interface Sighting {
   /** the seed the thinking answer was drawn with, and the word-piece it was read at (first pair sent only) */
   thinkSeed: number | null;
   thinkReadAt: string | null;
+  /** why the thinking answer stopped (the server's think_stop_reason, first pair only): "end_mark", "length", or
+   * "stopped" when "stop here" cut it short; null when there was no thinking comparison, or an older server */
+  thinkStopReason: string | null;
+  /** the thinking comparison was asked for but not written, because "stop here" was asked before it began (the
+   * server's think_skipped, first pair only); false otherwise, and for an older server */
+  thinkSkipped: boolean;
   landmarks: [string, string, string];
   surveyMode: string;
   elapsedMs: number | null;
@@ -599,6 +613,8 @@ export function sightingFromLive(
       : null,
     thinkSeed: numOrNull(meta.think_seed),
     thinkReadAt: typeof meta.think_read_token === "string" ? meta.think_read_token : null,
+    thinkStopReason: typeof meta.think_stop_reason === "string" && meta.think_stop_reason ? meta.think_stop_reason : null,
+    thinkSkipped: meta.think_skipped === true,
     landmarks: (Array.isArray(meta.survey_labels) && meta.survey_labels.length === 3
       ? meta.survey_labels
       : ["", "", ""]) as [string, string, string],
@@ -623,6 +639,16 @@ export function sightingFromLive(
   };
 }
 
+/** A neuron frame's reader {layer, neuron, from_token_index}, or null when the frame has none (or it is malformed). */
+function readerOf(r: unknown): FrameInfo["reader"] {
+  if (!r || typeof r !== "object" || Array.isArray(r)) return null;
+  const o = r as Json;
+  const layer = numOrNull(o.layer);
+  const neuron = numOrNull(o.neuron);
+  const at = numOrNull(o.from_token_index);
+  return layer !== null && neuron !== null && at !== null ? { layer, neuron, fromTokenIndex: at } : null;
+}
+
 function frameOf(f: Json | null | undefined): FrameInfo | null {
   if (!f || typeof f !== "object") return null;
   const g: Json | null = f.geometry ?? null;
@@ -634,6 +660,7 @@ function frameOf(f: Json | null | undefined): FrameInfo | null {
     nCentre: numOrNull(f.n_centre_prompts) ?? 0,
     state: f.state === "h_raw" ? "h_raw" : "h_J",
     tokens: Array.isArray(f.tokens) ? f.tokens.map(String) : null,
+    reader: readerOf(f.reader),
     geometry:
       g && g.raw && g.fnw
         ? {
@@ -912,6 +939,8 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     thinkingPath: null,
     thinkSeed: null,
     thinkReadAt: null,
+    thinkStopReason: null,
+    thinkSkipped: false,
     landmarks: f.landmarks,
     surveyMode: "monument",
     elapsedMs: f.elapsedMs,
@@ -979,14 +1008,51 @@ export function readWhere(s: Sighting | null | undefined): { piece: string | nul
   return { piece, role: "question_end", k, phrase: ", at the end of your question" };
 }
 
+/**
+ * Whether a sighting reads inside the model's own answer, in the class of positions where E3 measured the lens in
+ * answers (E3_lens_validation_fidlib.py e3_chat_positions: every piece after the template's closing "<channel|>", to
+ * the end of the answer): every word-piece it wrote (k ≥ 1, the piece read is w_{k-1}), and at k = 0 the last piece of
+ * an answer begun for it inside a chat turn. Not the template's own end (a chat with no begun answer), nor the end of a
+ * bare-text prompt, begun answer or not: no E3 class holds those. The pages gate the in-answer lens caution by it.
+ */
+export function readsInsideAnswer(s: Sighting | null | undefined): boolean {
+  if (!s) return false;
+  if (s.tokenIndex >= 1) return true;
+  return s.tokenIndex === 0 && s.chatWrapped && readWhere(s).role === "begun_end";
+}
+
 /** The word-piece this sighting's position chose (w_k), or null (nothing written, the recorded sighting, an older server). */
 export const chosenOf = (s: Sighting | null | undefined): ChosenPiece | null => s?.chosen ?? null;
 
-/** “where it chose “a”” / “where it ended its turn” / null when no choice is known. */
+/** The checkpoint's mark that ends the model's turn (106), and its mark that ends the text (1). */
+const TURN_END = { id: 106, token: "<turn|>" } as const;
+const TEXT_END = { id: 1, token: "<eos>" } as const;
+const isTurnEnd = (id: number | null | undefined, token?: string | null) => id === TURN_END.id || token === TURN_END.token;
+const isTextEnd = (id: number | null | undefined, token?: string | null) => id === TEXT_END.id || token === TEXT_END.token;
+
+/**
+ * A stop mark (a piece with endMark), in plain words, by its id or its text. Writing stops at any of the checkpoint's
+ * stop marks (generation_config.eos_token_id: 1, 106, 50; backend engine_runtime end_of_turn_ids), but only <turn|>
+ * ends its turn: <eos> ends the text, and any other mark (<|tool_response>, which the old nudge defaults made this model
+ * write twelve times over: the Nudge page's example) is a control mark written where the answer should go on, so the
+ * words name it rather than call it a clean ending.
+ */
+export function endMarkWords(id: number | null | undefined, token?: string | null): string {
+  if (isTurnEnd(id, token)) return "it ends its turn";
+  if (isTextEnd(id, token)) return "the end of the text (<eos>)";
+  const named = token || (id != null ? `#${id}` : null);
+  return named ? `a control mark, ${named}, where writing stops` : "a control mark, where writing stops";
+}
+
+/** “where it chose “a”” / “where it ended its turn” (<turn|> only) / “where it wrote … and stopped” for another stop
+ * mark / null when no choice is known. */
 export function chosenPhrase(s: Sighting | null | undefined): string | null {
   const c = chosenOf(s);
   if (!c) return null;
-  return c.endMark ? "where it ended its turn" : `where it chose ${pieceWord(c.token)}`;
+  if (!c.endMark) return `where it chose ${pieceWord(c.token)}`;
+  if (isTurnEnd(c.id, c.token)) return "where it ended its turn";
+  if (isTextEnd(c.id, c.token)) return "where it wrote the end of the text (<eos>) and stopped";
+  return `where it wrote a control mark, ${c.token || `#${c.id}`}, and writing stopped`;
 }
 
 /**
@@ -1008,12 +1074,28 @@ export function piecesOf(s: Sighting | null | undefined): AnswerPiece[] | null {
   return piecesFrom(s.answerIds, s.answerStrs, s.answerSteps, s.generation?.stopReason === "end_mark");
 }
 
-/** How an answer was written, in plain words, from the server's echo (never from the form's current settings). */
+/** A repeat penalty in plain words: a positive one holds repeats back, a negative one favours them; "" for none. */
+function repeatWords(p: number | null | undefined): string {
+  if (p == null || !Number.isFinite(p) || p === 0) return "";
+  const by = String(Math.round(Math.abs(p) * 1000) / 1000);
+  return p > 0 ? `holding back repeats by ${by}` : `favouring repeats by ${by}`;
+}
+
+/**
+ * How an answer was written, in plain words, from the server's echo (never from the form's current settings). A
+ * repeat penalty comes before the greedy argmax (interp_engine steer.py:654-659), so a penalised greedy answer is not
+ * called its likeliest: the words match OneDrawLine's (lib/cautions.tsx, oneDrawParts).
+ */
 export function generationWords(g: GenerationEcho | null | undefined): string | null {
   if (!g) return null;
   if (g.source === "recorded") return "its likeliest word-piece each time (greedy), as the study recorded it";
-  const held = g.presencePenalty ? `, holding back repeats by ${g.presencePenalty}` : "";
-  if (g.greedy) return `its likeliest word-piece each time (greedy)${held}`;
+  const repeats = repeatWords(g.presencePenalty);
+  const held = repeats ? `, ${repeats}` : "";
+  if (g.greedy) {
+    return repeats
+      ? `the likeliest word-piece each time after ${repeats} (greedy), so not always its own likeliest`
+      : "its likeliest word-piece each time (greedy)";
+  }
   const how = [
     `temperature ${g.temperature ?? "[not sent]"}`,
     g.topK != null ? `from its likeliest ${g.topK}` : "no top-k limit",

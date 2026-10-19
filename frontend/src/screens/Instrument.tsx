@@ -4,7 +4,6 @@ import { useApparatus } from "../reading";
 import { href, type Route } from "../router";
 import {
   type AnswerSet,
-  type GenerationEcho,
   type LayerReading,
   type Sighting,
   SIGHT_CAP,
@@ -18,6 +17,7 @@ import {
   ordinal,
   piecesOf,
   readWhere,
+  readsInsideAnswer,
   retakeIfLive,
   useShownSet,
   useTheodoliteStore,
@@ -27,7 +27,7 @@ import { InstrumentFigure, type Shown } from "./instrument/InstrumentFigure";
 import { Ascent } from "./instrument/Ascent";
 import { Kinship } from "./instrument/Kinship";
 import { CANVAS_STATIONS, RECORDED_POLE_NOTES } from "./instrument/recorded";
-import { answerLength, momentWords } from "./instrument/moment";
+import { answerLength, endedWords, endsTurn, momentWords, stopWords } from "./instrument/moment";
 import { describeFrame } from "../lib/frame";
 import { lensLabel, useReadingLens } from "../lib/lens";
 import { ControlSighting } from "../components/ControlSighting";
@@ -38,24 +38,6 @@ import { WordsItWrote } from "../components/WordsItWrote";
 import { TemplateEndCaution } from "../lib/cautions";
 
 const sci = (v: number) => minus(Math.abs(v) >= 0.01 ? v.toFixed(3) : v.toExponential(1));
-
-/** Why the writing stopped, in plain words (the server's stop_reason). */
-function stopWords(r: GenerationEcho["stopReason"] | undefined): string | null {
-  switch (r) {
-    case "end_mark":
-      return "it ended its turn";
-    case "length":
-      return "the length ran out";
-    case "stopped":
-      return "stopped by you";
-    case "given":
-      return "given, not written";
-    case "none":
-      return "it was asked to write none";
-    default:
-      return null;
-  }
-}
 
 /**
  * The word-piece read where the question ends (word-piece 0's), whichever word-piece of the answer is shown: a later
@@ -211,7 +193,7 @@ const Question: React.FC = () => {
 
   return (
     <>
-      <section aria-labelledby="q-head" style={{ display: "flex", flexWrap: "wrap", gap: "28px 56px", padding: "34px 0 30px", alignItems: "flex-end" }}>
+      <section aria-labelledby="q-head" style={{ display: "flex", flexWrap: "wrap", gap: "28px 56px", padding: "34px 0 30px", alignItems: "flex-start" }}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -379,15 +361,18 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
   const n = answerLength(s, set);
   const max = wrote?.maxNewTokens ?? g?.maxNewTokens ?? null;
   const sentMax = typeof set?.payload.max_new_tokens === "number" ? set.payload.max_new_tokens : null;
-  const stop = stopWords(wrote?.stopReason);
+  const stop = stopWords(wrote?.stopReason, set?.pieces ?? piecesOf(s));
   const sighted = set ? Object.keys(set.sightings).length : null;
   const capped = (wrote ?? g)?.capped === true;
   // the thinking comparison comes with the first pair only, so the set keeps it for its later word-pieces
   const thinking =
     set?.thinking ??
     (s.thinkingContinuation != null
-      ? { continuation: s.thinkingContinuation, seed: s.thinkSeed, readAt: s.thinkReadAt, path: s.thinkingPath }
+      ? { continuation: s.thinkingContinuation, seed: s.thinkSeed, readAt: s.thinkReadAt, path: s.thinkingPath, stopReason: s.thinkStopReason }
       : null);
+  // asked for, but not written: "stop here" came before the thinking comparison began (the set keeps the flag, since
+  // its thinking record stays empty)
+  const thinkSkipped = set?.thinkSkipped ?? s.thinkSkipped;
   const answeredFirst = s.chatWrapped && s.answerBegins.trim() !== "";
   return (
     <Apparatus title="the question" style={{ padding: "12px 0 22px" }}>
@@ -490,7 +475,14 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
           {thinking ? (
             <>
               with thinking turned on, {answeredFirst ? "it went on" : "its thought began"}{" "}
-              <span className="italic">“{thinking.continuation}”</span>; that sighting is read only where it begins
+              <span className="italic">“{thinking.continuation}”</span>
+              {thinking.stopReason === "stopped" ? (
+                <>
+                  {" "}
+                  and was cut short there by “stop here”, so the thought is unfinished
+                </>
+              ) : null}
+              ; that sighting is read only where it begins
               {thinking.readAt != null ? (
                 <>
                   , at <span title={JSON.stringify(thinking.readAt)}>{pieceWord(thinking.readAt)}</span>
@@ -505,6 +497,10 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
                 </span>
               ) : null}
             </>
+          ) : thinkSkipped ? (
+            <span className="muted">
+              asked for, but not written: “stop here” was asked before the sighting with thinking turned on began, so it was left out
+            </span>
           ) : (
             <span className="muted">not sighted with thinking turned on</span>
           )}
@@ -592,10 +588,13 @@ const E3_IN_ANSWERS: Record<string, { lens: number; eye: number }> = {
 /**
  * The lens against this answer: for each band of layers, how many readings (one word-piece sighted, at one layer) had
  * the lens's first word-piece equal to the word-piece chosen there, and the same for the naked eye. Matched by token id
- * only (jpp_top_ids, naive_top_id); a reading whose ids were not sent is not counted.
+ * only (jpp_top_ids, naive_top_id); a reading whose ids were not sent is not counted. Only readings inside the answer
+ * are counted (readsInsideAnswer), the class of positions E3's row is measured at: the reading where the chat template
+ * or a bare-text prompt ends has no place in it, and is left out and said to be.
  */
 function lensAgainstAnswer(set: AnswerSet) {
-  const sighted = Object.values(set.sightings).filter((x) => x.chosen != null);
+  const withChoice = Object.values(set.sightings).filter((x) => x.chosen != null);
+  const sighted = withChoice.filter((x) => readsInsideAnswer(x));
   const rows = ANSWER_BANDS.map(([a, b]) => {
     let lens = 0;
     let lensOf = 0;
@@ -618,15 +617,29 @@ function lensAgainstAnswer(set: AnswerSet) {
     }
     return { band: `${a}–${b}`, lens, lensOf, eye, eyeOf };
   });
-  return { n: sighted.length, rows };
+  return { n: sighted.length, left: withChoice.length - sighted.length, rows };
 }
 
+/** Where the reading left out of the count was taken: the end of the text the model was given, before its answer. */
+const leftWhere = (set: AnswerSet): string =>
+  set.chat ? "where the chat template ends" : set.answerBegins.trim() ? "where the begun answer, sent as bare text, ends" : "where your question ends";
+
 const LensAgainstAnswer: React.FC<{ set: AnswerSet }> = ({ set }) => {
-  const { n, rows } = lensAgainstAnswer(set);
+  const { n, left, rows } = lensAgainstAnswer(set);
+  if (!n && left) {
+    return (
+      <span>
+        Only the reading {leftWhere(set)} is sighted, and the study’s row has no such position: it counts readings inside the model’s
+        own answers. Sight a word-piece the model wrote to compare.
+      </span>
+    );
+  }
   if (!n || rows.every((r) => r.lensOf === 0)) {
     return <Missing what="the word-pieces of a live answer, with their token ids" />;
   }
-  const drawn = (set.wrote ?? set.generation)?.greedy === false;
+  const wrote = set.wrote ?? set.generation;
+  const drawn = wrote?.greedy === false;
+  const penalised = (wrote?.presencePenalty ?? 0) !== 0;
   const cell: React.CSSProperties = { textAlign: "right", padding: "4px 0 4px 14px", whiteSpace: "nowrap" };
   const head: React.CSSProperties = { ...cell, fontWeight: 400, color: "#6B5D4D", fontVariantCaps: "all-small-caps", letterSpacing: "0.12em" };
   return (
@@ -670,9 +683,18 @@ const LensAgainstAnswer: React.FC<{ set: AnswerSet }> = ({ set }) => {
         Each count is of readings, one word-piece sighted at one layer: how often the first word-piece through the lens, and through
         the naked eye, was the word-piece the model chose there, matched by id. {n} word-piece{n === 1 ? "" : "s"} of this answer
         only, sighted so far: a live check of the kind the study made (top-1 agreement; E3, and R1 on the model’s own replies), but
-        on one answer, so it says little alone. The study’s figures are the share for the lens · the naked eye inside the model’s own
-        greedy chat answers, against its final layer’s likeliest word-piece, which there is the word-piece it wrote
-        {drawn ? "; drawn by chance, the word-piece it chose need not be its likeliest, so these counts are not like for like" : ""}.
+        on one answer, so it says little alone.
+        {left
+          ? ` The reading ${leftWhere(set)} is not counted: the study’s row has no such position.`
+          : ""}{" "}
+        The study’s figures are the share for the lens · the naked eye inside the model’s own greedy chat answers, against its final
+        layer’s likeliest word-piece, which there is the word-piece it wrote
+        {drawn
+          ? "; drawn by chance, the word-piece it chose need not be its likeliest, so these counts are not like for like"
+          : penalised
+            ? "; after a repeat penalty, the word-piece it chose need not be its likeliest, so these counts are not like for like"
+            : ""}
+        .{set.chat ? "" : " The study’s figures are from chat answers; this answer was written without the chat template."}
       </span>
     </>
   );
@@ -887,7 +909,12 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
   const chosen = chosenOf(sighting);
   const rows = L.lensTop?.slice(0, 5) ?? null;
   const chosenListed = own && chosen != null && rows != null && rows.some((_, i) => isChosenRow(sighting, L, i));
-  const chose = chosen?.endMark ? "it ended its turn here" : "the word it chose";
+  // a stop mark by which one it is: only <turn|> ends its turn (endedWords)
+  const chose = chosen?.endMark
+    ? endsTurn(chosen.id, chosen.token)
+      ? "it ended its turn here"
+      : endedWords(chosen.id, chosen.token)
+    : "the word it chose";
   const drawnAt = chosen?.samplerProb != null ? ` · ${pct(chosen.samplerProb)} under the sampler` : "";
   const roleOf = (i: number, token: string): string => {
     if (!own) return gloss(token);
@@ -914,7 +941,7 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
         </div>
         <p className="leaf-at" aria-live="polite">
           {momentWords(sighting)}
-          {n != null && n > 1 ? ` · word-piece ${sighting.tokenIndex + 1} of ${n}` : ""}
+          {n != null && n > 1 ? ` · the sighting of word-piece ${sighting.tokenIndex + 1} of ${n}` : ""}
         </p>
       </div>
 

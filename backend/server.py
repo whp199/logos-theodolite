@@ -58,9 +58,12 @@ from backend.saved_prompts import router as saved_prompts_router
 from backend.theodolite_math import (
     D_FF,
     D_MODEL,
+    FRAME_SQUARINGS,
     GLOBAL_ATTN_LAYERS_0BASED,
     GLOBAL_ATTN_LAYERS_1BASED,
     N_LAYERS,
+    POLE_RANKINGS,
+    THREAD_SCORES,
     VOCAB_SIZE,
 )
 
@@ -160,7 +163,7 @@ class SweepRequest(BaseModel):
     assistant_prefix: str = Field("", max_length=32000)
     # A sighting of every word-piece (all optional; the defaults answer as the instrument always did). With a
     # request_id the reply is a stream (progress, the answer written, one pair per sighted word-piece, an end);
-    # without one, exactly one pair, read at token 0.
+    # without one, exactly one pair, at the first index of the sight order (sight_tokens[0] when given, else token 0).
     request_id: Optional[str] = Field(None, max_length=64)
     sampler: SamplerRequest = Field(default_factory=SamplerRequest)
     # stop on the checkpoint's end marks (generation_config.eos_token_id: 1 <eos>, 106 <turn|>, 50 <|tool_response>)
@@ -631,6 +634,20 @@ def check_sweep_ids(req: SweepRequest) -> None:
         check(ids, f"Matched control {j + 1}")
 
 
+def check_sweep_options(req: SweepRequest) -> None:
+    """Refuse, in plain words and before anything is written, a reading option the analysis does not know (the
+    runtime checks them too, but only once the answer has been written)."""
+    for what, value, known in (
+        ("pole_ranking", req.pole_ranking, POLE_RANKINGS),
+        ("thread_score", req.thread_score, THREAD_SCORES),
+        ("frame_squaring", req.frame_squaring, FRAME_SQUARINGS),
+    ):
+        if value not in known:
+            choices = " or ".join(f'"{k}"' for k in known)
+            shown = value if len(value) <= 40 else value[:40] + "…"
+            raise ValueError(f'{what} is "{shown}", which this instrument does not know: it must be {choices}.')
+
+
 def check_sweep_positions(n_prompt: int, n_answer: int, what: str = "The prompt") -> None:
     """Refuse a sweep longer than `MAX_SWEEP_POSITIONS` word-pieces, prompt and answer together, in plain words."""
     total = int(n_prompt) + int(n_answer)
@@ -793,12 +810,16 @@ async def _stream_sweep(
 
     Holds `_GPU_LOCK` from the writing to the last pair (and the thinking comparison), so no vault edit can land
     between two positions of one answer. With a request_id: progress after each written piece, the answer once it is
-    written and read back, then the pairs; a cancel stops the writing, then only the first index is sighted, and
-    between pairs the stream ends after the current one. Without one: one pair, nothing else."""
+    written and read back (before the frame is built, so a later failure cannot lose it), then the pairs; a cancel
+    stops the writing, then only the first index is sighted, and between pairs the stream ends after the current one.
+    The thinking comparison (on the first pair) can be stopped too: a stop asked before it begins skips it
+    (`think_skipped`), one asked while it is written cuts it short (`think_stop_reason` "stopped"), and either way
+    the request ends `cancelled`. Without a request_id: one pair, nothing else."""
     rid = req.request_id
     stream = rid is not None
     t_request = time.perf_counter()
     check_sweep_ids(req)
+    check_sweep_options(req)
     monuments, locked_pole, tracked = _sweep_options(req)
     text = runtime.compose_prompt(
         req.prompt, chat=req.chat, system=req.system, assistant_prefix=req.assistant_prefix
@@ -868,6 +889,23 @@ async def _stream_sweep(
             tally.cancelled = True
         m = len(order)
         tally.n_to_sight = m
+        answer = _answer_wire(cap)
+        generation = _generation_wire(cap, req, capped)
+        if stream:
+            # sent before the frame is built: a failure from here on cannot lose an answer already written
+            await out.json(
+                {
+                    "type": "theodolite_written",
+                    "request_id": rid,
+                    "answer": answer,
+                    "generation": generation,
+                    "sight_order": order,
+                    "n_to_sight": m,
+                    "prompt_token_ids": list(cap.prompt_token_ids),
+                    "prompt_len": len(cap.prompt_token_ids),
+                }
+            )
+            await out.json({"type": "theodolite_progress", "request_id": rid, "phase": "sighting", "done": 0, "of": m})
 
         shared: SweepShared = await runtime.prepare_sweep(
             cap,
@@ -882,8 +920,6 @@ async def _stream_sweep(
             centre_token_ids=req.centre_token_ids,
             centre_answer=req.centre_answer,
         )
-        answer = _answer_wire(cap)
-        generation = _generation_wire(cap, req, capped)
         request_echo = {
             "chat": bool(req.chat),
             "system": req.system if (req.chat and req.system) else None,
@@ -891,20 +927,6 @@ async def _stream_sweep(
             "assistant_prefix": req.assistant_prefix if req.assistant_prefix else None,
             "steering_applied": _describe_steering(runtime, req.steering, steering_spec),
         }
-        if stream:
-            await out.json(
-                {
-                    "type": "theodolite_written",
-                    "request_id": rid,
-                    "answer": answer,
-                    "generation": generation,
-                    "sight_order": order,
-                    "n_to_sight": m,
-                    "prompt_token_ids": list(cap.prompt_token_ids),
-                    "prompt_len": len(cap.prompt_token_ids),
-                }
-            )
-            await out.json({"type": "theodolite_progress", "request_id": rid, "phase": "sighting", "done": 0, "of": m})
 
         for idx, k in enumerate(order):
             if idx > 0 and stream:
@@ -924,8 +946,17 @@ async def _stream_sweep(
             )
             think_cap: Optional[SweepCapture] = None
             think_bundle: Optional[TheodoliteSweepBundle] = None
-            if idx == 0 and think_prompt is not None:
-                # written with the same sampler and seed, read in this sweep's frame and centre, at its token 0 only
+            think_skipped = False
+            if idx == 0 and think_prompt is not None and stream:
+                await _let_receiver_run()
+                if wants_stop():
+                    # a stop already asked (while the answer was written, or while this first position was read):
+                    # the comparison is not begun, and the pair says so
+                    think_skipped = True
+                    tally.cancelled = True
+            if idx == 0 and think_prompt is not None and not think_skipped:
+                # written with the same sampler and seed, read in this sweep's frame and centre, at its token 0 only;
+                # a stop asked while it is written cuts it short (its stop_reason "stopped", sent on the pair)
                 think_cap = await runtime.capture_for_sweep(
                     think_prompt,
                     steering_spec=steering_spec,
@@ -941,6 +972,9 @@ async def _stream_sweep(
                     stop_token_ids=stop_ids,
                     on_written=on_thought if stream else None,
                 )
+                if think_cap.stop_reason == "stopped" or wants_stop():
+                    # also with one sighting, where no later check would see the stop
+                    tally.cancelled = True
                 assert shared.basis is not None and shared.survey_labels is not None
                 think_shared = await runtime.prepare_sweep(
                     think_cap,
@@ -991,6 +1025,10 @@ async def _stream_sweep(
                     "total_ms": round((time.perf_counter() - t_request) * 1000.0, 1),
                 },
                 "think_seed": think_cap.seed if think_cap is not None else None,
+                # how the thinking answer's writing ended ("end_mark" | "length" | "stopped"); null without one
+                "think_stop_reason": think_cap.stop_reason if think_cap is not None else None,
+                # true on the first pair when a stop asked before the comparison began left it unwritten
+                "think_skipped": think_skipped,
                 "think_read_token": (
                     runtime.tokenizer.decode([think_cap.prompt_token_ids[-1]], clean_up_tokenization_spaces=False)
                     if think_cap is not None

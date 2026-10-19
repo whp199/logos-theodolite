@@ -9,12 +9,15 @@ THEODOLITE_SAVED_PROMPTS pointing into a new temporary directory (the reader's o
 3. a same-kind name (trimmed, any case) refused with 409, the same name in the other kind allowed, `replace_id`
    replacing in place and keeping the id, an unknown replace_id refused with 404;
 4. DELETE: the whole list back, 404 for an entry or a kind that is not there;
-5. Origin: none (a script) and 127.0.0.1 / localhost / [::1] on any port allowed, any other refused with 403 before
-   anything is read or written;
-6. a corrupt file (not JSON, the wrong version, a malformed entry) moved aside to `<file>.corrupt-<stamp>`, never
-   written over, and reported once in the next reply's "warning";
+5. who may ask: Origin none (a script) and 127.0.0.1 / localhost / [::1] on any port allowed, any other refused with
+   403 before anything is read or written; the Host likewise (a DNS-rebinding page sends its own name as the Host and
+   no Origin on a same-origin GET), vite's proxied Host 127.0.0.1:8765 allowed. The client's Host is 127.0.0.1:8765,
+   as the server's own pages and vite's proxy send it (TestClient's default, "testserver", would be refused);
+6. a corrupt file (not JSON, not UTF-8, nested too deeply, the wrong version, a malformed entry, a stored lone
+   surrogate) moved aside to `<file>.corrupt-<stamp>`, never written over, and reported once in the next reply's
+   "warning";
 7. the limits: names of 1-80 characters without control characters, texts of 1-32000, a begun answer of at most
-   4000, at most 500 entries per list, an unknown kind.
+   4000, at most 500 entries per list, an unknown kind, half a character (a lone surrogate) in any text.
 
 Run: .venv/bin/python -I scripts/check_saved_prompts.py   (exits 0 when every check holds)
 """
@@ -59,7 +62,8 @@ def client_for(path: Path) -> TestClient:
     sp._pending_warning = None
     app = FastAPI()
     app.include_router(sp.router)
-    return TestClient(app)
+    # the Host the server's own pages (and vite's proxy, changeOrigin) send
+    return TestClient(app, base_url="http://127.0.0.1:8765")
 
 
 def corrupt_files(path: Path) -> List[Path]:
@@ -156,30 +160,63 @@ def check_origins(tmp: Path) -> None:
     r = c.get("/api/saved_prompts")
     check(r.status_code == 200, "no Origin (a script) refused")
 
+    # the Host: a DNS-rebinding page (rebind.evil.example resolving to 127.0.0.1) sends its own name as the Host and,
+    # on a same-origin GET, no Origin at all
+    for host in ("127.0.0.1:8765", "localhost:8765", "[::1]:8765", "localhost", "LOCALHOST:5173"):
+        r = c.get("/api/saved_prompts", headers={"Host": host})
+        check(r.status_code == 200, f"Host {host} refused: {r.status_code}")
+    r = c.post("/api/saved_prompts", headers={"Host": "127.0.0.1:8765", "Origin": "http://127.0.0.1:5173"},
+               json={"kind": "system", "name": "through vite", "text": "t"})
+    check(r.status_code == 200, f"vite's proxy (Host 127.0.0.1:8765, the page's Origin) refused: {r.status_code}")
+    before = path.read_text(encoding="utf-8")
+    for host in ("rebind.evil.example:8765", "rebind.evil.example", "127.0.0.1.evil.example:8765", "gpu-box:8765",
+                 "192.168.1.20:8765", "[::1"):
+        r = c.get("/api/saved_prompts", headers={"Host": host})
+        check(r.status_code == 403, f"GET with Host {host} and no Origin: {r.status_code}")
+        check("questions" not in r.text and str(path) not in r.text, f"Host {host}: the refusal shows the lists or the file")
+        r = c.post("/api/saved_prompts", headers={"Host": host}, json={"kind": "system", "name": f"bad {host}", "text": "t"})
+        check(r.status_code == 403, f"POST with Host {host}: {r.status_code}")
+        sid = c.get("/api/saved_prompts").json()["systems"][0]["id"]
+        r = c.delete(f"/api/saved_prompts/system/{sid}", headers={"Host": host})
+        check(r.status_code == 403, f"DELETE with Host {host}: {r.status_code}")
+    r = c.get("/api/saved_prompts", headers={"Host": "rebind.evil.example:8765", "Origin": "http://localhost:8765"})
+    check(r.status_code == 403, f"a local Origin with another Host: {r.status_code}")
+    check(path.read_text(encoding="utf-8") == before, "a refused Host changed the file")
+
 
 def check_corrupt(tmp: Path) -> None:
     print("6. a file that cannot be read")
-    for label, content in (
-        ("not JSON", "{ this is not json"),
-        ("wrong version", json.dumps({"version": 2, "questions": [], "systems": []})),
-        ("malformed entry", json.dumps({"version": 1, "questions": [{"id": "a", "name": 3}], "systems": []})),
-        ("not a list", json.dumps({"version": 1, "questions": {}, "systems": []})),
+    surrogate = {"id": "a" * 16, "name": "half", "text": "t", "saved_at": "2026-10-18T00:00:00Z"}
+    for label, content, why in (
+        ("not JSON", b"{ this is not json", "not JSON"),
+        ("not UTF-8", b'{"version": 1, "questions": [], "systems": [{"name": "caf\xe9"}]}', "not UTF-8"),
+        ("a byte 0xFF", b"\xff", "not UTF-8"),
+        ("nested too deeply", b"[" * 100000, "nested too deeply"),
+        ("wrong version", json.dumps({"version": 2, "questions": [], "systems": []}).encode(), "not a version 1"),
+        ("malformed entry", json.dumps({"version": 1, "questions": [{"id": "a", "name": 3}], "systems": []}).encode(),
+         "malformed entry"),
+        ("not a list", json.dumps({"version": 1, "questions": {}, "systems": []}).encode(), "not a list"),
+        # a hand-written \ud83d escape: valid JSON, but no reply holding it could be sent as UTF-8
+        ("a lone surrogate", json.dumps({"version": 1, "questions": [], "systems": [{**surrogate, "text": "a\ud83d"}]}).encode(),
+         "malformed entry"),
     ):
         path = tmp / label.replace(" ", "_") / "saved_prompts.json"
         path.parent.mkdir(parents=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_bytes(content)
         c = client_for(path)
         r = c.get("/api/saved_prompts")
-        body = r.json()
+        check(r.status_code == 200, f"{label}: GET gave {r.status_code}")
+        body = r.json() if r.status_code == 200 else {"questions": None, "systems": None}
         aside = corrupt_files(path)
-        check(r.status_code == 200 and body["questions"] == [] and body["systems"] == [], f"{label}: lists not empty")
-        check(isinstance(body.get("warning"), str) and "moved aside" in body["warning"], f"{label}: no warning: {body}")
-        check(len(aside) == 1 and aside[0].read_text(encoding="utf-8") == content, f"{label}: not moved aside whole")
+        check(body["questions"] == [] and body["systems"] == [], f"{label}: lists not empty")
+        check(isinstance(body.get("warning"), str) and "moved aside" in body["warning"] and why in body["warning"],
+              f"{label}: no warning naming why ({why}): {body.get('warning')}")
+        check(len(aside) == 1 and aside[0].read_bytes() == content, f"{label}: not moved aside whole")
         check(not path.exists(), f"{label}: the corrupt file is still in place")
         r = c.get("/api/saved_prompts")
-        check(r.json()["warning"] is None, f"{label}: the warning came twice")
+        check(r.status_code == 200 and r.json()["warning"] is None, f"{label}: the warning came twice")
         # a write after a corrupt read makes a new file and leaves the old one aside
-        path.write_text(content, encoding="utf-8")
+        path.write_bytes(content)
         r = c.post("/api/saved_prompts", json={"kind": "system", "name": "fresh", "text": "t"})
         check(r.status_code == 200 and isinstance(r.json()["warning"], str), f"{label}: POST over a corrupt file: {r.text}")
         check(len(corrupt_files(path)) == 2, f"{label}: the second corrupt file was not kept")
@@ -215,6 +252,22 @@ def check_limits(tmp: Path) -> None:
             check(isinstance(r.json().get("detail"), str), f"{what}: the refusal is not in plain words: {r.text[:200]}")
     stored = json.loads(path.read_text(encoding="utf-8"))
     check(stored["systems"][0]["text"] == "  " and stored["systems"][0]["name"] == "padded", "padded text changed")
+    # half a character: a lone surrogate (the first half of an emoji cut in two) passes JSON but not UTF-8, so it is
+    # refused in plain words rather than failing the write (sent as raw bytes: httpx would refuse to encode it)
+    before = path.read_bytes()
+    for body, what in (
+        ('{"kind": "question", "name": "a\\ud83d", "question": "q"}', "the name"),
+        ('{"kind": "question", "name": "q1", "question": "legs \\ud83d"}', "the question"),
+        ('{"kind": "question", "name": "q2", "question": "q", "answer_begins": "\\ude00 A"}', "the begun answer"),
+        ('{"kind": "system", "name": "s1", "text": "You are \\ud83d"}', "the system prompt"),
+    ):
+        r = c.post("/api/saved_prompts", content=body.encode(), headers={"content-type": "application/json"})
+        detail = r.json().get("detail", "") if r.headers.get("content-type", "").startswith("application/json") else r.text
+        check(r.status_code == 422 and "broken character" in str(detail) and what.split()[-1] in str(detail).lower(),
+              f"a lone surrogate in {what}: {r.status_code} {str(detail)[:120]}")
+    check(path.read_bytes() == before, "a refused lone surrogate changed the file")
+    r = post({"kind": "system", "name": "whole \U0001F600", "text": "an emoji kept whole \U0001F600"})
+    check(r.status_code == 200 and r.json()["systems"][-1]["text"].endswith("\U0001F600"), f"a whole emoji: {r.status_code}")
     # the list holds at most 500: fill it on disk, then ask for one more
     data = json.loads(path.read_text(encoding="utf-8"))
     data["systems"] = [

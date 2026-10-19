@@ -171,16 +171,18 @@ Which indices are sighted: `sight_tokens` if given, else 0..min(n, max_sighted)�
 [0]; never empty ([0] when nothing asked for exists). `prompt`, `system` and `assistant_prefix` are at most 32000
 characters, and P + max(max_new_tokens, len(answer_token_ids)) must stay within `MAX_SWEEP_POSITIONS` = 512 (a
 capture holds ~5.2 MB per position on the GPU before it moves to the CPU; the thinking prompt is held to the same).
-A refused id, control or length is answered in plain words.
+A refused id, control or length is answered in plain words, and so is a `pole_ranking`, `thread_score` or
+`frame_squaring` the analysis does not know, before anything is written.
 
 ### 4.2 Messages, server → client
 
-Without `request_id`: exactly one (binary, JSON) pair, read at token 0, as before (with the fields below added to the
-JSON), and nothing else. With one, in this order:
+Without `request_id`: exactly one (binary, JSON) pair, at the first index of the sight order (`sight_tokens[0]` when
+given, else token 0), as before (with the fields below added to the JSON), and nothing else. With one, in this order:
 1. `{"type":"theodolite_progress","request_id","phase":"writing","done":i,"of":max_new_tokens}` after each written
-   piece; after the read-back, `{... "phase":"sighting","done":0,"of":m}`.
+   piece.
 2. `{"type":"theodolite_written","request_id","answer","generation","sight_order":[k…],"n_to_sight":m,
-   "prompt_token_ids","prompt_len"}` once, before the first pair.
+   "prompt_token_ids","prompt_len"}` once, after the read-back and before the frame is built (so a failure from there
+   on cannot lose the answer), then `{"type":"theodolite_progress",… "phase":"sighting","done":0,"of":m}`.
 3. One pair per sighted index, in sight order: the binary frame, then its `theodolite_metadata` JSON, back to back.
    Layout and `WIRE_VERSION` 1 unchanged; flags bit 0 (thinking path) on the first pair only, bit 1 steered, bit 2 (4)
    on every pair of a request that sights more than one index.
@@ -189,9 +191,11 @@ JSON), and nothing else. With one, in this order:
 Added to every pair's JSON (the one-pair reply too; `generated_text` is the whole answer, `prompt*` the prompt only):
 `request_id, token_index, sight_index, n_to_sight, last, read_pos, read_token, read_token_id, prompt_len, chosen
 (STEP | null), answer, generation, recapture_check, kinship_n_states (= read_pos + 1), rank_lookahead, sight_dropped,
-timing {generate_ms, capture_ms, analyse_ms, total_ms}, think_seed, think_read_token` (the last two, and
-`think_generated_text`, on the first pair only); `frame.centre_kind` ("none" | "control_prompt_end" |
-"control_reading_same_answer") and, for a pole-motif frame, `frame.reader {layer, neuron, from_token_index}` (built
+timing {generate_ms, capture_ms, analyse_ms, total_ms}, think_seed, think_read_token, think_stop_reason,
+think_skipped` (the last four, and `think_generated_text`, set on the first pair only: `think_stop_reason` is how the
+thinking answer's writing ended, "end_mark" | "length" | "stopped", null without one; `think_skipped` is true when a
+stop asked before the comparison began left it unwritten, else false); `frame.centre_kind` ("none" |
+"control_prompt_end" | "control_reading_same_answer") and, for a pole-motif frame, `frame.reader {layer, neuron, from_token_index}` (built
 at the first position analysed and kept for the whole answer); per layer `jpp_top_ids` (5), `naive_top_id`,
 `tracked_from_next {word: bool}`.
 - STEP = `{index, token_id, token, model_prob, model_logprob, model_rank, n_tied, chosen_logit, top:[{token_id, token,
@@ -204,7 +208,10 @@ at the first position analysed and kept for the whole answer); per layer `jpp_to
   null when off or greedy), seed, seed_drawn, max_new_tokens, sight_every_token, max_sighted, capped,
   stop_at_end_of_turn}`.
 - `recapture_check` = `{top1_id, top1_token, top1_is_chosen, chosen_logit_recapture, chosen_logit_diff}` at layer 60
-  (J = I): the reading forward against the writing one, which agree to bf16 rounding.
+  (J = I): the reading forward against the writing one, which agree to bf16 rounding. For a given answer
+  (`chosen.source` "given") `chosen_logit_recapture` and `chosen_logit_diff` are null: its odds are the re-read's own
+  layer 60, so nothing was written to compare with (a diff would be 0 by construction); `top1_is_chosen` still
+  compares the re-read's top piece with the given one.
 
 Errors: a request with a `request_id` that is refused or fails gets `{"type":"error","action":"sweep","request_id",
 "recoverable":true,"message","n_sent","token_index"}` and then its `theodolite_sweep_end`; the socket stays open
@@ -219,7 +226,10 @@ once: a running request stops at its next check (after each written piece: the w
 `cancelled: true`; a queued one is dropped and its end (`n_sent` 0) sent at once. Other actions keep their order.
 `_GPU_LOCK` is held for the whole stream (writing, read-back, every position, the thinking comparison), so no vault
 edit lands between two positions of one answer. The thinking comparison is written with the same sampler and seed
-(length max(min(n, 64), 10)), read at its token 0 in the main sweep's frame and centre, and rides on the first pair.
+(length max(min(max_new_tokens, 64), 10)), read at its token 0 in the main sweep's frame and centre, and rides on the
+first pair. It can be stopped too: a stop asked before it begins (while the answer is written, or while the first
+position is read) skips it (`think_skipped` true, no thinking path); one asked while it is written ends it after the
+current piece (`think_stop_reason` "stopped"); either way the request ends `cancelled: true`, with one sighting too.
 
 ### 4.4 Exact ids for `trace_readers`, and saved prompts
 
@@ -233,5 +243,8 @@ edit lands between two positions of one answer. The thinking comparison is writt
   case); `DELETE /api/saved_prompts/{kind}/{id}` → the lists (404 when absent). One file outside every checkout
   (`$THEODOLITE_SAVED_PROMPTS`, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/saved_prompts.json`), written
   atomically under its own lock (never the GPU's); an unreadable file is moved aside to `<file>.corrupt-<UTC stamp>` and
-  reported once. Requests from a page on another host get 403 (CORS is "*"); no Origin (a script) or 127.0.0.1 /
-  localhost / [::1] on any port are allowed.
+  reported once (a file that is not UTF-8, is nested too deeply, or holds a lone surrogate counts as unreadable).
+  Requests from a page on another host get 403 (CORS is "*"): the Host must be 127.0.0.1 / localhost / [::1] on any
+  port (a DNS-rebinding page sends its own name as the Host, and a same-origin GET sends no Origin; vite's proxy sends
+  the server's own Host), and so must the Origin when there is one; no Origin (a script) is allowed. A name or text
+  holding half of a character (a lone surrogate) is refused with 422.

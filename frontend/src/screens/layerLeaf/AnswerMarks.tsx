@@ -1,5 +1,5 @@
 import React from "react";
-import { piecesOf, shownSetOf, useTheodoliteStore, type AnswerPiece, type Sighting } from "../../store/useTheodoliteStore";
+import { endMarkWords, piecesOf, shownSetOf, useTheodoliteStore, type AnswerPiece, type Sighting } from "../../store/useTheodoliteStore";
 
 /**
  * A sighting's answer as running text, for the strips at the head of the leaf and the folio. The word-piece the stream had
@@ -23,9 +23,10 @@ const SR_ONLY: React.CSSProperties = {
 };
 
 /** How a written word-piece is drawn in running text: its leading space outside the mark, a new line as ¶, a bare space as
- * ␣, its end of turn in words (as the instrument's row of word-pieces draws them). */
+ * ␣, a stop mark in words by which one it is (endMarkWords: only <turn|> ends its turn), as the instrument's row of
+ * word-pieces draws them. */
 function pieceFace(p: AnswerPiece): { lead: string; body: string; plain: boolean } {
-  if (p.endMark) return { lead: " ", body: "it ends its turn", plain: false };
+  if (p.endMark) return { lead: " ", body: endMarkWords(p.id, p.str), plain: false };
   const lines = (p.str.match(/\n/g) ?? []).length;
   const text = p.str.replace(/^\s+/, "").replace(/\n/g, "¶");
   if (!text) return { lead: lines ? " " : "", body: lines ? "¶".repeat(lines) : "␣", plain: false };

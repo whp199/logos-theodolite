@@ -39,7 +39,8 @@ export * from "./sighting";
 
 /** How the model writes its answer before it is sighted (the sweep's max_new_tokens, sampler and sight_every_token). */
 export interface Writing {
-  /** "greedy": its likeliest word-piece every time, as the study wrote; "sampled": drawn by chance */
+  /** "greedy": its likeliest word-piece every time, as the study wrote the answers it checked the lens on (with a
+   * presencePenalty not 0, the top piece after the penalty, which the study never used); "sampled": drawn by chance */
   mode: "greedy" | "sampled";
   temperature: number;
   /** from its likeliest K word-pieces only; 0 = no limit */
@@ -50,7 +51,8 @@ export interface Writing {
   presencePenalty: number;
   /** null: the server draws one and sends it back */
   seed: number | null;
-  /** word-pieces it may write, 1-256; it stops sooner when it ends its turn */
+  /** word-pieces it may write, 1-256; it stops sooner at a stop mark (the end of its turn, or another of the
+   * checkpoint's stop marks: endMarkWords) */
   length: number;
   /** a sighting of each word-piece it writes (at most SIGHT_CAP), not only of the first */
   sightEach: boolean;
@@ -60,7 +62,8 @@ export interface Writing {
  * The server treats a missing sampler field as off, and passes every field on to interp-engine, which would otherwise fill
  * a missing one from these values; the page still sends every one, so what was asked is on the record. */
 export const MODEL_SAMPLING = { temperature: 1, topK: 64, topP: 0.95 } as const;
-/** The study's writing: its likeliest word-piece each time, six of them; each word-piece sighted. */
+/** The study's writing, as in the answers it checked the lens on: its likeliest word-piece each time, with no repeat
+ * penalty, six of them; each word-piece sighted. */
 export const STUDY_WRITING: Writing = {
   mode: "greedy",
   temperature: 1,
@@ -157,8 +160,20 @@ export interface AnswerSet {
   retakeOf: string | null;
   /** how these word-pieces were written: this set's own generation, or, for a re-reading, that of the set it re-reads */
   wrote: GenerationEcho | null;
-  /** the sighting with thinking turned on, which the server sends with the first pair only: read where its answer begins */
-  thinking: { continuation: string; seed: number | null; readAt: string | null; path: [number, number, number][] | null } | null;
+  /** the sighting with thinking turned on, which the server sends with the first pair only: read where its answer
+   * begins; stopReason is why its answer stopped ("stopped": "stop here" cut it short), null when not sent */
+  thinking: {
+    continuation: string;
+    seed: number | null;
+    readAt: string | null;
+    path: [number, number, number][] | null;
+    stopReason: string | null;
+  } | null;
+  /** the thinking comparison was asked for and skipped, because "stop here" came before it began (thinking stays null) */
+  thinkSkipped: boolean;
+  /** "sight this one too": the request id of the set shown that this one-piece request reads one more word-piece of,
+   * with that set's own options (not the options as set now); null for every other request */
+  oneMoreOf: string | null;
   /** "stop here" was asked, and the server has not stopped yet */
   stopAsked: boolean;
   /** the server tagged this request's frames (it can stream, and stop between word-pieces); false for an older server */
@@ -337,7 +352,8 @@ export interface TheodoliteState {
 
   // actions
   setWriting: (w: Partial<Writing>) => void;
-  /** choose the word-piece shown: answer.sightings[k] as soon as it has arrived */
+  /** choose the word-piece shown: answer.sightings[k] as soon as it has arrived; while the set shown is being read
+   * again (retakeIfLive), the re-reading's own k at once when it has already arrived */
   pickToken: (k: number) => void;
   /** ask the server to stop the request in flight between word-pieces (what arrived is kept) */
   cancelSweep: () => void;
@@ -346,8 +362,9 @@ export interface TheodoliteState {
   /** keep what the boxes hold now under `name` (replacing `replaceId` when given); false when the server did not keep it */
   keepSaved: (kind: SavedKind, name: string, replaceId?: string | null) => Promise<boolean>;
   forgetSaved: (kind: SavedKind, id: string) => Promise<boolean>;
-  /** undo a forget: keep the entry again, with its own fields */
-  restoreSaved: (kind: SavedKind, entry: SavedQuestion | SavedSystem) => Promise<boolean>;
+  /** undo a forget: keep the entry again, with its own fields; undo a replace: with `replaceId` (the id the replaced
+   * entry kept), put its old fields back in place of what replaced them */
+  restoreSaved: (kind: SavedKind, entry: SavedQuestion | SavedSystem, replaceId?: string | null) => Promise<boolean>;
   /** fill the boxes from an entry (a question also restores its chat setting); never sends anything */
   useSaved: (kind: SavedKind, entry: SavedQuestion | SavedSystem) => void;
   setQuestion: (q: string) => void;
@@ -526,7 +543,9 @@ function savedBody(kind: SavedKind, name: string, from: { question: string; answ
     : { kind, name, question: from.question, answer_begins: from.answerBegins, chat: from.chat };
 }
 
-/** A write to the saved lists (POST or DELETE): the server answers with the whole lists, which replace ours. */
+/** A write to the saved lists (POST or DELETE): the server answers with the whole lists, which replace ours. When the
+ * server refuses it (404: an entry another tab already forgot or replaced; 409: a name another tab took), the lists we
+ * hold are out of date, so they are read again at once: the shelf then offers only what can still be done. */
 async function writeSaved(call: () => Promise<unknown>): Promise<boolean> {
   try {
     const lists = savedListsOf(await call());
@@ -535,8 +554,25 @@ async function writeSaved(call: () => Promise<unknown>): Promise<boolean> {
     }));
     return true;
   } catch (e) {
-    useTheodoliteStore.setState((s) => ({ saved: { ...s.saved, error: String((e as Error)?.message ?? e) } }));
+    const reason = String((e as Error)?.message ?? e);
+    useTheodoliteStore.setState((s) => ({ saved: { ...s.saved, error: reason } }));
+    if (e instanceof RequestError && e.refused) void rereadSaved(reason);
     return false;
+  }
+}
+
+/**
+ * Read the saved lists again after the server refused a write. The refusal's reason stays the error (the shelf shows it
+ * when the write returns false, before or after this read lands); while it reads, the status is "reading", so the
+ * shelf waits to save or forget until the lists it offers are the server's own. A read that fails says why instead.
+ */
+async function rereadSaved(reason: string) {
+  useTheodoliteStore.setState((s) => ({ saved: { ...s.saved, status: "reading", error: reason } }));
+  try {
+    const lists = savedListsOf(await requestJson("GET", "/api/saved_prompts"));
+    useTheodoliteStore.setState((s) => ({ saved: { ...s.saved, ...lists, warning: lists.warning ?? s.saved.warning, status: "ok" } }));
+  } catch (e) {
+    useTheodoliteStore.setState((s) => ({ saved: { ...s.saved, status: "failed", error: String((e as Error)?.message ?? e) } }));
   }
 }
 
@@ -605,6 +641,15 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   pickToken: (k) =>
     set((s) => {
       if (!s.answer || !Number.isInteger(k) || k < 0) return {};
+      // a re-reading of the set shown that already holds word-piece k is shown at once, on k: the reader moved to a
+      // word-piece it has read again, so the old reading of k must not stay shown until its next pair
+      const again = rereadingOf(s.answer.requestId, k);
+      if (again) {
+        again.p.promoted = true;
+        const r = { ...again.set, wanted: k };
+        liveSets.set(r.requestId, r);
+        return { answer: r, incoming: s.incoming?.requestId === r.requestId ? r : s.incoming, sighting: r.sightings[k] };
+      }
       const a = { ...s.answer, wanted: k };
       if (liveSets.has(a.requestId)) liveSets.set(a.requestId, a);
       return {
@@ -645,10 +690,12 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   forgetSaved: async (kind, id) =>
     writeSaved(() => requestJson("DELETE", `/api/saved_prompts/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`)),
 
-  restoreSaved: async (kind, entry) => {
+  restoreSaved: async (kind, entry, replaceId) => {
     const from =
       "text" in entry ? { text: entry.text } : { question: entry.question, answerBegins: entry.answerBegins, chat: entry.chat };
-    return writeSaved(() => requestJson("POST", "/api/saved_prompts", savedBody(kind, entry.name, from)));
+    // undoing a replace: the name is taken (by the entry that replaced it), so the old fields go back in its place
+    const body = { ...savedBody(kind, entry.name, from), ...(replaceId ? { replace_id: replaceId } : {}) };
+    return writeSaved(() => requestJson("POST", "/api/saved_prompts", body));
   },
 
   useSaved: (kind, entry) => {
@@ -706,7 +753,8 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
       sock.send(JSON.stringify({ action: "larql", query: "DESCRIBE" }));
       // a fresh live sighting of the current question replaces the recorded one, unless that very sighting
       // failed on the last connection (it would only fail again, every few seconds); it is written as the study
-      // wrote, greedily and six word-pieces long, whatever the page is set to, with "sight each" as set
+      // wrote the answers it checked the lens on, greedily with no repeat penalty and six word-pieces long, whatever
+      // the page is set to, with "sight each" as set
       if (get().sighting?.source !== "live" && !autoRetakeBlocked) {
         takeSightingImpl({ writing: { ...STUDY_WRITING, sightEach: get().writing.sightEach } }, true);
       }
@@ -1147,8 +1195,62 @@ const intList = (v: unknown): number[] | null =>
 
 function thinkingOf(s: Sighting): AnswerSet["thinking"] {
   return s.thinkingContinuation != null
-    ? { continuation: s.thinkingContinuation, seed: s.thinkSeed, readAt: s.thinkReadAt, path: s.thinkingPath }
+    ? { continuation: s.thinkingContinuation, seed: s.thinkSeed, readAt: s.thinkReadAt, path: s.thinkingPath, stopReason: s.thinkStopReason }
     : null;
+}
+
+/** A re-reading in flight of the set `setId` (retakeIfLive), not shown yet, whose word-piece k has already arrived. */
+function rereadingOf(setId: string, k: number): { p: PendingReq; set: AnswerSet } | null {
+  for (const p of pending.values()) {
+    if (p.promoted || p.keepWanted === null || p.mergeInto) continue;
+    const a = liveSets.get(p.id);
+    if (a && a.retakeOf === setId && a.sightings[k]) return { p, set: a };
+  }
+  return null;
+}
+
+/** The vault's edits a sighting was read under, as a key: one overlay per neuron (the last edit of it), by patch. Two
+ * sightings with different keys were not read under the same edits. */
+function editsKey(edits: ActiveEdit[]): string {
+  return latestPerNeuron(edits)
+    .map((e) => `${e.patch_id}:${e.layer_idx}:${e.neuron_idx}:${e.statement}`)
+    .join("|");
+}
+
+/** The first word-piece of a set that has arrived, in sight order; null when none has. */
+function firstArrived(a: AnswerSet): number | null {
+  const inOrder = a.order.find((i) => a.sightings[i]);
+  if (inOrder !== undefined) return inOrder;
+  const keys = Object.keys(a.sightings);
+  return keys.length ? Number(keys[0]) : null;
+}
+
+/**
+ * The set with its wanted word-piece one that has arrived, once nothing more is coming for it: the reader is never
+ * left on "shown when its sighting arrives" for a sighting that is not coming (a stop, an error, a closed connection).
+ * They go back to the sighting shown when it is in the set, else to its first that arrived.
+ */
+function settledOn(a: AnswerSet, shown: Sighting | null): AnswerSet {
+  if (a.sightings[a.wanted]) return a;
+  const w = shown && a.sightings[shown.tokenIndex] === shown ? shown.tokenIndex : firstArrived(a);
+  return w === null ? a : { ...a, wanted: w };
+}
+
+/**
+ * Where a re-reading in a neuron frame (pole_motif) must build its frame, so that it is the set's own frame and not one
+ * found at the word-piece being viewed: the server builds it once, at the first position it analyses, from the locked
+ * pole's dominant reader there. So the re-reading leads with the word-piece the set's frame was built at (its
+ * frame.reader), or, for a set read in a frame from words, where a fresh sighting builds one: the earliest word-piece
+ * it sighted (0 for an answer sighted from its start). Null when the set has no sighting to lead with.
+ */
+function frameLead(a: AnswerSet): number | null {
+  const sighted = a.order.filter((i) => a.sightings[i]);
+  for (const i of sighted) {
+    const at = a.sightings[i].frame?.reader?.fromTokenIndex;
+    if (at != null && a.sightings[at]) return at;
+  }
+  // a frame from words is the same at every position; a fresh sighting builds a neuron frame at its earliest word-piece
+  return sighted.length ? Math.min(...sighted) : null;
 }
 
 /** theodolite_progress: where the request in flight stands (only a server that streams sends it). */
@@ -1220,35 +1322,51 @@ function onPair(msg: Record<string, any>, bin: LiveBinary | null) { // eslint-di
     pieces: a0.pieces ?? piecesOf(sighting),
     generation: a0.generation ?? sighting.generation,
     thinking: a0.thinking ?? thinkingOf(sighting),
+    thinkSkipped: a0.thinkSkipped || sighting.thinkSkipped,
     streamed: !legacy,
     progress: { phase: "sighting", done: count, of: nToSight },
   };
   if (!a.retakeOf && !a.wrote) a.wrote = a.generation;
 
   if (p.mergeInto) {
-    // "sight this one too": the new word-piece joins the set shown, read with that set's own request
+    // "sight this one too": the new word-piece joins the set shown, read with that set's own request, but only when it
+    // was read under the same vault edits as the rest of that set (an edit can land between two requests, by the vault
+    // page or by the scientist over MCP, which this page never hears of): every word-piece of one answer set is read
+    // under the same edits, so a piece read under other edits is not added to it
     const t = st.answer;
     if (k === p.mergeInto.k && t && t.requestId === p.mergeInto.setId && !t.sightings[k]) {
-      const joined: AnswerSet = {
-        ...t,
-        sightings: { ...t.sightings, [k]: sighting },
-        order: t.order.includes(k) ? t.order : [...t.order, k],
-        nToSight: t.order.includes(k) ? t.nToSight : t.nToSight + 1,
-      };
-      extra.answer = joined;
-      if (joined.wanted === k) extra.sighting = sighting;
+      const at = firstArrived(t);
+      const ref = at !== null ? t.sightings[at] : null;
+      if (ref && editsKey(ref.activeEdits) !== editsKey(sighting.activeEdits)) {
+        extra.sweepError =
+          `Word-piece ${k + 1} was read under other vault edits than the rest of this answer (an edit was made or undone ` +
+          "in between), so it was not added to it. Take the sighting again to read the whole answer under the edits as " +
+          "they are now.";
+        // the reader was waiting on k there: back to the sighting shown
+        if (t.wanted === k) extra.answer = settledOn(t, st.sighting);
+      } else {
+        const joined: AnswerSet = {
+          ...t,
+          sightings: { ...t.sightings, [k]: sighting },
+          order: t.order.includes(k) ? t.order : [...t.order, k],
+          nToSight: t.order.includes(k) ? t.nToSight : t.nToSight + 1,
+        };
+        extra.answer = joined;
+        if (joined.wanted === k) extra.sighting = sighting;
+      }
     }
   } else {
     if (k === 0 && !sighting.isNudged) extra.plainSighting = sighting;
     if (!p.promoted) {
-      // a fresh answer is shown at once (on the word-piece wanted, else this one); a re-reading only once the word-piece
-      // the reader is on arrives, so the reading shown never jumps to another word-piece
+      // a fresh answer is shown at once (on the word-piece wanted, else this one); a re-reading only once it holds the
+      // word-piece the reader is on (whenever that arrived: the reader may have moved to one it already read), so the
+      // reading shown never jumps to another word-piece
       let show: number | null;
       if (p.keepWanted === null) show = a.sightings[a.wanted] ? a.wanted : k;
       else {
         const onOld = a.retakeOf !== null && st.answer?.requestId === a.retakeOf ? st.answer.wanted : p.keepWanted;
         const want = a.order.includes(onOld) ? onOld : p.keepWanted;
-        show = k === want ? want : null;
+        show = a.sightings[want] ? want : null;
       }
       if (show !== null) {
         p.promoted = true;
@@ -1292,25 +1410,37 @@ function finalise(id: string, how: { cancelled?: boolean; error?: string | null 
     error: a0.error ?? how.error ?? null,
     progress: { phase: "done", done: count, of: Math.max(a0.nToSight, count) },
   };
+  const st = useTheodoliteStore.getState();
   if (p.mergeInto) {
-    publish(null, a.error ? { sweepError: a.error } : {});
+    // "sight this one too" ended: if its word-piece never joined the set shown (a stop, an error, the connection
+    // closed), the reader is no longer told it is coming, and goes back to the sighting shown
+    const t = st.answer;
+    const dangling = t !== null && t.requestId === p.mergeInto.setId && t.wanted === p.mergeInto.k && !t.sightings[p.mergeInto.k];
+    publish(null, { ...(a.error ? { sweepError: a.error } : {}), ...(dangling ? { answer: settledOn(t, st.sighting) } : {}) });
     return;
   }
   if (!p.promoted && count > 0) {
-    const w = a.sightings[a.wanted] ? a.wanted : (a.order.find((i) => a.sightings[i]) ?? Number(Object.keys(a.sightings)[0]));
+    // never shown: shown now, on the word-piece the reader is on in the set it re-reads when that one arrived, else on
+    // its own wanted, else on its first that arrived
+    const onOld = p.keepWanted !== null && a.retakeOf !== null && st.answer?.requestId === a.retakeOf ? st.answer.wanted : null;
+    const w = onOld !== null && a.sightings[onOld] ? onOld : a.sightings[a.wanted] ? a.wanted : (firstArrived(a) ?? a.wanted);
     const shown = { ...a, wanted: w };
     p.promoted = true;
     publish(shown, { answer: shown, sighting: shown.sightings[w] });
     return;
   }
-  publish(a);
+  // shown already: a word-piece chosen that never arrived is not left waiting
+  publish(p.promoted ? settledOn(a, st.answer?.requestId === id ? st.sighting : null) : a);
 }
 
 /** Send a sweep with its own request_id, and start its set. */
 function dispatch(
   payload: Record<string, unknown>,
   req: Omit<PendingReq, "id" | "promoted">,
-  start: Pick<AnswerSet, "question" | "answerBegins" | "chat" | "system" | "nudged" | "wanted" | "retakeOf" | "wrote" | "pieces" | "order" | "nToSight">,
+  start: Pick<
+    AnswerSet,
+    "question" | "answerBegins" | "chat" | "system" | "nudged" | "wanted" | "retakeOf" | "oneMoreOf" | "wrote" | "pieces" | "order" | "nToSight"
+  >,
   of: number,
 ): boolean {
   if (!wsOpen()) return false;
@@ -1327,6 +1457,7 @@ function dispatch(
     error: null,
     generation: null,
     thinking: null,
+    thinkSkipped: false,
     stopAsked: false,
     streamed: false,
   };
@@ -1391,6 +1522,7 @@ function takeSightingImpl(opts: TakeOptions, auto: boolean): boolean {
       nudged: steering.enabled,
       wanted: opts.keepWanted ?? order[0] ?? 0,
       retakeOf: null,
+      oneMoreOf: null,
       wrote: null,
       pieces: null,
       order,
@@ -1422,8 +1554,10 @@ function rereadPayload(a: AnswerSet, answerIds: number[], sightTokens: number[],
 /**
  * After an option that changes only the reading (pole ranking, thread score, frame, landmarks): read the shown answer
  * again from its exact ids, with nothing written again (exact even when it was drawn by chance), sighting the same
- * word-pieces, the one shown first; the sighting shown stays until that word-piece arrives. Without such an answer, a
- * fresh sighting with the current settings. Only when the server is answering and idle.
+ * word-pieces, the one shown first; the sighting shown stays until that word-piece arrives. In a neuron frame
+ * (pole_motif) the word-piece the set's frame was built at goes first instead (frameLead), since the server builds the
+ * frame at the first position it reads: so the frame is the set's own, and the option is the only thing that changed.
+ * Without such an answer, a fresh sighting with the current settings. Only when the server is answering and idle.
  */
 export function retakeIfLive() {
   const st = useTheodoliteStore.getState();
@@ -1440,8 +1574,14 @@ export function retakeIfLive() {
       (READING_KEYS as readonly string[]).includes(k),
     ),
   );
-  const others = a.order.filter((i) => i !== a.wanted && a.sightings[i]);
-  const sightTokens = [a.wanted, ...others].slice(0, SIGHT_CAP);
+  // the word-piece the reader is on: the one wanted when it arrived, else the one shown (a choice that never arrived
+  // is not read first)
+  const on = a.sightings[a.wanted] ? a.wanted : s.tokenIndex;
+  // the frame the re-reading is read in: built where the frame being sent is built (the survey mode as set now)
+  const lead = reading.survey_mode === "pole_motif" ? frameLead(a) : null;
+  const first = lead !== null && lead !== on ? [lead] : [];
+  const others = a.order.filter((i) => i !== on && !first.includes(i) && a.sightings[i]);
+  const sightTokens = [...first, on, ...others].slice(0, SIGHT_CAP);
   dispatch(
     rereadPayload(a, s.answerIds, sightTokens, reading),
     {
@@ -1452,7 +1592,7 @@ export function retakeIfLive() {
       chat: a.chat,
       auto: false,
       steering: (a.payload.steering as Record<string, unknown> | null) ?? {},
-      keepWanted: a.wanted,
+      keepWanted: on,
       mergeInto: null,
     },
     {
@@ -1461,8 +1601,9 @@ export function retakeIfLive() {
       chat: a.chat,
       system: a.system,
       nudged: a.nudged,
-      wanted: a.wanted,
+      wanted: on,
       retakeOf: a.requestId,
+      oneMoreOf: null,
       wrote: a.wrote ?? a.generation,
       pieces: a.pieces,
       order: sightTokens,
@@ -1472,10 +1613,18 @@ export function retakeIfLive() {
   );
 }
 
+/** Why "sight this one too" is refused when the vault's edits changed after the shown answer was read. */
+export const EDITS_CHANGED =
+  "The vault’s edits have changed since this answer was read, so one more word-piece read now would not be read under " +
+  "the same edits as the rest. Take the sighting again to read the whole answer under the edits as they are now.";
+
 /**
  * Sight one more word-piece of the shown answer, one written but not sighted (past the cap, or with "sight each" off):
  * the shown set's own request read again from its exact ids, sighting only word-piece k, which joins the set. A frame
- * built from the word-pieces it reads (landmarks from a neuron) is built where the set's first sighting was, as before.
+ * built from the word-pieces it reads (landmarks from a neuron) is built where the set's own frame was (frameLead), as
+ * before. The set keeps its thinking comparison, so none is written again (compare_think false). Refused, with
+ * EDITS_CHANGED as the sweep error, when the vault's edits as this page knows them differ from those the shown answer
+ * was read under; an edit this page did not hear of (the scientist's, over MCP) is caught when the pair arrives.
  */
 export function sightPieceToo(k: number): boolean {
   const st = useTheodoliteStore.getState();
@@ -1484,11 +1633,17 @@ export function sightPieceToo(k: number): boolean {
   if (st.conn !== "open" || st.isSweeping || !a || !a.streamed || !s?.answerIds || k < 0 || k >= s.answerIds.length || a.sightings[k]) {
     return false;
   }
-  const first = a.payload.survey_mode === "pole_motif" && a.order.length && a.order[0] !== k ? [a.order[0]] : [];
+  if (editsKey(st.activeEdits) !== editsKey(s.activeEdits)) {
+    useTheodoliteStore.setState({ sweepError: EDITS_CHANGED });
+    return false;
+  }
+  // read with the set's own options, so in the set's own frame
+  const lead = a.payload.survey_mode === "pole_motif" ? frameLead(a) : null;
+  const first = lead !== null && lead !== k ? [lead] : [];
   const sightTokens = [...first, k];
   st.pickToken(k);
   return dispatch(
-    rereadPayload(a, s.answerIds, sightTokens, null),
+    { ...rereadPayload(a, s.answerIds, sightTokens, null), compare_think: false },
     {
       question: a.question,
       answerBegins: a.answerBegins,
@@ -1508,6 +1663,7 @@ export function sightPieceToo(k: number): boolean {
       nudged: a.nudged,
       wanted: k,
       retakeOf: a.requestId,
+      oneMoreOf: a.requestId,
       wrote: a.wrote ?? a.generation,
       pieces: a.pieces,
       order: sightTokens,

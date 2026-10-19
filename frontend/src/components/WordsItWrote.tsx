@@ -4,8 +4,10 @@ import { NotAMatchedPair, OneDrawLine, PenaltyLine, TemplateEndCaution } from ".
 import { ms, pct, pieceWord } from "../lib/words";
 import {
   CONNECTION_CLOSED,
+  PACE,
   SIGHT_CAP,
   chosenPhrase,
+  endMarkWords,
   exportAnswer,
   piecesOf,
   readWhere,
@@ -25,10 +27,16 @@ import {
  * sighting and an older server's reply keep the one italic line they always had.
  */
 
-/** How a written word-piece is drawn: its leading space outside the button, a new line as ¶, a bare space as ␣, its end
- * of turn as words. */
+/** The words endMarkWords gives the mark that ends the model's turn (<turn|>), and only that one. */
+const TURN_ENDS = endMarkWords(106, "<turn|>");
+
+/** Whether a stop mark is the one that ends its turn (<turn|>), not the end of the text or a control mark. */
+const endsTurn = (p: { id: number; str: string }) => endMarkWords(p.id, p.str) === TURN_ENDS;
+
+/** How a written word-piece is drawn: its leading space outside the button, a new line as ¶, a bare space as ␣, a stop
+ * mark as words that say which mark it is (endMarkWords: only <turn|> "ends its turn"). */
 function pieceFace(p: AnswerPiece): { lead: string; body: string; kind: "word" | "mark" | "stop" } {
-  if (p.endMark) return { lead: " ", body: "it ends its turn", kind: "stop" };
+  if (p.endMark) return { lead: " ", body: endMarkWords(p.id, p.str), kind: "stop" };
   const lines = (p.str.match(/\n/g) ?? []).length;
   const text = p.str.replace(/^\s+/, "").replace(/\n/g, "¶");
   if (!text) return { lead: lines ? " " : "", body: lines ? "¶".repeat(lines) : "␣", kind: "mark" };
@@ -36,13 +44,19 @@ function pieceFace(p: AnswerPiece): { lead: string; body: string; kind: "word" |
 }
 
 /** What a piece is called aloud. */
-const spoken = (p: AnswerPiece) => (p.endMark ? "the end of its turn" : pieceWord(p.str));
+const spoken = (p: AnswerPiece) => (p.endMark ? (endsTurn(p) ? "the end of its turn" : endMarkWords(p.id, p.str)) : pieceWord(p.str));
 
-/** Why the server stopped writing, in plain words. */
-function stopWords(r: string | null | undefined): string | null {
+/** A piece is narrow (a comma, a one-letter word, ¶ or ␣): its touch target is widened past its edges (index.css). */
+const narrow = (body: string) => Array.from(body).length <= 2;
+
+/** Why the server stopped writing, in plain words. `mark` is the answer's last piece: for "end_mark", the mark it wrote,
+ * of which only <turn|> ends its turn (endMarkWords); any other is named, since it may be a broken answer. */
+export function stopWords(r: string | null | undefined, mark?: { id: number; str: string; endMark: boolean } | null): string | null {
   switch (r) {
     case "end_mark":
-      return "it ended its turn";
+      if (!mark?.endMark) return "it wrote one of its stop marks";
+      if (endsTurn(mark)) return "it ended its turn";
+      return `it wrote ${endMarkWords(mark.id, mark.str)}`;
     case "length":
       return "the length ran out";
     case "stopped":
@@ -70,7 +84,7 @@ const Moment: React.FC<{ s: Sighting; n: number | null }> = ({ s, n }) => {
       {chose ? (
         <>
           , {chose}
-          {c?.modelProb != null ? <> ({pct(c.modelProb)} in its own odds)</> : null}
+          {c?.modelProb != null ? <> ({pct(c.modelProb)} in its own odds{c.source === "given" ? ", as read again" : ""})</> : null}
         </>
       ) : n === 0 ? (
         ", where it wrote nothing"
@@ -86,15 +100,27 @@ const InFlight: React.FC<{ shown: AnswerSet | null }> = ({ shown }) => {
   if (!incoming) return null;
   const same = shown != null && incoming.requestId === shown.requestId;
   const { phase, done, of } = incoming.progress;
-  const what =
-    phase === "writing"
+  // "sight this one too": one more word-piece of the answer shown, read with that answer's own options (and, in a frame
+  // built from a neuron, read where its frame was built as well, so that it is read in the same frame)
+  const oneMore = incoming.oneMoreOf != null;
+  const what = oneMore
+    ? phase === "sighting" && of > 1
+      ? `reading ${Math.min(done + 1, of)} of ${of}${done === 0 ? ", the first where its frame was built" : ", the one asked for"}…`
+      : "reading it…"
+    : phase === "writing"
       ? `writing ${done} of ${of}…`
       : phase === "sighting"
         ? `sighting ${Math.min(done + 1, Math.max(of, 1))} of ${Math.max(of, 1)}…`
         : incoming.retakeOf
           ? "reading the same word-pieces again…"
           : "writing…";
-  const lead = same ? "" : incoming.retakeOf ? "Reading it again with the options as set now: " : "A new answer: ";
+  const lead = oneMore
+    ? `Sighting word-piece ${incoming.wanted + 1} too, read as the rest of this answer was read: `
+    : same
+      ? ""
+      : incoming.retakeOf
+        ? "Reading it again with the options as set now: "
+        : "A new answer: ";
   const canStop = incoming.streamed && (phase === "writing" || phase === "sighting");
   return (
     <p className="went-progress" role="status" aria-live="polite">
@@ -143,6 +169,7 @@ export const WordsItWrote: React.FC<{
   const pick = useTheodoliteStore((s) => s.pickToken);
   const conn = useTheodoliteStore((s) => s.conn);
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
+  const incoming = useTheodoliteStore((s) => s.incoming);
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const [more, setMore] = React.useState<string>("");
   const s = given ?? shownSighting;
@@ -167,20 +194,26 @@ export const WordsItWrote: React.FC<{
   const k = s.tokenIndex;
   const ready = (i: number) => !!set?.sightings[i];
   const planned = (i: number) => !!set && set.order.includes(i) && (!set.done || ready(i));
-  const wanted = set ? set.wanted : k;
+  // a word-piece chosen and not yet sighted is still to come while this set is sighting, or while "sight this one too"
+  // is reading it; once neither is in flight (stopped, failed, the connection closed) the piece shown is the one chosen
+  const coming = (i: number) =>
+    !!set &&
+    (!set.done || (incoming != null && !incoming.done && incoming.oneMoreOf === set.requestId && incoming.order.includes(i)));
+  const wanted = set && (ready(set.wanted) || coming(set.wanted)) ? set.wanted : k;
   const tabStop = set && planned(wanted) ? wanted : k;
   const sightedIdx = set
     ? Object.keys(set.sightings)
         .map(Number)
         .sort((x, y) => x - y)
     : [];
+  const before = [...sightedIdx].reverse().find((i) => i < wanted);
+  const after = sightedIdx.find((i) => i > wanted);
 
   const onKey = (e: React.KeyboardEvent) => {
     if (!set) return;
-    const from = wanted;
     let to: number | undefined;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") to = sightedIdx.find((i) => i > from);
-    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") to = [...sightedIdx].reverse().find((i) => i < from);
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") to = after;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") to = before;
     else if (e.key === "Home") to = sightedIdx[0];
     else if (e.key === "End") to = sightedIdx[sightedIdx.length - 1];
     else return;
@@ -236,7 +269,7 @@ export const WordsItWrote: React.FC<{
               role="radio"
               aria-checked={on}
               tabIndex={i === tabStop ? 0 : -1}
-              className={waiting ? `${cls} waiting` : cls}
+              className={`${cls}${narrow(f.body) ? " narrow" : ""}${waiting ? " waiting" : ""}`}
               title={JSON.stringify(p.str)}
               aria-label={`word-piece ${i + 1} of ${n}, ${spoken(p)}${waiting ? ", still being sighted: shown when it arrives" : ""}`}
               onClick={() => pick(i)}
@@ -262,17 +295,25 @@ export const WordsItWrote: React.FC<{
   }
 
   const g = s.generation ?? set.generation;
-  const drift =
-    g != null &&
-    g.greedy &&
-    !g.presencePenalty &&
-    s.chosen?.source === "written" &&
-    s.recaptureCheck != null &&
-    !s.recaptureCheck.top1IsChosen;
+  // how these word-pieces were first written (a re-reading's own echo says only "given")
+  const w0 = set.wrote ?? g;
+  const likeliest = (x: typeof g) => x != null && x.greedy && !x.presencePenalty;
+  const offTop = s.recaptureCheck != null && !s.recaptureCheck.top1IsChosen;
+  // written greedily, the piece chosen was the top one when written: read again, layer 60 can put another first only by
+  // a near-tie that the two computations break differently. For a piece given (read again from the answer's ids) its
+  // odds are the re-reading's own, so the note says when it was written instead.
+  const drift = offTop && s.chosen?.source === "written" && likeliest(g);
+  const driftGiven = offTop && s.chosen?.source === "given" && w0?.source === "written" && likeliest(w0);
   const note = sightedNote(set, n);
   const unsighted = pieces.filter((p) => !set.sightings[p.index] && !planned(p.index));
   const canMore = conn === "open" && !isSweeping && set.streamed && !!s.answerIds;
-  const stop = stopWords(set.wrote?.stopReason ?? g?.stopReason);
+  const stop = stopWords(set.wrote?.stopReason ?? g?.stopReason, pieces[n - 1]);
+  // "sight this one too" reads one position, or two in a frame built from a neuron (where the set's frame was built,
+  // then the piece): PACE, as timed on this server
+  const morePositions = set.payload.survey_mode === "pole_motif" ? 2 : 1;
+  const moreSecs = Math.round((PACE.base + PACE.sight * (morePositions - 1)) * 2) / 2;
+  const moreTime = `${Math.floor(moreSecs) || ""}${moreSecs % 1 ? "½" : ""} s`;
+  const anyWaiting = set.order.some((i) => !ready(i) && planned(i));
   const sentPrompts = set.payload.centre_prompts;
   const hadControl = Array.isArray(set.payload.centre_token_ids) || (Array.isArray(sentPrompts) && sentPrompts.length > 0);
 
@@ -284,10 +325,36 @@ export const WordsItWrote: React.FC<{
         <Moment s={s} n={n} />
         {wanted !== k ? <> · word-piece {wanted + 1} is chosen, and shown when its sighting arrives</> : null}.
       </p>
+      {set.order.length > 1 ? (
+        <div className="went-choose">
+          <p className="went-note">
+            {`Each underlined word-piece has a sighting of its own, taken where the model chose it: choose one${
+              sightedIdx.length > 1 ? ", or step with the buttons," : ""
+            } to see the sixty layers there.${anyWaiting ? " Faint ones are still being sighted." : ""}`}
+          </p>
+          {sightedIdx.length > 1 ? (
+            <span className="went-step">
+              <button type="button" className="btn-ghost plain" disabled={before === undefined} onClick={() => before !== undefined && pick(before)}>
+                ← earlier word-piece
+              </button>
+              <button type="button" className="btn-ghost plain" disabled={after === undefined} onClick={() => after !== undefined && pick(after)}>
+                later word-piece →
+              </button>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {drift && s.recaptureCheck && s.chosen ? (
         <p className="went-note">
           Read again, layer 60 puts {pieceWord(s.recaptureCheck.top1Token)} first, not {pieceWord(s.chosen.token)}: writing and reading
           again are not computed exactly alike in 4-bit.
+        </p>
+      ) : null}
+      {driftGiven && s.recaptureCheck && s.chosen ? (
+        <p className="went-note">
+          Read again, layer 60 puts {pieceWord(s.recaptureCheck.top1Token)} first, not {pieceWord(s.chosen.token)}; when it was written it
+          chose {pieceWord(s.chosen.token)}, its likeliest then: a near-tie, which writing and reading again do not compute exactly
+          alike in 4-bit. The odds shown here are this re-reading’s own.
         </p>
       ) : null}
       {g ? (
@@ -349,9 +416,11 @@ export const WordsItWrote: React.FC<{
               <>
                 layer 60 of the re-reading puts id {s.recaptureCheck.top1Id} {pieceWord(s.recaptureCheck.top1Token)} first
                 {s.recaptureCheck.top1IsChosen ? ", the piece chosen" : ", not the piece chosen"}
-                {s.recaptureCheck.chosenLogitDiff != null
+                {s.recaptureCheck.chosenLogitDiff != null && s.chosen?.source === "written"
                   ? `; the chosen piece’s score differs by ${s.recaptureCheck.chosenLogitDiff.toFixed(3)} from when it was written`
-                  : ""}
+                  : s.chosen?.source === "given"
+                    ? "; the piece was given and its odds are this re-reading’s own, so there is no writing to compare its score with"
+                    : ""}
               </>
             ) : (
               <Missing what="not sent" />
@@ -405,7 +474,11 @@ export const WordsItWrote: React.FC<{
                 >
                   sight this one too
                 </button>
-                <span className="muted">read again from the answer’s exact ids, nothing written again; about 1½ s</span>
+                <span className="muted">
+                  read again from the answer’s exact ids with the options it was read with, not the options as set now; nothing
+                  written again; about {moreTime}
+                  {morePositions > 1 ? ", for it reads the word-piece its frame was built at as well, so the frame stays the same" : ""}
+                </span>
               </dd>
             </>
           ) : null}

@@ -7,6 +7,7 @@ import {
   MODEL_SAMPLING,
   SAFE_NUDGE_SCALE,
   composeText,
+  endMarkWords,
   loudnessRank,
   ordinal,
   piecesOf,
@@ -24,6 +25,7 @@ import {
 } from "../store/useTheodoliteStore";
 import { NudgePartLine, OneDrawLine, PenaltyLine } from "../lib/cautions";
 import { faceWord, firstWords, labelTrust, pieceWord, wp } from "../lib/words";
+import { endsTurn } from "./instrument/moment";
 import { isBaseFitted, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
 import {
   DIAL,
@@ -405,7 +407,8 @@ function pieceText(str: string, marked: boolean): React.ReactNode {
 
 /**
  * An answer as the word-pieces it wrote, set like <Answer/> (large when short, smaller when long), with the piece at token
- * index `j`, where the two answers part, underlined in rubric red. Its end of turn, when it wrote one, in small capitals.
+ * index `j`, where the two answers part, underlined in rubric red. The stop mark it wrote, if any, in small capitals and
+ * by which one it is (endMarkWords: only <turn|> ends its turn).
  */
 const PartedAnswer: React.FC<{ pieces: AnswerPiece[]; j: number | null }> = ({ pieces, j }) => {
   if (!pieces.length) return <Missing what="the server returned no words" />;
@@ -428,8 +431,10 @@ const PartedAnswer: React.FC<{ pieces: AnswerPiece[]; j: number | null }> = ({ p
                 color: C.muted,
                 ...(marked ? { textDecoration: `underline 2px ${C.rubric}`, textUnderlineOffset: 6 } : null),
               }}
+              title={JSON.stringify(p.str)}
             >
-              {" "}it ends its turn
+              {" "}
+              {endMarkWords(p.id, p.str)}
             </span>
           );
         }
@@ -478,9 +483,12 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
 
   // The saved questions' shelf reads, saves and fills the store's question. This page keeps a question of its own (it
   // opens on the spider) and sends no begun answer, so while it is open the store holds this page's question with no
-  // begun answer, and the shelf saves and names what this box holds. A visit that changes nothing (no typing, no saved
-  // question chosen, no sighting taken) puts back the question and begun answer that were there before.
+  // begun answer, and the shelf saves and names what this box holds. A visit that takes no sighting and chooses no saved
+  // question puts back the question and begun answer that were there before, whatever was typed here: typing alone never
+  // costs the instrument its begun answer.
   const touched = useRef(false);
+  // the question as last typed here: typing alone is not a change the instrument keeps
+  const typed = useRef(init.question);
   useEffect(() => {
     const st = useTheodoliteStore.getState();
     const before = { question: st.question, answerBegins: st.answerBegins };
@@ -489,7 +497,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
     st.setAnswerBegins("");
     const restore = () => {
       const now = useTheodoliteStore.getState();
-      if (!touched.current && now.question === mine && now.answerBegins === "") {
+      if (!touched.current && now.question === typed.current && now.answerBegins === "") {
         now.setQuestion(before.question);
         now.setAnswerBegins(before.answerBegins);
       }
@@ -505,18 +513,18 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
       restore();
     };
   }, [init]);
-  // a saved question chosen from the shelf fills the store's question: this box takes it
+  // a saved question chosen from the shelf fills the store's question: this box takes it (what was typed here is not one)
   useEffect(() => {
     const q = useTheodoliteStore.getState().question;
-    if (q !== question) {
+    if (q !== question && q !== typed.current) {
       setQuestion(q);
       touched.current = true;
     }
   }, [storeQuestion]); // eslint-disable-line react-hooks/exhaustive-deps
   const ask = (v: string) => {
     setQuestion(v);
+    typed.current = v;
     useTheodoliteStore.getState().setQuestion(v);
-    touched.current = true;
   };
   const [v, setV] = useState(init.v);
   const [toward, setToward] = useState(init.toward);
@@ -845,8 +853,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
       : null;
   const nudgedEarlier = nudgedCand !== null && nudgedNow === null;
   const nudgedDrawn = nudgedNow?.generation != null && !nudgedNow.generation.greedy;
-  // the tool audit's plain answer was written greedily, as bare text: never set against a drawn answer
-  const recordedPlain = !plainNow && !plainOther && question.trim() === SPIDER && !nudgedDrawn && writing.mode === "greedy";
+  // the tool audit's plain answer was written greedily, with no repeat penalty, as bare text: never set against a drawn or
+  // penalised answer (a nudged answer shown is written as the settings now ask, writtenAs, so its penalty is writing's)
+  const recordedPlain =
+    !plainNow && !plainOther && question.trim() === SPIDER && !nudgedDrawn && writing.mode === "greedy" && writing.presencePenalty === 0;
   const pair = plainNow && nudgedNow ? { plain: plainNow, nudged: nudgedNow } : null;
   // each answer as word-pieces (null from an older server, which sends its words as one text)
   const plainPieces = plainNow ? piecesOf(plainNow) : null;
@@ -855,6 +865,27 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const partJ = part?.j ?? null;
   const pairGen = pair?.plain.generation ?? null;
   const sampledNow = writing.mode === "sampled" && writing.temperature > 0;
+  // a repeat penalty set now: even greedy, the word-piece taken is not always its likeliest
+  const penaltyNow = writing.presencePenalty;
+  const nudgedPenalty = nudgedNow?.generation?.presencePenalty ?? 0;
+  /** a repeat penalty in words, as the line under the dial says it */
+  const repeatsWords = (p: number) => {
+    const by = String(Math.round(Math.abs(p) * 1000) / 1000);
+    return `with a repeat penalty, ${p > 0 ? "holding back" : "favouring"} repeats by ${by}`;
+  };
+  // the nudged answer shown stopped at a stop mark that does not end its turn (<eos>, <|tool_response>): a strong nudge
+  // can force a control mark where the answer should go on, so it is said, unless the plain answer beside it stopped there too
+  const nudgedLast = nudgedPieces && nudgedPieces.length ? nudgedPieces[nudgedPieces.length - 1] : null;
+  const plainLast = plainPieces && plainPieces.length ? plainPieces[plainPieces.length - 1] : null;
+  const textEnd = (p: { id: number; str: string }) => endMarkWords(p.id, p.str) === endMarkWords(1, "<eos>");
+  const brokeAt =
+    nudgedLast &&
+    nudgedLast.endMark &&
+    !endsTurn(nudgedLast.id, nudgedLast.str) &&
+    !(textEnd(nudgedLast) && nudgedNow && !nudgedNow.chatWrapped) &&
+    !(plainLast && plainLast.endMark && plainLast.id === nudgedLast.id)
+      ? nudgedLast
+      : null;
   /** what differs between a sighting of this question and the settings as they are now, in words */
   const otherSettings = (x: Sighting): string => {
     const why: string[] = [];
@@ -1671,17 +1702,21 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               part of the dial. The edges are rough: they come from one small test of six questions, with the model always taking its likeliest
               next word. <a href={href.lexicon("strength")}>What is the stream’s strength?</a>
             </Rubric>
-            {sampledNow || nudgedDrawn ? (
+            {sampledNow || nudgedDrawn || penaltyNow !== 0 || nudgedPenalty !== 0 ? (
               <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 760 }}>
-                The edges were measured with the model always taking its likeliest word.{" "}
-                {sampledNow ? (
+                The edges were measured with the model always taking its likeliest word, with no repeat penalty.{" "}
+                {sampledNow || penaltyNow !== 0 ? (
                   <>
-                    Its answers are set to be drawn by chance (under “how it writes” on <a href={href.instrument()}>the instrument</a>)
+                    Its answers are set to be{" "}
+                    {sampledNow ? `drawn by chance${penaltyNow !== 0 ? ` ${repeatsWords(penaltyNow)}` : ""}` : `written ${repeatsWords(penaltyNow)}`} (under
+                    “how it writes” on <a href={href.instrument()}>the instrument</a>)
                   </>
+                ) : nudgedDrawn ? (
+                  `The nudged answer shown was drawn by chance${nudgedPenalty !== 0 ? ` ${repeatsWords(nudgedPenalty)}` : ""}`
                 ) : (
-                  "The nudged answer shown was drawn by chance"
+                  `The nudged answer shown was written ${repeatsWords(nudgedPenalty)}`
                 )}
-                , and where a drawn answer breaks was not measured.
+                , and where an answer written so breaks was not measured.
               </p>
             ) : null}
             {isNeuron ? (
@@ -2075,8 +2110,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
             ) : null}
             {!plainNow && !plainOther && !recordedPlain && question.trim() === SPIDER ? (
               <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
-                The tool audit’s plain answer to this question was written with its likeliest word, so it is not set against an answer drawn by
-                chance.
+                The tool audit’s plain answer to this question was written with its likeliest word and no repeat penalty, so it is not set against
+                an answer {nudgedDrawn || sampledNow ? "drawn by chance" : "written with a repeat penalty"}.
               </p>
             ) : null}
           </div>
@@ -2104,6 +2139,23 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                   From a live sighting, with the nudge armed.
                   {nudgedNow.continuation.includes("\n") ? " ¶ marks where it began a new line." : ""}
                 </p>
+                {brokeAt ? (
+                  <p style={{ margin: 0, fontSize: 16, fontStyle: "italic", color: C.rubric, maxWidth: 520 }}>
+                    It wrote {endMarkWords(brokeAt.id, brokeAt.str)}, not the mark that ends its turn: the nudge may have broken the answer.
+                  </p>
+                ) : null}
+                {!pair && nudgedNow.generation ? (
+                  // with no plain answer beside it, "how both were written" is not shown: say here how this one was
+                  <p style={{ margin: 0, fontSize: 15, color: C.muted, maxWidth: 520 }}>
+                    <span style={labelSc}>how it was written</span> <OneDrawLine generation={nudgedNow.generation} />
+                    {nudgedPenalty !== 0 ? (
+                      <>
+                        {" "}
+                        <PenaltyLine penalty={nudgedPenalty} />
+                      </>
+                    ) : null}
+                  </p>
+                ) : null}
               </>
             ) : !isCollapse ? (
               <div style={placeholderBox}>[TAKE A SIGHTING TO SEE THE NUDGED ANSWER]</div>

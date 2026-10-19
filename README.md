@@ -112,7 +112,7 @@ before (attention, lapis) or **recalled** from memory (the feed-forward block, g
 
 | In the instrument | In the literature |
 |---|---|
-| a **sighting** | the stream at one word-piece, read through all 60 layers; one sweep gives one where the model read your last word-piece and (as the interface asks by default) one for each word-piece it writes, read where it chose it |
+| a **sighting** | the stream at one word-piece, read through all 60 layers; one sweep gives (as the interface asks by default) one per word-piece it writes, read where it chose it: the first where it read your last word-piece, each later one where it read the piece before |
 | **layers 1–60** | decoder layers, counted from 1 (the code counts 0–59) |
 | **the lens** · **the naked eye** | the J++ lens readout `unembed(h·Jₗᵀ)`, with Jₗ fitted on the base model `google/gemma-4-31B` · the logit lens `unembed(h)` |
 | **gathering** · **remembering** | the attention write · the feed-forward (GeGLU) write, with Gemma 4’s layer scalar |
@@ -134,13 +134,14 @@ one to the next. Inside its own answers the study found the lens’s lead over t
 layers 31 to 40, and gone from layer 41 (E3). Compare the same word-piece across matched sightings instead.
 
 **How it writes.** Under the question, the band *how it writes* sets how the answer is written before it is sighted: its
-likeliest word-piece every time, as the study wrote, or drawn by chance as chat apps do, with a repeat penalty, a temperature,
-top-k and top-p, applied in that order, and a seed (blank, the server draws one and sends it back); and how long it may run,
-1 to 256 word-pieces, stopping sooner when it ends its turn. Greedy is the default everywhere, including the sighting taken
-when the page first connects. A drawn answer is one draw of many it could give, and the pages say so; the sampler changes which
-words are written, never how a word is read. What the pages say of how an answer was written comes from the server’s echo of
-it (`generation`, and `chosen` for each word-piece), never from the form. The methods are [42]–[44] in
-[`REFERENCES.md`](REFERENCES.md).
+likeliest word-piece every time, as the study wrote the answers it checked the lens on, or drawn by chance as chat apps do,
+with a repeat penalty, a temperature, top-k and top-p, applied in that order, and a seed (blank, the server draws one and
+sends it back); and how long it may run, 1 to 256 word-pieces, stopping sooner at one of the model’s stop marks: the mark
+that ends its turn, or another (the end of the text, or a control mark a strong nudge can force), which the pages name rather
+than call an end of turn. Greedy is the default everywhere, including the sighting taken when the page first connects. A
+drawn answer is one draw of many it could give, and the pages say so; the sampler changes which words are written, never how
+a word is read. What the pages say of how an answer was written comes from the server’s echo of it (`generation`, and
+`chosen` for each word-piece), never from the form. The methods are [42]–[44] in [`REFERENCES.md`](REFERENCES.md).
 
 **Saved questions and system prompts.** Nothing you write is kept unless you save it. *save this*, under the question or the
 system prompt, keeps it under a name you give; the count beside it opens the list, and choosing an entry fills the boxes

@@ -516,7 +516,8 @@ class TheodoliteSweepBundle:
     read_token: Optional[str] = None
     chosen: Optional[WrittenStep] = None
     # At layer 60 (J = I): the readout's top word-piece, whether it is the chosen one, and the readout's logit for the
-    # chosen one less the writing's own (the reading forward and the writing forward agree to bf16 rounding).
+    # chosen one less the writing's own (the reading forward and the writing forward agree to bf16 rounding). For a
+    # given piece the logit and the diff are None: its odds are this readout's own, with no writing to compare with.
     recapture_check: Optional[Dict[str, Any]] = None
     kinship_n_states: Optional[int] = None  # the word-pieces kinship (CKA) is taken over: target_pos + 1
     # "none" | "control_prompt_end" (k = 0: the controls' own last piece) | "control_reading_same_answer" (k >= 1)
@@ -1745,17 +1746,21 @@ class TheodoliteRuntime:
         cka_matrix = compute_linear_cka_matrix(seq_states_t)
 
         # The reading forward against the writing one, at layer 60 (J = I): the readout's top piece and its logit for
-        # the chosen piece, less the logit the writing chose it at
+        # the chosen piece, less the logit the writing chose it at. A given piece was never written here: its odds
+        # are this very readout's (capture_for_sweep), so a diff would be 0 by construction and is sent as None.
         recapture_check: Optional[Dict[str, Any]] = None
         if chosen is not None and readout_60 is not None:
             top1_id = int(torch.argmax(readout_60).item())
-            chosen_logit_recapture = float(readout_60[chosen.token_id].item())
+            written = chosen.source == "written"
+            chosen_logit_recapture = float(readout_60[chosen.token_id].item()) if written else None
             recapture_check = {
                 "top1_id": top1_id,
                 "top1_token": self.tokenizer.decode([top1_id], clean_up_tokenization_spaces=False),
                 "top1_is_chosen": top1_id == chosen.token_id,
                 "chosen_logit_recapture": chosen_logit_recapture,
-                "chosen_logit_diff": chosen_logit_recapture - chosen.chosen_logit,
+                "chosen_logit_diff": (
+                    chosen_logit_recapture - chosen.chosen_logit if chosen_logit_recapture is not None else None
+                ),
             }
 
         peak_vram_gb = (

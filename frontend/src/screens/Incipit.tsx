@@ -3,11 +3,12 @@ import { Apparatus, Lozenge, Missing, Page, ReadingThrough, Rubric } from "../co
 import { useReading } from "../reading";
 import { href, navigate, type Route } from "../router";
 import {
-  type GenerationEcho,
   type Sighting,
   type SweepProgress,
+  endMarkWords,
   generationWords,
   ordinal,
+  piecesOf,
   readWhere,
   useShownSet,
   useTheodoliteStore,
@@ -23,6 +24,7 @@ import {
   RECORDED_MAX_NEW_TOKENS,
 } from "./incipit/data";
 import { type Frontispiece, FrontispieceFigure, frontispieceOf } from "./incipit/Frontispiece";
+import { stopWords } from "./instrument/moment";
 import {
   Diamond10,
   LeafFigure,
@@ -68,24 +70,6 @@ function readAtWords(s: Sighting): string | null {
   if (s.readAt == null) return null;
   const w = readWhere(s);
   return w.role === "written" ? `${pieceWord(s.readAt)}, the ${ordinal(w.k)} word-piece of its own answer` : `${pieceWord(s.readAt)}${w.phrase}`;
-}
-
-/** Why the server stopped writing, in plain words (from its echo). */
-function stopWords(r: GenerationEcho["stopReason"] | undefined): string | null {
-  switch (r) {
-    case "end_mark":
-      return "it ended its turn";
-    case "length":
-      return "the length ran out";
-    case "stopped":
-      return "stopped by you";
-    case "given":
-      return "given, not written";
-    case "none":
-      return "asked to write none";
-    default:
-      return null;
-  }
 }
 
 /** Where a request in flight has got: “writing 3 of 6…”, “sighting 2 of 6…”. */
@@ -248,6 +232,8 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
         "}\n}";
   const k = s?.tokenIndex ?? 0;
   const nAnswer = s?.answerIds?.length ?? g?.nWritten ?? null;
+  // why it stopped writing, naming the stop mark it wrote (only <turn|> ends its turn)
+  const stopped = g ? stopWords(g.stopReason, (s && set?.sightings[s.tokenIndex] === s ? set.pieces : null) ?? piecesOf(s)) : null;
 
   const lm = s?.landmarks ?? ["she", "he", "it"];
 
@@ -280,7 +266,13 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
             {s?.nTokens != null ? s.nTokens : <Missing />} read up to here; read at{" "}
             {s && readAtWords(s) != null ? readAtWords(s) : <Missing />} (position {s?.readPos != null ? s.readPos : <Missing />},
             counting from 0)
-            {s && k > 0 && nAnswer != null ? <>, word-piece {k + 1} of the {nAnswer} it wrote</> : null}.
+            {s && k > 0 && nAnswer != null ? (
+              <>
+                ; this is the sighting of word-piece {k + 1} of the {nAnswer} it wrote
+                {s.chosen ? <>, {s.chosen.endMark ? endMarkWords(s.chosen.id, s.chosen.token) : pieceWord(s.chosen.token)}</> : null}
+              </>
+            ) : null}
+            .
             {recorded && s?.firstIds ? (
               <>
                 {" "}Start marks <span className="mono">[{s.firstIds.join(", ")}]</span>: the start mark doubled, as the instrument
@@ -320,7 +312,7 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
                 {g.source === "given" ? ", read again from its word-pieces" : ""};{" "}
                 {g.nWritten ?? nAnswer ?? <Missing what="not sent" />} written of at most{" "}
                 <span className="mono">max_new_tokens={g.maxNewTokens ?? "[not sent]"}</span>
-                {stopWords(g.stopReason) ? ` (${stopWords(g.stopReason)})` : ""}
+                {stopped ? ` (${stopped})` : ""}
                 {g.capped ? `; sighted the first ${set?.order.length ?? g.maxSighted ?? "[not sent]"} of them` : ""}
               </>
             ) : (
@@ -549,8 +541,8 @@ const HowItWorks: React.FC<{ s: Sighting | null }> = ({ s }) => (
       </Step>
       <Step icon={<StepSight />} numeral="ii" title="take a sighting">
         The model writes its answer, reads your words and its own once more, and the instrument takes a reading at each of its
-        sixty layers: where it read your last word, and where it chose each word-piece it wrote (unless you ask for the first
-        alone). The sighting on this page took{" "}
+        sixty layers where it chose each word-piece it wrote, the first of them where it read your last word (unless you ask for
+        the first alone). The sighting on this page took{" "}
         <span className="num">{tookWords(s)?.secs ?? <Missing />}</span>
         {tookWords(s) ? <>, {tookWords(s)!.what}</> : null}.
       </Step>

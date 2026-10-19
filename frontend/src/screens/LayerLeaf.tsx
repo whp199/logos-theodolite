@@ -8,12 +8,14 @@ import {
   VOCAB,
   chosenOf,
   chosenPhrase,
+  endMarkWords,
   exportAnswer,
   exportSighting,
   isChosenRow,
   loudestOf,
   maxAct,
   readWhere,
+  readsInsideAnswer,
   retakeIfLive,
   useShownSet,
   useTheodoliteStore,
@@ -25,7 +27,9 @@ import {
 import { certainty, comma, firstWords, gloss, kindOf, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
 import { describeFrame } from "../lib/frame";
 import { lensLabel, useReadingLens } from "../lib/lens";
-import { OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
+import { NotAMatchedPair, OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
+import { endedWords } from "./instrument/moment";
+import { KINSHIP_GROWS } from "./instrument/Kinship";
 import { Dial } from "./layerLeaf/Dial";
 import { AnswerMarks, CHOSEN_MARK, READ_MARK, useAnswerPieces } from "./layerLeaf/AnswerMarks";
 import {
@@ -123,7 +127,7 @@ const lastWord = (s: Sighting) => (s.readAt ? pieceWord(s.readAt) : "the last wo
  */
 const saidHere = (s: Sighting): string | null => {
   const c = chosenOf(s);
-  if (c) return c.endMark ? "Here it ended its turn." : `It chose ${pieceWord(c.token)}.`;
+  if (c) return c.endMark ? `Here ${endedWords(c.id, c.token)}.` : `It chose ${pieceWord(c.token)}.`;
   const went = s.continuation.trim();
   return s.tokenIndex === 0 && went ? `It went on “… ${firstWords(went, 40)}”.` : null;
 };
@@ -145,7 +149,8 @@ const surveyedIn = (s: Sighting): string => {
   }
   return s.elapsedMs != null ? `${N_LAYERS} layers surveyed in ${ms(s.elapsedMs)}` : `${N_LAYERS} layers surveyed`;
 };
-/** Drawn by chance (or with a repeat penalty): the server's echo says so; greedy, as the study wrote, needs no line here. */
+/** Drawn by chance (or with a repeat penalty): the server's echo says so; greedy with no penalty, as the study wrote the
+ * answers it checked the lens on, needs no line here. */
 const drawn = (s: Sighting) => {
   const g = s.generation;
   return g != null && g.source !== "recorded" && (!g.greedy || (g.presencePenalty ?? 0) !== 0) ? g : null;
@@ -363,6 +368,7 @@ const AskedStrip: React.FC<{ s: Sighting }> = ({ s }) => {
           ) : null}
         </div>
       ) : null}
+      {pieces && pieces.length && sighted.length > 1 ? <NotAMatchedPair /> : null}
       {g ? (
         <p style={{ margin: "8px 0 0", fontSize: 15, color: MUTED, maxWidth: 980 }}>
           {!g.greedy ? <OneDrawLine generation={g} /> : null}
@@ -393,7 +399,7 @@ function thinkingClause(c: Ctx, lensName: string): string {
     const other =
       chosen && !isChosenRow(c.s, c.L, 0)
         ? chosen.endMark
-          ? ", yet here it ended its turn"
+          ? `, yet here ${endedWords(chosen.id, chosen.token)}`
           : `, yet it chose ${wordOrPicto(chosen.token)}`
         : "";
     if (p == null) return `the model’s likeliest next word is ${w}${other}`;
@@ -892,7 +898,9 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
               }}
             >
               {chosen.endMark ? (
-                <span style={{ fontSize: 20, ...CHOSEN_MARK }}>its end of turn</span>
+                <span style={{ fontSize: 20, ...CHOSEN_MARK }} title={JSON.stringify(chosen.token)}>
+                  {endMarkWords(chosen.id, chosen.token)}
+                </span>
               ) : (
                 <Wp token={chosen.token} style={{ fontSize: 28, lineHeight: 1.2, ...CHOSEN_MARK }} />
               )}
@@ -950,8 +958,9 @@ const Thinking: React.FC<{ c: Ctx }> = ({ c }) => {
                   : ""}
             .{said ? ` ${said}` : ""}{" "}
           </>
-        ) : s.tokenIndex >= 1 ? (
-          // inside its own answer the study measured the lens apart from prose: the red line below (LensCaution) gives that
+        ) : readsInsideAnswer(s) ? (
+          // inside its own answer (a begun one in a chat turn too) the study measured the lens apart from prose: the red line
+          // below (LensCaution) gives that
           <>
             These are the words read from this layer’s stream through the {lens.name} lens: its guess at what the model would say if it
             stopped here. Take them as glimpses, not a forecast.{said ? ` ${said}` : ""}{" "}
@@ -2170,6 +2179,7 @@ const Kinship: React.FC<{ c: Ctx }> = ({ c }) => {
       <Rubric style={{ maxWidth: 920 }}>
         Each cell is one layer, shaded by how closely it arranges {words} the way layer {no} does{" "}
         <span style={{ fontStyle: "normal" }}>(linear CKA, where 1 is the same arrangement)</span>. Darker gilt is closer kin.
+        {s.tokenIndex >= 1 || s.generation?.sightEvery ? ` ${KINSHIP_GROWS}` : null}
         {beforeBos ? (
           <>
             {" "}
