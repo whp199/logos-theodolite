@@ -992,7 +992,7 @@ async def main() -> int:
                 })()"""
             )
             assert frame_ui["radios"] == 4 and frame_ui["disabled"] == 0 and frame_ui["clicked"], f"frame options: {frame_ui}"
-            await wait_for("""document.body.innerText.includes("The last sighting was squared all at once")""", "a Löwdin sighting")
+            await wait_for("""document.body.innerText.includes("The sighting shown was squared all at once")""", "a Löwdin sighting")
             print("  • Landmarks: the frame options are live; a sighting squared all at once came back")
             await go("#/neuron/36/9482/pos")
             await asyncio.sleep(0.5)
