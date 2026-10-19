@@ -33,6 +33,7 @@ import { href } from "../router";
 import { readsInsideAnswer, type GenerationEcho, type Sighting } from "../store/sighting";
 import { useTheodoliteStore } from "../store/useTheodoliteStore";
 import { isShippedLens, useReadingLens } from "./lens";
+import { comma } from "./words";
 
 /** A setting as the server echoed it: whole numbers bare, others to at most three places. */
 const num = (x: number): string => (Number.isInteger(x) ? String(x) : String(Math.round(x * 1000) / 1000));
@@ -108,6 +109,107 @@ export const AnswerPositionCaution: React.FC<{ k?: number; sighting?: Sighting |
       <a href={href.lexicon("matched-control")}>{link}</a>
       {tail}
     </Rubric>
+  );
+};
+
+/* ------------------------------------------------------- far into a text */
+
+/**
+ * The longest text the study checked the shipped lens's readings on, in word-pieces (positions 0-140).
+ * - E3's fidelity texts: 24 paragraphs and 24 chats, each question with its greedy answer of up to 110 word-pieces
+ *   (E3_lens_validation_REPORT.md:67-69; E3_lens_validation_02_genchats.py:6), each read whole: lab.ids(txt) and
+ *   lab.ids(lab.chat(q, assistant=a)) (E3_lens_validation_03_fidelity.py:18-24). Through the instrument's own tokenizer
+ *   (the lab's, experiments/lab/labkit.py:37), tokenized on the CPU on 2026-10-19, the paragraphs run 76 to 109
+ *   word-pieces (the report says 76-97) and the chats 74 to 141.
+ * - R1's held-out tests of every lens it compared read the same texts (R1_06_evaldir.py:26-32, R1_10_evalfull.py:39-44;
+ *   R1_IT_LENS_REPORT.md:387-388).
+ * - The checks against behaviour read shorter texts (built from their scripts, same tokenizer): E1 at most 95
+ *   word-pieces (E1_self_readout_common.py, e1_build over E1_QA and E1_CONDS), E2's lens part at most 72
+ *   (E2_behavior_b_teacherforced.py), E5 at most 44 (E5_name_common.py, grid).
+ * - N1's checks of the neuron labels read windows of at most 128 (N1B_build_corpus.py:7).
+ * - Not a check of the J++ lens's readings: R1's own fit set, for the instruct-fitted lens the instrument does not load,
+ *   reached position 155 (R1_02_positions.json).
+ */
+const STUDY_LONGEST_TEXT = 141;
+
+/**
+ * The line for a sighting read at or past the end of the passages the lens was fitted on (readPos >= fitLen; positions
+ * count from 0, so position 128 is the 129th word-piece). Null below it, and when the fit length or the position is
+ * not known.
+ * - "Fitted on passages of 128 word-pieces": the shipped file's provenance, source_config.max_seq_len 128 for 64
+ *   WikiText passages, the fit skipping the first 16 positions (skip_first_n_positions 16; read from the cached file;
+ *   E3_lens_validation_REPORT.md:316; REPORT.md:83). The length comes from the lens's own card (LensInfo.fitLen).
+ * - "The study checked the lens’s readings only on texts of up to 141": STUDY_LONGEST_TEXT above. From position 141 on, none
+ *   of those checks reach; between the fit length and 140, they do, in E3's longer chats, so the line says only how
+ *   long the checked texts were.
+ * - For a lens that is not the shipped one, the study's checks were made with the shipped lens, not this one
+ *   (LensCaution's lead says so too).
+ * - The window: the checkpoint's config sets text_config.sliding_window 1024, and its layer_types make 50 of the 60
+ *   layers "sliding_attention" (all but layers 6, 12, … 60, store/sighting.ts GLOBAL_IDX); transformers masks such a
+ *   layer to keys k > q - sliding_window (masking_utils.py, sliding_window_overlay). So from read_pos 1024 on, those
+ *   fifty layers no longer reach position 0, the start of the text. "Neither fitted nor checked" holds only when the
+ *   window lies past both the fit length and the longest checked text, so it is said only then.
+ */
+function farPositionText(
+  readPos: number | null,
+  fitLen: number | null,
+  slidingWindow: number | null,
+  shipped = true,
+): string | null {
+  if (readPos == null || fitLen == null || !Number.isInteger(readPos) || readPos < fitLen) return null;
+  const beyondChecks = readPos >= STUDY_LONGEST_TEXT;
+  const head =
+    `Here the model has read ${comma(readPos + 1)} word-pieces (position ${comma(readPos)}, counting from 0), more ` +
+    `than the passages of ${comma(fitLen)} word-pieces the lens was fitted on.`;
+  const study = shipped
+    ? beyondChecks
+      ? ` The study checked the lens’s readings only on texts of up to ${STUDY_LONGEST_TEXT} word-pieces: nothing it ` +
+        "measured shows how the lens reads this far into a text."
+      : ` The study checked the lens’s readings on texts of up to ${STUDY_LONGEST_TEXT} word-pieces.`
+    : ` The study’s checks, made with the shipped lens and not this one, ran on texts of up to ${STUDY_LONGEST_TEXT} ` +
+      `word-pieces${beyondChecks ? ": none reach this far into a text." : "."}`;
+  let windowPart = "";
+  if (slidingWindow != null && readPos >= slidingWindow) {
+    const unfitted = slidingWindow >= fitLen && (!shipped || slidingWindow >= STUDY_LONGEST_TEXT);
+    windowPart =
+      ` From position ${comma(slidingWindow)} on, fifty of the model’s sixty layers look back over only the last ` +
+      `${comma(slidingWindow)} word-pieces, so they no longer reach the start of the text. That is the model’s own design` +
+      (unfitted ? ", and the lens was neither fitted nor checked on texts this long." : ".");
+  }
+  return head + study + windowPart;
+}
+
+/**
+ * Beside the lens's words, for a sighting read at or past the end of the passages the lens was fitted on: how far in
+ * it reads, how long the fitted and the checked texts were, and, from the model's attention window on, that most of
+ * its layers no longer reach the start of the text. Nothing before the fit length, or when it is not known. The words
+ * and their sources are at farPositionText. `shipped` (default true) is false for any lens but the shipped J++.
+ */
+export const FarPositionCaution: React.FC<{
+  readPos: number | null;
+  fitLen: number | null;
+  slidingWindow: number | null;
+  shipped?: boolean;
+}> = ({ readPos, fitLen, slidingWindow, shipped = true }) => {
+  const text = farPositionText(readPos, fitLen, slidingWindow, shipped);
+  return text ? <Rubric>{text}</Rubric> : null;
+};
+
+/** FarPositionCaution for a sighting (the one given, else the one shown), with the fit length of the lens it was read
+ * through (the sighting's own record, else the server's, else the instrument's: lib/lens.ts, useReadingLens). Rendered
+ * for every sighting, k = 0 included. */
+export const SightingFarCaution: React.FC<{ sighting?: Sighting | null }> = ({ sighting: given }) => {
+  const shown = useTheodoliteStore((s) => s.sighting);
+  const sighting = given !== undefined ? given : shown;
+  const { lens } = useReadingLens(sighting);
+  if (!sighting) return null;
+  return (
+    <FarPositionCaution
+      readPos={sighting.readPos}
+      fitLen={lens.fitLen}
+      slidingWindow={sighting.slidingWindow}
+      shipped={isShippedLens(lens)}
+    />
   );
 };
 
@@ -310,7 +412,8 @@ const joined = (parts: [string, string, string]) => parts.join("");
  * The same texts as plain strings, for titles and aria labels. The lines that depend on a value are functions; each
  * returns null where its component renders nothing. answerPosition, answerPositionRaw and answerPositionBegun are the
  * shipped lens's wording (a word-piece it wrote in a chat, one written without the chat template, and the last piece of
- * an answer begun for it in a chat); oneDraw gives the fact and the advice together.
+ * an answer begun for it in a chat); oneDraw gives the fact and the advice together; farPosition takes (readPos,
+ * fitLen, slidingWindow, shipped = true).
  */
 export const strings = {
   answerPosition: joined(answerPositionParts("answer", true)),
@@ -325,4 +428,5 @@ export const strings = {
   penalty: penaltyText,
   templateEnd: TEMPLATE_END,
   nudgePart: nudgePartText,
+  farPosition: farPositionText,
 } as const;

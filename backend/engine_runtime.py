@@ -25,11 +25,21 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional
 import numpy as np
 
 # The CUDA caching allocator grows its pool in expandable segments rather than fixed blocks, so the writing's
-# full-length logits and kinship's buffers reuse one another's memory instead of leaving fragments: in the longest
-# sweep it lowers the card's peak by 1.4-2.2 GiB, and it changes no reading, bit for bit (MAX_SWEEP_POSITIONS). The
-# allocator reads this when CUDA first starts, so it is set before torch is: here, ahead of every entry point's
-# first allocation (the server, the scientist tools, the scripts). A setting of the user's own is kept.
-os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+# full-length logits and kinship's buffers reuse one another's memory instead of leaving fragments. In the worst sweep
+# it lowers the card's peak by 2,264 MiB at 1024 word-pieces, 1,956 at 1536, and at least 1,397 at 2048 (its highest
+# run), where the default allocator filled the card (the second table in the comment above MAX_SWEEP_POSITIONS). It
+# places memory and does no arithmetic, so no reading changes: scripts/check_sweep_refactor.py compares whole sweeps
+# bit for bit between two checkouts, so a record made before this line (the default allocator) against one made after
+# it compares the two allocators (and scripts/check_capture_rows.py checks the recapture itself against
+# interp_engine's capture, bit for bit). The allocator reads the setting when torch first allocates on the GPU, not at
+# import, so setting it here, ahead of every entry point's first allocation (the server, the scientist tools, the
+# scripts), is in time. A setting of the user's own is kept whole: torch reads PYTORCH_CUDA_ALLOC_CONF first and
+# PYTORCH_ALLOC_CONF only when that is unset, so ours goes in only when none of the three names is set (a setdefault
+# would drop a user's PYTORCH_ALLOC_CONF without a word). `TheodoliteRuntime.load` logs what the allocator runs with
+# and warns when the segments are off; GET /api/health sends it ("allocator").
+_ALLOC_CONF_NAMES = ("PYTORCH_ALLOC_CONF", "PYTORCH_CUDA_ALLOC_CONF", "PYTORCH_HIP_ALLOC_CONF")
+if not any(os.environ.get(k) for k in _ALLOC_CONF_NAMES):
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 import torch  # noqa: E402
 import torch.nn as nn
@@ -77,6 +87,21 @@ from backend.theodolite_math import (
 
 logger = logging.getLogger(__name__)
 
+
+def read_allocator_settings() -> str:
+    """The settings the caching allocator runs with, as torch reports them (the PYTORCH_*ALLOC_CONF string it took);
+    "" when it reports none or cannot say (an older torch without this call)."""
+    try:
+        return str(torch._C._accelerator_getAllocatorSettings() or "")
+    except Exception:
+        return ""
+
+
+def expandable_segments_on(settings: str) -> bool:
+    """Whether allocator settings turn expandable segments on (torch's spelling: expandable_segments:True)."""
+    return "expandable_segments:True" in settings.replace(" ", "").split(",")
+
+
 DEFAULT_W4A16_MODEL_ID = "google/gemma-4-31B-it-qat-w4a16-ct"
 CANONICAL_MODEL_ID = "google/gemma-4-31b-it"
 LENS_REPO_ID = "neuronpedia/jacobian-lens"
@@ -102,6 +127,15 @@ JPP_LENS_FALLBACK: Dict[str, Any] = {
     # means track behaviour at r 0.88 at L20-29, and at L10-19 at 0.92 in E1 but 0.31 in E2 (E1 table, E2 §6); no
     # average-Jacobian lens is stable below L30 (E3, R1); contrasts at L30-49 and the L50-58 pronoun flag are erratum
     # E49; the she-lean is erratum E2; neuron labels were sampled at L10/20/30/40/45/50/55/57 (N1).
+    # The last sentence, on how far in it was fitted and checked: the fit took positions 16-127 of 128-piece passages
+    # (E3 report, Caveats: "the fit skips the first 16 positions"; provenance max_seq_len 128). The study's texts were
+    # short: E3's fidelity check read 24 chats of 74-141 word-pieces and 24 paragraphs of 76-109
+    # (E3_lens_validation_a_summary_chat.json / _prose.json, "T"); E1's identity passages are 51-95 (retokenised from
+    # E1_self_readout_common.py with the instrument's tokenizer); R1 evaluated on E1's and E3's texts; N1 read 128-piece
+    # chunks (N1B_build_corpus.py, WIN 127 plus BOS). The window is the model's: text_config.sliding_window 1024 with
+    # 50 sliding and 10 full layers in layer_types, and transformers' sliding mask keeps only keys after q - 1024, so
+    # from read position 1024 the sliding layers no longer reach position 0 (`TheodoliteRuntime.sliding_window`).
+    # scripts/check_lens_card.py checks these figures against those files and the cached config.
     "caution": (
         "Fitted on the base model, not on the model it reads: compare its readings between matched sightings; do not "
         "take its words as this model's own. Layers count from 0 here (the pages count from 1). The order of "
@@ -110,7 +144,10 @@ JPP_LENS_FALLBACK: Dict[str, Any] = {
         "layers 30-49 for condition contrasts. At layers 50-58 this lens reads 'she' at or above a woman persona for "
         "6-7 of the 9 AI personas the study tried: flag pronoun readouts there unless a lens fitted on the instruct "
         "model agrees. Neuron-pole word labels predicted causal effects only at the sampled layers 40-57; they were at "
-        "chance at 10-30, and 31-39 were not sampled."
+        "chance at 10-30, and 31-39 were not sampled. It was fitted on positions 16-127 (counting from 0) of "
+        "128-piece passages and the study checked it only on short texts (at most 141 word-pieces in its fidelity "
+        "check), so how well it reads further in is unmeasured; from position 1024 on, 50 of the model's 60 layers "
+        "no longer look back to the start of the text."
     ),
 }
 _LENS_METHOD_NAMES = {"jpp": "J++"}
@@ -364,14 +401,14 @@ class SweepLayerTokenReadout:
 #                                       512      1024     1536     1792     2048
 #   the old code                        28,019
 #   this code, default allocator                 27,223   28,255*           28,301*
-#   this code, expandable segments               24,959   26,299   26,690   26,857, 26,879 (two runs)
+#   this code, expandable segments               24,959   26,299   26,690   26,857, 26,879, 26,904 (three runs)
 #   (* the card was full: the allocator freed its cache and tried again)
-# Torch's own peak hardly moves with the allocator (23.9 / 24.5 / 25.5 GiB at 1024 / 1536 / 2048): what the
-# segments save is fragments. With the desktop holding 4.5 GiB, 2048 keeps 1.1 GiB of the card spare (1792 1.3,
-# 1536 1.7), where the old code at 512 kept nothing; with the 5.4 GiB the desktop held on 2026-10-18 with a game's
-# helpers open, 0.2. Hence 2048. The recapture is still one forward: 1.1 s at 512 (it was 1.8 s), 1.3 s at 1024,
-# 1.9 s at 2048. A sweep that still runs out is refused in plain words and the socket keeps answering
-# (server._stream_sweep).
+# Torch's own peak hardly moves with the allocator (23.9 / 24.5 / 25.5 GiB at 1024 / 1536 / 2048): what the segments
+# save is fragments. With the desktop holding 4.5 GiB, 2048 keeps 1.1 GiB of the card spare at its highest run,
+# 26,904 MiB (1792 1.3, 1536 1.7), where the old code at 512 kept nothing; with the 5.4 GiB the desktop held on
+# 2026-10-18 with a game's helpers open, 0.2. Hence 2048. The recapture is still one forward: 1.1 s at 512 (it was
+# 1.8 s), 1.3 s at 1024, 1.9 s at 2048. A sweep that still runs out is refused in plain words and the socket keeps
+# answering (server._stream_sweep).
 MAX_SWEEP_POSITIONS = 2048
 
 # The points `TheodoliteRuntime.capture_rows` takes: those interp_engine's capture stores exactly as its hook sees them
@@ -652,6 +689,8 @@ class TheodoliteRuntime:
         self.jlens_lenses: Dict[int, torch.Tensor] = {}
         # the J++ file's own "provenance" block (plus its top-level n_prompts), as loaded; {} until then
         self.jpp_provenance: Dict[str, Any] = {}
+        # what the CUDA caching allocator runs with, as torch reports it, read at the end of `load()`; "" until then
+        self.allocator_settings: str = ""
 
         self._decoder_layers: Optional[nn.ModuleList] = None
         self._final_norm_weight: Optional[torch.Tensor] = None
@@ -723,12 +762,36 @@ class TheodoliteRuntime:
             self.eager_model._lens_jacobians["jlens"] = self.jlens_lenses
 
         vram_gb = torch.cuda.max_memory_allocated(self.device) / (1024**3) if torch.cuda.is_available() else 0.0
+        # what the CUDA allocator runs with, now that it has allocated (see the note above `import torch`)
+        self.allocator_settings = read_allocator_settings()
         logger.info(
-            "TheodoliteRuntime ready in %.2fs | Peak VRAM: %.2f GB (limit: 30.0 GB)",
+            "TheodoliteRuntime ready in %.2fs | Peak VRAM: %.2f GB (limit: 30.0 GB) | allocator: %s | "
+            "sliding window: %s",
             time.perf_counter() - t0,
             vram_gb,
+            self.allocator_settings or "(default)",
+            self.sliding_window,
         )
+        if torch.cuda.is_available() and not expandable_segments_on(self.allocator_settings):
+            logger.warning(
+                "The CUDA allocator runs without expandable segments (%s): sweeps near MAX_SWEEP_POSITIONS=%d may "
+                "run out of memory, and are then refused in plain words.",
+                self.allocator_settings or "the default settings",
+                MAX_SWEEP_POSITIONS,
+            )
         return self
+
+    @property
+    def sliding_window(self) -> Optional[int]:
+        """How many word-pieces back the model's sliding-window layers look, from its own config
+        (text_config.sliding_window: 1024 on Gemma-4-31B, whose layer_types hold 50 sliding and 10 full layers). A
+        piece read at position 1024 or later (counting from 0) is read by layers that no longer look back to the
+        start of the text (transformers' sliding mask keeps keys after q - window). None before `load()` or when
+        the config names none. Sent beside every sighting's read_pos and in GET /api/health."""
+        cfg = getattr(self.hf_model, "config", None)
+        text_cfg = getattr(cfg, "text_config", None) or cfg
+        w = getattr(text_cfg, "sliding_window", None)
+        return int(w) if isinstance(w, int) and not isinstance(w, bool) and w > 0 else None
 
     def _load_coordinate_lenses(self) -> None:
         """Load J++ (`/jpp/`) and Jacobian (`/jlens/`) lenses from Hugging Face cache/hub,
@@ -1181,7 +1244,9 @@ class TheodoliteRuntime:
         inside whatever steering block is open, with no mask, read by `HookManager` hooks on the modules
         `resolve_point` names, so every row kept holds the same values, bit for bit. Only points that capture
         stores as the hook sees them are taken (`_ROW_CAPTURE_POINTS`); the copy to the CPU is synchronous, so the
-        value is the one at the hook, before any later kernel runs."""
+        value is the one at the hook, before any later kernel runs. scripts/check_capture_rows.py checks every kept
+        row against `EagerModel.capture` with torch.equal on a tiny stand-in Gemma 4 (both kinds of layer, lengths
+        past its sliding window, unsteered and steered, with and without the spared start mark), on the CPU."""
         assert self.eager_model is not None, "Call runtime.load() first."
         model = self.eager_model
         ids = [int(t) for t in token_ids]

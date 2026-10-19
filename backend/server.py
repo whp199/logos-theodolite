@@ -1011,6 +1011,9 @@ async def _stream_sweep(
                 "n_to_sight": m,
                 "last": idx + 1 == m or stop_after,
                 "read_pos": bundle.target_pos,
+                # the model's sliding window (text_config.sliding_window, 1024): from read_pos 1024 on, its 50
+                # sliding-window layers no longer look back to the start of the text (the lens card's caution)
+                "sliding_window": runtime.sliding_window,
                 "read_token": bundle.read_token,
                 "read_token_id": bundle.read_token_id,
                 "prompt_len": len(cap.prompt_token_ids),
@@ -1227,6 +1230,11 @@ async def api_health() -> Dict[str, Any]:
         "global_layers_1based": list(GLOBAL_ATTN_LAYERS_1BASED),
         "vram_allocated_gb": round(vram_alloc, 2),
         "vram_peak_gb": round(vram_peak, 2),
+        # the CUDA allocator's settings as torch reports them ("" for its defaults); the sweep limit's memory margin
+        # was measured with expandable segments on (engine_runtime, the note above `import torch`)
+        "allocator": runtime.allocator_settings,
+        # the model's sliding attention window in word-pieces (text_config.sliding_window), as every sighting sends it
+        "sliding_window": runtime.sliding_window,
         "larql_cli": vault.cli_versions(),
         "lens": runtime.lens_card(),
     }

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Apparatus, LensRecord, Missing, Page, Rubric, SweepError } from "../components/kit";
-import { AnswerPositionCaution, TemplateEndCaution } from "../lib/cautions";
+import { AnswerPositionCaution, SightingFarCaution, TemplateEndCaution } from "../lib/cautions";
 import type { FrameInfo } from "../store/sighting";
 import { ControlSighting } from "../components/ControlSighting";
 import { describeFrame } from "../lib/frame";
@@ -2160,6 +2160,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         </Rubric>
         {readsInsideAnswer(sighting) ? <AnswerPositionCaution sighting={sighting} /> : null}
         {sighting && readWhere(sighting).role === "template_end" ? <TemplateEndCaution /> : null}
+        <SightingFarCaution sighting={sighting ?? null} />
         <Apparatus title="ranks" label="Apparatus for the ranks">
           <dl className="dl num">
             <dt>rank</dt>

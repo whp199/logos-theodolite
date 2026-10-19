@@ -10,7 +10,9 @@ from a stand-in payload, for:
    counts stored as tensors, text or nonsense;
 3. other lenses: J++ refitted on the instruct model, another method on the base model, and models named neither way.
 None but the shipped file may be called "jpp-base", carry the study's caution or claim WikiText. The card for the
-shipped file must also match the lens the pages fall back to (BASE_LENS in frontend/src/lib/lens.ts).
+shipped file must also match the lens the pages fall back to (BASE_LENS in frontend/src/lib/lens.ts). The figures in
+the caution's last sentence (how far in the lens was fitted and checked, and the model's sliding window) are checked
+against their sources: the E3 report and its per-text lengths, and the model's own config when it is cached.
 
 It then checks, with stand-ins for the vault's GPU work, that the vault statements that read words or write an edit
 through the lens (NEAREST, DESCRIBE POLE, UPDATE, INSERT) name it last under "lens", over `execute_lql` and the MCP
@@ -31,6 +33,7 @@ if __name__ == "__main__":
 
 import json
 import re
+import types
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
@@ -133,6 +136,8 @@ def check_other_lens(label: str, card: Dict[str, Any]) -> None:
     check(card["caution"] != JPP_LENS_FALLBACK["caution"], f"{label}: carries the shipped lens's caution")
     check(card["caution"].endswith(_OTHER_LENS_CAUTION), f"{label}: caution lacks the other-lens advice")
     check("layer 20" not in card["caution"], f"{label}: caution claims the study's layer bands")
+    check("141" not in card["caution"] and "16-127" not in card["caution"],
+          f"{label}: caution claims the study's fit window or the lengths it checked")
     check("WikiText" not in (card["fit_data"] or ""), f"{label}: fit_data claims WikiText: {card['fit_data']!r}")
     check("bf16" not in (card["fitted_on"] or ""), f"{label}: fitted_on claims a dtype: {card['fitted_on']!r}")
 
@@ -172,6 +177,7 @@ def check_shipped() -> None:
 
     check_cached_file(card)
     check_pages_fallback(card)
+    check_caution_figures(card)
 
 
 def check_cached_file(card: Dict[str, Any]) -> None:
@@ -214,6 +220,59 @@ def check_pages_fallback(card: Dict[str, Any]) -> None:
               f"BASE_LENS.{ts_key} {fields.get(ts_key)!r} != the server's {card_key} {card[card_key]!r}")
     if len(failures) == before:
         print("  ok    BASE_LENS in frontend/src/lib/lens.ts matches the card")
+
+
+# The caution's sentence on length, and where each of its figures comes from.
+FIT_SENTENCE = (
+    "It was fitted on positions 16-127 (counting from 0) of 128-piece passages and the study checked it only on short "
+    "texts (at most 141 word-pieces in its fidelity check), so how well it reads further in is unmeasured; from "
+    "position 1024 on, 50 of the model's 60 layers no longer look back to the start of the text."
+)
+E3_DIR = ROOT_DIR / "experiments" / "results"
+
+
+def check_caution_figures(card: Dict[str, Any]) -> None:
+    """The shipped caution's last sentence, figure by figure, against the files it rests on."""
+    before = len(failures)
+    caution = card["caution"]
+    check(caution.endswith(FIT_SENTENCE), f"shipped: the caution does not end with the sentence on length: {caution!r}")
+    # the fit: the provenance's passage length, less the first 16 positions the fit skips (E3 report, Caveats)
+    seq = card["provenance"]["max_seq_len"]
+    check(seq == 128 and f"16-{seq - 1} (counting from 0) of {seq}-piece" in caution,
+          f"shipped: fit window vs max_seq_len {seq}")
+    report = (E3_DIR / "E3_lens_validation_REPORT.md").read_text(encoding="utf-8")
+    check("the fit skips the first 16 positions" in report, "E3 report: no longer says the fit skips 16 positions")
+    # the study's fidelity check: the longest text it read, from its own per-text summaries
+    lengths = []
+    for part in ("chat", "prose"):
+        rows = json.loads((E3_DIR / f"E3_lens_validation_a_summary_{part}.json").read_text(encoding="utf-8"))
+        lengths += [int(r["T"]) for r in rows]
+    check(len(lengths) == 48 and max(lengths) == 141, f"E3 fidelity texts: {len(lengths)}, longest {max(lengths)}")
+    # the window: the model's own config, when it is in the local cache
+    try:
+        from huggingface_hub import try_to_load_from_cache
+
+        path = try_to_load_from_cache(repo_id=DEFAULT_W4A16_MODEL_ID, filename="config.json")
+    except Exception as exc:
+        path = None
+        print(f"  skip  the model's config (cannot look it up: {exc})")
+    if isinstance(path, str) and os.path.exists(path):
+        text_cfg = json.loads(Path(path).read_text(encoding="utf-8")).get("text_config", {})
+        kinds = text_cfg.get("layer_types") or []
+        window = text_cfg.get("sliding_window")
+        check(window == 1024, f"the model's sliding_window is {window!r}, not the caution's 1024")
+        check(len(kinds) == 60 and kinds.count("sliding_attention") == 50,
+              f"the model's layer_types: {len(kinds)} layers, {kinds.count('sliding_attention')} sliding")
+        # the runtime reads the same window from the loaded model's config (here a stand-in holding only the config)
+        rt = runtime_with(SHIPPED_PAYLOAD)
+        rt.hf_model = types.SimpleNamespace(config=types.SimpleNamespace(
+            text_config=types.SimpleNamespace(sliding_window=window)))
+        check(rt.sliding_window == 1024, f"runtime.sliding_window {rt.sliding_window!r}")
+    else:
+        print("  skip  the model's config (not in the local Hugging Face cache)")
+    check(TheodoliteRuntime(device="cpu", load_jlens=False).sliding_window is None, "before load: a sliding window")
+    if len(failures) == before:
+        print("  ok    the caution's fit window, checked length and sliding window match their sources")
 
 
 def check_incomplete() -> None:

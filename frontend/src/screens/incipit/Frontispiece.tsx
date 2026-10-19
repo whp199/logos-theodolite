@@ -2,7 +2,7 @@ import React from "react";
 import { Rubric } from "../../components/kit";
 import { bare, gloss, numberWord, pieceWord, wp } from "../../lib/words";
 import { lensPhrase, useReadingLens } from "../../lib/lens";
-import { AnswerPositionCaution, OneDrawLine, TemplateEndCaution } from "../../lib/cautions";
+import { AnswerPositionCaution, OneDrawLine, SightingFarCaution, TemplateEndCaution } from "../../lib/cautions";
 import {
   type Sighting,
   N_LAYERS,
@@ -365,6 +365,8 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
         {s && readsInsideAnswer(s) ? <AnswerPositionCaution sighting={s} /> : null}
         {/* the end of the chat template, with no begun answer: the study never read the lens there */}
         {s && readWhere(s).role === "template_end" ? <TemplateEndCaution /> : null}
+        {/* read at or past the end of the passages the lens was fitted on (any k), and past the attention window */}
+        <SightingFarCaution sighting={s ?? null} />
       </figcaption>
     </figure>
   );

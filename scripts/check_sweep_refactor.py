@@ -7,8 +7,8 @@ Record mode, once per checkout, each in its own process:
 
     .venv/bin/python -I scripts/check_sweep_refactor.py --repo <checkout root> --out <file.pt>
 
-imports `backend` from `--repo` (put first on sys.path, and checked), loads the runtime once, and runs
-`run_theodolite_sweep` on four fixed cases with only the arguments the old code knew:
+imports `backend` from `--repo` (put first on sys.path, and checked), loads the runtime once, and runs six fixed
+cases. Cases a-d call `run_theodolite_sweep` with only the arguments the old code knew:
   (a) the default bare two-hop prompt, 6 word-pieces, landmarks spider / eight / insect (the space-then-digit rule
       fires: the answer starts with a lone space);
   (b) chat + system "You are Gemma." + begun answer "Hi! I" + an fnw she/he nudge (strength 0.01, quiet dims masked,
@@ -22,6 +22,12 @@ four above never reach; the sweep's capture keeps most addresses at the read row
       control chat reading this very answer (`centre_answer`), landmarks she / he / it;
   (f) case a's answer given back as word-piece ids (teacher-forced, nothing written), each sighted in the pole-motif
       frame of case c (built at token 0 and kept).
+Cases e and f need `iter_theodolite_sweeps` with `centre_answer` and `answer_token_ids` (f788a36 or later): for an
+older checkout pass --cases a,b,c,d (the script refuses e and f there before it loads anything).
+A checkout whose runtime turns on the CUDA allocator's expandable segments when imported (backend/engine_runtime.py,
+above `import torch`, unless PYTORCH_ALLOC_CONF or PYTORCH_CUDA_ALLOC_CONF is set) records under them; an older one
+records under the default allocator, so comparing the two compares the allocators too. Each record names what the
+allocator ran with (meta "allocator").
 Every tensor and list of each bundle is saved under a flat key (trajectory, deltas, CKA, poles, write sizes, pole
 words, threads, J++ and naked-eye readouts with the tracked ranks / logits / probs, the words written, the survey
 labels, frame_info); a tensor of more than 2^20 elements (the pole logits) is kept as the SHA-256 of its bytes.
@@ -42,6 +48,7 @@ import argparse
 import asyncio
 import dataclasses
 import hashlib
+import inspect
 import math
 import os
 import subprocess
@@ -52,7 +59,8 @@ from typing import Any, Dict, List, Optional
 
 DEFAULT_PROMPT = "The number of legs on the animal that spins webs is"
 CASES = ("a", "b", "c", "d", "e", "f")
-# case e's system prompt: this paragraph twice, about 150 word-pieces with the question and the chat marks
+# case e's system prompt: this paragraph twice (132 word-pieces), about 160 with the question and the chat marks
+# (159 by the instrument's tokenizer)
 LONG_SYSTEM_PARAGRAPH = (
     "You are a careful assistant who answers questions about the natural world. When a question names an animal, "
     "say what it eats, where it lives and how many legs it has, and keep each answer to a few plain sentences. If "
@@ -171,6 +179,15 @@ async def run_cases(repo: Path, cases: List[str]) -> Dict[str, Dict[str, Any]]:
     where = Path(backend.__file__).resolve().parent.parent
     if where != repo:
         raise SystemExit(f"imported backend from {where}, not from --repo {repo}")
+    if {"e", "f"} & set(cases):
+        # refused before the model loads: an older checkout would run a-d on the GPU, then fail at e and save nothing
+        every = getattr(er.TheodoliteRuntime, "iter_theodolite_sweeps", None)
+        params = inspect.signature(every).parameters if every is not None else {}
+        if "centre_answer" not in params or "answer_token_ids" not in params:
+            raise SystemExit(
+                "cases e and f need iter_theodolite_sweeps with centre_answer and answer_token_ids (f788a36 or "
+                "later), which this checkout lacks: pass --cases a,b,c,d"
+            )
     runtime = er.TheodoliteRuntime(load_jlens=False).load()
     landmarks = ("spider", "eight", "insect")
     tracked = tuple(er.DEFAULT_TRACKED_CONCEPTS)
@@ -278,6 +295,16 @@ async def run_cases(repo: Path, cases: List[str]) -> Dict[str, Dict[str, Any]]:
     return out
 
 
+def allocator_settings() -> str:
+    """The CUDA allocator's settings as torch reports them, "" when it reports none (an older torch: "")."""
+    import torch
+
+    try:
+        return str(torch._C._accelerator_getAllocatorSettings() or "")
+    except Exception:
+        return ""
+
+
 def record_mode(repo: Path, out_path: Path, cases: List[str]) -> int:
     sys.path.insert(0, str(repo))
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -298,6 +325,8 @@ def record_mode(repo: Path, out_path: Path, cases: List[str]) -> int:
         "dirty": dirty,
         "torch": str(torch.__version__),
         "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+        # what the CUDA allocator ran with ("" for its defaults); the readings do not depend on it
+        "allocator": allocator_settings(),
         "cases": list(flat),
     }
     torch.save({"meta": meta, "cases": flat}, str(out_path))
@@ -311,7 +340,7 @@ def main() -> int:
     )
     ap.add_argument("--repo", type=Path, help="the checkout whose backend to record (its root directory)")
     ap.add_argument("--out", type=Path, help="where to save the recording (.pt)")
-    ap.add_argument("--cases", default=",".join(CASES), help="which cases to record, e.g. a,c (default: all four)")
+    ap.add_argument("--cases", default=",".join(CASES), help="which cases to record, e.g. a,c (default: all six)")
     ap.add_argument("--compare", nargs=2, metavar=("A", "B"), help="compare two recordings and exit")
     args = ap.parse_args()
     if args.compare:

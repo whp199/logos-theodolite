@@ -14,6 +14,10 @@ export const BASE_LENS: LensInfo = {
   appliedTo: "google/gemma-4-31B-it-qat-w4a16-ct",
   method: "J++, R-lens LRP backward pass",
   fitData: "64 WikiText passages of 128 word-pieces",
+  // the file's own provenance: source_config.max_seq_len 128 (num_prompts_trained_on 64, skip_first_n_positions 16),
+  // read from the cached gemma-4-31B_jpp_lens.pt on the CPU on 2026-10-19; scripts/check_lens_card.py SHIPPED_PAYLOAD
+  // records the same; REPORT.md:83 ("64 WikiText-103 prompts × 128 tokens")
+  fitLen: 128,
   source: "koayon/jpp-lenses@6c96867a91c43c14cec17cf0f6d157b933c5fee5:gemma-4-31b/lens.pt",
   file: "neuronpedia/jacobian-lens:gemma-4-31b/jpp/Salesforce-wikitext/gemma-4-31B_jpp_lens.pt",
   // no server sent this record, so there is no server caution to repeat

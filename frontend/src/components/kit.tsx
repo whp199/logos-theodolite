@@ -24,7 +24,7 @@ import {
   type LensBand,
 } from "../lib/lens";
 // cautions.tsx draws its lines with this file's <Rubric>; both are used only at render time, so the cycle is harmless
-import { AnswerPositionCaution } from "../lib/cautions";
+import { AnswerPositionCaution, SightingFarCaution } from "../lib/cautions";
 
 /* ------------------------------------------------------------------ marks */
 
@@ -383,7 +383,10 @@ function bandWords(lens: LensInfo, band: CautionBand): string {
  * odds; without `no`, all the bands at once. It ends by pointing to how a control is taken, since keeping one is done in
  * the apparatus. For a sighting read inside the model's answer (readsInsideAnswer: a word-piece it wrote, k ≥ 1, or at
  * k = 0 the end of an answer begun for it inside a chat turn), the line that says what the study measured there follows
- * it (lib/cautions.tsx, AnswerPositionCaution). The sighting is the one given, else the one shown.
+ * it (lib/cautions.tsx, AnswerPositionCaution). For every sighting read at or past the end of the passages its lens was
+ * fitted on (k = 0 included), a last line says so, and from the model's attention window on, that most of its layers no
+ * longer reach the start of the text (lib/cautions.tsx, SightingFarCaution); none when the fit length is not known. The
+ * sighting is the one given, else the one shown.
  */
 export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; style?: React.CSSProperties }> = ({
   sighting,
@@ -416,6 +419,7 @@ export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; st
         ) : null}
       </Rubric>
       {readsInsideAnswer(read) ? <AnswerPositionCaution sighting={read} /> : null}
+      <SightingFarCaution sighting={read} />
     </>
   );
 };

@@ -143,6 +143,11 @@ export interface LensInfo {
   appliedTo: string | null;
   method: string;
   fitData: string;
+  /** how long, in word-pieces, the passages it was fitted on were: its file's own `source_config.max_seq_len`, which the
+   * server repeats as the card's `provenance.max_seq_len` (backend/engine_runtime.py, lens_card); 128 for the shipped
+   * J++ file. null = not sent (an older server, or a file that does not record it): the pages then say nothing about
+   * reading past it */
+  fitLen: number | null;
   /** where the fitted file comes from (its provenance); null = not sent */
   source: string | null;
   /** the file the server loaded; null = not sent */
@@ -250,6 +255,11 @@ export interface Sighting {
   nTokens: number | null;
   /** the position read, counting from 0 (read_pos = P - 1 + k) */
   readPos: number | null;
+  /** how far back the model's local-attention layers look, in word-pieces, as the server read it from the model's own
+   * config (`sliding_window`, sent beside read_pos; text_config.sliding_window = 1024 for this checkpoint): from
+   * read_pos = slidingWindow on, those layers no longer reach position 0. null for the recorded sighting and an older
+   * server, which do not send it */
+  slidingWindow: number | null;
   /** the word-piece the stream had just read there: the prompt's last for k = 0, else w_{k-1} */
   readAt: string | null;
   readAtId: number | null;
@@ -400,6 +410,8 @@ type Json = Record<string, any>; // eslint-disable-line @typescript-eslint/no-ex
 let nextSightingId = 1;
 
 const numOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+/** A length or count the server sent (a lens's fit length, the attention window): a whole number above 0, else null. */
+const positiveIntOrNull = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null);
 /** A list of whole numbers (token ids), or null when the server did not send one. */
 const idsOrNull = (v: unknown): number[] | null =>
   Array.isArray(v) && v.every((x) => typeof x === "number" && Number.isInteger(x)) ? (v as number[]).slice() : null;
@@ -575,6 +587,7 @@ export function sightingFromLive(
     promptTokens: tokensList,
     nTokens: numOrNull(meta.kinship_n_states) ?? (sentPos !== null ? sentPos + 1 : tokensList ? tokensList.length : null),
     readPos,
+    slidingWindow: positiveIntOrNull(meta.sliding_window),
     readAt,
     readAtId: numOrNull(meta.read_token_id),
     promptLen: numOrNull(meta.prompt_len) ?? (promptIds ? promptIds.length : null),
@@ -686,6 +699,8 @@ export function lensOf(l: unknown): LensInfo | null {
   const sentName = str(o.name);
   const name = sentName === LENS_NAME_NOT_SENT ? null : sentName;
   const fittedOn = str(o.fitted_on);
+  // the file's own fit length, as the card repeats it (provenance.max_seq_len; None when the file does not record it)
+  const prov = o.provenance && typeof o.provenance === "object" && !Array.isArray(o.provenance) ? (o.provenance as Json) : null;
   return {
     id: str(o.id) ?? "",
     name: name ?? LENS_NAME_NOT_SENT,
@@ -693,6 +708,7 @@ export function lensOf(l: unknown): LensInfo | null {
     appliedTo: str(o.applied_to),
     method: str(o.method) ?? "",
     fitData: str(o.fit_data) ?? "",
+    fitLen: prov ? positiveIntOrNull(prov.max_seq_len) : null,
     source: str(o.source),
     file: str(o.file),
     caution: str(o.caution),
@@ -917,6 +933,8 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     promptTokens: null,
     nTokens: f.nTokens,
     readPos: f.readPos,
+    // the recording keeps no attention window (and, read at position 21, is far inside it)
+    slidingWindow: null,
     readAt: f.readAt,
     readAtId: null,
     // the recorded sighting was read at the prompt's last word-piece, so its prompt is the word-pieces it read

@@ -172,8 +172,16 @@ Which indices are sighted: `sight_tokens` if given, else 0..min(n, max_sighted)�
 characters, and P + max(max_new_tokens, len(answer_token_ids)) must stay within `MAX_SWEEP_POSITIONS` = 2048 (the
 recapture keeps resid_post at every row and the other four points at the read rows only, moved to the CPU as each
 hook fires, so what grows with P is the writing's full-length logits and kinship's float32 states; the runtime sets
-PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True unless one is set, which spares the card 1.4-2.2 GiB of fragments;
-the measurements are in the constant's comment; the thinking prompt is held to the same).
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True unless PYTORCH_ALLOC_CONF, PYTORCH_CUDA_ALLOC_CONF or
+PYTORCH_HIP_ALLOC_CONF is already set, which is then kept whole; in the worst sweep the segments lower the card's peak
+by 2.2 GiB at 1024, 1.9 at 1536 and at least 1.36 at 2048, where the default allocator filled the card;
+`GET /api/health` sends the allocator's settings as `allocator`, and the server warns at load when the segments are
+off; the measurements are in the constant's comment; the thinking prompt is held to the same).
+Every sighting's metadata sends `sliding_window` (the model's, from `text_config.sliding_window`: 1024) beside
+`read_pos`, and `GET /api/health` sends it too: from read position 1024 on, the 50 sliding-window layers no longer
+look back to the start of the text. Neither the lens's fit (positions 16-127 of 128-piece passages) nor the study's
+checks (short texts: at most 141 word-pieces in its fidelity check) reached that far, and the lens card's caution
+says so.
 A refused id, control or length is answered in plain words, and so is a `pole_ranking`, `thread_score` or
 `frame_squaring` the analysis does not know, before anything is written.
 
@@ -192,15 +200,15 @@ given, else token 0), as before (with the fields below added to the JSON), and n
 4. `{"type":"theodolite_sweep_end","request_id","n_sent","n_to_sight","cancelled","error"}`, always last.
 
 Added to every pair's JSON (the one-pair reply too; `generated_text` is the whole answer, `prompt*` the prompt only):
-`request_id, token_index, sight_index, n_to_sight, last, read_pos, read_token, read_token_id, prompt_len, chosen
-(STEP | null), answer, generation, recapture_check, kinship_n_states (= read_pos + 1), rank_lookahead, sight_dropped,
-timing {generate_ms, capture_ms, analyse_ms, total_ms}, think_seed, think_read_token, think_stop_reason,
-think_skipped` (the last four, and `think_generated_text`, set on the first pair only: `think_stop_reason` is how the
-thinking answer's writing ended, "end_mark" | "length" | "stopped", null without one; `think_skipped` is true when a
-stop asked before the comparison began left it unwritten, else false); `frame.centre_kind` ("none" |
-"control_prompt_end" | "control_reading_same_answer") and, for a pole-motif frame, `frame.reader {layer, neuron, from_token_index}` (built
-at the first position analysed and kept for the whole answer); per layer `jpp_top_ids` (5), `naive_top_id`,
-`tracked_from_next {word: bool}`.
+`request_id, token_index, sight_index, n_to_sight, last, read_pos, sliding_window, read_token, read_token_id,
+prompt_len, chosen (STEP | null), answer, generation, recapture_check, kinship_n_states (= read_pos + 1),
+rank_lookahead, sight_dropped, timing {generate_ms, capture_ms, analyse_ms, total_ms}, think_seed, think_read_token,
+think_stop_reason, think_skipped` (the last four, and `think_generated_text`, set on the first pair only:
+`think_stop_reason` is how the thinking answer's writing ended, "end_mark" | "length" | "stopped", null without one;
+`think_skipped` is true when a stop asked before the comparison began left it unwritten, else false);
+`frame.centre_kind` ("none" | "control_prompt_end" | "control_reading_same_answer") and, for a pole-motif frame,
+`frame.reader {layer, neuron, from_token_index}` (built at the first position analysed and kept for the whole answer);
+per layer `jpp_top_ids` (5), `naive_top_id`, `tracked_from_next {word: bool}`.
 - STEP = `{index, token_id, token, model_prob, model_logprob, model_rank, n_tied, chosen_logit, top:[{token_id, token,
   prob}]×5, sampler_prob, sampler_support, end_mark, source}`: the model's own odds at that step (float32 softmax of
   the writing's raw logits; a given piece: of the re-read's layer 60) and the sampler's chance for it, replayed on the
@@ -237,9 +245,9 @@ current piece (`think_stop_reason` "stopped"); either way the request ends `canc
 ### 4.4 Exact ids for `trace_readers`, and saved prompts
 
 - `trace_readers` (WebSocket, `POST /api/scientist/trace_readers`, MCP `trace_downstream_readers`) takes
-  `token_ids` (1–512 ids): read exactly as given, at the last (a sighting's ids up to its read position), echoing
-  `token_ids_given`, `read_pos` and `prompt` (the ids decoded); every reply says `steered: false` (a trace reads the
-  model without a nudge).
+  `token_ids` (1 to `MAX_SWEEP_POSITIONS` = 2048 ids): read exactly as given, at the last (a sighting's ids up to its
+  read position), echoing `token_ids_given`, `read_pos` and `prompt` (the ids decoded); every reply says
+  `steered: false` (a trace reads the model without a nudge).
 - Saved questions and system prompts (`backend/saved_prompts.py`, declared above the static mount): `GET
   /api/saved_prompts` → `{questions, systems, file, warning}`; `POST` `{kind: "question" | "system", name, question?,
   answer_begins?, chat?, text?, replace_id?}` → the lists (409 for a name already used in that list, trimmed and in any

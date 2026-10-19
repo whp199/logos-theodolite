@@ -219,6 +219,8 @@ class FakeRuntime:
         self.stop_at: Optional[Tuple[str, int]] = None
         self.conn: Any = None
         self.analysed: List[Tuple[str, int]] = []
+        # the model's sliding window, as the real runtime reads it from text_config (every pair must echo it)
+        self.sliding_window: Optional[int] = 1024
 
     def _ask_stop(self, event: str, i: int) -> None:
         if self.stop_at == (event, i) and self.conn is not None:
@@ -434,9 +436,9 @@ LEGACY_KEYS = {
     "filaments_meta", "larql_status", "chat", "system", "user_prompt", "assistant_prefix", "steering_applied",
 }
 NEW_KEYS = {
-    "request_id", "token_index", "sight_index", "n_to_sight", "last", "read_pos", "read_token", "read_token_id",
-    "prompt_len", "chosen", "answer", "generation", "recapture_check", "kinship_n_states", "rank_lookahead",
-    "sight_dropped", "timing", "think_seed", "think_read_token", "think_stop_reason", "think_skipped",
+    "request_id", "token_index", "sight_index", "n_to_sight", "last", "read_pos", "sliding_window", "read_token",
+    "read_token_id", "prompt_len", "chosen", "answer", "generation", "recapture_check", "kinship_n_states",
+    "rank_lookahead", "sight_dropped", "timing", "think_seed", "think_read_token", "think_stop_reason", "think_skipped",
 }
 
 
@@ -471,6 +473,7 @@ def check_socket() -> None:
         check(k1 == "bytes" and k2 == "json" and meta["type"] == "theodolite_metadata", "legacy: binary then JSON")
         check(LEGACY_KEYS <= set(meta), f"legacy keys missing: {LEGACY_KEYS - set(meta)}")
         check(NEW_KEYS <= set(meta), f"additive keys missing: {NEW_KEYS - set(meta)}")
+        check(meta["sliding_window"] == 1024, f"legacy: sliding_window {meta.get('sliding_window')!r}")
         check(meta["request_id"] is None and meta["token_index"] == 0 and meta["last"] is True and meta["n_to_sight"] == 1,
               "legacy: token 0, last")
         check(meta["generated_text"] == meta["answer"]["text"] and meta["answer"]["n_written"] == 6, "legacy: the answer")
@@ -512,6 +515,7 @@ def check_socket() -> None:
         check(all(header(b)[5] & 4 for b, _m in pairs), "flags bit 2 on every pair of a set")
         P = w["prompt_len"]
         check([m["read_pos"] for _b, m in pairs] == [P - 1 + k for k in range(4)], "read_pos = P - 1 + k")
+        check(all(m["sliding_window"] == rt.sliding_window for _b, m in pairs), "sliding_window beside every read_pos")
         check([m["chosen"]["token_id"] for _b, m in pairs] == [10, 11, 12, 13], "chosen is answer[k]")
         check(pairs[1][1]["read_token_id"] == 10 and pairs[0][1]["read_token_id"] == w["prompt_token_ids"][-1],
               "read_token_id: the prompt's last piece, then answer[k - 1]")

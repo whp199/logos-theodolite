@@ -22,10 +22,11 @@ Runs inside a single process/network namespace to verify:
    file's own provenance says, with a caution, while DESCRIBE and ROLLBACK reply as before; the instrument names the
    lens the server sent (page head, status line, footer, red line) and shows the server's own record of it in its
    apparatus.
-7. A sighting of every word-piece (the CPU checks scripts/check_sampler_mirror.py, check_saved_prompts.py and
-   check_sweep_protocol.py run first, beside the lens card): over the WebSocket, a stream with a request_id gives
-   progress, the answer once, one pair per word-piece (read at P - 1 + k, reading answer[k - 1], having chosen
-   answer[k]) and an end; its token 0 is the one-pair reading byte for byte; a chat answer stops at its end of turn;
+7. A sighting of every word-piece (the CPU checks scripts/check_sampler_mirror.py, check_saved_prompts.py,
+   check_sweep_protocol.py and check_capture_rows.py run first, beside the lens card): over the WebSocket, a stream
+   with a request_id gives progress, the answer once, one pair per word-piece (read at P - 1 + k, reading
+   answer[k - 1], having chosen answer[k], with the model's sliding window beside read_pos) and an end; its token 0
+   is the one-pair reading byte for byte; a chat answer stops at its end of turn;
    a sampled answer echoes its seed and the same seed writes the same words; a retake of given ids reads the same
    states, and its recapture check has no logit diff (nothing was written to compare with); cancels (while writing,
    and of a queued request) and refusals stay on their own request; the thinking comparison rides on the first pair
@@ -146,6 +147,8 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
     # the one-pair reply carries the additive fields too, read at token 0
     assert legacy_meta["request_id"] is None and legacy_meta["token_index"] == 0 and legacy_meta["last"] is True
     assert legacy_meta["n_to_sight"] == 1 and legacy_meta["read_pos"] == len(legacy_meta["prompt_token_ids"]) - 1
+    # the model's sliding window rides beside read_pos (text_config.sliding_window; the lens card's caution names it)
+    assert legacy_meta["sliding_window"] == 1024, legacy_meta.get("sliding_window")
     assert legacy_meta["answer"]["text"] == legacy_meta["generated_text"] and legacy_meta["generation"]["greedy"] is True
     assert all("jpp_top_ids" in p and "naive_top_id" in p and "tracked_from_next" in p for p in legacy_meta["layer_plumes"])
 
@@ -168,6 +171,7 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
         assert len(b) == 24 + 4 * frame_floats(n_fil), f"pair {k}: {len(b)} bytes"
         assert m["token_index"] == k and m["sight_index"] == k and m["last"] == (k == n - 1)
         assert m["read_pos"] == P - 1 + k and m["read_token_id"] == ids[P - 1 + k] and m["kinship_n_states"] == P + k
+        assert m["sliding_window"] == legacy_meta["sliding_window"], (k, m.get("sliding_window"))
         assert m["chosen"]["token_id"] == ans["token_ids"][k] and m["chosen"]["source"] == "written"
         # greedy with no penalty writes the step's likeliest piece
         assert m["chosen"]["model_rank"] == 1 and m["chosen"]["sampler_prob"] is None, m["chosen"]
@@ -404,8 +408,10 @@ async def main() -> int:
     )
     print("  • " + (lens_check.stdout.strip().splitlines() or ["(no output)"])[-1])
     assert lens_check.returncode == 0, f"the lens card check failed:\n{lens_check.stdout}\n{lens_check.stderr}"
-    # the sampler's mirrored odds, the saved-prompts routes and the sweep's wire protocol, on the CPU too
-    for cpu_check in ("check_sampler_mirror.py", "check_saved_prompts.py", "check_sweep_protocol.py"):
+    # the sampler's mirrored odds, the saved-prompts routes, the sweep's wire protocol, and capture_rows against
+    # interp_engine's capture bit for bit on a tiny stand-in Gemma 4, on the CPU too
+    for cpu_check in ("check_sampler_mirror.py", "check_saved_prompts.py", "check_sweep_protocol.py",
+                      "check_capture_rows.py"):
         res = subprocess.run(
             [sys.executable, "-I", str(ROOT_DIR / "scripts" / cpu_check)],
             capture_output=True, text=True, timeout=600, check=False,
@@ -435,6 +441,10 @@ async def main() -> int:
         else:
             raise RuntimeError("FastAPI server did not become healthy within 60 seconds.")
         print(f"[1/4] FastAPI Server Healthy: model={health['model_id']} | VRAM={health['vram_allocated_gb']:.2f} GB")
+        # the model's sliding window, and what the CUDA allocator runs with ("" for its defaults)
+        assert health.get("sliding_window") == 1024, f"health sliding_window {health.get('sliding_window')!r}"
+        assert isinstance(health.get("allocator"), str), f"health allocator {health.get('allocator')!r}"
+        print(f"  • sliding window {health['sliding_window']} | allocator: {health['allocator'] or '(default)'}")
         # checked once the server answers, so a wrong or missing lens fails here, by name
         assert_base_lens(health.get("lens"), health["model_id"])
         lens = health["lens"]
