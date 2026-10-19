@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import gc
 import logging
+import os
 import re
 import secrets
 import time
@@ -22,7 +23,15 @@ from pathlib import Path
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
-import torch
+
+# The CUDA caching allocator grows its pool in expandable segments rather than fixed blocks, so the writing's
+# full-length logits and kinship's buffers reuse one another's memory instead of leaving fragments: in the longest
+# sweep it lowers the card's peak by 1.4-2.2 GiB, and it changes no reading, bit for bit (MAX_SWEEP_POSITIONS). The
+# allocator reads this when CUDA first starts, so it is set before torch is: here, ahead of every entry point's
+# first allocation (the server, the scientist tools, the scripts). A setting of the user's own is kept.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+import torch  # noqa: E402
 import torch.nn as nn
 import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
@@ -348,16 +357,22 @@ class SweepLayerTokenReadout:
 #   writing, 8 word-pieces            1.57   2.25   2.92   3.76
 #   reading the last one (kinship)    1.21   2.00   2.91   3.93   (the old one: 2.55 at 512)
 #   thinking comparison written with
-#   the first bundle alive              -    2.75   3.41   out of memory
+#   the first bundle alive              -    2.75   3.41   out of memory under the default allocator
 # The worst sweep the server runs, through the server itself at the limit (chat with a long system prompt, the
 # thinking comparison, all 32 word-pieces of the answer sighted, centred on a control as long reading the same
-# answer), with the desktop holding 3.9-4.0 GiB: the old code at 512 peaked at 25.09 GiB allocated and the card at
-# 31,968 of 32,607 MiB (0.6 GiB spare, not the 1.5 its comment hoped); this code at 1024 at 23.92 GiB and 31,400 MiB
-# (1.2 GiB spare); at 1536 at 24.58 GiB and 31,887 MiB (0.7 GiB spare, as tight as 512 was; the desktop held
-# 5.4 GiB that evening with a game's helpers open, which would take all of it). Hence 1024: twice the old length
-# with twice its margin. The recapture is still one forward: 1.1 s at 512 (it was 1.8 s), 1.3 s at 1024, 1.9 s at 2048.
-# A sweep that still runs out is refused in plain words and the socket keeps answering (server._stream_sweep).
-MAX_SWEEP_POSITIONS = 1024
+# answer), as the server process's share of the card at its peak, in MiB of the card's 32,607 (2026-10-18/19):
+#                                       512      1024     1536     1792     2048
+#   the old code                        28,019
+#   this code, default allocator                 27,223   28,255*           28,301*
+#   this code, expandable segments               24,959   26,299   26,690   26,857, 26,879 (two runs)
+#   (* the card was full: the allocator freed its cache and tried again)
+# Torch's own peak hardly moves with the allocator (23.9 / 24.5 / 25.5 GiB at 1024 / 1536 / 2048): what the
+# segments save is fragments. With the desktop holding 4.5 GiB, 2048 keeps 1.1 GiB of the card spare (1792 1.3,
+# 1536 1.7), where the old code at 512 kept nothing; with the 5.4 GiB the desktop held on 2026-10-18 with a game's
+# helpers open, 0.2. Hence 2048. The recapture is still one forward: 1.1 s at 512 (it was 1.8 s), 1.3 s at 1024,
+# 1.9 s at 2048. A sweep that still runs out is refused in plain words and the socket keeps answering
+# (server._stream_sweep).
+MAX_SWEEP_POSITIONS = 2048
 
 # The points `TheodoliteRuntime.capture_rows` takes: those interp_engine's capture stores exactly as its hook sees them
 # (no scale, no split, no reshape on this model), so a row kept from the hook is the row capture would return.
