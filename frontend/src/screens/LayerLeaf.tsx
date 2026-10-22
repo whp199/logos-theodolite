@@ -5,8 +5,6 @@ import { href, navigate, type Route } from "../router";
 import {
   DEFAULT_NUDGE_LAYERS,
   N_LAYERS,
-  RANKW,
-  RANKW_WRITE,
   VOCAB,
   chosenOf,
   chosenPhrase,
@@ -14,8 +12,9 @@ import {
   exportAnswer,
   exportSighting,
   isChosenRow,
-  loudestOf,
+  leadOf,
   maxAct,
+  rankingWords,
   readWhere,
   readsInsideAnswer,
   retakeIfLive,
@@ -439,7 +438,9 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
     ? { kind: "global attention", gloss: "looks back over the whole conversation, not only the last 1,024 word-pieces" }
     : { kind: kindOf(false).kind, gloss: kindOf(false).gloss };
   const recall = recallOf(L.ffnShare);
-  const loud = loudestOf(L);
+  // the first listed in the sighting's own ranking, whose words the server reads (ranks 0-4 only)
+  const loud = leadOf(L);
+  const rw = rankingWords(s.poleRanking);
   // the caught share is of the lens-read state, or of the raw stream when each layer has its own frame (lib/frame.tsx)
   const F = describeFrame(s);
   const caught = F.raw || F.centred ? F.denomWords : "of that reading";
@@ -556,8 +557,7 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
           )}{" "}
           {loud ? (
             <>
-              {capital(cardinal(L.poles.length))} neurons {s.poleRanking === "write" ? "wrote the most into the stream" : "fired hardest"}; the
-              loudest, neuron {loud.neuron}, fired on its{" "}
+              {capital(cardinal(L.poles.length))} neurons {rw.did}; {rw.lead}, neuron {loud.neuron}, fired on its{" "}
               {loud.face > 0 ? "positive" : "negative"} face.
             </>
           ) : (
@@ -592,7 +592,7 @@ const Leaf: React.FC<{ c: Ctx }> = ({ c }) => {
                 minHeight: 48,
               }}
             >
-              read the loudest neuron
+              {s.poleRanking === "write" ? "read the biggest writer" : "read the loudest neuron"}
             </a>
           ) : null}
           <a
@@ -783,8 +783,8 @@ const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
         <dt>caveat</dt>
         <dd>
           {F.lowdin
-            ? "A Löwdin frame [33] squares the landmarks all at once, so their order no longer moves the bearing. "
-            : "A Gram–Schmidt frame depends on the order of its landmarks: reordering them swings the bearing by 58–99° (REPORT §3.4, bug 3); a Löwdin frame [33] on the final-norm-weighted rows does not. "}
+            ? "A Löwdin frame [33] squares the landmarks all at once: their order no longer changes the frame, only which axis is named first. "
+            : "A Gram–Schmidt frame depends on the order of its landmarks: reordering them swings the bearing by 58–99° (REPORT §3.4, bug 3); a Löwdin frame [33], the interface’s default, does not. "}
           The captured fraction is always shown.{" "}
           <a href={href.landmarks()}>change the landmarks, or lock the frame to a neuron</a>
         </dd>
@@ -1590,8 +1590,12 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
   // bars against the loudest listed pole, whatever order the server ranked them in
   const maxS = maxAct(L) ?? 1;
   const shownWords = labelled.length ? Math.max(...labelled.map((v) => v.p.lens?.length ?? 0)) : 0;
-  const loud = loudestOf(L);
+  // the first listed in the sighting's own ranking: the server reads words for ranks 0-4 only, so the loudest by |a| among
+  // the fifteen may have none when they are ranked by write size
+  const loud = leadOf(L);
   const byWrite = c.s.poleRanking === "write";
+  const rw = rankingWords(c.s.poleRanking);
+  const leadName = byWrite ? "the biggest writer" : "the loudest neuron";
   const loudScores = loud?.lens && loud.lens.every((t) => t.logit != null) ? loud.lens.map((t) => (t.logit as number).toFixed(2)) : null;
   const touching = threads.filter((t) => t.src.idx === idx || t.dst.idx === idx);
   // a trace by hand reads the exact ids up to the position read, as the instrument now sends it (store, traceReaders)
@@ -1635,8 +1639,8 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 48px" }}>
           <p className="rubric" style={{ flex: "1 1 380px", maxWidth: "none" }}>
             {labelled.length
-              ? `The ${cardinal(read.length)} strongest are read below.`
-              : `The ${cardinal(read.length)} strongest are listed below; this sighting read no words for them at this layer.`}{" "}
+              ? `The first ${cardinal(read.length)} listed are read below.`
+              : `The first ${cardinal(read.length)} listed are shown below; this sighting read no words for them at this layer.`}{" "}
             Each neuron has two faces: a filled lozenge marks its positive face, a hollow one its negative face, and each face pushes the
             stream the opposite way to the other.
           </p>
@@ -1693,7 +1697,7 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
               >
                 <div style={{ flex: "1 1 200px", maxWidth: 260, display: "flex", flexDirection: "column", gap: 6 }}>
                   <span style={{ ...SMALL_CAPS, letterSpacing: "0.18em", fontSize: 15, color: MUTED }}>
-                    {byWrite ? RANKW_WRITE[i] : RANKW[i]}
+                    {rw.rows[i]}
                   </span>
                   <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                     <span style={{ ...SMALL_CAPS, letterSpacing: "0.16em", fontSize: 16, color: MUTED }}>neuron</span>
@@ -1843,13 +1847,14 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             })}
           </ul>
           <p style={{ margin: 0, fontSize: 15, color: MUTED }}>
-            The instrument reads words for the five strongest only. Open a neuron to read its words.
+            The instrument reads words for the first five listed only. Open a neuron to read its words.
           </p>
         </div>
       ) : null}
       <Rubric style={{ margin: "4px 0 0", maxWidth: 980 }}>
-        Strength is how hard a neuron fired, which is not quite how much it changed the stream. Together, the fifteen strongest carry only
-        10–41% of what a layer’s memory writes (REPORT §3.4), so much of the story lies elsewhere. Before you nudge: the server’s own default
+        Strength is how hard a neuron fired; its write is how much it changed the stream. This sighting lists {rw.fifteen}. Ranked either
+        way, the fifteen carry only a part of what a layer’s memory writes (10–41% where the study looked), so much of the story lies
+        elsewhere. Before you nudge: the server’s own default
         nudge is 2.4 to 7.4 times the size of the stream itself and wrecks the model’s output. The nudge page sends a hundredth of the
         stream instead, and even that can break a plain answer. Start very small.
       </Rubric>
@@ -1857,8 +1862,15 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
         <dl className="dl num" style={{ maxWidth: 1100 }}>
           <dt>poles</dt>
           <dd>
-            the 15 strongest GeGLU neurons (Shazeer 2020) [15] at this word-piece, by strength |a| = |mlp_act|; σ = sign(a) names the pole
-            that fired. A neuron’s two faces are its two poles, positive and negative, after Cammarata 2026, “Neural Networks Are Already
+            the {poles.length || 15} GeGLU neurons (Shazeer 2020) [15] listed at this word-piece,{" "}
+            {byWrite ? (
+              <>
+                the top fifteen by write size |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ (strength |a| = |mlp_act|)
+              </>
+            ) : (
+              "the top fifteen by strength |a| = |mlp_act|"
+            )}
+            ; σ = sign(a) names the pole that fired. A neuron’s two faces are its two poles, positive and negative, after Cammarata 2026, “Neural Networks Are Already
             Clean” [9].
           </dd>
           <dt>labels</dt>
@@ -1873,13 +1885,13 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           <dd>
             {loudScores ? (
               <>
-                the loudest neuron’s lens words score {listAnd(loudScores)}
+                {leadName}’s lens words score {listAnd(loudScores)}
                 {loudScores.every((v) => parseFloat(v) >= 25) ? ", close to the cap of 30" : ", under the cap of 30"}. They are scores for
                 one neuron’s direction scaled to unit size, not the model’s probabilities (E3; REPORT §3.4, bug 8).
               </>
             ) : (
               <>
-                the loudest neuron’s lens words and their scores: <NotRead />. They are scores for one neuron’s direction scaled to unit
+                {leadName}’s lens words and their scores: <NotRead />. They are scores for one neuron’s direction scaled to unit
                 size, not the model’s probabilities (E3; REPORT §3.4, bug 8).
               </>
             )}
@@ -1905,9 +1917,11 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           <dt>strength or write</dt>
           <dd style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
             <span>
-              |a| is not the size of the write. A neuron adds s · a · (w<sub>down</sub> ⊙ w<sub>post</sub>) / rms(y) to the stream, and
-              across layers 21–59 the fifteen strongest by |a| carry only 10–41% of the feed-forward write: 14% at layer 31, 22% at layer 41
-              (E3; bug 8).
+              |a| is not the size of the write. A neuron adds s · a · (w<sub>down</sub> ⊙ w<sub>post</sub>) / rms(y) to the stream. In E3
+              (12 prompts, last word-piece, indicative) at layers 21, 31, 41, 51 and 59 the fifteen explained 10–41% of the feed-forward
+              write, ranked by |a| or by write size, within half a percentage point (E3_lens_validation_d_analysis.json): by |a|, 14% at
+              layer 31 and 22% at layer 41; by write size, 14% and 21% (bug 8). The interface ranks by write size unless you choose
+              otherwise; the server’s default and the recorded sighting rank by |a|.
             </span>
             <button
               type="button"
@@ -2030,7 +2044,7 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
               <dt>by hand</dt>
               <dd style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                 <span style={{ color: MUTED }}>
-                  the loudest neuron, three ways; these count layers from 0
+                  {leadName}, three ways; these count layers from 0
                   {traceIds ? "; the trace reads this sighting’s exact word-piece ids, up to the one read here, without any nudge" : ""}:
                 </span>
                 <pre style={PRE}>

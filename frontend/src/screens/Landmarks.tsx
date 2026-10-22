@@ -3,10 +3,14 @@ import { Apparatus, LensRecord, Missing, Page, Rubric, SweepError } from "../com
 import { AnswerPositionCaution, SightingFarCaution, TemplateEndCaution } from "../lib/cautions";
 import type { FrameInfo } from "../store/sighting";
 import { ControlSighting } from "../components/ControlSighting";
-import { describeFrame } from "../lib/frame";
+import { describeFrame, shownFrameOptions, type ShownFrame } from "../lib/frame";
 import { isBaseFitted, lensLabel, lensPhrase, useReadingLens } from "../lib/lens";
 import { href, type Route } from "../router";
 import {
+  FNW_DEFAULT,
+  FRAME_AS_BUILT,
+  FRAME_MENDED,
+  type FrameOptions,
   type LayerReading,
   type Sighting,
   SIGHT_CAP,
@@ -44,6 +48,7 @@ import {
   cxL,
   f1,
   ghostGeometry,
+  lowdinGhost,
   loz,
   readingGeometry,
   ring,
@@ -79,11 +84,23 @@ const NOT_HERE = "not recorded in this sighting";
 
 const ORDINALS = ["first", "second", "third"];
 const NEURON_NAMES: Triple = ["what wakes it", "what it writes", "who listens next"];
-const ROLE = [
+/** What each stone does in the frame: squared in order (Gram–Schmidt), each word against those before it; or all at
+ * once (Löwdin), where no word lies exactly on its axis and the order names only which axis is which. */
+const ROLE_IN_ORDER = [
   { numeral: "I", ordinal: "first landmark", sets: "sets bearing 0°", how: "kept exactly as it lies" },
   { numeral: "II", ordinal: "second landmark", sets: "sets bearing 90°", how: "squared against the first" },
   { numeral: "III", ordinal: "third landmark", sets: "points straight up", how: "squared against both" },
 ];
+const ROLE_AT_ONCE = [
+  { numeral: "I", ordinal: "first landmark", sets: "its axis sets bearing 0°", how: "squared with the other two, all at once" },
+  { numeral: "II", ordinal: "second landmark", sets: "its axis sets bearing 90°", how: "squared with the other two, all at once" },
+  { numeral: "III", ordinal: "third landmark", sets: "its axis points straight up", how: "squared with the other two, all at once" },
+];
+const roles = (sq: FrameOptions["squaring"]) => (sq === "lowdin" ? ROLE_AT_ONCE : ROLE_IN_ORDER);
+/** the frame options the store sends, centring aside: whether they are those of a preset */
+const sameFrame = (a: FrameOptions, b: FrameOptions) => a.squaring === b.squaring && a.perLayer === b.perLayer && a.fnw === b.fnw;
+/** "the raw rows" or "the weighted rows", as the frame shown was squared from */
+const rowsWords = (f: ShownFrame) => (f.fnw ? "the weighted rows" : "the raw rows");
 const PAIRS: [number, number, string][] = [
   [0, 1, "first and second"],
   [0, 2, "first and third"],
@@ -412,6 +429,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const frameOpts = useTheodoliteStore((s) => s.frame);
   const setFrame = useTheodoliteStore((s) => s.setFrame);
   const neuronSquaring = useTheodoliteStore((s) => s.neuronSquaring);
+  const setNeuronSquaring = useTheodoliteStore((s) => s.setNeuronSquaring);
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const threadScore = useTheodoliteStore((s) => s.threadScore);
   const control = useTheodoliteStore((s) => s.control);
@@ -466,6 +484,35 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
       ? sf.kind === "words" && nw.join("|") === sf.norm.join("|")
       : sf.kind === "neuron" && lp !== null && sf.pole !== null &&
         sf.pole.idx === lp.idx && sf.pole.neuron === lp.neuron && sf.pole.face === lp.face);
+
+  // the frame every frame-dependent word, label and drawing below describes: the shown sighting's own when it was taken
+  // with these landmarks (the recorded one's is the frame as first built), else the frame the next sighting is taken in
+  const shown = shownFrameOptions(sighting, matches, frameOpts, { surveyMode, neuronSquaring });
+  const atOnce = shown.squaring === "lowdin";
+  // the shown sighting's own frame, whatever the page is set to: the charts of section v draw that sighting
+  const ownAtOnce = !!sighting && shownFrameOptions(sighting, true, frameOpts).squaring === "lowdin";
+  // the frame the next sighting from words is squared in, and the one from a neuron, as the radios set them
+  const nextSquaring = isWords ? frameOpts.squaring : neuronSquaring;
+  // the word frame the apparatus's formula describes, and how a neuron frame is squared
+  const wordFrame: FrameOptions = isWords ? shown : frameOpts;
+  const neuronFrameSq = isWords ? neuronSquaring : shown.squaring;
+  const wordRows = (m: number) =>
+    wordFrame.fnw ? (
+      <>
+        fnw ⊙ W<sub>U</sub>[t<sub>{m}</sub>]
+      </>
+    ) : (
+      <>
+        W<sub>U</sub>[t<sub>{m}</sub>]
+      </>
+    );
+  // the two frame presets; each keeps the reader's centring, and a neuron frame keeps Gram–Schmidt in both
+  const setFramePreset = (f: FrameOptions) => {
+    setFrame({ ...f, centre: frameOpts.centre });
+    setNeuronSquaring("gram_schmidt");
+  };
+  const onAsBuilt = sameFrame(frameOpts, FRAME_AS_BUILT) && neuronSquaring === "gram_schmidt";
+  const onMended = sameFrame(frameOpts, FRAME_MENDED) && neuronSquaring === "gram_schmidt";
 
   const li = clampIdx(selectedLayer);
   const layers = useMemo(() => sighting?.layers ?? [], [sighting]);
@@ -560,7 +607,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         ? `These readings belong to the sighting shown, ${sightDesc}. Take a sighting in the frame of ${poleLabel(lp)} to measure against it.`
         : `These readings belong to the sighting shown, ${sightDesc}. Choose a neuron, then take a sighting in its frame.`;
 
-  // "choose a neuron": the locked neuron's folio, else the loudest neuron at the chosen layer
+  // "choose a neuron": the locked neuron's folio, else the first listed neuron at the chosen layer
   const loud = L?.poles?.[0] ?? null;
   const neuronHref = lp
     ? href.neuron(lp.idx + 1, lp.neuron, lp.face)
@@ -571,9 +618,14 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
     matches && sf?.pole?.reader ? `layer ${sf.pole.reader.idx + 1} · neuron ${sf.pole.reader.neuron}` : null;
 
   /* ---- ii · the engraved frame */
-  const ghost = frame
-    ? ghostGeometry(cosOf(frame, nw[0], nw[1])[0], cosOf(frame, nw[0], nw[2])[0], cosOf(frame, nw[1], nw[2])[0])
+  // where the words truly point, from the cosines of the rows the frame was squared from (raw, or final-norm weighted);
+  // a frame taken afresh at each layer has another Gram matrix at each, so the final layer's cosines do not place it
+  const cw = shown.fnw ? 1 : 0;
+  const cos3 = frame && !shown.perLayer
+    ? ([cosOf(frame, nw[0], nw[1])[cw], cosOf(frame, nw[0], nw[2])[cw], cosOf(frame, nw[1], nw[2])[cw]] as const)
     : null;
+  const ghost = cos3 && !atOnce ? ghostGeometry(cos3[0], cos3[1], cos3[2]) : null;
+  const lghost = cos3 && atOnce ? lowdinGhost(cos3[0], cos3[1], cos3[2]) : null;
   const dots = useMemo(() => allDots(layers.map((x) => ({ az: x.az, el: x.el }))), [layers]);
   const rd = showReading ? readingGeometry(az as number, el as number) : null;
   const azR = az !== null ? Math.round(az) : null;
@@ -587,8 +639,14 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
     lean = (rd.comps[mi] >= 0 ? "toward " : "away from ") + SN[mi];
   }
   const diagAria =
-    `The survey frame: ${lab[0]} sets bearing 0°, ${lab[1]} bearing 90°, and ${lab[2]} points straight up.` +
-    (ghost ? ` Dashed rays show where the second and third words truly point before squaring; the first two stand ${ghost.angle}° apart.` : "") +
+    (atOnce
+      ? `The survey frame, squared all at once: the axis nearest ${lab[0]} sets bearing 0°, the axis nearest ${lab[1]} 90°, and the axis nearest ${lab[2]} points straight up.`
+      : `The survey frame: ${lab[0]} sets bearing 0°, ${lab[1]} bearing 90°, and ${lab[2]} points straight up.`) +
+    (lghost
+      ? ` Dashed rays show where the three words truly point, each a little off its own axis; the first two stand ${lghost.angle}° apart.`
+      : ghost
+        ? ` Dashed rays show where the second and third words truly point before squaring; the first two stand ${ghost.angle}° apart.`
+        : "") +
     (showReading && azR !== null && elR !== null
       ? ` At layer ${li + 1} the stream, as the ${lens.name} lens reads it, points at bearing ${sgn(azR)}°, elevation ${sgn(elR)}°.`
       : " No reading yet for these landmarks.");
@@ -671,7 +729,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const requestNote = isWords
     ? "The four frame options above go as frame_squaring, frame_per_layer, frame_fnw and centre_token_ids (the kept control’s exact prompt ids), with centre_answer, which centres each later word-piece on the control reading this very answer. How it writes (max_new_tokens, sampler, sight_every_token) is set under the question on the instrument page; a request_id is added when it is sent."
     : lp
-      ? `locked_pole takes [layer index, neuron, polarity]: layer ${lp.idx + 1} is index ${lp.idx}.`
+      ? `locked_pole takes [layer index, neuron, polarity]: layer ${lp.idx + 1} is index ${lp.idx}. frame_squaring carries how the neuron’s frame is squared.`
       : `locked_pole takes [layer index, neuron, polarity]. Without it the server quietly falls back to the word frame, here ${words.map((w) => q(w.trim())).join(" · ")}; its own default is “spider” · “eight” · “insect”.`;
 
   /* ---- apparatus · layer N */
@@ -749,11 +807,17 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         {isWords ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "26px" }}>
             <Rubric style={{ maxWidth: "760px" }}>
-              Write one word on each stone, or begin from a set below, then take a sighting. Choose three words of a kind,
-              and mind their order: the first stands exactly where it lies, and the other two are squared against it.
+              {atOnce
+                ? "Write one word on each stone, or begin from a set below, then take a sighting. Choose three words of a kind. The three are squared all at once, each axis as near its own word as the others allow, so no word takes another’s share; their order says only which axis is called first."
+                : "Write one word on each stone, or begin from a set below, then take a sighting. Choose three words of a kind, and mind their order: the first stands exactly where it lies, and the other two are squared against it."}
+              {shown.own && shown.squaring !== nextSquaring
+                ? nextSquaring === "lowdin"
+                  ? " That is how the sighting shown was squared; the next will be squared all at once, as set in the apparatus below."
+                  : " That is how the sighting shown was squared; the next will be squared in order, as set in the apparatus below."
+                : ""}
             </Rubric>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "30px 56px" }}>
-              {ROLE.map((r, i) => {
+              {roles(shown.squaring).map((r, i) => {
                 const shown = words[i].trim() || "this landmark";
                 return (
                   <div key={i} style={{ flex: "1 1 280px", minWidth: "0", display: "flex", gap: "18px", alignItems: "flex-start" }}>
@@ -928,7 +992,9 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 </a>
               )}
               <span style={{ fontSize: "16px", color: "#6B5D4D" }}>
-                the neuron’s frame is squared in the same order: what wakes it comes first
+                {atOnce
+                  ? "the neuron’s frame is squared all at once, as chosen below: what wakes it names the first axis"
+                  : "the neuron’s frame is squared in order: what wakes it comes first, kept exactly as it lies"}
               </span>
             </div>
             {lp ? <SweepError /> : null}
@@ -941,10 +1007,22 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         <dl className="dl">
           <dt>from words</dt>
           <dd>
-            e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt(W<sub>U</sub>[t<sub>1</sub>], W<sub>U</sub>[t
-            <sub>2</sub>], W<sub>U</sub>[t<sub>3</sub>]), modified Gram–Schmidt in fp32: the “monument mode” of
-            ARCHITECTURE.md §3.3, module 4. Each word is read as one word-piece, the spaced form when that is a single
-            piece:{" "}
+            {wordFrame.squaring === "lowdin" ? (
+              <>
+                e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Löwdin({wordRows(1)}, {wordRows(2)}, {wordRows(3)}) = (V V<sup>⊤</sup>)
+                <sup>−½</sup> V on the unit rows V, in fp32 [33]: what the interface sends unless you choose otherwise, on{" "}
+                {FNW_DEFAULT ? "the weighted rows" : "the raw rows"} by default. As first built, and in the server’s own default,
+                modified Gram–Schmidt on the raw rows W<sub>U</sub>[t].
+              </>
+            ) : (
+              <>
+                e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt({wordRows(1)}, {wordRows(2)}, {wordRows(3)}), modified
+                Gram–Schmidt in fp32: the frame as first built and the server’s own default, on the raw rows (the “monument
+                mode” of ARCHITECTURE.md §3.3, module 4). The interface squares all at once (Löwdin [33]) unless you choose
+                otherwise.
+              </>
+            )}{" "}
+            Each word is read as one word-piece, the spaced form when that is a single piece:{" "}
             {known ? nw.map((w) => "“ " + w + "”").join(" · ") : <Missing what="resolved in a live sighting" />}.
           </dd>
           <dt>from a neuron</dt>
@@ -953,10 +1031,15 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             <sup>(ℓ, i)</sup>, v<sub>2</sub> = (σ · w<sub>down</sub>
             <sup>(ℓ, i)</sup>) · J<sub>ℓ</sub>
             <sup>⊤</sup>, v<sub>3</sub> = w<sub>gate</sub>
-            <sup>(ℓ′, j*)</sup>, squared in that order: the “pole-locked motif mode”. σ = ±1 names which of the
-            neuron’s two poles is locked (after Cammarata 2026 [9]); j* is the dominant downstream reader, in the code the
-            pole’s first listed thread, up to six layers on, or failing that the strongest neuron of the next layer
-            (engine_runtime.py). No pole-locked sighting is recorded in the study: <Missing />
+            <sup>(ℓ′, j*)</sup>,{" "}
+            {neuronFrameSq === "lowdin"
+              ? "squared all at once (Löwdin [33]), as you chose, so axis 1 is no longer exactly w_gate"
+              : "squared in that order (Gram–Schmidt), so axis 1 is exactly w_gate"}
+            : the “pole-locked motif mode”. A neuron frame keeps Gram–Schmidt by default: its three axes have fixed roles, so
+            their order is not a choice and the order fault does not arise. σ = ±1 names which of the neuron’s two poles is
+            locked (after Cammarata 2026 [9]); j* is the dominant downstream reader, in the code the pole’s first listed
+            thread, up to six layers on, or failing that the first listed neuron of the next layer (its loudest, or, ranked by
+            write size, its biggest writer; engine_runtime.py). No pole-locked sighting is recorded in the study: <Missing />
           </dd>
           <dt>the reading</dt>
           <dd>
@@ -973,12 +1056,15 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <LensRecord sighting={sighting} />
           <dt>where it is taken</dt>
           <dd>
-            As built, the word frame is taken at the last layer, and every layer’s h̃<sub>ℓ</sub> is read in it. A frame
+            As built, and by default, the word frame is taken at the last layer, and every layer’s h̃<sub>ℓ</sub> is read in it. A frame
             squared afresh at each layer, v<sub>m</sub>
             <sup>(ℓ)</sup> = W<sub>U</sub>[t<sub>m</sub>] · J<sub>ℓ</sub>, reads the raw h<sub>ℓ</sub> instead, since ⟨h<sub>ℓ</sub>, u J
             <sub>ℓ</sub>⟩ = ⟨h<sub>ℓ</sub> J<sub>ℓ</sub>
             <sup>⊤</sup>, u⟩ (<span className="mono">build_monument_frame(pullback_per_layer=True)</span>,{" "}
             <span className="mono">frame_per_layer</span> in the request); the fraction caught is then a fraction of ‖h<sub>ℓ</sub>‖.
+            {shown.perLayer
+              ? " Each layer has its own frame, so the final layer’s cosines do not place the words, and the dashed rays where the words truly point are not drawn."
+              : ""}
           </dd>
           <dt>weights and centre</dt>
           <dd>
@@ -994,53 +1080,70 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           </dd>
           <dt>known fault</dt>
           <dd>
-            Bug 3, high (REPORT §3.4): the frame changes with the order of the words, and it is built from the raw rows of W
-            <sub>U</sub>, not the rows the model actually weighs, fnw · W<sub>U</sub>, unless you choose otherwise. The fix,
-            now the options below, squares all three at once (Löwdin 1950 [33]) on the weighted rows and shows the fraction of
-            the state caught. Section iv below has the evidence.
+            Bug 3, high (REPORT §3.4): as first built, the frame changed with the order of the words, and was built from the
+            raw rows of W<sub>U</sub>, not the rows the model weighs, fnw · W<sub>U</sub>. The interface now sends the mend for
+            the order unless you choose otherwise: squared all at once (Löwdin 1950 [33]),{" "}
+            {FNW_DEFAULT
+              ? "on the weighted rows, which V7 did not measure"
+              : "on the raw rows, where V7 measured it; the weighted rows are an option below, which V7 did not measure"}
+            . The server’s own default stays the frame as first built, for old callers. Every sighting shows the fraction of
+            the state its frame catches. Section iv below has the evidence.
           </dd>
         </dl>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 40px", paddingTop: "8px", borderTop: "1px solid #E3DACA" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 12px", paddingTop: "8px", borderTop: "1px solid #E3DACA" }}>
+          <button type="button" className="btn-ghost" aria-pressed={onAsBuilt} onClick={() => setFramePreset(FRAME_AS_BUILT)}>
+            the frame options as first built
+          </button>
+          <button type="button" className="btn-ghost" aria-pressed={onMended} onClick={() => setFramePreset(FRAME_MENDED)}>
+            the default frame
+          </button>
+          <span style={{ flex: "1 1 360px", minWidth: "0", fontSize: "15px", color: "#6B5D4D" }}>
+            To set a bearing beside the study’s, take it in the frame as first built. That is needed but not enough: the
+            study’s sightings also carried a doubled start mark (fault 6), which by itself moved bearings by a median of
+            0.4–1.9° in V7, and were taken before the V7 fixes.
+          </span>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 40px" }}>
           <fieldset style={optFieldset}>
-            <legend style={optLegend}>how the frame is squared</legend>
+            <legend style={optLegend}>how the frame is squared{isWords ? "" : " (a neuron’s frame)"}</legend>
             <label style={optLabel(true)}>
               <input
                 type="radio"
                 name="frame-squaring"
-                checked={frameOpts.squaring === "gram_schmidt"}
-                onChange={() => setFrame({ squaring: "gram_schmidt" })}
+                checked={nextSquaring === "gram_schmidt"}
+                onChange={() => (isWords ? setFrame({ squaring: "gram_schmidt" }) : setNeuronSquaring("gram_schmidt"))}
                 style={optInput}
               />
               <span>
-                in order <span style={aside}>(Gram–Schmidt, as built)</span>
+                in order <span style={aside}>(Gram–Schmidt, as built; the default for a neuron frame)</span>
               </span>
             </label>
             <label style={optLabel(true)}>
               <input
                 type="radio"
                 name="frame-squaring"
-                checked={frameOpts.squaring === "lowdin"}
-                onChange={() => setFrame({ squaring: "lowdin" })}
+                checked={nextSquaring === "lowdin"}
+                onChange={() => (isWords ? setFrame({ squaring: "lowdin" }) : setNeuronSquaring("lowdin"))}
                 style={optInput}
               />
               <span>
-                all at once <span style={aside}>(Löwdin [33], the fix)</span>
+                all at once <span style={aside}>(Löwdin [33], the default for words)</span>
               </span>
             </label>
           </fieldset>
           <fieldset style={optFieldset}>
             <legend style={optLegend}>where the frame is taken</legend>
             <label style={optLabel(true)}>
-              <input type="radio" name="frame-place" checked={!frameOpts.perLayer} onChange={() => setFrame({ perLayer: false })} style={optInput} />
+              <input type="radio" name="frame-place" checked={!frameOpts.perLayer || !isWords} onChange={() => setFrame({ perLayer: false })} style={optInput} />
               <span>
-                from the final layer <span style={aside}>(as built)</span>
+                from the final layer <span style={aside}>(as built, and the default)</span>
               </span>
             </label>
             <label style={optLabel(isWords)}>
               <input
                 type="radio"
                 name="frame-place"
-                checked={frameOpts.perLayer}
+                checked={frameOpts.perLayer && isWords}
                 disabled={!isWords}
                 onChange={() => setFrame({ perLayer: true })}
                 aria-describedby="frame-note"
@@ -1059,7 +1162,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             <label style={optLabel(isWords)}>
               <input
                 type="checkbox"
-                checked={frameOpts.fnw}
+                checked={frameOpts.fnw && isWords}
                 disabled={!isWords}
                 onChange={(e) => setFrame({ fnw: e.target.checked })}
                 aria-describedby="frame-note"
@@ -1089,6 +1192,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         </div>
         <p id="frame-note" style={{ margin: 0, maxWidth: "900px", fontSize: "15px", color: "#6B5D4D" }}>
           {isWords ? "" : "The final-norm weights and the per-layer lens apply to a frame of words, not to a neuron’s frame. "}
+          {isWords && frameOpts.fnw ? "V7 did not measure a frame on the weighted rows. " : ""}
           {canCentre
             ? "Centring reads against the matched control kept on the instrument’s first page: the first word-piece against the control where it chose its own first, each later one against the control reading the same answer up to there. "
             : controlIsThis
@@ -1227,6 +1331,22 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                     </text>
                   </g>
                 </g>
+              ) : lghost ? (
+                <g>
+                  <path d={lghost.rays} fill="none" stroke="#7A5C28" strokeWidth="1.1" strokeDasharray="4 4" />
+                  <path d={lghost.arc} fill="none" stroke="#7A5C28" strokeWidth="0.9" />
+                  <path d={lghost.tips} fill="#F6F0E3" stroke="#7A5C28" strokeWidth="1" />
+                  <g fontFamily="EB Garamond, Garamond, serif" fontSize="14" fontStyle="italic" fill="#7A5C28">
+                    {lghost.labels.map(([x, y], m) => (
+                      <text key={m} x={x} y={y}>
+                        true {q(words[m].trim())}
+                      </text>
+                    ))}
+                    <text x={lghost.ax} y={lghost.ay} fontStyle="normal" textAnchor="middle" style={{ fontVariantNumeric: "lining-nums" }}>
+                      {lghost.angle}°
+                    </text>
+                  </g>
+                </g>
               ) : null}
               <path d={PLATE.axes} fill="none" stroke="#2B2117" strokeWidth="1.4" />
               <path d={PLATE.tips} fill="#A07A2E" />
@@ -1288,7 +1408,13 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               <span aria-hidden="true" style={{ color: "#A07A2E" }}>
                 ◆
               </span>
-              <span>dashed: where the words truly point</span>
+              <span>
+                {ghost || lghost
+                  ? `dashed: where the words truly point${lghost ? ", each a little off its axis" : ""}`
+                  : frame && shown.perLayer
+                    ? "dashed rays not drawn: each layer has its own frame (apparatus above)"
+                    : "dashed: where the words truly point"}
+              </span>
               <span aria-hidden="true" style={{ color: "#A07A2E" }}>
                 ◆
               </span>
@@ -1392,7 +1518,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                 {pfRange ?? <Missing what={NOT_HERE} />} across this sighting
                 {frameDesc === null || frameDesc.studyComparable
                   ? ", 2.4–3.9% by stretch of layers over V7’s 18 prompts."
-                  : ". The study’s 2.4–3.9% was measured on the uncentred h·Jᵀ frame, so it does not compare with this one."}
+                  : ". The study’s 2.4–3.9% was measured on the uncentred h·Jᵀ frame of raw rows, so it does not compare with this one."}
               </dd>
               {L?.streamStrength != null ? (
                 <>
@@ -1500,7 +1626,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           </h2>
           <p style={{ margin: "0", fontSize: "18px", lineHeight: 1.5 }}>
             A theodolite wants its landmarks well apart, and 90° would be a perfect right angle. The smaller the angle
-            between two words, the more they share, and the more the first takes from the second.
+            between two words, the more they share,{" "}
+            {atOnce
+              ? "and the further each word stands from its own axis once the three are squared."
+              : "and the more the first takes from the second."}
           </p>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {pairs.map((p) => (
@@ -1557,26 +1686,28 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             ))}
           </div>
           <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
-            Gilt ray: the angle the instrument works with <span style={{ fontStyle: "italic" }}>(raw unembedding rows)</span>.
-            Dotted ray: the angle once the model’s last scaling is applied, as it weighs words just before speaking{" "}
-            <span style={{ fontStyle: "italic" }}>(final-norm weighted)</span>. The instrument squares its frame from these when “weigh the words
-            as the model does” is ticked.
+            Gilt ray: the angle between the raw unembedding rows. Dotted ray: the angle once the model’s last scaling is
+            applied, as it weighs words just before speaking <span style={{ fontStyle: "italic" }}>(final-norm weighted)</span>.{" "}
+            {shown.own ? `The frame shown was squared from ${rowsWords(shown)}.` : `The next sighting’s frame will be squared from ${rowsWords(shown)}.`}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", paddingTop: "14px", borderTop: "1px solid #D9CFBD" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "8px 16px" }}>
               <h3 className="h-sub">how square the frame stands</h3>
               {frame ? (
-                <span style={{ fontSize: "26px", color: "#8A6A2C", fontWeight: 500, fontVariantNumeric: "lining-nums tabular-nums" }}>
-                  {frame.cond.toFixed(2)}
+                <span style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
+                  <span style={{ fontSize: "26px", color: "#8A6A2C", fontWeight: 500, fontVariantNumeric: "lining-nums tabular-nums" }}>
+                    {(shown.fnw ? frame.condFnw : frame.cond).toFixed(2)}
+                  </span>
+                  <span style={{ fontSize: "15px", fontStyle: "italic", color: "#6B5D4D" }}>on {rowsWords(shown)}</span>
                 </span>
               ) : (
                 <span style={{ fontSize: "15px", color: "#6B5D4D" }}>[TAKE A SIGHTING WITH THESE WORDS]</span>
               )}
             </div>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
-              A condition number: 1.00 would be perfectly square. The study found “she” · “he” · “it”, at 1.75, square
-              enough, and the instrument’s default, “spider” · “eight” · “insect”, nearer still at 1.20. The real trouble
-              lies in the order, below.
+              A condition number: 1.00 would be perfectly square. The study measured “she” · “he” · “it” at 1.75 on raw rows
+              and 2.65 on weighted rows, and the server’s default, “spider” · “eight” · “insect”, at 1.20 and 1.43 (V7). The
+              real trouble lay in the order, below.
             </p>
           </div>
           <Apparatus title="angles and squareness" label="Apparatus for the angles between the landmarks" sources={false}>
@@ -1638,19 +1769,19 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         <div style={{ display: "flex", flexWrap: "wrap", gap: "24px 64px", alignItems: "flex-start" }}>
           <div style={{ flex: "999 1 520px", minWidth: "0", display: "flex", flexDirection: "column", gap: "14px" }}>
             <p style={{ margin: "0", fontSize: "21px", lineHeight: 1.5, maxWidth: "760px" }}>
-              The instrument squares the frame one word at a time <span style={aside}>(Gram–Schmidt)</span>. The first
-              word keeps its whole direction, with everything it shares with the others; the second keeps only what
-              differs from the first; the third only what differs from both. Name the same three words in another order,
-              and you stand in another frame.
+              As first built, the instrument squared the frame one word at a time <span style={aside}>(Gram–Schmidt)</span>.
+              The first word keeps its whole direction, with everything it shares with the others; the second keeps only
+              what differs from the first; the third only what differs from both. Name the same three words in another
+              order, and you stand in another frame. It now squares all three at once unless you choose otherwise.
             </p>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D", maxWidth: "760px" }}>
               The elevation depends only on which word comes last. Measured in the study: all six orders of “she” · “he” ·
               “it” over 18 prompts (V7), and the prompts where Gemma speaks of itself (E6).
             </p>
             <Rubric style={{ maxWidth: "760px" }}>
-              Compare two sightings squared in order only if their landmarks were named in the same order; or square the frame all at once
-              (above), which gives one frame for every order. The fix is an option, not the default, so the study’s readings stay
-              comparable.
+              These figures are for a frame squared in order. The instrument now squares the frame all at once, which gives one
+              frame for every order; a sighting squared in order (the recorded one, or one you choose above) still turns with the
+              order, so compare it only with sightings whose landmarks were named in the same order.
             </Rubric>
           </div>
           <div
@@ -1691,7 +1822,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               code, <span className="mono">gram_schmidt_orthonormalize_3d</span> and{" "}
               <span className="mono">build_monument_frame</span>). Gram–Schmidt keeps e<sub>1</sub> = v<sub>1</sub> / ‖v
               <sub>1</sub>‖ whole, so the first word takes the share the three hold in common. The frame is not
-              ill-conditioned (κ = 1.75, against 1.20 for the default set); the cause is the order of squaring (V7 NOTES).
+              ill-conditioned (κ = 1.75, against 1.20 for the server’s default set); the cause is the order of squaring (V7 NOTES).
             </dd>
             <dt>elevation</dt>
             <dd>
@@ -1703,7 +1834,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               Löwdin: E = (V V<sup>⊤</sup>)<sup>−½</sup> V, one frame for every order (V7 checked this on the raw rows, to
               1.2 × 10<sup>−7</sup>), taken on the weighted rows fnw · W<sub>U</sub> and applied to the normed h̃, with the
               fraction caught always shown: all four are now options of the request (frame_squaring “lowdin”, frame_fnw,
-              frame_per_layer, centre_prompts), and the server sends the fraction caught at every layer (proj_frac). V7 also suggests
+              frame_per_layer, centre_prompts), and the server sends the fraction caught at every layer (proj_frac). The
+              interface sends frame_squaring “lowdin” by default,{" "}
+              {FNW_DEFAULT ? "with frame_fnw" : "on the raw rows (frame_fnw false)"}; the server’s own default stays Gram–Schmidt
+              on raw rows. V7 also suggests
               contrast axes such as fnw · (W<sub>U</sub>[she] − W<sub>U</sub>[he]), less a background mean; those are not built.{" "}
               <span className="placeholder">[NOT YET IN THE SERVER]</span>
             </dd>
@@ -1712,7 +1846,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               How often the sign of “she” minus “he” in the frame matches the sign of the J++ she−he logit, by stretch of
               layers: 76–88% with “she” first, 72–87% with “he” first, 79–89% squared all at once (the summary file, 18
               prompts; the V7 NOTES print 74–86%, 79–85% and 75–89%). Even the order-free frame agrees only about four
-              times in five, because its rows are raw (V7 NOTES).
+              times in five, which the V7 NOTES put down to its raw rows. V7 did not measure a frame on weighted rows.
             </dd>
             <dt>E6</dt>
             <dd>
@@ -1775,7 +1909,11 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             <span style={{ color: "#6B5D4D", maxWidth: "900px" }}>
               the last words of one V7 prompt, as recorded:{" "}
               <span style={{ fontStyle: "italic", color: "#2B2117" }}>“Gemma is a helpful AI assistant. In conversations,”</span>.
-              Reorder the stones above with “she”, “he”, “it” to find your own row.
+              {atOnce
+                ? `These rows are frames squared in order; ${
+                    shown.own ? "the sighting shown is squared all at once, so its bearing does not change with the order" : "the frame set above squares all at once, so a bearing taken in it does not change with the order"
+                  }. To find your own row, take it in the frame as first built.`
+                : "Reorder the stones above with “she”, “he”, “it” to find your own row."}
             </span>
             <div style={{ overflowX: "auto", paddingBottom: "4px" }}>
               <div style={{ minWidth: "460px", maxWidth: "640px" }} role="table" aria-label="One prompt, six orders, layer 46">
@@ -1830,7 +1968,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
                         {d1(oel)}°
                       </span>
                       <span role="cell" style={{ fontSize: "14px", color: "#8F2B1E" }}>
-                        {mine ? "◆ your order" : ""}
+                        {mine ? (atOnce ? "◆ your order, if squared in order" : "◆ your order") : ""}
                       </span>
                     </div>
                   );
@@ -1876,10 +2014,11 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         </div>
         <Rubric style={{ maxWidth: "860px" }}>
           These charts follow the stream as the {lens.name} lens reads it; read them left to right, from the first layer to the
-          sixtieth. A bearing of 0° points at the first landmark and 90° at the second; an elevation of 90° points straight at
-          the third. Move the layer above, and the red line follows. No bearing was checked against what the model does, at any
-          layer: in the study, bearings swung 58–99° when the landmarks were reordered
-          {frameDesc?.lowdin ? " (in a frame squared in order; this one is squared all at once)" : ""}, and the landmarks caught only a
+          sixtieth. A bearing of 0° points along the first landmark’s axis and 90° along the second’s; an elevation of 90° points
+          straight along the third’s{ownAtOnce ? " (in a frame squared all at once each word stands a little off its axis)" : ""}. Move
+          the layer above, and the red line follows. No bearing was checked against what the model does, at any layer: in the
+          study, bearings swung 58–99° when the landmarks were reordered
+          {ownAtOnce ? " (in a frame squared in order; this one is squared all at once)" : ""}, and the landmarks caught only a
           few percent of the reading.
         </Rubric>
         <BearingCaution sighting={sighting} chart style={{ maxWidth: "860px" }} />

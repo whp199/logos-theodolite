@@ -5,7 +5,10 @@ import { href, type Route } from "../router";
 import {
   type AnswerSet,
   type LayerReading,
+  type ReadingOptions,
   type Sighting,
+  READING_AS_BUILT,
+  READING_MENDED,
   SIGHT_CAP,
   VOCAB,
   chosenOf,
@@ -13,9 +16,10 @@ import {
   exportSighting,
   generationWords,
   isChosenRow,
-  loudestOf,
+  leadOf,
   ordinal,
   piecesOf,
+  rankingWords,
   readWhere,
   readsInsideAnswer,
   retakeIfLive,
@@ -709,6 +713,21 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
   const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
   const threadScore = useTheodoliteStore((s) => s.threadScore);
   const setThreadScore = useTheodoliteStore((s) => s.setThreadScore);
+  const setReadingPreset = useTheodoliteStore((s) => s.setReadingPreset);
+  const frameNow = useTheodoliteStore((s) => s.frame);
+  const neuronSquaring = useTheodoliteStore((s) => s.neuronSquaring);
+  // which preset the reading options now match, centring aside (setReadingPreset keeps it)
+  const onPreset = (r: ReadingOptions) =>
+    frameNow.squaring === r.frame.squaring &&
+    frameNow.perLayer === r.frame.perLayer &&
+    frameNow.fnw === r.frame.fnw &&
+    neuronSquaring === r.neuronSquaring &&
+    poleRanking === r.poleRanking &&
+    threadScore === r.threadScore;
+  const readWith = (p: "as_built" | "mended") => {
+    setReadingPreset(p);
+    retakeIfLive();
+  };
   // the options are read again from the shown answer's ids, which waits until the server is free: while it is busy, a
   // change would set the page without reading anything again, so they wait too
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
@@ -724,7 +743,7 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
         <dt>survey frame</dt>
         <dd>
           {F.frameFormula}; {F.notes.join("; ")}.{" "}
-          {!F.poleMotif && !F.lowdin ? "A Löwdin frame on the final-norm-weighted rows squares the words all at once. " : null}
+          {!F.poleMotif && !F.lowdin ? "A Löwdin frame, the interface’s default, squares the words all at once. " : null}
           <a href={href.landmarks()}>landmarks</a>
         </dd>
         <dt>path</dt>
@@ -748,13 +767,13 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
         </dd>
         <dt>neurons</dt>
         <dd>
-          the 15 strongest GeGLU poles at the chosen layer,{" "}
+          the fifteen GeGLU poles listed at the chosen layer,{" "}
           {sighting.poleRanking === "write" ? (
             <>
-              by write size |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖
+              the top fifteen by write size |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖
             </>
           ) : (
-            "by |a| = |mlp_act|"
+            "the top fifteen by |a| = |mlp_act|"
           )}
           ; filled the positive pole, hollow the negative (after Cammarata 2026); size by |a|, placement on the ring schematic.
           {expl.length ? (
@@ -762,7 +781,9 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
               {" "}Together they explain {(Math.min(...expl) * 100).toFixed(0)}–{(Math.max(...expl) * 100).toFixed(0)}% of a layer’s feed-forward
               write in this sighting (⟨Σ c<sub>i</sub>, f⟩ / ⟨f, f⟩, E3).
             </>
-          ) : null}
+          ) : null}{" "}
+          Ranked either way, the fifteen explained 10–41% of the feed-forward write at the layers E3 sampled (21, 31, 41, 51,
+          59); E3 calls this indicative (12 prompts, last word-piece).
           <label className="check" style={{ marginTop: 4 }} title={waitNote}>
             <input
               type="checkbox"
@@ -774,7 +795,7 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
               }}
             />
             <span>
-              rank them by write size, |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, instead
+              rank them by write size, |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ (untick for |a|, as first built)
             </span>
           </label>
           {poleRanking !== sighting.poleRanking ? (
@@ -806,7 +827,9 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
           .{" "}
           {direct
             ? "A direct-path linear estimate, not a verified circuit: ρ ≈ 0.87 with the measured effect, where C reaches 0.41 (REPORT §3.4, bug 4)."
-            : "A weak guide (ρ ≈ 0.41; a direct-path estimate reaches 0.87)."}
+            : "A weak guide (ρ ≈ 0.41; a direct-path estimate reaches 0.87)."}{" "}
+          Threads join the fifteen listed at each layer, so they follow this ranking; V7 measured the direct-path score’s 0.87 on
+          threads among the fifteen ranked by |a|.
           <label className="check" style={{ marginTop: 4 }} title={waitNote}>
             <input
               type="checkbox"
@@ -845,6 +868,35 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
         </dd>
         <dt>the lens against this answer</dt>
         <dd>{set ? <LensAgainstAnswer set={set} /> : <Missing what="needs a live answer, its word-pieces sighted" />}</dd>
+        <dt>all the reading options</dt>
+        <dd style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+          <span style={{ display: "flex", flexWrap: "wrap", gap: "8px 12px" }}>
+            <button
+              type="button"
+              className="btn-ghost"
+              aria-pressed={onPreset(READING_AS_BUILT)}
+              disabled={isSweeping}
+              title={waitNote}
+              onClick={() => readWith("as_built")}
+            >
+              read with the reading options as first built (Gram–Schmidt on raw rows, |a|, C)
+            </button>
+            <button
+              type="button"
+              className="btn-ghost"
+              aria-pressed={onPreset(READING_MENDED)}
+              disabled={isSweeping}
+              title={waitNote}
+              onClick={() => readWith("mended")}
+            >
+              read with the mends (the default)
+            </button>
+          </span>
+          <span className="muted italic">
+            The study’s readings were taken with these options as first built, and also with a doubled start mark and before the
+            V7 fixes, so these options alone do not reproduce them.
+          </span>
+        </dd>
       </dl>
     </Apparatus>
   );
@@ -865,8 +917,9 @@ function layerList(nos: number[]): string {
 /* ---------------------------------------------------------------- iii · the leaf */
 
 function poleNote(s: Sighting, L: LayerReading) {
-  // the loudest by |a|, whatever order the server ranked the poles in
-  const p = loudestOf(L);
+  // the first listed in the sighting's own ranking (the loudest by |a|, or the biggest writer): its words are read, and
+  // its rank among the layer's 21,504 is exact
+  const p = leadOf(L);
   if (!p) return null;
   const recorded = s.source === "fixture" ? RECORDED_POLE_NOTES[`${L.idx}:${p.neuron}`] : undefined;
   const lens = p.lens?.slice(0, 3) ?? null;
@@ -1065,7 +1118,7 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
       </div>
 
       <div className="stack" style={{ gap: 8 }}>
-        <h3 className="h-sub">its loudest neuron</h3>
+        <h3 className="h-sub">{rankingWords(sighting.poleRanking).head}</h3>
         {note && note.words ? (
           <>
             <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "4px 14px" }}>
@@ -1082,7 +1135,7 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
           </>
         ) : note ? (
           <p style={{ margin: 0, fontSize: 16, color: "#6B5D4D" }}>
-            Fifteen neurons fired here; the loudest is{" "}
+            Fifteen neurons {rankingWords(sighting.poleRanking).did} here; {rankingWords(sighting.poleRanking).lead} is{" "}
             <a href={href.neuron(L.no, note.p.neuron, note.p.face)}>neuron {note.p.neuron}</a>. Open the layer’s leaf to read them.
           </p>
         ) : (
@@ -1224,7 +1277,9 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
         </dd>
         <dt>poles</dt>
         <dd>
-          signed a of the {L.poles.length} strongest: {L.poles.map((p) => signed(p.act)).join("  ")}. Labels: unembed((σ · w<sub>down</sub>) · J
+          signed a of the {L.poles.length} listed, ranked by{" "}
+          {sighting.poleRanking === "write" ? `write size, ${rankingWords("write").measure}` : "|a|"}:{" "}
+          {L.poles.map((p) => signed(p.act)).join("  ")}. Labels: unembed((σ · w<sub>down</sub>) · J
           <sup>⊤</sup>), against the naked eye’s unembed(σ · w<sub>down</sub>). Output labels held up at layers 41–58, were at chance at
           11–31, and were not tested at 1–10 or 32–40 (N1; erratum E9).
         </dd>

@@ -15,6 +15,7 @@ import {
   maxAct,
   ordinal as nth,
   poleKey,
+  rankingWords,
   readWhere,
   retakeIfLive,
   useShownSet,
@@ -155,10 +156,13 @@ interface Model {
   idx: number;
   layerNo: number;
   neuron: number;
-  /** 0 = loudest among the layer's listed poles by |a| (the list itself may be ranked by write size) */
+  /** 0 = loudest among the layer's fifteen listed poles by |a|; when they are ranked by write size this is not a rank
+   * in the layer, only among the listed (pole.rank is the exact rank in the sighting's own ranking) */
   loudRank: number | null;
   /** the poles were ranked by write size, |a| · ‖w_down ⊙ w_post‖, not by |a| */
   byWrite: boolean;
+  /** the words of the sighting's ranking (sighting.ts rankingWords) */
+  rw: ReturnType<typeof rankingWords>;
   conn: Conn;
   sighting: Sighting | null;
   layer: LayerReading | null;
@@ -166,7 +170,7 @@ interface Model {
   pole: PoleReading | null;
   loudest: PoleReading | null;
   fired: boolean;
-  /** the layer's loudest were recorded, and this neuron is not among them */
+  /** the layer's fifteen were listed (by the sighting's ranking), and this neuron is not among them */
   notAmong: boolean;
   routeFace: 1 | -1;
   focusFace: 1 | -1;
@@ -235,6 +239,7 @@ function useModel(route: NeuronRoute): Model {
       neuron,
       loudRank: layer ? loudnessRank(layer, neuron) : null,
       byWrite: sighting?.poleRanking === "write",
+      rw: rankingWords(sighting?.poleRanking ?? "activation"),
       conn,
       sighting,
       layer,
@@ -466,21 +471,21 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
     firedLine = (
       <>
         As the model read the word {m.readAt}
-        {m.inReply}, this neuron fired, the {loudPhrase(m.pole!.rank)} in its layer.
+        {m.inReply}, this neuron fired, the {m.rw.nth(m.pole!.rank)} in its layer.
       </>
     );
   else if (m.poles.length)
     firedLine = (
       <>
         As the model read the word {m.readAt}
-        {m.inReply}, this neuron was not among the fifteen loudest in its layer, so its strength there was not recorded.
+        {m.inReply}, this neuron was {m.rw.notAmong} in its layer, so its strength there was not recorded.
       </>
     );
   else
     firedLine = (
       <>
         As the model read the word {m.readAt}
-        {m.inReply}, the instrument recorded no loudest neurons at this layer: <Missing />
+        {m.inReply}, the instrument listed no neurons at this layer: <Missing />
       </>
     );
 
@@ -661,16 +666,22 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
               </span>
             ) : null}
           </Particular>
-          <Particular dt="loudness">
-            {m.pole ? (
+          <Particular dt={m.byWrite ? "write size" : "loudness"}>
+            {m.pole && m.byWrite ? (
+              <>
+                the {m.rw.nth(m.pole.rank)} of the <span style={NUM}>21,504</span> in its layer
+                {m.loudRank != null ? (
+                  <span style={{ color: MUTED }}> ({loudPhrase(m.loudRank)} by |a| of the fifteen listed)</span>
+                ) : null}
+              </>
+            ) : m.pole ? (
               <>
                 {m.loudRank === 0 ? "the loudest" : loudPhrase(m.loudRank ?? m.pole.rank)} of the <span style={NUM}>21,504</span> in its
                 layer
-                {m.byWrite ? <span style={{ color: MUTED }}> (listed among the fifteen that wrote most)</span> : null}
               </>
             ) : m.poles.length ? (
               <>
-                not among the fifteen loudest of the <span style={NUM}>21,504</span> in its layer
+                {m.rw.notAmong} of the <span style={NUM}>21,504</span> in its layer
               </>
             ) : (
               <Missing />
@@ -737,6 +748,8 @@ function rawReadout(m: Model) {
     signed_activation: m.pole ? m.pole.act : null,
     polarity: m.pole ? (m.pole.face > 0 ? "+" : "-") : null,
     rank_by_abs: m.loudRank != null ? m.loudRank + 1 : null,
+    // the same rank, named for what it is: by |a| among the fifteen listed, whichever ranking listed them
+    rank_by_abs_among_listed: m.loudRank != null ? m.loudRank + 1 : null,
     rank_in_list: m.pole ? m.pole.rank + 1 : null,
     pole_ranking: m.byWrite ? "write" : "activation",
     pole_label_jpp: m.pole?.lens ? m.pole.lens.map((t) => [t.token, t.logit]) : null,
@@ -827,19 +840,22 @@ const NeuronApparatus: React.FC<{ m: Model; saved: FolioSaved }> = ({ m, saved }
           {m.act !== null && m.pole ? (
             <>
               a = <span className="mono">mlp_act</span>[{m.idx}, {s?.readPos ?? "t"}, {m.neuron}] = {signedRaw(m.act)}, so |a| ={" "}
-              {String(Math.abs(m.act))}, {ordinal(m.pole.rank)} of the layer’s fifteen strongest;{" "}
+              {String(Math.abs(m.act))}, {ordinal(m.pole.rank)} of {m.rw.fifteen};{" "}
               {m.loudest && m.loudest.neuron !== m.neuron ? (
                 <>
-                  the loudest, neuron {m.loudest.neuron}, has a = {signedRaw(m.recordedLayer ? ACTS[0] : m.loudest.act)} (the bar stands at{" "}
-                  {m.barPct}%).
+                  the loudest{m.byWrite ? " of the fifteen listed" : ""}, neuron {m.loudest.neuron}, has a ={" "}
+                  {signedRaw(m.recordedLayer ? ACTS[0] : m.loudest.act)} (the bar stands at {m.barPct}%).
                 </>
               ) : (
-                <>it is the loudest (the bar stands full).</>
-              )}
+                <>it is the loudest{m.byWrite ? " of the fifteen listed" : ""} (the bar stands full).</>
+              )}{" "}
+              In the raw readout, <span className="mono">rank_by_abs</span> (and{" "}
+              <span className="mono">rank_by_abs_among_listed</span>) count by |a| among the fifteen listed;{" "}
+              <span className="mono">rank_in_list</span> follows <span className="mono">pole_ranking</span>.
             </>
           ) : (
             <>
-              not among the layer’s fifteen strongest at this word-piece, so a was not recorded: <Missing />
+              {m.rw.notAmong} at this word-piece, so a was not recorded: <Missing />
             </>
           )}
         </dd>
@@ -937,7 +953,7 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
     (m.fired
       ? `The filled end, the ${focusName} face, fired at the word ${m.readAt} with strength ${strength}`
       : m.notAmong
-        ? `The left end, the ${focusName} face, was not among the fifteen loudest at this word`
+        ? `The left end, the ${focusName} face, was ${m.rw.notAmong} at this word`
         : `The left end, the ${focusName} face; its strength at this word was not recorded`) +
     (leftWords ? ` and writes ${quoted(leftWords)}. ` : `; its words were not read. `) +
     `The hollow end, the ${otherName} face, ${m.fired ? "was silent" : "is the other way to fire"}` +
@@ -1086,7 +1102,7 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
                   ◆
                 </span>
                 <span>
-                  {m.notAmong ? "neither end was among the fifteen loudest at this word" : "its strength at this word was not recorded"}
+                  {m.notAmong ? `neither end was among ${m.rw.fifteen} at this word` : "its strength at this word was not recorded"}
                 </span>
               </>
             )}
@@ -1122,14 +1138,16 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
               <>
                 <div
                   role="img"
-                  aria-label={`Strength ${strength}, against ${loud} for the loudest neuron in this layer`}
+                  aria-label={`Strength ${strength}, against ${loud} for the loudest neuron ${m.byWrite ? "of the fifteen listed" : "in this layer"}`}
                   style={{ height: "3px", background: HAIR_FAINT, position: "relative" }}
                 >
                   <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${m.barPct}%`, background: GILT }} />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", fontSize: "14px", color: MUTED, ...NUM }}>
                   <span>0</span>
-                  <span>the loudest in this layer, {loud}</span>
+                  <span>
+                    the loudest {m.byWrite ? "of the fifteen listed" : "in this layer"}, {loud}
+                  </span>
                 </div>
               </>
             ) : null}
@@ -1137,7 +1155,9 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
               {m.fired ? (
                 <>Fired here, at the word {m.readAt}. </>
               ) : m.notAmong ? (
-                <>Not among the fifteen loudest at the word {m.readAt}, so its strength here was not recorded. </>
+                <>
+                  {cap(m.rw.notAmong)} at the word {m.readAt}, so its strength here was not recorded.{" "}
+                </>
               ) : (
                 <>Its strength at this word was not recorded. </>
               )}
@@ -1593,7 +1613,7 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
             lens={(cmp.pole.lens ?? []).slice(0, 3).map((t) => wp(t.token)).join(" ")}
             eye={(cmp.pole.eye ?? []).slice(0, 3).map((t) => wp(t.token)).join(" ")}
             text={
-              `${cap(loudPhrase(cmp.pole.rank))} in this layer, fired on its ${faceWord(cmp.pole.face)} face. ` +
+              `${cap(m.rw.nth(cmp.pole.rank))} in this layer, fired on its ${faceWord(cmp.pole.face)} face. ` +
               (cmp.agr.verdict === "agree"
                 ? "Both readings give the same words: they agree, and such a label earns more trust."
                 : `${cap(numberWord(cmp.agr.k))} word-piece${cmp.agr.k === 1 ? "" : "s"} in three stand${cmp.agr.k === 1 ? "s" : ""} on both sides.`)
@@ -2238,7 +2258,8 @@ const ThreadsApparatus: React.FC<{
         <dt>formula</dt>
         <dd>
           C<sub>i→j</sub> = ⟨σ<sub>i</sub> · w<sub>down,i</sub> ⊙ w<sub>post</sub>, w<sub>gate,j</sub> ⊙ w<sub>pre</sub>⟩ · |a<sub>j</sub>|, over
-          the 25 strongest poles at each of layers {hopN ? range : "(none)"} (index {hopN ? idxRange : "none"}), sorted by |{direct ? "D" : "C"}|; the
+          the 25 strongest poles by |a| at each of layers {hopN ? range : "(none)"} (index {hopN ? idxRange : "none"}), whatever the ranking
+          chosen for the sighting, sorted by |{direct ? "D" : "C"}|; the
           first {kN} of {kMax} are listed. A weight-based coupling in the residual-stream view of Elhage et al. 2021 [14].
         </dd>
         <dt>direct path</dt>
@@ -2410,6 +2431,7 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
   const poles = m.poles;
+  // strength bars against the loudest by |a| of the fifteen listed, whichever ranking listed them
   const loud = m.loudAct ?? (m.layer ? maxAct(m.layer) : null) ?? 1;
   const shown = poles.filter((p) => p.rank < 5 || p.neuron === m.neuron);
   const rest = poles.filter((p) => !shown.includes(p));
@@ -2477,7 +2499,7 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
                 borderBottom: `1px solid ${HAIR}`,
               }}
             >
-              <span>loudness</span>
+              <span>{m.byWrite ? "by write size" : "loudness"}</span>
               <span>neuron</span>
               <span>face</span>
               <span>strength</span>
@@ -2539,7 +2561,7 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
         </div>
       ) : (
         <p style={{ margin: 0 }}>
-          The loudest neurons at this layer: <Missing />
+          The neurons listed at this layer: <Missing />
         </p>
       )}
       {rest.length ? (
@@ -2563,15 +2585,25 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
         </p>
       ) : null}
       <Rubric style={{ maxWidth: "760px" }}>
-        Even all fifteen together carry only part of what the layer recalls from memory: between a tenth and two-fifths of it, in the study.
-        Loudness ranks a neuron among its neighbours; it does not say how much the neuron changed the model’s mind.
+        Even all fifteen together carry only part of what the layer recalls from memory: between a tenth and two-fifths of it, in the study.{" "}
+        {m.byWrite
+          ? "Write size ranks a neuron by how much it changed the stream here; it does not say how much it changed the model’s mind."
+          : "Loudness ranks a neuron among its neighbours; it does not say how much the neuron changed the model’s mind."}
       </Rubric>
-      <Apparatus title={`the fifteen strongest at layer ${m.layerNo}`} label="Apparatus for the neighbours">
+      <Apparatus title={`the fifteen listed at layer ${m.layerNo}`} label="Apparatus for the neighbours">
         <dl className="dl num">
           <dt>ranking</dt>
           <dd>
-            by |a| = |<span className="mono">mlp_act</span>| at the word-piece {m.sighting?.readAt != null ? `“${m.sighting.readAt}”` : <Missing />}, as
-            the instrument does; σ = sign(a).
+            {m.byWrite ? (
+              <>
+                by |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ (write size, the interface’s default)
+              </>
+            ) : (
+              <>
+                by |a| = |<span className="mono">mlp_act</span>| (as first built, and the server’s default)
+              </>
+            )}{" "}
+            at the word-piece {m.sighting?.readAt != null ? `“${m.sighting.readAt}”` : <Missing />}; σ = sign(a).
           </dd>
           <dt>signed a</dt>
           <dd>{poles.length ? poles.map((p) => `${p.neuron} ${actText(p)}`).join(" · ") : <Missing />}</dd>
@@ -2580,12 +2612,12 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
             {m.isFixture ? (
               labelled > 0 ? (
                 <>
-                  for the five strongest only (<span className="mono">pole_labels_jpp</span> and <span className="mono">pole_labels_naive</span>,
+                  for the first five listed only (<span className="mono">pole_labels_jpp</span> and <span className="mono">pole_labels_naive</span>,
                   keys {m.idx}:0 to {m.idx}:4); the other ten: <Missing />
                 </>
               ) : (
                 <>
-                  none at this layer: the recording keeps labels only at every sixth layer (index 5, 11, … 59), for the five strongest. Here:{" "}
+                  none at this layer: the recording keeps labels only at every sixth layer (index 5, 11, … 59), for the first five listed. Here:{" "}
                   <Missing />
                 </>
               )
@@ -2602,8 +2634,9 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
           </dd>
           <dt>caveat</dt>
           <dd>
-            a ranking by |a| ignores how large each neuron’s write is, and the top fifteen explain only 10–41% of the feed-forward write at layers
-            21–59 (REPORT §3.4, bug 8).
+            a ranking by |a| ignores how large each neuron’s write is; ranked either way, the fifteen explained only 10–41% of the
+            feed-forward write at the layers E3 sampled (21, 31, 41, 51 and 59), and E3 calls this indicative (12 prompts, last
+            word-piece; REPORT §3.4, bug 8).
           </dd>
           <dt>the fix</dt>
           <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -2964,6 +2997,9 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
   const setSteering = useTheodoliteStore((s) => s.setSteering);
   const setLarqlQuery = useTheodoliteStore((s) => s.setLarqlQuery);
   const steering = useTheodoliteStore((s) => s.steering);
+  // how the interface squares a neuron-locked frame (frame_squaring in pole_motif): Gram–Schmidt unless chosen
+  const neuronSquaring = useTheodoliteStore((s) => s.neuronSquaring);
+  const gs = neuronSquaring === "gram_schmidt";
   const pol = m.focusFace > 0 ? "1.0" : "-1.0";
   const sign = m.focusFace > 0 ? "+" : "-";
   const firstWord = m.recorded ? "“am”" : m.focus.lens?.length ? wp(m.focus.lens[0].token) : null;
@@ -2975,6 +3011,7 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
     '{"action": "sweep",\n' +
     ' "payload": {"prompt": "<SIGHTING_PROMPT>",\n' +
     '             "survey_mode": "pole_motif",\n' +
+    `             "frame_squaring": "${neuronSquaring}",\n` +
     `             "locked_pole": [${m.idx}, ${m.neuron}, ${pol}]}}`;
   const steerCode =
     "# over the /ws/theodolite socket (as the nudge page sends it)\n" +
@@ -3071,11 +3108,15 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
           <dt>survey frame</dt>
           <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
             <span>
-              pole-locked: e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt(w<sub>gate</sub>, (σ · w<sub>down</sub>) · J<sub>ℓ</sub>
+              pole-locked: e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = {gs ? "Gram–Schmidt" : "Löwdin"}(w<sub>gate</sub>, (σ · w
+              <sub>down</sub>) · J<sub>ℓ</sub>
               <sup>⊤</sup>, w<sub>gate,j*</sub>) in fp32: what wakes it, what it writes, and j*, the reader at the end of the sweep’s first thread
-              from this neuron, or failing one, the loudest neuron in layer {Math.min(60, m.layerNo + 1)} (<span className="mono">backend/server.py</span>
-              ). Gram–Schmidt is order-dependent, as with the word landmarks (REPORT §3.4, bug 3); a symmetric (Löwdin) orthonormalization [33],
-              an option on the landmarks page, is not. This frame was not tested. The link above sets this lock for the next sighting.{" "}
+              from this neuron, or failing one, the first listed neuron in layer {Math.min(60, m.layerNo + 1)} (
+              <span className="mono">backend/engine_runtime.py</span>).{" "}
+              {gs
+                ? "Gram–Schmidt keeps axis 1 exactly w_gate. A neuron frame keeps it by default: its three axes have fixed roles, so their order is not a choice and the order fault of the word landmarks (REPORT §3.4, bug 3) does not arise. A symmetric (Löwdin) orthonormalization [33] is an option on the landmarks page."
+                : "Squared all at once (Löwdin [33]), as chosen on the landmarks page, so axis 1 is no longer exactly w_gate; a neuron frame is squared in order (Gram–Schmidt) by default, since its axes have fixed roles."}{" "}
+              This frame was not tested. The link above sets this lock for the next sighting.{" "}
               <a href={href.landmarks()}>landmarks</a>
             </span>
             <pre style={PRE}>{surveyCode}</pre>

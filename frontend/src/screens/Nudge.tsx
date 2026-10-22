@@ -604,7 +604,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
   const okPole = okL && okN;
   const facePos = poleFace !== "negative";
   const faceW = facePos ? "positive" : "negative";
-  // what the sighting read of the named neuron, if it was among the loudest at its layer
+  // what the sighting read of the named neuron, if it was among the fifteen listed at its layer (by the sighting's own
+  // ranking: the loudest by |a|, or the biggest writers)
   const poleHere = okPole && readS ? (readS.layers[pl - 1]?.poles.find((p) => p.neuron === pn) ?? null) : null;
   const known = poleHere !== null;
   const unknown = okPole && !known;
@@ -1207,11 +1208,16 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                     {readWords ? <> as the model read {readWords}</> : null}
                     {readS?.isNudged ? <>, in the nudged sighting</> : readS === plainNow ? <>, in the plain sighting of this question</> : null}: the{" "}
                     {(() => {
-                      // by |a|, whatever order the server ranked the poles in
+                      // ranked by write size, the list is the layer's top fifteen writers, so its rank in the layer is exact;
+                      // ranked by |a|, the loudness rank among the listed is the rank in the layer
+                      if (readS?.poleRanking === "write") {
+                        const r = poleHere.rank;
+                        return (r === 0 ? "" : (ORDINAL[r] ?? `number ${r + 1}`) + " ") + "biggest writer";
+                      }
                       const r = readS ? (loudnessRank(readS.layers[pl - 1], pn) ?? poleHere.rank) : poleHere.rank;
-                      return r === 0 ? "" : (ORDINAL[r] ?? `number ${r + 1}`) + " ";
-                    })()}
-                    loudest in layer {pl}.{" "}
+                      return (r === 0 ? "" : (ORDINAL[r] ?? `number ${r + 1}`) + " ") + "loudest";
+                    })()}{" "}
+                    in layer {pl}.{" "}
                     {lensWords ? (
                       <>
                         Through the {readLens.name} lens (
