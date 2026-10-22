@@ -41,7 +41,7 @@ import torch
 import torch.nn.functional as F
 
 from backend.engine_runtime import TheodoliteRuntime, dequantize_w4a16_cols
-from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids
+from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids, writes_nothing
 from backend.theodolite_math import (
     D_FF,
     D_MODEL,
@@ -199,6 +199,7 @@ class LarqlVaultEngine:
         fnw, lm = self.runtime.final_norm_weight, self.runtime.lm_head_weight
         lens_ids = label_top_ids(jpp_vecs, fnw, lm, jpp_logits)
         eye_ids = label_top_ids(signed_w_down, fnw, lm, naive_logits)
+        silenced = writes_nothing(signed_w_down)  # a DELETEd neuron's zero column: no count, held back
         lens_id, edited = self._lens_id(), self._edited_neurons()
 
         rows: List[Dict[str, Any]] = []
@@ -225,7 +226,8 @@ class LarqlVaultEngine:
                         for lv, tid in zip(nv.cpu().tolist(), ni.cpu().tolist())
                     ],
                     "label_check": label_check(
-                        layer_idx, lens_ids[r], eye_ids[r], lens_id, edited=(layer_idx, n_idx) in edited
+                        layer_idx, lens_ids[r], eye_ids[r], lens_id, edited=(layer_idx, n_idx) in edited,
+                        silenced=silenced[r],
                     ),
                 }
             )
@@ -296,6 +298,7 @@ class LarqlVaultEngine:
                     label_top_ids(vec_raw, self.runtime.final_norm_weight, self.runtime.lm_head_weight, logits_naive)[0],
                     lens_id,
                     edited=edited,
+                    silenced=writes_nothing(vec_raw)[0],
                 ),
             }
 

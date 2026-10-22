@@ -6,14 +6,17 @@ study's conditions 2 and 3 for labels (REPORT §3.3, erratum E47; ROADMAP §ii).
 and the study's reports do (page layer = code layer + 1). It checks:
 1. the rule, over every layer 0-59, every count 0-10 (and none), under the shipped lens (jpp-base), another lens and
    no lens, edited or not: the bands, the reasons (below_layer_40 below 40; shares_nothing at none of ten, below 59,
-   under jpp-base only), held_back, lens_validated, and the keys in order; and the card's figures against their
-   sources (N1C_matrix.json's AUC, the report lines it cites);
+   under jpp-base only, edited or not; writes_nothing for a silenced neuron, with no count), held_back,
+   lens_validated, and the keys in order; and the card's figures against their sources (N1C_matrix.json's AUC for the
+   count, N1C_gate_cut.json's record of the cut, the report lines it cites);
 2. the ranking itself on small stand-in tensors: `top_ids_from_shortlist` equals a full ranking of the exact scores
    (ties broken toward the lower id), and `label_top_ids` equals a full fp32 softcapped top ten computed here;
 3. the vault on a stand-in runtime (small tensors): `edits_in_force` keeps the latest edit per neuron; every NEAREST row
    and DESCRIBE POLE face carries the label_check its words give, edited where an edit is in force; NEAREST and
    DESCRIBE POLE replies carry label_gate just before lens, UPDATE and INSERT do not; at layer 59 (the identity lens)
-   the two readings share ten; and the MCP tool inspect_pole's keys come in the WebSocket's order;
+   the two readings share ten; a neuron whose column is zero (as DELETE leaves it) writes nothing: no count, held back
+   (its tied "first ten" would otherwise share ten); and the MCP tool inspect_pole's keys come in the WebSocket's
+   order;
 4. the server's measure against the study's, where the study's static caches are at hand (experiments/results/N1A_cache,
    gitignored: here, or in the main checkout this worktree belongs to; skipped with a note otherwise): the cached fp32
    softcapped logits are taken back through the softcap, rounded to bf16 as the server's GEMM rounds them, capped
@@ -22,14 +25,21 @@ and the study's reports do (page layer = code layer + 1). It checks:
    reported, not failed: ties at the softcap break as they may there); and the in-band AUC of the count for causal
    P@10 >= 0.3 must be N1C_matrix.json's 0.8432 to 1e-4;
 5. the committed results the pages quote and read: experiments/results/N1C_gate_cut.json (the re-analysis of N1's data,
-   experiments/scripts/N1C_05_gate_cut.py) has the pinned sha256, which its provenance sidecar also records, the sidecar
+   experiments/scripts/N1C_09_gate_cut.py) has the pinned sha256, which its provenance sidecar also records, the sidecar
    names the script as committed and the committed inputs as they are, and, where the study's caches are at hand, the
-   analysis run again here gives the same result; the figures frontend/src/lib/labels.ts quotes (GATE_FIGURES) are the
-   file's and N1C_matrix.json's; frontend/src/fixtures/recordedLabelChecks.ts, which
+   analysis run again here gives the same result; the figures frontend/src/lib/labels.ts quotes (GATE_FIGURES,
+   OVERLAP_RECORD) and the card's cut_record are the file's and N1C_matrix.json's; frontend/src/fixtures/recordedLabelChecks.ts, which
    experiments/scripts/N1G_01_recorded_label_checks.py writes, lists every labelled face of the demonstration sighting
    and every row of the vault's 24 recorded searches, and either every check is null (not yet run on the GPU) or the
    module names experiments/results/N1G_recorded_label_checks.json by its sha256, as the sidecar does, and each check
-   is the file's.
+   is the file's; the sidecar's script and inputs are as committed (a note where the server code it names has changed
+   since), each recorded face is the neuron and face the fixture or the vault's recorded list has at its key, each
+   recorded check follows the rule at its layer, and the counts README.md and ROADMAP.md quote are the file's summary;
+6. the pages' own gate (frontend/src/lib/labels.ts), bundled with the frontend's esbuild and run under node: the
+   server's check is parsed and its verdict used, a label below page 41 is held back whatever its check says, a
+   missing check is "unchecked" and holds back by the layer alone, shares_nothing and writes_nothing hold back, an
+   edited neuron's hold does not quote the study's figures as its warrant, the gilt mark and the count's record go by
+   N1C_gate_cut.json's by_overlap, and the recorded checks reach the pages (the sighting's and the vault's, by key).
 
 Run: .venv/bin/python -I scripts/check_label_gate.py   (exits 0 when every check holds)
 """
@@ -63,6 +73,7 @@ from backend.label_gate import (
     BAND,
     BANDS,
     CUT,
+    HOLD_REASONS,
     LABEL_GATE_CARD,
     LABEL_MIN_LAYER,
     SAMPLED,
@@ -71,6 +82,7 @@ from backend.label_gate import (
     label_check,
     label_top_ids,
     top_ids_from_shortlist,
+    writes_nothing,
 )
 from backend.larql_vault import LarqlVaultEngine, PatchOperationRecord
 from backend.theodolite_math import FINAL_LOGIT_SOFTCAP, gemma4_rms_norm, unembed_gemma4
@@ -79,7 +91,7 @@ RESULTS = ROOT_DIR / "experiments" / "results"
 CHECK_KEYS = ["shared_top10", "held_back", "reasons", "band", "sampled_layer", "in_measured_band", "lens_validated",
               "edited"]
 CARD_KEYS = ["rule", "layers_count_from", "min_layer", "measure", "cut", "held_back_if_shared_top10_at_most",
-             "validated", "sources", "caution"]
+             "validated", "cut_record", "sources", "caution"]
 
 failures: List[str] = []
 passed = 0
@@ -157,6 +169,17 @@ def check_rule() -> None:
           "only the first ten of each list count")
     check(label_check(59, list(range(10)), list(range(10, 20)), "jpp-base")["held_back"] is False,
           "layer 59 never shares nothing as a reason")
+    # a silenced neuron (a zero write vector): no count, held back, whatever the ids, the lens and the layer
+    check(HOLD_REASONS == ("below_layer_40", "shares_nothing", "writes_nothing"), f"the hold reasons {HOLD_REASONS}")
+    for l, lens_id, want in ((45, "jpp-base", ["writes_nothing"]), (45, "jpp-instruct", ["writes_nothing"]),
+                             (20, "jpp-base", ["below_layer_40", "writes_nothing"]), (59, None, ["writes_nothing"])):
+        c = label_check(l, list(range(10)), list(range(10)), lens_id, edited=True, silenced=True)
+        check(list(c) == CHECK_KEYS and c["shared_top10"] is None and c["reasons"] == want and c["held_back"] is True
+              and c["edited"] is True and c["lens_validated"] is False, f"silenced at layer {l} under {lens_id}: {c}")
+    z = torch.zeros(3, 8, dtype=torch.bfloat16)
+    z[1, 4] = 1e-3
+    check(writes_nothing(z) == [True, False, True] and writes_nothing(z[1]) == [False],
+          "writes_nothing marks exactly the zero vectors")
 
     check(list(LABEL_GATE_CARD) == CARD_KEYS, f"card keys {list(LABEL_GATE_CARD)}")
     check(LABEL_GATE_CARD["min_layer"] == LABEL_MIN_LAYER and LABEL_GATE_CARD["layers_count_from"] == 0
@@ -167,6 +190,15 @@ def check_rule() -> None:
           "the card says the cut is the instrument's, not the study's")
     check("base-fitted J++" in LABEL_GATE_CARD["validated"] and "random neurons" in LABEL_GATE_CARD["validated"],
           "the card names the lens and the sample the AUC was measured for")
+    check("graded score, not the cut" in LABEL_GATE_CARD["validated"], "the card says the AUC 0.84 is the count's, not the cut's")
+    gc = json.loads((RESULTS / "N1C_gate_cut.json").read_text())["band"]
+    cut0 = gc["cuts"][str(CUT)]
+    want_rec = {"layers": list(BAND), "faces": gc["all"]["n"], "held_back": cut0["held_back"],
+                "held_back_sound": cut0["held_back_sound"], "kept": cut0["kept"], "kept_sound": cut0["kept_sound"],
+                "auc": round(gc["auc_cut_p10_ge_0.3"], 2), "source": "experiments/results/N1C_gate_cut.json (band)"}
+    check(LABEL_GATE_CARD["cut_record"] == want_rec, f"the card's cut_record {LABEL_GATE_CARD['cut_record']} != {want_rec}")
+    check("writes_nothing" in LABEL_GATE_CARD["caution"] and "edited label that shares none" in LABEL_GATE_CARD["caution"],
+          "the card's caution names the silenced neurons and the edited ones the cut still holds back")
     # the figures, from their sources
     m = json.loads((RESULTS / "N1C_matrix.json").read_text())
     auc = m["q"]["static_confidence_predictor"]["jv_nv_top10_overlap"]["auc_late_target_p10_ge_0.3"]
@@ -359,6 +391,29 @@ def check_vault() -> None:
         mcp_scientist._SHARED_RUNTIME = None
         mcp_scientist._SHARED_VAULT = None
 
+    # a neuron silenced as DELETE leaves it (a zero column): every logit ties, so without the silenced mark both
+    # readings' "first ten" would be the same lowest ids, and the label would share ten; it has no count, and is held back
+    saved = rt._w_down[45][:, 11].clone()
+    rt._w_down[45][:, 11] = 0
+    try:
+        reply = vault.execute_lql("DESCRIBE POLE LAYER 45 SLOT 11")
+        for face in ("north_pole", "south_pole"):
+            c = reply[face]["label_check"]
+            check(c["shared_top10"] is None and c["reasons"] == ["writes_nothing"] and c["held_back"] is True,
+                  f"a silenced neuron's {face}: {c}")
+        ids_j = ids_of(reply["north_pole"]["j_vindex_tokens"])
+        check(ids_j == ids_of(reply["north_pole"]["naive_tokens"]),
+              "a silenced neuron's two readings tie the same way (the artefact the mark keeps out)")
+        mcp_scientist.bind_runtime(rt, vault)  # type: ignore[arg-type]
+        mcp = mcp_scientist.inspect_pole(layer=45, neuron_idx=11, polarity=1.0)
+        check(mcp["north_pole"]["label_check"] == reply["north_pole"]["label_check"], "inspect_pole marks it the same way")
+    finally:
+        rt._w_down[45][:, 11] = saved
+        mcp_scientist._SHARED_RUNTIME = None
+        mcp_scientist._SHARED_VAULT = None
+        mcp_scientist._SHARED_RUNTIME = None
+        mcp_scientist._SHARED_VAULT = None
+
 
 # --------------------------------------------------------------------------------------------------------------------
 # 4. the server's measure against the study's
@@ -443,7 +498,7 @@ def check_against_study() -> None:
 # --------------------------------------------------------------------------------------------------------------------
 
 # the sha256 of experiments/results/N1C_gate_cut.json as committed: a re-run that changes a byte must change this too
-GATE_CUT_SHA256 = "f17c21815f7b2039f43262f6eebe4ff313d69ac330d85a15ffb5a14286367b21"
+GATE_CUT_SHA256 = "cf31dd81908064b70290f7515c9b1321fcfbef0d96130d20e0cd867e2f23f68c"
 FRONTEND = ROOT_DIR / "frontend" / "src"
 
 
@@ -471,7 +526,7 @@ def check_committed() -> None:
     check(got == GATE_CUT_SHA256, f"N1C_gate_cut.json sha256 {got} != the pinned {GATE_CUT_SHA256}")
     check(side["result_sha256"] == got, "the sidecar records the result's sha256")
     script = ROOT_DIR / side["script"]
-    check(side["script"] == "experiments/scripts/N1C_05_gate_cut.py" and side["script_sha256"] == sha256_of(script),
+    check(side["script"] == "experiments/scripts/N1C_09_gate_cut.py" and side["script_sha256"] == sha256_of(script),
           "the sidecar's script is the committed one")
     for inp in side["inputs"]:
         if not inp["gitignored"]:
@@ -489,7 +544,7 @@ def check_committed() -> None:
             if inp["gitignored"]:
                 p = cache / Path(inp["path"]).name
                 check(p.exists() and sha256_of(p) == inp["sha256"], f"the cache file {p.name} is the one the re-analysis read")
-        spec = importlib.util.spec_from_file_location("N1C_05_gate_cut", script)
+        spec = importlib.util.spec_from_file_location("N1C_09_gate_cut", script)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)  # type: ignore[union-attr]
         again = json.loads(json.dumps(mod.analyse(cache)))
@@ -507,8 +562,13 @@ def check_committed() -> None:
         "jv_nv_top10_overlap"]["auc_late_target_p10_ge_0.3"]
     want = {"auc": f"{auc:.2f}", "aucIn100": str(round(auc * 100)), "shareNothing": str(band["share_nothing"]["n"]),
             "shareNothingSound": str(band["share_nothing"]["n_sound"]), "shareSome": str(band["share_some"]["n"]),
-            "shareSomeSound": str(band["share_some"]["n_sound"])}
+            "shareSomeSound": str(band["share_some"]["n_sound"]), "band": str(band["all"]["n"]),
+            "bandSound": str(band["all"]["n_sound"]), "cutAuc": f"{band['auc_cut_p10_ge_0.3']:.2f}"}
     check(figs == want, f"labels.ts GATE_FIGURES {figs} != the results' {want}")
+    m = re.search(r"export const OVERLAP_RECORD[^=]*= \[(.*?)\];", labels_ts, re.S)
+    rec = [[int(a), int(b)] for a, b in re.findall(r"\[(\d+), (\d+)\]", m.group(1))] if m else []
+    want_rec = [[band["by_overlap"][str(k)]["n"], band["by_overlap"][str(k)]["n_sound"]] for k in range(11)]
+    check(rec == want_rec, f"labels.ts OVERLAP_RECORD {rec} != the results' by_overlap {want_rec}")
     consts = {k: v for k, v in re.findall(r"export const (LABEL_MIN_IDX|ONE_READING_IDX) = (\d+);", labels_ts)}
     check(consts == {"LABEL_MIN_IDX": str(LABEL_MIN_LAYER), "ONE_READING_IDX": "59"}, f"labels.ts constants {consts}")
     check(f"BAND_IDX: readonly [number, number] = [{BAND[0]}, {BAND[1]}]" in labels_ts
@@ -542,7 +602,152 @@ def check_committed() -> None:
         check(all(vx[k][f"{r['neuron']}{'+' if r['face'] > 0 else '-'}"] == r["label_check"]
                   for k, s in res["vault"]["searches"].items() for r in s["rows"]), "the module's vault checks are the results'")
         check(all(c is not None and list(c) == CHECK_KEYS for c in checks), "every recorded check is a full label_check")
+        # the sidecar's script and inputs as they stand; the server code it ran with, noted where it has changed
+        check(sha256_of(ROOT_DIR / res_side["script"]) == res_side["script_sha256"],
+              "the recorded checks' sidecar names the script as committed")
+        for inp in res_side["inputs"]:
+            check(sha256_of(ROOT_DIR / inp["path"]) == inp["sha256"], f"the recorded checks' input {inp['path']} is as committed")
+        changed = [k for k, v in res_side["code_sha256"].items() if sha256_of(ROOT_DIR / k) != v]
+        if changed:
+            print(f"  note: changed since the recorded checks ran: {', '.join(changed)} (the rule check below decides)")
+        # each recorded face is the label the pages apply it to
+        neu, acts = fixture["poleNeurons"], fixture["poleActs"]
+        bad = [k for k, v in res["fixture"]["faces"].items()
+               if (lambda l, r: v["neuron"] != neu[str(l)][r] or v["face"] != (1 if acts[str(l)][r] >= 0 else -1)
+                   or v["layer"] != l or v["rank"] != r)(*(int(x) for x in k.split(":")))]
+        check(not bad, f"the recorded sighting faces are the fixture's neuron and face at their keys: {bad[:5]}")
+        bad = [k for k, s in res["vault"]["searches"].items()
+               if [(r["neuron"], 1 if r["face"] > 0 else -1) for r in s["rows"]]
+               != [(int(x["n"]), 1 if x["pol"] >= 0 else -1) for x in lists[k]] or s["layer"] != int(k.split("@")[1])]
+        check(not bad, f"the recorded vault rows are the recorded searches' neurons and faces: {bad[:5]}")
+        # each recorded check follows the rule at its layer (reconstructed from its count, as verify_e2e does)
+        lens_id = run.get("lensId")
+        keyed = [(int(k.split(":")[0]), c) for k, c in fx.items()]
+        keyed += [(int(k.split("@")[1]), c) for k, v in vx.items() for c in v.values()]
+        bad = []
+        for l, c in keyed:
+            k = c["shared_top10"]
+            lens, eye = ids_sharing(k) if k is not None else (None, list(range(10)))
+            if label_check(l, lens, eye, lens_id, edited=c["edited"], silenced="writes_nothing" in c["reasons"]) != c:
+                bad.append((l, c))
+        check(not bad, f"every recorded check follows the rule at its layer: {bad[:3]}")
+        # the counts the docs quote
+        sm = res["summary"]
+        fx_n, fx_h, v_n, v_h = sm["fixture"]["faces"], sm["fixture"]["held_back"], sm["vault"]["faces"], sm["vault"]["held_back"]
+        check(fx_h == sum(c["held_back"] for c in fx.values()) and v_h == sum(c["held_back"] for v in vx.values() for c in v.values()),
+              "the results' summary counts the module's held-back checks")
+        readme = re.sub(r"\s+", " ", (ROOT_DIR / "README.md").read_text())
+        roadmap = re.sub(r"\s+", " ", (ROOT_DIR / "ROADMAP.md").read_text())
+        check(f"hold back {fx_h} of the sighting's {fx_n} labelled faces and {v_h} of the vault's {v_n} rows" in readme,
+              f"README.md quotes {fx_h} of {fx_n} and {v_h} of {v_n}")
+        check(f"{fx_h} of the sighting's {fx_n} labelled faces and {v_h} of the vault's {v_n} rows are held back" in roadmap,
+              f"ROADMAP.md quotes {fx_h} of {fx_n} and {v_h} of {v_n}")
         print(f"  recordedLabelChecks.ts: {len(checks)} checks from {run['results']} ({run['runAt']})")
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# 6. the pages' own gate, run under node
+# --------------------------------------------------------------------------------------------------------------------
+
+PAGES_ENTRY = r"""
+import * as L from "./labels";
+const raw = (k: number | null, held: boolean, reasons: string[], extra: Record<string, unknown> = {}) => ({
+  shared_top10: k, held_back: held, reasons, band: "band", sampled_layer: false, in_measured_band: true,
+  lens_validated: true, edited: false, ...extra,
+});
+const g = (idx: number, c: unknown) => L.labelGate(L.layerIdx(idx), L.parseLabelCheck(c));
+const pick = (x: L.Gate) => ({ held: x.heldBack, reasons: x.reasons, c3: x.condition3, k: x.sharedTop10, edited: x.edited });
+const out: Record<string, unknown> = {};
+out.parseNull = L.parseLabelCheck(null);
+out.parseJunk = L.parseLabelCheck({ shared_top10: 3 });
+out.parseReasons = L.parseLabelCheck(raw(0, true, ["shares_nothing", "made_up"]))?.reasons;
+out.below_unchecked = pick(g(35, null));
+out.band_unchecked = pick(g(45, null));
+out.below_shown_by_server = pick(g(35, raw(6, false, [])));
+out.band_shares_nothing = pick(g(45, raw(0, true, ["shares_nothing"])));
+out.band_server_verdict = pick(g(45, raw(4, true, [])));
+out.band_shown = pick(g(45, raw(4, false, [])));
+out.one_reading = pick(g(59, raw(10, false, [], { band: "one_reading" })));
+const ed = g(45, raw(0, true, ["shares_nothing"], { lens_validated: false, edited: true }));
+out.edited = { ...pick(ed), rubric: L.heldRubric(ed), shared: L.sharedLine(ed) };
+const other = g(45, raw(0, false, [], { lens_validated: false }));
+out.other_lens = { ...pick(other), shared: L.sharedLine(other) };
+const sil = g(45, raw(null, true, ["writes_nothing"], { lens_validated: false, edited: true }));
+out.silenced = { ...pick(sil), tag: L.heldTag(sil), shared: L.sharedLine(sil), line: L.heldLine(sil) };
+out.above = [0, 1, 2, 3, 4, 10].map((k) => L.overlapAboveBand(k));
+out.line1 = L.overlapLine(g(45, raw(1, false, [])));
+out.line1_other_lens = L.overlapLine(g(45, raw(1, false, [], { lens_validated: false })));
+out.line1_page59 = L.overlapLine(g(58, raw(1, false, [], { band: "above_band" })));
+const fx: Record<string, unknown> = {};
+for (const key of ["35:0", "53:0", "53:4", "58:0"]) {
+  const [l, r] = key.split(":").map(Number);
+  fx[key] = pick(L.labelGate(L.layerIdx(l), L.fixtureCheck(l, r)));
+}
+out.fixture = fx;
+out.recordedChecked = L.RECORDED_CHECKED;
+out.vaultHeld40 = L.recordedVaultHeld(40);
+console.log(JSON.stringify(out));
+"""
+
+
+def check_pages() -> None:
+    print("6. the pages' own gate, under node")
+    import shutil
+    esbuild, node = ROOT_DIR / "frontend" / "node_modules" / ".bin" / "esbuild", shutil.which("node")
+    check(esbuild.exists() and node is not None, "the frontend's esbuild and node are at hand (npm install in frontend/)")
+    if not esbuild.exists() or node is None:
+        return
+    bundle = subprocess.run([str(esbuild), "--bundle", "--platform=node", "--format=esm", "--loader=ts",
+                             "--log-level=error", "--sourcefile=check_label_gate_entry.ts"],
+                            input=PAGES_ENTRY, cwd=FRONTEND / "lib", capture_output=True, text=True, timeout=120)
+    check(bundle.returncode == 0, f"esbuild could not bundle lib/labels.ts:\n{bundle.stderr}")
+    if bundle.returncode != 0:
+        return
+    ran = subprocess.run([node, "--input-type=module"], input=bundle.stdout, capture_output=True, text=True, timeout=120)
+    check(ran.returncode == 0, f"lib/labels.ts did not run under node:\n{ran.stderr}")
+    if ran.returncode != 0:
+        return
+    o = json.loads(ran.stdout.strip().splitlines()[-1])
+    G = lambda held, reasons, c3, k, edited=False: {"held": held, "reasons": reasons, "c3": c3, "k": k, "edited": edited}
+    check(o["parseNull"] is None and o["parseJunk"] is None, "a missing or malformed check parses to none")
+    check(o["parseReasons"] == ["shares_nothing"], f"unknown reasons are dropped: {o['parseReasons']}")
+    check(o["below_unchecked"] == G(True, ["below_layer_40"], "unchecked", None), f"below 41, no check: {o['below_unchecked']}")
+    check(o["band_unchecked"] == G(False, [], "unchecked", None), f"in the band, no check: {o['band_unchecked']}")
+    check(o["below_shown_by_server"] == G(True, ["below_layer_40"], "applied", 6),
+          f"below 41 the layer holds a label back whatever the check says: {o['below_shown_by_server']}")
+    check(o["band_shares_nothing"] == G(True, ["shares_nothing"], "applied", 0), f"shares nothing: {o['band_shares_nothing']}")
+    check(o["band_server_verdict"]["held"] is True, "the server's held_back is the pages' verdict")
+    check(o["band_shown"] == G(False, [], "applied", 4), f"a shown label: {o['band_shown']}")
+    check(o["one_reading"] == G(False, [], "one-reading", 10), f"page 60: {o['one_reading']}")
+    e = o["edited"]
+    check(e["held"] is True and e["c3"] == "unvalidated" and e["edited"] is True
+          and "never measured" in e["rubric"] and "31" not in e["rubric"] and "AUC" not in e["rubric"]
+          and "still holds" in e["shared"], f"an edited neuron held back as a precaution, without the study's figures: {e}")
+    check(o["other_lens"]["held"] is False and o["other_lens"]["c3"] == "unvalidated"
+          and "not a verdict" in o["other_lens"]["shared"], f"another lens: a count, not a verdict: {o['other_lens']}")
+    sv = o["silenced"]
+    check(sv["held"] is True and sv["k"] is None and sv["reasons"] == ["writes_nothing"] and "silenced" in sv["tag"]
+          and sv["shared"] and "writes nothing" in sv["line"], f"a silenced neuron: {sv}")
+    band = json.loads((RESULTS / "N1C_gate_cut.json").read_text())["band"]
+    rate = band["all"]["n_sound"] / band["all"]["n"]
+    want_above = [band["by_overlap"][str(k)]["n_sound"] / band["by_overlap"][str(k)]["n"] > rate for k in (0, 1, 2, 3, 4, 10)]
+    check(o["above"] == want_above, f"the gilt mark by the count's record: {o['above']} != {want_above}")
+    b1 = band["by_overlap"]["1"]
+    check(f"only {b1['n_sound']} times in {b1['n']}" in o["line1"] and f"{band['all']['n_sound']} in {band['all']['n']}" in o["line1"],
+          f"one of ten quotes its record: {o['line1']!r}")
+    check(o["line1_other_lens"] == "" and o["line1_page59"] == "",
+          "the record is quoted only through the base-fitted lens, within the band it was measured in")
+    res_p = RESULTS / "N1G_recorded_label_checks.json"
+    if o["recordedChecked"] and res_p.exists():
+        res = json.loads(res_p.read_text())
+        for key, got in o["fixture"].items():
+            c = res["fixture"]["faces"][key]["label_check"]
+            check(got["held"] is c["held_back"] and got["k"] == c["shared_top10"],
+                  f"the recorded sighting's {key} reaches the pages as recorded: {got} vs {c}")
+        rows = [r for s in res["vault"]["searches"].values() if s["layer"] >= 40 for r in s["rows"]]
+        want_v = {"rows": len(rows), "held": sum(r["label_check"]["held_back"] for r in rows)}
+        check(o["vaultHeld40"] == want_v, f"the recorded vault rows held back at 41 and above: {o['vaultHeld40']} != {want_v}")
+    print(f"  lib/labels.ts under node: the gate, the wording and the recorded checks as the files say")
 
 
 def main() -> int:
@@ -551,6 +756,7 @@ def main() -> int:
     check_vault()
     check_against_study()
     check_committed()
+    check_pages()
     if failures:
         print(f"\nlabel gate: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

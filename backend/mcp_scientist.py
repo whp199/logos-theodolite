@@ -32,7 +32,7 @@ from fastmcp import FastMCP
 from interp_engine import Address
 
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
-from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids
+from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids, writes_nothing
 from backend.larql_vault import LarqlVaultEngine
 from backend.theodolite_math import (
     D_FF,
@@ -280,6 +280,7 @@ async def trace_downstream_readers(
             label_top_ids(eye_vec, fnw, lm, eye_logits)[0],
             lens_id,
             edited=(l_dst, cand["dst_neuron_idx"]) in edited,
+            silenced=writes_nothing(eye_vec)[0],
         )
     return {
         "prompt": text,

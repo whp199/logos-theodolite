@@ -55,7 +55,7 @@ from interp_engine.steer import steering_spec_to_eager_specs
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, OrthogonalDecompSpec, SteeringSpec
 from transformers import AutoTokenizer, Gemma4ForConditionalGeneration
 
-from backend.label_gate import label_check, label_top_ids
+from backend.label_gate import label_check, label_top_ids, writes_nothing
 from backend.theodolite_math import (
     FRAME_SQUARINGS,
     POLE_RANKINGS,
@@ -1846,10 +1846,13 @@ class TheodoliteRuntime:
                         poles_l.signed_w_down[:n_decode_ranks], self.final_norm_weight, self.lm_head_weight,
                         poles_l.naive_pole_logits[:n_decode_ranks],
                     )
+                    # a neuron the vault silenced (DELETE: a zero column) writes nothing: no count, held back
+                    silenced = writes_nothing(poles_l.signed_w_down[:n_decode_ranks])
                     for r_idx in range(n_decode_ranks):
                         n_id = int(poles_l.neuron_indices[r_idx].item())
                         pole_label_checks[(l, r_idx)] = label_check(
-                            l, lens_ids[r_idx], eye_ids[r_idx], lens_id, edited=(l, n_id) in edited_neurons
+                            l, lens_ids[r_idx], eye_ids[r_idx], lens_id, edited=(l, n_id) in edited_neurons,
+                            silenced=silenced[r_idx],
                         )
 
         # 5. Execute Module 3: Live Downstream Reader Circuit Filaments (C, plus the direct-path estimates)

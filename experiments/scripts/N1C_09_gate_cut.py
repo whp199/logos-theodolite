@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-# N1C_05_gate_cut -- a re-analysis of N1's own data for the instrument's label gate (CPU only, local .venv python). It
+# N1C_09_gate_cut -- a re-analysis of N1's own data for the instrument's label gate (CPU only, local .venv python). It
 # is not a new experiment: it counts N1's static caches and N1C's per-pole causal scores another way, and runs nothing.
-# Run: .venv/bin/python -I experiments/scripts/N1C_05_gate_cut.py
+# Run: .venv/bin/python -I experiments/scripts/N1C_09_gate_cut.py
 #   -> experiments/results/N1C_gate_cut.json and its provenance sidecar N1C_gate_cut.provenance.json (the sha256 of
 #      every input, of this script and of the result; scripts/check_label_gate.py pins the result's sha256)
-# (N1C_05_audit_dump.py is an older script of the same number: the instrument's design named this one N1C_05_gate_cut.)
+# (Numbered 09, the one number N1C's pipeline left free; it was first committed as N1C_05_gate_cut.py, which clashed with
+# N1C_05_audit_dump.py.)
 #
 # WHY. The study's gate (N1_REPORT.md:124-127; N1C_matrix.json q.static_confidence_predictor.jv_nv_top10_overlap) is a
 # ranking score: within L40-57 the overlap of a face's J++ (JV) and naked-eye (NV) top ten ranked a sound label above an
@@ -25,6 +26,8 @@
 #   on the cached fp32 logits). SOUND = full_JV->C >= 0.3, N1C's threshold for the AUC. Layers count from 0.
 # ALSO COUNTED:
 #   - every cut 0..3 ("held back when shared <= cut"): how many in-band faces it holds back, how many of them were sound;
+#   - the instrument's cut as a yes/no sign (kept = shared > CUT): its own AUC for P@10 >= 0.3, which is not the
+#     count's 0.84 (a yes/no score gets only one threshold);
 #   - the same counts from the first THREE ids a side (the instrument shows three words), against the ten;
 #   - the server's path (backend/label_gate.py): the cached logits taken back through the softcap, rounded to bf16 as
 #     the server's GEMM rounds them, capped again, shortlisted (64) and ranked in fp32 -- how many faces' counts and how
@@ -171,6 +174,7 @@ def analyse(cache: Path) -> dict:
         "band": {"layers": list(BAND), "sampled": sorted({r["layer"] for r in band}), **tally(band),
                  "auc_shared10_p10_ge_0.3": auc10, "auc_recorded_N1C_matrix": recorded,
                  "auc_shared3_p10_ge_0.3": auc(np.array([r["shared3"] for r in band], float) / 3, y),
+                 "auc_cut_p10_ge_0.3": auc(np.array([r["shared10"] > CUT for r in band], float), y),
                  "by_overlap": by_overlap, "cuts": cuts, "three_a_side": three},
         "below_band": {"layers": sorted({r["layer"] for r in below}), **tally(below)},
         "by_layer": by_layer,
@@ -204,7 +208,7 @@ def main() -> int:
     side = {
         "result": "experiments/results/N1C_gate_cut.json",
         "result_sha256": sha256_of(OUT),
-        "script": "experiments/scripts/N1C_05_gate_cut.py",
+        "script": "experiments/scripts/N1C_09_gate_cut.py",
         "script_sha256": sha256_of(HERE),
         "label_gate_sha256": sha256_of(REPO / "backend" / "label_gate.py"),
         "git_head_when_run": head,
@@ -219,7 +223,8 @@ def main() -> int:
     SIDECAR.write_text(json.dumps(side, indent=1) + "\n")
     b, three, sp = out["band"], out["band"]["three_a_side"], out["server_path"]
     print(f"L40-57: {b['share_nothing']['n']} of {b['all']['n']} share nothing, {b['share_nothing']['n_sound']} sound; "
-          f"{b['share_some']['n_sound']} of {b['share_some']['n']} others sound; AUC {b['auc_shared10_p10_ge_0.3']:.4f}")
+          f"{b['share_some']['n_sound']} of {b['share_some']['n']} others sound; AUC {b['auc_shared10_p10_ge_0.3']:.4f} "
+          f"(the count), {b['auc_cut_p10_ge_0.3']:.4f} (the cut, yes or no)")
     print(f"three a side: {three['share_nothing']['n']} share nothing, {three['share_nothing']['n_sound']} sound; "
           f"AUC {b['auc_shared3_p10_ge_0.3']:.4f}")
     print(f"below L40: {out['below_band']['share_nothing']['n']} of {out['below_band']['all']['n']} share nothing")

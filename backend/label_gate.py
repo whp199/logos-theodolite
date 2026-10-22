@@ -7,9 +7,10 @@ the fresh sample in N1V_robustness.md:111-115):
   sampled (10, 20, 30, 40, 45, 50, 55 and 57; nothing at or above 58);
 - condition 3, agreement: how many word-piece ids the J++ label and the naked eye's (naive logit lens) label share in
   their first ten, over the full vocabulary, from fp32 softcapped logits (experiments/scripts/N1C_02_matrix.py:248-255),
-  ranked a sound label above an unsound one with AUC 0.84 within layers 40-57, for base-fitted J++ labels only (E47).
-  The study set no threshold: holding back a label whose two readings share none of ten (`CUT`) is the instrument's
-  choice.
+  used as a graded score, ranked a sound label above an unsound one with AUC 0.84 within layers 40-57, for base-fitted
+  J++ labels only (E47). The study set no threshold: holding back a label whose two readings share none of ten (`CUT`)
+  is the instrument's choice, and as a yes/no sign that cut does much less well on N1's sample (AUC 0.64: 7 of the 31
+  it holds back were sound, 160 of the 209 it keeps; experiments/results/N1C_gate_cut.json, `cut_record` below).
 
 `label_check` marks one label; `LABEL_GATE_CARD` states the rule, and travels with the replies that carry label checks.
 Nothing is hidden from a caller: the words are still sent, and `held_back` only marks what the pages leave out of their
@@ -35,7 +36,7 @@ SHORTLIST = 64
 CUT = 0  # held back when shared_top10 <= CUT (decision 3: none of ten); the instrument's choice, not the study's
 VALIDATED_LENS_ID = "jpp-base"  # the only lens the gate was validated for (E47)
 
-HOLD_REASONS = ("below_layer_40", "shares_nothing")
+HOLD_REASONS = ("below_layer_40", "shares_nothing", "writes_nothing")
 BANDS = ("below_sampled", "chance_where_sampled", "not_sampled", "band", "above_band", "one_reading")
 
 LABEL_GATE_CARD: Dict[str, Any] = {
@@ -45,7 +46,22 @@ LABEL_GATE_CARD: Dict[str, Any] = {
     "measure": "word-piece ids in both readings' first ten, fp32, softcapped",
     "cut": "none of ten: the instrument's choice; the study set no threshold",
     "held_back_if_shared_top10_at_most": CUT,
-    "validated": "AUC 0.84 within layers 40-57 (counting from 0), for base-fitted J++ labels on random neurons",
+    "validated": (
+        "the count used as a graded score, not the cut: AUC 0.84 within layers 40-57 (counting from 0), for "
+        "base-fitted J++ labels on random neurons"
+    ),
+    # the cut's own record on N1's sample (experiments/results/N1C_gate_cut.json band.cuts["0"] and
+    # auc_cut_p10_ge_0.3; a re-analysis by experiments/scripts/N1C_09_gate_cut.py); sound = causal P@10 >= 0.3
+    "cut_record": {
+        "layers": [40, 57],
+        "faces": 240,
+        "held_back": 31,
+        "held_back_sound": 7,
+        "kept": 209,
+        "kept_sound": 160,
+        "auc": 0.64,
+        "source": "experiments/results/N1C_gate_cut.json (band)",
+    },
     "sources": ["N1_REPORT.md:124-127", "N1V_robustness.md:111-115", "REPORT.md erratum E47"],
     "caution": (
         "The words are still sent: held_back marks the labels the instrument's pages leave out of their main reading, "
@@ -53,7 +69,10 @@ LABEL_GATE_CARD: Dict[str, Any] = {
         "the base-fitted J++ lens (jpp-base) below layer 59, where its two readings share none of their first ten "
         "word-pieces (reason shares_nothing). Under any other lens the agreement gate is unvalidated (erratum E47): "
         "only the layer holds a label back, and shared_top10 is a count, not a verdict (lens_validated false). A "
-        "neuron edited in the vault is read through its edit (edited true, lens_validated false). Below layer 40 "
+        "neuron edited in the vault is read through its edit (edited true, lens_validated false); the gate was never "
+        "measured on edited neurons, but under jpp-base the cut still holds back an edited label that shares none. A "
+        "neuron whose write vector is zero (silenced in the vault by DELETE) writes nothing: every word-piece ties, so "
+        "it has no count (shared_top10 null) and is held back (reason writes_nothing). Below layer 40 "
         "shared_top10 depends on how ties at the softcap break, so it may differ from the study's count there; the "
         "hold-back there rests on the layer alone. At layer 59 the lens is the identity, so the two readings are one "
         "and always share ten."
@@ -133,25 +152,36 @@ def band_of(layer_idx: int) -> str:
     return "one_reading"
 
 
+@torch.no_grad()
+def writes_nothing(vecs: torch.Tensor) -> List[bool]:
+    """For each write vector ([R, D], or [D] for one), whether it is exactly zero, as the vault's DELETE leaves a
+    neuron's column: both readings are then zero, every logit ties, and the "first ten" are only the lowest ids."""
+    if vecs.dim() == 1:
+        vecs = vecs.unsqueeze(0)
+    return [not bool(x) for x in (vecs != 0).any(dim=-1).cpu().tolist()]
+
+
 def label_check(
     layer_idx: int,
     lens_ids: Optional[Sequence[int]],
     eye_ids: Optional[Sequence[int]],
     lens_id: Optional[str],
     edited: bool = False,
+    silenced: bool = False,
 ) -> Dict[str, Any]:
     """One label's check, for the face whose lens (J++) label's first ids are `lens_ids` and whose naked-eye label's
     are `eye_ids`, at code layer `layer_idx`, read through the lens `lens_id` (the lens card's id):
     - shared_top10: word-piece ids in both first tens (None when either list is missing);
     - held_back, reasons: `HOLD_REASONS` that apply: "below_layer_40" (condition 2), "shares_nothing" (condition 3:
-      shared_top10 <= CUT, below layer 59, under jpp-base only);
+      shared_top10 <= CUT, below layer 59, under jpp-base only, edited or not), "writes_nothing" (`silenced`: the
+      neuron's write vector is zero, see `writes_nothing`; then there is no count);
     - band (`band_of`), sampled_layer (one of `SAMPLED`), in_measured_band (40-57);
     - lens_validated: the gate was validated for this lens (jpp-base) and the neuron is not edited in the vault;
     - edited: the vault has an edit in force on this neuron (not a reason to hold back: it unvalidates the gate).
     """
     l = int(layer_idx)
     shared: Optional[int] = None
-    if lens_ids and eye_ids:
+    if lens_ids and eye_ids and not silenced:
         shared = len(set(int(i) for i in list(lens_ids)[:TOPK]) & set(int(i) for i in list(eye_ids)[:TOPK]))
     base = lens_id == VALIDATED_LENS_ID
     reasons: List[str] = []
@@ -159,6 +189,8 @@ def label_check(
         reasons.append("below_layer_40")
     if shared is not None and shared <= CUT and l < ONE_READING_LAYER and base:
         reasons.append("shares_nothing")
+    if silenced:
+        reasons.append("writes_nothing")
     return {
         "shared_top10": shared,
         "held_back": bool(reasons),

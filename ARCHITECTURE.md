@@ -19,6 +19,7 @@ theodolite2/
 │   ├── theodolite_math.py           # Four core vectorized mathematical modules + CKA + unembed
 │   ├── engine_runtime.py            # interp-engine + J++ / JLens loader + 4-bit weight dequantizer
 │   ├── larql_vault.py               # LARQL / VINDEX3 FFN vault indexer, LQL parser & .patch surgery
+│   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
 │   └── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
 ├── scripts/
@@ -34,7 +35,10 @@ theodolite2/
         ├── index.css                  # the visual system: vellum, ink, rubric red, gilt, lapis; EB Garamond
         ├── reading.ts                 # "rubrics" / "apparatus" reading toggles, remembered per viewer
         ├── router.ts                  # #/instrument, #/layer/36, #/neuron/54/15491/pos, #/landmarks, ...
-        ├── lib/words.ts               # plain-word helpers (word-pieces, glosses, certainty, layer trust)
+        ├── lib/words.ts               # plain-word helpers (word-pieces, glosses, certainty)
+        ├── lib/labels.ts              # the label gate on the pages (labelGate, trustLine, held-back wording)
+        ├── components/HeldBack.tsx    # a held-back label's plate, reason and rubric; its words in the apparatus
+        ├── fixtures/recordedLabelChecks.ts # the recorded labels' checks (written by N1G_01 from its results)
         ├── fixtures/e6-demo-sighting.json # the recorded sighting shown when no server answers
         ├── store/
         │   ├── useTheodoliteStore.ts  # Zustand state, WebSocket + HTTP wiring, nudge defaults
@@ -242,16 +246,20 @@ old fields unchanged. Layers in these fields count from 0.
 - `label_check` = `{shared_top10, held_back, reasons, band, sampled_layer, in_measured_band, lens_validated, edited}`:
   `shared_top10` (0–10, null when a reading is missing) counts the word-piece ids both readings share in their first
   ten, scored as N1 scored them (the server's bf16 logits shortlist 64 ids, scored again in fp32 and softcapped, ties to
-  the lower id); `reasons` ⊆ {"below_layer_40", "shares_nothing"}, `held_back` = any reason. "below_layer_40" holds
-  below layer 40; "shares_nothing" holds where `shared_top10` is 0, below layer 59, and only under the base-fitted J++
-  lens (`lens.id` "jpp-base"), the one the gate was validated for. `band` is "below_sampled" (0–9),
+  the lower id); `reasons` ⊆ {"below_layer_40", "shares_nothing", "writes_nothing"}, `held_back` = any reason.
+  "below_layer_40" holds below layer 40; "shares_nothing" holds where `shared_top10` is 0, below layer 59, and only
+  under the base-fitted J++ lens (`lens.id` "jpp-base"), the one the gate was validated for (edited neurons included);
+  "writes_nothing" holds where the neuron's write vector is exactly zero (a vault DELETE in force), and then
+  `shared_top10` is null, since every word-piece ties. `band` is "below_sampled" (0–9),
   "chance_where_sampled" (10–30), "not_sampled" (31–39), "band" (40–57), "above_band" (58) or "one_reading" (59, where
   J++ is the identity). `edited` is true when a vault edit is in force on the neuron (`edits_in_force()`, the latest
   record per neuron), and then `lens_validated` is false. The words themselves are still sent: `held_back` marks what
   the pages leave out of their main reading.
 - `label_gate` (`LABEL_GATE_CARD`: `rule` "n1-gate-1", `layers_count_from`, `min_layer`, `measure`, `cut`,
-  `held_back_if_shared_top10_at_most`, `validated`, `sources`, `caution`) rides just before `lens` in every pair's JSON
-  and in `/api/health`.
+  `held_back_if_shared_top10_at_most`, `validated` (the count's AUC, as a graded score), `cut_record` (the cut's own
+  record on N1's sample: held back, kept, how many of each sound, its AUC as a yes/no sign; from
+  experiments/results/N1C_gate_cut.json), `sources`, `caution`) rides just before `lens` in every pair's JSON and in
+  `/api/health`.
 - The scientist tools and the vault, over MCP, HTTP and the WebSocket alike: `inspect_pole` and DESCRIBE POLE add
   `label_check` to each face (`north_pole`, `south_pole`; `active_pole` is the same face) and `label_gate` before
   `lens`, so their keys match; each NEAREST row adds `label_check` (its five-word lists unchanged), and the reply
