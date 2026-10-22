@@ -1333,7 +1333,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             as background [12]. Heard (<M>voice</M>): the vault writes the answer the likeliest way, with no nudge, at
             most 12 word-pieces by default (1–64), before the edit and again after it under the one GPU lock, and gives
             both with the KL between the two at the first word-piece. The vault page asks for it, 12 word-pieces long;
-            the console and the scientist’s tools make an edit unheard. The study tested only <M>DELETE</M> causally
+            the console and the MCP tool make an edit unheard. The study tested only <M>DELETE</M> causally
             (E6 §2.3).
           </EntryApparatus>
         </Entry>

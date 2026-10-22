@@ -283,8 +283,8 @@ REPORT §3.4). Where each fault stands now:
   (`enable_thinking`: `<|think|>` at the head of a system turn, the model's turn begun with no empty thought). Bare
   text has no turn to think in, so the interface leaves it out there (`think_bare="none"`; the pair says
   `think_left_out: "bare_text"`). The server's own default stays the old imitation for old callers, `<|think|>` set
-  before the bare text (E6 §3, item 11), and every pair names which was used (`think_protocol`: `"template"` |
-  `"bare_prefix"`, null without one).
+  before the bare text (E6 §3, item 11), and the first pair names which was used (`think_protocol`: `"template"` |
+  `"bare_prefix"`; null on later pairs, as the other `think_*` fields are, and without one).
 - **One word against another.** A sweep can weigh one word against another at every layer, through the lens and by
   the naked eye, in nats of log-odds (`contrasts`, at most four; the words pair by position, as the study’s pronoun
   pairs, and each is read as the landmarks read theirs, but only as one word-piece). It can read them against the
@@ -293,10 +293,21 @@ REPORT §3.4). Where each fault stands now:
   score of the state less the average, as E3 centred it, which is not a log-odds the model gives;
   [`E3_background_mu.npy`](experiments/results/E3_background_mu.npy), exported from E3’s own caches and pinned by its
   sha256). The server reads none unless asked (`contrasts: []`); the landmarks page reads one, in its section vii, when
-  the reader turns that section on. Alone, the scores carry a lean that comes from the average state as this lens reads
-  it, partly from how the lens was fitted, not from the question: +2.3 toward the female words on the six pronoun
-  pairs at layers 41–50 (E3). Through the lens they inherit fault 9, and the page marks each stretch of layers as E49
-  and E50 ask. That E3’s average state lies in the coordinates of the server’s `resid_post` is not yet checked.
+  the reader turns that section on. Alone, the scores carry a lean that comes from the model’s average state, not from
+  the question, and the lens and the naked eye read it differently. Through the J++ lens, on E3’s neutral prose at
+  layers 41–50, the average state’s share of the six pronoun pairs’ score was +1.4 toward the female words (the score
+  itself +0.8, and −0.7 once centred on the average state; E3 (c)), its size depending partly on how the lens was
+  fitted (erratum E34); the average state read alone scores +2.3 there, which is not the lean any reading carries. By
+  the naked eye the lean runs the other way: E3 read the average state at −4.3 at layers 1–20 and −0.9 at 41–50, and
+  on neutral prose centring still left −4.8 and −5.7 at layers 11–30 (E3 (c), its naked-eye figures). Through the
+  lens the scores inherit fault 9, and the page marks each stretch of layers with the bands every page draws for the
+  lens’s words, the lowest the least trusted, and what errata E49 and E50 add for a contrast. E3’s average state is in
+  the coordinates of the server’s `resid_post`: on one of E3’s neutral passages the two captures agree at every layer,
+  and E3’s neutral-prose figures at layers 41–50 come back through the server’s own scoring (the end-to-end check, item
+  12; its figures in
+  [`E3_background_mu_check.json`](experiments/results/E3_background_mu_check.json)). E3’s own per-layer lens
+  figures for the average state do not all reproduce today (+2.35 against its +2.3 at layers 41–50, by the study’s own
+  code as by the server; more at some other layers), though its naked-eye ones do; the cause is not established.
 - **The vault (LARQL).** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault
   query runs in Python. Its edit, named after MEMIT in the code and its statements (".patch MEMIT"), writes one neuron’s
   down-projection column (rank one, no covariance solve; DELETE sets it to zero): it is not MEMIT, and the pages call it

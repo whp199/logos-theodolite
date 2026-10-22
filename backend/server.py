@@ -177,7 +177,8 @@ class SweepRequest(BaseModel):
     # Thinking on bare text (E6 §3, item 11): "prefix" sets "<|think|>\n" before the text, as first built, which is not
     # Gemma 4's switch (the template's: <|think|> at the head of a system turn, the model's turn begun with no empty
     # thought); "none" leaves the thinking comparison out for bare text, and the pair says so (think_left_out). A chat
-    # always uses the template's switch. Every pair names the one used (think_protocol).
+    # always uses the template's switch. The first pair names the one used (think_protocol; null on later pairs, as the
+    # other think_* keys are).
     think_bare: str = Field("prefix", max_length=64)
     max_new_tokens: int = Field(6, ge=0, le=256)
     steering: Optional[SteeringLaserRequest] = None
@@ -1401,12 +1402,20 @@ def _execute_lql(vault: LarqlVaultEngine, query: str, voice: Optional[VoiceReque
     return vault.execute_lql(query, voice=voice.model_dump())
 
 
+async def _execute_lql_off_loop(vault: LarqlVaultEngine, query: str, voice: Optional[VoiceRequest]) -> Dict[str, Any]:
+    """`_execute_lql` in a worker thread, so the event loop keeps answering (health, other sockets, a socket's own
+    cancel and keepalive) while a heard edit writes its two answers, which takes seconds (`write_voice` is synchronous:
+    one default heard edit took 12.6 s on the GPU). The caller still holds `_GPU_LOCK` around it, so no sweep, scientist
+    route or other statement runs on the GPU meanwhile."""
+    return await asyncio.to_thread(_execute_lql, vault, query, voice)
+
+
 @app.post("/api/larql")
 async def api_larql(req: LarqlRequest) -> Dict[str, Any]:
     _runtime, vault = get_app_state()
     async with _GPU_LOCK:
         try:
-            return _execute_lql(vault, req.query, req.voice)
+            return await _execute_lql_off_loop(vault, req.query, req.voice)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -1524,7 +1533,7 @@ async def ws_theodolite(websocket: WebSocket) -> None:
                         continue
                     async with _GPU_LOCK:
                         try:
-                            res = _execute_lql(vault, query, voice)
+                            res = await _execute_lql_off_loop(vault, query, voice)
                             await out.json({"type": "larql_result", "ok": True, "data": res})
                         except Exception as exc:
                             await out.json({"type": "larql_result", "ok": False, "error": str(exc)})

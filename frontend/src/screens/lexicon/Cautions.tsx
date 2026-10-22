@@ -437,7 +437,9 @@ export const Cautions: React.FC = () => (
               ; the server’s own default stays Gram–Schmidt on raw rows, so old callers get what they got before. A
               neuron-locked frame keeps Gram–Schmidt by default, its axes having fixed roles. <M>frame_per_layer</M> and{" "}
               <M>centre_prompts</M> are off unless you choose them. The fraction caught is sent at every layer (
-              <M>proj_frac</M>), with the frame’s cosines and squareness for any three words. Contrastive axes are not built.
+              <M>proj_frac</M>), with the frame’s cosines and squareness for any three words. Contrastive axes are read beside
+              the frame rather than in it: one word against another at every layer, in log-odds, against a matched control
+              or E3’s average state (<M>contrasts</M>, <M>contrast_backgrounds</M>; the landmarks page, section vii).
             </>,
           ],
         ]}
@@ -622,7 +624,7 @@ export const Cautions: React.FC = () => (
         means={
           <>
             Sent as a chat, the sighting with thinking turned on now uses the model’s own switch. Sent as bare text, it is
-            no longer offered. A thinking sighting taken the old way (marked so in its question’s apparatus) is a rough
+            left out, unless you choose the old imitation in the question’s apparatus, where it is marked. A thinking sighting taken the old way (marked so in its question’s apparatus) is a rough
             imitation: a difference it shows may not be a difference in real thinking.
           </>
         }
@@ -643,8 +645,8 @@ export const Cautions: React.FC = () => (
               <M>{"<|think|>"}</M> at the head of a system turn, which the template opens when there is none, and the
               model’s turn begun with no empty thought). Sent as bare text, the instrument no longer offers it, since bare
               text has no turn to think in; the old imitation stays in the question’s apparatus, marked. The server keeps
-              the imitation for callers that do not ask otherwise (<M>think_bare "prefix"</M>), and every reply names
-              which was used (<M>think_protocol</M>).
+              the imitation for callers that do not ask otherwise (<M>think_bare "prefix"</M>), and the first pair names
+              which was used (<M>think_protocol</M>; null on later pairs, as the other <M>think_*</M> fields are).
             </>,
           ],
         ]}

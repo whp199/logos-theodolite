@@ -295,21 +295,37 @@ const Question: React.FC = () => {
               type="checkbox"
               checked={compareThink && (chat || thinkBare === "prefix")}
               disabled={!chat && thinkBare !== "prefix"}
+              aria-describedby={!chat && thinkBare !== "prefix" ? "think-why" : undefined}
               onChange={(e) => setCompareThink(e.target.checked)}
             />
             also sight it with thinking turned on
           </label>
           {!chat && thinkBare !== "prefix" ? (
-            <Rubric style={{ margin: "0 0 0 28px", fontSize: 15, maxWidth: 560 }}>
-              Only for a chat. Bare text has no turn for the model to think in: Gemma 4 turns thinking on with a mark at the head of a
-              system turn, and begins its answer without the empty thought it writes otherwise. Send it as a chat to sight it with
-              thinking.
-            </Rubric>
+            <>
+              {/* the reason a disabled control is disabled is always shown, rubrics or none (kit: PendingCheck) */}
+              <span id="think-why" style={{ fontSize: 15, color: "#6B5D4D", paddingLeft: 28, fontStyle: "italic" }}>
+                Only for a chat: bare text has no turn to think in.
+                {sighting ? " The old imitation can be chosen in the question’s apparatus." : null}
+              </span>
+              <Rubric style={{ margin: "0 0 0 28px", fontSize: 15, maxWidth: 560 }}>
+                Only for a chat. Bare text has no turn for the model to think in: Gemma 4 turns thinking on with a mark at the head of
+                the system prompt, and begins its answer without the empty thought it writes otherwise. Send it as a chat to sight it
+                with thinking.
+              </Rubric>
+            </>
           ) : !chat && compareThink ? (
             <span style={{ fontSize: 15, color: "#6B5D4D", paddingLeft: 28, fontStyle: "italic" }}>
               With bare text this sends the old imitation chosen in the question’s apparatus, <span className="mono">&lt;|think|&gt;</span>{" "}
               before the text: not Gemma 4’s own switch.
             </span>
+          ) : null}
+          {!chat && !sighting ? (
+            // before the first sighting the question's apparatus is not drawn, so the old imitation is offered here
+            <IfApparatus>
+              <span style={{ paddingLeft: 28 }}>
+                <ThinkBareChoice />
+              </span>
+            </IfApparatus>
           ) : null}
           {compareThink && chat && answerBegins.trim() ? (
             <span style={{ fontSize: 15, color: "#6B5D4D", paddingLeft: 28, fontStyle: "italic" }}>

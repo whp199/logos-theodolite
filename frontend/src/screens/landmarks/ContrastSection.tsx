@@ -1,6 +1,6 @@
 import React from "react";
-import { Apparatus, Missing, Rubric } from "../../components/kit";
-import { isBaseFitted, lensPhrase, useReadingLens } from "../../lib/lens";
+import { Apparatus, Missing, Rubric, bandParts } from "../../components/kit";
+import { type LensBand, isShippedLens, lensBand, lensPhrase, useReadingLens } from "../../lib/lens";
 import { signed } from "../../lib/words";
 import {
   type ContrastBackground,
@@ -26,26 +26,52 @@ const pieceShown = (p: string) => p.replace(/^ /, "␣").replace(/\n/g, "↵");
 const sideWords = (ws: ContrastWord[]) => ws.map((w) => q(w.word.trim())).join(" · ");
 const nats = (v: number | null | undefined) => (v === null || v === undefined ? null : signed(v, 2));
 
-/** The layer bands the study's errata draw for a contrast read through an average-Jacobian lens, as page layers 1-60
- * (report layers L0-9, L10-29, L30-49, L50-58; L59, page 60, is the model itself): about the lens line only. */
-const BANDS: { from: number; to: number; red: boolean; tag: string; words: string }[] = [
-  { from: 1, to: 10, red: false, tag: "1–10", words: "Not tested by the study." },
-  { from: 11, to: 30, red: true, tag: "11–30 · E50", words: "No averaged lens tested was reliable here (E50)." },
-  {
-    from: 31,
-    to: 50,
-    red: false,
-    tag: "31–50 · E49",
-    words: "To be confirmed with an instruct-fitted reading, which the instrument does not load (E49).",
-  },
-  {
-    from: 51,
-    to: 59,
-    red: true,
-    tag: "51–59 · E49, E50",
-    words: "Pronoun readings here count only where an instruct-fitted reading agrees, and none is loaded (E49, E50).",
-  },
-];
+/** The layers of one of the lens's bands (lib/lens.ts lensBand), counted 1-60: the bands every other page draws. */
+function bandLayers(band: LensBand): [number, number] {
+  const ns = Array.from({ length: 59 }, (_, i) => i + 1).filter((n) => lensBand(n) === band);
+  return [ns[0], ns[ns.length - 1]];
+}
+
+/** The layer bands for the lens line, as page layers (layer 60 is the model itself): the same bands, and the same words,
+ * as the red line beside every reading of words (components/kit.tsx), since a contrast is one; then what the study's
+ * errata add for a contrast read through an average-Jacobian lens. The lowest layers are the least trusted of all. */
+const BANDS: { band: Exclude<LensBand, "own">; from: number; to: number; red: boolean; study: string }[] = (
+  [
+    {
+      band: "untested",
+      red: true,
+      study:
+        "There the lens’s pull-back of the pronoun direction barely agreed with the model’s own: a cosine of 0.07 at layers 1–10 and 0.03 at " +
+        "11–20, with split-half reliabilities of 0.06 and 0.02, the weakest of all (E3 (b)); erratum E50 keeps a caveat on " +
+        "layers 11–30 for every averaged lens.",
+    },
+    {
+      band: "order",
+      red: true,
+      study:
+        "Erratum E49: here only orderings checked against behaviour hold, and token-level readings such as this one are " +
+        "unvalidated; erratum E50 keeps its caveat on layers 11–30.",
+    },
+    {
+      band: "compare",
+      red: false,
+      study: "Erratum E49: confirm a contrast here with an instruct-fitted reading, which the instrument does not load.",
+    },
+    {
+      band: "late",
+      red: true,
+      study:
+        "Errata E49 and E50: a pronoun reading here counts only where an instruct-fitted reading agrees, and none is loaded.",
+    },
+  ] as const
+).map((b) => {
+  const [from, to] = bandLayers(b.band);
+  return { ...b, from, to };
+});
+
+/** One fill for a band, on the chart and in its legend alike. */
+const bandFill = (red: boolean) => (red ? "rgba(143,43,30,0.08)" : "rgba(201,190,172,0.22)");
+const bandEdge = (red: boolean) => (red ? "rgba(143,43,30,0.45)" : "rgba(107,93,77,0.35)");
 
 /** A round bound for the chart's scale, in nats: 1, 2, 5, 10, 20, … */
 function niceBound(v: number): number {
@@ -96,6 +122,7 @@ export const ContrastSection: React.FC<{
   const isSweeping = useTheodoliteStore((s) => s.isSweeping);
   const health = useTheodoliteStore((s) => s.health);
   const { lens } = useReadingLens(sighting);
+  const bandLead = bandParts(lens, "all").lead;
 
   // the server's word on the study's average state: unknown before its health is read; an older server reads no contrasts
   const card = health?.contrasts ?? null;
@@ -314,8 +341,8 @@ export const ContrastSection: React.FC<{
             "The recorded sighting weighs no word against another."
           ) : (
             <>
-              The server that took this sighting sent no contrasts: it is older than this page.{" "}
-              <span className="placeholder">[NOT YET IN THE SERVER]</span>
+              The server that took this sighting sent no contrasts: it is older than this page. Take a new sighting from
+              this server to weigh one word against another.
             </>
           )}
         </p>
@@ -364,19 +391,18 @@ export const ContrastSection: React.FC<{
               >
                 {BANDS.map((b) => (
                   <rect
-                    key={b.tag}
+                    key={b.band}
                     x={f1(cxL(b.from - 1) - half)}
                     y="44"
                     width={f1(cxL(b.to - 1) - cxL(b.from - 1) + 2 * half)}
                     height="312"
-                    fill={b.red ? "#8F2B1E" : "#C9BEAC"}
-                    fillOpacity={b.red ? 0.06 : 0.16}
+                    fill={bandFill(b.red)}
                   />
                 ))}
                 <g fontFamily="EB Garamond, Garamond, serif" fontSize="12" fontStyle="italic" textAnchor="middle">
                   {BANDS.map((b) => (
-                    <text key={b.tag} x={f1((cxL(b.from - 1) + cxL(b.to - 1)) / 2)} y="38" fill={b.red ? "#8F2B1E" : "#6B5D4D"}>
-                      {b.tag}
+                    <text key={b.band} x={f1((cxL(b.from - 1) + cxL(b.to - 1)) / 2)} y="38" fill={b.red ? "#8F2B1E" : "#6B5D4D"}>
+                      {b.from}–{b.to}
                     </text>
                   ))}
                   <text x={cxL(59)} y="38" fill="#2B2117">
@@ -443,37 +469,47 @@ export const ContrastSection: React.FC<{
           ) : null}
           <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxWidth: "900px", fontSize: "15px", color: "#6B5D4D" }}>
             <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em" }}>the bands, about the lens line</span>
+            {bandLead ? <span>{bandLead}</span> : null}
             {BANDS.map((b) => (
-              <span key={b.tag} style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
+              <span key={b.band} style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
                 <span
                   aria-hidden="true"
-                  style={{ flex: "none", width: "14px", height: "10px", background: b.red ? "rgba(143,43,30,0.18)" : "rgba(201,190,172,0.5)" }}
+                  style={{ flex: "none", width: "14px", height: "10px", background: bandFill(b.red), border: `1px solid ${bandEdge(b.red)}` }}
                 />
                 <span style={{ color: b.red ? "#8F2B1E" : undefined }}>
-                  layers {b.from}–{b.to}: {b.words}
+                  layers {b.from}–{b.to}: {bandParts(lens, b.band).words} {b.study}
                 </span>
               </span>
             ))}
             <span>
               Read through {lensPhrase(lens)}.
-              {isBaseFitted(lens) ? "" : " The study drew these bands for the base-fitted J++ lens, not for this one."} The naked eye
-              needs no lens, and none of these bands is about it.
+              {isShippedLens(lens) ? "" : " The study measured these bands with the shipped J++ lens, fitted on the base model, not with this one."}{" "}
+              The bands are about the lens line; the naked eye has a background of its own, given below.
             </span>
           </div>
         </>
       )}
 
       <Rubric style={{ maxWidth: "860px" }}>
-        Alone, these numbers carry a lean that comes from the average state as this lens reads it, partly from how the lens was
-        fitted, not from your question: on the six pronoun pairs it reads +2.3 toward the female words at layers 41–50 (E3; not
-        measured for one pair or for other words). Read them against the matched control, or failing that against the study’s
-        average state.
+        Alone, both lines carry a lean that comes from the model’s average state, not from your question, and the lens and the
+        naked eye read it differently. Through the J++ lens fitted on the base model, on E3’s neutral prose at layers 41–50, the
+        average state’s share of the six pronoun pairs’ score was +1.4 toward the female words, and the score itself +0.8; how
+        large it is depends partly on how the lens was fitted (E3 (c); erratum E34; not measured for one pair or for other
+        words). Read them against the matched control, or failing that against the study’s average state.
+      </Rubric>
+      <Rubric style={{ maxWidth: "860px" }}>
+        The naked eye needs no lens, but it has a background of its own, leaning the other way: E3 read its average state by
+        the naked eye at −4.3 on the six pronoun pairs, toward the male words, at layers 1–20, and −0.9 at layers 41–50. On
+        neutral prose the naked eye read −3.8, −6.5 and −3.6 at layers 1–10, 11–20 and 21–30, and centring on the average state
+        still left −4.8 and −5.7 at layers 11–30 (E3 (c), its naked-eye figures). The dashed line is no clean baseline either.
       </Rubric>
       {bg === "study_mean" || shownBg === "study_mean" ? (
         <Rubric style={{ maxWidth: "860px" }}>
-          On neutral prose the average state takes out most of it (−0.7 left, E3); where the model speaks of itself about −2.8 is
-          left on the noun pairs (E34); at the template’s own word-pieces it was never tested. The study read its average state
-          with its own code; that it lies in the same coordinates as the states this server reads is not yet checked.
+          On E3’s neutral prose, centring on the average state took the lens’s score at layers 41–50 from +0.8 to −0.7, taking out
+          the average state’s +1.4 share (E3 (c)); where the model speaks of itself, the same centring left about −2.8 on the noun
+          pairs (erratum E34); at the template’s own word-pieces it was never tested. The study read its average state with its
+          own code; on one of E3’s neutral passages this server’s states agree with that code’s at every layer, and E3’s
+          neutral-prose figures come back through this page’s own scoring (the end-to-end check).
         </Rubric>
       ) : null}
 
@@ -484,8 +520,9 @@ export const ContrastSection: React.FC<{
             s<sub>ℓ</sub> = mean<sub>i</sub> [cap⟨n(h̃<sub>ℓ</sub>), W<sub>U</sub>[a<sub>i</sub>]⟩ − cap⟨n(h̃<sub>ℓ</sub>), W
             <sub>U</sub>[b<sub>i</sub>]⟩], with n(x) = x / rms(x) ⊙ fnw, cap(z) = 30 tanh(z / 30) and h̃<sub>ℓ</sub> = h
             <sub>ℓ</sub> J<sub>ℓ</sub>
-            <sup>⊤</sup> (J is the identity at layer 60). The naked eye reads h<sub>ℓ</sub> for h̃<sub>ℓ</sub>. Read in fp32 on
-            the pair rows only (theodolite_math.contrast_of_state), so for one pair it is the log-odds of a against b, in nats.
+            <sup>⊤</sup> (J is the identity at layer 60), a product taken in bf16, as the study’s labkit takes it. The naked eye
+            reads h<sub>ℓ</sub> for h̃<sub>ℓ</sub>. The score is then taken in fp32 on the pair rows only
+            (theodolite_math.contrast_of_state), so for one pair it is the log-odds of a against b, in nats.
             One pair is the study’s she–he score; the six pronoun pairs are its pronoun score (labkit gender_scores).
           </dd>
           <dt>the words</dt>
@@ -526,7 +563,7 @@ export const ContrastSection: React.FC<{
           <dt>against a control</dt>
           <dd>
             Δ<sub>ℓ</sub> = s<sub>ℓ</sub>(h) − mean over the controls of s<sub>ℓ</sub>(c), a difference of two log-odds, which
-            cancels any background the two share (E3 recommendation 1). The controls are the matched control kept, sent as the
+            cancels any background the two share (E3 (c), recommendation 1). The controls are the matched control kept, sent as the
             frame’s centring: at the first word-piece read where it chose its own first, past it reading this very answer (with
             centre_answer), else not at all.
             {c?.controls ? (
@@ -552,7 +589,11 @@ export const ContrastSection: React.FC<{
             <sup>⊤</sup>, d⟩ / rms(h̃<sub>ℓ</sub>), d = fnw ⊙ mean(W<sub>U</sub>[a] − W<sub>U</sub>[b]): the average state’s
             linear share of the raw score, before the cap. Neither is a log-odds the model gives. μ is
             experiments/results/E3_background_mu.npy, pinned by its sha256; it was read through the study’s HF decoder-layer
-            hooks, and its agreement with this server’s resid_post is <span className="placeholder">[NOT YET MEASURED]</span>.
+            hooks. On the first of E3’s neutral passages this server’s resid_post agrees with that capture at every layer, within
+            the check’s bound of 1e-2 (relative), and on E3’s twelve neutral passages the raw score, the score centred on μ and
+            μ’s part at layers 41–50 come back through the server’s contrast_of_state within 0.1 of E3’s
+            (scripts/verify_e2e_ui_and_mcp.py, item 12, run on the GPU; each run’s figures are in
+            experiments/results/E3_background_mu_check.json). Only E3’s neutral prose at layers 41–50 was checked so.
             {c?.studyMean ? (
               <>
                 {" "}
@@ -565,8 +606,16 @@ export const ContrastSection: React.FC<{
           </dd>
           <dt>as recorded</dt>
           <dd>
-            through the J++ lens, the average state’s own pronoun score at layers 41–50 is +2.3, and neutral prose centred on it
-            reads −0.7 there (E3 (c)); global centring leaves about −2.8 on the noun pairs where the model speaks of itself (E34).
+            Through the J++ lens, on E3’s neutral prose at layers 41–50, the average state’s linear share of the six pronoun pairs’
+            score is +1.4, the score itself +0.8, and the score centred on the average state −0.7 (E3 (c)); global centring leaves
+            about −2.8 on the noun pairs where the model speaks of itself (erratum E34). The average state read on its own
+            scores +2.3 there in E3’s record (μ alone, normalised by its own size: not the lean any reading carries). This
+            server, like the study’s own code today, reads +2.35 for it; E3’s per-layer lens figures for μ differ from today’s
+            by more at some layers, while by the naked eye they reproduce, and why E3’s run read otherwise is not established,
+            so only band means are quoted here (by layer: experiments/results/E3_background_mu_check.json). By the naked eye
+            the average state scores −4.3 at layers 1–20 and −0.9 at 41–50; on neutral prose the naked eye’s raw score is −3.8,
+            −6.5 and −3.6 at layers 1–10, 11–20 and 21–30, its average-state share −3.4, −4.8 and −1.3, and centred −4.8 and
+            −5.7 at 11–20 and 21–30 (E3 (c), E3_lens_validation_c_background.json).
           </dd>
           <dt>why no frame</dt>
           <dd>

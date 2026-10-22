@@ -50,7 +50,7 @@ This file lists the external sources, prior ideas and software that Logos Theodo
     - *Use:* inspiration for the names of the tool's "vault" and query dialect (VINDEX, LQL-like SELECT/DESCRIBE, patch overlays). `backend/larql_vault.py` does not call LARQL beyond `--version`. Its `EDGES/POLES NEAREST`, `.patch` and `ROLLBACK` syntax is this project's own, not LQL. REPORT §3.3 quotes the LARQL README's warning that a projected contribution is not a counterfactual.
 
 11. **Meng, K., Sen Sharma, A., Andonian, A., Belinkov, Y., Bau, D. *Mass-Editing Memory in a Transformer* (MEMIT). ICLR 2023. arXiv:2210.07229.** https://arxiv.org/abs/2210.07229
-    - *Use:* named only. The tool's ".patch MEMIT" is a single-neuron `down_proj` column overwrite with no covariance solve. It is **not** MEMIT (E6 §3 item 12; REPORT §3.3).
+    - *Use:* named only. The tool's ".patch MEMIT" is a single-neuron `down_proj` column add (DELETE zeroes the column) with no covariance solve. It is **not** MEMIT (E6 §3 item 12; REPORT §3.3).
 
 12. **Meng, K., Bau, D., Andonian, A., Belinkov, Y. *Locating and Editing Factual Associations in GPT* (ROME; causal tracing). NeurIPS 2022. arXiv:2202.05262.** https://arxiv.org/abs/2202.05262
     - *Use:* background for rank-one weight edits and causal tracing / activation patching (E7, V4, V5).

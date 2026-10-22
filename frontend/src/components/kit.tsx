@@ -321,7 +321,7 @@ export const ReadingThrough: React.FC = () => {
 };
 
 /** The bands a red line can speak for: one per layer (lib/lens.ts, lensBand; none at layer 60), or `all` at once. */
-type CautionBand = Exclude<LensBand, "own"> | "all";
+export type CautionBand = Exclude<LensBand, "own"> | "all";
 
 /** Erratum E2: at layers 51-59, 6-7 of the 9 AI conditions read at or above the woman persona through J++ (R1). */
 const sheLean = (where: "here" | "there") =>
@@ -372,6 +372,14 @@ const BASE_SENTENCE = "This lens was fitted on the base model, not on the chat m
 /** The band's words for `lens`: the study's advice for the shipped lens, and for any other what it measured with that one. */
 function bandWords(lens: LensInfo, band: CautionBand): string {
   return isShippedLens(lens) ? SHIPPED_BANDS[band] : `${OTHER_LEAD} ${OTHER_BANDS[band]}`;
+}
+
+/** The same words in two parts, for a page that lists the bands one under another: the lead a lens other than the shipped
+ * one takes once (null for the shipped lens), and the band's own words. */
+export function bandParts(lens: LensInfo, band: CautionBand): { lead: string | null; words: string } {
+  if (isShippedLens(lens)) return { lead: null, words: SHIPPED_BANDS[band] };
+  const w = OTHER_BANDS[band];
+  return { lead: OTHER_LEAD, words: w.charAt(0).toUpperCase() + w.slice(1) };
 }
 
 /**

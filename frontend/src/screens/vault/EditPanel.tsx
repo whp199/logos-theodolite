@@ -49,7 +49,9 @@ const odds = (p: number) => (p > 0 && p < 0.001 ? "under 0.1%" : pct(p));
 const VoiceLine: React.FC<{ e: ActiveEdit; v: EditVoice | null }> = ({ e, v }) => {
   if (!v)
     return (
-      <Missing what="not heard: this edit was made without its voice (with hearing off, by hand, through the scientist’s tools, or by an older server)" />
+      <span style={{ fontSize: 16, lineHeight: 1.45, fontStyle: "italic", color: "var(--muted)" }}>
+        Not heard: made without its voice (with hearing off, in the console, through the MCP tool, or by an older server).
+      </span>
     );
   const replaced = typeof e.replaces_patch === "number" ? e.replaces_patch : null;
   const others = v.editsInForceBefore.filter((id) => id !== replaced && id !== e.patch_id).length;
@@ -61,7 +63,7 @@ const VoiceLine: React.FC<{ e: ActiveEdit; v: EditVoice | null }> = ({ e, v }) =
         Heard on {asked(v)}: before, {said(v.before)}; after, {v.after ? said(v.after) : "not written (" + afterWhy(v) + ")"}.
         {wb && wa ? ` At its first word-piece, “${wb.token.trim()}” went from ${odds(wb.prob)} to ${odds(wa.prob)}.` : ""}
       </span>
-      {replaced !== null ? <Rubric style={{ fontSize: 15 }}>It replaces patch {replaced} on the same neuron; “before” is that edit’s voice.</Rubric> : null}
+      {replaced !== null ? <Rubric style={{ fontSize: 15 }}>It replaces patch {replaced} on the same neuron; its “before” was heard with patch {replaced} in force.</Rubric> : null}
       {others ? (
         <Rubric style={{ fontSize: 15 }}>
           It was heard with {others === 1 ? "one other edit" : others + " other edits"} already in force; undo them and it may say

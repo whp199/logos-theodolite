@@ -1,0 +1,59 @@
+{
+ "what": "E3's average state mu (experiments/results/E3_background_mu.npy) against this server's coordinates and against E3's record, as scripts/verify_e2e_ui_and_mcp.py item 12 measured it",
+ "written_by": "transcribed by hand from the first passing GPU run of scripts/verify_e2e_ui_and_mcp.py item 12, before the check wrote this file itself; the next GPU run rewrites it in full, by layer (check_study_mean_coordinates)",
+ "run": {
+  "date": "2026-10-22 03:36 -0500",
+  "commit": "d57909d5e35d2a869511399e56b1adfe0619207f",
+  "commit_note": "the run was of the tree committed as d57909d; its log line and that commit's message give the figures below",
+  "tree_had_changes": true,
+  "gpu": null
+ },
+ "mu_sha256": "de0fded6074a1a50719d0ccfc4b76b78f4450915a431c53d470f06d66a2daba8",
+ "layers": "0-based report layers, 0..59; the pages' layer is index + 1 (report L40-49 = page layers 41-50)",
+ "coordinates": {
+  "passage": "experiments/scripts/E3_lens_validation_data.py PROSE, the first 'neutral' passage, word-pieces from the fifth on",
+  "compared": "labkit.forward_resid (the study's HF decoder-layer hooks) against TheodoliteRuntime.capture_rows resid_post",
+  "relative_difference_by_layer": null,
+  "worst_relative_difference": 0.0,
+  "asked": "below 1e-2 at every layer"
+ },
+ "mu_pronoun_score": {
+  "what": "the six pronoun pairs' score (labkit gender_scores 'pron') of mu itself, nats",
+  "band_L40_49": {
+   "server_bf16_lens": 2.352,
+   "labkit_today_bf16_lens": 2.352,
+   "fp32_lens": 2.351,
+   "E3_record_lens": 2.3149,
+   "server_naked_eye": null,
+   "E3_record_naked_eye": -0.9278
+  },
+  "by_layer": null,
+  "lens_gap_to_E3": {
+   "median": null,
+   "max": null,
+   "max_at_index": null,
+   "band_L40_49": 0.0371
+  },
+  "naked_eye_gap_to_E3": {
+   "max": null,
+   "max_at_index": null
+  },
+  "cause_of_lens_gap": "not established: today's bf16 and fp32 lens products agree with each other and with labkit's, and by the naked eye mu's scores match E3's record, so the gap lies in the lens path between E3's run and today's (its kernels, its J file or its lens code)"
+ },
+ "neutral_prose_L40_49": {
+  "passages": 12,
+  "raw": {
+   "server": 0.768,
+   "E3": 0.763
+  },
+  "centred_on_mu": {
+   "server": -0.662,
+   "E3": -0.6604
+  },
+  "mu_linear_part": {
+   "server": 1.428,
+   "E3": 1.428
+  },
+  "asked": "each within 0.1 of E3"
+ }
+}

@@ -77,12 +77,16 @@ against the instrument, leave four more:
   `contrast_backgrounds`; ARCHITECTURE §4.1–4.2): the contrast axes V7 suggests
   ([`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md)), read in log-odds beside the frame rather
   than as an axis of it. The landmarks page reads one in its section vii. Still open: through the lens the reading
-  inherits the base-fitted J++ (i), so the page marks layers 1–10 as never tested by the study, 11–30 as where no
-  averaged lens tested was reliable (E50), 31–50 as to be confirmed with an instruct-fitted reading (E49) and 51–59 as
-  counting only where one agrees (E49, E50); that E3’s average state lies in the coordinates of the
-  server’s `resid_post` is not yet checked; the study measured the average state’s lean on the six pronoun pairs only,
-  not on one pair or on other words; and the page sends one contrast and one background at a time, where the server
-  takes four and two.
+  inherits the base-fitted J++ (i), so the page marks its layers with the bands every page draws for the lens’s words
+  (1–20 the least trusted, where E3 (b) found the lens barely agreeing with the model’s own pronoun direction; 21–30
+  orderings only; 31–50 to be confirmed with an instruct-fitted reading; 51–59 counting only where one agrees: errata
+  E49 and E50), and the naked eye with its own background, which runs the other way (E3 (c)); the study measured the
+  average state’s lean on the six pronoun pairs only, not on one pair or on other words; E3’s own per-layer lens
+  figures for the average state reproduce today only to within about 0.04 at layers 41–50 and less well at some other
+  layers, by the study’s own code as by the server, with the cause not established (by layer:
+  [`E3_background_mu_check.json`](experiments/results/E3_background_mu_check.json)); and the page sends one contrast
+  and one background at a time, where the server takes four and two. That E3’s average state is in the coordinates of
+  the server’s `resid_post` is checked by the end-to-end check (item 12) on one of E3’s neutral passages.
 - **The vault: an edit’s voice. Built.** An edit can be heard before and after on a question of the reader’s choosing,
   written the likeliest way under the one GPU lock (`voice`; ARCHITECTURE §4.6), and the vault page asks for it by
   default. The pages now call the “.patch MEMIT” edit an edit, a one-neuron column edit and not MEMIT; the code’s
@@ -93,7 +97,7 @@ against the instrument, leave four more:
   E6 §2.3).
 - **Thinking on bare text. Built.** Sent as a chat, the sighting with thinking turned on uses the template’s own switch;
   sent as bare text, the interface leaves it out, since bare text has no turn to think in (`think_bare="none"`), and
-  every pair names how thinking was switched on (`think_protocol`). Still open: the server’s own default stays the
+  the first pair names how thinking was switched on (`think_protocol`; null on later pairs). Still open: the server’s own default stays the
   old imitation, `<|think|>` set before the text, for old callers, and the question’s apparatus keeps it as a marked
   choice; the study recorded no fix for the bare case (the Lexicon’s cautions; E6 audit, item 11). Even in a chat the
   thinking sighting is read at the end of its own prompt, where the silent one is read at the close of its empty

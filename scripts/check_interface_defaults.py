@@ -32,7 +32,14 @@ itself, not a copy of it. It checks:
 8. the vault's voice: the question an edit is heard by is sent as the instrument sends its own (a chat with its system
    prompt and begun answer, or bare text whose begun answer the server puts on a new line, as composeText does), and the
    server's VoiceRequest takes it; executeLarql sends a voice only when given; the reply's voice is kept by patch and
-   time, a DESCRIBE keeps only the voices of records it still holds, and ROLLBACK forgets them all.
+   time, a DESCRIBE keeps only the voices of records it still holds, and ROLLBACK forgets them all;
+9. what the pages say of these readings: every study figure section vii quotes (the average state's share, raw and
+   centred scores through the lens, its naked-eye background, E3 (b)'s agreement at the lowest layers) is the one in
+   E3's files, rounded as shown; the record of E3's average state in this server's coordinates
+   (E3_background_mu_check.json) is of the pinned file; and the claims the GPU stage or this track made untrue stay
+   gone (that μ's coordinates are not checked, that contrast axes are not built, that every pair names think_protocol,
+   that a replacing edit's "before" is the replaced edit's voice, that layers 1-10 were not tested, the column
+   "overwrite").
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -456,12 +463,85 @@ def check_e3_and_order_text() -> None:
           "Incipit.tsx: the first page's caution gives the 58–99° order swing as the default frame's")
 
 
+def _band(xs: Any, lo: int, hi: int) -> float:
+    """The mean over report layers lo..hi-1 of a per-layer series, or of a [passages, 60] array's passage mean."""
+    import numpy as np
+
+    a = np.array(xs, dtype=float)
+    return float((a.mean(0) if a.ndim > 1 else a)[lo:hi].mean())
+
+
+def _shown(v: float) -> str:
+    """A figure as the pages print it: one decimal, a true minus sign, a plus sign before a positive figure."""
+    t = f"{abs(v):.1f}"
+    return ("−" if v < 0 else "+") + t
+
+
+def check_contrast_text() -> None:
+    print("9. what the pages say of one word against another, of thinking and of the vault")
+    results = ROOT_DIR / "experiments" / "results"
+    rec = json.loads((results / "E3_lens_validation_c_background.json").read_text())
+    pn = rec["real"]["prose_neutral"]
+    sec = re.sub(r"\s+", " ", (FRONTEND / "src" / "screens" / "landmarks" / "ContrastSection.tsx").read_text(encoding="utf-8"))
+    readme = re.sub(r"\s+", " ", (ROOT_DIR / "README.md").read_text(encoding="utf-8"))
+    # through the lens, on neutral prose at report L40-49 (page 41-50): the average state's share, raw, centred
+    for key, said in (("jpp|meanpart|pron", "+1.4"), ("jpp|raw|pron", "+0.8"), ("jpp|cent|pron", "−0.7")):
+        got = _shown(_band(pn[key], 40, 50))
+        check(got == said and said in sec and said in readme, f"neutral prose {key} at L40-49 is {got}, the pages say {said}")
+    check(_shown(_band(rec["mu"]["jpp"]["pron"], 40, 50)) == "+2.3", "μ's own pronoun score at L40-49 is not +2.3")
+    # by the naked eye: μ, and neutral prose raw, μ's share and centred, by ten layers
+    naked = [(rec["mu"]["naive"]["pron"], 0, 20, "−4.3"), (rec["mu"]["naive"]["pron"], 40, 50, "−0.9"),
+             (pn["naive|raw|pron"], 0, 10, "−3.8"), (pn["naive|raw|pron"], 10, 20, "−6.5"),
+             (pn["naive|raw|pron"], 20, 30, "−3.6"), (pn["naive|meanpart|pron"], 0, 10, "−3.4"),
+             (pn["naive|meanpart|pron"], 10, 20, "−4.8"), (pn["naive|meanpart|pron"], 20, 30, "−1.3"),
+             (pn["naive|cent|pron"], 10, 20, "−4.8"), (pn["naive|cent|pron"], 20, 30, "−5.7")]
+    for xs, lo, hi, said in naked:
+        got = _shown(_band(xs, lo, hi))
+        check(got == said and said in sec, f"the naked eye at L{lo}-{hi - 1} reads {got}, section vii says {said}")
+    # E3 (b): the lens's pull-back of the pronoun direction against the model's own, at L0-9 and L10-19
+    report = (results / "E3_lens_validation_REPORT.md").read_text(encoding="utf-8")
+    for row, said in (("cos(gbar, J++ pullback)", ("0.07", "0.03")), ("split-half reliability", ("0.06", "0.02"))):
+        m = re.search(r"^\| " + re.escape(row) + r" \| ([^|]+) \| ([^|]+) \|", report, re.M)
+        check(m is not None and (m.group(1).strip(), m.group(2).strip()) == said and all(x in sec for x in said),
+              f"E3 (b) {row} at L0-9, L10-19: {m.groups() if m else None}, section vii says {said}")
+    # the record of μ in this server's coordinates is of the pinned file, and its band figure is the one the page gives
+    from backend.engine_runtime import STUDY_MEAN_SHA256
+
+    mc = json.loads((results / "E3_background_mu_check.json").read_text())
+    check(mc["mu_sha256"] == STUDY_MEAN_SHA256, "E3_background_mu_check.json is not of the pinned average state")
+    band = mc["mu_pronoun_score"]["band_L40_49"]
+    check(f"+{band['server_bf16_lens']:.2f}" == "+2.35" and "+2.35" in sec, f"μ today at L40-49: {band['server_bf16_lens']}")
+    check(mc["coordinates"]["worst_relative_difference"] is not None and mc["coordinates"]["worst_relative_difference"] < 1e-2,
+          "the record does not show the server's resid_post within 1e-2 of the study's capture")
+    # claims made untrue stay gone
+    gone = {
+        "screens/landmarks/ContrastSection.tsx": ("[NOT YET MEASURED]", "is not yet checked", "Not tested by the study",
+                                                 "it reads +2.3 toward", "none of these bands is about it",
+                                                 "[NOT YET IN THE SERVER]", "Read in fp32 on the pair rows"),
+        "screens/lexicon/Cautions.tsx": ("Contrastive axes are not built", "every reply names", "it is no longer offered"),
+        "screens/vault/EditPanel.tsx": ("“before” is that edit’s voice", "the scientist’s tools"),
+        "screens/Lexicon.tsx": ("the scientist’s tools",),
+    }
+    for name, phrases in gone.items():
+        text = re.sub(r"\s+", " ", (FRONTEND / "src" / name).read_text(encoding="utf-8"))
+        for phrase in phrases:
+            check(phrase not in text, f"{name}: still says {phrase!r}")
+    for name, phrases in {"README.md": ("is not yet checked", "every pair names"),
+                          "ROADMAP.md": ("is not yet checked", "every pair names", "layers 1–10 as never tested"),
+                          "ARCHITECTURE.md": ("is not yet checked", "DESCRIBE, DELETE and ROLLBACK reply as before"),
+                          "REFERENCES.md": ("column overwrite",)}.items():
+        text = re.sub(r"\s+", " ", (ROOT_DIR / name).read_text(encoding="utf-8"))
+        for phrase in phrases:
+            check(phrase not in text, f"{name}: still says {phrase!r}")
+
+
 def main() -> int:
     out = run_store()
     if out is not None:
         check_requests(out, server_defaults())
     check_text()
     check_e3_and_order_text()
+    check_contrast_text()
     if out is not None:
         check_think(out)
         check_contrasts(out)

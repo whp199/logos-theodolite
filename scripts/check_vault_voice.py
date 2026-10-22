@@ -28,7 +28,8 @@ checks:
    in plain words; one that fails after the edit keeps the edit in force, with after null and the error said;
 6. a voice sent with DESCRIBE, NEAREST, DESCRIBE POLE or ROLLBACK is ignored (nothing written, the reply as
    without it); ROLLBACK clears every record and so every voice;
-7. the routes: HTTP and WebSocket pass the voice with its defaults (a chat, 12 word-pieces); a voice the request
+7. the routes: HTTP and WebSocket pass the voice with its defaults (a chat, 12 word-pieces), and write both answers
+   in a worker thread, off the event loop, still under the GPU lock; a voice the request
    model refuses comes back over the WebSocket as larql_result ok false in plain words, and over HTTP as 422, with no
    edit made; the MCP tool `query_larql_vault` takes no voice (it does not hold the GPU lock).
 
@@ -44,6 +45,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
+import asyncio
 import inspect
 import json
 from contextlib import asynccontextmanager
@@ -168,6 +170,7 @@ class StandInRuntime(TheodoliteRuntime):
         self.fail_calls: Dict[int, Exception] = {}  # the n-th write_voice call (from 1) raises this
         self.n_voice_calls = 0
         self.events: List[Tuple[str, Any]] = []  # ("voice", overlays, lock held) | ("edit", statement)
+        self.voice_on_loop: List[bool] = []  # for each write_voice call: was it made on a running event loop's thread?
         self.composed: List[Dict[str, Any]] = []
         self.closed = 0
 
@@ -198,6 +201,11 @@ class StandInRuntime(TheodoliteRuntime):
     def write_voice(self, prompt_text: str, **kw: Any) -> Tuple[Dict[str, Any], torch.Tensor]:
         self.n_voice_calls += 1
         self.events.append(("voice", self.n_overlays(), server._GPU_LOCK.locked()))
+        try:
+            asyncio.get_running_loop()
+            self.voice_on_loop.append(True)
+        except RuntimeError:
+            self.voice_on_loop.append(False)
         if self.n_voice_calls in self.fail_calls:
             raise self.fail_calls[self.n_voice_calls]
         return super().write_voice(prompt_text, **kw)
@@ -507,6 +515,8 @@ def check_routes() -> None:
           f"HTTP: the request's defaults reach the vault: {body['voice']['chat']} {body['voice']['max_new_tokens']}")
     check([e for e in rt.events if e[0] == "voice"][-2:] == [("voice", 1, True), ("voice", 1, True)],
           f"both voices under the route's GPU lock: {rt.events[-3:]}")
+    check(rt.voice_on_loop[-2:] == [False, False],
+          f"HTTP: both voices written off the event loop, so the server keeps answering: {rt.voice_on_loop[-2:]}")
     check(body["voice"]["edits_in_force_before"] == [1] and body["patch"]["replaces_patch"] == 1, "HTTP: in force")
     n_records, n_calls = len(vault.active_patches), rt.n_voice_calls
     for bad in ({"prompt": ""}, {"prompt": "Q", "max_new_tokens": 65}, {"prompt": "Q", "max_new_tokens": 0}, "Q?"):
@@ -530,6 +540,7 @@ def check_routes() -> None:
               and data["voice"]["chat"] is False and len(data["voice"]["before"]["token_ids"]) == 3,
               f"WS with a voice: {msg.get('error') or list(data)}")
         check(rt.events[-3][2] and rt.events[-1][2], "WS: both voices under the GPU lock")
+        check(rt.voice_on_loop[-2:] == [False, False], f"WS: both voices written off the event loop: {rt.voice_on_loop[-2:]}")
         n_records = len(vault.active_patches)
         for bad, words in (({"prompt": ""}, "voice.prompt: "), ({"prompt": "Q", "max_new_tokens": 65},
                                                                  "voice.max_new_tokens: "),

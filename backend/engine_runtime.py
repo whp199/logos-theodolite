@@ -1635,7 +1635,8 @@ class TheodoliteRuntime:
 
         Greedy (`SamplerSettings()`: temperature 0, no penalty), at most `max_new_tokens` word-pieces, stopping after
         the first of `stop_token_ids` it writes (and interp_engine's eos). Synchronous: the vault calls it from
-        `execute_lql`, under the caller's GPU lock. Returns the voice ({token_ids, token_strs, text, stop_reason
+        `execute_lql`, which the server runs in a worker thread under its GPU lock, so the event loop keeps answering
+        meanwhile. Returns the voice ({token_ids, token_strs, text, stop_reason
         ("end_mark" | "length"), n_prompt, steps (each piece's id, word-piece, model prob and rank, from
         `_written_step`), first_top (step 0's five likeliest), watch (`watch_token_id`'s prob and rank at step 0,
         else None)}) and step 0's log-softmax in float32 ([vocab], on the device), for a divergence between two

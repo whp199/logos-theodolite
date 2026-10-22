@@ -297,8 +297,8 @@ old fields unchanged. Layers in these fields count from 0.
 - The scientist tools and the vault, over MCP, HTTP and the WebSocket alike: `inspect_pole` and DESCRIBE POLE add
   `label_check` to each face (`north_pole`, `south_pole`; `active_pole` is the same face) and `label_gate` before
   `lens`, so their keys match; each NEAREST row adds `label_check` (its five-word lists unchanged), and the reply
-  `label_gate` before `lens` (UPDATE, INSERT, DESCRIBE, DELETE and ROLLBACK reply as before, but for an edit's voice,
-  4.6);
+  `label_gate` before `lens` (UPDATE, INSERT, DELETE and ROLLBACK reply as before but for an edit's voice; DESCRIBE
+  adds `edit_method`, and every patch record adds `voice`, `edit_kind` and `replaces_patch`; 4.6);
   `trace_downstream_readers` (`trace_readers`) adds to each reader returned `dst_naive_tokens` (four, as through the
   lens) and `dst_label_check`, and `label_gate` to the reply; `test_motif_hypothesis` adds `pole_label_check` (its
   pole's face) and `label_gate`.
@@ -309,8 +309,8 @@ Contrasts (one word against another; V7 bug 3's contrastive axes, E3 (c)'s backg
 (each word as read: {word, id, piece}, or id and piece null and `pieces` {form tried: [word-pieces]}), toward_ids,
 away_ids, error}`. A contrast that cannot be read has its `error` in plain words, `pieces` by word, and nothing more.
 One that can adds, per layer (0-based, 60 values, 4 decimals):
-- `lens`, `naked`: the mean over the pairs of capped logit(toward_i) − capped logit(away_i) of h_l J_l^T and of h_l,
-  in fp32 on the pair rows only with the unembed's own norm and softcap (nats of log-odds; for the six pronoun pairs,
+- `lens`, `naked`: the mean over the pairs of capped logit(toward_i) − capped logit(away_i) of h_l J_l^T (a bf16
+  product, as labkit's lens) and of h_l, scored in fp32 on the pair rows only with the unembed's own norm and softcap (nats of log-odds; for the six pronoun pairs,
   labkit's "pron"). At index 59 the lens is the identity, so the two agree.
 - `backgrounds`, one key per background asked for:
   - "controls" = `{kind, n_controls, control_lens, control_naked, delta_lens, delta_naked, why}`: the controls' mean
@@ -322,7 +322,10 @@ One that can adds, per layer (0-based, 60 values, 4 decimals):
     h − μ (through the lens (h − μ) J_l^T), as E3 centred it, which is not a log-odds the model gives; and the mean
     part <μJ, d>/rms(hJ) (by the naked eye <μ, d>/rms(h)), d = fnw ⊙ mean(W_U[toward] − W_U[away]), softcap-free. μ
     was read by E3 through HF decoder-layer hooks (labkit.forward_resid), over every word-piece from the fifth on of
-    its prose passages and chats; that it is in the coordinates of the server's resid_post is not yet checked.
+    its prose passages and chats. scripts/verify_e2e_ui_and_mcp.py (item 12) checks it is in the coordinates of the
+    server's resid_post: on one of E3's neutral passages the two captures agree at every layer, and E3's neutral-prose
+    figures at L40–49 come back through `contrast_of_state`; each GPU run writes what it measured to
+    experiments/results/E3_background_mu_check.json, by layer.
 `/api/health` adds `contrasts` = `{backgrounds, max_contrasts, max_words, study_mean_problem}` before `label_gate`
 (`study_mean_problem` null when the average state can be read, else why, in plain words). The thinking comparison is
 read without contrasts.
@@ -468,7 +471,9 @@ UPDATE, INSERT); every other statement ignores it, and without one every reply i
 `LarqlVaultEngine._heard` composes the question as a sweep's (`compose_prompt`), notes the edits in force (the latest
 per neuron, `edits_in_force`), has the model write its answer the likeliest way (`write_voice`: greedy, no nudge, no
 re-read, stopping at the end of its turn), makes the edit, and writes the answer again, all inside the one
-`_GPU_LOCK` the route holds. If the answer before cannot be written, nothing is edited and the statement is refused
+`_GPU_LOCK` the route holds. The route runs the statement in a worker thread (`asyncio.to_thread`), so the server
+keeps answering its health route and other sockets while the two answers are written (one default heard edit took
+12.6 s on the GPU); the lock still keeps every sweep and other GPU route out. If the answer before cannot be written, nothing is edited and the statement is refused
 in plain words (HTTP 400; over the WebSocket `larql_result` ok false, as is a voice the request model refuses, which
 over HTTP is 422). If the answer after cannot be written, the edit stays in force with `after` null and `error` set.
 The MCP tool `query_larql_vault` takes no voice, since it does not hold the GPU lock.
