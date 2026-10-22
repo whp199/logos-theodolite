@@ -3,19 +3,24 @@
  "scripts": {
   "R3_lrp.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_lrp.py --selftest",
-   "at": "2026-10-21T22:05:29",
-   "head": "42d0d3fcb38fc86105134ed9107fb85774be05ba",
+   "at": "2026-10-21T23:02:32",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
-    "experiments/scripts/R3_06_analyze.py",
     "experiments/scripts/R3_common.py",
     "experiments/scripts/R3_fitlib.py",
     "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_parity.py"
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
    ],
-   "seconds": 1.8,
+   "seconds": 2.7,
    "ok": true,
-   "n_checks": 19,
+   "n_checks": 22,
    "n_failed": 0,
    "checks": [
     {
@@ -84,6 +89,18 @@
     },
     {
      "ok": true,
+     "check": "the 12B's Gemma4UnifiedRMSNorm and Gemma4UnifiedTextMLP have exactly Gemma 4's forward (and _norm)"
+    },
+    {
+     "ok": true,
+     "check": "the 12B module tree (meta device, Gemma4UnifiedForConditionalGeneration): 193 norms, 48 MLPs, 144 attention norms kept, 11 tower modules skipped"
+    },
+    {
+     "ok": true,
+     "check": "a gemma4_unified-named norm whose code differs from Gemma 4's raises"
+    },
+    {
+     "ok": true,
      "check": "jpp_lens's patcher (rlens) patches exactly the same norms and MLPs"
     },
     {
@@ -104,19 +121,24 @@
   },
   "R3_fitlib.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_fitlib.py --selftest",
-   "at": "2026-10-21T22:05:39",
-   "head": "42d0d3fcb38fc86105134ed9107fb85774be05ba",
+   "at": "2026-10-21T23:02:42",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
-    "experiments/scripts/R3_06_analyze.py",
     "experiments/scripts/R3_common.py",
     "experiments/scripts/R3_fitlib.py",
     "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_parity.py"
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
    ],
-   "seconds": 8.1,
+   "seconds": 8.4,
    "ok": true,
-   "n_checks": 14,
+   "n_checks": 17,
    "n_failed": 0,
    "checks": [
     {
@@ -174,6 +196,18 @@
     {
      "ok": true,
      "check": "the direction mode (Q1) equals the full rows projected on each direction (max |diff| 2.5e-06)"
+    },
+    {
+     "ok": true,
+     "check": "the direction mode in batches of 2 directions equals one batch (max |diff| 0.0e+00)"
+    },
+    {
+     "ok": true,
+     "check": "rows for chosen output dimensions equal those rows of the full estimate (replicate; max |diff| 0.0e+00)"
+    },
+    {
+     "ok": true,
+     "check": "rows for chosen output dimensions equal those rows of the full estimate (vmap; max |diff| 0.0e+00)"
     }
    ],
    "env": {
@@ -323,6 +357,476 @@
     {
      "ok": true,
      "check": "the report renders"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_gpu.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_gpu.py --selftest",
+   "at": "2026-10-21T23:02:46",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
+   ],
+   "seconds": 2.0,
+   "ok": true,
+   "n_checks": 14,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "pack_w4a16 is the inverse of the instrument's dequantize_w4a16_full (int32 [out, in/8], scales [out, in/32])"
+    },
+    {
+     "ok": true,
+     "check": "the tiny model's 41 block linears are 4-bit (weight_packed, weight_scale, the instrument's forward)"
+    },
+    {
+     "ok": true,
+     "check": "forward through the instrument's 4-bit forward equals the dequantised model (max |diff| 0.0e+00)"
+    },
+    {
+     "ok": true,
+     "check": "rows through the recompute-in-backward linears equal rows through the dequantised nn.Linear (replicate, plain; max |diff| 0.0e+00)"
+    },
+    {
+     "ok": true,
+     "check": "rows through the recompute-in-backward linears equal rows through the dequantised nn.Linear (replicate, R-lens; max |diff| 0.0e+00)"
+    },
+    {
+     "ok": true,
+     "check": "rows through the recompute-in-backward linears equal rows through the dequantised nn.Linear (vmap, plain; max |diff| 0.0e+00)"
+    },
+    {
+     "ok": true,
+     "check": "rows through the recompute-in-backward linears equal rows through the dequantised nn.Linear (vmap, R-lens; max |diff| 0.0e+00)"
+    },
+    {
+     "ok": true,
+     "check": "grad_linears restores the instrument's forward on exit"
+    },
+    {
+     "ok": true,
+     "check": "inside grad_linears no dequantised weight is saved for the backward (outside, the instrument's forward saves 3)"
+    },
+    {
+     "ok": true,
+     "check": "a 4-bit linear carrying a LARQL overlay is refused"
+    },
+    {
+     "ok": true,
+     "check": "the independent backward (rooted at block 0, one direction at a time) equals the batched rows projected (plain; max |diff| 2.1e-06)"
+    },
+    {
+     "ok": true,
+     "check": "the independent backward (rooted at block 0, one direction at a time) equals the batched rows projected (R-lens; max |diff| 1.8e-06)"
+    },
+    {
+     "ok": true,
+     "check": "the 12B dry run's device map covers every weight; 15.851 GiB on the card (blocks 15-47, embedding and head), 6.329 GiB of blocks on the CPU, under the 24.0 GiB cap less 8 GiB"
+    },
+    {
+     "ok": true,
+     "check": "git state of the registered files is read"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_02_router.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_02_router.py --selftest",
+   "at": "2026-10-21T23:02:54",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
+   ],
+   "seconds": 7.5,
+   "ok": true,
+   "n_checks": 6,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "the resumable two-pass router equals R3_fitlib.fit_router (the one R3_parity tied to jpp_lens) bit for bit: mean, components, centroids"
+    },
+    {
+     "ok": true,
+     "check": "a record too short to keep a position is skipped and recorded (as jpp_lens skips it)"
+    },
+    {
+     "ok": true,
+     "check": "a job killed between records (in pass 1 and in pass 2, several times) resumes from its checkpoint and ends with the same router and record"
+    },
+    {
+     "ok": true,
+     "check": "the router file round-trips: the loaded router assigns as the fitted one"
+    },
+    {
+     "ok": true,
+     "check": "cluster sizes add up to the points per layer; the components' variance share lies in (0, 1]"
+    },
+    {
+     "ok": true,
+     "check": "--check-only passes everything before the model, and says what the run waits for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\"]"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_03_fit.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_03_fit.py --selftest",
+   "at": "2026-10-21T23:02:59",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
+   ],
+   "seconds": 3.1,
+   "ok": true,
+   "n_checks": 12,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "a shard job killed after each prompt leaves a valid checkpoint of the prompts done"
+    },
+    {
+     "ok": true,
+     "check": "each shard job (resumed or not) equals the same prompts fitted at once in memory"
+    },
+    {
+     "ok": true,
+     "check": "a prompt too short to keep a position is marked done and skipped, as jpp_lens skips it"
+    },
+    {
+     "ok": true,
+     "check": "the streamed per-layer merge of the shard files equals the in-memory merge of one run over all prompts (fp16 experts, pooled, fallback, counts); halves A (shards 0, 2) and B (shard 1) add up"
+    },
+    {
+     "ok": true,
+     "check": "the fallback branch: with a floor no expert reaches, every expert is the pooled Jacobian (at the floor of 5 here: fallback [False, False, False, False])"
+    },
+    {
+     "ok": true,
+     "check": "a shard fitted in vmap mode equals the replicated-batch shard (max |diff| 4.3e-06)"
+    },
+    {
+     "ok": true,
+     "check": "an incomplete shard is not merged"
+    },
+    {
+     "ok": true,
+     "check": "shards fitted with another router are not merged"
+    },
+    {
+     "ok": true,
+     "check": "a checkpoint made with other settings is not resumed"
+    },
+    {
+     "ok": true,
+     "check": "--delete-shards removes the shard files only after reading back every merged layer, and keeps the merged files"
+    },
+    {
+     "ok": true,
+     "check": "a merged file that is not the one merged.json records is refused"
+    },
+    {
+     "ok": true,
+     "check": "--check-only: 8 shards of 8 fit prompts, disk {'free_gb': 1019.5, 'needed_gb': 276.3}; waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no R3_02_router.pt yet (R3_02)']"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_04_weights.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_04_weights.py --selftest",
+   "at": "2026-10-21T23:03:05",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
+   ],
+   "seconds": 5.1,
+   "ok": true,
+   "n_checks": 9,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "grading: a greedy step against the target for multihop, multilingual and poetry; none for association and typo (kept whole)"
+    },
+    {
+     "ok": true,
+     "check": "the per-eval floor drops an eval with no correct item (primary kept ['multihop', 'typo', 'association']; the full macro adds poetry: kept ['multihop', 'typo', 'association', 'poetry'])"
+    },
+    {
+     "ok": true,
+     "check": "weights fitted one layer at a time (each layer's experts loaded alone) equal all layers at once"
+    },
+    {
+     "ok": true,
+     "check": "the jpp-it file: bf16 {'J': {layer: [N, N]}} with provenance, read h @ J.T, equals the weighted sum of the experts' transports (to bf16 rounding)"
+    },
+    {
+     "ok": true,
+     "check": "R3_fitlib.macro_pass (J++'s readout eval, R3_05's held-out recall) gives the fitter's own in-sample macro for the combined lens at every layer"
+    },
+    {
+     "ok": true,
+     "check": "rl-it is the pooled Jacobian; all seven lens files are written (the halves differ)"
+    },
+    {
+     "ok": true,
+     "check": "the record holds item indices and counts, never an item's name or text"
+    },
+    {
+     "ok": true,
+     "check": "too few fitting pairs stops the run for an amendment, before any lens is written"
+    },
+    {
+     "ok": true,
+     "check": "--check-only: the six pinned item files (551 items, names unique); waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no experiments/results/R3_03_merged/merged.json yet (R3_03 --merge)']"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_Q1_jlens.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_Q1_jlens.py --selftest",
+   "at": "2026-10-21T23:03:09",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
+   ],
+   "seconds": 2.2,
+   "ok": true,
+   "n_checks": 7,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "the arm's covectors are the plain estimator's full rows projected on each direction, averaged uniformly over prompts (max |diff| 8.0e-07); a too-short prompt is skipped; halves 4 + 3"
+    },
+    {
+     "ok": true,
+     "check": "the halves (even and odd prompts) average to the whole"
+    },
+    {
+     "ok": true,
+     "check": "vmap and replicated-batch modes give the same covectors (batches of dim_batch directions)"
+    },
+    {
+     "ok": true,
+     "check": "a job killed every 3 prompts resumes from its checkpoint and ends with the same sums"
+    },
+    {
+     "ok": true,
+     "check": "a checkpoint for other directions is refused"
+    },
+    {
+     "ok": true,
+     "check": "the comparison: an identical reference gives cosine 1 in every band and mask, an unrelated one about 0"
+    },
+    {
+     "ok": true,
+     "check": "--check-only passes the pins and Q0; prompts: Miru's prompts were not rebuilt (R3_01_check.json): the arm ...; waiting for: [\"Miru's prompts: Miru's prompts were not \", \"R3_00's pilot: no R3_00_pilot.json yet (\"]"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_00_pilot.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_00_pilot.py --selftest",
+   "at": "2026-10-21T23:03:14",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
+   ],
+   "seconds": 3.5,
+   "ok": true,
+   "n_checks": 9,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "(a) on a tiny Gemma 4 with 41 genuine 4-bit linears: the rules' coverage (25 norms, 6 MLPs) and the forward's top-1 unchanged at every position (80)"
+    },
+    {
+     "ok": true,
+     "check": "(b) parity through the recompute-in-backward linears, both modes: min cos plain 1.0, R-lens 1.0 (>= 0.99 on the GPU)"
+    },
+    {
+     "ok": true,
+     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 16, 's_per_prompt': 0.03}"
+    },
+    {
+     "ok": true,
+     "check": "(d) the projection adds every job and the margin (14.42 h for 600 s per prompt)"
+    },
+    {
+     "ok": true,
+     "check": "(d) the decision: stop with no approved budget, stop over budget, proceed within it, stop on a failed check or when nothing ran within the cap"
+    },
+    {
+     "ok": true,
+     "check": "the choice: the least time per prompt among configurations that ran within the cap (an over-cap or out-of-memory one is never chosen)"
+    },
+    {
+     "ok": true,
+     "check": "with no pilot result, every fit job refuses to start"
+    },
+    {
+     "ok": true,
+     "check": "the dry-run pipeline runs every stage on R3's own code through the 4-bit linears: ['lrp_coverage', 'router', 'shards_and_merge', 'weights', 'readout', 'q1_directions', 'parity']"
+    },
+    {
+     "ok": true,
+     "check": "--check-only: the pilot's prompts, the 12B's device map and both module trees; waiting for: ['no GPU budget approved yet (R3_common.APPROVED_GPU_HOURS): the pilot would write stop', 'the 12B dry run has not run (R3_00_dry_run.json)']"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_05_eval.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_05_eval.py --selftest",
+   "at": "2026-10-21T23:09:17",
+   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_03_fit.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
+    "experiments/scripts/R3_gpu.py"
+   ],
+   "seconds": 361.3,
+   "ok": true,
+   "n_checks": 8,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "every check before the model passes on the CPU (sizes only here); waiting for: [\"R3_prompts.json is not written yet (the registration's prompts)\", 'jpp-it: no lens file recorded by R3_04_weights.json yet', 'rl-it: no lens file recorded by R3_04_weights.json yet', 'jpp-it-full-macro: no lens file recorded by R3_04_weights.json yet', \"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\"]; failed: []"
+    },
+    {
+     "ok": true,
+     "check": "the mid-reply draws with R2's seed are R2_common.draw_mid_positions exactly (R3 changes the seed)"
+    },
+    {
+     "ok": true,
+     "check": "35 read positions: every lens at each of its layers has top-5 unfiltered, under R2's filter (content ids only) and under J++'s exclusion list (kept ids only), and the ranks"
+    },
+    {
+     "ok": true,
+     "check": "R3_06's table reads the output under R3's design, and its decision suite runs on it (both candidates at every band from 30-39, the reference lenses beside them)"
+    },
+    {
+     "ok": true,
+     "check": "the captured states (layers 30-59) are saved for recomputation on the CPU"
+    },
+    {
+     "ok": true,
+     "check": "H4: R1_10's 4808 positions (pinned sha256); a lens equal to the final state has KL 0 at scale 1 and full top-1/top-10 agreement; KL is never negative"
+    },
+    {
+     "ok": true,
+     "check": "H4's KL at a logit scale equals torch's kl_div of the scaled, softcapped logits"
+    },
+    {
+     "ok": true,
+     "check": "held-out recall@10 (J++'s pair-level macro) equals a brute-force rank count (0.4600, 40 pairs)"
     }
    ],
    "env": {

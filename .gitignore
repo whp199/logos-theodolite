@@ -25,6 +25,8 @@ experiments/results/N1B_corpus.jsonl
 experiments/R3_cache/
 # R3's fit tensors: per-layer shard files (one directory per shard; *.pt above does not reach subdirectories)
 experiments/results/R3_03_shards/
+# R3's merged experts (one file per layer; R3_03_fit.py --merge)
+experiments/results/R3_03_merged/
 
 # Python / tooling caches
 *.egg-info/

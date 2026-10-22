@@ -18,6 +18,9 @@ Gemma 4 on the CPU): J++'s recipe as R3 runs it.
   (memory-mapped), forms the total and the two halves by shard parity (D6), replaces an expert with fewer than
   MIN_KEPT positions by the layer's pooled Jacobian, and rounds the experts to fp16 as jpp_lens's merge-experts
   file does (fit-weights reads that file, so J++'s weights and combined lens are built from fp16 experts).
+- The direction mode (R3_Q1's plain J-lens covectors, in batches of directions) and rows for chosen output
+  dimensions (R3_00's parity check); J++'s readout eval for one lens and layer (macro_pass, through jpp_lens's own
+  rank code: R3_05's held-out recall).
 - The J++ items (R3's reimplementation of jpp_lens's item specs, split and exclusion list, which the parity test
   compares with jpp_lens's), the readout residuals, correctness grading (D8), the per-eval floor, and the expert
   weights through jpp_lens's own ExpertWeightingFitter (imported, not reimplemented).
@@ -304,9 +307,20 @@ def backward_rows(fw: Forward, rows_per_pass: int) -> Iterator[Tuple[int, int, L
         yield ds, nb, rows
 
 
-def direction_rows(fw: Forward, dirs_KF: Tensor) -> List[Tensor]:
+def direction_rows(fw: Forward, dirs_KF: Tensor, dim_batch: Optional[int] = None) -> List[Tensor]:
     """The plain J-lens direction mode (the Q1 arm): per source layer [K, N] = mean over kept positions of the
-    gradient of sum_{kept p'} <h_target[p'], d_k>, i.e. d_k^T J for each direction (one batched backward)."""
+    gradient of sum_{kept p'} <h_target[p'], d_k>, i.e. d_k^T J for each direction. One batched backward, or (with
+    `dim_batch`) one per batch of that many directions, the graph kept until the last (Miru's dim_batch)."""
+    K = dirs_KF.shape[0]
+    if dim_batch is not None and dim_batch < K:
+        parts: List[List[Tensor]] = []
+        for k0 in range(0, K, dim_batch):
+            parts.append(_direction_rows(fw, dirs_KF[k0:k0 + dim_batch], keep=k0 + dim_batch < K))
+        return [torch.cat([p[i] for p in parts]) for i in range(len(parts[0]))]
+    return _direction_rows(fw, dirs_KF, keep=False)
+
+
+def _direction_rows(fw: Forward, dirs_KF: Tensor, keep: bool) -> List[Tensor]:
     K = dirs_KF.shape[0]
     pos = fw.positions
     if fw.mode == "replicate":
@@ -314,12 +328,33 @@ def direction_rows(fw: Forward, dirs_KF: Tensor) -> List[Tensor]:
             raise ValueError("replicate mode needs rows_per_pass >= the number of directions")
         cot = torch.zeros_like(fw.target)
         cot[:K, pos, :] = dirs_KF.to(cot)[:, None, :]
-        grads = torch.autograd.grad(fw.target, fw.sources, grad_outputs=cot)
+        grads = torch.autograd.grad(fw.target, fw.sources, grad_outputs=cot, retain_graph=keep)
         return [g[:K, pos].float().mean(1) for g in grads]
     cot = torch.zeros((K, *fw.target.shape), dtype=fw.target.dtype, device=fw.target.device)
     cot[:, 0, pos, :] = dirs_KF.to(cot)[:, None, :]
-    grads = torch.autograd.grad(fw.target, fw.sources, grad_outputs=cot, is_grads_batched=True)
+    grads = torch.autograd.grad(fw.target, fw.sources, grad_outputs=cot, is_grads_batched=True, retain_graph=keep)
     return [g[:, 0, pos].float().mean(1) for g in grads]
+
+
+def dims_rows(fw: Forward, dims: Sequence[int], keep: bool = True) -> List[Tensor]:
+    """The estimator's rows for the given output dimensions only, one batched backward: per source layer
+    [len(dims), N], the mean over kept positions (as prompt_mean_rows reads them). R3_00's parity check compares
+    these with an independent single-direction backward on the real model."""
+    nb = len(dims)
+    pos = fw.positions
+    b = torch.arange(nb, device=fw.target.device)
+    d = torch.as_tensor(list(dims), device=fw.target.device)
+    if fw.mode == "replicate":
+        if fw.batch < nb:
+            raise ValueError("replicate mode needs rows_per_pass >= the number of dimensions")
+        cot = torch.zeros_like(fw.target)
+        cot[b[:, None], pos[None, :], d[:, None]] = 1.0
+        grads = torch.autograd.grad(fw.target, fw.sources, grad_outputs=cot, retain_graph=keep)
+        return [g[:nb][:, pos.to(g.device)].float().mean(1) for g in grads]
+    cot = torch.zeros((nb, *fw.target.shape), dtype=fw.target.dtype, device=fw.target.device)
+    cot[b[:, None], 0, pos[None, :], d[:, None]] = 1.0
+    grads = torch.autograd.grad(fw.target, fw.sources, grad_outputs=cot, retain_graph=keep, is_grads_batched=True)
+    return [g[:, 0][:, pos.to(g.device)].float().mean(1) for g in grads]
 
 
 def prompt_mean_rows(fw: Forward, rows_per_pass: int) -> Dict[int, Tensor]:
@@ -649,6 +684,31 @@ def combine(experts_EFN: Tensor, weights_E: Tensor) -> Tensor:
     return _jpp().combine(experts_EFN.to(torch.float32), weights_E)
 
 
+@torch.no_grad()
+def macro_pass(dec: Decoder, residuals: Residuals, layer: int, J_FN: Optional[Tensor], item_indices: Sequence[int],
+               excluded: Sequence[int], k: int = 10) -> Dict[str, Any]:
+    """J++'s readout eval for one lens at one layer on the chosen recorded items: per (item, intermediate) pair, a
+    hit when the best candidate ranks within k of the unembedded x J^T with the excluded ids removed (J_FN None:
+    the logit lens); the macro is the unweighted mean over evals of the hit rate. jpp_lens's own pair table, hit
+    margins and macro (rank_objective) are imported, so this is the number its evaluate stage reports."""
+    C.import_jpp()
+    from workspace_lens.fitting.condense_experts import rank_objective as ro
+
+    dev = dec.input_device
+    pairs = ro.build_pair_table(residuals.candidate_ids_P_list, residuals.eval_slugs, list(item_indices), device=dev)
+    x = residuals.residuals_L_dict_PN[layer][list(item_indices)].to(dev, torch.float32)
+    if J_FN is not None:
+        x = x @ J_FN.to(dev, torch.float32).T
+    logits = dec.unembed(x).float()
+    mask = torch.zeros(logits.shape[-1], dtype=torch.bool, device=dev)
+    if len(excluded):
+        mask[torch.as_tensor(list(excluded), device=dev)] = True
+    margin, _ = ro.hit_margins(logits, pairs, excluded_mask_Bool_V=mask, k=k)
+    per_eval = ro.per_eval_mean((margin >= 0).float(), pairs)
+    return {"macro": float(per_eval.mean()), "n_pairs": pairs.num_pairs,
+            "per_eval": {s: round(float(v), 4) for s, v in zip(pairs.group_eval_slugs, per_eval.tolist())}}
+
+
 # ------------------------------------------------------------------------------------------------ self-test
 def selftest(record: bool = False) -> int:
     fails: List[str] = []
@@ -786,6 +846,19 @@ def selftest(record: bool = False) -> int:
     dr = direction_rows(fw2, dirs)
     d = max(float((dr[i] - dirs @ full[l]).abs().max()) for i, l in enumerate(layers))
     check(d <= 1e-5, f"the direction mode (Q1) equals the full rows projected on each direction (max |diff| {d:.1e})")
+    fw3 = fit_forward(dec, text, layers, rows_per_pass=8, mode="vmap", lrp=False, **kw)
+    dr2 = direction_rows(fw3, dirs, dim_batch=2)
+    d = max(float((a - b).abs().max()) for a, b in zip(dr, dr2))
+    check(d <= 1e-6, f"the direction mode in batches of 2 directions equals one batch (max |diff| {d:.1e})")
+    for mode in ("replicate", "vmap"):
+        fw4 = fit_forward(dec, text, layers, rows_per_pass=8, mode=mode, lrp=True, **kw)
+        some = [3, 17, 0, 31]
+        got = dims_rows(fw4, some)
+        fw5 = fit_forward(dec, text, layers, rows_per_pass=8, mode=mode, lrp=True, **kw)
+        ref = prompt_mean_rows(fw5, 8)
+        d = max(float((got[i] - ref[l][some]).abs().max()) for i, l in enumerate(layers))
+        check(d <= 1e-6, f"rows for chosen output dimensions equal those rows of the full estimate ({mode}; "
+                         f"max |diff| {d:.1e})")
 
     print(f"R3_fitlib self-test: {'ALL PASS' if not fails else str(len(fails)) + ' FAILURES'}")
     if record:

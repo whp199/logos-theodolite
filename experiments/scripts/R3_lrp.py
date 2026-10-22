@@ -13,7 +13,8 @@ the R-Lens implementation of Camila Blank and Agam Bhatia; see NOTICE), preset "
 Attention, its q/k/v norms and a multimodal wrapper's vision and audio towers keep standard gradients. Detaching
 changes no forward value, only gradients; the graph recorded inside the context keeps the detached ops after exit.
 
-Only the classes Gemma 4 uses are patched. Any other RMSNorm or gated-MLP class in the text decoder, a GELU that is not
+Only the classes Gemma 4 uses are patched, and the gemma4_unified classes of the 12B dry-run checkpoint, only while
+their forward (and _norm) is Gemma 4's code to the letter (EQUIVALENT_CLASSES). Any other RMSNorm or gated-MLP class in the text decoder, a GELU that is not
 the tanh form, a torch.compile'd module or gradient checkpointing raises, so a partly patched fit cannot happen
 silently. The fit uses this reimplementation; R3_parity.py and --selftest check it against jpp_lens's own patcher.
 
@@ -48,7 +49,41 @@ NORM_CLASSES = ("Gemma4RMSNorm",)
 MLP_CLASSES = ("Gemma4TextMLP",)
 GELU_TANH_CLASSES = ("GELUTanh",)                 # transformers' ACT2FN["gelu_pytorch_tanh"]
 TOWER_SEGMENTS = frozenset({"vision_tower", "audio_tower", "embed_vision", "embed_audio"})
+# Classes of other Gemma 4 checkpoints (the local Gemma 4 12B of R3_00's dry run loads as gemma4_unified) that are
+# patched only if their code is the code of the class they stand for: forward and _norm (or forward alone) must have
+# the same source text, read with inspect, apart from the class name. Anything else still raises.
+EQUIVALENT_CLASSES = {"Gemma4UnifiedRMSNorm": "Gemma4RMSNorm", "Gemma4UnifiedTextMLP": "Gemma4TextMLP"}
 _MISSING = object()
+_EQUIVALENCE_SEEN: Dict[type, bool] = {}
+
+
+def _same_code(cls: type, name: str) -> bool:
+    """Whether ``cls`` (one of EQUIVALENT_CLASSES) has exactly the methods of transformers' Gemma 4 class ``name``."""
+    if cls in _EQUIVALENCE_SEEN:
+        return _EQUIVALENCE_SEEN[cls]
+    import inspect
+    import textwrap
+
+    from transformers.models.gemma4 import modeling_gemma4
+
+    ref = getattr(modeling_gemma4, name)
+    ok = True
+    for meth in ("forward", "_norm"):
+        a, b = getattr(cls, meth, None), getattr(ref, meth, None)
+        if (a is None) != (b is None):
+            ok = False
+        elif a is not None:
+            ok &= textwrap.dedent(inspect.getsource(a)) == textwrap.dedent(inspect.getsource(b))
+    _EQUIVALENCE_SEEN[cls] = ok
+    return ok
+
+
+def _known(module: nn.Module, allowed: Tuple[str, ...]) -> bool:
+    cls = type(module)
+    if cls.__name__ in allowed:
+        return True
+    ref = EQUIVALENT_CLASSES.get(cls.__name__)
+    return ref in allowed and _same_code(cls, ref)
 
 
 @dataclass
@@ -128,11 +163,11 @@ def plan(model: nn.Module) -> Report:
             if "self_attn" in segs:
                 rep.attention_norms_kept.append(name)
                 continue
-            if cls not in NORM_CLASSES:
+            if not _known(module, NORM_CLASSES):
                 raise RuntimeError(f"no LN-rule forward for {cls} at {name!r}")
             rep.ln_rule.append(name)
         elif _is_gated_mlp(module):
-            if cls not in MLP_CLASSES:
+            if not _known(module, MLP_CLASSES):
                 raise RuntimeError(f"unknown gated MLP {cls} at {name!r}")
             act = type(module.act_fn).__name__
             if act not in GELU_TANH_CLASSES:
@@ -332,6 +367,41 @@ def selftest(record: bool = False) -> int:
           f"the real 31B module tree (meta device): {rb['ln_rule']} norms, {rb['mlp_rule']} MLPs, "
           f"{rb['attention_norms_kept']} attention norms kept, {rb['tower_modules_skipped']} tower modules skipped")
     del big
+
+    # the local Gemma 4 12B of R3_00's dry run (gemma4_unified): its norm and MLP classes are accepted only because
+    # their code is Gemma 4's, and a class whose code differs still raises
+    dry_cfg_path = C.DRY_RUN_MODEL_DIR / "config.json"
+    if dry_cfg_path.is_file():
+        import transformers
+        from transformers.models.gemma4_unified import modeling_gemma4_unified as MU
+
+        check(_same_code(MU.Gemma4UnifiedRMSNorm, "Gemma4RMSNorm") and _same_code(MU.Gemma4UnifiedTextMLP,
+                                                                                    "Gemma4TextMLP"),
+              "the 12B's Gemma4UnifiedRMSNorm and Gemma4UnifiedTextMLP have exactly Gemma 4's forward (and _norm)")
+        dcfg = AutoConfig.from_pretrained(str(C.DRY_RUN_MODEL_DIR), local_files_only=True)
+        with torch.device("meta"):
+            small = getattr(transformers, dcfg.architectures[0])(dcfg)
+        rd = plan(small).summary()
+        n_dry = dcfg.get_text_config().num_hidden_layers
+        check(rd["ln_rule"] == 4 * n_dry + 1 and rd["mlp_rule"] == n_dry and rd["final_norm_patched"],
+              f"the 12B module tree (meta device, {dcfg.architectures[0]}): {rd['ln_rule']} norms, {rd['mlp_rule']} "
+              f"MLPs, {rd['attention_norms_kept']} attention norms kept, {rd['tower_modules_skipped']} tower modules "
+              f"skipped")
+        del small
+
+        class Gemma4UnifiedRMSNormAltered(MU.Gemma4UnifiedRMSNorm):
+            def forward(self, hidden_states):
+                return hidden_states
+        Gemma4UnifiedRMSNormAltered.__name__ = "Gemma4UnifiedRMSNorm"
+        m3 = C.build_tiny_gemma4()
+        m3.model.layers[0].extra_norm = Gemma4UnifiedRMSNormAltered(cfg.hidden_size)
+        try:
+            plan(m3)
+            check(False, "a gemma4_unified-named norm whose code differs from Gemma 4's raises")
+        except RuntimeError:
+            check(True, "a gemma4_unified-named norm whose code differs from Gemma 4's raises")
+    else:
+        check(False, f"the dry run's 12B config is at {dry_cfg_path}")
 
     # against jpp_lens's own patcher: the same modules, and the same rows bit for bit
     try:

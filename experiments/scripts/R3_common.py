@@ -115,6 +115,42 @@ R1_DIRS_SIZE = 333_058_876
 QUIET_STATS_PATH = MAIN_CHECKOUT / "experiments" / "results" / "V6_quiet_dims_stats.pt"
 QUIET_STATS_SHA256 = "7d6763a77975be9333910c97e787595ea8cdc299820e25bd95986887bd4c71bd"
 QUIET_STATS_SIZE = 31_017_292
+# The two base lenses the instrument ships (J++, the baseline of every rule) and reads beside it (JLens), as the hub
+# cache holds them: the sha256 is the LFS blob's own name, checked again by R3_Q0_pullbacks.py and R3_05_eval.py.
+LENS_SNAPSHOT = (Path.home() / ".cache/huggingface/hub/models--neuronpedia--jacobian-lens/snapshots"
+                 / "e166deb5ad540932100ef803c8c9bcc2a5453694" / "gemma-4-31b")
+JPP_BASE_PATH = LENS_SNAPSHOT / "jpp" / "Salesforce-wikitext" / "gemma-4-31B_jpp_lens.pt"
+JPP_BASE_SHA256 = "ef50bc54b04738e558b7d86847889bb5d60437e45276b1952e73da91b4e9f5fc"
+JPP_BASE_SIZE = 3_410_381_570
+JLENS_PATH = LENS_SNAPSHOT / "jlens" / "Salesforce-wikitext" / "gemma-4-31B_jacobian_lens.pt"
+JLENS_SHA256 = "d78d3e1483f1f2159dc955ca2871d796fd995fc4613d85103ad04475b810415f"
+JLENS_SIZE = 3_410_380_420
+# R1's IT covectors for its 128 directions (R1_04_analyze_dir.py: "mix", the equal-class mean of exact same-position
+# VJPs on the W4A16 instruct model), the reference "IT" row of Q0
+R1_GBAR_PATH = MAIN_CHECKOUT / "experiments" / "results" / "R1_04_gbar.pt"
+R1_GBAR_SHA256 = "2afd9c63af3840ea7e75330704a7f3ca125a56efd969e4fe1b22dc516b09e3ee"
+R1_GBAR_SIZE = 1_816_665_333
+# The numbers Q0 must reproduce (R1_IT_LENS_REPORT.md:233, from the committed R1_04_dir_analysis.json): J++ against
+# JLens in the quiet dimensions, 98 token-pair directions, code bands 30-39 / 40-49 / 50-58
+R1_04_JSON = RESULTS / "R1_04_dir_analysis.json"
+Q0_TARGET_Q10 = {"L30-39": 0.77, "L40-49": 0.68, "L50-58": 0.66}
+Q0_TOL = 0.02
+Q0_BANDS: Tuple[Tuple[str, int, int], ...] = (("L0-9", 0, 9), ("L10-19", 10, 19), ("L20-29", 20, 29),
+                                              ("L30-39", 30, 39), ("L40-49", 40, 49), ("L50-58", 50, 58))
+TOKPAIR_DIRS = tuple(range(30, 128))                  # R1's 98 random token-pair directions (R1_02_prep.py)
+
+# H4 (R3_PREREG.md §8): R1_10_evalfull.py's held-out positions (E3's 24 prose paragraphs and its 40 chats), rebuilt
+# by R3_05_eval.positions_r1_10 on the CPU from E3's own files. The list [[name, class, position], ...] serialised by
+# json.dumps(separators=(",", ":")) must have this sha256 (computed from R1_10_evalfull.pt's own "meta").
+R1_10_POSITIONS_SHA256 = "fd596c3bd794b45025c97a0f722c61a00d8ff69b02adbf920a2254b2798806dc"
+R1_10_N_POSITIONS = 4808
+R1_10_PATH = MAIN_CHECKOUT / "experiments" / "results" / "R1_10_evalfull.pt"
+R1_10_SHA256 = "3301e4cdfcd43719c77886591618a15cd10c7d5b8d73d169cd5f77c87a3994c6"
+E3_CHATS_PATH = RESULTS / "E3_lens_validation_chats.json"
+E3_CHATS_SHA256 = "623f305b1707183793257e8c06588c2879e0ce31fda32dc69df4f7a99cb71fe4"
+H4_LAYERS: Tuple[int, ...] = (40, 45, 50, 55, 58)     # R1 §4.2's layers (R1_FM_LAYERS from 40)
+H4_TAUS: Tuple[float, ...] = (0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0)   # calibrated KL = the smallest over these
+JPP_RECALL_LAYERS: Tuple[int, ...] = (30, 38, 45, 52)  # J++'s own held-out recall@10 (its README's readout layers)
 
 # ------------------------------------------------------------------------------------------------ the recipe (D1-D15)
 N_LAYERS = 60
@@ -148,6 +184,48 @@ JPP_EVALS: Tuple[str, ...] = ("multihop", "multilingual", "order-ops", "poetry",
 EVAL_FLOOR_CORRECT = 10
 EVAL_FLOOR_FITTING = 2
 MIN_DEV_PAIRS = 20                                    # fewer dev pairs in all: stop for an amendment
+
+# ------------------------------------------------------------------------------------------------ the GPU (R3_00)
+# Every GPU job runs with the server stopped and caps its own memory at JOB_CAP_GB (torch's per-process fraction),
+# so that a configuration that would need more fails as an out-of-memory error inside the job, never by starving
+# another process. The budget is what the user approves for the whole fit; R3_00's projection stops the run for an
+# amendment when it is over, or while no budget is approved. [NOT YET APPROVED]: the design recommends 24 GPU-hours.
+JOB_CAP_GB = 24.0
+APPROVED_GPU_HOURS: Optional[float] = None
+B1_BOUND_HOURS = 75.0                                 # 64 x 5376 x ~0.79 s (R1_05_total_0.json): rows one at a time
+PILOT_MAX_MINUTES = 30.0
+PILOT_N_PROMPTS = 2                                   # WikiText fit prompts 0 and 1; no evaluation prompt is read
+PILOT_PARITY_DIMS = 6                                 # output dimensions checked against an independent backward
+PILOT_PARITY_COS_MIN = 0.99
+PILOT_LRP_TOP1_MIN = 0.999                            # forward top-1 identical under the rules at this share
+PILOT_VMAP_B: Tuple[int, ...] = (8, 16, 32, 64, 128)
+PILOT_REPLICATE_B: Tuple[int, ...] = (1, 2, 3, 4)
+PILOT_PASSES = 3                                      # timed backward passes per configuration
+DRY_RUN_MODEL_DIR = Path.home() / "bin" / "ai-models" / "txt" / "google" / "gemma-4-12B"   # bf16, gemma4_unified
+PILOT_JSON = RESULTS / "R3_00_pilot.json"
+DRY_RUN_JSON = RESULTS / "R3_00_dry_run.json"
+ROUTER_PT = RESULTS / "R3_02_router.pt"
+ROUTER_JSON = RESULTS / "R3_02_router.json"
+ROUTER_CKPT = RESULTS / "R3_02_router_ckpt.pt"
+MERGED_DIR = RESULTS / "R3_03_merged"                 # gitignored (per-layer merged experts, pooled lens, halves)
+WEIGHTS_JSON = RESULTS / "R3_04_weights.json"
+LENS_FILES: Dict[str, Path] = {                       # R3_04's lens files (bf16, {"J": {l: [5376, 5376]}}, h @ J.T)
+    "jpp-it": RESULTS / "R3_04_jpp_it.pt", "rl-it": RESULTS / "R3_04_rlens_it.pt",
+    "jpp-it-A": RESULTS / "R3_04_jpp_it_A.pt", "jpp-it-B": RESULTS / "R3_04_jpp_it_B.pt",
+    "rl-it-A": RESULTS / "R3_04_rlens_it_A.pt", "rl-it-B": RESULTS / "R3_04_rlens_it_B.pt",
+    "jpp-it-full-macro": RESULTS / "R3_04_jpp_it_fullmacro.pt",
+}
+
+# ------------------------------------------------------------------------------------------------ Q1 (H6)
+# The 4-bit J-lens arm: plain gradients (no rules), the estimator summed over this and every later kept target
+# (Miru's "summed_current_and_future_targets"), mean over kept positions, uniform mean over prompts, target block
+# 59's raw output, for R1's 128 directions at the fitted layers, in batches of Miru's dim_batch 32.
+Q1_DIM_BATCH = 32
+Q1_LAYERS: Tuple[int, ...] = FIT_LAYERS
+Q1_PT = RESULTS / "R3_Q1_jlens.pt"
+Q1_JSON = RESULTS / "R3_Q1_jlens.json"
+Q0_JSON = RESULTS / "R3_Q0_pullbacks.json"
+Q0_PT = RESULTS / "R3_Q0_pullbacks.pt"
 
 # ------------------------------------------------------------------------------------------------ the evaluation
 CONDITIONS: Tuple[str, ...] = R2.CONDITIONS           # chat-no-answer, chat-begun, bare, mid-reply
