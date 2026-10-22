@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   type ActiveEdit,
   type AnswerPiece,
+  type EditVoice,
   type FixtureFile,
   type GenerationEcho,
   type LensInfo,
@@ -18,6 +19,7 @@ import {
   piecesOf,
   sightingFromFixture,
   sightingFromLive,
+  voiceOf,
 } from "./sighting";
 
 export * from "./sighting";
@@ -317,6 +319,92 @@ export const READING_MENDED: ReadingOptions = {
   neuronSquaring: "gram_schmidt",
 };
 
+/* ------------------------------------------------------------ one word against another */
+
+/** What a contrast is read against (the sweep's contrast_backgrounds): "controls", the matched control kept, sent as the
+ * frame's centring (the sighting's score less the control's, a difference of two log-odds, E3 recommendation 1);
+ * "study_mean", E3's average state, subtracted first as E3 centred it. */
+export type ContrastBackground = "controls" | "study_mean";
+
+/** Landmarks section vii: two words (or as many of each, by commas, read in pairs) weighed against each other at every
+ * layer. Nothing is sent unless it is on with words typed both sides: the boxes then show the first two landmarks only
+ * as placeholders, never as words sent. */
+export interface ContrastSettings {
+  on: boolean;
+  toward: string;
+  away: string;
+  backgrounds: ContrastBackground[];
+}
+export const CONTRAST_OFF: ContrastSettings = { on: false, toward: "", away: "", backgrounds: [] };
+/** The server's bounds (SweepRequest's ContrastRequest): at most 12 words a side, of at most 64 characters each. */
+export const CONTRAST_MAX_WORDS = 12;
+const CONTRAST_MAX_CHARS = 64;
+
+/** A side of a contrast as typed: words separated by commas, each trimmed, blanks dropped. */
+export const contrastWords = (text: string) =>
+  text
+    .split(",")
+    .map((w) => w.trim())
+    .filter((w) => w !== "");
+
+/** Why the contrast as typed cannot be sent, in plain words; null when it can (or when it is off). */
+export function contrastProblem(c: ContrastSettings): string | null {
+  if (!c.on) return null;
+  const t = contrastWords(c.toward);
+  const a = contrastWords(c.away);
+  if (!t.length || !a.length) return "Type a word on each side to weigh one against the other.";
+  if (t.length !== a.length)
+    return `There are ${t.length} word${t.length === 1 ? "" : "s"} on one side and ${a.length} on the other: they are read in pairs, the first against the first, so each side needs as many.`;
+  if (t.length > CONTRAST_MAX_WORDS) return `At most ${CONTRAST_MAX_WORDS} words a side are read.`;
+  if ([...t, ...a].some((w) => w.length > CONTRAST_MAX_CHARS)) return `A word may be at most ${CONTRAST_MAX_CHARS} characters.`;
+  return null;
+}
+
+/**
+ * The contrast fields of a sweep: one contrast when section vii is on with words typed both sides (and they pair), else
+ * none; its backgrounds only as far as they can be read: "controls" only when a matched control is sent with the
+ * request (the server refuses it otherwise), "study_mean" not when the server has said it cannot read its file.
+ */
+export function contrastFields(c: ContrastSettings | undefined, controlSent: boolean, health?: Health | null) {
+  const on = !!c && c.on && contrastProblem(c) === null;
+  if (!on) return { contrasts: [] as { toward: string[]; away: string[] }[], contrast_backgrounds: [] as ContrastBackground[] };
+  const smProblem = typeof health?.contrasts?.study_mean_problem === "string";
+  return {
+    contrasts: [{ toward: contrastWords(c!.toward), away: contrastWords(c!.away) }],
+    contrast_backgrounds: [...new Set(c!.backgrounds)].filter(
+      (b) => (b === "controls" ? controlSent : !smProblem),
+    ) as ContrastBackground[],
+  };
+}
+
+/* ------------------------------------------------------------ the vault's voice */
+
+/** How long an edit's voice may run, in word-pieces: the server's default, as V7 judged steering (12-piece greedy
+ * answers, V7_tool_bugs_NOTES.md). */
+export const VOICE_LENGTH = 12;
+
+/** The question an edit is heard by (LarqlRequest's voice): sent as the instrument sends its own, as a chat (with its
+ * system prompt and begun answer) or as bare text (the question, then the begun answer on a new line, as composeText). */
+export interface VoicePayload {
+  prompt: string;
+  chat: boolean;
+  system: string | null;
+  assistant_prefix: string;
+  max_new_tokens: number;
+}
+export function voicePayload(question: string, answerBegins: string, chat: boolean, system: string, length = VOICE_LENGTH): VoicePayload {
+  return {
+    prompt: question.trim(),
+    chat,
+    system: chat ? system.trim() || null : null,
+    assistant_prefix: answerBegins.trim(),
+    max_new_tokens: length,
+  };
+}
+
+/** Where an edit's voice is kept: by patch id and the moment the vault made it (patch ids start again with the server). */
+export const voiceKey = (e: Pick<ActiveEdit, "patch_id" | "timestamp">) => `${e.patch_id}:${e.timestamp ?? ""}`;
+
 export interface Health {
   status: string;
   model_id: string;
@@ -333,6 +421,17 @@ export interface Health {
   /** the causal spot-check's card (backend/causal_check.py): present only on a server that answers the "causal_check"
    * action and POST /api/scientist/causal_check (an older server ignores the action without a word) */
   causal_check?: CausalCheckCard;
+  /** what a sweep's contrasts may hold, and why the study's average state cannot be read (null when it can): present
+   * only on a server that reads contrasts (an older one ignores the request's contrasts without a word) */
+  contrasts?: ContrastsCard;
+}
+
+/** /api/health's `contrasts`. */
+export interface ContrastsCard {
+  backgrounds: string[];
+  max_contrasts: number;
+  max_words: number;
+  study_mean_problem: string | null;
 }
 
 /** /api/health's `causal_check`: what the server's test of a neuron's label takes, and its bounds. */
@@ -423,6 +522,8 @@ export interface TheodoliteState {
   neuronSquaring: FrameOptions["squaring"];
   poleRanking: PoleRanking;
   threadScore: ThreadScore;
+  /** Landmarks section vii: one word against another, sent only when on with words typed */
+  contrast: ContrastSettings;
 
   selectedLayer: number; // repo index
 
@@ -431,6 +532,8 @@ export interface TheodoliteState {
   larqlLog: LarqlEntry[];
   larqlPending: boolean;
   activeEdits: ActiveEdit[];
+  /** each edit's voice before and after, by voiceKey, from the vault's replies (a sighting's larql_status carries none) */
+  editVoices: Record<string, EditVoice>;
 
   // the circuit scientist
   inspections: Keyed<Pending<Record<string, any>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -467,6 +570,7 @@ export interface TheodoliteState {
   setNeuronSquaring: (q: FrameOptions["squaring"]) => void;
   setPoleRanking: (r: PoleRanking) => void;
   setThreadScore: (t: ThreadScore) => void;
+  setContrast: (c: Partial<ContrastSettings>) => void;
   /** set every reading option from a preset (the frame keeps its current centring); the caller then calls
    * retakeIfLive(), as the single setters' callers do */
   setReadingPreset: (p: "as_built" | "mended") => void;
@@ -484,7 +588,8 @@ export interface TheodoliteState {
   fetchHealth: () => Promise<void>;
   /** take a sighting; the options override the page's settings for this one request only */
   takeSighting: (opts?: TakeOptions) => boolean;
-  executeLarql: (query?: string) => void;
+  /** run an LQL statement; with a voice, an edit (DELETE, UPDATE, INSERT) is heard before and after */
+  executeLarql: (query?: string, voice?: VoicePayload | null) => void;
   inspectPole: (idx: number, neuron: number, face: number) => void;
   traceReaders: (idx: number, neuron: number, face: number, opts?: TraceOptions) => void;
   /** run test_motif_hypothesis; by default each sentence goes in as bare text and is read at its own last
@@ -749,6 +854,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   // the direct-path estimate (ρ ≈ 0.87 with measured effects) rather than C (≈ 0.41), whose largest scores sit at
   // layer 1 where the real effects are tiny (REPORT §3.4, bug 4); the server's own default stays C for old callers
   threadScore: "direct",
+  contrast: CONTRAST_OFF,
 
   selectedLayer: 35, // layer 36
 
@@ -756,6 +862,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   larqlLog: [],
   larqlPending: false,
   activeEdits: [],
+  editVoices: {},
 
   inspections: {},
   readers: {},
@@ -843,6 +950,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   setNeuronSquaring: (neuronSquaring) => set({ neuronSquaring }),
   setPoleRanking: (poleRanking) => set({ poleRanking }),
   setThreadScore: (threadScore) => set({ threadScore }),
+  setContrast: (partial) => set((s) => ({ contrast: { ...s.contrast, ...partial } })),
   setReadingPreset: (p) =>
     set((s) => {
       const r = p === "as_built" ? READING_AS_BUILT : READING_MENDED;
@@ -1113,16 +1221,18 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
 
   takeSighting: (opts) => takeSightingImpl(opts ?? {}, false),
 
-  executeLarql: (custom) => {
+  executeLarql: (custom, voice) => {
     const query = (custom ?? get().larqlQuery).trim();
     if (!query) return;
     set({ larqlPending: true });
+    // the voice goes only when given: without it the vault replies exactly as before
+    const heard = voice ? { voice } : {};
     if (wsOpen()) {
       wsQueries.push({ query, silent: false });
-      ws!.send(JSON.stringify({ action: "larql", query }));
+      ws!.send(JSON.stringify({ action: "larql", query, ...heard }));
       return;
     }
-    postJson("/api/larql", { query })
+    postJson("/api/larql", { query, ...heard })
       .then((data) =>
         recordLarql({ id: ++larqlId, query, ok: true, data, error: null, at: Date.now(), via: "http", failure: null }),
       )
@@ -1292,7 +1402,8 @@ export function sweepPayload(
     | "poleRanking"
     | "threadScore"
     | "control"
-  > & { writing?: Writing; maxNewTokens?: number; thinkBare?: ThinkBare },
+    | "contrast"
+  > & { writing?: Writing; maxNewTokens?: number; thinkBare?: ThinkBare; health?: Health | null },
   question: string,
   answerBegins: string,
   steering: SteeringConfig,
@@ -1341,6 +1452,8 @@ export function sweepPayload(
     centre_answer: control ? (overrides.centreAnswer ?? true) : false,
     pole_ranking: s.poleRanking,
     thread_score: s.threadScore,
+    // one word against another: none unless section vii is on with words typed; "controls" only with a control sent
+    ...contrastFields(s.contrast, control !== null, s.health),
     ...(overrides.answerIds ? { answer_token_ids: overrides.answerIds } : {}),
     ...(overrides.sightOrder ? { sight_tokens: overrides.sightOrder } : {}),
   };
@@ -1359,6 +1472,8 @@ const READING_KEYS = [
   "centre_answer",
   "pole_ranking",
   "thread_score",
+  "contrasts",
+  "contrast_backgrounds",
 ] as const;
 
 const omit = (o: Record<string, unknown>, keys: readonly string[]) => Object.fromEntries(Object.entries(o).filter(([k]) => !keys.includes(k)));
@@ -1368,17 +1483,33 @@ function recordLarql(e: LarqlEntry, silent = false) {
   // keep the ledger of active edits in step with whatever the vault reports
   const d = e.data as Record<string, any> | null; // eslint-disable-line @typescript-eslint/no-explicit-any
   let activeEdits = st.activeEdits;
-  if (d && Array.isArray(d.active_patches)) activeEdits = latestPerNeuron(d.active_patches as ActiveEdit[]);
-  else if (d && d.status === "applied" && d.patch) {
+  let editVoices = st.editVoices;
+  if (d && Array.isArray(d.active_patches)) {
+    // DESCRIBE: the vault's own records, every one (each keeps its voice when it was heard); the voices kept are those
+    // of the records it still holds, so after a restart of the server none of the old ones is shown
+    const recs = d.active_patches as ActiveEdit[];
+    activeEdits = latestPerNeuron(recs);
+    editVoices = {};
+    for (const r of recs) {
+      const v = voiceOf(r.voice) ?? st.editVoices[voiceKey(r)];
+      if (v) editVoices[voiceKey(r)] = v;
+    }
+  } else if (d && d.status === "applied" && d.patch) {
     // a new edit of a neuron replaces the vault's overlay for that neuron: list only the latest one
     const p = d.patch as ActiveEdit;
     activeEdits = [...st.activeEdits.filter((x) => !(x.layer_idx === p.layer_idx && x.neuron_idx === p.neuron_idx)), p];
-  } else if (d && d.status === "rolled_back") activeEdits = [];
+    const v = voiceOf(d.voice ?? p.voice);
+    if (v) editVoices = { ...st.editVoices, [voiceKey(p)]: v };
+  } else if (d && d.status === "rolled_back") {
+    activeEdits = [];
+    editVoices = {};
+  }
   useTheodoliteStore.setState({
     larqlLog: silent ? st.larqlLog : [e, ...st.larqlLog].slice(0, 50),
     // a silent resync over HTTP leaves a statement of the reader's own still pending as it was
     larqlPending: e.via === "ws" ? wsQueries.some((q) => !q.silent) : silent ? st.larqlPending : false,
     activeEdits,
+    editVoices,
   });
 }
 
@@ -1402,6 +1533,21 @@ function resyncEditsIfBehind(d: unknown) {
   postJson("/api/larql", { query: "DESCRIBE" })
     .then((data) => recordLarql({ id: ++larqlId, query: "DESCRIBE", ok: true, data, error: null, at: Date.now(), via: "http", failure: null }, true))
     .catch(() => undefined); // the ledger stays as it was; the folio then sets the test aside, which errs the safe way
+}
+
+/**
+ * A sighting's ledger (its larql_status: patch id, kind, layer, neuron, word and statement only) with what this page
+ * already knows of the same edits (the vault's own records: the moment each was made, its norms, its voice): so a
+ * sighting never strips the ledger of an edit's voice. An edit is the same only when its patch id, neuron and statement
+ * all are.
+ */
+function withKnown(fresh: ActiveEdit[], known: ActiveEdit[]): ActiveEdit[] {
+  return fresh.map((f) => {
+    const k = known.find(
+      (x) => x.patch_id === f.patch_id && x.layer_idx === f.layer_idx && x.neuron_idx === f.neuron_idx && x.statement === f.statement,
+    );
+    return k ? { ...k, ...f } : f;
+  });
 }
 
 /** The vault keeps one overlay per neuron (a new edit replaces the old) but a record per statement: keep the last. */
@@ -1565,7 +1711,10 @@ function onPair(msg: Record<string, any>, bin: LiveBinary | null) { // eslint-di
   autoRetakeBlocked = false;
   const st = useTheodoliteStore.getState();
   const k = sighting.tokenIndex;
-  const extra: Partial<TheodoliteState> = { sweepError: null, activeEdits: latestPerNeuron(sighting.activeEdits) };
+  const extra: Partial<TheodoliteState> = {
+    sweepError: null,
+    activeEdits: withKnown(latestPerNeuron(sighting.activeEdits), st.activeEdits),
+  };
   const a0 = liveSets.get(id);
   if (!a0) return;
   const sightings = { ...a0.sightings, [k]: sighting };

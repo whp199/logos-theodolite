@@ -1,6 +1,18 @@
 import React from "react";
 import { Apparatus, IfApparatus, IfRubrics, Missing, Rubric } from "../../components/kit";
-import { useTheodoliteStore, type ActiveEdit, type LarqlEntry } from "../../store/useTheodoliteStore";
+import {
+  VOICE_LENGTH,
+  useTheodoliteStore,
+  voiceKey,
+  voiceOf,
+  voicePayload,
+  voiceWords,
+  type ActiveEdit,
+  type EditVoice,
+  type LarqlEntry,
+  type VoiceAnswer,
+} from "../../store/useTheodoliteStore";
+import { pct } from "../../lib/words";
 import { INSERT_EXAMPLE, isFloat } from "./lql";
 import { editDescription, num, replyTo } from "./live";
 import { FaceMark, MONO, OwnWords, roman, sentenceInput, smallCaps } from "./bits";
@@ -19,6 +31,47 @@ const fieldsetStyle: React.CSSProperties = {
   gap: "2px 28px",
 };
 
+/** A voice's answer in quotes, its end mark left out; an answer that only ended its turn says so. */
+const said = (a: VoiceAnswer) => {
+  const w = voiceWords(a);
+  return w ? "“" + w + "”" : a.stopReason === "end_mark" ? "nothing, ending its turn at once" : "“”";
+};
+/** The question a voice asked, with its begun answer when it had one. */
+const asked = (v: EditVoice) => "“" + v.prompt.trim() + "”" + (v.assistantPrefix.trim() ? " (its answer begun “" + v.assistantPrefix.trim() + "”)" : "");
+/** Why the answer after an edit could not be written, from the vault's sentence. */
+const afterWhy = (v: EditVoice) =>
+  (v.error ?? "the vault gave no reason").replace(/^The voice after the edit could not be written: /, "").replace(/; the edit is in force\.?$/, "");
+const sameAnswer = (v: EditVoice) => !!v.after && v.partedAt === null;
+/** A word's share of the model's own odds; one too small for pct() to show is said to be so, never printed as 0%. */
+const odds = (p: number) => (p > 0 && p < 0.001 ? "under 0.1%" : pct(p));
+
+/** One edit's voice, as the ledger gives it. */
+const VoiceLine: React.FC<{ e: ActiveEdit; v: EditVoice | null }> = ({ e, v }) => {
+  if (!v)
+    return (
+      <Missing what="not heard: this edit was made without its voice (with hearing off, by hand, through the scientist’s tools, or by an older server)" />
+    );
+  const replaced = typeof e.replaces_patch === "number" ? e.replaces_patch : null;
+  const others = v.editsInForceBefore.filter((id) => id !== replaced && id !== e.patch_id).length;
+  const wb = v.firstStep?.watchBefore ?? null;
+  const wa = v.firstStep?.watchAfter ?? null;
+  return (
+    <>
+      <span style={{ fontSize: 16, lineHeight: 1.45 }}>
+        Heard on {asked(v)}: before, {said(v.before)}; after, {v.after ? said(v.after) : "not written (" + afterWhy(v) + ")"}.
+        {wb && wa ? ` At its first word-piece, “${wb.token.trim()}” went from ${odds(wb.prob)} to ${odds(wa.prob)}.` : ""}
+      </span>
+      {replaced !== null ? <Rubric style={{ fontSize: 15 }}>It replaces patch {replaced} on the same neuron; “before” is that edit’s voice.</Rubric> : null}
+      {others ? (
+        <Rubric style={{ fontSize: 15 }}>
+          It was heard with {others === 1 ? "one other edit" : others + " other edits"} already in force; undo them and it may say
+          something else.
+        </Rubric>
+      ) : null}
+    </>
+  );
+};
+
 /** The newest reply to ROLLBACK in the log, if any. */
 const lastRollback = (log: LarqlEntry[]) => log.find((e) => e.ok && (e.data as { status?: string } | null)?.status === "rolled_back") ?? null;
 
@@ -28,7 +81,19 @@ export const EditPanel: React.FC = () => {
   const larqlLog = useTheodoliteStore((s) => s.larqlLog);
   const larqlPending = useTheodoliteStore((s) => s.larqlPending);
   const activeEdits = useTheodoliteStore((s) => s.activeEdits);
+  const editVoices = useTheodoliteStore((s) => s.editVoices);
   const executeLarql = useTheodoliteStore((s) => s.executeLarql);
+  // the question the edit is heard by: the instrument page's own, unless typed here
+  const sQuestion = useTheodoliteStore((s) => s.question);
+  const sBegins = useTheodoliteStore((s) => s.answerBegins);
+  const sChat = useTheodoliteStore((s) => s.chat);
+  const sSystem = useTheodoliteStore((s) => s.system);
+  const vQuestion = ui.vQuestion ?? sQuestion;
+  const vBegins = ui.vBegins ?? sBegins;
+  const vChat = ui.vChat ?? sChat;
+  const vSystem = ui.vSystem ?? sSystem;
+  const vOwn = ui.vQuestion !== null || ui.vBegins !== null || ui.vChat !== null || ui.vSystem !== null;
+  const hearOk = !ui.hear || vQuestion.trim() !== "";
 
   // ---------- the form (board: renderVals, "edit")
   const eN = num(ui.eN);
@@ -41,7 +106,7 @@ export const EditPanel: React.FC = () => {
   const isUpd = ui.eKind === "update";
   const posFace = ui.ePol !== "-";
   const wordOk = eWord !== "" && !/['"]/.test(eWord);
-  const valid = eNOk && eLOk && (!isUpd || (wordOk && eSOk));
+  const valid = eNOk && eLOk && (!isUpd || (wordOk && eSOk)) && hearOk;
   const nTxt = eNOk ? String(eN) : "…";
   const lTxt = eLOk ? String(eL) : "…";
   const sTxt = eSOk ? eS : "…";
@@ -82,6 +147,7 @@ export const EditPanel: React.FC = () => {
   if (isUpd && eWord === "") problems.push("the edit needs a word");
   if (isUpd && eWord !== "" && !wordOk) problems.push("the word may not contain a quotation mark");
   if (isUpd && !eSOk) problems.push("the push needs a strength of 0 or more");
+  if (!hearOk) problems.push("to hear it, the model needs a question to answer (or leave its voice unheard)");
   const read = !valid
     ? "Complete the form above: " + problems.join("; ") + "."
     : isUpd
@@ -104,14 +170,17 @@ export const EditPanel: React.FC = () => {
 
   const make = () => {
     if (!valid) return;
-    ui.set({ editSent: { lql: eLql, at: Date.now() } });
-    executeLarql(eLql);
+    const voice = ui.hear ? voicePayload(vQuestion, vBegins, vChat, vSystem) : null;
+    ui.set({ editSent: { lql: eLql, at: Date.now(), voice } });
+    executeLarql(eLql, voice);
   };
 
   // ---------- the vault's reply to this page's last edit
   const editReply = ui.editSent ? replyTo(larqlLog, ui.editSent.lql, ui.editSent.at) : null;
   const editPending = larqlPending && ui.editSent !== null && editReply === null;
   const patch = editReply && editReply.ok ? ((editReply.data as { patch?: ActiveEdit } | null)?.patch ?? null) : null;
+  const heard = editReply && editReply.ok ? voiceOf((editReply.data as { voice?: unknown } | null)?.voice) : null;
+  const askedVoice = ui.editSent?.voice ?? null;
 
   // ---------- the ledger: the edits in force, as the vault reports them
   const none = activeEdits.length === 0;
@@ -233,6 +302,90 @@ export const EditPanel: React.FC = () => {
           <h3 className="h-sub">what this will do</h3>
           <p style={{ margin: 0, fontSize: 20, lineHeight: 1.5 }}>{plain}</p>
         </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 820 }}>
+          <h3 className="h-sub">hear it before and after</h3>
+          <label style={radioLabel}>
+            <input type="checkbox" checked={ui.hear} onChange={(e) => ui.set({ hear: e.target.checked })} style={radioStyle} />
+            hear its voice before and after the edit
+          </label>
+          {ui.hear ? (
+            <>
+              <div style={{ fontSize: 20, lineHeight: 1.9 }}>
+                Just before the edit and again just after, the vault will ask the model{" "}
+                <label htmlFor="v-q" className="visually-hidden">
+                  the question
+                </label>
+                <input
+                  id="v-q"
+                  type="text"
+                  value={vQuestion}
+                  onChange={(e) => ui.set({ vQuestion: e.target.value })}
+                  autoComplete="off"
+                  spellCheck={false}
+                  style={sentenceInput(20, "min(18em, 100%)", { italic: true })}
+                />
+                {vChat ? (
+                  <>
+                    {" "}
+                    as a chat
+                    {vSystem.trim() ? <>, after the system prompt “{vSystem.trim()}”</> : null}, its answer begun{" "}
+                  </>
+                ) : (
+                  <> as bare text, with </>
+                )}
+                <label htmlFor="v-a" className="visually-hidden">
+                  the begun answer
+                </label>
+                <input
+                  id="v-a"
+                  type="text"
+                  value={vBegins}
+                  placeholder="(nothing)"
+                  onChange={(e) => ui.set({ vBegins: e.target.value })}
+                  autoComplete="off"
+                  spellCheck={false}
+                  style={sentenceInput(20, "8em", { italic: true })}
+                />
+                {vChat ? "" : " on a new line after it"}, and write each answer the likeliest way, up to {VOICE_LENGTH} word-pieces.
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 24px", fontSize: 16 }}>
+                <label style={radioLabel}>
+                  <input type="checkbox" checked={vChat} onChange={(e) => ui.set({ vChat: e.target.checked })} style={radioStyle} />
+                  as a chat
+                </label>
+                {vChat ? (
+                  <label style={{ ...radioLabel, fontSize: 16 }}>
+                    system prompt{" "}
+                    <input
+                      type="text"
+                      value={vSystem}
+                      placeholder="(none)"
+                      onChange={(e) => ui.set({ vSystem: e.target.value })}
+                      autoComplete="off"
+                      spellCheck={false}
+                      style={sentenceInput(16, "14em")}
+                    />
+                  </label>
+                ) : null}
+                <span style={{ color: "var(--muted)" }}>
+                  {vOwn ? (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => ui.set({ vQuestion: null, vBegins: null, vChat: null, vSystem: null })}
+                    >
+                      take the instrument’s question again
+                    </button>
+                  ) : (
+                    "As the question stands on the instrument page."
+                  )}
+                </span>
+              </div>
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: 17, color: "var(--muted)" }}>The edit will be made without its voice; the ledger will say so.</p>
+          )}
+        </div>
         <OwnWords
           lql={eLql}
           maxWidth={820}
@@ -256,7 +409,15 @@ export const EditPanel: React.FC = () => {
           </p>
         ) : editReply && editReply.ok ? (
           <p className="status-line" role="status">
-            The vault made the edit{patch ? `, patch ${patch.patch_id}` : ""}. It is now in force, listed under the edits in force.
+            {heard && !heard.after
+              ? `The vault made the edit${patch ? `, patch ${patch.patch_id}` : ""}, and it is in force; its answer after the edit could not be written (${afterWhy(heard)}).`
+              : heard && sameAnswer(heard)
+                ? `The vault made the edit${patch ? `, patch ${patch.patch_id}` : ""}. Asked ${asked(heard)} and written the likeliest way, its answer did not change: ${said(heard.before)}.`
+                : heard && heard.after
+                  ? `The vault made the edit${patch ? `, patch ${patch.patch_id}` : ""}. Asked ${asked(heard)} and written the likeliest way, it answered ${said(heard.before)} before the edit and ${said(heard.after)} after.`
+                  : `The vault made the edit${patch ? `, patch ${patch.patch_id}` : ""}. It is now in force, listed under the edits in force.${
+                      askedVoice ? " Its voice was asked for, but this server did not send it: it is older than this page." : ""
+                    }`}
           </p>
         ) : editReply && !editReply.ok ? (
           editReply.failure === "refused" ? (
@@ -273,7 +434,7 @@ export const EditPanel: React.FC = () => {
           <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 760, paddingTop: 4 }}>
             {isUpd ? (
               <Rubric>
-                This is a nudge to one neuron, not a change to what the model knows. The original tool calls it a MEMIT edit, but it is not
+                This is an edit to one neuron, not a change to what the model knows. The original tool calls it a MEMIT edit, but it is not
                 MEMIT: a single column of a single layer moves and nothing is solved for, so the model may say the word in places you never
                 meant.
               </Rubric>
@@ -290,6 +451,12 @@ export const EditPanel: React.FC = () => {
                 women by −1.80 toward “he”; ten random neurons moved them by no more than 0.04.
               </Rubric>
             ) : null}
+            {ui.hear ? (
+              <Rubric>
+                Its voice is what the model itself writes, not a reading through the lens, so it shows what this edit did, but only to this
+                one question. It may change answers you never asked for.
+              </Rubric>
+            ) : null}
             <Rubric>An edit stays in force for every sighting, landmark and nudge until you undo it. Read the model’s answer after each one.</Rubric>
           </div>
         </IfRubrics>
@@ -297,9 +464,11 @@ export const EditPanel: React.FC = () => {
           <dl className="dl">
             <dt>technical name</dt>
             <dd>
-              a “.patch” overlay, <span className="mono-wrap">LarqlVaultEngine.apply_patch_surgery</span>. The code calls it a MEMIT edit;
-              it is not MEMIT (Meng et al. 2023) [11]: one column of one layer’s down-projection moves, rank one, with no covariance solve
-              (REPORT §3.3; E6 §3, item 12).
+              a one-neuron column edit, rank one, kept as a “.patch” overlay (
+              <span className="mono-wrap">LarqlVaultEngine.apply_patch_surgery</span>; the reply’s{" "}
+              <span className="mono-wrap">edit_kind</span> “one_neuron_column”). The code and its statements are named after MEMIT
+              (Meng et al. 2023) [11], but it is not MEMIT: one column of one layer’s down-projection moves and nothing is solved for, with
+              no covariance solve (REPORT §3.3; E6 §3, item 12).
             </dd>
             <dt>update</dt>
             <dd>
@@ -312,8 +481,9 @@ export const EditPanel: React.FC = () => {
             <dt>insert</dt>
             <dd>
               INSERT chooses the neuron itself, the one whose input side W<sub>gate</sub>[i] lies nearest the subject’s pullback (largest
-              |cos|, whose sign sets p), then writes the object as UPDATE does. The docstring says gate_proj is edited too; only the
-              down-projection column changes (E6 §3, item 12). The reader’s form above has no INSERT; write one by hand.
+              |cos|, whose sign sets p), then writes the object as UPDATE does. Only the down-projection column changes: the docstring the
+              study audited said gate_proj was edited too, and now says it is not (E6 §3, item 12). The reader’s form above has no INSERT;
+              write one by hand, and it is made without its voice.
             </dd>
             <dt>this edit</dt>
             <dd className="num">{read}</dd>
@@ -326,6 +496,37 @@ export const EditPanel: React.FC = () => {
             ) : (
               <dd style={{ margin: 0, color: "var(--muted)" }}>
                 patch_id, ‖c‖ (orig_norm) and ‖c′‖ (new_norm): <Missing />
+              </dd>
+            )}
+            <dt>its voice</dt>
+            {heard ? (
+              <dd className="num">
+                written the likeliest way (temperature 0, no repeat penalty), at most {heard.maxNewTokens ?? VOICE_LENGTH} word-pieces,
+                stopping at the end of its turn, with no nudge, under the GPU lock: the answer before, the edit, the answer after, with
+                nothing between ({heard.chat ? "as a chat" : "as bare text"}
+                {heard.system ? ", with a system prompt" : ""}). First word-piece:{" "}
+                {heard.firstStep ? (
+                  <>
+                    KL(before ‖ after) = {heard.firstStep.kl !== null ? heard.firstStep.kl.toPrecision(3) : "—"} nats
+                    {heard.firstStep.watchBefore && heard.firstStep.watchAfter
+                      ? `; “${heard.firstStep.watchBefore.token.trim()}” ${odds(heard.firstStep.watchBefore.prob)} → ${odds(
+                          heard.firstStep.watchAfter.prob,
+                        )}, rank ${heard.firstStep.watchBefore.rank} → ${heard.firstStep.watchAfter.rank}`
+                      : ""}
+                  </>
+                ) : (
+                  "not compared, since the answer after was not written"
+                )}
+                ; the two answers part{" "}
+                {heard.after ? (heard.partedAt === null ? "never" : `at word-piece ${heard.partedAt + 1}`) : "— (no answer after)"}. Edits in
+                force before it:{" "}
+                {heard.editsInForceBefore.length ? "patches " + heard.editsInForceBefore.join(", ") : "none"}. Written in{" "}
+                {heard.elapsedMs !== null ? Math.round(heard.elapsedMs) + " ms" : "—"}, both answers and the edit.
+              </dd>
+            ) : (
+              <dd style={{ margin: 0, color: "var(--muted)" }}>
+                the answer before and after, how they part, and the first word-piece’s odds:{" "}
+                <Missing what={editReply && editReply.ok ? "not heard" : "measured when an edit is heard"} />
               </dd>
             )}
             <dt>where it lives</dt>
@@ -394,7 +595,7 @@ export const EditPanel: React.FC = () => {
                   {e.orig_norm !== undefined && e.new_norm !== undefined ? ` · ‖c‖ ${e.orig_norm} → ‖c′‖ ${e.new_norm}` : ""}
                 </span>
               </IfApparatus>
-              <Missing what="its voice before and after: not yet in the server’s reply" />
+              <VoiceLine e={e} v={voiceOf(e.voice) ?? editVoices[voiceKey(e)] ?? null} />
             </div>
           </div>
         ))}

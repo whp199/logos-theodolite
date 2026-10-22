@@ -28,6 +28,7 @@ import {
 } from "../store/useTheodoliteStore";
 import { comma, faceWord, kindOf, minus, ms, pct, pieceWord, wp } from "../lib/words";
 import { endedWords } from "./instrument/moment";
+import { ContrastSection } from "./landmarks/ContrastSection";
 import {
   ORDERS,
   ORDER_STRETCHES,
@@ -434,6 +435,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const threadScore = useTheodoliteStore((s) => s.threadScore);
   const control = useTheodoliteStore((s) => s.control);
+  const contrast = useTheodoliteStore((s) => s.contrast);
+  const health = useTheodoliteStore((s) => s.health);
   const shownSet = useShownSet();
   const k = sighting?.tokenIndex ?? 0;
   const chosen = chosenOf(sighting);
@@ -454,6 +457,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
     poleRanking,
     threadScore,
     control,
+    contrast,
+    health,
   };
   const probe = sweepPayload({ ...reqState, frame: { ...frameOpts, centre: true } }, question, answerBegins, steering);
   const canCentre = (probe.centre_token_ids?.length ?? 0) > 0 || probe.centre_prompts.length > 0;
@@ -564,6 +569,11 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   })();
   const survey = () => {
     if (isWords) setLandmarks(words.map((w) => w.trim()) as Triple);
+    if (rereads && useTheodoliteStore.getState().conn === "open") retakeIfLive();
+    else takeSighting();
+  };
+  // section vii: a contrast changes only how the answer is read, so the answer shown is read again when it can be
+  const readContrast = () => {
     if (rereads && useTheodoliteStore.getState().conn === "open") retakeIfLive();
     else takeSighting();
   };
@@ -731,11 +741,15 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   /* ---- apparatus · the request this page sends: the store's own payload, how it writes included */
   const payload = sweepPayload(reqState, question, answerBegins, steering);
   const request = JSON.stringify({ action: "sweep", payload }, null, 2);
+  // one word against another (section vii) goes with either survey mode
+  const contrastNote =
+    " Section vii’s words go as contrasts, and what they are read against as contrast_backgrounds; both are empty unless that section is on with words typed."
   const requestNote = isWords
-    ? "The four frame options above go as frame_squaring, frame_per_layer, frame_fnw and centre_token_ids (the kept control’s exact prompt ids), with centre_answer, which centres each later word-piece on the control reading this very answer. How it writes (max_new_tokens, sampler, sight_every_token) is set under the question on the instrument page; a request_id is added when it is sent."
+    ? "The four frame options above go as frame_squaring, frame_per_layer, frame_fnw and centre_token_ids (the kept control’s exact prompt ids), with centre_answer, which centres each later word-piece on the control reading this very answer. How it writes (max_new_tokens, sampler, sight_every_token) is set under the question on the instrument page; a request_id is added when it is sent." +
+      contrastNote
     : lp
-      ? `locked_pole takes [layer index, neuron, polarity]: layer ${lp.idx + 1} is index ${lp.idx}. frame_squaring carries how the neuron’s frame is squared.`
-      : `locked_pole takes [layer index, neuron, polarity]. Without it the server quietly falls back to the word frame, here ${words.map((w) => q(w.trim())).join(" · ")}; its own default is “spider” · “eight” · “insect”.`;
+      ? `locked_pole takes [layer index, neuron, polarity]: layer ${lp.idx + 1} is index ${lp.idx}. frame_squaring carries how the neuron’s frame is squared.${contrastNote}`
+      : `locked_pole takes [layer index, neuron, polarity]. Without it the server quietly falls back to the word frame, here ${words.map((w) => q(w.trim())).join(" · ")}; its own default is “spider” · “eight” · “insect”.${contrastNote}`;
 
   /* ---- apparatus · layer N */
   const xyz = L?.xyz ?? null;
@@ -1852,8 +1866,9 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               interface sends frame_squaring “lowdin” by default,{" "}
               {FNW_DEFAULT ? "with frame_fnw" : "on the raw rows (frame_fnw false)"}; the server’s own default stays Gram–Schmidt
               on raw rows. V7 also suggests
-              contrast axes such as fnw · (W<sub>U</sub>[she] − W<sub>U</sub>[he]), less a background mean; those are not built.{" "}
-              <span className="placeholder">[NOT YET IN THE SERVER]</span>
+              contrast axes such as fnw · (W<sub>U</sub>[she] − W<sub>U</sub>[he]), less a background mean: section vii below
+              reads one word against another so, in log-odds at every layer, against a matched control or the study’s average
+              state, rather than as an axis of the frame.
             </dd>
             <dt>agreement</dt>
             <dd>
@@ -2313,7 +2328,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           leans toward “she” for most of the AIs it tried (six or seven of nine), far more than the other lenses it tried: mostly a quirk of the J++ recipe,
           for the Jacobian lens, also fitted on the base model, removes it almost as well as a lens fitted on the instruct
           model (R1). Do not read it as how the model sees itself. Compare a landmark across versions of a question at the same
-          word-piece, not across the word-pieces of one answer.
+          word-piece, not across the word-pieces of one answer. Section vii weighs two words against each other directly.
         </Rubric>
         {readsInsideAnswer(sighting) ? <AnswerPositionCaution sighting={sighting} /> : null}
         {sighting && readWhere(sighting).role === "template_end" ? <TemplateEndCaution /> : null}
@@ -2349,8 +2364,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             </dd>
             <dt>read with care</dt>
             <dd>
-              Against a matched control, centred, never alone; and flag pronoun readings at layers 51–59 as unreliable
-              (REPORT §3.5, recommendations 2 and 3).
+              Against a matched control, never alone: section vii weighs one word against another so. With the base-fitted J++
+              lens, read condition contrasts at layers 31–50 and confirm them with an instruct-fitted reading, which the
+              instrument does not load; flag pronoun readings at layers 51–59 unless such a reading agrees (REPORT §3.5, errata
+              E49 and E50).
             </dd>
             <dt>matched control</dt>
             <dd style={{ margin: "0", display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "4px 14px" }}>
@@ -2381,6 +2398,17 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           </dl>
         </Apparatus>
       </section>
+
+      {/* ------------------------------------------------ vii · one word against another */}
+      <ContrastSection
+        sighting={sighting}
+        li={li}
+        placeholders={[words[0].trim(), words[1].trim()]}
+        canCentre={canCentre}
+        sent={{ contrasts: payload.contrasts, contrast_backgrounds: payload.contrast_backgrounds }}
+        onRead={readContrast}
+        readLabel={rereads ? "read the answer shown again" : "take a sighting"}
+      />
     </Page>
   );
 };

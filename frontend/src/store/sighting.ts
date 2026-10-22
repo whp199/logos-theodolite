@@ -316,6 +316,9 @@ export interface Sighting {
   /** "bare_text" when thinking was asked for and left out, since bare text has no turn to think in (the server's
    * think_left_out, first pair only, with think_bare "none"); null otherwise, and for an older server */
   thinkLeftOut: "bare_text" | null;
+  /** one word against another at every layer (the server's `contrasts`): [] when none was asked for; null when the
+   * server sent none (the recorded sighting, or an older server) */
+  contrasts: ContrastReading[] | null;
   landmarks: [string, string, string];
   surveyMode: string;
   elapsedMs: number | null;
@@ -356,6 +359,231 @@ export interface ActiveEdit {
   timestamp?: number;
   orig_norm?: number;
   new_norm?: number;
+  /** its answer before and after, when it was heard (the vault's record; a sighting's larql_status leaves it out) */
+  voice?: unknown;
+  /** "one_neuron_column": one down_proj column, rank one (named after MEMIT in the code; not MEMIT); absent from an
+   * older server */
+  edit_kind?: string;
+  /** the earlier edit of the same neuron whose overlay this one replaced; null for none; absent from an older server */
+  replaces_patch?: number | null;
+}
+
+/** One answer the vault wrote to hear an edit by (TheodoliteRuntime.write_voice): greedily, no nudge, no re-read. */
+export interface VoiceAnswer {
+  ids: number[];
+  strs: string[];
+  text: string;
+  /** "end_mark": it ended its turn (the last piece is the mark); "length": it ran to the word-pieces allowed */
+  stopReason: string | null;
+  nPrompt: number | null;
+  /** each word-piece's share of the model's own odds as it wrote it, and its rank there */
+  steps: { index: number; token: string; id: number; prob: number | null; rank: number | null }[];
+  /** the five likeliest at its first word-piece, in the model's own odds */
+  firstTop: { id: number; token: string; prob: number }[];
+  /** the edit's word at the first word-piece (UPDATE and INSERT; null for DELETE) */
+  watch: { id: number; token: string; prob: number; rank: number } | null;
+}
+
+/**
+ * An edit heard before and after (the vault's reply's `voice`, kept on its record): the question it was asked, as sent;
+ * the edits in force as it was heard (patch ids, the latest edit of each neuron); its answer before and after (after is
+ * null when it could not be written, and `error` says why); and how the first word-piece's odds moved.
+ */
+export interface EditVoice {
+  prompt: string;
+  chat: boolean;
+  system: string | null;
+  assistantPrefix: string;
+  maxNewTokens: number | null;
+  editsInForceBefore: number[];
+  before: VoiceAnswer;
+  after: VoiceAnswer | null;
+  /** KL(before ‖ after) at the first word-piece, in nats, and the edit's word there before and after */
+  firstStep: { kl: number | null; watchBefore: VoiceAnswer["watch"]; watchAfter: VoiceAnswer["watch"] } | null;
+  /** the first word-piece at which the two answers differ (counting from 0); null when they are the same */
+  partedAt: number | null;
+  elapsedMs: number | null;
+  error: string | null;
+}
+
+function voiceAnswerOf(a: unknown): VoiceAnswer | null {
+  if (!a || typeof a !== "object") return null;
+  const o = a as Json;
+  const ids = idsOrNull(o.token_ids);
+  if (!ids || typeof o.text !== "string") return null;
+  const strs = Array.isArray(o.token_strs) ? o.token_strs.map(String) : [];
+  const watchOf = (w: unknown): VoiceAnswer["watch"] => {
+    if (!w || typeof w !== "object") return null;
+    const x = w as Json;
+    const id = numOrNull(x.token_id);
+    const prob = numOrNull(x.prob);
+    const rank = numOrNull(x.rank);
+    return id !== null && prob !== null && rank !== null ? { id, token: String(x.token ?? ""), prob, rank } : null;
+  };
+  return {
+    ids,
+    strs,
+    text: o.text,
+    stopReason: typeof o.stop_reason === "string" ? o.stop_reason : null,
+    nPrompt: numOrNull(o.n_prompt),
+    steps: (Array.isArray(o.steps) ? o.steps : []).map((s: Json, i: number) => ({
+      index: numOrNull(s?.index) ?? i,
+      token: String(s?.token ?? ""),
+      id: numOrNull(s?.token_id) ?? -1,
+      prob: numOrNull(s?.model_prob),
+      rank: numOrNull(s?.model_rank),
+    })),
+    firstTop: (Array.isArray(o.first_top) ? o.first_top : [])
+      .filter((t: Json) => t && numOrNull(t.prob) !== null)
+      .map((t: Json) => ({ id: numOrNull(t.token_id) ?? -1, token: String(t.token ?? ""), prob: Number(t.prob) })),
+    watch: watchOf(o.watch),
+  };
+}
+
+/** The vault's `voice` (a reply's, or a record's), or null when there is none or it is malformed. */
+export function voiceOf(v: unknown): EditVoice | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Json;
+  const before = voiceAnswerOf(o.before);
+  if (!before || typeof o.prompt !== "string") return null;
+  const fs: Json | null = o.first_step && typeof o.first_step === "object" ? o.first_step : null;
+  const after = voiceAnswerOf(o.after);
+  return {
+    prompt: o.prompt,
+    chat: o.chat !== false,
+    system: typeof o.system === "string" && o.system ? o.system : null,
+    assistantPrefix: typeof o.assistant_prefix === "string" ? o.assistant_prefix : "",
+    maxNewTokens: numOrNull(o.max_new_tokens),
+    editsInForceBefore: idsOrNull(o.edits_in_force_before) ?? [],
+    before,
+    after,
+    firstStep: fs
+      ? { kl: numOrNull(fs.kl_before_after), watchBefore: before.watch, watchAfter: after?.watch ?? null }
+      : null,
+    partedAt: numOrNull(o.parted_at),
+    elapsedMs: numOrNull(o.elapsed_ms),
+    error: typeof o.error === "string" && o.error ? o.error : null,
+  };
+}
+
+/** A voice's answer as words: the end mark it stopped on left out (the caller says it ended its turn). */
+export function voiceWords(a: VoiceAnswer): string {
+  const strs = a.stopReason === "end_mark" && a.strs.length ? a.strs.slice(0, -1) : a.strs;
+  return (strs.length || !a.text ? strs.join("") : a.text).replace(/\n/g, "↵").trim();
+}
+
+/* ------------------------------------------------------------ one word against another */
+
+/** A contrast's word as the server resolved it: " word", then the word, as one word-piece (id and piece null when no
+ * form is one piece; `pieces` then gives each form tried as the word-pieces it splits into). */
+export interface ContrastWord {
+  word: string;
+  id: number | null;
+  piece: string | null;
+  pieces: Record<string, string[]> | null;
+}
+
+/** A contrast read against the matched controls sent (E3 recommendation 1): their mean score, and the sighting's less
+ * it, a difference of two log-odds; series null, with `why`, when no control could be read here. */
+export interface ContrastControls {
+  kind: CentreKind;
+  nControls: number | null;
+  controlLens: number[] | null;
+  controlNaked: number[] | null;
+  deltaLens: number[] | null;
+  deltaNaked: number[] | null;
+  why: string | null;
+}
+
+/** A contrast read against E3's average state: the score of h − μ, as E3 centred it (not a log-odds the model gives),
+ * and the average state's linear share of the raw score, ⟨μJ, d⟩ / rms(hJ). */
+export interface ContrastStudyMean {
+  centredLens: number[] | null;
+  centredNaked: number[] | null;
+  meanPartLens: number[] | null;
+  meanPartNaked: number[] | null;
+  file: string | null;
+  sha256: string | null;
+}
+
+/**
+ * One word against another at every layer (the server's `contrasts`, one per contrast asked for): the mean over pairs of
+ * capped logit(toward) − capped logit(away), through the lens and by the naked eye, 60 values counting from 0 (nats of
+ * log-odds; at index 59 the lens is the identity, so the two agree). A contrast whose words are not one word-piece each,
+ * or do not pair, carries its `error` and no series.
+ */
+export interface ContrastReading {
+  label: string | null;
+  toward: ContrastWord[];
+  away: ContrastWord[];
+  towardIds: number[] | null;
+  awayIds: number[] | null;
+  error: string | null;
+  lens: number[] | null;
+  naked: number[] | null;
+  /** null when "controls" was not asked for */
+  controls: ContrastControls | null;
+  /** null when "study_mean" was not asked for */
+  studyMean: ContrastStudyMean | null;
+}
+
+/** 60 finite numbers, or null. */
+const series60 = (v: unknown): number[] | null =>
+  Array.isArray(v) && v.length === N_LAYERS && v.every((x) => typeof x === "number" && Number.isFinite(x)) ? (v as number[]).slice() : null;
+
+function contrastWordOf(w: unknown): ContrastWord {
+  const o = (w && typeof w === "object" ? w : {}) as Json;
+  const pieces: Json | null = o.pieces && typeof o.pieces === "object" ? o.pieces : null;
+  return {
+    word: String(o.word ?? ""),
+    id: numOrNull(o.id),
+    piece: typeof o.piece === "string" ? o.piece : null,
+    pieces: pieces ? Object.fromEntries(Object.entries(pieces).map(([f, p]) => [f, Array.isArray(p) ? p.map(String) : []])) : null,
+  };
+}
+
+/** The server's `contrasts`: null when it sent none (the recorded sighting, or an older server), else one per contrast. */
+export function contrastsOf(v: unknown): ContrastReading[] | null {
+  if (!Array.isArray(v)) return null;
+  return v
+    .filter((c) => c && typeof c === "object")
+    .map((c: Json) => {
+      const bg: Json = c.backgrounds && typeof c.backgrounds === "object" ? c.backgrounds : {};
+      const ctl: Json | null = bg.controls && typeof bg.controls === "object" ? bg.controls : null;
+      const sm: Json | null = bg.study_mean && typeof bg.study_mean === "object" ? bg.study_mean : null;
+      const kind = ctl?.kind;
+      return {
+        label: typeof c.label === "string" && c.label ? c.label : null,
+        toward: (Array.isArray(c.toward) ? c.toward : []).map(contrastWordOf),
+        away: (Array.isArray(c.away) ? c.away : []).map(contrastWordOf),
+        towardIds: idsOrNull(c.toward_ids),
+        awayIds: idsOrNull(c.away_ids),
+        error: typeof c.error === "string" && c.error ? c.error : null,
+        lens: series60(c.lens),
+        naked: series60(c.naked),
+        controls: ctl
+          ? {
+              kind: kind === "control_prompt_end" || kind === "control_reading_same_answer" ? kind : "none",
+              nControls: numOrNull(ctl.n_controls),
+              controlLens: series60(ctl.control_lens),
+              controlNaked: series60(ctl.control_naked),
+              deltaLens: series60(ctl.delta_lens),
+              deltaNaked: series60(ctl.delta_naked),
+              why: typeof ctl.why === "string" && ctl.why ? ctl.why : null,
+            }
+          : null,
+        studyMean: sm
+          ? {
+              centredLens: series60(sm.centred_lens),
+              centredNaked: series60(sm.centred_naked),
+              meanPartLens: series60(sm.mean_part_lens),
+              meanPartNaked: series60(sm.mean_part_naked),
+              file: typeof sm.file === "string" ? sm.file : null,
+              sha256: typeof sm.sha256 === "string" ? sm.sha256 : null,
+            }
+          : null,
+      };
+    });
 }
 
 export function kinshipStats(k: number[] | null) {
@@ -652,6 +880,7 @@ export function sightingFromLive(
         ? meta.think_protocol
         : null,
     thinkLeftOut: meta.think_left_out === "bare_text" ? "bare_text" : null,
+    contrasts: contrastsOf(meta.contrasts),
     landmarks: (Array.isArray(meta.survey_labels) && meta.survey_labels.length === 3
       ? meta.survey_labels
       : ["", "", ""]) as [string, string, string],
@@ -988,6 +1217,8 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     // the recording has no sighting with thinking turned on
     thinkProtocol: null,
     thinkLeftOut: null,
+    // the recording reads no word against another
+    contrasts: null,
     landmarks: f.landmarks,
     surveyMode: "monument",
     elapsedMs: f.elapsedMs,

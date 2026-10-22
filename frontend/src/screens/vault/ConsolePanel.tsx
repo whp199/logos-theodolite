@@ -305,7 +305,9 @@ export const ConsolePanel: React.FC = () => {
           <p style={{ margin: 0, fontSize: 16, color: "var(--muted)", maxWidth: 760 }}>
             {conP.kind === "rollback"
               ? "Running this undoes every edit in force."
-              : "Running this changes the model: the edit joins the edits in force, which you can undo on the edit tab or with ROLLBACK."}
+              : "Running this changes the model: the edit joins the edits in force, which you can undo on the edit tab or with ROLLBACK. " +
+                "Typed here, it is made without its voice: the model is not asked a question before and after, and the ledger marks it " +
+                "as not heard. To hear an UPDATE or DELETE, make it on the edit tab."}
           </p>
         ) : null}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 14, borderTop: "1px solid var(--hair-soft)" }}>

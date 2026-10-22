@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { useTheodoliteStore } from "../../store/useTheodoliteStore";
+import { type VoicePayload, useTheodoliteStore } from "../../store/useTheodoliteStore";
 import { nearestStatement } from "./lql";
 import { num } from "./live";
 
@@ -35,7 +35,16 @@ interface VaultUi {
   eWord: string;
   eStrength: string;
   ePol: "+" | "-";
-  editSent: { lql: string; at: number } | null;
+  /** hear the edit before and after (the vault's voice) */
+  hear: boolean;
+  /** the question it is heard by, as typed here; null follows the instrument page's own (question, begun answer, chat,
+   * system prompt) */
+  vQuestion: string | null;
+  vBegins: string | null;
+  vChat: boolean | null;
+  vSystem: string | null;
+  /** the edit sent, and the voice it was sent with (null: not heard) */
+  editSent: { lql: string; at: number; voice: VoicePayload | null } | null;
   undoAt: number | null;
   // write LQL
   conRun: string | null;
@@ -59,6 +68,11 @@ export const useVaultUi = create<VaultUi>((set) => ({
   eWord: "six",
   eStrength: "3.0",
   ePol: "+",
+  hear: true,
+  vQuestion: null,
+  vBegins: null,
+  vChat: null,
+  vSystem: null,
   editSent: null,
   undoAt: null,
   conRun: null,

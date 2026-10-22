@@ -23,7 +23,16 @@ itself, not a copy of it. It checks:
 6. thinking on bare text (E6 §3, item 11): the interface sends think_bare "none" (the server keeps "prefix", the old
    imitation, for old callers), and compare_think as asked, so with bare text the server leaves thinking out and says
    so; the old imitation goes only when chosen; effectiveThink, which the pace and wording follow, is true for a chat
-   or for bare text with the imitation chosen, and only when asked.
+   or for bare text with the imitation chosen, and only when asked;
+7. one word against another (Landmarks section vii): by default, and whenever the section is off or its words are not
+   typed both sides (or do not pair), the interface sends no contrast and no background; turned on with words typed it
+   sends exactly those words, split at commas; "controls" only with a matched control sent (the server refuses it
+   otherwise), "study_mean" not when the server's health says it cannot read its file; the request it sends is one the
+   server takes; contrasts and contrast_backgrounds are reading keys (a re-reading carries them as set now);
+8. the vault's voice: the question an edit is heard by is sent as the instrument sends its own (a chat with its system
+   prompt and begun answer, or bare text whose begun answer the server puts on a new line, as composeText does), and the
+   server's VoiceRequest takes it; executeLarql sends a voice only when given; the reply's voice is kept by patch and
+   time, a DESCRIBE keeps only the voices of records it still holds, and ROLLBACK forgets them all.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -115,6 +124,69 @@ out.think = {
     T.effectiveThink({ compareThink: false, chat: false, thinkBare: "prefix" }),
   ],
 };
+// one word against another: what the store sends for section vii as set
+const OTHER = { question: "Tell me about a friend.", answerBegins: "", chatWrapped: true, system: "", promptIds: [2, 105, 7],
+  textSent: "x", tokenIndex: 0 };
+const on = (c, over = {}) => send({ contrast: { ...T.CONTRAST_OFF, on: true, ...c }, ...over });
+out.contrast = {
+  initial: st().contrast,
+  off: send({ contrast: { ...T.CONTRAST_OFF, toward: "she", away: "he" } }),
+  onEmpty: on({}),
+  onOneSide: on({ toward: "she" }),
+  onUnpaired: on({ toward: "she, her", away: "he" }),
+  onWords: on({ toward: " she ", away: "he" }),
+  onPairs: on({ toward: "she, her,", away: "he , him" }),
+  controlsNoControl: on({ toward: "she", away: "he", backgrounds: ["controls"] }),
+  controlsNotCentred: on({ toward: "she", away: "he", backgrounds: ["controls"] }, { control: OTHER }),
+  controlsSent: on({ toward: "she", away: "he", backgrounds: ["controls"] }, { control: OTHER, frame: { ...st().frame, centre: true } }),
+  meanNoHealth: on({ toward: "she", away: "he", backgrounds: ["study_mean"] }, { health: null }),
+  meanReadable: on({ toward: "she", away: "he", backgrounds: ["study_mean"] }, { health: { contrasts: { study_mean_problem: null } } }),
+  meanProblem: on({ toward: "she", away: "he", backgrounds: ["study_mean"] }, { health: { contrasts: { study_mean_problem: "missing" } } }),
+  problems: [T.contrastProblem({ ...T.CONTRAST_OFF }), T.contrastProblem({ ...T.CONTRAST_OFF, on: true }),
+    T.contrastProblem({ ...T.CONTRAST_OFF, on: true, toward: "a,b", away: "c" }),
+    T.contrastProblem({ ...T.CONTRAST_OFF, on: true, toward: "a", away: "c" })],
+};
+// the vault's voice: what an edit is heard by, and what executeLarql sends (over HTTP: no socket is open here)
+out.voice = {
+  chat: T.voicePayload(" What is a spider? ", " Hi! I ", true, " Be brief. "),
+  chatNoSystem: T.voicePayload("Q?", "", true, "  "),
+  bare: T.voicePayload("Q?", " A spider has", false, "ignored"),
+  composed: T.composeText("Q?", " A spider has"),
+};
+const posted = [];
+const rec = (id, at, voice) => ({ patch_id: id, op_type: "UPDATE", layer_idx: 35, neuron_idx: 100, target_concept: "six",
+  statement: "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +", timestamp: at, voice });
+const heard = { prompt: "Q?", chat: true, system: null, assistant_prefix: "", max_new_tokens: 12, edits_in_force_before: [],
+  before: { token_ids: [1, 2], token_strs: ["A", " b"], text: "A b", stop_reason: "length", n_prompt: 9, steps: [], first_top: [], watch: null },
+  after: { token_ids: [1, 3], token_strs: ["A", " c"], text: "A c", stop_reason: "length", n_prompt: 9, steps: [], first_top: [], watch: null },
+  first_step: { kl_before_after: 0.5 }, parted_at: 1, elapsed_ms: 10, error: null };
+let reply = null;
+globalThis.fetch = async (path, init) => {
+  posted.push({ path, body: JSON.parse(init.body) });
+  return { ok: true, json: async () => reply };
+};
+const settle = () => new Promise((r) => setTimeout(r, 0));
+reply = { status: "applied", patch: rec(7, 100.5, heard), active_patches_count: 1, voice: heard };
+st().executeLarql("UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +", out.voice.chat);
+await settle(); await settle();
+out.voice.afterEdit = Object.keys(st().editVoices);
+out.voice.afterText = st().editVoices["7:100.5"]?.after?.text ?? null;
+reply = { command: "DESCRIBE", active_patches_count: 1, active_patches: [rec(7, 100.5, heard), rec(3, 1.5, null)] };
+st().executeLarql("DESCRIBE");
+await settle(); await settle();
+out.voice.afterDescribe = Object.keys(st().editVoices);
+reply = { command: "DESCRIBE", active_patches_count: 0, active_patches: [] };
+st().executeLarql("DESCRIBE");
+await settle(); await settle();
+out.voice.afterRestart = Object.keys(st().editVoices);
+reply = { status: "applied", patch: rec(8, 200, heard), active_patches_count: 1, voice: heard };
+st().executeLarql("UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +", out.voice.chat);
+await settle(); await settle();
+reply = { status: "rolled_back", cleared_patches: 1, active_patches_count: 0 };
+st().executeLarql("ROLLBACK");
+await settle(); await settle();
+out.voice.afterRollback = Object.keys(st().editVoices);
+out.voice.posted = posted;
 st().setFrame({ centre: true });
 st().setReadingPreset("as_built");
 out.centreKeptAsBuilt = st().frame.centre;
@@ -221,6 +293,87 @@ def check_think(out: Dict[str, Any]) -> None:
     check(t["effective"] == [True, False, True, False, False], f"effectiveThink {t['effective']}")
 
 
+def check_contrasts(out: Dict[str, Any]) -> None:
+    print("7. one word against another")
+    import backend.server as server
+
+    c, words = out["contrast"], out["words"]
+    none = {"contrasts": [], "contrast_backgrounds": []}
+    pick = lambda p: {"contrasts": p.get("contrasts"), "contrast_backgrounds": p.get("contrast_backgrounds")}  # noqa: E731
+    check(c["initial"] == {"on": False, "toward": "", "away": "", "backgrounds": []}, f"the initial contrast is {c['initial']}")
+    for label, p in (("words", words), ("off", c["off"]), ("onEmpty", c["onEmpty"]), ("onOneSide", c["onOneSide"]),
+                     ("onUnpaired", c["onUnpaired"])):
+        check(pick(p) == none, f"{label}: the interface sends {pick(p)}, not no contrast")
+    she_he = [{"toward": ["she"], "away": ["he"]}]
+    check(pick(c["onWords"]) == {"contrasts": she_he, "contrast_backgrounds": []}, f"onWords: {pick(c['onWords'])}")
+    check(pick(c["onPairs"])["contrasts"] == [{"toward": ["she", "her"], "away": ["he", "him"]}],
+          f"onPairs: the words are not split at commas: {pick(c['onPairs'])}")
+    for label in ("controlsNoControl", "controlsNotCentred"):
+        p = c[label]
+        check(p.get("contrast_backgrounds") == [] and not p.get("centre_prompts") and "centre_token_ids" not in p,
+              f"{label}: 'controls' sent with no control: {pick(p)}")
+    p = c["controlsSent"]
+    check(p.get("contrast_backgrounds") == ["controls"] and p.get("centre_token_ids") == [[2, 105, 7]],
+          f"controlsSent: {pick(p)}, centre_token_ids {p.get('centre_token_ids')}")
+    check(c["meanNoHealth"].get("contrast_backgrounds") == ["study_mean"], "study_mean dropped before the health is read")
+    check(c["meanReadable"].get("contrast_backgrounds") == ["study_mean"], "study_mean dropped when the server can read it")
+    check(c["meanProblem"].get("contrast_backgrounds") == [], "study_mean sent when the server says it cannot read it")
+    probs = c["problems"]
+    check(probs[0] is None and isinstance(probs[1], str) and "pairs" in (probs[2] or "") and probs[3] is None,
+          f"contrastProblem {probs}")
+    # what the store sends is a request the server takes: the fields parse, and pass check_sweep_options
+    for label in ("words", "onWords", "onPairs", "controlsSent", "meanReadable"):
+        p = out[label] if label == "words" else c[label]
+        try:
+            req = server.SweepRequest(**{k: v for k, v in p.items() if k in server.SweepRequest.model_fields})
+            server.check_sweep_options(req)
+            ok = [x.model_dump(exclude={"label"}) for x in req.contrasts] == p["contrasts"] and \
+                req.contrast_backgrounds == p["contrast_backgrounds"]
+        except Exception as exc:  # noqa: BLE001
+            ok = False
+            print(f"    {label}: {type(exc).__name__}: {exc}")
+        check(ok, f"{label}: the server does not take the contrast fields the interface sends")
+    store = (STORE_DIR / "useTheodoliteStore.ts").read_text(encoding="utf-8")
+    m = re.search(r"const READING_KEYS = \[(.*?)\] as const;", store, re.S)
+    check(m is not None and '"contrasts"' in m.group(1) and '"contrast_backgrounds"' in m.group(1),
+          "READING_KEYS does not hold contrasts and contrast_backgrounds")
+
+
+def check_voice(out: Dict[str, Any]) -> None:
+    print("8. the vault's voice")
+    import backend.server as server
+    from backend.larql_vault import voice_spec
+
+    v = out["voice"]
+    check(v["chat"] == {"prompt": "What is a spider?", "chat": True, "system": "Be brief.", "assistant_prefix": "Hi! I",
+                        "max_new_tokens": 12}, f"a chat's voice: {v['chat']}")
+    check(v["chatNoSystem"]["system"] is None, f"a blank system prompt is sent as {v['chatNoSystem']['system']!r}")
+    check(v["bare"] == {"prompt": "Q?", "chat": False, "system": None, "assistant_prefix": "A spider has",
+                        "max_new_tokens": 12}, f"bare text's voice: {v['bare']}")
+    # the server's bare composition (compose_prompt, chat False): the text, then the begun answer on a new line
+    b = v["bare"]
+    check(f"{b['prompt']}\n{b['assistant_prefix'].strip()}" == v["composed"], "a bare voice is not the text composeText sends")
+    for label in ("chat", "chatNoSystem", "bare"):
+        try:
+            req = server.LarqlRequest(query="DESCRIBE", voice=v[label])
+            spec = voice_spec(req.voice)
+            ok = spec["prompt"] == v[label]["prompt"] and spec["chat"] == v[label]["chat"]
+        except Exception as exc:  # noqa: BLE001
+            ok = False
+            print(f"    {label}: {type(exc).__name__}: {exc}")
+        check(ok, f"{label}: the server's VoiceRequest does not take the voice the interface sends")
+    posted = v["posted"]
+    check([p["path"] for p in posted] == ["/api/larql"] * 5, f"executeLarql posted to {[p['path'] for p in posted]}")
+    if len(posted) == 5:
+        check(posted[0]["body"].get("voice") == v["chat"], "the edit was not sent with its voice")
+        check("voice" not in posted[1]["body"] and "voice" not in posted[4]["body"],
+              "a statement sent without a voice carries one")
+    check(v["afterEdit"] == ["7:100.5"] and v["afterText"] == "A c", f"the reply's voice was not kept: {v['afterEdit']}")
+    check(v["afterDescribe"] == ["7:100.5"], f"DESCRIBE kept {v['afterDescribe']}")
+    check(v["afterRestart"] == [], f"a DESCRIBE with no records kept {v['afterRestart']}")
+    check(v["afterRollback"] == [], f"ROLLBACK kept {v['afterRollback']}")
+
+
 def check_text() -> None:
     print("4. the text the checks and pages lean on")
     store = (STORE_DIR / "useTheodoliteStore.ts").read_text(encoding="utf-8")
@@ -311,6 +464,8 @@ def main() -> int:
     check_e3_and_order_text()
     if out is not None:
         check_think(out)
+        check_contrasts(out)
+        check_voice(out)
     if failures:
         print(f"\ninterface defaults: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1
