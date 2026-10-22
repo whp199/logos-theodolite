@@ -17,9 +17,10 @@ B. N1V's linear-regime re-test (study mode, k = 10, the 24 N1 neurons, both face
 C. The premise, bit for bit on this path: a zero push is torch.equal to the base row and its KL exactly 0, in given
    mode (a short text, and 2048 word-pieces) and in study mode (180 right-padded rows); given mode's base row agrees
    with the model's own next-word choice; given mode over its frozen prefix cache agrees with a whole-text read of
-   every row, on the short text and at 2048 pieces (past the 1024 window): the untouched rows within KL 0.05, c by
-   Spearman at least 0.9, at least 7 of ten top rises shared, the push's KL within 10%; the two writes at k = 10
-   share at least 7 of n5313's ten top rises on a she/he text; the floor's KL is below the push's.
+   every row, on the short text and at 2048 pieces (past the 1024 window; the repeated prose, ending in the short
+   question, where the model is not merely copying): the untouched rows within KL 0.05, c by Spearman at least 0.9,
+   at least 7 of ten top rises shared, the push's KL within 10%; the two writes at k = 10 share at least 7 of
+   n5313's ten top rises on a she/he text; the floor's KL is below the push's.
 D. 2048 word-pieces in given mode through the server's WebSocket (in process): it completes, reports its forwards,
    the socket answers the next action, and torch's peak stays at or below the 2048 sweep's own (25.5 GiB, the comment
    above MAX_SWEEP_POSITIONS) plus 0.5 GiB.
@@ -188,7 +189,12 @@ def part_c(rt: TheodoliteRuntime) -> None:
     norm = lm.layers[l].post_feedforward_layernorm
     wp, eps = norm.weight.detach(), float(norm.eps)
     short = rt.tokenize_prompt(rt.compose_prompt("Tell me about your sister.", chat=True, assistant_prefix="My sister is"))
-    cases = {"given, short": {"token_ids": short}, "given, 2048": {"token_ids": long_ids(rt, MAX_SWEEP_POSITIONS)},
+    # the 2048 text is the repeated prose with the short question at its end: read on the repeats alone the model only
+    # copies, near certain of the next piece, and a push there moves it by less (KL ~1e-5) than batch shape does
+    bos = rt.tokenizer.bos_token_id
+    tail = short[1:] if short[0] == bos else short
+    long_q = long_ids(rt, MAX_SWEEP_POSITIONS - len(tail)) + tail
+    cases = {"given, short": {"token_ids": short}, "given, 2048": {"token_ids": long_q},
              "study": {"texts_ids": ms._study_ids(rt)}}
     for label, kw in cases.items():
         for write in cc.CAUSAL_WRITES:
