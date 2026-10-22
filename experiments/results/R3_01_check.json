@@ -1,0 +1,176 @@
+{
+ "schema": "R3_01/1",
+ "written_at": "2026-10-21T22:07:06",
+ "pins": {
+  "r1_lens": {
+   "found": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-second-reading/experiments/results/R1_18_it_lens.pt",
+   "candidates": [
+    {
+     "path": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/results/R1_18_it_lens.pt",
+     "exists": false,
+     "size_ok": false,
+     "sha256_ok": null
+    },
+    {
+     "path": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-second-reading/experiments/results/R1_18_it_lens.pt",
+     "exists": true,
+     "size_ok": true,
+     "sha256_ok": true
+    }
+   ]
+  },
+  "miru": {
+   "path": "/home/eric/.cache/huggingface/hub/models--returnmoe--jlens-adapters/snapshots/134a973cf473ad12a885d3880f3b2e01ef495cd6/miru/google/gemma-4-31B-it.safetensors",
+   "exists": true,
+   "size_ok": true,
+   "sha256_ok": true
+  },
+  "r1_dirs": {
+   "path": "/home/eric/bin/ai/theodolite2/experiments/results/R1_02_dirs.pt",
+   "exists": true,
+   "size_ok": true,
+   "sha256_ok": true
+  },
+  "quiet_stats": {
+   "path": "/home/eric/bin/ai/theodolite2/experiments/results/V6_quiet_dims_stats.pt",
+   "exists": true,
+   "size_ok": true,
+   "sha256_ok": true
+  }
+ },
+ "fit_positions": {
+  "fit_prompts": 64,
+  "fit_tokens_each": [
+   125,
+   128
+  ],
+  "fit_kept_positions": 7101,
+  "router_records": 1000,
+  "router_kept_positions": 110804,
+  "router_min_tokens": 104,
+  "fit_prompts_under_128_tokens": {
+   "29": 125
+  }
+ },
+ "filters": {
+  "r2": {
+   "counts": {
+    "content": 247973,
+    "special": 24,
+    "blank": 104,
+    "punct_symbol": 7746,
+    "html_tag": 6297
+   },
+   "n_content": 247973,
+   "n_noncontent": 14171,
+   "spot_checks_ok": true
+  },
+  "jpp": {
+   "vocab_size": 262144,
+   "no_letter_or_digit": 8457,
+   "spared_item_candidates": 18,
+   "excluded": 8439,
+   "rule": "lens_evals.eval_utils.is_non_semantic_token (no str.isalnum char); minus every candidate id of the six evals' items"
+  },
+  "r2_class_by_jpp": {
+   "content": {
+    "n": 247973,
+    "jpp_excluded": 606,
+    "jpp_kept": 247367
+   },
+   "special": {
+    "n": 24,
+    "jpp_excluded": 1,
+    "jpp_kept": 23
+   },
+   "blank": {
+    "n": 104,
+    "jpp_excluded": 104,
+    "jpp_kept": 0
+   },
+   "punct_symbol": {
+    "n": 7746,
+    "jpp_excluded": 7728,
+    "jpp_kept": 18
+   },
+   "html_tag": {
+    "n": 6297,
+    "jpp_excluded": 0,
+    "jpp_kept": 6297
+   }
+  },
+  "differ": {
+   "r2_noncontent_jpp_kept": 6338,
+   "r2_content_jpp_excluded": 606
+  }
+ },
+ "miru_prompts": {
+  "selection_in_header": {
+   "concatenate_and_rechunk": true,
+   "exclude_headings": true,
+   "max_chars": 2000,
+   "min_chars": 200
+  },
+  "prompt_budget": 1000,
+  "processed_prompts": 425,
+  "dataset_revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+  "readings_tried": 24,
+  "hash_comparisons": 288,
+  "prompts_per_reading": {
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by '\\n'": 851,
+   "pack, no split; paragraphs stripped; joined by '\\n'": 848,
+   "stream cut at a space; paragraphs stripped; joined by '\\n'": 658,
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by ' '": 851,
+   "pack, no split; paragraphs stripped; joined by ' '": 848,
+   "stream cut at a space; paragraphs stripped; joined by ' '": 658,
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by '\\n\\n'": 852,
+   "pack, no split; paragraphs stripped; joined by '\\n\\n'": 849,
+   "stream cut at a space; paragraphs stripped; joined by '\\n\\n'": 659,
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by ''": 851,
+   "pack, no split; paragraphs stripped; joined by ''": 848,
+   "stream cut at a space; paragraphs stripped; joined by ''": 657,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by '\\n'": 857,
+   "pack, no split; paragraphs as stored; joined by '\\n'": 854,
+   "stream cut at a space; paragraphs as stored; joined by '\\n'": 661,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by ' '": 857,
+   "pack, no split; paragraphs as stored; joined by ' '": 854,
+   "stream cut at a space; paragraphs as stored; joined by ' '": 661,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by '\\n\\n'": 857,
+   "pack, no split; paragraphs as stored; joined by '\\n\\n'": 854,
+   "stream cut at a space; paragraphs as stored; joined by '\\n\\n'": 662,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by ''": 857,
+   "pack, no split; paragraphs as stored; joined by ''": 854,
+   "stream cut at a space; paragraphs as stored; joined by ''": 660
+  },
+  "max_prompts_from_cache": 857,
+  "rebuilt": false,
+  "hits": [],
+  "outcome": "not rebuilt. No reading of the header's description reproduced either hash. Miru Tracer's own selection code (github.com/returnmoe/miru-tracer) is not one of the approved sources, and every reading tried yields at most 857 prompts from the cached rows, fewer than the 1000 the full-sequence hash covers. Fallback (R3_PREREG.md §3): the Q1 arm is fitted on J++'s 64 prompts only, so bf16 against W4A16 also changes the prompts (WikiText both, Miru's 425 rechunked passages against J++'s first 64 records); this is stated wherever Q1 is reported. Rebuilding needs the user to approve Miru Tracer's code at a pinned commit (and, probably, more WikiText rows)."
+ },
+ "freshness": {
+  "sources": {
+   "scripts_py_files": 380,
+   "scripts_strings": 3165,
+   "results_json_files": 772,
+   "results_strings": 29922,
+   "r2_prompt_strings": 340,
+   "n1b_corpus_strings": 1218,
+   "n1b_corpus_present": true,
+   "wikitext_rows": 2893,
+   "jpp_item_strings": 1743,
+   "heldout_eval_py": "not available: R2's earlier held-out script lived in another session's scratchpad and no longer exists (R2_01_check.json records only its list sizes, 40/60/30)"
+  },
+  "n_corpus_strings": 23724,
+  "planted": {
+   "planted:wikitext": true,
+   "planted:jpp_item": true,
+   "planted:r2_prompt": true,
+   "planted:fresh": false
+  },
+  "prompts": "not yet written: R3_prompts.json is part of the registration still to come"
+ },
+ "prompts_file": null,
+ "ok": true,
+ "failures": [],
+ "before_prompts": true
+}

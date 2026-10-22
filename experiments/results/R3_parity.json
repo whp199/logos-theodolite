@@ -1,0 +1,758 @@
+{
+ "schema": "R3_parity/1",
+ "written_at": "2026-10-21T22:10:30",
+ "jpp_lens_commit": "d7efc0de372e20589e899188c0cfe8434acc63ec",
+ "tolerance": "max |R3 - jpp| <= 1e-05 * max(1, max |jpp|)",
+ "spec": {
+  "seed": 0,
+  "source_layers": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "n_experts": 8,
+  "pca_dim": 16,
+  "skip_first": 16,
+  "max_seq_len": 48,
+  "rows_per_pass": 8,
+  "n_router": 96,
+  "n_fit": 32,
+  "n_shards": 4,
+  "min_kept": 50,
+  "min_kept_probe": 120,
+  "readout_max_seq_len": 512,
+  "fit_fraction": 0.2,
+  "split_seed": 0,
+  "items_per_eval": 15
+ },
+ "ok": true,
+ "checks": [
+  {
+   "no": 1,
+   "check": "jpp_lens's stages ran in its environment from the pinned checkout, pandas never used",
+   "ok": true,
+   "detail": {
+    "src": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/R3_cache/jpp_lens/src/workspace_lens/__init__.py"
+   }
+  },
+  {
+   "no": 2,
+   "check": "real tokenizer: R3's encoding of the 1,000 records equals jpp_lens's (HFLensModel, force_bos)",
+   "ok": true,
+   "detail": {
+    "n": 1000
+   }
+  },
+  {
+   "no": 3,
+   "check": "real tokenizer: and equals the instrument's (BOS + tokens, truncated to 128)",
+   "ok": true,
+   "detail": {}
+  },
+  {
+   "no": 4,
+   "check": "router: R3's streamed fp64 PCA and k-means equal jpp_lens's fit_router (components up to sign, centroids, every pool position's expert)",
+   "ok": true,
+   "detail": {
+    "by_layer": {
+     "1": {
+      "min_abs_cos": 0.9999997615814209,
+      "mean": 7.450580596923828e-09,
+      "centroids": 6.556510925292969e-07,
+      "assignments_equal": 2976,
+      "of": 2976
+     },
+     "2": {
+      "min_abs_cos": 0.9999997019767761,
+      "mean": 1.4901161193847656e-08,
+      "centroids": 7.487833499908447e-07,
+      "assignments_equal": 2976,
+      "of": 2976
+     },
+     "3": {
+      "min_abs_cos": 0.9999997019767761,
+      "mean": 1.4901161193847656e-08,
+      "centroids": 4.5634806156158447e-07,
+      "assignments_equal": 2976,
+      "of": 2976
+     },
+     "4": {
+      "min_abs_cos": 0.9999996423721313,
+      "mean": 1.4901161193847656e-08,
+      "centroids": 7.338821887969971e-07,
+      "assignments_equal": 2976,
+      "of": 2976
+     }
+    }
+   }
+  },
+  {
+   "no": 5,
+   "check": "kept positions and token ids of every fit prompt equal jpp_lens's position records",
+   "ok": true,
+   "detail": {
+    "n": 32
+   }
+  },
+  {
+   "no": 6,
+   "check": "jpp_lens's shards were fitted under the rlens rules (ln, identity, half)",
+   "ok": true,
+   "detail": {}
+  },
+  {
+   "no": 7,
+   "check": "expert sums of every shard and layer equal jpp_lens's fit_shard (replicated batch); worst max |diff| 0.00e+00",
+   "ok": true,
+   "detail": {
+    "worst": 0.0,
+    "by_shard_layer": {
+     "shard0 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 60.181236267089844,
+      "counts_equal": true
+     },
+     "shard0 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 78.97488403320312,
+      "counts_equal": true
+     },
+     "shard0 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 50.895179748535156,
+      "counts_equal": true
+     },
+     "shard0 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 54.30821228027344,
+      "counts_equal": true
+     },
+     "shard1 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 65.91758728027344,
+      "counts_equal": true
+     },
+     "shard1 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 60.04435348510742,
+      "counts_equal": true
+     },
+     "shard1 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 51.0752067565918,
+      "counts_equal": true
+     },
+     "shard1 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 50.741737365722656,
+      "counts_equal": true
+     },
+     "shard2 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 58.727603912353516,
+      "counts_equal": true
+     },
+     "shard2 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 52.20705032348633,
+      "counts_equal": true
+     },
+     "shard2 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 51.89678955078125,
+      "counts_equal": true
+     },
+     "shard2 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 46.637115478515625,
+      "counts_equal": true
+     },
+     "shard3 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 75.2744140625,
+      "counts_equal": true
+     },
+     "shard3 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 62.739871978759766,
+      "counts_equal": true
+     },
+     "shard3 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 56.27101135253906,
+      "counts_equal": true
+     },
+     "shard3 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 52.159236907958984,
+      "counts_equal": true
+     }
+    }
+   }
+  },
+  {
+   "no": 8,
+   "check": "expert sums of every shard and layer equal jpp_lens's fit_shard (one forward, batched backward (vmap)); worst max |diff| 7.63e-06",
+   "ok": true,
+   "detail": {
+    "worst": 7.62939453125e-06,
+    "by_shard_layer": {
+     "shard0 L1": {
+      "row_sum_max_abs_diff": 3.814697265625e-06,
+      "scale": 60.181236267089844,
+      "counts_equal": true
+     },
+     "shard0 L2": {
+      "row_sum_max_abs_diff": 3.814697265625e-06,
+      "scale": 78.97488403320312,
+      "counts_equal": true
+     },
+     "shard0 L3": {
+      "row_sum_max_abs_diff": 9.5367431640625e-07,
+      "scale": 50.895179748535156,
+      "counts_equal": true
+     },
+     "shard0 L4": {
+      "row_sum_max_abs_diff": 1.1920928955078125e-07,
+      "scale": 54.30821228027344,
+      "counts_equal": true
+     },
+     "shard1 L1": {
+      "row_sum_max_abs_diff": 7.62939453125e-06,
+      "scale": 65.91758728027344,
+      "counts_equal": true
+     },
+     "shard1 L2": {
+      "row_sum_max_abs_diff": 3.814697265625e-06,
+      "scale": 60.04435348510742,
+      "counts_equal": true
+     },
+     "shard1 L3": {
+      "row_sum_max_abs_diff": 3.814697265625e-06,
+      "scale": 51.0752067565918,
+      "counts_equal": true
+     },
+     "shard1 L4": {
+      "row_sum_max_abs_diff": 2.384185791015625e-07,
+      "scale": 50.741737365722656,
+      "counts_equal": true
+     },
+     "shard2 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 58.727603912353516,
+      "counts_equal": true
+     },
+     "shard2 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 52.20705032348633,
+      "counts_equal": true
+     },
+     "shard2 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 51.89678955078125,
+      "counts_equal": true
+     },
+     "shard2 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 46.637115478515625,
+      "counts_equal": true
+     },
+     "shard3 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 75.2744140625,
+      "counts_equal": true
+     },
+     "shard3 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 62.739871978759766,
+      "counts_equal": true
+     },
+     "shard3 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 56.27101135253906,
+      "counts_equal": true
+     },
+     "shard3 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 52.159236907958984,
+      "counts_equal": true
+     }
+    }
+   }
+  },
+  {
+   "no": 9,
+   "check": "expert sums of every shard and layer equal jpp_lens's fit_shard (R3's own router); worst max |diff| 0.00e+00",
+   "ok": true,
+   "detail": {
+    "worst": 0.0,
+    "by_shard_layer": {
+     "shard0 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 60.181236267089844,
+      "counts_equal": true
+     },
+     "shard0 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 78.97488403320312,
+      "counts_equal": true
+     },
+     "shard0 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 50.895179748535156,
+      "counts_equal": true
+     },
+     "shard0 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 54.30821228027344,
+      "counts_equal": true
+     },
+     "shard1 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 65.91758728027344,
+      "counts_equal": true
+     },
+     "shard1 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 60.04435348510742,
+      "counts_equal": true
+     },
+     "shard1 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 51.0752067565918,
+      "counts_equal": true
+     },
+     "shard1 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 50.741737365722656,
+      "counts_equal": true
+     },
+     "shard2 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 58.727603912353516,
+      "counts_equal": true
+     },
+     "shard2 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 52.20705032348633,
+      "counts_equal": true
+     },
+     "shard2 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 51.89678955078125,
+      "counts_equal": true
+     },
+     "shard2 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 46.637115478515625,
+      "counts_equal": true
+     },
+     "shard3 L1": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 75.2744140625,
+      "counts_equal": true
+     },
+     "shard3 L2": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 62.739871978759766,
+      "counts_equal": true
+     },
+     "shard3 L3": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 56.27101135253906,
+      "counts_equal": true
+     },
+     "shard3 L4": {
+      "row_sum_max_abs_diff": 0.0,
+      "scale": 52.159236907958984,
+      "counts_equal": true
+     }
+    }
+   }
+  },
+  {
+   "no": 10,
+   "check": "streamed per-layer merge (jpp_lens's router): experts (fp16, as jpp_lens's experts file), the experts that fall back to pooled (fewer than 50 positions), counts and the pooled lens equal jpp_lens's merge_experts",
+   "ok": true,
+   "detail": {
+    "by_layer": {
+     "1": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       104,
+       167,
+       110,
+       108,
+       124,
+       165,
+       109,
+       105
+      ],
+      "pooled_max_abs_diff": 0.0
+     },
+     "2": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       95,
+       114,
+       109,
+       167,
+       131,
+       140,
+       96,
+       140
+      ],
+      "pooled_max_abs_diff": 0.0
+     },
+     "3": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       104,
+       126,
+       154,
+       130,
+       85,
+       111,
+       134,
+       148
+      ],
+      "pooled_max_abs_diff": 0.0
+     },
+     "4": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       96,
+       138,
+       116,
+       155,
+       106,
+       83,
+       163,
+       135
+      ],
+      "pooled_max_abs_diff": 0.0
+     }
+    }
+   }
+  },
+  {
+   "no": 11,
+   "check": "streamed per-layer merge (R3's own router): experts (fp16, as jpp_lens's experts file), the experts that fall back to pooled (fewer than 50 positions), counts and the pooled lens equal jpp_lens's merge_experts",
+   "ok": true,
+   "detail": {
+    "by_layer": {
+     "1": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       104,
+       167,
+       110,
+       108,
+       124,
+       165,
+       109,
+       105
+      ],
+      "pooled_max_abs_diff": 0.0
+     },
+     "2": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       95,
+       114,
+       109,
+       167,
+       131,
+       140,
+       96,
+       140
+      ],
+      "pooled_max_abs_diff": 0.0
+     },
+     "3": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       104,
+       126,
+       154,
+       130,
+       85,
+       111,
+       134,
+       148
+      ],
+      "pooled_max_abs_diff": 0.0
+     },
+     "4": {
+      "experts_fp16_max_abs_diff": 0.0,
+      "fallback_equal": true,
+      "fallback": [
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0,
+       0
+      ],
+      "counts": [
+       96,
+       138,
+       116,
+       155,
+       106,
+       83,
+       163,
+       135
+      ],
+      "pooled_max_abs_diff": 0.0
+     }
+    }
+   }
+  },
+  {
+   "no": 12,
+   "check": "the fallback branch: merged with min kept 120, the 16 experts that fall back to the pooled Jacobian and every expert matrix equal jpp_lens's merge_experts",
+   "ok": true,
+   "detail": {
+    "by_layer": {
+     "1": {
+      "fallback": [
+       1,
+       0,
+       1,
+       1,
+       0,
+       0,
+       1,
+       1
+      ],
+      "equal": true
+     },
+     "2": {
+      "fallback": [
+       1,
+       1,
+       1,
+       0,
+       0,
+       0,
+       1,
+       0
+      ],
+      "equal": true
+     },
+     "3": {
+      "fallback": [
+       1,
+       0,
+       0,
+       0,
+       1,
+       1,
+       0,
+       0
+      ],
+      "equal": true
+     },
+     "4": {
+      "fallback": [
+       1,
+       0,
+       1,
+       0,
+       1,
+       1,
+       0,
+       0
+      ],
+      "equal": true
+     }
+    }
+   }
+  },
+  {
+   "no": 13,
+   "check": "items: the scoreable items and the fitting split (seed 0, 20% per eval) equal jpp_lens's",
+   "ok": true,
+   "detail": {
+    "n_scoreable": 75,
+    "n_fitting": 15
+   }
+  },
+  {
+   "no": 14,
+   "check": "items: the Readout Filtering exclusion list (no letter or digit, sparing every candidate of the six evals) equals jpp_lens's non_semantic_token_ids",
+   "ok": true,
+   "detail": {
+    "n_excluded": 100
+   }
+  },
+  {
+   "no": 15,
+   "check": "items: readout residuals and candidate ids equal jpp_lens's record_residuals",
+   "ok": true,
+   "detail": {
+    "by_layer": {
+     "1": 0.0,
+     "2": 0.0,
+     "3": 0.0,
+     "4": 0.0
+    }
+   }
+  },
+  {
+   "no": 16,
+   "check": "expert weights (pass@10 surrogate, 3 starts x 200 steps) and the combined J++ lens equal jpp_lens's fit_weights (jpp_lens's router)",
+   "ok": true,
+   "detail": {
+    "by_layer": {
+     "1": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.7666667103767395,
+      "lens_max_abs_diff": 0.0
+     },
+     "2": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.5733333826065063,
+      "lens_max_abs_diff": 0.0
+     },
+     "3": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.5866667032241821,
+      "lens_max_abs_diff": 0.0
+     },
+     "4": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.5266667008399963,
+      "lens_max_abs_diff": 0.0
+     }
+    }
+   }
+  },
+  {
+   "no": 17,
+   "check": "expert weights (pass@10 surrogate, 3 starts x 200 steps) and the combined J++ lens equal jpp_lens's fit_weights (R3's own router)",
+   "ok": true,
+   "detail": {
+    "by_layer": {
+     "1": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.7666667103767395,
+      "lens_max_abs_diff": 0.0
+     },
+     "2": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.5733333826065063,
+      "lens_max_abs_diff": 0.0
+     },
+     "3": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.5866667032241821,
+      "lens_max_abs_diff": 0.0
+     },
+     "4": {
+      "weights_max_abs_diff": 0.0,
+      "same_iterate": true,
+      "train_macro_pass": 0.5266667008399963,
+      "lens_max_abs_diff": 0.0
+     }
+    }
+   }
+  }
+ ],
+ "deviations": [
+  "PD1. jpp_lens's stages run as the library functions of scripts/jpp_cli.py (loaded by path), not through its command line, and with a stand-in module named pandas (pandas is not installed; no download beyond the three approved sources is approved): any attribute raises when looked up, except DataFrame and Series, which jpp_lens's signatures name at import and which raise when built. No stage used it. Not run: grade_model_correctness and the correctness CSV (they need pandas); R3 grades correctness itself (D8) with jpp_lens's own next_token_matches_target on the greedy token, so its grading is jpp_lens's by construction, not by test.",
+  "PD2. The tiny run's sizes differ from the registered ones where a 32-wide model forces it or to keep it to seconds: PCA 16 (64 registered), 96 router records (1,000), 32 fit prompts (64) in 4 shards (8), 48 tokens (128), 8 rows per pass, a character tokenizer, made-up items in J++'s format. E = 8, skip 16, min kept 50, the R-lens rules, the split rule and the condense defaults are the registered ones.",
+  "PD3. The weights are fitted by jpp_lens's own ExpertWeightingFitter, imported, not reimplemented, so the weight parity tests R3's inputs to it (fp16 experts, residuals, candidates, exclusions, the split).",
+  "Matched, not deviations (the parity decides, R3_PREREG \u00a72): (a) the experts are rounded to fp16 before the weights are fitted and combined, because jpp_lens's fit-weights stage reads the fp16 experts file; the pooled R-lens comes from the in-memory fp32 sums (merge-experts --pooled-lens-out); (b) the weight surrogate sees softcapped logits (HFLensModel.unembed applies final_logit_softcapping); (c) the final norm is patched, as jpp_lens patches it; it is off the path of the block-output target (R3_lrp --selftest); (d) the exclusion list spares every candidate id of the six evals' items (readout_eval_items.py:191-212); (e) BOS is forced on raw text (HFLensModel force_bos): without it this tokenizer adds no BOS.",
+  "Measured, a registered deviation (D4): R3's PCA is a streamed fp64 covariance where jpp_lens's fit_pca is fp32 on stored points; the router check above gives its size on the tiny run."
+ ],
+ "torch": "2.14.1+cu130"
+}

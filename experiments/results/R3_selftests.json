@@ -1,0 +1,336 @@
+{
+ "schema": "R3_selftests/1",
+ "scripts": {
+  "R3_lrp.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_lrp.py --selftest",
+   "at": "2026-10-21T22:05:29",
+   "head": "42d0d3fcb38fc86105134ed9107fb85774be05ba",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_parity.py"
+   ],
+   "seconds": 1.8,
+   "ok": true,
+   "n_checks": 19,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "the tiny Gemma 4 keeps the real flags (gelu_pytorch_tanh, hidden_size_per_layer_input 0, attention_k_eq_v, softcap 30)"
+    },
+    {
+     "ok": true,
+     "check": "forward unchanged under the rules (max |diff| 1.49e-07 <= 1e-6, fp32)"
+    },
+    {
+     "ok": true,
+     "check": "every forward restored exactly on exit"
+    },
+    {
+     "ok": true,
+     "check": "coverage: 25 norms (4 per block + the final norm), 6 MLPs, 18 q/k/v norms kept stock"
+    },
+    {
+     "ok": true,
+     "check": "LN rule: the gradient is the frozen-scale gradient pow(mean(x^2)+eps, -0.5) * w * g"
+    },
+    {
+     "ok": true,
+     "check": "LN rule: differs from the stock gradient (the variance term)"
+    },
+    {
+     "ok": true,
+     "check": "identity rule: value equals GELU-tanh (<= 1e-6) and the gradient equals the gate exactly"
+    },
+    {
+     "ok": true,
+     "check": "half rule: value bit-exact, gradient exactly 0.5"
+    },
+    {
+     "ok": true,
+     "check": "MLP: gradient = W_gate^T(0.5 a u gate(z)) + W_up^T(0.5 a z gate(z)) (identity and half rules)"
+    },
+    {
+     "ok": true,
+     "check": "rows to the last block's output are bit-identical with and without the final norm patched (it is off the path)"
+    },
+    {
+     "ok": true,
+     "check": "the rules change the rows (R-lens rows differ from plain gradients)"
+    },
+    {
+     "ok": true,
+     "check": "an unknown RMSNorm class raises"
+    },
+    {
+     "ok": true,
+     "check": "an unknown gated MLP class raises"
+    },
+    {
+     "ok": true,
+     "check": "a GELU that is not the tanh form raises"
+    },
+    {
+     "ok": true,
+     "check": "multimodal wrapper: 25 norms and 6 MLPs in the text decoder, 91 tower modules skipped, forward unchanged after the final norm (max |diff| 1.5e-06 <= 1e-5: the GELU rewrite's rounding, scaled by the norm)"
+    },
+    {
+     "ok": true,
+     "check": "the real 31B module tree (meta device): 241 norms, 60 MLPs, 180 attention norms kept, 685 tower modules skipped"
+    },
+    {
+     "ok": true,
+     "check": "jpp_lens's patcher (rlens) patches exactly the same norms and MLPs"
+    },
+    {
+     "ok": true,
+     "check": "rows under R3's rules equal rows under jpp_lens's (max |diff| 0.00e+00; bit-identical)"
+    },
+    {
+     "ok": true,
+     "check": "on the multimodal wrapper too, jpp_lens's patcher patches the same modules"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_fitlib.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_fitlib.py --selftest",
+   "at": "2026-10-21T22:05:39",
+   "head": "42d0d3fcb38fc86105134ed9107fb85774be05ba",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_parity.py"
+   ],
+   "seconds": 8.1,
+   "ok": true,
+   "n_checks": 14,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "vmap rows equal replicated rows (plain; max |diff| 4.8e-07)"
+    },
+    {
+     "ok": true,
+     "check": "vmap rows equal replicated rows (R-lens; max |diff| 4.8e-07)"
+    },
+    {
+     "ok": true,
+     "check": "rows at layer 1 equal the brute-force Jacobian summed over kept targets p' >= p (plain; max |diff| 4.8e-07)"
+    },
+    {
+     "ok": true,
+     "check": "rows at layer 2 equal the brute-force Jacobian summed over kept targets p' >= p (plain; max |diff| 4.2e-07)"
+    },
+    {
+     "ok": true,
+     "check": "rows at layer 3 equal the brute-force Jacobian summed over kept targets p' >= p (plain; max |diff| 2.4e-07)"
+    },
+    {
+     "ok": true,
+     "check": "rows at layer 1 equal the brute-force Jacobian summed over kept targets p' >= p (R-lens; max |diff| 3.6e-07)"
+    },
+    {
+     "ok": true,
+     "check": "rows at layer 2 equal the brute-force Jacobian summed over kept targets p' >= p (R-lens; max |diff| 2.7e-07)"
+    },
+    {
+     "ok": true,
+     "check": "rows at layer 3 equal the brute-force Jacobian summed over kept targets p' >= p (R-lens; max |diff| 1.5e-07)"
+    },
+    {
+     "ok": true,
+     "check": "streamed fp64 PCA equals fit_pca on the stored points (min |cos| 0.9999998)"
+    },
+    {
+     "ok": true,
+     "check": "k-means is deterministic for seed 0"
+    },
+    {
+     "ok": true,
+     "check": "per-expert sums and counts equal the position-by-position sums per cluster"
+    },
+    {
+     "ok": true,
+     "check": "kept positions are 16..T-2 (here skip 4)"
+    },
+    {
+     "ok": true,
+     "check": "the streamed per-layer merge equals the in-memory merge (experts, pooled, fallback); three shards equal one run; halves A (even shards) and B (odd) add up to the total"
+    },
+    {
+     "ok": true,
+     "check": "the direction mode (Q1) equals the full rows projected on each direction (max |diff| 2.5e-06)"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R3_06_analyze.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_06_analyze.py --selftest",
+   "at": "2026-10-21T22:06:16",
+   "head": "42d0d3fcb38fc86105134ed9107fb85774be05ba",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_common.py",
+    "experiments/scripts/R3_fitlib.py",
+    "experiments/scripts/R3_lrp.py",
+    "experiments/scripts/R3_parity.py"
+   ],
+   "seconds": 35.5,
+   "ok": true,
+   "n_checks": 31,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "exact sign test (R2_03's binom_sf_half)"
+    },
+    {
+     "ok": true,
+     "check": "Holm's step-down (R2_03's holm)"
+    },
+    {
+     "ok": true,
+     "check": "rules compare unrounded bounds"
+    },
+    {
+     "ok": true,
+     "check": "R3's design: 7 bands from code 30, 2 candidates (a Holm family of 14), bootstrap seed 20261022"
+    },
+    {
+     "ok": true,
+     "check": "R2_03's synthetic file (every rule branch of R2): R3_06 under R2's design equals R2_03 exactly"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 30-39: {'passes': True, 'served': True, 'failed': []} (expected {'passes': True, 'served': True, 'failed': []})"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 40-49: {'passes': False, 'served': False, 'failed': ['2']} (expected {'passes': False, 'served': False, 'failed': ['2']})"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 50: {'passes': True, 'served': True, 'failed': []} (expected {'passes': True, 'served': True, 'failed': []})"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 51-54: {'passes': False, 'served': False, 'failed': ['5']} (expected {'passes': False, 'served': False, 'failed': ['5']})"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 55: {'passes': False, 'served': False, 'failed': ['3']} (expected {'passes': False, 'served': False, 'failed': ['3']})"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 56-57: {'passes': False, 'served': False, 'failed': ['4']} (expected {'passes': False, 'served': False, 'failed': ['4']})"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 58: {'passes': False, 'served': False, 'failed': ['1', '4', '5']} (expected {'passes': False, 'served': False, 'failed': ['1', '4', '5']})"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 30-39: {'passes': False, 'served': False, 'failed': ['1', '4', '5']} (expected {'passes': False, 'served': False, 'failed': ['1', '4', '5']})"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 40-49: {'passes': True, 'served': True, 'failed': []} (expected {'passes': True, 'served': True, 'failed': []})"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 50: {'passes': True, 'served': False, 'failed': []} (expected {'passes': True, 'served': False, 'failed': []})"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 51-54: {'passes': False, 'served': False, 'failed': ['1', '4', '5']} (expected {'passes': False, 'served': False, 'failed': ['1', '4', '5']})"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 55: {'passes': False, 'served': False, 'failed': ['1', '4', '5']} (expected {'passes': False, 'served': False, 'failed': ['1', '4', '5']})"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 56-57: {'passes': False, 'served': False, 'failed': ['1', '4', '5']} (expected {'passes': False, 'served': False, 'failed': ['1', '4', '5']})"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 58: {'passes': False, 'served': False, 'failed': ['1', '4', '5']} (expected {'passes': False, 'served': False, 'failed': ['1', '4', '5']})"
+    },
+    {
+     "ok": true,
+     "check": "the Holm family is the 14 candidate-band tests"
+    },
+    {
+     "ok": true,
+     "check": "rl-it 50 passes but jpp-it takes precedence"
+    },
+    {
+     "ok": true,
+     "check": "served layers: {'jpp-it': [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 50], 'rl-it': [40, 41, 42, 43, 44, 45, 46, 47, 48, 49]}"
+    },
+    {
+     "ok": true,
+     "check": "R1 and Miru pass at 58 but are reference only: outside the Holm family, never served"
+    },
+    {
+     "ok": true,
+     "check": "jpp-it 55: stuck share 0.40 in bare"
+    },
+    {
+     "ok": true,
+     "check": "S1 drops the 32 prompts about the model"
+    },
+    {
+     "ok": true,
+     "check": "S3 (without bare) clears jpp-it 55's stuck word: the verdict change is listed"
+    },
+    {
+     "ok": true,
+     "check": "S5 is reported as not run when the run recorded no J++-filtered readouts"
+    },
+    {
+     "ok": true,
+     "check": "S5 (J++'s filter for every readout) reruns the rule on the recorded fjs and lists the change it causes; the primary decision is unchanged"
+    },
+    {
+     "ok": true,
+     "check": "a band reaching code 29 that passes is never served"
+    },
+    {
+     "ok": true,
+     "check": "the bootstrap is deterministic"
+    },
+    {
+     "ok": true,
+     "check": "the report renders"
+    }
+   ],
+   "env": {
+    "python": "3.12.14",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  }
+ }
+}

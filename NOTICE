@@ -30,6 +30,12 @@ Third-party works used
   item files (data/jlens/evaluations/lens-eval-*.json), from a local,
   gitignored checkout. Neither the code nor the items are included here; only
   their sha256 are (experiments/scripts/R3_sources.json).
+  experiments/scripts/R3_lrp.py reimplements, for Gemma 4 only, the R-lens
+  backward-pass rules of jpp_lens's src/workspace_lens/lrp/lrp.py (the LN rule
+  on RMSNorms, the identity rule on GELU-tanh, the half rule on the gated
+  product), Copyright 2026 Kola Ayonrinde, Apache License 2.0; jpp_lens adapted
+  them from the R-Lens implementation of Camila Blank and Agam Bhatia
+  (https://huggingface.co/camilablank/workspace-lenses).
 
 * WikiText-103 (Salesforce/wikitext, wikitext-103-raw-v1): Merity et al.
   (2017), "Pointer Sentinel Mixture Models"; CC BY-SA 3.0 and GFDL, per its
