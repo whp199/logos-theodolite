@@ -10,12 +10,16 @@ itself, not a copy of it. It checks:
    (raw, as decided: V7 measured no frame on the weighted rows), one frame from the last layer, no centring, the
    neurons ranked by write size (pole_ranking "write"), the threads by the direct-path estimate;
 2. the initial request in a neuron frame (pole_motif): squared in order (Gram–Schmidt), its axes having fixed roles;
+   in pole_motif with no neuron chosen, which the server reads in the frame from words, the words' options exactly;
 3. the presets: "as_built" sends exactly the server's own defaults for every reading option, in both survey modes;
    "mended" sends the initial request again; neither changes a centring the reader chose;
 4. the text the other checks and pages lean on: FRAME_AS_BUILT is the frame as first built, word for word; the
    recorded sighting keeps its ranking by |a| and no echoed frame; frame.tsx's studyComparable is false for a frame
    on the weighted rows; README §iv's rows 3 and 8 say the interface sends the mend by default, on the rows decided,
-   and that the server's own default stays as first built.
+   and that the server's own default stays as first built;
+5. the text pages give for E3 and the order: E3's seven sampled layers give 10–41% at layers 21–59 and 70–74% at
+   layers 3 and 11, and no page names the five later layers alone as those sampled; no page says a Löwdin bearing does
+   not change with the order, and the first page's caution does not give the 58–99° swing as the default frame's.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -74,6 +78,8 @@ const send = (over = {}) => {
   return T.sweepPayload(s, s.question, s.answerBegins, s.steering);
 };
 const NEURON = { surveyMode: "pole_motif", lockedPole: [40, 1234, 1] };
+// neuron mode before a neuron is chosen: the server builds the frame from words (engine_runtime.py prepare_sweep)
+const NO_NEURON = { surveyMode: "pole_motif", lockedPole: null };
 const out = {
   FRAME_AS_BUILT: T.FRAME_AS_BUILT,
   FRAME_MENDED: T.FRAME_MENDED,
@@ -84,6 +90,7 @@ const out = {
   initial: { frame: st().frame, neuronSquaring: st().neuronSquaring, poleRanking: st().poleRanking, threadScore: st().threadScore },
   words: send(),
   neuron: send(NEURON),
+  noNeuron: send(NO_NEURON),
 };
 st().setReadingPreset("as_built");
 out.asBuiltWords = send();
@@ -163,6 +170,10 @@ def check_requests(out: Dict[str, Any], server: Dict[str, Any]) -> None:
           f"{neuron.get('frame_squaring')!r}, not 'gram_schmidt'")
     check(reading({**neuron, "frame_squaring": "lowdin"}) == reading(words),
           "neuron: the other reading options differ from those sent from words")
+    no_neuron = out["noNeuron"]
+    check(no_neuron.get("locked_pole") is None, f"no neuron chosen: locked_pole {no_neuron.get('locked_pole')!r}")
+    check(reading(no_neuron) == reading(words), f"no neuron chosen: the server falls back to the frame from words, "
+          f"but the interface sends {reading(no_neuron)}, not the words' {reading(words)}")
 
     print("3. the presets")
     check(out["READING_AS_BUILT"]["frame"] == out["FRAME_AS_BUILT"], "READING_AS_BUILT's frame is not FRAME_AS_BUILT")
@@ -213,11 +224,58 @@ def check_text() -> None:
         check("server’s own default stays \\|a\\|" in row8, "README.md row 8 does not say the server keeps |a|")
 
 
+# E3 sampled seven code layers (E3_lens_validation_d_analysis.json summary.pole): 2, 10, 20, 30, 40, 50 and 58, which
+# pages count as layers 3, 11, 21, 31, 41, 51 and 59. The fifteen explained 10–41% of the FFN write at the last five and
+# 70–74% at the first two, so no text may call the last five all the layers sampled.
+E3_SAMPLED_WRONG = [
+    "the layers E3 sampled (21",
+    "at the layers it sampled, 21",
+    "at the sampled layers 21",
+    "the sampled index 20",
+    "the layers the study looked at",
+    "10–41% where the study looked)",
+]
+E3_PAGES = ["screens/Instrument.tsx", "screens/NeuronFolio.tsx", "screens/Lexicon.tsx", "screens/LayerLeaf.tsx",
+            "screens/lineage/Pillars.tsx"]
+
+
+def check_e3_and_order_text() -> None:
+    print("5. what pages say E3 sampled, and what reordering does in the default frame")
+    e3 = json.loads((ROOT_DIR / "experiments" / "results" / "E3_lens_validation_d_analysis.json").read_text())
+    pole = e3["summary"]["pole"]
+    for key in ("frac_ffn_top15_act", "frac_ffn_top15_write"):
+        check(sorted(map(int, pole[key])) == [2, 10, 20, 30, 40, 50, 58], f"E3 {key}: the sampled layers changed")
+        late = [pole[key][str(i)] for i in (20, 30, 40, 50, 58)]
+        early = [pole[key][str(i)] for i in (2, 10)]
+        check(f"{min(late) * 100:.0f}–{max(late) * 100:.0f}%" == "10–41%", f"E3 {key}: layers 21–59 give {late}")
+        check(f"{min(early) * 100:.0f}–{max(early) * 100:.0f}%" == "70–74%", f"E3 {key}: layers 3 and 11 give {early}")
+    texts = {name: (FRONTEND / "src" / name).read_text(encoding="utf-8") for name in E3_PAGES}
+    texts["README.md"] = (ROOT_DIR / "README.md").read_text(encoding="utf-8")
+    texts["ROADMAP.md"] = (ROOT_DIR / "ROADMAP.md").read_text(encoding="utf-8")
+    for name, text in texts.items():
+        flat = re.sub(r"\s+", " ", text)
+        for phrase in E3_SAMPLED_WRONG:
+            check(phrase not in flat, f"{name}: says {phrase!r}, leaving out layers 3 and 11, which E3 also sampled")
+        if "10–41%" in flat:
+            check("3 and 11" in flat or "2 and 10" in flat, f"{name}: quotes E3's 10–41% without layers 3 and 11")
+    # under the default Löwdin frame the order relabels the axes: no page may say the bearing does not change with it,
+    # and the first page's caution must not give the 58–99° swing as the default frame's
+    flat = {name: re.sub(r"\s+", " ", (FRONTEND / "src" / name).read_text(encoding="utf-8"))
+            for name in ("screens/Landmarks.tsx", "screens/LayerLeaf.tsx", "screens/Incipit.tsx", "lib/frame.tsx",
+                         "screens/lexicon/Cautions.tsx")}
+    for name, text in flat.items():
+        for phrase in ("does not change with the order", "only which axis is", "says only which axis"):
+            check(phrase not in text, f"{name}: says {phrase!r}, but in a Löwdin frame the order relabels the axes")
+    check("depends on the order of the three landmark words. In the study" not in flat["screens/Incipit.tsx"],
+          "Incipit.tsx: the first page's caution gives the 58–99° order swing as the default frame's")
+
+
 def main() -> int:
     out = run_store()
     if out is not None:
         check_requests(out, server_defaults())
     check_text()
+    check_e3_and_order_text()
     if failures:
         print(f"\ninterface defaults: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

@@ -85,7 +85,7 @@ const NOT_HERE = "not recorded in this sighting";
 const ORDINALS = ["first", "second", "third"];
 const NEURON_NAMES: Triple = ["what wakes it", "what it writes", "who listens next"];
 /** What each stone does in the frame: squared in order (Gram–Schmidt), each word against those before it; or all at
- * once (Löwdin), where no word lies exactly on its axis and the order names only which axis is which. */
+ * once (Löwdin), where no word lies exactly on its axis and the order names which axis is which. */
 const ROLE_IN_ORDER = [
   { numeral: "I", ordinal: "first landmark", sets: "sets bearing 0°", how: "kept exactly as it lies" },
   { numeral: "II", ordinal: "second landmark", sets: "sets bearing 90°", how: "squared against the first" },
@@ -487,15 +487,18 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
 
   // the frame every frame-dependent word, label and drawing below describes: the shown sighting's own when it was taken
   // with these landmarks (the recorded one's is the frame as first built), else the frame the next sighting is taken in
-  const shown = shownFrameOptions(sighting, matches, frameOpts, { surveyMode, neuronSquaring });
-  const atOnce = shown.squaring === "lowdin";
+  const shown = shownFrameOptions(sighting, matches, frameOpts, { surveyMode, neuronSquaring, lockedPole });
+  // with no neuron chosen in neuron mode, a sighting falls back to the frame from words (and `shown` says so); the page
+  // itself then describes the neuron frame a chosen neuron will be squared in
+  const atOnce = (isWords || lockedPole ? shown.squaring : neuronSquaring) === "lowdin";
   // the shown sighting's own frame, whatever the page is set to: the charts of section v draw that sighting
   const ownAtOnce = !!sighting && shownFrameOptions(sighting, true, frameOpts).squaring === "lowdin";
   // the frame the next sighting from words is squared in, and the one from a neuron, as the radios set them
   const nextSquaring = isWords ? frameOpts.squaring : neuronSquaring;
-  // the word frame the apparatus's formula describes, and how a neuron frame is squared
+  // the word frame the apparatus's formula describes, and how a neuron frame is squared (with no neuron chosen, `shown`
+  // is the frame from words the server falls back to, so the neuron frame is the one the radios set)
   const wordFrame: FrameOptions = isWords ? shown : frameOpts;
-  const neuronFrameSq = isWords ? neuronSquaring : shown.squaring;
+  const neuronFrameSq = isWords || !lockedPole ? neuronSquaring : shown.squaring;
   const wordRows = (m: number) =>
     wordFrame.fnw ? (
       <>
@@ -808,7 +811,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
           <div style={{ display: "flex", flexDirection: "column", gap: "26px" }}>
             <Rubric style={{ maxWidth: "760px" }}>
               {atOnce
-                ? "Write one word on each stone, or begin from a set below, then take a sighting. Choose three words of a kind. The three are squared all at once, each axis as near its own word as the others allow, so no word takes another’s share; their order says only which axis is called first."
+                ? "Write one word on each stone, or begin from a set below, then take a sighting. Choose three words of a kind. The three are squared all at once, each axis as near its own word as the others allow, so no word takes another’s share. The three axes are the same whatever their order, but the order still says which word sets the bearing’s 0°, which its 90° and which points up: reorder the stones and the bearing and elevation are relabelled, though the stream points where it did."
                 : "Write one word on each stone, or begin from a set below, then take a sighting. Choose three words of a kind, and mind their order: the first stands exactly where it lies, and the other two are squared against it."}
               {shown.own && shown.squaring !== nextSquaring
                 ? nextSquaring === "lowdin"
@@ -1032,9 +1035,15 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             <sup>(ℓ, i)</sup>) · J<sub>ℓ</sub>
             <sup>⊤</sup>, v<sub>3</sub> = w<sub>gate</sub>
             <sup>(ℓ′, j*)</sup>,{" "}
-            {neuronFrameSq === "lowdin"
-              ? "squared all at once (Löwdin [33]), as you chose, so axis 1 is no longer exactly w_gate"
-              : "squared in that order (Gram–Schmidt), so axis 1 is exactly w_gate"}
+            {neuronFrameSq === "lowdin" ? (
+              <>
+                squared all at once (Löwdin [33]), as you chose, so axis 1 is no longer exactly w<sub>gate</sub>
+              </>
+            ) : (
+              <>
+                squared in that order (Gram–Schmidt), so axis 1 is exactly w<sub>gate</sub>
+              </>
+            )}
             : the “pole-locked motif mode”. A neuron frame keeps Gram–Schmidt by default: its three axes have fixed roles, so
             their order is not a choice and the order fault does not arise. σ = ±1 names which of the neuron’s two poles is
             locked (after Cammarata 2026 [9]); j* is the dominant downstream reader, in the code the pole’s first listed
@@ -1098,9 +1107,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
             the default frame
           </button>
           <span style={{ flex: "1 1 360px", minWidth: "0", fontSize: "15px", color: "#6B5D4D" }}>
-            To set a bearing beside the study’s, take it in the frame as first built. That is needed but not enough: the
-            study’s sightings also carried a doubled start mark (fault 6), which by itself moved bearings by a median of
-            0.4–1.9° in V7, and were taken before the V7 fixes.
+            To set a bearing beside V7’s frame figures, take it in the frame as first built: V7 took them with one start
+            mark, as the instrument now sends. Beside E6’s sightings or the recorded one, that is needed but not enough:
+            they were taken before the V7 fixes, their chat prompts with a doubled start mark (fault 6), which by itself
+            moved bearings by a median of 0.4–1.9° in V7.
           </span>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 40px" }}>
@@ -1779,9 +1789,11 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               “it” over 18 prompts (V7), and the prompts where Gemma speaks of itself (E6).
             </p>
             <Rubric style={{ maxWidth: "760px" }}>
-              These figures are for a frame squared in order. The instrument now squares the frame all at once, which gives one
-              frame for every order; a sighting squared in order (the recorded one, or one you choose above) still turns with the
-              order, so compare it only with sightings whose landmarks were named in the same order.
+              These figures are for a frame squared in order. The instrument now squares the frame all at once, which gives the
+              same three axes for every order; the order still says which axis sets 0°, which 90° and which points up. Squared
+              either way, compare a sighting only with sightings whose landmarks were named in the same order: squared in order
+              (the recorded one, or one you choose above), another order is another frame; squared all at once, it is the same
+              frame with its axes relabelled.
             </Rubric>
           </div>
           <div
@@ -1911,7 +1923,9 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
               <span style={{ fontStyle: "italic", color: "#2B2117" }}>“Gemma is a helpful AI assistant. In conversations,”</span>.
               {atOnce
                 ? `These rows are frames squared in order; ${
-                    shown.own ? "the sighting shown is squared all at once, so its bearing does not change with the order" : "the frame set above squares all at once, so a bearing taken in it does not change with the order"
+                    shown.own
+                      ? "the sighting shown is squared all at once, so reordering its landmarks keeps its three axes and only relabels them (swap the first two and its bearing reads 90° − θ)"
+                      : "the frame set above squares all at once, so reordering the landmarks keeps its three axes and only relabels them (swap the first two and a bearing reads 90° − θ)"
                   }. To find your own row, take it in the frame as first built.`
                 : "Reorder the stones above with “she”, “he”, “it” to find your own row."}
             </span>

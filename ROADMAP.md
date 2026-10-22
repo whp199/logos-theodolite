@@ -101,6 +101,7 @@ Still open here:
   `frame_fnw` off until an instrument check measures it.
 - **Threads among the biggest writers.** V7 measured the direct-path score’s 0.87 on threads among neurons ranked by
   \|a\|; the threads now join the biggest writers, where it was not measured.
-- In E3 (12 prompts, last word-piece; indicative only), at layers 21, 31, 41, 51 and 59, the fifteen biggest writers
-  explained the same share of the feed-forward write as the fifteen loudest (10–41%, within half a percentage point), so
+- In E3 (12 prompts, last word-piece; indicative only), at the seven layers it sampled, the fifteen biggest writers
+  explained the same share of the feed-forward write as the fifteen loudest, within half a percentage point (10–41% at
+  layers 21, 31, 41, 51 and 59; 70–74% at layers 3 and 11), so
   fault 8’s mend changes which neurons are named, not how much of the write they cover.

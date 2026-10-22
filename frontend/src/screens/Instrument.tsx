@@ -782,8 +782,8 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
               write in this sighting (⟨Σ c<sub>i</sub>, f⟩ / ⟨f, f⟩, E3).
             </>
           ) : null}{" "}
-          Ranked either way, the fifteen explained 10–41% of the feed-forward write at the layers E3 sampled (21, 31, 41, 51,
-          59); E3 calls this indicative (12 prompts, last word-piece).
+          Ranked either way, the fifteen explained 10–41% of the feed-forward write at the layers E3 sampled from 21 to 59
+          (21, 31, 41, 51, 59), and 70–74% at layers 3 and 11; E3 calls this indicative (12 prompts, last word-piece).
           <label className="check" style={{ marginTop: 4 }} title={waitNote}>
             <input
               type="checkbox"
@@ -893,8 +893,9 @@ const WhatIsDrawn: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
             </button>
           </span>
           <span className="muted italic">
-            The study’s readings were taken with these options as first built, and also with a doubled start mark and before the
-            V7 fixes, so these options alone do not reproduce them.
+            The study’s readings were taken with these options as first built. E6’s sightings and the recorded one were also
+            taken before the V7 fixes, their chat prompts with a doubled start mark, so these options alone do not reproduce
+            them; V7’s own figures were taken with one start mark, as the instrument now sends.
           </span>
         </dd>
       </dl>

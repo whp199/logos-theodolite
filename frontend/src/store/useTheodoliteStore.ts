@@ -1171,8 +1171,10 @@ export function sweepPayload(
     // the legacy space-then-digit rule took a rank from the next position; with every word-piece sighted it is not used
     rank_lookahead: false,
     steering,
-    // the server squares a neuron-locked frame by this same field, so in pole_motif it carries neuronSquaring
-    frame_squaring: s.surveyMode === "pole_motif" ? s.neuronSquaring : s.frame.squaring,
+    // the server squares a neuron-locked frame by this same field, so with a neuron chosen it carries neuronSquaring;
+    // pole_motif with no neuron chosen falls back to the frame from words (engine_runtime.py prepare_sweep), which is
+    // squared, weighted and placed as the words' frame is
+    frame_squaring: s.surveyMode === "pole_motif" && s.lockedPole ? s.neuronSquaring : s.frame.squaring,
     frame_per_layer: s.frame.perLayer,
     frame_fnw: s.frame.fnw,
     centre_prompts: control && !centreIds && control.textSent ? [control.textSent] : [],

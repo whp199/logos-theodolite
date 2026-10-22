@@ -341,11 +341,15 @@ export const Cautions: React.FC = () => (
           <>
             The instrument now squares the frame all at once,{" "}
             {FNW_DEFAULT ? "on the rows the model weighs" : "on the same raw rows as before"}, so the order of the
-            landmarks no longer changes the frame. A sighting squared in order, the recorded one or one you choose, still
-            turns with the order: compare it only with sightings named in the same order. To set a bearing beside the
-            study’s, take it in the frame as first built; that is needed but not enough, for the study’s sightings also
-            carried a doubled start mark, which by itself moved bearings by a median of 0.4–1.9°, and were taken before
-            the V7 fixes. Either way, read a bearing as a sketch of direction, not a measurement.
+            landmarks no longer changes the frame: its three axes are the same in any order. The order still says which
+            axis sets the bearing’s 0°, which its 90° and which points up, so reordering relabels a bearing (swap the first
+            two and it reads 90° − θ). Squared either way, compare a sighting only with sightings named with the same three
+            words in the same order: squared in order, the recorded one or one you choose, another order is another frame;
+            squared all at once, it is the same frame relabelled. To set a bearing beside V7’s frame figures, take it in
+            the frame as first built; V7 took them with one start mark, as the instrument now sends. E6’s sightings and the
+            recorded one were taken before the V7 fixes, their chat prompts with a doubled start mark, which by itself
+            moved bearings by a median of 0.4–1.9° in V7, so beside them the frame as first built is needed but not
+            enough. Either way, read a bearing as a sketch of direction, not a measurement.
           </>
         }
         from="From the README’s “Status and known issues”, the report’s §3.4 (bugs 3 and 6) and the V7 notes."
@@ -416,7 +420,9 @@ export const Cautions: React.FC = () => (
           <>
             Read a thread as a suggestion of where to look, not as a proven circuit. The instrument and a neuron’s folio
             now score threads by the direct-path estimate; if you switch them back to C, discount the strongest-looking
-            threads from layer 1.
+            threads from layer 1. Threads join the fifteen neurons listed at each layer, so by default they run between the
+            biggest writers; V7 measured the direct-path score’s 0.87 only on threads among the fifteen ranked by |a|, and
+            among the biggest writers it was not measured.
           </>
         }
         from="From the README’s “Status and known issues”, the report’s §3.4 (bug 4) and the V7 notes."

@@ -380,7 +380,7 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
             )}{" "}
             of {s ? describeFrame(s).denom : "the state"} across the sixty layers
             {s && describeFrame(s).lowdin
-              ? `; a Löwdin frame squares ${describeFrame(s).poleMotif ? "its three axes" : "the words"} all at once, so their order does not change the frame.`
+              ? `; a Löwdin frame squares ${describeFrame(s).poleMotif ? "its three axes" : "the words"} all at once, so their order does not change the frame, though it still says which axis is which.`
               : s && describeFrame(s).poleMotif
                 ? "; a neuron’s frame is squared in the fixed order of its roles (Gram–Schmidt), so axis 1 is exactly the neuron’s gate."
                 : ", and with a Gram–Schmidt frame the bearing turns with the order of the three words (58–99°, bug 3)."}{" "}
@@ -945,7 +945,9 @@ const CAUTIONS: React.ReactNode[] = [
   </>,
   <>
     A bearing, the compass direction the instrument gives a reading <span style={{ fontStyle: "italic", color: MUTED }}>(azimuth)</span>,
-    depends on the order of the three landmark words. In the study, reordering them typically swung it by 58 to 99 degrees.
+    is a sketch: no bearing was checked against what the model does. As first built, the instrument squared the three landmark
+    words in order, and in the study reordering them typically swung a bearing by 58 to 99 degrees. It now squares them all at
+    once, so their order no longer changes the frame; it still says which word the bearing is measured from.
   </>,
   <>
     The nudge <span style={{ fontStyle: "italic", color: MUTED }}>(steering)</span> breaks the model’s speech if it pushes too hard. The
@@ -1119,9 +1121,16 @@ const BeforeYouSetOut: React.FC = () => {
             as first built, Gram–Schmidt on the raw W<sub>U</sub> rows, without the final-norm weight: 58–99° across orders, and
             the frame catches 2.4–3.9% of ‖h<sub>J</sub>‖ (bug 3). Fix: a Löwdin frame (Löwdin 1950) [33] on fnw · W<sub>U</sub>,
             with the captured fraction shown. The interface now sends a Löwdin frame by default,{" "}
-            {FNW_DEFAULT
-              ? "on fnw · W_U, which V7 did not measure"
-              : "on the raw rows, where V7 measured it (it agreed with the sign of the lens’s she−he score in 79–89% of readings by stretch of layers, against 72–88% squared in order); fnw · W_U is a choice V7 did not measure"}
+            {FNW_DEFAULT ? (
+              <>
+                on fnw · W<sub>U</sub>, which V7 did not measure
+              </>
+            ) : (
+              <>
+                on the raw rows, where V7 measured it (it agreed with the sign of the lens’s she−he score in 79–89% of readings by
+                stretch of layers, against 72–88% squared in order); fnw · W<sub>U</sub> is a choice V7 did not measure
+              </>
+            )}
             , with the fraction caught sent at every layer; the server’s own default stays as first built, for old callers.{" "}
             <a href={href.landmarks()}>landmarks</a>
           </dd>

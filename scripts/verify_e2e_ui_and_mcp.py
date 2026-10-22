@@ -17,9 +17,11 @@ Runs inside a single process/network namespace to verify:
 5. The options added for V7 bugs 1, 3, 4, 5 and 8 (chat template and system turn, Löwdin / weighted / per-layer /
    centred survey frames with proj_frac, the mended nudge, the direct-path thread score, write-size pole ranking),
    over the WebSocket and the MCP tools, while the server's own defaults stay as first built; the first write-ranked
-   sweep after the server starts is timed against an identical second one. The interface sends the mends for
-   bugs 3 (the order, on raw rows) and 8 by default: the Lexicon's default request says so, the first live sighting
-   is squared all at once and ranked by write size, unticking the ranking retakes it by |a|, and "the frame options
+   sweep after the server starts, differing from a plain sweep just taken only in pole_ranking, is timed against an
+   identical second one. The interface sends the mends for bugs 3 (the order, on raw rows) and 8 by default: the
+   Lexicon's default request says so, the first live sighting is squared all at once and ranked by write size, a
+   layer's leaf links to its biggest writer, whose words were read, that neuron's folio gives its write size and
+   its |a| rank of the fifteen listed, unticking the ranking retakes it by |a|, and "the frame options
    as first built" on the landmarks page retakes it squared in order, from raw rows. The recorded sighting, on a page
    whose WebSocket never opens, is described on the landmarks page as squared in order ("kept exactly as it lies").
 6. The lens is named: /api/health, every sweep, every scientist tool reply (called as MCP tools, over HTTP and over
@@ -579,6 +581,30 @@ async def main() -> int:
             assert_base_lens(json_msg.get("lens"), health["model_id"])
             assert json_msg["lens"] == lens, "the sweep and /api/health name different lenses"
 
+            # the first write-ranked sweep since the server started computes each layer's write-column norms once
+            # (engine_runtime.py write_col_norms, cached). It differs from the plain sweep just taken only in
+            # pole_ranking, so nothing else is computed for the first time in it (no nudge, so no quiet masks; no
+            # centring; the same bare prompt), and an identical second call shows what that one-off cost was
+            write_payload = {
+                "prompt": "The number of legs on the animal that spins webs is",
+                "monuments": ["spider", "eight", "insect"],
+                "survey_mode": "monument",
+                "compare_think": False,
+                "max_new_tokens": 6,
+                "pole_ranking": "write",
+            }
+            t_first = time.perf_counter()
+            _, wmeta = await ws_sweep(ws, write_payload)
+            t_first = time.perf_counter() - t_first
+            t_again = time.perf_counter()
+            await ws_sweep(ws, write_payload)
+            t_again = time.perf_counter() - t_again
+            assert wmeta["pole_ranking"] == "write"
+            print(
+                f"  • the first write-ranked sweep took {t_first:.1f} s; the same request again, {t_again:.1f} s "
+                f"(the plain sweep before it, ranked by |a|: {json_msg['elapsed_ms']} ms on the server)"
+            )
+
             # ---------------------------------------------------------------------
             # Step 2b: the options added for V7 bugs 1, 3, 4, 5 and 8
             # ---------------------------------------------------------------------
@@ -607,15 +633,7 @@ async def main() -> int:
                     "strength": 0.01,
                 },
             }
-            # the first write-ranked sweep since the server started: it computes each layer's write-column norms once
-            # (engine_runtime.py write_col_norms, cached); an identical second call shows what that first cost was
-            t_first = time.perf_counter()
             bin2, meta = await ws_sweep(ws, options_payload)
-            t_first = time.perf_counter() - t_first
-            t_again = time.perf_counter()
-            await ws_sweep(ws, options_payload)
-            t_again = time.perf_counter() - t_again
-            print(f"  • the first write-ranked sweep took {t_first:.1f} s; the same request again, {t_again:.1f} s")
             assert meta["prompt"].startswith(f"<bos><|turn>system\n{system_turn}<turn|>\n<|turn>user\nTell me about yourself.")
             assert meta["prompt"].endswith("<|turn>model\n<|channel>thought\n<channel|>Hi! I"), meta["prompt"][-80:]
             assert meta["prompt_token_ids"][0] == 2 and meta["prompt_token_ids"][1] != 2, "expected exactly one BOS"
@@ -994,6 +1012,53 @@ async def main() -> int:
             assert chat_ui["found"] and chat_ui["checked"] and not chat_ui["disabled"] and chat_ui["system"], f"chat control: {chat_ui}"
             assert not chat_ui["notYet"], "the instrument page still shows a [NOT YET IN THE SERVER] control"
             print("  • Instrument: “send it as a chat” is enabled (ticked by default), with a system-prompt field")
+            # the sighting shown is ranked by write size, the default: the leaf, the folio and the nudge word it so. The
+            # server reads words for ranks 0-4 only, so the leaf must name its lead by the sighting's own rank 0
+            # (leadOf), whose words are read, never the loudest by |a| among the fifteen, which may have none
+            await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle instrument")
+            await go("#/layer/36")
+            await cdp.eval_js(
+                """(() => {
+                    const b = Array.from(document.querySelectorAll('[aria-label="How to read these pages"] button'))
+                        .find((x) => x.textContent.includes("apparatus"));
+                    if (b && b.getAttribute("aria-pressed") !== "true") b.click();
+                })()"""
+            )
+            await wait_for("""document.body.innerText.includes("read the biggest writer")""", "the leaf's link to its biggest writer")
+            leaf = await cdp.eval_js(
+                """(() => {
+                    const t = document.body.innerText;
+                    const a = Array.from(document.querySelectorAll("a")).find((x) => x.textContent.trim() === "read the biggest writer");
+                    return { href: a ? a.getAttribute("href") : null, read: t.includes("the biggest writer’s lens words score"),
+                             notRead: t.includes("the biggest writer’s lens words and their scores"),
+                             loudest: t.includes("read the loudest neuron") };
+                })()"""
+            )
+            assert leaf["href"] and leaf["read"] and not leaf["notRead"] and not leaf["loudest"], f"layer 36's leaf: {leaf}"
+            print(f"  • Layer 36's leaf: “read the biggest writer” ({leaf['href']}), whose lens words were read")
+            await go(leaf["href"])
+            await wait_for(
+                """document.body.innerText.toLowerCase().includes("biggest writer of the 21,504 in its layer")""",
+                "the folio's write-size particular",
+            )
+            folio = await cdp.eval_js(
+                """(() => { const t = document.body.innerText.toLowerCase();
+                    return { writeSize: t.includes("write size"), listed: t.includes("by |a| of the fifteen listed"),
+                             loudness: t.includes("loudest of the 21,504") }; })()"""
+            )
+            assert folio == {"writeSize": True, "listed": True, "loudness": False}, f"the biggest writer's folio: {folio}"
+            print("  • Its folio: “write size”, the biggest writer of the 21,504 in its layer, its |a| rank of the fifteen listed")
+            await go("#/nudge")
+            nudge_rank = await cdp.eval_js(
+                """(() => { const m = document.body.innerText.match(/Neuron \\d+ fired[^\\n]*?: the ([^\\n]*?) in layer \\d+/);
+                    return m ? m[1] : null; })()"""
+            )
+            if nudge_rank is None:
+                print("  • Nudge: the armed neuron is not among the fifteen listed in this sighting; no rank to read")
+            else:
+                assert "biggest writer" in nudge_rank and "loudest" not in nudge_rank, f"the nudge's rank: {nudge_rank!r}"
+                print(f"  • Nudge: the armed neuron is the sighting’s “{nudge_rank}” in its layer")
+            await go("#/instrument")
             # neurons are ranked by write size and threads scored by the direct-path estimate by default: untick "rank
             # them by write size" to read by |a|, then "score threads by the direct-path estimate" to read C; each
             # retakes the sighting

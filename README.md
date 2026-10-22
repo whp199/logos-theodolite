@@ -103,7 +103,10 @@ before (attention, lapis) or **recalled** from memory (the feed-forward block, g
       <p><b>Lexicon</b>: every word of the instrument in plain terms, with its formula, and the cautions on where it can
       mislead you. <b>Lineage</b>: the research it is made from, pillar by pillar, each with what the study found about it.</p>
       <p><sub>Every view above is a live sighting from the running server: “Tell me about yourself.”, its answer begun
-      “Hi! I”, sent as a chat. With no server running, the pages show the study’s recorded sighting (E6) and say so.</sub></p>
+      “Hi! I”, sent as a chat. They were taken with the reading options as first built (a frame squared in order, neurons
+      ranked by |a|, threads by C), before the interface sent the mends by default, so the landmarks frame and the folio’s
+      ranking and wording differ from what the interface now shows by default. With no server running, the pages show the
+      study’s recorded sighting (E6) and say so.</sub></p>
     </td>
   </tr>
 </table>
@@ -233,7 +236,7 @@ REPORT §3.4). Where each fault stands now:
 | **5** | No chat template: the instruct model ran as a raw language model | **Mended**: `chat`, `system`, `assistant_prefix`; on by default in the interface |
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
 | **7** | One input label for a neuron’s two faces | Open |
-| **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **Mended in the instrument**: `pole_ranking="write"` lists each layer’s fifteen biggest writers, \|a\| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, and the interface sends it by default; the server’s own default stays \|a\| for old callers. Every layer reports each listed neuron’s write size and the share of the feed-forward write the fifteen explain. That share is a sample either way: in E3 (12 prompts, last word-piece; indicative only), at the sampled layers 21, 31, 41, 51 and 59, the fifteen loudest explained 10–41%, and so did the fifteen biggest writers, within half a percentage point. The threads join the listed neurons, so they follow the ranking; V7 measured thread scores only among neurons ranked by \|a\| |
+| **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **Mended in the instrument**: `pole_ranking="write"` lists each layer’s fifteen biggest writers, \|a\| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, and the interface sends it by default; the server’s own default stays \|a\| for old callers. Every layer reports each listed neuron’s write size and the share of the feed-forward write the fifteen explain. That share is a sample either way: in E3 (12 prompts, last word-piece; indicative only), the fifteen loudest explained 10–41% at layers 21, 31, 41, 51 and 59 and 70–74% at layers 3 and 11, the seven sampled, and so did the fifteen biggest writers, within half a percentage point. The threads join the listed neurons, so they follow the ranking; V7 measured thread scores only among neurons ranked by \|a\| |
 | **9** | The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is applied to the instruct model (4-bit QAT), where it agrees with the model’s own average gradients at only cos 0.15–0.33 for the pronoun direction (layers 31–59) | **Open, and the largest accuracy fault left; now labelled.** Everywhere the instrument uses the lens, it still reads through this base-fitted J++: the words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. R1 refitted a lens on the instruct model ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)): its directional form is stable from layer 31; its full matrix exists at only 11 layers (11, 16, …, 56, 59) and is usable at only five of them, 41, 46, 51, 56 and 59, where it beats J++ (top-1 on the model’s own reply at layer 51: 25% → 45%); below layer 31 no averaged lens tested was reliable. The instrument does not load it. The head and the foot of every page name the lens and say it was fitted on the base model, a red line beside each layer's words says what the reading can bear there, and `/api/health` and every sweep reply carry a `lens` object (`id`, `fitted_on`, `method`, `applied_to`, `caution`) |
 
 - The E6/V7 audit numbers were measured on the backend before these fixes. The history keeps the original instrument as
@@ -243,9 +246,10 @@ REPORT §3.4). Where each fault stands now:
   built (a frame squared in order on raw rows, neurons by \|a\|, threads by C), use “read with the reading options as
   first built” in the instrument’s apparatus, or set each one: “the frame options as first built” on the landmarks page,
   the ranking and the thread score in the instrument’s apparatus, the ranking also on a layer’s leaf or a neuron’s folio.
-  Those options are needed to set a reading beside the study’s, but they are not enough: the study’s sightings, the
-  recorded one among them, also carried a doubled start mark (fault 6, which by itself moved bearings by a median of
-  0.4–1.9° in V7) and were taken before the V7 fixes.
+  Those options are needed to set a reading beside the study’s. Beside V7’s frame figures they are enough on this
+  count, for V7 took them with one start mark, as the instrument now sends; beside E6’s sightings and the recorded one
+  they are not, for those were taken before the V7 fixes, their chat prompts with a doubled start mark (fault 6, which
+  by itself moved bearings by a median of 0.4–1.9° in V7).
 - **The quiet mask.** Masking only the 181 persistently quiet dimensions is not enough: in a check made while building the
   fix (not part of the study), a she/he nudge masked that way still broke the answer at 0.005 × ‖h‖. `mask_quiet` also masks
   each pushed layer’s quietest tenth of dimensions; with both, the nudge read fluently at 0.005–0.01 and broke at 0.02.

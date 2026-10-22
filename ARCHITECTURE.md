@@ -93,7 +93,7 @@ For each layer $l \in \{0, \dots, 59\}$:
 2. **Bipolar GeGLU Neuron Poles & J-VINDEX Fusion**:
    - Top-$k$ active poles per layer ($k = 15$):
      $$\text{vals}, \text{idx} = \text{topk}\!\left(|\text{mlp\_act}[l]|, k=15, \text{dim}=-1\right), \quad \sigma = \text{sign}\!\left(\text{mlp\_act}[l][\text{idx}]\right) \in \{-1, +1\}$$
-   - Ranked by write size instead (V7 bug 8; `pole_ranking="write"`), the top 15 by
+   - Ranked by write size instead (REPORT §3.4 bug 8, from E3; `pole_ranking="write"`), the top 15 by
      $$\text{score}_i = |\text{mlp\_act}[l][i]| \cdot \big\|W_{\text{down}}[l][:, i] \odot w_{\text{post}}\big\|$$
      with $w_{\text{post}}$ the post-FFN norm weight; each listed pole's `write_size` is $s \cdot \text{score}_i / \text{rms}(y)$,
      and `poles_ffn_explained` is the share of the feed-forward write the fifteen explain, sent under either ranking.

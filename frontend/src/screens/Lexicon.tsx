@@ -621,17 +621,17 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             neuron 21189 · layer 36 · negative face · strength 7.2
           </p>
           <Note>
-            However they are ranked, those fifteen carried only 10–41% of what a layer remembers at the layers the study
-            looked at, from 21 to 59: a sample of the layer’s work, not the whole of it.
+            However they are ranked, those fifteen carried only 10–41% of what a layer remembers where the study looked
+            from layer 21 to 59, and about 70% at layers 3 and 11: a sample of the layer’s work, not the whole of it.
           </Note>
           <EntryApparatus title="strength">
             |a| = |mlp_act<sub>ℓ</sub>[i]| at the read position; σ = sign(a). The interface keeps the top 15 by write size
             |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ (<M>"pole_ranking": "write"</M>) unless you choose otherwise; the
             server’s own default, the recorded sighting and the instrument as first built keep the top 15 by |a| (
             <M>"activation"</M>). Each layer reports the fraction of its FFN write the fifteen explain. In E3 (12 prompts,
-            last word-piece; indicative only) the two lists had a Jaccard index of 0.67–0.96 by layer, and at the layers it
-            sampled, 21, 31, 41, 51 and 59, the fifteen explained 10–41% of the FFN write ranked either way, within half a
-            percentage point (REPORT §3.4, bug 8). Magnitudes and shown shares are not calibrated (eps floor; softcap).
+            last word-piece; indicative only), at the seven layers it sampled (3, 11, 21, 31, 41, 51 and 59), the two lists
+            had a Jaccard index of 0.67–0.96 by layer, and the fifteen explained 10–41% of the FFN write at layers 21–59 and
+            70–74% at layers 3 and 11, ranked either way, within half a percentage point (REPORT §3.4, bug 8). Magnitudes and shown shares are not calibrated (eps floor; softcap).
             Poles after Cammarata 2026 [9]; GeGLU [15].
           </EntryApparatus>
         </Entry>
@@ -654,8 +654,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             choose otherwise.
           </Body>
           <Note>
-            The biggest writers explained no more of what a layer remembers than the loudest did: 10–41% either way, at
-            the layers the study looked at.
+            The biggest writers explained no more of what a layer remembers than the loudest did: 10–41% either way where
+            the study looked from layer 21 to 59, and about 70% at layers 3 and 11.
           </Note>
           <EntryApparatus title="write size">
             write_size = s · |a<sub>i</sub>| · ‖w<sub>down,i</sub> ⊙ w<sub>post</sub>‖ / rms(y) (<M>pole_write_sizes</M>;{" "}
@@ -663,8 +663,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             <sub>down</sub> ⊙ w<sub>post</sub>‖ (<M>"pole_ranking": "write"</M>, what the interface sends; the server’s own
             default ranks by |a|, for old callers); an edit in the vault changes its column, and its write size with it. The
             share explained is ⟨Σ c<sub>i</sub>, f⟩ / ⟨f, f⟩, f = post − s · mid (<M>poles_ffn_explained</M>). In E3 (12
-            prompts, last word-piece; indicative only), at layers 21, 31, 41, 51 and 59, the fifteen biggest writers explained
-            10–41% of the FFN write, within half a percentage point of the fifteen loudest (REPORT §3.4, bug 8).
+            prompts, last word-piece; indicative only), the fifteen biggest writers explained 10–41% of the FFN write at
+            layers 21, 31, 41, 51 and 59 and 70–74% at layers 3 and 11, the seven it sampled, within half a percentage point
+            of the fifteen loudest (REPORT §3.4, bug 8).
           </EntryApparatus>
         </Entry>
 
@@ -912,7 +913,13 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             <sub>3</sub>⟩); θ = atan2(y, x), φ = asin(z / ‖(x, y, z)‖). In the frame as first built the frame catches
             2.4–3.9% of ‖h̃‖, and reordering the landmarks swings θ by a median of 58–99° (V7; REPORT §3.4, bug 3). The
             interface now squares the frame all at once (Löwdin’s symmetric orthonormalisation [33]) on{" "}
-            {FNW_DEFAULT ? "the weighted rows fnw ⊙ W_U" : "the raw rows"} unless you choose otherwise; there reordering
+            {FNW_DEFAULT ? (
+              <>
+                the weighted rows fnw ⊙ W<sub>U</sub>
+              </>
+            ) : (
+              "the raw rows"
+            )} unless you choose otherwise; there reordering
             only relabels the axes (swap the first two and θ reads 90° − θ, with φ unchanged).{" "}
             {FNW_DEFAULT
               ? "Its caught share was not measured in the study; every sighting reports its own."

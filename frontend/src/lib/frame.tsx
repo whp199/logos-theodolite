@@ -80,7 +80,7 @@ export function describeFrame(s: Sighting) {
   const notes: string[] = [];
   notes.push(
     lowdin
-      ? "squared all at once: one frame for every order, the order naming only which axis is first"
+      ? "squared all at once: the same three axes for every order, the order naming which sets 0°, which 90° and which points up"
       : "order-dependent (REPORT §3.4, bug 3)",
   );
   if (raw) notes.push("each layer read in its own frame");
@@ -120,15 +120,21 @@ export type ShownFrame = FrameOptions & { own: boolean; recorded: boolean };
  * - A live sighting's frame is the one the server echoed. A live reply that echoes none came from a server older than
  *   the frame options, which built every frame as first built.
  * - The recorded sighting carries no frame: it was taken in the frame as first built, Gram–Schmidt on the raw rows.
- * - The next sighting's frame is `frameOpts`; in a neuron frame (pole_motif) squared by `neuron.neuronSquaring`, and
- *   never weighted or per layer, which apply to a frame from words only (engine_runtime.py prepare_sweep).
+ * - The next sighting's frame is `frameOpts`; in a neuron frame (pole_motif with a neuron chosen) squared by
+ *   `neuron.neuronSquaring`, and never weighted or per layer, which apply to a frame from words only
+ *   (engine_runtime.py prepare_sweep). In pole_motif with no neuron chosen the server falls back to the frame from
+ *   words, so that is `frameOpts` too.
  * Every frame-dependent text, label and drawing on a page should come from this one helper.
  */
 export function shownFrameOptions(
   sighting: Sighting | null,
   matches: boolean,
   frameOpts: FrameOptions,
-  neuron: { surveyMode: "monument" | "pole_motif"; neuronSquaring: FrameOptions["squaring"] } | null = null,
+  neuron: {
+    surveyMode: "monument" | "pole_motif";
+    neuronSquaring: FrameOptions["squaring"];
+    lockedPole: readonly number[] | null;
+  } | null = null,
 ): ShownFrame {
   if (matches && sighting) {
     const fr = sighting.frame;
@@ -138,7 +144,7 @@ export function shownFrameOptions(
     }
     return { ...FRAME_AS_BUILT, own: true, recorded: true };
   }
-  if (neuron?.surveyMode === "pole_motif") {
+  if (neuron?.surveyMode === "pole_motif" && neuron.lockedPole) {
     const squaring = neuron.neuronSquaring;
     return { squaring, perLayer: false, fnw: false, centre: frameOpts.centre, own: false, recorded: false };
   }

@@ -389,8 +389,8 @@ export const Pillars: React.FC = () => (
           <dd className="num">
             input-side <M>gate_trigger_tokens</M> carry ~6–8% of the reproducible signal, and give one label for two
             poles (§3.4 bug 7); pole magnitudes are not meaningful, and the top 15 explain only 10–41% of the FFN write at
-            the sampled index 20, 30, 40, 50 and 58, ranked by |a| or by write size alike, within half a percentage point
-            (bug 8; E3, 12 prompts at the last position, indicative only).
+            the sampled indices 20, 30, 40, 50 and 58 (and 70–74% at indices 2 and 10), ranked by |a| or by write size alike,
+            within half a percentage point (bug 8; E3, 12 prompts at the last position, indicative only).
           </dd>
           <dt>recommended</dt>
           <dd>

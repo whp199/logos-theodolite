@@ -2635,8 +2635,8 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
           <dt>caveat</dt>
           <dd>
             a ranking by |a| ignores how large each neuron’s write is; ranked either way, the fifteen explained only 10–41% of the
-            feed-forward write at the layers E3 sampled (21, 31, 41, 51 and 59), and E3 calls this indicative (12 prompts, last
-            word-piece; REPORT §3.4, bug 8).
+            feed-forward write at the layers E3 sampled from 21 to 59 (21, 31, 41, 51 and 59), and 70–74% at layers 3 and 11; E3
+            calls this indicative (12 prompts, last word-piece; REPORT §3.4, bug 8).
           </dd>
           <dt>the fix</dt>
           <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -3052,8 +3052,9 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
             survey from this neuron →
           </a>
           <Rubric>
-            Treat its angles as rough. With three words as landmarks, the study found bearings swung by 58 to 99 degrees when their order changed;
-            a frame built from a neuron is made the same way and was not tested.
+            Treat its angles as rough. A frame built from a neuron has three axes with fixed roles (what wakes it, what it writes, who listens
+            next), so the order fault of word landmarks, which swung bearings by 58 to 99 degrees in the study, does not arise; but no frame
+            built from a neuron was tested.
           </Rubric>
         </div>
         <div style={card}>
@@ -3113,9 +3114,18 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
               <sup>⊤</sup>, w<sub>gate,j*</sub>) in fp32: what wakes it, what it writes, and j*, the reader at the end of the sweep’s first thread
               from this neuron, or failing one, the first listed neuron in layer {Math.min(60, m.layerNo + 1)} (
               <span className="mono">backend/engine_runtime.py</span>).{" "}
-              {gs
-                ? "Gram–Schmidt keeps axis 1 exactly w_gate. A neuron frame keeps it by default: its three axes have fixed roles, so their order is not a choice and the order fault of the word landmarks (REPORT §3.4, bug 3) does not arise. A symmetric (Löwdin) orthonormalization [33] is an option on the landmarks page."
-                : "Squared all at once (Löwdin [33]), as chosen on the landmarks page, so axis 1 is no longer exactly w_gate; a neuron frame is squared in order (Gram–Schmidt) by default, since its axes have fixed roles."}{" "}
+              {gs ? (
+                <>
+                  Gram–Schmidt keeps axis 1 exactly w<sub>gate</sub>. A neuron frame keeps it by default: its three axes have fixed
+                  roles, so their order is not a choice and the order fault of the word landmarks (REPORT §3.4, bug 3) does not
+                  arise. A symmetric (Löwdin) orthonormalisation [33] is an option on the landmarks page.
+                </>
+              ) : (
+                <>
+                  Squared all at once (Löwdin [33]), as chosen on the landmarks page, so axis 1 is no longer exactly w
+                  <sub>gate</sub>; a neuron frame is squared in order (Gram–Schmidt) by default, since its axes have fixed roles.
+                </>
+              )}{" "}
               This frame was not tested. The link above sets this lock for the next sighting.{" "}
               <a href={href.landmarks()}>landmarks</a>
             </span>

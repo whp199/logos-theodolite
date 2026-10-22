@@ -783,8 +783,8 @@ const BearingApparatus: React.FC<{ c: Ctx }> = ({ c }) => {
         <dt>caveat</dt>
         <dd>
           {F.lowdin
-            ? "A Löwdin frame [33] squares the landmarks all at once: their order no longer changes the frame, only which axis is named first. "
-            : "A Gram–Schmidt frame depends on the order of its landmarks: reordering them swings the bearing by 58–99° (REPORT §3.4, bug 3); a Löwdin frame [33], the interface’s default, does not. "}
+            ? "A Löwdin frame [33] squares the landmarks all at once: their order no longer changes the three axes, but it still says which sets the bearing’s 0°, which its 90° and which points up, so reordering them relabels the bearing and elevation (swap the first two and θ reads 90° − θ). "
+            : "A Gram–Schmidt frame depends on the order of its landmarks: reordering them swings the bearing by 58–99° (REPORT §3.4, bug 3); a Löwdin frame [33], the interface’s default, keeps the same three axes in any order and only relabels them. "}
           The captured fraction is always shown.{" "}
           <a href={href.landmarks()}>change the landmarks, or lock the frame to a neuron</a>
         </dd>
@@ -1853,8 +1853,8 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
       ) : null}
       <Rubric style={{ margin: "4px 0 0", maxWidth: 980 }}>
         Strength is how hard a neuron fired; its write is how much it changed the stream. This sighting lists {rw.fifteen}. Ranked either
-        way, the fifteen carry only a part of what a layer’s memory writes (10–41% where the study looked), so much of the story lies
-        elsewhere. Before you nudge: the server’s own default
+        way, the fifteen carry only a part of what a layer’s memory writes (where the study looked, 10–41% at layers 21 to 59 and about
+        70% at layers 3 and 11), so much of the story lies elsewhere. Before you nudge: the server’s own default
         nudge is 2.4 to 7.4 times the size of the stream itself and wrecks the model’s output. The nudge page sends a hundredth of the
         stream instead, and even that can break a plain answer. Start very small.
       </Rubric>
@@ -1918,8 +1918,9 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           <dd style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
             <span>
               |a| is not the size of the write. A neuron adds s · a · (w<sub>down</sub> ⊙ w<sub>post</sub>) / rms(y) to the stream. In E3
-              (12 prompts, last word-piece, indicative) at layers 21, 31, 41, 51 and 59 the fifteen explained 10–41% of the feed-forward
-              write, ranked by |a| or by write size, within half a percentage point (E3_lens_validation_d_analysis.json): by |a|, 14% at
+              (12 prompts, last word-piece, indicative) the fifteen explained 10–41% of the feed-forward write at layers 21, 31, 41, 51 and
+              59 and 70–74% at layers 3 and 11, the seven it sampled, ranked by |a| or by write size, within half a percentage point
+              (E3_lens_validation_d_analysis.json): by |a|, 14% at
               layer 31 and 22% at layer 41; by write size, 14% and 21% (bug 8). The interface ranks by write size unless you choose
               otherwise; the server’s default and the recorded sighting rank by |a|.
             </span>
@@ -2007,6 +2008,9 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
                 direct-path estimate reaches 0.87 (bug 4).{" "}
               </>
             )}
+            {c.s.poleRanking === "write"
+              ? "These threads join the fifteen biggest writers listed; V7 measured both scores only on threads among the fifteen ranked by |a|. "
+              : null}
             {threads.length === 0 ? (
               <>
                 This sighting’s threads: <M c={c} />.
