@@ -2,9 +2,9 @@
  "what": "E3's average state mu (experiments/results/E3_background_mu.npy) against this server's coordinates and against E3's record, as scripts/verify_e2e_ui_and_mcp.py item 12 measured it",
  "written_by": "scripts/verify_e2e_ui_and_mcp.py, check_study_mean_coordinates (rewritten on every GPU run)",
  "run": {
-  "date": "2026-10-22 04:43:11 -0500",
-  "commit": "45f16308664e4088dcbf48b296033361dce13055",
-  "tree_had_changes": true,
+  "date": "2026-10-22 04:56:01 -0500",
+  "commit": "6a48b714f88abf949f0cec2800c1973bfaec4b63",
+  "tree_had_changes": false,
   "gpu": "NVIDIA GeForce RTX 5090"
  },
  "mu_sha256": "de0fded6074a1a50719d0ccfc4b76b78f4450915a431c53d470f06d66a2daba8",
