@@ -1,5 +1,6 @@
 import React from "react";
-import { IfApparatus, Page, ReadingThrough, Rubric, SectionHead } from "../components/kit";
+import { IfApparatus, Missing, Page, ReadingThrough, Rubric, SectionHead } from "../components/kit";
+import { RECORDED_CHECKED } from "../lib/labels";
 import type { Route } from "../router";
 import { Cartouche, Stemma } from "./lineage/figures";
 import { Pillars } from "./lineage/Pillars";
@@ -379,16 +380,27 @@ const Keep: React.FC = () => (
         8% of the signal. Stored passages for each face, the study’s fix (§3.4, bug 7): <NotInInstrument />. Meanwhile,
         on a <To dest="neuron">neuron’s folio</To> you can put your own guess about what wakes it to the test.
       </KeepRow>
-      <KeepRow n={2} state="in part" condition="Output labels trusted only from layer 41 upward.">
-        The leaf on <To dest="instrument">the instrument</To> and <To dest="layer">a layer’s leaf</To> call labels below
-        layer 41 rumours, not findings, and a <To dest="neuron">neuron’s folio</To> marks layers 41 to 58 as the band
-        where labels held up. The labels are still shown below it.
+      <KeepRow n={2} state="yes" condition="Output labels trusted only from layer 41 upward.">
+        Below layer 41 no page sets a neuron’s words in its main reading: <To dest="instrument">the instrument</To>,{" "}
+        <To dest="layer">a layer’s leaf</To>, a <To dest="neuron">neuron’s folio</To>, <To dest="nudge">the nudge</To>
+        , the threads and <To dest="vault">the vault</To> hold them back, say why, and keep them in the apparatus. The
+        server marks each label it sends (label_check), so callers over HTTP and MCP get the same caution; the vault’s
+        console shows the server’s replies whole, and says which of their labels the reading pages hold back.
       </KeepRow>
-      <KeepRow n={3} state="in part" condition="A label counts only when the lens and the naked eye agree.">
-        <To dest="layer">A layer’s leaf</To> and a <To dest="neuron">neuron’s folio</To> set the two readings side by
-        side, say how far they agree, and tell you to doubt those that share nothing. In the study, within layers 41
-        to 58, this agreement predicted a sound label (AUC 0.84, for J++ labels). Labels that disagree are still shown,
-        not yet held back.
+      <KeepRow n={3} state={RECORDED_CHECKED ? "yes" : "in part"} condition="A label counts only when the lens and the naked eye agree.">
+        Each label the server sends now carries the study’s own measure: how many word-pieces the lens and the naked
+        eye share in their first ten. A label that shares none is held back from the main reading and kept in the
+        apparatus; others show their count. The cut at none is the instrument’s, since the study set none. In the
+        study, within layers 41 to 58, this agreement predicted a sound label (AUC 0.84, for base-fitted J++ labels on
+        random neurons), so under any other lens the count is shown but holds nothing back; at layer 59 it is
+        untested, and at layer 60, where no lens stands between, the two readings are one.
+        {RECORDED_CHECKED ? null : (
+          <>
+            {" "}
+            The demonstration sighting’s labels and the vault’s recorded searches carry three and five words a side,
+            too few for the measure, so only the layer holds them back: <Missing what="not yet checked ten a side" />.
+          </>
+        )}
       </KeepRow>
       <KeepRow
         n={4}
@@ -519,8 +531,9 @@ const Practices: React.FC = () => (
         asks="Say plainly when you do not understand a neuron."
         here={
           <>
-            A neuron’s field notes let you mark either face “not yet understood”, and its folio tells you to doubt a
-            label when its two readings share nothing. The notes last for this visit only; keeping them with the vault:{" "}
+            A neuron’s field notes let you mark either face “not yet understood”, and its folio holds back a label
+            whose two readings share none of their first ten, saying why and keeping it in the apparatus. The notes
+            last for this visit only; keeping them with the vault:{" "}
             <NotInInstrument />
           </>
         }

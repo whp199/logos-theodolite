@@ -6,6 +6,8 @@ import { clock, entrySummary, prettyJson } from "./live";
 import { esc } from "./lql";
 import { MONO, show, signedFixed, smallCaps } from "./bits";
 import { runFind, toConsole } from "./ui";
+import { HeldBackWords } from "../../components/HeldBack";
+import { heldRubric, labelGate, layerIdxOfPage, vaultCheck } from "../../lib/labels";
 
 const codeStyle: React.CSSProperties = { fontFamily: MONO, fontSize: 15, color: "var(--ink)", overflowWrap: "anywhere" };
 const smallMono: React.CSSProperties = { fontFamily: MONO, fontSize: 13, overflowWrap: "anywhere" };
@@ -58,8 +60,10 @@ export const HistoryPanel: React.FC = () => {
           <span style={{ fontSize: 16, color: "var(--muted)" }}>
             and so on, for four words at six layers. The vault counts from nought, so{" "}
             <span style={{ fontFamily: MONO, fontSize: 14, overflowWrap: "anywhere" }}>layer = 20</span> is layer 21 here. POLES and EDGES run
-            the same search in this vault. Each cell shows the nearest neuron and its first word.
+            the same search in this vault. Each cell shows the nearest neuron and its first word through the lens; below layer 41 the word is
+            held back, and kept in the apparatus.
           </span>
+          <Rubric>{heldRubric(labelGate(layerIdxOfPage(STUDY_LAYERS[0]), null))}</Rubric>
           <div style={{ overflowX: "auto", paddingBottom: 6 }}>
             <div style={{ minWidth: 760 }}>
               <div
@@ -94,6 +98,8 @@ export const HistoryPanel: React.FC = () => {
                   </span>
                   {STUDY_WORDS.map((w) => {
                     const top = VAULT_ANSWERS[`${w}@${L - 1}`][0];
+                    // the label gate (lib/labels.ts): by its recorded check, or by the layer alone until it is checked
+                    const gate = labelGate(layerIdxOfPage(L), vaultCheck(`${w}@${L - 1}`, top[0], top[1]));
                     return (
                       <button
                         key={w}
@@ -118,7 +124,11 @@ export const HistoryPanel: React.FC = () => {
                         <span className="num" style={{ fontSize: 17 }}>
                           {top[0]}
                         </span>
-                        <span style={{ fontSize: 19, fontStyle: "italic" }}>{show(top[3][0])}</span>
+                        {gate.heldBack ? (
+                          <HeldBackWords gate={gate} words={top[3].slice(0, 1)} eye={top[4].slice(0, 1)} compact style={{ fontSize: 15 }} />
+                        ) : (
+                          <span style={{ fontSize: 19, fontStyle: "italic" }}>{show(top[3][0])}</span>
+                        )}
                         <span
                           style={{
                             fontSize: 15,

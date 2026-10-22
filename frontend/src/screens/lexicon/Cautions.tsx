@@ -1,6 +1,7 @@
 import React from "react";
 import { Apparatus, Missing, Rubric } from "../../components/kit";
 import { FNW_DEFAULT } from "../../store/useTheodoliteStore";
+import { GATE_FIGURES, RECORDED_CHECKED } from "../../lib/labels";
 import { Lede, LexLink, LexSection, M } from "./parts";
 
 /*
@@ -121,7 +122,9 @@ export const Cautions: React.FC = () => (
         means={
           <>
             Outside layers 41–58, read a neuron’s words as a rumour. Inside them, trust a label more when the lens and
-            the naked eye agree on it; in the study, that agreement was a good sign of a true label.
+            the naked eye agree on it; in the study, that agreement was a good sign of a true label. The pages now hold
+            back a neuron’s words below layer 41, and where the lens and the naked eye share none of their first ten;
+            the apparatus keeps them, with the reason. At layers 59 and 60 the words are shown, but were never tested.
           </>
         }
         from="From the README’s headline findings, the report’s §3.2 and the N1 neuron-label study."
@@ -132,7 +135,11 @@ export const Cautions: React.FC = () => (
               384 poles (192 random neurons × 2 signs, at layers 11, 21, 31, 41, 46, 51, 56, 58) against causal steering
               and contexts from a 147k-token corpus. P@10 in the causal top 100: ≈ 0 at layers 11–31; 0.35–0.67 at layers
               41–58 for J++ labels, about the same for the naked eye’s (null ≤ 0.003; N1 T1). Within layers 41–58,
-              agreement of the lens’s and the naked eye’s top ten predicts a valid label, AUC 0.84 (REPORT §3.2). Labels
+              agreement of the lens’s and the naked eye’s top ten predicts a valid label, AUC 0.84, for base-fitted J++
+              labels on random neurons (REPORT §3.2). Counted again from N1’s data (<M>N1C_gate_cut.json</M>, a
+              re-analysis), {GATE_FIGURES.shareNothingSound} of the {GATE_FIGURES.shareNothing} faces in that band whose
+              two readings shared none of ten were sound, against {GATE_FIGURES.shareSomeSound} of the{" "}
+              {GATE_FIGURES.shareSome} that shared at least one (P@10 ≥ 0.3). Labels
               through a lens fitted on the instruct model were not tested. Tightness of a label’s top ten at layers 21 /
               31: neurons 0.090 / 0.087, random 512-neuron mixtures 0.080 / 0.090, isotropic noise 0.054 / 0.040 (N1 T5;
               erratum E44).
@@ -144,6 +151,25 @@ export const Cautions: React.FC = () => (
               labels from activation contexts stored per pole; output labels only at layer 41 and above, gated by lens
               and naked-eye agreement, and causally spot-checked (REPORT §3.3; §3.5, recommendation 5). Poles [9];
               activation labelling [25].
+            </>,
+          ],
+          [
+            "fix, in part done",
+            <>
+              the layer and the agreement (conditions 2 and 3): every neuron label the server sends carries{" "}
+              <M>label_check</M> (<M>shared_top10</M>, the word-piece ids both readings share in their first ten, fp32,
+              softcapped, as N1 counted; <M>held_back</M>; <M>reasons</M>), and the replies carry the rule as{" "}
+              <M>label_gate</M> (<M>backend/label_gate.py</M>). The pages hold a label back below layer 41 (index 40),
+              and, through the base-fitted J++ lens below layer 60, where its readings share none of ten; the cut at
+              none is the instrument’s, the study set none, and under any other lens the count is shown but not used
+              (erratum E47). The words are still sent, and kept in the apparatus. Where a page has no ten-a-side count
+              (the recorded sighting’s three words a side, an older server), only the layer holds a label back:{" "}
+              {RECORDED_CHECKED ? (
+                "the recorded labels have been checked ten a side"
+              ) : (
+                <Missing what="the recorded labels not yet checked ten a side" />
+              )}
+              . Not done: activation contexts stored per pole, and a causal spot-check of each label.
             </>,
           ],
         ]}

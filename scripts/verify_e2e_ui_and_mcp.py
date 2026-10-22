@@ -40,6 +40,17 @@ Runs inside a single process/network namespace to verify:
    and of a queued request) and refusals stay on their own request; the thinking comparison rides on the first pair
    only and says how it ended; trace_readers on exact ids reads what the text did. Saved prompts over
    HTTP, in a temporary file (THEODOLITE_SAVED_PROMPTS is pointed away from the reader's own list).
+8. The label gate (REPORT §3.3, conditions 2 and 3; scripts/check_label_gate.py runs first, on the CPU): /api/health,
+   every sweep, inspect_pole, trace_downstream_readers, test_motif_hypothesis and the vault's NEAREST and DESCRIBE
+   POLE carry "label_gate" just before "lens", and every neuron label they send a "label_check" by the study's
+   measure, the same over MCP, HTTP and the WebSocket. At layer 59 (counting from 0) a face shares all ten and is
+   shown ("one_reading"); below layer 40 it is held back ("below_layer_40"); the readers traced carry their naked-eye
+   words and checks. Where the study's static caches are at hand (experiments/results/N1A_cache, gitignored),
+   inspect_pole's count equals N1's own overlap for four of its neurons at each sampled layer of the band, both faces.
+   On the pages, the leaf of layer 36 (the default) holds its neuron's words back: on the recorded sighting, the
+   instrument's leaf and the layer's leaf show none of layer 36's words or glosses with the apparatus closed and show
+   them with it open; on a live sighting the instrument's leaf says so; and the folio of neuron 15491 at layer 54
+   gives the server's ten-a-side count on its seal ("k IN 10") and its words, as the server's check decides.
 """
 
 from __future__ import annotations
@@ -79,6 +90,7 @@ from backend.mcp_scientist import (
     test_motif_hypothesis,
     trace_downstream_readers,
 )
+from backend.label_gate import BAND, LABEL_GATE_CARD, label_check
 from backend.server import MAGIC_THEO, MAX_SWEEP_POSITIONS, WIRE_VERSION, app
 
 
@@ -307,6 +319,66 @@ def lens_phrase(lens: Dict[str, Any], named: bool = False) -> str:
     return f"the {lens['name']} lens, fitted on {lens['fitted_on']}"
 
 
+LABEL_CHECK_KEYS = ["shared_top10", "held_back", "reasons", "band", "sampled_layer", "in_measured_band",
+                    "lens_validated", "edited"]
+
+
+def assert_label_check(c: Any, layer: int, lens_id: str | None, what: str, edited: bool = False) -> Dict[str, Any]:
+    """A label's `label_check` (backend/label_gate.py) at code layer `layer`: its keys in order, and every field but the
+    count what the rule gives for that count (two id lists sharing exactly `shared_top10`)."""
+    assert isinstance(c, dict) and list(c) == LABEL_CHECK_KEYS, f"{what}: label_check {c!r}"
+    k = c["shared_top10"]
+    assert k is None or (isinstance(k, int) and 0 <= k <= 10), f"{what}: shared_top10 {k!r}"
+    lens_ids, eye_ids = (list(range(10)), list(range(10 - k, 20 - k))) if k is not None else (None, None)
+    want = label_check(layer, lens_ids, eye_ids, lens_id, edited=edited)
+    assert c == want, f"{what}: label_check {c} is not the rule's {want}"
+    return c
+
+
+def wp(token: str) -> str:
+    """A word-piece as the pages print it (frontend/src/lib/words.ts wp): between curly quotes, its leading space
+    dropped, a new line as ↵."""
+    t = token.lstrip()
+    if t == "":
+        return "“␣”" if token else "“”"
+    return "“" + t.replace("\n", "↵") + "”"
+
+
+# Set one of the "How to read these pages" switches ("rubrics", "apparatus") on or off, whatever it was: (name, on)
+SET_READING_JS = """((name, on) => {
+    const b = Array.from(document.querySelectorAll('[aria-label="How to read these pages"] button'))
+        .find((x) => x.textContent.includes(name));
+    if (!b) return null;
+    if ((b.getAttribute("aria-pressed") === "true") !== on) b.click();
+    return true;
+})"""
+
+
+def study_cache() -> Path | None:
+    """The study's static caches (experiments/results/N1A_cache, gitignored): here, or in the main checkout of the
+    worktree this is."""
+    here = ROOT_DIR / "experiments" / "results" / "N1A_cache"
+    if (here / "static_L40.pt").exists():
+        return here
+    try:
+        common = subprocess.run(["git", "-C", str(ROOT_DIR), "rev-parse", "--path-format=absolute", "--git-common-dir"],
+                                capture_output=True, text=True, timeout=10, check=True).stdout.strip()
+    except Exception:
+        return None
+    main = Path(common).parent / "experiments" / "results" / "N1A_cache"
+    return main if (main / "static_L40.pt").exists() else None
+
+
+# The words and glosses of layer 36 (index 35) in the recorded sighting (frontend/src/fixtures/e6-demo-sighting.json,
+# poleLabels "35:0" to "35:4", lens and eye; the glosses from screens/instrument/recorded.ts and
+# screens/layerLeaf/recorded.ts). Only pieces that cannot turn up elsewhere on those pages are listed, as the pages
+# print them (wp: between curly quotes, the leading space dropped).
+L36_RECORDED_WORDS = ["“myself”", "“मुझ”", "“的我”", "“líng”", "“JPY”", "“ücret”", "“青少年”", "“年龄”", "“использовать”",
+                      "“creator”", "“自身的”", "“自身”", "“আমাকে”", "“sayesinde”", "“੦”", "“précision”", "“scept”", "“creato”"]
+L36_RECORDED_GLOSSES = ["one idea in three tongues", "Hindi “me”", "Chinese “one’s own”", "Chinese “teenagers”",
+                        "Turkish “thanks to”", "No word in common, yet both eyes speak of the self", "Italian “created”"]
+
+
 ARTIFACT_DIR = Path(os.environ.get("THEODOLITE_ARTIFACT_DIR", str(ROOT_DIR / "artifacts" / "e2e")))
 ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
 HOST = "127.0.0.1"
@@ -419,8 +491,9 @@ async def main() -> int:
     # the sampler's mirrored odds, the saved-prompts routes, the sweep's wire protocol, and capture_rows against
     # interp_engine's capture bit for bit on a tiny stand-in Gemma 4, on the CPU too
     # and first, what the interface sends by default (its store, bundled with esbuild and run under node)
+    # and the label gate's rule, the server's measure against the study's caches, and the results the pages quote
     for cpu_check in ("check_interface_defaults.py", "check_sampler_mirror.py", "check_saved_prompts.py",
-                      "check_sweep_protocol.py", "check_capture_rows.py"):
+                      "check_sweep_protocol.py", "check_capture_rows.py", "check_label_gate.py"):
         res = subprocess.run(
             [sys.executable, "-I", str(ROOT_DIR / "scripts" / cpu_check)],
             capture_output=True, text=True, timeout=600, check=False,
@@ -458,6 +531,10 @@ async def main() -> int:
         assert_base_lens(health.get("lens"), health["model_id"])
         lens = health["lens"]
         print(f"  • lens: {lens['name']}, fitted on {lens['fitted_on']} ({lens['source']})")
+        # the label gate's rule rides just before the lens (backend/label_gate.py)
+        hk = list(health)
+        assert health.get("label_gate") == LABEL_GATE_CARD and hk.index("label_gate") == hk.index("lens") - 1, hk
+        print(f"  • label gate: {LABEL_GATE_CARD['rule']}, just before the lens")
 
         # -------------------------------------------------------------------------
         # Step 1: Verify FastMCP Autonomous Circuit Scientist Tools
@@ -476,6 +553,49 @@ async def main() -> int:
         # the MCP tools name the lens their words went through, as /api/health does
         assert_base_lens(pole_res.get("lens"), health["model_id"])
         assert pole_res["lens"] == lens, "inspect_pole and /api/health name different lenses"
+        # each face carries its label check, and the reply the rule, just before the lens; layer 53 lies in the band
+        assert list(pole_res)[-2:] == ["label_gate", "lens"] and pole_res["label_gate"] == LABEL_GATE_CARD, list(pole_res)
+        for face in ("north_pole", "south_pole"):
+            assert_label_check(pole_res[face].get("label_check"), 53, lens["id"], f"inspect_pole(53, 16383) {face}")
+        assert pole_res["active_pole"]["label_check"] == pole_res["south_pole"]["label_check"]
+        print(f"  • inspect_pole(L53, N16383): shares {pole_res['north_pole']['label_check']['shared_top10']} (+) and "
+              f"{pole_res['south_pole']['label_check']['shared_top10']} (-) of ten with the naked eye")
+        # at layer 59 the lens is the identity: the two readings are one, so they share all ten and are shown
+        top_pole = inspect_pole(layer=59, neuron_idx=12584, polarity=1.0)
+        for face in ("north_pole", "south_pole"):
+            c = assert_label_check(top_pole[face]["label_check"], 59, lens["id"], f"inspect_pole(59, 12584) {face}")
+            assert c["shared_top10"] == 10 and c["band"] == "one_reading" and not c["held_back"], c
+        # below layer 40 a label is held back by the layer, whatever it shares
+        low_pole = inspect_pole(layer=35, neuron_idx=21189, polarity=-1.0)
+        for face in ("north_pole", "south_pole"):
+            c = assert_label_check(low_pole[face]["label_check"], 35, lens["id"], f"inspect_pole(35, 21189) {face}")
+            assert c["held_back"] and "below_layer_40" in c["reasons"] and c["band"] == "not_sampled", c
+        print("  • inspect_pole: layer 59 shares ten of ten and is shown; layer 35 is held back below layer 40")
+        # the folio's neuron, 15491 at layer 54 (index 53), positive face: its check decides what the page shows
+        folio_face = inspect_pole(layer=53, neuron_idx=15491, polarity=1.0)["north_pole"]
+        folio_check = assert_label_check(folio_face["label_check"], 53, lens["id"], "inspect_pole(53, 15491) north_pole")
+        folio_word = wp(folio_face["j_vindex_tokens"][0]["token"])
+        # the server's count is the study's: N1's own overlap (its static caches) for four neurons per sampled layer
+        cache = study_cache()
+        if cache is None:
+            print("  • N1 parity skipped: the study's static caches (experiments/results/N1A_cache, gitignored) are not here")
+        else:
+            neu = json.loads((ROOT_DIR / "experiments" / "results" / "N1_neurons.json").read_text())
+            n_faces, differ = 0, []
+            for l in [int(x) for x in neu["layers"] if BAND[0] <= int(x) <= BAND[1]]:
+                st = torch.load(cache / f"static_L{l}.pt", weights_only=True)
+                for n in neu["neurons"][str(l)][:4]:
+                    rep_n = inspect_pole(layer=l, neuron_idx=n, polarity=1.0)
+                    ni = st["neurons"].index(n)
+                    for face, s in (("north_pole", 1.0), ("south_pole", -1.0)):
+                        study = len(set((s * st["jpp"][ni].float()).topk(10).indices.tolist())
+                                    & set((s * st["naive"][ni].float()).topk(10).indices.tolist()))
+                        got = assert_label_check(rep_n[face]["label_check"], l, lens["id"], f"N1 L{l} n{n} {face}")
+                        n_faces += 1
+                        if got["shared_top10"] != study:
+                            differ.append((l, n, face, got["shared_top10"], study))
+            assert not differ, f"inspect_pole's counts differ from N1's overlap (layer, neuron, face, ours, N1's): {differ}"
+            print(f"  • N1 parity: inspect_pole's ten-a-side count equals N1's overlap on all {n_faces} faces checked")
 
         # Tool 2: trace_downstream_readers on Layer 35 (1-based L36) Neuron 9482
         readers_res = await trace_downstream_readers(
@@ -494,6 +614,13 @@ async def main() -> int:
         assert len(top_readers) > 0
         assert_base_lens(readers_res.get("lens"), health["model_id"])
         assert readers_res["lens"] == lens, "trace_downstream_readers and /api/health name different lenses"
+        # each reader returned carries the naked eye's words and its own label check; the rule rides before the lens
+        assert list(readers_res)[-2:] == ["label_gate", "lens"] and readers_res["label_gate"] == LABEL_GATE_CARD
+        for r in top_readers:
+            assert len(r["dst_naive_tokens"]) == 4 and all({"token", "logit"} <= set(t) for t in r["dst_naive_tokens"]), r
+            assert_label_check(r["dst_label_check"], r["dst_layer"], lens["id"], f"reader L{r['dst_layer']}:N{r['dst_neuron_idx']}")
+        print(f"  • the readers traced carry their naked-eye words and label checks "
+              f"({sum(r['dst_label_check']['held_back'] for r in top_readers)} of {len(top_readers)} held back)")
 
         # Tool 3: test_motif_hypothesis on Layer 53 Neuron 16383 (Spider/Arachnid South-Pole neuron)
         hyp_res = await test_motif_hypothesis(
@@ -518,6 +645,8 @@ async def main() -> int:
         assert abs(hyp_res["cohens_d"]) > 0.8, f"Expected strong selectivity, got {hyp_res['cohens_d']}"
         assert_base_lens(hyp_res.get("lens"), health["model_id"])
         assert hyp_res["lens"] == lens, "test_motif_hypothesis and /api/health name different lenses"
+        assert list(hyp_res)[-2:] == ["label_gate", "lens"] and hyp_res["label_gate"] == LABEL_GATE_CARD
+        assert_label_check(hyp_res.get("pole_label_check"), 53, lens["id"], "test_motif_hypothesis pole_label_check")
         print(f"  • the three MCP tools name the lens: {lens['name']}, fitted on {lens['fitted_on']}")
 
         # -------------------------------------------------------------------------
@@ -580,6 +709,26 @@ async def main() -> int:
             # the sweep names the lens its readings went through, as /api/health does
             assert_base_lens(json_msg.get("lens"), health["model_id"])
             assert json_msg["lens"] == lens, "the sweep and /api/health name different lenses"
+            # every label the sweep sends carries its check (null where no words were read), and the rule rides just
+            # before the lens; old keys of each entry unchanged
+            mk = list(json_msg)
+            assert json_msg["label_gate"] == LABEL_GATE_CARD and mk.index("label_gate") == mk.index("lens") - 1, mk
+            n_checked, n_held = 0, 0
+            for l_str, entries in json_msg["poles_labels"].items():
+                for e in entries:
+                    assert list(e) == ["rank", "neuron_idx", "polarity", "abs_act", "write_size", "j_vindex_tokens",
+                                       "naive_tokens", "label_check"], list(e)
+                    if not e["j_vindex_tokens"]:
+                        assert e["label_check"] is None, (l_str, e)
+                        continue
+                    c = assert_label_check(e["label_check"], int(l_str), lens["id"], f"poles_labels[{l_str}][{e['rank']}]")
+                    n_checked += 1
+                    n_held += c["held_back"]
+                    if int(l_str) == 59:
+                        assert c["shared_top10"] == 10 and not c["held_back"], c
+            assert n_checked > 0 and all(e["label_check"] and e["label_check"]["held_back"]
+                                         for e in json_msg["poles_labels"]["35"]), "layer 35's labels are not held back"
+            print(f"  • the sweep's labels: {n_checked} checked, {n_held} held back; the rule just before the lens")
 
             # the first write-ranked sweep since the server started computes each layer's write-column norms once
             # (engine_runtime.py write_col_norms, cached). It differs from the plain sweep just taken only in
@@ -692,6 +841,10 @@ async def main() -> int:
             assert trd["lens"] == lens, "the WebSocket trace_readers reply and /api/health name different lenses"
             assert all(36 <= r["dst_layer"] <= 38 for r in rs)
             assert all(abs(rs[i]["score"]) >= abs(rs[i + 1]["score"]) for i in range(len(rs) - 1))
+            assert trd["label_gate"] == LABEL_GATE_CARD
+            for r in rs:
+                assert_label_check(r["dst_label_check"], r["dst_layer"], lens["id"], f"WS reader L{r['dst_layer']}")
+                assert len(r["dst_naive_tokens"]) == 4, r
             print(f"  • WS trace_readers(hop=3, k=4, direct): top D={rs[0]['direct_gate']:+.4f} (C={rs[0]['coupling_score']:+.4f})")
 
             await ws.send(json.dumps({"action": "larql", "query": "DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -"}))
@@ -700,7 +853,11 @@ async def main() -> int:
             # the vault's DESCRIBE POLE is inspect_pole's reading, and names the same lens, last
             assert list(lq["data"]) == list(pole_res), f"WS DESCRIBE POLE keys {list(lq['data'])} != {list(pole_res)}"
             assert lq["data"]["lens"] == lens, "the WebSocket larql reply names a different lens"
-            print("  • WS larql DESCRIBE POLE: inspect_pole's keys, the lens named last")
+            # and its label checks are inspect_pole's, with the rule just before the lens
+            assert lq["data"]["label_gate"] == LABEL_GATE_CARD
+            for face in ("north_pole", "south_pole", "active_pole"):
+                assert lq["data"][face]["label_check"] == pole_res[face]["label_check"], f"WS DESCRIBE POLE {face} check"
+            print("  • WS larql DESCRIBE POLE: inspect_pole's keys and label checks, the rule and the lens named last")
 
             # ---------------------------------------------------------------------
             # Step 3c: a sighting of every word-piece (request ids, the stream, cancels, the sampler)
@@ -719,6 +876,9 @@ async def main() -> int:
         # the HTTP route passes the tool's reply on as it is: the same keys, the same words, the same lens
         assert list(pole_http) == list(pole_res), f"HTTP keys {list(pole_http)} != MCP keys {list(pole_res)}"
         assert pole_http["lens"] == pole_res["lens"] == lens, "the HTTP reply names a different lens"
+        assert pole_http["label_gate"] == LABEL_GATE_CARD
+        for face in ("north_pole", "south_pole", "active_pole"):
+            assert pole_http[face]["label_check"] == pole_res[face]["label_check"], f"HTTP inspect_pole {face} check"
         assert [t["token"] for t in pole_http["south_pole"]["j_vindex_tokens"]] == [
             t["token"] for t in pole_res["south_pole"]["j_vindex_tokens"]
         ], "the HTTP reply's words differ from the MCP tool's"
@@ -732,6 +892,9 @@ async def main() -> int:
         vault_pole = query_larql_vault("DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -")
         assert list(vault_pole) == list(pole_res), f"MCP DESCRIBE POLE keys {list(vault_pole)} != {list(pole_res)}"
         assert vault_pole["lens"] == lens, "query_larql_vault DESCRIBE POLE names a different lens"
+        assert vault_pole["label_gate"] == LABEL_GATE_CARD
+        for face in ("north_pole", "south_pole", "active_pole"):
+            assert vault_pole[face]["label_check"] == pole_res[face]["label_check"], f"MCP DESCRIBE POLE {face} check"
         assert [t["token"] for t in vault_pole["south_pole"]["j_vindex_tokens"]] == [
             t["token"] for t in pole_res["south_pole"]["j_vindex_tokens"]
         ], "the vault's DESCRIBE POLE words differ from inspect_pole's"
@@ -739,14 +902,20 @@ async def main() -> int:
         r_near = await client.post("/api/larql", json={"query": nearest_q})
         assert r_near.status_code == 200, r_near.text
         near = r_near.json()
-        assert list(near) == nearest_keys + ["lens"], f"HTTP NEAREST keys {list(near)}"
+        assert list(near) == nearest_keys + ["label_gate", "lens"], f"HTTP NEAREST keys {list(near)}"
         assert near["lens"] == lens and len(near["results"]) == 3, "HTTP NEAREST: wrong lens or rows"
+        assert near["label_gate"] == LABEL_GATE_CARD
         assert all(row["j_vindex_top_tokens"] for row in near["results"]), near["results"]
+        # every row at layer 35 is held back by the layer (its five-word lists unchanged)
+        for row in near["results"]:
+            c = assert_label_check(row["label_check"], 35, lens["id"], f"NEAREST row {row.get('neuron_idx')}")
+            assert c["held_back"] and "below_layer_40" in c["reasons"], c
         r_desc = await client.post("/api/larql", json={"query": "DESCRIBE"})
         assert r_desc.status_code == 200 and r_desc.json()["command"] == "DESCRIBE", r_desc.text
         assert "lens" not in r_desc.json(), "DESCRIBE reads no words through the lens, yet names one"
         upd = query_larql_vault("UPDATE LAYER 35 SLOT 9482 SET object = 'she' STRENGTH 0.5")
         try:
+            # an edit reads no label: no label_gate in its reply
             assert list(upd) == ["status", "patch", "active_patches_count", "lens"], f"UPDATE keys {list(upd)}"
             assert upd["status"] == "applied" and upd["lens"] == lens, upd
         finally:
@@ -900,6 +1069,43 @@ async def main() -> int:
             )
             print(f"  • Instrument drawing: found={figure['found']} paths={figure['paths']}")
             assert figure["found"] and figure["paths"] > 10, f"Instrument drawing missing: {figure}"
+
+            # The label gate on a live sighting. The instrument's leaf opens at layer 36, below layer 41: the label of
+            # its neuron is held back, a plate and the reason in place of the words, which come back, between gilt
+            # brackets, only with the apparatus open
+            held_js = """(() => {
+                const b = document.querySelector('[aria-label^="held back · below layer 41"]');
+                const t = b ? b.textContent : "";
+                return { found: !!b, said: document.body.innerText.includes("Its words are held back at this layer."),
+                         words: /lens \\[/.test(t) };
+            })()"""
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            await asyncio.sleep(0.3)
+            closed = await cdp.eval_js(held_js)
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', true)")
+            await asyncio.sleep(0.3)
+            opened = await cdp.eval_js(held_js)
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            await asyncio.sleep(0.3)
+            assert closed == {"found": True, "said": True, "words": False}, f"layer 36's leaf, apparatus closed: {closed}"
+            assert opened["found"] and opened["words"], f"layer 36's leaf, apparatus open: {opened}"
+            print("  • Instrument, live: layer 36's neuron words held back from the leaf, and kept in its apparatus")
+            # the folio of neuron 15491 at layer 54 gives the server's ten-a-side count on its seal, and shows its words
+            # unless the server's check holds them back
+            await go("#/neuron/54/15491/pos")
+            seal = f"{folio_check['shared_top10']} IN 10"
+            await wait_for(f"""document.body.innerText.includes({json.dumps(seal)})""", f"the folio's seal “{seal}”")
+            folio_ui = await cdp.eval_js(
+                f"""(() => {{ const t = document.body.innerText;
+                    return {{ word: t.includes({json.dumps(folio_word)}), held: t.includes("Its words are held back") }}; }})()"""
+            )
+            if folio_check["held_back"]:
+                assert folio_ui["held"], f"the folio of 15491 does not hold back a label the server holds back: {folio_ui}"
+            else:
+                assert folio_ui == {"word": True, "held": False}, f"the folio of 15491 at layer 54: {folio_ui}"
+            print(f"  • Neuron folio 54/15491: seal “{seal}”, its words "
+                  f"{'held back' if folio_check['held_back'] else 'shown (' + folio_word + ' first)'}, as the server's check says")
+            await go("#/instrument")
 
             # How to read these pages: rubrics (red italic guidance) and apparatus (double-gilt-ruled blocks)
             count_js = """(() => {
@@ -1203,6 +1409,39 @@ async def main() -> int:
                 assert not rec.console_errors and not rec.page_exceptions, (
                     f"the recorded sighting's page logged errors: {rec.console_errors} {rec.page_exceptions}")
                 print("  • Landmarks, recorded sighting: “kept exactly as it lies”, squared in order, from raw rows")
+                # Layer 36 of the recorded sighting, the default leaf: below layer 41, so neither the instrument's leaf
+                # nor the layer's leaf sets its neurons' words, or the glosses written for them, in the main reading;
+                # the apparatus brings them back
+                shown_js = (
+                    f"""(() => {{ const t = document.body ? document.body.innerText : "";
+                        return {{ words: {json.dumps(L36_RECORDED_WORDS)}.filter((w) => t.includes(w)),
+                                  glosses: {json.dumps(L36_RECORDED_GLOSSES)}.filter((g) => t.includes(g)),
+                                  held: t.includes("Its words are held back at this layer.") }}; }})()"""
+                )
+                for route, ready, want_open in (
+                    ("#/instrument", "the study’s recorded sighting", (L36_RECORDED_WORDS[:3], ["one idea in three tongues"])),
+                    ("#/layer/36", "murmurs of machines", (L36_RECORDED_WORDS, ["Hindi “me”", "Chinese “teenagers”",
+                                                                               "No word in common, yet both eyes speak of the self"])),
+                ):
+                    await rec.eval_js(f"(() => {{ location.hash = {json.dumps(route)}; }})()")
+                    for _ in range(60):
+                        if await rec.eval_js(f"document.body.innerText.includes({json.dumps(ready)})"):
+                            break
+                        await asyncio.sleep(0.5)
+                    await rec.eval_js(f"{SET_READING_JS}('apparatus', false)")
+                    await asyncio.sleep(0.4)
+                    closed = await rec.eval_js(shown_js)
+                    await rec.eval_js(f"{SET_READING_JS}('apparatus', true)")
+                    await asyncio.sleep(0.4)
+                    opened = await rec.eval_js(shown_js)
+                    assert closed["held"] and not closed["words"] and not closed["glosses"], (
+                        f"{route}, recorded, apparatus closed, shows layer 36's held-back words or glosses: {closed}")
+                    missing = [w for w in want_open[0] if w not in opened["words"]] + [g for g in want_open[1] if g not in opened["glosses"]]
+                    assert not missing, f"{route}, recorded, apparatus open, lacks {missing}"
+                    print(f"  • {route}, recorded sighting: layer 36's words and glosses held back, and in the apparatus")
+                await rec.eval_js(f"{SET_READING_JS}('apparatus', false)")
+                assert not rec.console_errors and not rec.page_exceptions, (
+                    f"the recorded sighting's pages logged errors: {rec.console_errors} {rec.page_exceptions}")
             finally:
                 await rec.close()
                 async with httpx.AsyncClient(timeout=10.0, trust_env=False) as cdp_http:

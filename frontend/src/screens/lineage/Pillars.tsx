@@ -382,7 +382,7 @@ export const Pillars: React.FC = () => (
             P@10 in the causal top-100: ≈0 at index 10–30, 0.35–0.67 for J-VINDEX at 40–57, naive and JLens about the
             same (null ≤ 0.003; N1 T1); 31–39 not sampled; labels through an IT-fitted lens untested; J++ over naive +0.04 to
             +0.12 at 40–45, equal or slightly worse at 50–57 (erratum E41); agreement of the J-VINDEX and naive top-10
-            predicts validity, AUC 0.84 within 40–57. Gate open in 72–100% of strong events; double-negative &lt; 1% of
+            predicts validity, AUC 0.84 within 40–57, for base-fitted J++ labels on random neurons. Gate open in 72–100% of strong events; double-negative &lt; 1% of
             strong-event mass (13–33% of top-1% mass in sparse layers). Cleanliness, single rater, 48 poles: 46% one clear job (62% strong, 29% weak).
           </dd>
           <dt>caveat</dt>
@@ -398,6 +398,14 @@ export const Pillars: React.FC = () => (
             J++/naive agreement (§3.5, item 5). That gate was validated for base-fitted J++ labels only and must be
             re-validated for any new lens; spot-checks should steer in the linear regime (k ≈ 10), since 60× saturates
             the post-FFN norm at index 20–50 (erratum E47).
+          </dd>
+          <dt>in the instrument</dt>
+          <dd>
+            the layer and the agreement, done: every label the server sends carries <M>label_check</M> (the ids its J-VINDEX
+            and naive top ten share, fp32, softcapped, as N1 counted) and the replies carry the rule as <M>label_gate</M>{" "}
+            (<M>backend/label_gate.py</M>); the pages hold a label back from their main reading below index 40, and,
+            under the base-fitted J++ only, below index 59 where the two share none of ten (the cut is the instrument’s;
+            the study set none), and keep it in the apparatus. Activation contexts stored per pole: not built.
           </dd>
           <dt>reports</dt>
           <dd>

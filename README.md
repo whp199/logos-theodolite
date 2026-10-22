@@ -65,7 +65,9 @@ reply "Hi! I", as it rises; beside it stand the words a lens makes of it at a fe
 base model: the head of every page names it, and a red line beside each layer's words says what the reading can bear
 there. The gilded rings, every sixth, are the layers that look back over the whole conversation. On the right is the leaf
 of the chosen layer: its likeliest words through the lens, and how much of its change was **gathered** from the words
-before (attention, lapis) or **recalled** from memory (the feed-forward block, gilt).
+before (attention, lapis) or **recalled** from memory (the feed-forward block, gilt). The picture was taken before the
+label gate: the leaf now holds back the words of the layer-36 neuron shown at its foot, as it holds back every
+neuron's words below layer 41, and keeps them in the apparatus (§iv).
 
 <table>
   <tr>
@@ -200,7 +202,10 @@ pages from any other host than this machine).
   L40–57, counted from 0), read through the base-fitted J++ lens or the plain logit lens, which did as well except at
   41–46, where J++ was a little ahead. At the sampled layers 11–31 no single neuron had a stable effect to label; layers
   32–40 were not sampled. Input-side labels are near-useless. Labels read through a lens refitted on the instruct model
-  are untested.
+  are untested. The pages now hold such labels back from their main reading below layer 41, and wherever the lens and
+  the naked eye share none of their first ten word-pieces (the study's agreement gate, REPORT §3.3, AUC 0.84 within
+  layers 41–58 for base-fitted J++ labels on random neurons; the cut at none of ten is the instrument's, since the study
+  set none); the apparatus keeps them, and the server marks each label it sends.
 - **The shipped J++ lens, and the Jacobian lens it was checked against, were fitted on the base model.** Most of the
   study’s lens readings went through J++, and the instrument still reads through it. A lens refitted on the instruct
   model predicts the next word better at the five late layers where its full matrix is usable, 41, 46, 51, 56 and 59
@@ -253,6 +258,19 @@ REPORT §3.4). Where each fault stands now:
 - **The quiet mask.** Masking only the 181 persistently quiet dimensions is not enough: in a check made while building the
   fix (not part of the study), a she/he nudge masked that way still broke the answer at 0.005 × ‖h‖. `mask_quiet` also masks
   each pushed layer’s quietest tenth of dimensions; with both, the nudge read fluently at 0.005–0.01 and broke at 0.02.
+- **Neuron labels are held back as the study asked (REPORT §3.3, conditions 2 and 3).** Below layer 41, and wherever
+  the two readings of a label share none of their first ten word-pieces, no page sets a neuron's words, or a gloss of
+  them, in its main reading; the apparatus keeps them, with the reason. The cut at none of ten is the instrument's (the
+  study set no threshold): re-counted from N1's own data
+  ([`N1C_gate_cut.json`](experiments/results/N1C_gate_cut.json), a re-analysis), 7 of the 31 labels within layers
+  41–58 that shared none of ten were sound (causal P@10 at least 0.3), against 160 of the 209 that shared at least
+  one. Every label the server sends carries `label_check` = {`shared_top10`, `held_back`, `reasons`, `band`,
+  `sampled_layer`, `in_measured_band`, `lens_validated`, `edited`}, and its replies carry a `label_gate` card just before `lens`; the word lists themselves
+  are sent as before, and layers in these fields count from 0. The agreement cut applies only through the base-fitted
+  J++ lens, the one it was validated for (erratum E47). Labels at layer 59 are untested; at layer 60 the lens is the
+  identity, so the cut cannot fire there. The demonstration sighting's labels and the vault's recorded searches carry
+  three and five words a side, too few for the count, so until they are checked ten a side
+  (`experiments/scripts/N1G_01_recorded_label_checks.py`, on the GPU) only the layer holds them back.
 - **LARQL.** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault query runs in
   Python, and its ".patch MEMIT" edit is a single-neuron column nudge, not MEMIT.
 
@@ -325,7 +343,8 @@ top-p 1 (no limit), no penalty, the seed drawn when it samples. The server passe
 reads a missing one as the checkpoint’s own setting (temperature 1, top-k 64, top-p 0.95). It holds its GPU lock for the whole
 sweep, so no vault edit lands between two word-pieces of one answer. The circuit tools
 (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`, `query_larql_vault`) are served over HTTP and as
-FastMCP tools from `backend/mcp_scientist.py`. To check a build end to end, server, tools and pages together:
+FastMCP tools from `backend/mcp_scientist.py`. Every neuron label they and the sweep send carries `label_check`, and the
+replies carry the rule as `label_gate` (§iv). To check a build end to end, server, tools and pages together:
 `.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.
 
 **Reproduce the study**

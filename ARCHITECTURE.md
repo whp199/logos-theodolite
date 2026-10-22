@@ -233,6 +233,33 @@ per layer `jpp_top_ids` (5), `naive_top_id`, `tracked_from_next {word: bool}`.
   layer 60, so nothing was written to compare with (a diff would be 0 by construction); `top1_is_chosen` still
   compares the re-read's top piece with the given one.
 
+Neuron labels and the label gate (`backend/label_gate.py`; REPORT §3.3, conditions 2 and 3; erratum E47). Each added;
+old fields unchanged. Layers in these fields count from 0.
+- `poles_labels[l][r]`, for ranks r = 0–4 of layer l: `{rank, neuron_idx, polarity ("+" | "-"), abs_act, write_size
+  (null where the layer's feed-forward write was not captured), j_vindex_tokens, naive_tokens}` as before, the token lists three a side
+  (`{token, logit}`), filled at the global layers and at 54–59 (every layer with `decode_all_pole_tokens`), empty
+  elsewhere; added `label_check`, null where no words were read.
+- `label_check` = `{shared_top10, held_back, reasons, band, sampled_layer, in_measured_band, lens_validated, edited}`:
+  `shared_top10` (0–10, null when a reading is missing) counts the word-piece ids both readings share in their first
+  ten, scored as N1 scored them (the server's bf16 logits shortlist 64 ids, scored again in fp32 and softcapped, ties to
+  the lower id); `reasons` ⊆ {"below_layer_40", "shares_nothing"}, `held_back` = any reason. "below_layer_40" holds
+  below layer 40; "shares_nothing" holds where `shared_top10` is 0, below layer 59, and only under the base-fitted J++
+  lens (`lens.id` "jpp-base"), the one the gate was validated for. `band` is "below_sampled" (0–9),
+  "chance_where_sampled" (10–30), "not_sampled" (31–39), "band" (40–57), "above_band" (58) or "one_reading" (59, where
+  J++ is the identity). `edited` is true when a vault edit is in force on the neuron (`edits_in_force()`, the latest
+  record per neuron), and then `lens_validated` is false. The words themselves are still sent: `held_back` marks what
+  the pages leave out of their main reading.
+- `label_gate` (`LABEL_GATE_CARD`: `rule` "n1-gate-1", `layers_count_from`, `min_layer`, `measure`, `cut`,
+  `held_back_if_shared_top10_at_most`, `validated`, `sources`, `caution`) rides just before `lens` in every pair's JSON
+  and in `/api/health`.
+- The scientist tools and the vault, over MCP, HTTP and the WebSocket alike: `inspect_pole` and DESCRIBE POLE add
+  `label_check` to each face (`north_pole`, `south_pole`; `active_pole` is the same face) and `label_gate` before
+  `lens`, so their keys match; each NEAREST row adds `label_check` (its five-word lists unchanged), and the reply
+  `label_gate` before `lens` (UPDATE, INSERT, DESCRIBE, DELETE and ROLLBACK reply as before);
+  `trace_downstream_readers` (`trace_readers`) adds to each reader returned `dst_naive_tokens` (four, as through the
+  lens) and `dst_label_check`, and `label_gate` to the reply; `test_motif_hypothesis` adds `pole_label_check` (its
+  pole's face) and `label_gate`.
+
 Errors: a request with a `request_id` that is refused or fails gets `{"type":"error","action":"sweep","request_id",
 "recoverable":true,"message","n_sent","token_index"}` and then its `theodolite_sweep_end`; the socket stays open
 (the request_id of a refused payload is read from the raw message). Without one, the old refusal

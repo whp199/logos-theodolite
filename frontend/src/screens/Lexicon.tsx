@@ -14,7 +14,10 @@ import {
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { NotAMatchedPair, strings } from "../lib/cautions";
-import { pieceWord } from "../lib/words";
+import { pieceWord, wp } from "../lib/words";
+import { fixtureCheck, labelGate, layerIdx, sharedLine, sharedShown } from "../lib/labels";
+import { HeldBackWords } from "../components/HeldBack";
+import { JPP as FOLIO_JPP, NAIVE as FOLIO_NAIVE, RECORDED as FOLIO_EXAMPLE } from "./NeuronFolio/recorded";
 import { ALIASES, INDEX } from "./lexicon/entries";
 import { Cautions } from "./lexicon/Cautions";
 import {
@@ -79,6 +82,18 @@ const AT_51: { word: string; gloss?: string; share: string; bar: number }[] = [
 const AT_60: { word: string; gloss?: string; share: string; bar: number }[] = [
   { word: "“am”", gloss: "the word it said next in the recorded, greedy sighting", share: "99.8%", bar: 99.8 },
 ];
+
+/**
+ * "neuron and its two faces": the recorded neuron the folio opens on, 15491 at layer 54 (index 53, rank 4 of the
+ * demonstration sighting), through the label gate (lib/labels.ts) by its recorded check, null until the recorded
+ * labels are checked ten a side. Inside layers 41-58 the gate shows it; were the check to share none, the entry would
+ * hold it back like any page.
+ */
+const EXAMPLE_GATE = labelGate(layerIdx(FOLIO_EXAMPLE.idx), fixtureCheck(FOLIO_EXAMPLE.idx, FOLIO_EXAMPLE.rank));
+const EXAMPLE_SHOWN = sharedShown(
+  FOLIO_JPP.map(([t]) => t),
+  FOLIO_NAIVE.map(([t]) => t),
+);
 
 const ReadoutRow: React.FC<{ word: string; gloss?: string; share: string; bar: number }> = ({ word, gloss, share, bar }) => (
   <div
@@ -543,19 +558,42 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             negative face, a hollow one. The two faces answer to unrelated things, yet at layers 41–58 they push the
             next word in mirror-image directions.
           </Body>
-          <Note>
-            At layer 36, neuron 21189 showed its negative face; through the lens its words are “myself”, “
-            <span lang="hi">मुझ</span>”, “<span lang="zh">的我</span>”:{" "}
-            <span style={{ fontStyle: "italic" }}>English “myself”, Hindi “me”, Chinese “of me”.</span> Layer 36 lies
-            below the layers where the study found such labels held up, so read them as a rumour.
-          </Note>
+          {/* the example is the recorded page-54 neuron the folio opens on (NeuronFolio/recorded.ts), a label inside
+              the band where labels held up; it goes through the label gate like any other, and the layer-36 example
+              the entry once gave, a label the pages hold back, now stands in its apparatus */}
+          {EXAMPLE_GATE.heldBack ? (
+            <div>
+              <Note>
+                At layer {FOLIO_EXAMPLE.layerNo}, neuron {FOLIO_EXAMPLE.neuron} showed its positive face.
+              </Note>
+              <HeldBackWords
+                gate={EXAMPLE_GATE}
+                words={FOLIO_JPP.map(([t]) => t)}
+                eye={FOLIO_NAIVE.map(([t]) => t)}
+                size={17}
+                style={{ marginTop: 4 }}
+              />
+            </div>
+          ) : (
+            <Note>
+              At layer {FOLIO_EXAMPLE.layerNo}, neuron {FOLIO_EXAMPLE.neuron} showed its positive face; through the lens
+              its words are {FOLIO_JPP.map(([t]) => wp(t)).join(", ")}:{" "}
+              <span style={{ fontStyle: "italic" }}>English “am”, Polish “I am”, Spanish or Portuguese “we are”</span>,
+              forms of “to be”. To the naked eye they are {FOLIO_NAIVE.map(([t]) => wp(t)).join(", ")}; among the words
+              shown the two readings share {EXAMPLE_SHOWN.shared.map((t) => wp(t)).join(", ") || "none"}. Layer{" "}
+              {FOLIO_EXAMPLE.layerNo} lies inside layers 41–58, where the study found such labels held up, in its sample
+              of random neurons.
+            </Note>
+          )}
           <Note>
             Specialists call the two faces poles, after Cammarata’s essay{" "}
             <span style={{ fontStyle: "italic" }}>Neural Networks Are Already Clean</span> (Goodfire, 2026). Its place
             among the instrument’s ideas is told in <a href={href.lineage()}>the lineage</a>.
           </Note>
           <Rubric>
-            Below layer 41, a neuron’s words are only a rumour. <LexLink to="labels">Read the first caution.</LexLink>
+            Below layer 41, a neuron’s words are only a rumour, so the pages hold them back and keep them in the
+            apparatus; so too where the lens and the naked eye share none of their first ten.{" "}
+            <LexLink to="labels">Read the first caution.</LexLink>
           </Rubric>
           <EntryApparatus title="neuron and its two poles" label="Apparatus for neuron and its two faces">
             a = GELU<sub>tanh</sub>(x · w<sub>gate</sub>) · (x · w<sub>up</sub>), x the normed stream; pole σ =
@@ -563,7 +601,16 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             labelled unembed((σ · w<sub>down</sub>) · J<sub>ℓ</sub>
             <sup>⊤</sup>) against the naked eye’s unembed(σ · w<sub>down</sub>). Poles after Cammarata 2026 [9]; GeGLU
             [15]. Output labels held up at layers 41–58 and were at chance at 11–31; layers 32–40 were not sampled
-            (N1). One input label cannot describe both poles (REPORT §3.2).
+            (N1). One input label cannot describe both poles (REPORT §3.2). The label gate (REPORT §3.3, conditions 2
+            and 3): the pages hold a neuron’s words back from their main reading below layer 41, and where the lens’s
+            first ten word-pieces and the naked eye’s share none (<M>label_check.shared_top10</M>, counted by id in
+            fp32, as N1 counted; within 41–58 that count ranked a sound label above an unsound one with AUC 0.84, for
+            base-fitted J++ labels on random neurons; the cut at none of ten is the instrument’s, the study set none).
+            The example above, 53:{FOLIO_EXAMPLE.neuron}+ in the study’s counting, ten a side:{" "}
+            {sharedLine(EXAMPLE_GATE) ?? <Missing what="not yet checked ten a side" />}. A label the pages hold back:
+            at layer 36 (index 35), neuron 21189’s negative face reads through the lens “myself”, “
+            <span lang="hi">मुझ</span>”, “<span lang="zh">的我</span>” (English “myself”, Hindi “me”, Chinese “of
+            me”); the instrument’s leaf keeps those words in its apparatus, with the reason.
           </EntryApparatus>
         </Entry>
 

@@ -145,7 +145,10 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
             “Neat as a question, oversold as built” (REPORT §3.3). LARQL’s own README warns that “a projected contribution is not a
             counterfactual” [10], and a nearness search is exactly a projected contribution. The vault earns its keep if neuron labels rest on
             stored activations, output labels are read only from layer 41 up (index 40), they are gated by agreement between the lens and the
-            naked eye, and each is checked by a causal test.
+            naked eye, and each is checked by a causal test. The second and third are now done here: below layer 41, and where the two
+            readings share none of their first ten word-pieces, the find board holds a neuron’s words back from its main reading and
+            keeps them in the apparatus, and NEAREST and DESCRIBE POLE mark each label they send (<span className="mono">label_check</span>,
+            with the rule in <span className="mono">label_gate</span>).
           </dd>
           <dt>counting</dt>
           <dd>

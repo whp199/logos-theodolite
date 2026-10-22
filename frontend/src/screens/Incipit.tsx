@@ -941,7 +941,8 @@ const CAUTIONS: React.ReactNode[] = [
   </>,
   <>
     Labels on single neurons, read through the lens or the naked eye, held up at the layers tested from 41 to 58, and not at 11 to
-    31. Elsewhere, treat them as rumours.
+    31. Below layer 41 the pages hold a neuron’s words back, and so too where the lens and the naked eye share none of their first
+    ten; the apparatus keeps them. At layers 59 and 60, never tested, treat them as rumours.
   </>,
   <>
     A bearing, the compass direction the instrument gives a reading <span style={{ fontStyle: "italic", color: MUTED }}>(azimuth)</span>,
@@ -1112,8 +1113,12 @@ const BeforeYouSetOut: React.FC = () => {
           <dd>
             output labels against causal effect, P@10 0.35–0.67 for J++ at the layers sampled from 41 to 58, the naked eye’s about
             the same (null ≤ 0.003), at chance at layers 11–31; 32–40 not sampled; labels through an instruct-fitted lens untested
-            (§3.2; N1). Within layers 41–58, agreement between the lens and the naked eye predicts validity (AUC 0.84). Fix:
-            stored activation contexts for each pole; output labels only from layer 41, gated by that agreement (§3.5; bug 7).{" "}
+            (§3.2; N1). Within layers 41–58, agreement between the lens and the naked eye predicts validity (AUC 0.84, for
+            base-fitted J++ labels on random neurons). Fix: stored activation contexts for each pole; output labels only from
+            layer 41, gated by that agreement (§3.5; bug 7). Now done for the layer and the agreement: the server marks every label
+            it sends (<span className="mono">label_check</span>, the word-pieces both readings share in their first ten, and{" "}
+            <span className="mono">label_gate</span>, the rule), and the pages hold a label back below layer 41, and where the two
+            share none of ten (the cut is the instrument’s), keeping it in the apparatus; stored activation contexts are not built.{" "}
             <a href={href.vault()}>the vault</a>
           </dd>
           <dt>bearing</dt>
@@ -1240,7 +1245,8 @@ const MakersMarks: React.FC = () => (
           Cammarata 2026 [9], on the GeGLU block (Shazeer 2020) [15]: each neuron’s positive and negative directions are its two
           poles. The study: Gemma-4’s neurons are truly two-poled, through the sign of the up-projection, and the two poles fire on
           unrelated inputs; output labels, read through J++ or the naked eye, held up at the layers sampled from 41 to 58 and not
-          at 11–31 (REPORT §3.2).
+          at 11–31 (REPORT §3.2). The instrument now holds a label back below layer 41, and where its two readings share none of
+          their first ten word-pieces (REPORT §3.3).
         </dd>
         <dt>iv · the vault</dt>
         <dd>
