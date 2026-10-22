@@ -243,14 +243,14 @@
   },
   "R3_06_analyze.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_06_analyze.py --selftest",
-   "at": "2026-10-22T12:20:34",
-   "head": "ed5368add6d2317965480c5cfc67ba45bebfe2fb",
+   "at": "2026-10-22T12:37:50",
+   "head": "bf3d1dd20f54aea02feeabf8d6992f0bc0643982",
    "scripts_uncommitted_then": [
     "experiments/scripts/R3_06_analyze.py"
    ],
-   "seconds": 146.3,
+   "seconds": 148.7,
    "ok": true,
-   "n_checks": 63,
+   "n_checks": 71,
    "n_failed": 0,
    "checks": [
     {
@@ -463,7 +463,7 @@
     },
     {
      "ok": true,
-     "check": "a missing lens file or recall file is said, and that reading is not run"
+     "check": "a missing lens file or recall file is said, and that reading is not run (self-test inputs only)"
     },
     {
      "ok": true,
@@ -504,6 +504,38 @@
     {
      "ok": true,
      "check": "H3's code on the real files reproduces R1 \u00a73.2 (R1_15_spectrum.json): base J++ in y and raw, JLens in y, top 100, at the seven layers (max |diff| 0.0005 <= 0.003; {30: [0.7748, 0.7925, 0.8798], 35: [0.7602, 0.7798, 0.8866], 40: [0.8131, 0.8295, 0.8613], 45: [0.8887, 0.8966, 0.9145], 50: [0.9024, 0.9067, 0.9062], 55: [0.909, 0.9157, 0.8969], 58: [0.9674, 0.9683, 0.9597]})"
+    },
+    {
+     "ok": true,
+     "check": "a runs log whose last event is 'finished' with the input's sha256 is accepted (an earlier failed run, or H4's failed check inside the run, does not refuse it)"
+    },
+    {
+     "ok": true,
+     "check": "a runs log whose last event is 'failed' is refused ([\"the last run of R3_05 did not finish (its last event in /tmp/tmpxwel5i1s/runs.jsonl is 'failed': OutOfMemoryError: in recall); \u00a79: it is rerun from the start, its partial data not analysed\"])"
+    },
+    {
+     "ok": true,
+     "check": "a run started and never logged as finished (killed, or still running) is refused"
+    },
+    {
+     "ok": true,
+     "check": "an input that is not the last finished run's output (sha256) is refused"
+    },
+    {
+     "ok": true,
+     "check": "no runs log: refused"
+    },
+    {
+     "ok": true,
+     "check": "a finished run with the pullbacks or a lens file missing is refused (['/tmp/tmpxwel5i1s/pb.pt does not exist', '/tmp/tmpxwel5i1s/rl-it-B does not exist'])"
+    },
+    {
+     "ok": true,
+     "check": "the secondary readings refuse a missing input outside the self-test (no 'not run' for R3's own reading)"
+    },
+    {
+     "ok": true,
+     "check": "main() refuses an R3_05 run whose last logged event is 'failed' and writes no analysis"
     }
    ],
    "env": {

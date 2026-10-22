@@ -34,7 +34,9 @@ Secondary readings (decide nothing; R3_PREREG.md §1.2, §8.1, §8.2, §8.4), wr
       bands; J++'s recall@10 beside it
 
 Modes:
-  default        R3_05_eval.json -> R3_06_analysis.json and R3_06_report_section.md (with H2, H3, H5)
+  default        R3_05_eval.json -> R3_06_analysis.json and R3_06_report_section.md (with H2, H3, H5); refuses
+                 unless R3_05_runs.jsonl's last event is 'finished' with the input's sha256 and every input of
+                 H2, H3 and H5 exists (§9: a run that stopped part-way is not analysed)
   --reproduce-r2 R2_02_eval.json under R2's design; every verdict, rule, sign test, Holm p, interval and sensitivity
                  verdict must equal R2_03_analysis.json exactly; writes R3_06_r2_reproduction.json
   --selftest     synthetic files with known answers (each rule failing alone, precedence, the never-below-30 rule,
@@ -917,6 +919,39 @@ def check_family(D: Design, an: Dict[str, Any]) -> List[str]:
     return bad
 
 
+H3_OWN_FILES: Tuple[str, ...] = ("jpp-it", "rl-it", "jpp-it-A", "jpp-it-B", "rl-it-A", "rl-it-B")   # H3's R3_04 lenses
+
+
+def check_run_finished(inp_sha: str, runs_log: Path, needed: Sequence[Path]) -> List[str]:
+    """§9: a run of R3_05 that stops part-way is rerun from the start and its partial data is not analysed. R3_05
+    writes R3_05_eval.json before H4, the recall and the pullbacks, and logs 'finished' (with the eval file's sha256)
+    only after all of them; so the last event of its runs log must be 'finished' with the input's sha256, and every
+    file the secondary readings read (R3_05's pullbacks and recall, Q0's pullbacks, R3_04_weights.json and its six
+    lens files) must exist."""
+    bad: List[str] = []
+    events: List[Dict[str, Any]] = []
+    if runs_log.is_file():
+        for i, line in enumerate(runs_log.read_text(encoding="utf-8").splitlines()):
+            if line.strip():
+                try:
+                    events.append(json.loads(line))
+                except ValueError:
+                    bad.append(f"{runs_log} line {i + 1} is not JSON")
+    if not events:
+        bad.append(f"{runs_log} records no run of R3_05")
+    else:
+        last = events[-1]
+        if last.get("event") != "finished":
+            err = f": {last['error']}" if last.get("error") else ""
+            bad.append(f"the last run of R3_05 did not finish (its last event in {runs_log} is "
+                       f"{last.get('event')!r}{err}); §9: it is rerun from the start, its partial data not analysed")
+        elif last.get("out_sha256") != inp_sha:
+            bad.append(f"the input (sha256 {inp_sha}) is not the output of R3_05's last finished run (sha256 "
+                       f"{last.get('out_sha256')})")
+    bad += [f"{p} does not exist" for p in needed if not Path(p).is_file()]
+    return bad
+
+
 # ------------------------------------------------------------------------------------------------ H2, H3, H5
 # The secondary readings D31 required to be written before any lens file existed (R3_PREREG.md §1.2, §8.1, §8.2,
 # §8.4). They decide nothing (§1.1: only H1 decides); each is reported whatever it shows.
@@ -1298,8 +1333,14 @@ def _h5_stat(n: int, mean: float, bs: np.ndarray) -> Dict[str, Any]:
 
 def secondary_readings(D: Design, data: Dict[str, Any], pb_path: Path = PULLBACKS_PT,
                        weights_json: Path = C.WEIGHTS_JSON, recall_json: Path = RECALL_JSON,
-                       full_hash: bool = True) -> Dict[str, Any]:
-    """H2, H3 and H5 on the registered inputs. An input that does not exist is said, and its reading not run."""
+                       full_hash: bool = True, allow_missing: bool = True) -> Dict[str, Any]:
+    """H2, H3 and H5 on the registered inputs. An input that does not exist is said, and its reading not run; with
+    allow_missing False (R3's own reading, §9) a missing input is refused instead."""
+    if not allow_missing:
+        miss = [p for p in (pb_path, C.Q0_PT, recall_json, weights_json) + tuple(C.LENS_FILES[n] for n in H3_OWN_FILES)
+                if not Path(p).is_file()]
+        if miss:
+            raise SystemExit("the secondary readings' inputs do not exist: " + ", ".join(str(p) for p in miss))
     out: Dict[str, Any] = {}
     rec = json.loads(recall_json.read_text(encoding="utf-8")) if recall_json.is_file() else None
     out["H5"] = h5_tables(D, data, rec)
@@ -1311,15 +1352,13 @@ def secondary_readings(D: Design, data: Dict[str, Any], pb_path: Path = PULLBACK
         out["H2"]["files"] = files
     else:
         out["H2"] = {"not_run": "does not exist: " + ", ".join(str(q) for q in (pb_path, C.Q0_PT) if not q.is_file())}
-    if weights_json.is_file() and all(C.LENS_FILES[n].is_file() for n in ("jpp-it", "rl-it", "jpp-it-A", "jpp-it-B",
-                                                                          "rl-it-A", "rl-it-B")):
+    if weights_json.is_file() and all(C.LENS_FILES[n].is_file() for n in H3_OWN_FILES):
         read, fnw, files = h3_readers(weights_json, full_hash)
         out["H3"] = h3_tables(read, fnw, C.FIT_LAYERS)
         out["H3"]["files"] = files
     else:
         out["H3"] = {"not_run": "does not exist: " + ", ".join(str(q) for q in (weights_json,) + tuple(
-            C.LENS_FILES[n] for n in ("jpp-it", "rl-it", "jpp-it-A", "jpp-it-B", "rl-it-A", "rl-it-B"))
-            if not q.is_file())}
+            C.LENS_FILES[n] for n in H3_OWN_FILES) if not q.is_file())}
     for k in ("H2", "H3"):
         if "not_run" in out[k]:
             print(f"WARNING: {k} not run: {out[k]['not_run']}", flush=True)
@@ -1783,7 +1822,73 @@ def selftest_h2(check: Callable[[bool, str], None]) -> None:
     check(ok, f"H2 end to end through the real loader: pullbacks set to Q0's J++ / Miru / JLens give Q0's own q10 rows "
               f"(Miru vs J++, J++ vs JLens, R1 IT vs J++) to 1e-4 ({got})")
     check("not_run" in rdg["H3"] and rdg["H5"]["recall_at_10"] is None and "recall_missing" in rdg["H5"],
-          "a missing lens file or recall file is said, and that reading is not run")
+          "a missing lens file or recall file is said, and that reading is not run (self-test inputs only)")
+
+
+def selftest_run_finished(check: Callable[[bool, str], None]) -> None:
+    """§9: R3_06 refuses an R3_05 run that stopped part-way, and a missing input of the secondary readings."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        eval_bytes = b'{"schema": "R3_05/1"}\n'
+        sha = hashlib.sha256(eval_bytes).hexdigest()
+        needed = [d / n for n in ("pb.pt", "recall.json", "q0.pt", "weights.json") + H3_OWN_FILES]
+        for p in needed:
+            p.write_bytes(b"x")
+        log = d / "runs.jsonl"
+
+        def with_log(*events: Dict[str, Any]) -> List[str]:
+            log.write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
+            return check_run_finished(sha, log, needed)
+
+        st = {"event": "started", "argv": ["R3_05_eval.py"]}
+        fin = {"event": "finished", "out": "R3_05_eval.json", "out_sha256": sha}
+        h4 = {"event": "failed check", "check": "H4"}
+        check(with_log(st, fin) == [] and with_log(st, h4, fin) == [] and with_log(st, {"event": "failed"}, st, fin) == [],
+              "a runs log whose last event is 'finished' with the input's sha256 is accepted (an earlier failed run, "
+              "or H4's failed check inside the run, does not refuse it)")
+        r_failed = with_log(st, {"event": "failed", "error": "OutOfMemoryError: in recall"})
+        check(len(r_failed) == 1 and "did not finish" in r_failed[0] and "'failed'" in r_failed[0],
+              f"a runs log whose last event is 'failed' is refused ({r_failed})")
+        check(len(with_log(st, fin, st)) == 1 and len(with_log(st)) == 1 and len(with_log(st, fin, st, h4)) == 1,
+              "a run started and never logged as finished (killed, or still running) is refused")
+        r_sha = with_log(st, dict(fin, out_sha256="0" * 64))
+        check(len(r_sha) == 1 and "not the output" in r_sha[0],
+              "an input that is not the last finished run's output (sha256) is refused")
+        log.unlink()
+        check(len(check_run_finished(sha, log, needed)) == 1, "no runs log: refused")
+        (d / "pb.pt").unlink()
+        (d / "rl-it-B").unlink()
+        r_miss = with_log(st, fin)
+        check(len(r_miss) == 2 and all("does not exist" in m for m in r_miss),
+              f"a finished run with the pullbacks or a lens file missing is refused ({r_miss})")
+        try:
+            secondary_readings(R3_DESIGN, synthetic_r3()[0], pb_path=d / "pb.pt", weights_json=d / "none.json",
+                               recall_json=d / "none.json", full_hash=False, allow_missing=False)
+            refused = False
+        except SystemExit as e:
+            refused = "do not exist" in str(e)
+        check(refused, "the secondary readings refuse a missing input outside the self-test (no 'not run' for R3's "
+                       "own reading)")
+        # main() on an input that is not self-test data, with a runs log that ends in 'failed': refused, nothing written
+        data, _ = synthetic_r3()
+        data["meta"] = {k: v for k, v in data["meta"].items() if k != "selftest"}
+        inp = d / "eval.json"
+        inp.write_text(json.dumps(data), encoding="utf-8")
+        old_log, old_argv = C.RUNS_LOG, sys.argv
+        C.RUNS_LOG = log
+        log.write_text(json.dumps(st) + "\n" + json.dumps({"event": "failed", "error": "x"}) + "\n", encoding="utf-8")
+        sys.argv = ["R3_06_analyze.py", "--in", str(inp), "--out", str(d / "an.json"), "--report", str(d / "an.md")]
+        try:
+            main()
+            msg = None
+        except SystemExit as e:
+            msg = str(e)
+        finally:
+            C.RUNS_LOG, sys.argv = old_log, old_argv
+        check(msg is not None and "the last run of R3_05 did not finish" in msg and not (d / "an.json").exists(),
+              "main() refuses an R3_05 run whose last logged event is 'failed' and writes no analysis")
 
 
 def _orth(n: int, g) -> Any:
@@ -2040,6 +2145,7 @@ def selftest(record: bool = False) -> int:
     selftest_h5(check)
     selftest_h2(check)
     selftest_h3(check)
+    selftest_run_finished(check)
     print(f"R3_06 self-test: {'ALL PASS' if not fails else str(len(fails)) + ' FAILURES'}")
     if record:
         C.record_selftest(Path(__file__).name, done, time.time() - t_start)
@@ -2089,6 +2195,9 @@ def main():
         bad = check_input(data, C.N_PROMPTS, C.sha256_file(C.PROMPTS_PATH), "R3_05_eval.json")
         if not chk.get("ok") or chk.get("prompts_sha256") != C.sha256_file(C.PROMPTS_PATH):
             bad.append("R3_01_check.json does not pass this R3_prompts.json")
+        bad += check_run_finished(hashlib.sha256(raw).hexdigest(), C.RUNS_LOG, (
+            Path(args.pullbacks), Path(args.recall), C.Q0_PT, Path(args.weights))
+            + tuple(C.LENS_FILES[n] for n in H3_OWN_FILES))
         if bad:
             raise SystemExit("the input is not R3's registered reading: " + "; ".join(bad))
     an = analyze(R3_DESIGN, data)
@@ -2104,7 +2213,7 @@ def main():
         an["replication_r2_prompts"] = replication(rep, json.loads(R2.EVAL_JSON.read_bytes()),
                                                    json.loads(R2.ANALYSIS_JSON.read_text(encoding="utf-8")))
     an["readings"] = secondary_readings(R3_DESIGN, data, pb_path=Path(args.pullbacks), weights_json=Path(args.weights),
-                                        recall_json=Path(args.recall))
+                                        recall_json=Path(args.recall), allow_missing=bool(meta.get("selftest")))
     an["input"] = {"path": str(args.inp), "sha256": hashlib.sha256(raw).hexdigest(),
                    "selftest": bool(meta.get("selftest")), "run_files_sha256": meta.get("files_sha256"),
                    "run_git": meta.get("git")}
