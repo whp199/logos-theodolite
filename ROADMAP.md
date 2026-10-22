@@ -1,0 +1,98 @@
+# Roadmap
+
+*What is still open in Logos Theodolite, gathered from the places that already name it: the README’s fault table, the
+study’s report and its errata, the pages’ own “not yet” marks, and the one branch that is not merged. Nothing here has a
+date or an owner. Layers are counted 1–60, as on the pages; the study’s reports count from 0, so their L50 is layer 51
+here.*
+
+<sub>Gathered on 21 October 2026, at `3cbc4b5`.</sub>
+
+<br>
+
+## i · the lens, the largest fault left
+
+The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is read here on the instruct model (4-bit
+QAT), where it agrees with the model’s own average gradients for the pronoun direction at only cos 0.15–0.33 (layers
+31–59; [README §iv](README.md#iv--how-far-to-trust-it), fault 9). Everything that reads through the lens inherits it: the
+words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. The pages now say
+so, at the head and foot of every page and in a red line beside each layer’s words, and `/api/health` and every sweep
+carry a `lens` object; the reading itself is unchanged.
+
+- **An instruct lens exists, and is not loaded.** R1 refitted a lens on this checkpoint
+  ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)). Its directional form is stable from layer 31; its
+  full matrix exists at 11 layers and is usable at five of them (41, 46, 51, 56 and 59). Its files are gitignored, so they
+  are not in the repository ([REPORT](experiments/REPORT.md), erratum E50).
+- **The second reading is built, and not merged.** The local branch `it-second-reading` (17–18 October, not pushed) reads
+  a second lens beside J++: R1’s at layers 51, 56 and 59, and the Miru community J-lens for gemma-4-31B-it at 41–50,
+  52–55 and 57–58. Each lens file is checksum-pinned and loaded only at layers that `scripts/check_second_lenses.py` has
+  passed, and the layer and instrument leaves mark the reading checked or provisional. Its own commit says it is not for
+  merge as is.
+- **R2 served nothing.** The pre-registered test of which layers to serve (`R2_PREREG.md` and `R2_03_report_section.md`
+  in `experiments/results/` on that branch) passed no lens at any layer, so under its rules the second reading shows
+  nothing anywhere. The nearest miss is R1’s lens at layer 59, which failed only the minimum-size rule (+0.046 over the
+  naked eye, where 0.05 was required). Two of the pre-registered sensitivity checks, one without the prompts about the
+  model itself and one without the prompts that share a topic with R1’s fit prompts, would serve R1’s lens at layer 56;
+  the registered decision stands.
+- **Not yet tried.** R1’s lens is a plain same-position Jacobian, not the J++ recipe: J++’s published R-Lens rules,
+  cluster weighting and token filter were never tested on the instruct checkpoint, and fine-tuning and quantisation cannot
+  be told apart (E50). Whether an instruct lens gives better neuron labels is untested (E45).
+- **Rules for any lens served later**, from the errata:
+  - confirm condition contrasts at layers 31–50 with an instruct reading (E49);
+  - show pronoun readings at layers 51–59 only where J++ and the instruct reading agree (E49, E50);
+  - keep the caution at layers 11–30 for every averaged lens: none tested was reliable there (E50);
+  - re-validate the label gate of ii for the new lens: its AUC of 0.84 was measured for base-fitted J++ labels only
+    (E47).
+
+Nothing on record says what comes next for the branch.
+
+<br>
+
+## ii · neuron labels
+
+The study judged joining the pillars “neat as a question, oversold as built”, and named four conditions under which the
+joined instrument earns its keep (REPORT §3.3, erratum E47). The Lineage page (iv) marks where each stands:
+
+| | The condition | Where it stands |
+|---|---|---|
+| **1** | Labels grounded in what wakes a neuron: the passages that make each face fire, stored with it | **Not yet.** One input label still serves both faces (fault 7), and input-side labels carried only 6–8% of the signal. No passages are stored for either face |
+| **2** | Output labels trusted only from layer 41 up | **In part.** The pages call labels below layer 41 rumours, not findings, but still show them |
+| **3** | A label counts only when the lens and the naked eye agree | **In part.** The pages set the two readings side by side and say how far they agree; labels that disagree are still shown, not held back. The gate was validated for base-fitted J++ labels only (E47) |
+| **4** | Each label spot-checked by cause and effect | **In part.** By hand only, through the nudge. A neuron’s folio draws “run a causal spot-check” disabled, waiting on the server: add ±k · max\|a\| to the neuron at its word-piece, with the baseline in the same batch, and list the word-pieces whose log-probability moves most. It should steer in the linear regime (k ≈ 10, or a frozen-norm write), since 60× steering saturates the post-feed-forward norm at layers 21–51 (E47) |
+
+Cammarata’s practices for reading a neuron ([9] in [`REFERENCES.md`](REFERENCES.md)), as the Lineage page sets them
+against the instrument, leave four more:
+
+- read each face in long passages, not only its top word-pieces: you can write whole sentences into a neuron’s guess
+  test, but no passages are stored (the same gap as 1);
+- look upstream at what builds a neuron (downstream, the threads and “who listens” are there);
+- keep the field notes with the vault: they last for the visit only;
+- watch a neuron form across training checkpoints.
+
+<br>
+
+## iii · smaller pieces still missing
+
+- **Landmarks.** Contrast axes such as fnw · (W<sub>U</sub>[she] − W<sub>U</sub>[he]), less a background mean, which V7
+  suggests ([`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md)): not in the server.
+- **The vault.** An edit’s voice before and after: not in the server’s reply. The “.patch MEMIT” edit is a single-neuron
+  column nudge, not MEMIT, and every vault query runs in Python; the `larql`/`vindex` binaries are called only for
+  `--version` (README §iv).
+- **Thinking on bare text.** A bare-text sighting with thinking turned on still sets `<|think|>` before the text, which is
+  not how Gemma 4 switches thinking on; sent as a chat, it uses the template’s own switch. The study recorded no fix for
+  the bare case (the Lexicon’s cautions; E6 audit, item 11).
+
+<br>
+
+## iv · mended as options, not as defaults
+
+The server keeps its old defaults for old callers. The interface sends the mended settings for two of these faults, and
+leaves the other two as choices:
+
+| | The fault | The server’s default | What the interface sends unless you change it | The mend |
+|---|---|---|---|---|
+| **1** | The nudge collapses the model | five layers at scale 650 | `direction="fnw"`, `mask_quiet`, `spare_bos`, `strength` 0.01 × ‖h‖ | in use on the nudge page |
+| **3** | The survey frame depends on the order of the words | Gram–Schmidt on raw rows | the same | `frame_squaring="lowdin"`, `frame_fnw`, `frame_per_layer`, `centre_prompts` |
+| **4** | The thread score C is a weak guide | C | the direct-path estimate | `thread_score="direct"` |
+| **8** | Neurons ranked by \|a\|, not by the size of their write | by \|a\| | the same | `pole_ranking="write"` |
+
+Nothing on record says whether these defaults should change.
