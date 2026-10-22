@@ -60,21 +60,42 @@ def _save(obj: Dict[str, Any], path: Path) -> None:
     os.replace(tmp, path)
 
 
+def router_settings(dec: FL.Decoder, texts: Sequence[str], layers: Sequence[int], *, n_experts: int, pca_dim: int,
+                    seed: int, skip: int, max_seq_len: int, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """What a router checkpoint must have been written with to be resumed."""
+    return {"layers": [int(l) for l in sorted(layers)], "n_experts": int(n_experts), "pca_dim": int(pca_dim),
+            "seed": int(seed), "skip": int(skip), "max_seq_len": int(max_seq_len), "model": str(dec.name),
+            "kmeans": [C.KMEANS_MAX_ITER, C.KMEANS_TOL],
+            "texts_sha256": C.sequence_sha256([C.text_sha256(t) for t in texts]),
+            "code_sha256": {f: C.sha256_file(C.SCRIPTS / f) for f in ("R3_02_router.py", "R3_fitlib.py")},
+            **(extra or {})}
+
+
 def fit_router_resumable(dec: FL.Decoder, texts: Sequence[str], layers: Sequence[int], ckpt: Path, *,
                          every: int = 100, n_experts: int = C.N_EXPERTS, pca_dim: int = C.PCA_DIM,
                          seed: int = C.ROUTER_SEED, skip: int = C.SKIP_FIRST, max_seq_len: int = C.MAX_SEQ_LEN,
-                         stop_after: Optional[int] = None) -> Tuple[Dict[int, FL.LayerRouter], Dict[str, Any]]:
+                         stop_after: Optional[int] = None,
+                         extra_settings: Optional[Dict[str, Any]] = None
+                         ) -> Tuple[Dict[int, FL.LayerRouter], Dict[str, Any]]:
     """R3_fitlib.fit_router's two passes, with a checkpoint every `every` records so that a killed job resumes
-    where it stopped. Returns the routers and the record (counts, skipped records, token hashes, sizes, shares)."""
+    where it stopped. Returns the routers and the record (counts, skipped records, token hashes, sizes, shares).
+    The checkpoint records its settings (layers, sizes, seed, skip, length, model, the records' hashes, and the
+    sha256 of this script and R3_fitlib.py); a checkpoint written with any other settings is refused, so that a job
+    restarted after a change of code or settings starts again from the start, as a reported deviation (§9)."""
     jc = FL._jpp().cluster
     layers = sorted(layers)
+    settings = router_settings(dec, texts, layers, n_experts=n_experts, pca_dim=pca_dim, seed=seed, skip=skip,
+                               max_seq_len=max_seq_len, extra=extra_settings)
     st: Dict[str, Any]
     if ckpt.is_file():
         st = torch.load(ckpt, map_location="cpu", weights_only=False)
+        if st.get("settings") != settings:
+            raise SystemExit(f"{ckpt} was written with other settings or code; move it away to refit from the start "
+                             f"(a restart after a change is a deviation, R3_PREREG.md §9)")
         log(f"resuming from {ckpt.name}: pass {st['pass']}, {st['done']} records done")
     else:
         st = {"pass": 1, "done": 0, "n_texts": len(texts), "skipped": [], "token_sha": [], "n_kept": [],
-              "pca": None, "params": None, "projected": {l: [] for l in layers}}
+              "pca": None, "params": None, "projected": {l: [] for l in layers}, "settings": settings}
     if st["n_texts"] != len(texts):
         raise SystemExit(f"{ckpt} was written for {st['n_texts']} records, not {len(texts)}")
     seen = 0
@@ -212,6 +233,25 @@ def selftest(record: bool = False) -> int:
             ok &= rec2["cluster_sizes"] == rec1["cluster_sizes"]
         check(ok, "a job killed between records (in pass 1 and in pass 2, several times) resumes from its "
                   "checkpoint and ends with the same router and record")
+        refused = []
+        for other in (dict(spec, pca_dim=6), dict(spec, skip=15)):
+            try:
+                fit_router_resumable(dec, texts, layers, Path(tmp) / "b9.pt", every=7, stop_after=1, **other)
+                refused.append(False)
+            except SystemExit:
+                refused.append(True)
+            except Interrupted:
+                refused.append(False)
+        try:
+            fit_router_resumable(dec, texts, layers, Path(tmp) / "b9.pt", every=7, stop_after=1, **spec,
+                                 extra_settings={"snapshot": "another"})
+            refused.append(False)
+        except SystemExit:
+            refused.append(True)
+        except Interrupted:
+            refused.append(False)
+        check(all(refused), "a leftover checkpoint written with other settings (PCA size, skip, model snapshot) is "
+                            "refused, not resumed")
         FL.save_router(r1, Path(tmp) / "router.pt", note="selftest")
         back = FL.load_router(Path(tmp) / "router.pt")
         pts = next(iter(FL.kept_points(dec, texts[:1], layers, **kw)))
@@ -243,7 +283,8 @@ def run(args) -> int:
         texts = C.wikitext_records()
         t = time.time()
         with torch.no_grad():
-            routers, rec = fit_router_resumable(dec, texts, C.FIT_LAYERS, C.ROUTER_CKPT, every=args.checkpoint_every)
+            routers, rec = fit_router_resumable(dec, texts, C.FIT_LAYERS, C.ROUTER_CKPT, every=args.checkpoint_every,
+                                                extra_settings={"snapshot": C.MODEL_SNAPSHOT})
         FL.save_router(routers, C.ROUTER_PT, model=C.MODEL_ID, snapshot=C.MODEL_SNAPSHOT, layers=list(C.FIT_LAYERS),
                        n_experts=C.N_EXPERTS, pca_dim=C.PCA_DIM, seed=C.ROUTER_SEED)
         out = {"schema": "R3_02/1", "written_at": datetime.datetime.now().isoformat(timespec="seconds"),

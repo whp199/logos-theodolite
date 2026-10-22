@@ -12,9 +12,11 @@ the coordinates of a mask, per direction and layer, averaged over a band's layer
    must give R1_04_dir_analysis.json's J++-against-JLens rows exactly (4 decimals, as stored). From pullbacks
    recomputed here from the two files themselves, it must give R1's q10 cosines 0.77 / 0.68 / 0.66 at code layers
    30-39 / 40-49 / 50-58 (R1_IT_LENS_REPORT.md:233) within 0.02. Only then is the rest reported.
-2. The fine-tuning axis (H6). Miru's J-lens (bf16 google/gemma-4-31B-it, plain gradients as far as its header
-   records, WikiText) against Neuronpedia's JLens (bf16 base, WikiText): the same kind of lens on the two models, so
-   the gap is fine-tuning plus the two fits' differences, with no quantisation in it. Beside it, for reference: Miru
+2. H6's first comparison. Miru's J-lens (bf16 google/gemma-4-31B-it, plain gradients as far as its header
+   records, WikiText, Miru Tracer's code and its own re-chunked prompts) against Neuronpedia's JLens (bf16 base,
+   anthropics/jacobian-lens on 861 WikiText records): the gap is fine-tuning together with the two fits' code,
+   estimator details and prompts, with no quantisation in it. H6's bands (code 30-39, 40-49, 50-57, and 58
+   apart, where Miru collapses) are written beside Q0's own ("h6_bands"). Beside it, for reference: Miru
    against J++, and R1's IT covectors (4-bit instruct, same-position VJPs, R1_04_gbar.pt) against Miru, J++ and
    JLens. The 4-bit J-lens of the Q1 arm (R3_Q1_jlens.py, not run yet) is compared with these pullbacks later.
 
@@ -98,6 +100,25 @@ def summarize(cos_KL: torch.Tensor, rng: np.random.Generator, n_boot: int = 2000
     return out
 
 
+def h6_summary(cos_KL: torch.Tensor, rng: np.random.Generator, layers: Tuple[int, ...] = LAYERS,
+               n_boot: int = 2000) -> Dict[str, Any]:
+    """H6's bands (R3_common.H6_BANDS: code 30-39, 40-49, 50-57, and 58 apart): per band the mean over the 98 token
+    pairs and its 95% percentile interval over directions (a stream of its own, so Q0's other intervals stay as
+    they were)."""
+    x = cos_KL.double().numpy()
+    tp = list(C.TOKPAIR_DIRS)
+    col = {l: i for i, l in enumerate(layers)}
+    idx = rng.integers(0, len(tp), size=(n_boot, len(tp)))
+    out = {}
+    for name, a, b in C.H6_BANDS:
+        if not all(l in col for l in range(a, b + 1)):
+            continue
+        t = x[:, [col[l] for l in range(a, b + 1)]].mean(1)[tp]
+        out[name] = {"tokpair98": round(float(t.mean()), 4),
+                     "ci95": [round(float(q), 4) for q in np.percentile(t[idx].mean(1), [2.5, 97.5])]}
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ the files
 def pinned(path: Path, sha: str, size: int, full: bool) -> Dict[str, Any]:
     rec = C.check_pinned_file(path, sha, size, full=full)
@@ -178,11 +199,14 @@ def main() -> int:
           "R1's 128 directions: 30 named, then the 98 token pairs (indices 30-127)")
     M = {k: v[:59] for k, v in quiet_masks().items()}
     rng = np.random.default_rng(C.BOOT_SEED)
-    res: Dict[str, Any] = {"comparisons": {}}
+    rng6 = np.random.default_rng([C.BOOT_SEED, 6])
+    res: Dict[str, Any] = {"comparisons": {}, "h6_bands": {}}
 
     def compare(tag: str, A: torch.Tensor, B: torch.Tensor) -> Dict[str, Any]:
-        r = {mk: summarize(mcos(A, B, M[mk]), rng) for mk in MASKS}
+        cs = {mk: mcos(A, B, M[mk]) for mk in MASKS}
+        r = {mk: summarize(cs[mk], rng) for mk in MASKS}
         res["comparisons"][tag] = r
+        res["h6_bands"][tag] = {mk: h6_summary(cs[mk], rng6) for mk in ("loud", "q10")}
         return r
 
     # 1a. the stored pullbacks against R1_04's table: this file's statistics are R1's
@@ -217,10 +241,9 @@ def main() -> int:
                                 f"(max |diff| {diff:.4f})", max_abs_diff=diff, route=route)
     reproduced = all(c["ok"] for c in checks)
 
-    # 2. the fine-tuning axis and the reference rows (reported only once the check holds)
+    # 2. Miru against JLens (H6) and the reference rows (reported only once the check holds)
     if reproduced:
-        compare("fp32: miru vs jlens (fine-tuning axis: bf16 instruct vs bf16 base, plain J-lenses)",
-                pb["miru"]["fp32"], pb["jlens"]["fp32"])
+        compare(C.Q0_MIRU_JLENS, pb["miru"]["fp32"], pb["jlens"]["fp32"])
         compare("fp32: miru vs jpp", pb["miru"]["fp32"], pb["jpp"]["fp32"])
         G = torch.load(C.R1_GBAR_PATH, map_location="cpu", mmap=True, weights_only=False)
         check(G["names"] == names, "R1_04_gbar.pt's directions are R1_02's, in the same order")
@@ -236,7 +259,7 @@ def main() -> int:
                              f"(max |diff| {d:.4f})", max_abs_diff=d)
         del G, gm
     else:
-        log("the implementation check failed: the fine-tuning axis is not reported")
+        log("the implementation check failed: Miru against JLens is not reported")
 
     yard = {
         "same model (IT), chat fit vs prose fit, q10 [R1_04 cos_chat_prose]":
@@ -267,10 +290,11 @@ def main() -> int:
                     "files": {k: v["path"] for k, v in files.items()}}, a.pt)
         log(f"wrote {a.pt}")
     if reproduced:
-        for tag in ("fp32: jpp vs jlens", "fp32: miru vs jlens (fine-tuning axis: bf16 instruct vs bf16 base, "
-                                          "plain J-lenses)", "fp32: miru vs jpp"):
+        for tag in ("fp32: jpp vs jlens", C.Q0_MIRU_JLENS, "fp32: miru vs jpp"):
             q = res["comparisons"][tag]["q10"]["bands"]
             log(tag, "q10:", "  ".join(f"{b} {q[b]['tokpair98']:.3f}" for b in ("L30-39", "L40-49", "L50-58")))
+            h = res["h6_bands"][tag]["q10"]
+            log("   H6 bands, q10:", "  ".join(f"{b} {v['tokpair98']:.3f} {v['ci95']}" for b, v in h.items()))
     print(f"R3_Q0_pullbacks: {'ALL PASS' if out['ok'] else 'FAILURES'}")
     return 0 if out["ok"] else 1
 

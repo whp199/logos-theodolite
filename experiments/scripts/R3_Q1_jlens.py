@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""R3 Q1 (GPU, resumable; about 4 backward passes per prompt): the 4-bit J-lens arm of H6, fine-tuning against
-quantisation (R3_PREREG.md §1, §8).
+"""R3 Q1 (GPU, resumable; about 4 backward passes per prompt): the 4-bit J-lens arm of H6, its two
+bounded differences, which do not separate fine-tuning from quantisation (R3_PREREG.md §1, §8).
 
 What is fitted: a plain J-lens on the served W4A16 instruct model, for R1's 128 final-space directions only (the
 directions Q0 compares): per prompt, d_k^T J_l = the gradient of sum over kept targets p' of <h_59[p'], d_k> with
@@ -12,7 +12,9 @@ ceiling (Miru's own ceiling is unknown).
 
 The prompts, two sets:
 - "miru": Miru's 425 processed prompts, if R3_01_check.py rebuilt them from its header's description and both of
-  its hashes matched. Then bf16 against W4A16 is the only change between the Miru file and this arm.
+  its hashes matched. Then the checkpoint (bf16 against the 4-bit QAT one) and the code (R3's against Miru
+  Tracer's, whose last-position and gradient details are not recorded) are what change between the Miru file and
+  this arm.
 - "jpp64": J++'s 64 fit prompts (the first 64 WikiText records), the data yardstick; and, while Miru's prompts are
   not rebuilt, the registered fallback, so that the arm also changes the prompts (WikiText both, Miru's 425
   rechunked passages against J++'s first 64 records). The output says which set every number comes from.
@@ -21,7 +23,7 @@ its gradient mode beyond "no LRP recorded".
 
 After the fit (and with --analyze-only, on the CPU from the saved sums): cosines in q10 and loud coordinates per
 band against the Q0 pullbacks (Miru, J++, JLens) and R1's IT covectors, beside Q0's Miru-against-JLens row, and the
-split-half ceiling. Writes experiments/results/R3_Q1_jlens.pt (gitignored sums) and R3_Q1_jlens.json.
+split-half ceiling; then H6's registered reading in H6's bands (code 30-39, 40-49, 50-57; 58 apart), h6_reading. Writes experiments/results/R3_Q1_jlens.pt (gitignored sums) and R3_Q1_jlens.json.
 
 Runs only after the pilot's "proceed", the registered files committed, the server stopped:
   /home/eric/bin/ai/theodolite2/.venv/bin/python -I experiments/scripts/R3_Q1_jlens.py --run [--set miru|jpp64|both]
@@ -182,13 +184,14 @@ def compare(q1: Dict[str, torch.Tensor], layers: Sequence[int], refs: Dict[str, 
     layers = list(layers)
     rng = np.random.default_rng(seed)
     bands = [(b, a, z) for b, a, z in C.Q0_BANDS if a >= layers[0] and z <= layers[-1]]
+    bands6 = [(b, a, z) for b, a, z in C.H6_BANDS if a >= layers[0] and z <= layers[-1]]
 
-    def summ(cos_KL: torch.Tensor) -> Dict[str, Any]:
+    def summ(cos_KL: torch.Tensor, which=None) -> Dict[str, Any]:
         x = cos_KL.double().numpy()
         tp = list(C.TOKPAIR_DIRS)
         idx = rng.integers(0, len(tp), size=(2000, len(tp)))
         out = {}
-        for name, a, z in bands:
+        for name, a, z in (which or bands):
             cols = [layers.index(l) for l in range(a, z + 1)]
             v = x[:, cols].mean(1)[tp]
             out[name] = {"tokpair98": round(float(v.mean()), 4),
@@ -196,12 +199,68 @@ def compare(q1: Dict[str, torch.Tensor], layers: Sequence[int], refs: Dict[str, 
         return out
 
     A = q1["all"].permute(1, 0, 2)                         # [K, L, N]
-    out: Dict[str, Any] = {"bands": [b for b, _, _ in bands], "vs": {}}
+    out: Dict[str, Any] = {"bands": [b for b, _, _ in bands], "vs": {}, "h6_bands": [b for b, _, _ in bands6],
+                           "h6": {"vs": {}}}
     for name, R in refs.items():
         Rl = R[:, layers]
         out["vs"][name] = {mk: summ(Q0.mcos(A, Rl, masks[mk][layers])) for mk in ("all", "loud", "q10")}
     hA, hB = q1["A"].permute(1, 0, 2), q1["B"].permute(1, 0, 2)
     out["split_half"] = {mk: summ(Q0.mcos(hA, hB, masks[mk][layers])) for mk in ("all", "loud", "q10")}
+    # H6's bands (code 58 apart), on a stream of their own so the rows above stay as they were
+    rng = np.random.default_rng([seed, 6])
+    for name, R in refs.items():
+        out["h6"]["vs"][name] = {mk: summ(Q0.mcos(A, R[:, layers], masks[mk][layers]), bands6)
+                                 for mk in ("loud", "q10")}
+    out["h6"]["split_half"] = {mk: summ(Q0.mcos(hA, hB, masks[mk][layers]), bands6) for mk in ("loud", "q10")}
+    if "miru" in refs and "jlens" in refs:
+        out["h6"]["miru_vs_jlens"] = {mk: summ(Q0.mcos(refs["miru"][:, layers], refs["jlens"][:, layers],
+                                                       masks[mk][layers]), bands6) for mk in ("loud", "q10")}
+    return out
+
+
+H6_LABELS = {
+    "smaller": "Q1 against Miru (quantisation, with the QAT checkpoint's further training and R3's code against Miru "
+               "Tracer's) agrees better than Miru against JLens (fine-tuning, with Miru Tracer's code against "
+               "anthropics/jacobian-lens and their prompts)",
+    "larger": "Q1 against Miru agrees worse than Miru against JLens, and Q1's own split-half ceiling is above Miru "
+              "against JLens, so the low agreement is not Q1's own noise alone",
+    "not separated": "the intervals overlap, or Q1's split-half ceiling is too low to read a low agreement",
+}
+
+
+def h6_reading(cmp: Dict[str, Any], set_name: str) -> Dict[str, Any]:
+    """H6's registered reading (R3_PREREG.md §1.2), per band of C.H6_READ_BANDS (code 58 is reported apart and not
+    read), in q10 (loud beside it): with b = Q1 against Miru, a = Miru against JLens (both 95% intervals over the 98
+    token-pair directions) and s = Q1's split-half (A against B, point value):
+      "smaller" if b's lower end is above a's upper end;
+      "larger" if b's upper end is at or below a's lower end and s is above a's upper end;
+      otherwise "not separated".
+    H6 bounds the two differences; it does not separate fine-tuning from quantisation, since each comparison also
+    changes the code and (here or under the fallback) the prompts. Q1 against JLens and against J++ are given beside
+    it, the third side of the triangle."""
+    h6 = cmp["h6"]
+    out: Dict[str, Any] = {"set": set_name, "labels": H6_LABELS, "bands": {}}
+    if set_name != "miru":
+        out["caution"] = ("Q1 was fitted on J++'s 64 prompts, not Miru's 425 (the D22 fallback): the prompts and the "
+                          "number of prompts (64 against 425) differ too")
+    for mk in ("q10", "loud"):
+        for band in C.H6_READ_BANDS:
+            if band not in h6["vs"]["miru"][mk]:
+                continue
+            b, a = h6["vs"]["miru"][mk][band], h6["miru_vs_jlens"][mk][band]
+            sh = h6["split_half"][mk][band]["tokpair98"]
+            if b["ci95"][0] > a["ci95"][1]:
+                r = "smaller"
+            elif b["ci95"][1] <= a["ci95"][0] and sh > a["ci95"][1]:
+                r = "larger"
+            else:
+                r = "not separated"
+            out["bands"].setdefault(mk, {})[band] = {
+                "reading": r, "q1_vs_miru": b, "miru_vs_jlens": a, "q1_split_half": sh,
+                "triangle": {k: h6["vs"][k][mk].get(band) for k in ("jlens", "jpp") if k in h6["vs"]}}
+    out["reported_apart"] = {mk: {"L58": {"q1_vs_miru": h6["vs"]["miru"][mk].get("L58"),
+                                          "miru_vs_jlens": h6["miru_vs_jlens"][mk].get("L58")}}
+                             for mk in ("q10", "loud")}
     return out
 
 
@@ -214,11 +273,12 @@ def analyze(st_by_set: Dict[str, Dict[str, Any]], layers: Sequence[int]) -> Dict
     refs["r1_it"] = G["mix"][:, :59].float()
     masks = {k: v[:59] for k, v in Q0.quiet_masks().items()}
     q0j = json.loads(C.Q0_JSON.read_text(encoding="utf-8"))
-    out = {"q0_fine_tuning_axis_copied": q0j["comparisons"].get(
-        "fp32: miru vs jlens (fine-tuning axis: bf16 instruct vs bf16 base, plain J-lenses)")}
+    out = {"q0_miru_vs_jlens_copied": q0j["comparisons"].get(C.Q0_MIRU_JLENS),
+           "q0_miru_vs_jlens_h6_bands_copied": (q0j.get("h6_bands") or {}).get(C.Q0_MIRU_JLENS)}
     for name, st in st_by_set.items():
-        out[name] = {"n_prompts": st["n"], "skipped": st["skipped"], "compare": compare(means(st), layers, refs,
-                                                                                       masks)}
+        cmp = compare(means(st), layers, refs, masks)
+        out[name] = {"n_prompts": st["n"], "skipped": st["skipped"], "compare": cmp,
+                     "h6_reading": h6_reading(cmp, name)}
     return out
 
 
@@ -306,7 +366,38 @@ def selftest(record: bool = False) -> int:
     masks = {"all": torch.ones(L, N), "q10": (torch.arange(N) < 3).float().expand(L, N), "loud": None}
     masks["loud"] = 1 - masks["q10"]
     cmp = compare(q1, lay, {"same": ref, "other": torch.randn(K, L, N, generator=g)}, masks)
-    check(cmp["bands"] == ["L30-39", "L40-49", "L50-58"]
+    # H6's reading on made-up comparisons: each branch
+    def fake(b, a, sh):
+        return {"h6": {"vs": {"miru": {mk: {bd: {"tokpair98": sum(b) / 2, "ci95": list(b)} for bd in C.H6_READ_BANDS}
+                                       for mk in ("q10", "loud")},
+                              "jlens": {mk: {} for mk in ("q10", "loud")}},
+                       "miru_vs_jlens": {mk: {bd: {"tokpair98": sum(a) / 2, "ci95": list(a)} for bd in C.H6_READ_BANDS}
+                                         for mk in ("q10", "loud")},
+                       "split_half": {mk: {bd: {"tokpair98": sh} for bd in C.H6_READ_BANDS} for mk in ("q10", "loud")}}}
+    rd = [h6_reading(fake(b, a, sh), "jpp64")["bands"]["q10"]["L30-39"]["reading"]
+          for b, a, sh in (((0.6, 0.7), (0.35, 0.4), 0.9), ((0.1, 0.2), (0.35, 0.4), 0.9),
+                           ((0.1, 0.2), (0.35, 0.4), 0.3), ((0.3, 0.5), (0.35, 0.4), 0.9))]
+    check(rd == ["smaller", "larger", "not separated", "not separated"]
+          and "caution" in h6_reading(fake((0.6, 0.7), (0.35, 0.4), 0.9), "jpp64"),
+          f"H6's reading: intervals apart either way, a split-half ceiling too low to read a low agreement, and "
+          f"overlap ({rd}); the fallback prompts carry a caution")
+    if C.Q0_PT.is_file():
+        # --analyze-only's path on made-up sums against the real Q0 pullbacks: the reading is written per H6 band
+        g6 = torch.Generator().manual_seed(6)
+        q0pt = torch.load(C.Q0_PT, map_location="cpu", weights_only=False)
+        lay6 = list(C.Q1_LAYERS)
+        mir = q0pt["pb"]["miru"][:, lay6].permute(1, 0, 2)
+        fake_st = {"sum": torch.stack([mir * 32 + torch.randn(mir.shape, generator=g6) * 0.01,
+                                       mir * 32 + torch.randn(mir.shape, generator=g6) * 0.01]),
+                   "n": [32, 32], "skipped": []}
+        del q0pt
+        an6 = analyze({"jpp64": fake_st}, lay6)["jpp64"]["h6_reading"]
+        check(set(an6["bands"]["q10"]) == set(C.H6_READ_BANDS)
+              and all(v["reading"] == "smaller" for v in an6["bands"]["q10"].values()) and "caution" in an6
+              and "L58" in an6["reported_apart"]["q10"],
+              "--analyze-only on made-up sums equal to Miru's own pullbacks: in every H6 band Q1 against Miru reads "
+              "'smaller' (it agrees better than Miru against JLens), code 58 apart, with the fallback's caution")
+    check(cmp["bands"] == ["L30-39", "L40-49", "L50-58"] and cmp["h6_bands"] == ["L30-39", "L40-49", "L50-57", "L58"]
           and all(abs(cmp["vs"]["same"][mk][b]["tokpair98"] - 1) < 1e-6 for mk in ("all", "q10") for b in cmp["bands"])
           and all(abs(cmp["vs"]["other"]["all"][b]["tokpair98"]) < 0.2 for b in cmp["bands"]),
           "the comparison: an identical reference gives cosine 1 in every band and mask, an unrelated one about 0")

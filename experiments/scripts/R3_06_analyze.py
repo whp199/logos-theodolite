@@ -89,6 +89,10 @@ class Design:
     overlap_why: str = ""
     filtered_key: str = "fs"                                 # the filtered top-k texts read by the primary metric
     filtered_ids_key: str = "f"                              # ... and their ids (S5: "fjs" / "fj", J++'s filter)
+    # R3: every candidate-band test is in the family whatever the data hold; a band with a readout missing at any of
+    # its layers fails rule 2 (and keeps p = 1), so Holm is never run over fewer tests than registered
+    require_all_bands: bool = False
+    labels: Dict[str, str] = field(default_factory=dict)    # how a reference lens is labelled in the report
 
     @property
     def all_conds(self) -> Tuple[str, ...]:
@@ -106,12 +110,14 @@ R2_DESIGN = Design(
 
 R3_DESIGN = Design(
     name="R3", conditions=C.CONDITIONS, secondary_conditions=C.SECONDARY_CONDITIONS,
-    kinds=("jpp", "naive") + C.CANDIDATES + C.REFERENCE_LENSES, candidates=C.CANDIDATES,
-    reference=C.REFERENCE_LENSES, baselines=C.BASELINES, bands=C.BANDS, reference_only=frozenset(),
-    precedence=C.PRECEDENCE, min_serve_layer=C.MIN_SERVE_LAYER, boot_seed=C.BOOT_SEED, n_boot=C.N_BOOT,
-    overlap=dict(C.FIT_OVERLAP),
+    kinds=("jpp", "naive") + C.CANDIDATES + C.REFERENCE_LENSES + C.SENSITIVITY_LENSES, candidates=C.CANDIDATES,
+    reference=C.REFERENCE_LENSES + C.SENSITIVITY_LENSES, baselines=C.BASELINES, bands=C.BANDS,
+    reference_only=frozenset(), precedence=C.PRECEDENCE, min_serve_layer=C.MIN_SERVE_LAYER, boot_seed=C.BOOT_SEED,
+    n_boot=C.N_BOOT, overlap=dict(C.FIT_OVERLAP),
     overlap_why="without the prompts that paraphrase or share an answer topic with a fit source "
-                "(R3_common.FIT_OVERLAP: WikiText records, J++ items, R1's fit set)")
+                "(R3_common.FIT_OVERLAP: WikiText records, J++ items, R1's fit set)",
+    require_all_bands=True,
+    labels={"r1": "reference", "miru": "reference", "jpp-it-full-macro": "full-macro sensitivity"})
 
 
 def memberships(p: Dict[str, Any]) -> List[str]:
@@ -483,8 +489,19 @@ def decision_suite(D: Design, data: Dict[str, Any], conds: Optional[Tuple[str, .
     bands: Dict[str, Dict[str, Any]] = {}
     for lens in D.candidates:
         for band, layers in D.bands:
-            if layers and band_layers_for(t, lens, layers) and band_layers_for(t, "jpp", layers):
+            complete = bool(layers) and band_layers_for(t, lens, layers) and all(
+                band_layers_for(t, b, layers) for b, _ in D.baselines)
+            if complete:
                 bands.setdefault(lens, {})[band] = evaluate_band(t, boot, lens, band, list(layers), conds)
+            elif D.require_all_bands and layers:
+                ev = evaluate_band(t, boot, lens, band, list(layers), conds)
+                missing = {k: [l for l in layers if l not in t.layers.get(k, [])] for k in (lens,) + tuple(
+                    b for b, _ in D.baselines)}
+                ev["missing_layers"] = {k: v for k, v in missing.items() if v}
+                ev["rules"]["2"] = False
+                ev["reasons"].append(f"[rule 2] a readout is missing: {ev['missing_layers']}")
+                ev["p_sign"] = 1.0
+                bands.setdefault(lens, {})[band] = ev
     finalize(D, bands)
     ref: Dict[str, Dict[str, Any]] = {}
     for lens in D.reference:
@@ -779,6 +796,118 @@ def reproduce_r2(eval_path: Path, analysis_path: Path) -> Dict[str, Any]:
             "sensitivity_changes": {k: v.get("changes") for k, v in got["sensitivity"].items()}}
 
 
+# ------------------------------------------------------------------------------------------------ the replication
+# R3_PREREG.md §8.6: R3_05 reads R2's 220 prompts again, with R2's draw seed. The test of R3's reading path (D21):
+REPL_KINDS = ("jpp", "naive", "r1", "miru")           # the readouts R2 read, at the layers R2 read (40-59)
+REPL_MIN_POSITIONS = 0.95                             # share of R2's read positions found again, same context and target
+REPL_MIN_TOP1 = 0.99                                  # per readout: share of (position, layer) with R2's filtered top-1
+
+
+def _pos_key(p: Dict[str, Any]) -> Tuple[Any, ...]:
+    return (p["pid"], p["cond"], p["pos"], p.get("k"))
+
+
+def replication_readouts(rep: Dict[str, Any], r2: Dict[str, Any]) -> Dict[str, Any]:
+    """R3's reading of R2's prompts against R2_02_eval.json, position by position: a position is found again when
+    the prompt, condition, read position, draws, next token, content target and (mid-reply) the reply up to the
+    read position are R2's; then per readout and layer of R2's, whether the filtered top-1 id (and the unfiltered
+    one) is R2's. Passes when at least REPL_MIN_POSITIONS of R2's positions are found again and, for every readout,
+    at least REPL_MIN_TOP1 of its (position, layer) pairs have R2's filtered top-1. Every mismatch is listed."""
+    reply3 = {p["pid"]: p.get("reply_ids") for p in rep.get("prompts", [])}
+    reply2 = {p["pid"]: p.get("reply_ids") for p in r2.get("prompts", [])}
+    mine = {_pos_key(p): p for p in rep["positions"]}
+    found, lost = [], []
+    for q in r2["positions"]:
+        p = mine.get(_pos_key(q))
+        same = p is not None and all(p.get(k) == q.get(k) for k in ("draws", "next_id", "ct_id", "cont_ids"))
+        if same and q["cond"] == "mid-reply":
+            k = q["k"]
+            same = (reply3.get(q["pid"]) or [])[:k + 2] == (reply2.get(q["pid"]) or [])[:k + 2]
+        (found if same else lost).append((q, p))
+    per: Dict[str, Any] = {}
+    mism: List[Dict[str, Any]] = []
+    for kind in REPL_KINDS:
+        n = same_f = same_u = 0
+        for q, p in found:
+            for l, rq in q["r"].get(kind, {}).items():
+                rp = p["r"].get(kind, {}).get(l)
+                n += 1
+                if rp is not None and rp["f"][0] == rq["f"][0]:
+                    same_f += 1
+                elif len(mism) < 500:
+                    mism.append({"pid": q["pid"], "pos": q["pos"], "k": q.get("k"), "kind": kind, "layer": int(l),
+                                 "r2_f0": rq["f"][0], "r3_f0": None if rp is None else rp["f"][0]})
+                same_u += int(rp is not None and rp["u"][0] == rq["u"][0])
+        per[kind] = {"pairs": n, "filtered_top1_same": same_f, "unfiltered_top1_same": same_u,
+                     "filtered_share": r4(same_f / n) if n else None, "unfiltered_share": r4(same_u / n) if n else None,
+                     "ok": n > 0 and same_f / n >= REPL_MIN_TOP1}
+    n2 = len(r2["positions"])
+    share = len(found) / n2 if n2 else 0.0
+    return {"r2_positions": n2, "found_again": len(found), "found_share": r4(share),
+            "lost": [{"pid": q["pid"], "pos": q["pos"], "k": q.get("k")} for q, _ in lost][:200],
+            "readouts": per, "mismatches_listed": mism, "n_mismatches": sum(v["pairs"] - v["filtered_top1_same"]
+                                                                            for v in per.values()),
+            "tolerance": {"positions": REPL_MIN_POSITIONS, "filtered_top1": REPL_MIN_TOP1},
+            "ok": share >= REPL_MIN_POSITIONS and all(v["ok"] for v in per.values())}
+
+
+def replication_verdicts(an2: Dict[str, Any], ref: Dict[str, Any]) -> Dict[str, Any]:
+    """R2's design applied to R3's reading of R2's prompts against R2_03_analysis.json: every lens-band's pass and
+    failed rules, and the decision."""
+    got, want = verdicts(an2["bands"]), verdicts(ref["bands"])
+    diff = [{"lens_band": k, "r3_reading": got.get(k), "r2": want.get(k)} for k in sorted(set(got) | set(want))
+            if (got.get(k) or {}).get("passes") != (want.get(k) or {}).get("passes")
+            or sorted((got.get(k) or {}).get("failed_rules", [])) != sorted((want.get(k) or {}).get("failed_rules", []))]
+    return {"differ": diff, "decision_same": _norm(an2["decision"]) == _norm(ref["decision"]),
+            "ok": not diff and _norm(an2["decision"]) == _norm(ref["decision"])}
+
+
+def replication(rep: Dict[str, Any], r2_eval: Dict[str, Any], r2_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """The registered replication (R3_PREREG.md §8.6): the readouts compared with R2's, R2's design on R3's reading
+    (its verdicts against R2_03's), and R3's design on the same prompts (S2 with R2's own overlap list), reported
+    whole (bands, reference bands, per layer, decision, counts). Decides nothing; on a failure the report says so
+    first, and no R3 pass is a recommendation until an amendment explains the difference."""
+    D3 = replace(R3_DESIGN, overlap=dict(R2.R1_OVERLAP),
+                 overlap_why=R2_DESIGN.overlap_why + "; the replication set, so R2's own list")
+    a3 = analyze(D3, rep)
+    a2 = analyze(R2_DESIGN, rep)
+    ro = replication_readouts(rep, r2_eval)
+    rv = replication_verdicts(a2, r2_analysis)
+    return {"ok": ro["ok"] and rv["ok"], "readouts_against_r2_02": ro, "r2_design_against_r2_03": rv,
+            "r2_design": {k: a2[k] for k in ("bands", "decision", "counts")},
+            "r3_design": {k: a3[k] for k in ("bands", "reference_bands", "per_layer", "decision", "counts",
+                                              "sensitivity")},
+            "on_failure": "reported first in the report; the rule is still applied to R3's prompts, but no R3 pass is "
+                          "a recommendation to a serving track until an amendment explains the difference"}
+
+
+def check_input(data: Dict[str, Any], counts: Dict[str, int], prompts_sha: str, what: str) -> List[str]:
+    """What must hold of R3_05's output before the rule is applied: the registered prompt counts and the prompts'
+    sha256 (and, for R3's prompts, the one a passing R3_01_check.json recorded)."""
+    bad = []
+    got = dict(collections.Counter(p["cond"] for p in data.get("prompts", [])))
+    if got != dict(counts):
+        bad.append(f"{what}: prompt counts {got}, registered {dict(counts)}")
+    if (data.get("meta") or {}).get("prompts_sha256") != prompts_sha:
+        bad.append(f"{what}: prompts sha256 {(data.get('meta') or {}).get('prompts_sha256')} is not {prompts_sha}")
+    return bad
+
+
+def check_family(D: Design, an: Dict[str, Any]) -> List[str]:
+    """Every candidate-band test is present and Holm ran over exactly the registered family."""
+    bad = []
+    if an["constants"]["HOLM_M"] != len(D.candidates) * len(D.bands):
+        bad.append(f"Holm family of {an['constants']['HOLM_M']} tests, registered {len(D.candidates) * len(D.bands)}")
+    for lens in D.candidates:
+        for band, _ in D.bands:
+            ev = an["bands"].get(lens, {}).get(band)
+            if ev is None:
+                bad.append(f"{lens} {band}: no test")
+            elif ev.get("holm_m") != len(D.candidates) * len(D.bands):
+                bad.append(f"{lens} {band}: Holm over {ev.get('holm_m')} tests")
+    return bad
+
+
 # ------------------------------------------------------------------------------------------------ report
 def fmt_ci(d: Dict[str, Any], signed: bool = True) -> str:
     if d.get("mean") is None:
@@ -795,6 +924,11 @@ def report_md(D: Design, an: Dict[str, Any], meta: Dict[str, Any]) -> str:
     L: List[str] = []
     L.append("## R3 result: J++'s recipe fitted on the instruct model, layer band by layer band")
     L.append("")
+    rp = an.get("replication_r2_prompts")
+    if rp is not None and not rp["ok"]:
+        L.append("**R3's reading path did not reproduce R2's readings on R2's prompts (§8.6): no pass below is a "
+                 "recommendation to a serving track until an amendment explains the difference.**")
+        L.append("")
     if meta.get("selftest"):
         L.append("**SELF-TEST DATA (fake model): these numbers mean nothing.**")
         L.append("")
@@ -823,7 +957,8 @@ def report_md(D: Design, an: Dict[str, Any], meta: Dict[str, Any]) -> str:
         L.append(f"| {band} | " + " | ".join(cells) + f" | {dec['by_band'].get(band) or 'none'} |")
     L.append("")
     L.append("| lens | band | second | J++ | naked | second - J++ | second - naked | +/- vs J++ | +/- vs naked | "
-             "p (Holm) | worse in | max stuck (layer, condition, word) | verdict |")
+             "p (Holm for candidates; raw, outside Holm, for the rest) | worse in | max stuck (layer, condition, "
+             "word) | verdict |")
     L.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|")
     for group in (an["bands"], an.get("reference_bands", {})):
         for lens, d in group.items():
@@ -832,15 +967,18 @@ def report_md(D: Design, an: Dict[str, Any], meta: Dict[str, Any]) -> str:
                 if ev is None:
                     continue
                 worse = "; ".join(w.split(":")[0] + (" (J++)" if "J++" in w else " (naked)") for w in ev["worse_in"]) or "-"
-                verdict = ("reference" if lens in D.reference else
+                ref_lens = lens in D.reference
+                verdict = ((D.labels.get(lens, "reference") + (": passes" if ev["passes"] else ": fails"))
+                           if ref_lens else
                            "SERVE" if ev.get("served") else ("pass, not served" if ev["passes"] else "do not serve"))
+                p_cell = f"{ev['p_sign_holm']:.2g}" + (" (raw)" if ref_lens else "")
                 sj, sn = ev["sign_jpp"], ev["sign_naive"]
                 where = ev.get("stuck_max_where")
                 stw = f"{ev['stuck_max']:.2f} ({where[0]}, {where[1]}, {where[2]!r})" if where else "n/a"
                 L.append(f"| {lens} | {band} | {fmt_num(ev['second']['pooled']['mean'])} | "
                          f"{fmt_num(ev['jpp']['pooled']['mean'])} | {fmt_num(ev['naive']['pooled']['mean'])} | "
                          f"{fmt_ci(ev['diff_jpp']['pooled'])} | {fmt_ci(ev['diff_naive']['pooled'])} | "
-                         f"{sj['n_pos']}/{sj['n_neg']} | {sn['n_pos']}/{sn['n_neg']} | {ev['p_sign_holm']:.2g} | "
+                         f"{sj['n_pos']}/{sj['n_neg']} | {sn['n_pos']}/{sn['n_neg']} | {p_cell} | "
                          f"{worse} | {stw} | {verdict} |")
     L.append("")
     fails = [(lens, band, ev) for lens, d in an["bands"].items() for band, ev in d.items() if not ev["passes"]]
@@ -848,6 +986,16 @@ def report_md(D: Design, an: Dict[str, Any], meta: Dict[str, Any]) -> str:
         L.append("Why each failing band fails:")
         for lens, band, ev in fails:
             L.append(f"- {lens} {band}: " + "; ".join(ev["reasons"]))
+        L.append("")
+    rp = an.get("replication_r2_prompts")
+    if rp is not None:
+        ro = rp["readouts_against_r2_02"]
+        L.append(f"Replication on R2's prompts (R3_PREREG.md §8.6, decides nothing): "
+                 f"{'passes' if rp['ok'] else 'FAILS'}. {ro['found_again']} of {ro['r2_positions']} of R2's read "
+                 f"positions found again; filtered top-1 the same as R2's: " +
+                 ", ".join(f"{k} {v['filtered_share']}" for k, v in ro["readouts"].items()) +
+                 f" (tolerance {ro['tolerance']['filtered_top1']}); R2's design gives R2_03's verdicts: "
+                 f"{'yes' if rp['r2_design_against_r2_03']['ok'] else 'no'}.")
         L.append("")
     L.append("Sensitivity analyses (pre-registered; the decision above stands):")
     L.append("")
@@ -1046,10 +1194,54 @@ def selftest(record: bool = False) -> int:
           and an_low["decision"]["by_band"]["29-30"] is None,
           "a band reaching code 29 that passes is never served")
 
+    # a candidate missing one layer of a band: the band stays in the family (rule 2 fails, p = 1); Holm over 14
+    dm = synthetic_r3()[0]
+    for p in dm["positions"]:
+        p["r"]["rl-it"].pop("52", None)
+    anm = analyze(R3_DESIGN, dm)
+    evm = anm["bands"]["rl-it"]["51-54"]
+    check(not check_family(R3_DESIGN, anm) and evm["holm_m"] == 14 and not evm["rules"]["2"] and evm["p_sign"] == 1.0
+          and evm["missing_layers"] == {"rl-it": [52]} and not evm["passes"],
+          "a readout missing at one layer of a band fails rule 2 and keeps the band in the Holm family (14 tests)")
+    bad = check_family(R3_DESIGN, dict(anm, constants=dict(anm["constants"], HOLM_M=13),
+                                       bands={"jpp-it": anm["bands"]["jpp-it"]}))
+    check(len(bad) == 8, f"a family of fewer than 14 tests is refused before anything is written ({len(bad)} reasons)")
+    check(check_input({"prompts": [{"cond": c} for c, n in C.N_PROMPTS.items() for _ in range(n)],
+                       "meta": {"prompts_sha256": "x"}}, C.N_PROMPTS, "x", "t") == []
+          and len(check_input({"prompts": [], "meta": {}}, C.N_PROMPTS, "x", "t")) == 2,
+          "the input check: the registered prompt counts and the prompts' sha256")
+    # the replication's readout comparison: R2's own reading passes against itself; a perturbed copy fails
+    r2e = json.loads(R2.EVAL_JSON.read_bytes())
+    ro = replication_readouts(r2e, r2e)
+    pert = json.loads(json.dumps(r2e))
+    nflip = 0
+    for p in pert["positions"][::20]:
+        for l, rr in p["r"]["miru"].items():
+            rr["f"] = [rr["f"][1]] + rr["f"][1:]
+            nflip += 1
+    rp2 = replication_readouts(pert, r2e)
+    check(ro["ok"] and ro["found_share"] == 1.0 and all(v["filtered_share"] == 1.0 for v in ro["readouts"].values())
+          and not rp2["ok"] and not rp2["readouts"]["miru"]["ok"] and rp2["readouts"]["jpp"]["ok"]
+          and rp2["n_mismatches"] == nflip,
+          f"the replication's readout check: R2's own file against itself passes (every position found, every top-1 "
+          f"the same); {nflip} changed Miru top-1s fail Miru's tolerance and are counted")
+    r2a = json.loads(R2.ANALYSIS_JSON.read_text(encoding="utf-8"))
+    rv = replication_verdicts(r2a, r2a)
+    flip = json.loads(json.dumps(r2a))
+    flip["bands"]["r1"]["58"]["rules"]["5"] = True
+    flip["bands"]["r1"]["58"]["passes"] = True
+    check(rv["ok"] and not replication_verdicts(flip, r2a)["ok"],
+          "the replication's verdict check: R2_03's verdicts against themselves agree; one changed verdict is caught")
+    md_f = report_md(R3_DESIGN, dict(an, replication_r2_prompts={"ok": False, "readouts_against_r2_02": rp2,
+                                                                 "r2_design_against_r2_03": rv}), {"selftest": True})
+    check("did not reproduce R2's readings" in md_f and "FAILS" in md_f,
+          "a failed replication is said first in the report")
+
     an2 = analyze(R3_DESIGN, synthetic_r3()[0])
     check(_norm(an2["bands"]) == _norm(analyze(R3_DESIGN, synthetic_r3()[0])["bands"]), "the bootstrap is deterministic")
     md = report_md(R3_DESIGN, an, {"selftest": True})
-    check("SELF-TEST" in md and "| jpp-it | 30-39 |" in md and "S5" in md, "the report renders")
+    check("SELF-TEST" in md and "| jpp-it | 30-39 |" in md and "S5" in md and "(raw)" in md
+          and "reference: passes" in md, "the report renders; reference rows give a raw p, outside Holm")
     print(f"R3_06 self-test: {'ALL PASS' if not fails else str(len(fails)) + ' FAILURES'}")
     if record:
         C.record_selftest(Path(__file__).name, done, time.time() - t_start)
@@ -1091,10 +1283,25 @@ def main():
     results = C.RESULTS.resolve()
     if meta.get("selftest") and (out.resolve().parent == results or report.resolve().parent == results):
         raise SystemExit("this input is self-test data; write the analysis and report outside experiments/results")
+    if not meta.get("selftest"):
+        chk = json.loads(C.CHECK_JSON.read_text(encoding="utf-8")) if C.CHECK_JSON.is_file() else {}
+        bad = check_input(data, C.N_PROMPTS, C.sha256_file(C.PROMPTS_PATH), "R3_05_eval.json")
+        if not chk.get("ok") or chk.get("prompts_sha256") != C.sha256_file(C.PROMPTS_PATH):
+            bad.append("R3_01_check.json does not pass this R3_prompts.json")
+        if bad:
+            raise SystemExit("the input is not R3's registered reading: " + "; ".join(bad))
     an = analyze(R3_DESIGN, data)
+    bad = check_family(R3_DESIGN, an)
+    if bad:
+        raise SystemExit("the Holm family is not the registered one: " + "; ".join(bad))
     if args.replication:
         rep = json.loads(Path(args.replication).read_bytes())
-        an["replication_r2_prompts"] = {k: analyze(R3_DESIGN, rep)[k] for k in ("bands", "decision", "counts")}
+        if not (rep.get("meta") or {}).get("selftest"):
+            bad = check_input(rep, R2.N_PROMPTS, R2.sha256_file(R2.PROMPTS_PATH), "the replication file")
+            if bad:
+                raise SystemExit("; ".join(bad))
+        an["replication_r2_prompts"] = replication(rep, json.loads(R2.EVAL_JSON.read_bytes()),
+                                                   json.loads(R2.ANALYSIS_JSON.read_text(encoding="utf-8")))
     an["input"] = {"path": str(args.inp), "sha256": hashlib.sha256(raw).hexdigest(),
                    "selftest": bool(meta.get("selftest")), "run_files_sha256": meta.get("files_sha256"),
                    "run_git": meta.get("git")}

@@ -355,13 +355,42 @@ def git_state(paths: Sequence[Path]) -> Dict[str, Any]:
 
 
 def registered_scripts() -> List[Path]:
-    """Every R3 script and the registration (the files a GPU job requires to be committed and unchanged)."""
-    return sorted(C.SCRIPTS.glob("R3_*.py")) + [p for p in (C.PREREG_PATH, C.PROMPTS_PATH, C.SOURCES_MANIFEST)
-                                                 if p.exists()]
+    """Every R3 script, the registration, R3's prompts, sources and freshness check, the R2 files R3 imports or reads
+    and the two backend modules R3 reads through (the files a GPU job requires to be committed and unchanged)."""
+    own = sorted(C.SCRIPTS.glob("R3_*.py")) + [C.PREREG_PATH, C.PROMPTS_PATH, C.SOURCES_MANIFEST, C.CHECK_JSON]
+    return [p for p in own + [C.REPO / r for r in C.PINNED_UNCHANGED] if p.exists()]
+
+
+def runtime_state() -> Dict[str, Any]:
+    """Whether the registered runtime holds: the backend/ tree (tracked changes and untracked files) is the one at
+    C.RUNTIME_COMMIT, and every file of C.PINNED_UNCHANGED (R2's files R3 imports or reads, the two backend modules)
+    has its registered sha256 (R3_PREREG.md §0)."""
+    out: Dict[str, Any] = {"runtime_commit": C.RUNTIME_COMMIT, "backend_differs": [], "pinned_differ": []}
+    try:
+        diff = subprocess.run(["git", "-C", str(C.REPO), "diff", "--name-only", C.RUNTIME_COMMIT, "--", "backend/"],
+                              capture_output=True, text=True, check=True).stdout.split()
+        new = subprocess.run(["git", "-C", str(C.REPO), "ls-files", "--others", "--exclude-standard", "--",
+                              "backend/"], capture_output=True, text=True, check=True).stdout.split()
+        out["backend_differs"] = sorted(set(diff) | set(new))
+    except (OSError, subprocess.CalledProcessError) as e:
+        out["backend_differs"] = [f"(git failed: {e})"]
+    for rel, sha in C.PINNED_UNCHANGED.items():
+        p = C.REPO / rel
+        if not p.is_file() or C.sha256_file(p) != sha:
+            out["pinned_differ"].append(rel)
+    out["ok"] = not out["backend_differs"] and not out["pinned_differ"]
+    return out
 
 
 def require_committed(allow: bool, real: bool, log=print) -> Dict[str, Any]:
     gst = git_state(registered_scripts())
+    gst["runtime"] = runtime_state()
+    if not gst["runtime"]["ok"]:
+        msg = (f"the registered runtime does not hold: backend/ differs from {C.RUNTIME_COMMIT[:7]} at "
+               f"{gst['runtime']['backend_differs'][:8]}, pinned files differ: {gst['runtime']['pinned_differ']}")
+        if real and not allow:
+            raise SystemExit(msg + " (R3_PREREG.md §0); restore them, or pass --allow-uncommitted (a deviation)")
+        log("WARNING: " + msg)
     if gst["dirty"] or gst["head"] is None:
         msg = f"registered files not committed at HEAD {gst['head']}: {gst['dirty'][:8]}"
         if real and not allow:
@@ -515,7 +544,28 @@ def selftest(record: bool = False) -> int:
 
     # integrity helpers
     gst = git_state(registered_scripts())
-    check(gst["head"] is not None and isinstance(gst["dirty"], list), "git state of the registered files is read")
+    reg = {str(p.resolve().relative_to(C.REPO)) for p in registered_scripts()}
+    check(gst["head"] is not None and isinstance(gst["dirty"], list)
+          and set(C.PINNED_UNCHANGED) <= reg and "experiments/results/R3_01_check.json" in reg,
+          "git state of the registered files is read; they include R2's imported files, the two backend modules "
+          "and R3_01_check.json")
+    rt = runtime_state()
+    check(rt["ok"], f"the registered runtime holds: backend/ is {C.RUNTIME_COMMIT[:7]}'s tree and every pinned file "
+                    f"has its sha256 (differs: {rt['backend_differs'][:3]}, {rt['pinned_differ']})")
+    saved = dict(C.PINNED_UNCHANGED)
+    try:
+        C.PINNED_UNCHANGED["experiments/scripts/R2_common.py"] = "0" * 64
+        bad = runtime_state()
+        refused = False
+        try:
+            require_committed(False, True, log=lambda *a: None)
+        except SystemExit:
+            refused = True
+    finally:
+        C.PINNED_UNCHANGED.clear()
+        C.PINNED_UNCHANGED.update(saved)
+    check(not bad["ok"] and bad["pinned_differ"] == ["experiments/scripts/R2_common.py"] and refused,
+          "a pinned file whose sha256 differs is caught, and a GPU job refuses to start")
     print(f"R3_gpu self-test: {'ALL PASS' if not fails else str(len(fails)) + ' FAILURES'}")
     if record:
         C.record_selftest(Path(__file__).name, done, time.time() - t_start)

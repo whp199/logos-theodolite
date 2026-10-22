@@ -23,12 +23,16 @@ no lab daemon, no branch-only backend name) and every lens from its own pinned f
      unfiltered ("ur") and of the content target filtered ("fr"); whether the unfiltered top-1 is content ("u0c").
   6. Secondary readings: H4, fidelity on R1_10's 4,808 held-out positions (E3's prose and chats, rebuilt here from
      E3's own files, their list pinned by sha256; the states regenerated): KL(final || lens) at R1_10's seven logit
-     scales, the calibrated KL (the best scale), top-1 and top-10 agreement, at code 40/45/50/55/58, per class; J++,
-     JLens and the naked eye must reproduce R1_10_evalfull.pt's top-1 within 0.01. J++'s own held-out recall@10 at
+     scales, the calibrated KL (cross-fitted as R1_14: the scale chosen on one sequence parity, scored on the
+     other), top-1 and top-10 agreement, at code 40/45/50/55/58, over all positions and per class, with intervals
+     for every lens against J++ from a bootstrap over sequences, and H4's registered reading; the per-position
+     values are kept (R3_05_h4_positions.pt). J++, JLens and the naked eye must reproduce R1_10_evalfull.pt's top-1
+     within 0.01: if they do not, H4's output says ok false with a caution, and the runs log records the failed
+     check. J++'s own held-out recall@10 at
      code 30/38/45/52 (R3_fitlib.macro_pass on R3_04's held-out residuals). The pullbacks d . J of R1's 128
      directions through R3's lens files (for R3_06's H2 and H3).
 Writes R3_05_eval.json (R3's prompts), R3_05_eval_r2set.json (R2's 220, the replication set), R3_05_h4.json,
-R3_05_recall.json, and the gitignored R3_05_states.pt and R3_05_pullbacks.pt.
+R3_05_recall.json, and the gitignored R3_05_states.pt, R3_05_h4_positions.pt and R3_05_pullbacks.pt.
 
 Run (GPU, server stopped):  /home/eric/bin/ai/theodolite2/.venv/bin/python -I experiments/scripts/R3_05_eval.py
                                 [--batch 8] [--force] [--allow-uncommitted]
@@ -74,6 +78,7 @@ LENS_LAYERS: Dict[str, Tuple[int, ...]] = {
 H4_KINDS: Tuple[str, ...] = ("jpp", "jlens", "naive", "jpp-it", "rl-it", "r1", "miru")
 R2SET_JSON = C.RESULTS / "R3_05_eval_r2set.json"
 H4_JSON = C.RESULTS / "R3_05_h4.json"
+H4_POSITIONS_PT = C.RESULTS / "R3_05_h4_positions.pt"   # gitignored: H4's per-position values, every lens and layer
 RECALL_JSON = C.RESULTS / "R3_05_recall.json"
 STATES_PT = C.RESULTS / "R3_05_states.pt"
 PULLBACKS_PT = C.RESULTS / "R3_05_pullbacks.pt"
@@ -232,7 +237,102 @@ def final_reference(h59: torch.Tensor, fnw: torch.Tensor, wu: torch.Tensor) -> T
     return F.log_softmax(lf, -1), torch.topk(lf, 10, -1).indices
 
 
-def h4(backend, tok, kinds: Sequence[str] = H4_KINDS, chunk: int = 256) -> Dict[str, Any]:
+def _seq_sums(sel: np.ndarray, names: np.ndarray, m: Dict[str, np.ndarray]):
+    """Per sequence of the selection (sorted names): position count, top-1 and top-10 sums, KL sums per scale."""
+    seqs = sorted(set(names[sel]))
+    ix = {n: i for i, n in enumerate(seqs)}
+    sid = np.array([ix[n] for n in names[sel]])
+    S = len(seqs)
+    n_s = np.bincount(sid, minlength=S).astype(float)
+    t1 = np.bincount(sid, weights=m["top1"][sel].astype(float), minlength=S)
+    t10 = np.bincount(sid, weights=m["top10"][sel].astype(float), minlength=S)
+    kl = np.stack([np.bincount(sid, weights=m["kl"][sel][:, k].astype(float), minlength=S)
+                   for k in range(m["kl"].shape[1])], 1)
+    return n_s, t1, t10, kl, np.arange(S) % 2
+
+
+def _crossfit(W: np.ndarray, n_s: np.ndarray, kl_s: np.ndarray, par: np.ndarray) -> np.ndarray:
+    """R1_14's cross-fitted calibrated KL for each row of sequence weights W [B, S]: per parity a, the scale with the
+    least mean KL on parity a, scored on the other parity; position-weighted over both."""
+    tot = np.zeros(W.shape[0])
+    for a in (0, 1):
+        fa, ea = par == a, par != a
+        with np.errstate(invalid="ignore", divide="ignore"):
+            fit = (W[:, fa] @ kl_s[fa]) / (W[:, fa] @ n_s[fa])[:, None]
+        best = np.argmin(np.where(np.isnan(fit), np.inf, fit), 1)
+        tot += (W[:, ea] @ kl_s[ea])[np.arange(W.shape[0]), best]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return tot / (W @ n_s)
+
+
+def h4_tables(names: np.ndarray, cls: np.ndarray, res: Dict[str, Dict[int, Dict[str, np.ndarray]]], *,
+              taus: Sequence[float] = C.H4_TAUS, seed: int = C.H4_BOOT_SEED,
+              n_boot: int = C.H4_N_BOOT) -> Dict[str, Any]:
+    """H4's tables from per-position values ({kind: {layer: {"kl" [P, T], "top1" [P], "top10" [P]}}}): per lens,
+    layer and class (all, then each class) the point values, and against J++ the differences with 95% intervals from
+    a bootstrap over sequences (the same resampled sequences for every lens and layer); and the registered reading
+    (R3_PREREG.md §1.2): for jpp-it and rl-it, "supported" at a layer if the lower end of the interval of the top-1
+    difference from J++ over all positions is above 0, else "refuted"."""
+    t1i = list(taus).index(1.0)
+    groups = ["all"] + sorted(set(cls))
+    lenses: Dict[str, Any] = {}
+    vs: Dict[str, Any] = {}
+    for gi, c in enumerate(groups):
+        sel = np.ones(len(cls), bool) if c == "all" else cls == c
+        rng = np.random.default_rng([seed, gi])
+        stats_b: Dict[Tuple[str, int], Dict[str, np.ndarray]] = {}
+        W = None
+        for kind, by_l in res.items():
+            for l, m in by_l.items():
+                n_s, t1, t10, kl_s, par = _seq_sums(sel, names, m)
+                if W is None:
+                    S = len(n_s)
+                    ix = rng.integers(0, S, size=(n_boot, S))
+                    W = np.zeros((n_boot, S))
+                    np.add.at(W, (np.repeat(np.arange(n_boot), S), ix.ravel()), 1.0)
+                one = np.ones((1, len(n_s)))
+                N = float(n_s.sum())
+                kl_mean = kl_s.sum(0) / N
+                b = int(np.argmin(kl_mean))
+                lenses.setdefault(kind, {}).setdefault(str(l), {})[c] = {
+                    "n_positions": int(N), "n_sequences": int(len(n_s)),
+                    "kl_by_tau": [round(float(v), 4) for v in kl_mean], "kl_tau1": round(float(kl_mean[t1i]), 4),
+                    "kl_min_over_taus_in_sample": round(float(kl_mean[b]), 4), "best_tau_in_sample": taus[b],
+                    "kl_calibrated_crossfit": round(float(_crossfit(one, n_s, kl_s, par)[0]), 4),
+                    "top1": round(float(t1.sum() / N), 4), "top10": round(float(t10.sum() / N), 4)}
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    den = W @ n_s
+                    stats_b[(kind, l)] = {"top1": W @ t1 / den, "top10": W @ t10 / den,
+                                          "kl_tau1": (W @ kl_s[:, t1i]) / den,
+                                          "kl_calibrated_crossfit": _crossfit(W, n_s, kl_s, par)}
+        if "jpp" not in res:
+            continue
+        for kind, by_l in res.items():
+            if kind == "jpp":
+                continue
+            for l in by_l:
+                if l not in res["jpp"]:
+                    continue
+                row = {}
+                for key in ("top1", "top10", "kl_tau1", "kl_calibrated_crossfit"):
+                    d = stats_b[(kind, l)][key] - stats_b[("jpp", l)][key]
+                    point = lenses[kind][str(l)][c][key] - lenses["jpp"][str(l)][c][key]
+                    lo, hi = np.nanpercentile(d, [2.5, 97.5])
+                    row[key] = {"diff": round(float(point), 4), "lo": round(float(lo), 4), "hi": round(float(hi), 4)}
+                vs.setdefault(kind, {}).setdefault(str(l), {})[c] = row
+    reading = {}
+    for kind in ("jpp-it", "rl-it"):
+        for l, rows in vs.get(kind, {}).items():
+            lo = rows["all"]["top1"]["lo"]
+            reading.setdefault(kind, {})[l] = "supported" if lo > 0 else "refuted"
+    return {"lenses": lenses, "vs_jpp": vs, "h4_reading": reading,
+            "h4_rule": "jpp-it (or rl-it) reads the instruct model more faithfully than base J++ at a layer only if "
+                       "the lower end of the 95% sequence-bootstrap interval of its top-1 agreement minus J++'s, over "
+                       "all positions, is above 0"}
+
+
+def h4(backend, tok, kinds: Sequence[str] = H4_KINDS, chunk: int = 256,
+       positions_pt: Optional[Path] = None) -> Dict[str, Any]:
     seqs = r1_10_sequences(tok)
     meta, sha = positions_r1_10(seqs)
     if sha != C.R1_10_POSITIONS_SHA256 or len(meta) != C.R1_10_N_POSITIONS:
@@ -267,19 +367,19 @@ def h4(backend, tok, kinds: Sequence[str] = H4_KINDS, chunk: int = 256) -> Dict[
             backend.release(kind, J)
         log(f"  H4 at layer {l}")
     cls = np.array([m["cls"] for m in meta])
+    names = np.array([m["name"] for m in meta])
     out: Dict[str, Any] = {"positions": P, "positions_sha256": sha, "layers": layers, "taus": list(C.H4_TAUS),
-                           "classes": {c: int((cls == c).sum()) for c in sorted(set(cls))}, "lenses": {}}
-    for kind, by_l in res.items():
-        for l, m in by_l.items():
-            row = {}
-            for c in ["all"] + sorted(set(cls)):
-                sel = torch.as_tensor(np.ones(P, bool) if c == "all" else cls == c)
-                kl = m["kl"][sel].double().mean(0)
-                b = int(kl.argmin())
-                row[c] = {"kl_by_tau": [round(float(v), 4) for v in kl], "kl_calibrated": round(float(kl[b]), 4),
-                          "best_tau": C.H4_TAUS[b], "top1": round(float(m["top1"][sel].double().mean()), 4),
-                          "top10": round(float(m["top10"][sel].double().mean()), 4)}
-            out["lenses"].setdefault(kind, {})[str(l)] = row
+                           "classes": {c: int((cls == c).sum()) for c in sorted(set(cls))},
+                           "sequences": int(len(set(names))),
+                           "bootstrap": {"over": "sequences (R1_10's 24 prose paragraphs and 24 chats), within the "
+                                                 "class", "n": C.H4_N_BOOT, "seed": [C.H4_BOOT_SEED, "class index"],
+                                         "ci": "95% percentile"},
+                           "calibrated_kl": "cross-fitted as R1_14: the scale chosen on one sequence parity (sorted "
+                                            "names) and scored on the other",
+                           **h4_tables(names, cls, {k: {l: {key: v.numpy() for key, v in m.items()}
+                                                        for l, m in by_l.items()} for k, by_l in res.items()})}
+    if positions_pt is not None:
+        torch.save({"meta": meta, "taus": list(C.H4_TAUS), "lenses": res}, positions_pt)
     # R1_10's own numbers for the lenses it measured, from its stored per-position results
     if C.R1_10_PATH.is_file():
         r1 = torch.load(C.R1_10_PATH, weights_only=False, map_location="cpu")
@@ -297,6 +397,13 @@ def h4(backend, tok, kinds: Sequence[str] = H4_KINDS, chunk: int = 256) -> Dict[
                                                                    default=None), "tolerance": 0.01}
         out["reproduces_r1_10"]["ok"] = out["reproduces_r1_10"]["max_abs_diff"] is not None and \
             out["reproduces_r1_10"]["max_abs_diff"] <= 0.01
+    else:
+        out["reproduces_r1_10"] = {"ok": False, "not_run": f"{C.R1_10_PATH} is not there: the check could not run",
+                                   "tolerance": 0.01}
+    out["ok"] = bool(out["reproduces_r1_10"]["ok"])
+    if not out["ok"]:
+        out["caution"] = ("J++, JLens and the naked eye did not reproduce R1_10's top-1 within 0.01 (D23), or the check "
+                          "could not run: every H4 number is reported with this caution (R3_PREREG.md §8.3)")
     return out
 
 
@@ -623,7 +730,8 @@ def run_set(backend, tok, data: Dict[str, Any], mask: torch.Tensor, jmask: torch
 
 
 # ------------------------------------------------------------------------------------------------ recall, pullbacks
-def recall(backend, man: Dict[str, Dict[str, Any]], kinds=("jpp", "naive", "jpp-it", "rl-it", "miru"),
+def recall(backend, man: Dict[str, Dict[str, Any]],
+           kinds=("jpp", "naive", "jpp-it", "rl-it", "miru", "jpp-it-full-macro"),
            residuals_pt: Path = C.RESULTS / "R3_04_residuals.pt", weights_json: Path = C.WEIGHTS_JSON) -> Dict[str, Any]:
     """J++'s own held-out recall@10 (its readout eval) at code 30/38/45/52, on R3_04's held-out residuals, for the
     primary macro's evals and the full macro's (as R3_04's floor kept them)."""
@@ -787,7 +895,7 @@ def selftest(out_path: Path, limit: int, record: bool = False) -> int:
         v = t.values("f_word", "jpp-it", 30)
         _t, _b, bands, decision, ref = A.decision_suite(A.R3_DESIGN, out)
         check(len(v) == len(pos) and set(bands) == set(C.CANDIDATES) and "30-39" in bands["jpp-it"]
-              and set(ref) == set(C.REFERENCE_LENSES) and isinstance(decision, dict),
+              and set(ref) == set(C.REFERENCE_LENSES + C.SENSITIVITY_LENSES) and isinstance(decision, dict),
               "R3_06's table reads the output under R3's design, and its decision suite runs on it (both candidates "
               "at every band from 30-39, the reference lenses beside them)")
         check(torch.load(st_path, weights_only=True)["H"].shape[1] == len(C.READ_LAYERS),
@@ -811,6 +919,33 @@ def selftest(out_path: Path, limit: int, record: bool = False) -> int:
                 .max()) == 0.0 and float((r1_10_metrics(x, lpf, t10f, backend.fnw, backend.wu, taus=(0.5,))["kl"][:, 0]
                                           - ref).abs().max()) <= 1e-4,
           "H4's KL at a logit scale equals torch's kl_div of the scaled, softcapped logits")
+    check(hb["ok"] is False and "caution" in hb and "jpp" not in hb["vs_jpp"] and "naive" in hb["vs_jpp"],
+          "H4 on the fake model fails the R1_10 reproduction, and the output says so (ok false, with the caution)")
+    # H4's tables on made-up per-position values with known answers
+    g4 = np.random.default_rng(3)
+    P4 = 400
+    nm4 = np.array([f"s{i % 20:02d}" for i in range(P4)])
+    cl4 = np.array(["prose" if i % 20 < 10 else "asst" for i in range(P4)])
+    kl4 = g4.random((P4, len(C.H4_TAUS))) + np.linspace(1, 0, len(C.H4_TAUS))
+    base = {"kl": kl4, "top1": g4.random(P4) < 0.3, "top10": g4.random(P4)}
+    better = {"kl": kl4 - 0.1, "top1": np.ones(P4, bool), "top10": base["top10"]}
+    tb = h4_tables(nm4, cl4, {"jpp": {40: base}, "jpp-it": {40: better}, "rl-it": {40: dict(base)}}, n_boot=300)
+    seqs = sorted(set(nm4))
+    par = np.array([seqs.index(x) % 2 for x in nm4])
+    want = 0.0
+    for a in (0, 1):
+        bst = kl4[par == a].mean(0).argmin()
+        want += kl4[par != a][:, bst].sum()
+    want /= P4
+    v = tb["vs_jpp"]
+    check(abs(tb["lenses"]["jpp"]["40"]["all"]["kl_calibrated_crossfit"] - round(want, 4)) < 1e-9
+          and v["rl-it"]["40"]["all"]["top1"] == {"diff": 0.0, "lo": 0.0, "hi": 0.0}
+          and v["jpp-it"]["40"]["all"]["top1"]["lo"] > 0 and abs(v["jpp-it"]["40"]["all"]["kl_tau1"]["diff"] + 0.1) < 1e-4
+          and tb["h4_reading"] == {"jpp-it": {"40": "supported"}, "rl-it": {"40": "refuted"}}
+          and set(v["jpp-it"]["40"]) == {"all", "asst", "prose"},
+          "H4's tables: the cross-fitted calibrated KL is R1_14's; a lens equal to J++ differs by exactly 0 in every "
+          "resample; a lens right everywhere has an interval above 0 and reads 'supported'; one equal to J++ "
+          "'refuted'; per class too")
     # recall: R3_fitlib.macro_pass against a brute-force rank on made-up residuals of real J++ items
     items = FL.scoreable(FL.items_from_raw({s: v[:5] for s, v in C.jpp_items().items()}, C.JPP_MACRO_EVALS), tok)
     g = torch.Generator().manual_seed(9)
@@ -868,7 +1003,13 @@ def run(args) -> int:
                     limit=None, out_json=R2SET_JSON, out_states=None,
                     meta_extra=dict(meta_extra, replication_of="R2_prompts.json (R2's positions: R2's draw seed)",
                                     prompts_sha256=R2.sha256_file(R2.PROMPTS_PATH)))
-            H4_JSON.write_text(json.dumps(h4(backend, tok), indent=1) + "\n", encoding="utf-8")
+            h4_out = h4(backend, tok, positions_pt=H4_POSITIONS_PT)
+            H4_JSON.write_text(json.dumps(h4_out, indent=1) + "\n", encoding="utf-8")
+            if not h4_out["ok"]:
+                G.log_run({"event": "failed check", "check": "H4: J++, JLens and the naked eye reproduce R1_10's "
+                                                              "top-1 within 0.01 (D23)",
+                           "detail": h4_out["reproduces_r1_10"], "consequence": h4_out["caution"]}, C.RUNS_LOG)
+                log("WARNING: " + h4_out["caution"])
             RECALL_JSON.write_text(json.dumps(recall(backend, man), indent=1) + "\n", encoding="utf-8")
         torch.save(pullbacks(man), PULLBACKS_PT)
     except BaseException as e:

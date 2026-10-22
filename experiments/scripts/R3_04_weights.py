@@ -6,10 +6,13 @@
    (BOS, no chat template), jpp_lens's next_token_matches_target against the item's correctness target; evals with
    no question (association, typo) are kept whole, as jpp_lens keeps their NA cells. Then the scoreable items (an
    intermediate with a one-token candidate), and jpp_lens's split: 20% of each eval fit, seed 0 (D15).
-2. The per-eval floor, fixed before grading (R3_PREREG.md §2): an eval keeping fewer than 10 correct items or fewer
-   than 2 fitting items is dropped from the macro. The primary macro is J++'s own Gemma convention, without poetry
-   (koayon/jpp-lenses README); the full macro, poetry in, is a sensitivity analysis with its own weights. Fewer than
-   20 fitting (item, intermediate) pairs in the primary macro: the run stops for an amendment and writes no lens.
+2. The per-eval floor, fixed before grading (R3_PREREG.md §2): an eval keeping fewer than 10 scoreable items
+   (correct, or ungraded, and with a one-token candidate) or fewer than 2 fitting items is dropped from the macro.
+   Association and typo have no correctness target, so they are never graded and always pass it. The primary macro
+   is J++'s own Gemma convention, without poetry (koayon/jpp-lenses README); the full macro, poetry in, is a
+   sensitivity analysis with its own weights. Two registered stops, each before any lens is written: fewer than 2
+   graded evals (multihop, multilingual) left in the primary macro, or fewer than 20 fitting (item, intermediate)
+   pairs in it.
 3. The readout residuals (the block output at each scoreable item's readout position, code layers 30-58), and
    J++'s exclusion list (no letter or digit, over the LM head's width, sparing every candidate of all six evals).
 4. Per layer, one at a time: the merged fp16 experts (R3_03), jpp_lens's own ExpertWeightingFitter with the
@@ -111,7 +114,8 @@ def fit_all(dec: FL.Decoder, raw: Dict[str, List[Dict[str, Any]]], merged_dir: P
             out_paths: Dict[str, Path], residuals_path: Path, provenance: Dict[str, Any], *,
             condense: Optional[Dict[str, Any]] = None, min_dev_pairs: int = C.MIN_DEV_PAIRS,
             graded: Optional[Dict[Tuple[str, str], Any]] = None,
-            floor: Tuple[int, int] = (C.EVAL_FLOOR_CORRECT, C.EVAL_FLOOR_FITTING)) -> Dict[str, Any]:
+            floor: Tuple[int, int] = (C.EVAL_FLOOR_CORRECT, C.EVAL_FLOOR_FITTING),
+            min_graded_evals: int = C.MIN_GRADED_EVALS) -> Dict[str, Any]:
     """Steps 1-5 on any model (the tiny one in the self-test). Returns the record R3_04_weights.json holds."""
     layers = sorted(layers)
     all_items = FL.items_from_raw(raw, C.JPP_EVALS)
@@ -127,7 +131,17 @@ def fit_all(dec: FL.Decoder, raw: Dict[str, List[Dict[str, Any]]], merged_dir: P
     prim = [it for it in fitting if it.eval_slug in floors["primary"]["kept"]]
     full = [it for it in fitting if it.eval_slug in floors["full"]["kept"]]
     rec["dev_pairs"] = {"primary": n_pairs(prim, dec.tokenizer), "full": n_pairs(full, dec.tokenizer),
+                        "primary_graded_evals": n_pairs([it for it in prim if it.eval_slug not in C.UNGRADED_EVALS],
+                                                        dec.tokenizer),
                         "min": min_dev_pairs}
+    graded_kept = [s for s in floors["primary"]["kept"] if s not in C.UNGRADED_EVALS]
+    rec["graded_evals_kept"] = {"primary": graded_kept, "min": min_graded_evals,
+                                "ungraded_always_kept": list(C.UNGRADED_EVALS)}
+    if len(graded_kept) < min_graded_evals:
+        rec["stopped"] = (f"{len(graded_kept)} graded evals ({graded_kept}) survive the floor in the primary macro, "
+                          f"fewer than {min_graded_evals}: the weights would be fitted on the ungraded evals alone; "
+                          f"stop for an amendment (R3_PREREG.md §9, D16)")
+        raise Amendment(json.dumps(rec, default=str))
     if rec["dev_pairs"]["primary"] < min_dev_pairs:
         rec["stopped"] = (f"{rec['dev_pairs']['primary']} fitting pairs in the primary macro, fewer than "
                           f"{min_dev_pairs}: stop for an amendment (R3_PREREG.md §9)")
@@ -254,7 +268,19 @@ def selftest(record: bool = False) -> int:
         F3.merge_all(dirs, layers, tmp / "merged", min_kept=5, expect_prompts=8)
         outs = {k: tmp / f"{k}.pt" for k in C.LENS_FILES}
         prov = {"method": "jpp", "lrp_mode": C.LRP_MODE, "n_prompts": 8, "source_config": {"hf_model_name": "tiny"}}
-        rec = fit_all(dec, raw, tmp / "merged", layers, outs, tmp / "res.pt", prov, condense=small, graded=graded)
+        try:
+            fit_all(dec, raw, tmp / "merged", layers, {k: tmp / f"g{k}.pt" for k in C.LENS_FILES}, tmp / "g.pt",
+                    prov, condense=small, graded=graded)
+            check(False, "fewer than two graded evals surviving the floor stops the run for an amendment")
+        except Amendment as e:
+            st = json.loads(str(e))
+            check(st["graded_evals_kept"]["primary"] == ["multihop"] and "graded evals" in st["stopped"]
+                  and not any((tmp / f"g{k}.pt").exists() for k in C.LENS_FILES),
+                  f"with multilingual dropped, one graded eval survives ({st['graded_evals_kept']['primary']}; "
+                  f"association and typo always pass, ungraded): the run stops for an amendment, before any lens")
+        # the rest of the self-test lets one graded eval through, to exercise the fit
+        rec = fit_all(dec, raw, tmp / "merged", layers, outs, tmp / "res.pt", prov, condense=small, graded=graded,
+                      min_graded_evals=1)
         fl = rec["floors"]
         check("multilingual" in fl["primary"]["dropped"] and "poetry" not in fl["primary"]["counts"]
               and "poetry" in fl["full"]["counts"] and rec["counts"]["multilingual"]["scoreable"] == 0,
@@ -299,7 +325,7 @@ def selftest(record: bool = False) -> int:
               "the record holds item indices and counts, never an item's name or text")
         try:
             fit_all(dec, raw, tmp / "merged", layers, {k: tmp / f"z{k}.pt" for k in C.LENS_FILES}, tmp / "z.pt",
-                    prov, condense=small, graded=graded, min_dev_pairs=10 ** 6)
+                    prov, condense=small, graded=graded, min_dev_pairs=10 ** 6, min_graded_evals=1)
             check(False, "too few fitting pairs stops the run for an amendment, before any lens is written")
         except Amendment:
             check(not any((tmp / f"z{k}.pt").exists() for k in C.LENS_FILES),

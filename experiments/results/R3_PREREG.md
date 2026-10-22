@@ -1,10 +1,11 @@
 # R3: J++'s recipe fitted on the instruct checkpoint (pre-registration)
 
-*Written 21 October 2026, before any R3 data existed. No R3 GPU job has been run: not the dry run on the 12B model,
-not the pilot, the router, the fit, the weights, the evaluation or the 4-bit J-lens arm. What has been run is on the
-CPU only: the self-tests, the positive control against jpp_lens (§2.3), the reproduction of R2's decisions (§7.4) and
-Q0, the pullbacks through lens files that already existed (§8.5). R3 follows R1 and R2. Branch `it-jpp-refit`, cut
-from `main` at `d5405ee`, with R2's two experiment commits (`cea0178`, `3f5941c`) picked onto it. Scripts:
+*Written 21 October 2026, before any R3 data existed, and amended on 22 October 2026, still before any (A12). No R3
+GPU job has been run: not the dry run on the 12B model, not the pilot, the router, the fit, the weights, the
+evaluation or the 4-bit J-lens arm. What has been run is on the CPU only: the self-tests, the positive control against
+jpp_lens (§2.3), the reproduction of R2's decisions (§7.4), the power figures from R2's own files (§7.3) and Q0, the
+pullbacks through lens files that already existed (§8.5). R3 follows R1 and R2. Branch `it-jpp-refit`, cut from
+`main` at `d5405ee`, with R2's two experiment commits (`cea0178`, `3f5941c`) picked onto it. Scripts:
 `experiments/scripts/R3_*.py`. Prompts: `experiments/scripts/R3_prompts.json`. Sources: `experiments/scripts/
 R3_sources.json`. Results: `experiments/results/R3_*`.*
 
@@ -14,14 +15,22 @@ them, as page layers (1–60): code 30–58 are page layers 31–59, so the band
 ## 0. Integrity
 
 **Registered files.** The table below gives the sha256 of every file registered with this document, as committed with
-it. Every R3 GPU job refuses to start while any of `experiments/scripts/R3_*.py`, this file, `R3_prompts.json` or
-`R3_sources.json` is untracked or differs from HEAD (`R3_gpu.require_committed`); `--allow-uncommitted` overrides this,
-as a recorded deviation. The dry run, the pilot, the router, the shards, the weights and Q1 run inside one frame
-(`R3_gpu.gpu_job`) that records HEAD, the job's memory cap and the card's memory, and appends every run (started,
-finished or failed, with the error) to `experiments/results/R3_gpu_runs.jsonl`. The evaluation records HEAD in its
-output and appends every run to `R3_05_runs.jsonl`. The pilot, the router, the weights and the evaluation refuse to
-overwrite their output without `--force`; the shards and Q1 resume from their own checkpoints. Every run is reported
-in the write-up.
+it. Every R3 GPU job refuses to start while any of `experiments/scripts/R3_*.py`, this file, `R3_prompts.json`,
+`R3_sources.json`, `R3_01_check.json` or the R2 and backend files of the table is untracked or differs from HEAD
+(`R3_gpu.require_committed`), while `backend/` differs from its tree at `d5405ee` (tracked changes or untracked files),
+or while any R2 or backend file of the table differs from its sha256 here (`R3_gpu.runtime_state`, against
+`R3_common.PINNED_UNCHANGED`); `--allow-uncommitted` overrides this, as a recorded deviation. The dry run, the pilot,
+the router, the shards, the weights and Q1 run inside one frame (`R3_gpu.gpu_job`) that records HEAD, the job's memory
+cap and the card's memory, and appends every run (started, finished or failed, with the error) to
+`experiments/results/R3_gpu_runs.jsonl`. The evaluation records HEAD in its output and appends every run to
+`R3_05_runs.jsonl`. The pilot, the router, the weights and the evaluation refuse to overwrite their output without
+`--force`; the shards and Q1 resume from their own checkpoints. Every run is reported in the write-up.
+
+**R2's commits.** `cea0178` and `3f5941c` are cherry-picks of `cb3d6e2` and `27139f5` on `it-second-reading`, with
+identical patches (`git diff X^ X` is the same for each pair), and no R2 file differs between `3f5941c` and this
+registration. R2's run record (`R2_02_runs.jsonl`) and its report name `cb3d6e2570f3…` as the HEAD of R2's run, a
+commit that is not an ancestor of this branch; the seven `files_sha256` that record holds match the files here
+(re-checked on 22 October 2026).
 
 **The evaluation runtime** is the instrument's backend at commit `d5405ee964e0ac1732babd8e69fa9271de555189` (`main`
 when the branch was cut; the `backend/` tree `4ae7efe0…`), which `it-jpp-refit` does not change. R3 reads through two of
@@ -37,27 +46,26 @@ shards, the lens files, the readings.
 | file | sha256 |
 |---|---|
 | *R3's scripts* | |
-| `experiments/scripts/R3_00_pilot.py` | `dbd355a135663522d1b9ebca7dff9633127187273cc0eddc1698ff30a5a26fa9` |
+| `experiments/scripts/R3_00_pilot.py` | `446711f1e3d333e0be520b391d61ec6c079094736f13b978a345b5abcbe2e5ec` |
 | `experiments/scripts/R3_01_check.py` | `43eb815ca431ac84a26fc5acadc5b00709cd56d64d92f3c52519adbd72023082` |
-| `experiments/scripts/R3_02_router.py` | `f0696be216fbd46e1163ffba05cdf2bd3a541644bfa630fcf04166806802c01b` |
+| `experiments/scripts/R3_02_router.py` | `c4139ab411ef8f0905c69c46e778c26554c646bc1faf905dd7e0da3e121298d0` |
 | `experiments/scripts/R3_03_fit.py` | `d6ec212dd58079b43a262bf722efd573aa571b48203b40df9755a8e986a70d2d` |
-| `experiments/scripts/R3_04_weights.py` | `552f01311de81b8085c3f71bdffff77f827bc4f29dc325c241587f705dd3edb3` |
-| `experiments/scripts/R3_05_eval.py` | `2d3a2c7e0124ad61012e2898ed920a389f373aafb89b3ff2e26dc02c420af764` |
-| `experiments/scripts/R3_06_analyze.py` | `faad671579586983e660af2c6999620dc98ed8f28fbe97d874538271ff5a1f31` |
-| `experiments/scripts/R3_Q0_pullbacks.py` | `c0f077bc7138286acb0cbd241de309ae6c34e8b6f80d6e478423f49f44fb954c` |
-| `experiments/scripts/R3_Q1_jlens.py` | `76102b85ae858991cb5d50bc2abc1c1b743e4732a28fc6bfe171f9d156b1e467` |
-| `experiments/scripts/R3_common.py` | `90df9a9b349b0a8fbf3159e2009f85273558a5ea849b968725d126b9419b3e27` |
+| `experiments/scripts/R3_04_weights.py` | `c1dd0ace78c99bd4cf04488b0445192e1d9024c2227855e62e642e80c5a73a93` |
+| `experiments/scripts/R3_05_eval.py` | `354273c5cec2937d7b87a2b49fa6120ec08c905a43ac056f07851af100f83974` |
+| `experiments/scripts/R3_06_analyze.py` | `949c65d9664b524e6ddcfb43add808dbe4d94feec3210f728164f5347e64fc6c` |
+| `experiments/scripts/R3_Q0_pullbacks.py` | `bb321a054170a78a16a38b5e2920ee423d7f6e029e9682dc9301c3470e13d6dc` |
+| `experiments/scripts/R3_Q1_jlens.py` | `ea30b650bde4fee22c74428edd1ef5731182ee08f0dc595e6c62651daa944271` |
+| `experiments/scripts/R3_common.py` | `341d025378cfaccc4229a24365c3a9793a08f81d3d28aa489a4d382ea8518060` |
 | `experiments/scripts/R3_fetch.py` | `5e702f8dc746ce2fdf889d64de4e1608fd0390cd384b5f7e3ed887e6febaffba` |
 | `experiments/scripts/R3_fitlib.py` | `6d1ea02986d0f47f1b6ad33522eeed36f0e3bf66e2db67fdefa22c81bff9bbc1` |
-| `experiments/scripts/R3_gpu.py` | `aeb2ad44c4c573e4acee3959aec51a1a7d4852379340142a85a8d21494ee94a4` |
+| `experiments/scripts/R3_gpu.py` | `3a2148a99a2d1451178b771c987229d816f4f0b2f06685e58a206c7f054118f9` |
 | `experiments/scripts/R3_lrp.py` | `18d67c6b4552ca56329fb2ce352d8eade88f3131ebabeba8af4d58386b6bac4a` |
 | `experiments/scripts/R3_parity.py` | `cc7d1e2fe003e3bec8dd7030a8fc1808e1a0ae0414ed1688a0f120bdc8465763` |
+| `experiments/scripts/R3_power.py` | `3f3e4986c21bb829761c8671b481cc015935f7b7c749d11283c55687c33210ef` |
 | `experiments/scripts/R3_sources_check.py` | `a266fe54d1cd6f2b70badd70d2fa7cff075872fdc87cce73f566e661ed098315` |
 | *R3's prompts and sources* | |
 | `experiments/scripts/R3_prompts.json` | `e3cae4b1becbd1fd4ac120e69e9c06dd2baf3dc6b0b4ae067d11b019957f4329` |
 | `experiments/scripts/R3_sources.json` | `39f8340a03008ecda0b528ffa5208a3b4d267b9239fb376f8c43e39780b667d6` |
-| *the check the evaluation requires (§5.1)* | |
-| `experiments/results/R3_01_check.json` | `9bb609af34a83a48a9f763943fc1b6b04f8daca6a7713f88484c8eb5ae20077a` |
 | *R2's files R3 imports or reads, unchanged* | |
 | `experiments/scripts/R2_common.py` | `a3fe4ab44edbce3eeba01efa1428c82b7abb5f8b0555d7485fb2d008d78b762d` |
 | `experiments/scripts/R2_03_analyze.py` | `9293011e96b3a132a915b306b2835846cc284e073fa5644124f20048cc377ecd` |
@@ -65,11 +73,13 @@ shards, the lens files, the readings.
 | `experiments/results/R2_01_check.json` | `9baad05e2d0057b2f7621fb389400cd5c24e119151b292648ca81343a8181581` |
 | `experiments/results/R2_02_eval.json` | `6e277f60987c88a70f85355e2e749aac8cfa18f5480a5b044befedc3626f9c70` |
 | `experiments/results/R2_03_analysis.json` | `94a632527ce6d1f356c836272ef5e1c32d8bef549cb62d6a8136dae83a22a75e` |
-| *the CPU records made before this registration (rewritten whenever a check is rerun)* | |
+| *the CPU records made before this registration (rewritten whenever a check is rerun; a rerun after registration is committed before any GPU job, which refuses an uncommitted `R3_01_check.json`; what the evaluation pins is the prompts' sha256 that a passing `R3_01_check.json` records, §5.1)* | |
+| `experiments/results/R3_01_check.json` | `9bb609af34a83a48a9f763943fc1b6b04f8daca6a7713f88484c8eb5ae20077a` |
+| `experiments/results/R3_power.json` | `2a9c1bde12ea2025ecff46788946a801e3bfe59029076f180edeafa0870b6bd1` |
 | `experiments/results/R3_parity.json` | `70ecfbac988b0ea06db4574874f3466ad0801832f309f0314e1e684f4d8ba13c` |
 | `experiments/results/R3_06_r2_reproduction.json` | `1fd81d6bb74b3456afc749628b19b2f1ed3f760d8db0f51cb7eae160b7dec1b6` |
-| `experiments/results/R3_Q0_pullbacks.json` | `b83f0c9cda4533661f391236eea4b1730410cc0fea1b43f55d9fcd37bed82d17` |
-| `experiments/results/R3_selftests.json` | `0dc618e854bd84f25517f75089fbf3f4e3201d5aa437a9778e1973f19f71b15f` |
+| `experiments/results/R3_Q0_pullbacks.json` | `408808092e32bef87930fb6dfbd7bebdd8295ecb84a26ae128d51c1245b8b9f5` |
+| `experiments/results/R3_selftests.json` | `eb039fd404ffb708c462917e06e444d3f11857acda9b469ab97e0e0ca48513e5` |
 | *the evaluation runtime at `d5405ee` (unchanged on this branch)* | |
 | `backend/theodolite_math.py` | `0bba67755da1bfaf313df46dd8453280a368dfaf72d209e4b5327c00f0c80c49` |
 | `backend/engine_runtime.py` | `0a7e071ba782cdb7a70eaff961b6ad1ce371c766ccbfbee9aa61979a5672ef06` |
@@ -82,13 +92,18 @@ word-pieces, source layers 0–58, `lrp_mode` `rlens`). R1 fitted a plain same-p
 instruct checkpoint; R2 tested it and the Miru community J-lens, filtered, on fresh prompts, and served neither (R1 at
 code 58 failed only rule 5: +0.046 over the naked eye against 0.05 required). R1 §2.4 tested neither J++'s recipe nor
 its cluster weighting or token filter, and R1 §6 and erratum E50 say that fine-tuning (base against instruct) and
-quantisation (bf16 against W4A16) cannot be told apart from R1's data. **No lens fitted with J++'s own recipe on any
-instruct checkpoint existed.**
+quantisation (bf16 against W4A16) cannot be told apart from R1's data. **No lens fitted with J++'s own recipe on the
+Gemma 4 31B instruct checkpoint existed.** (J++'s own headline lens is fitted on `Qwen/Qwen3.6-27B`, a name without
+Qwen's `-Base` suffix, so very likely a post-trained model; that is not checked here.)
 
-R3 fits J++'s published recipe (jpp_lens at commit `d7efc0de`) on the served checkpoint, with the same selection rule
-and the same code as far as §2 allows, so that the main change is the model. It holds the result to R2's rules
-unchanged, on 320 new prompts. Beside that it separates, for plain J-lenses and in direction only, fine-tuning from
-quantisation, through the Miru lens (bf16 instruct).
+R3 fits J++'s published recipe as the code at jpp_lens commit `d7efc0de` runs it, on the served checkpoint, with J++'s
+selection rule and, as far as §2 allows, that code. The shipped Gemma J++ came from older code (D13): its provenance
+records no router, expert count, PCA, weighting items or fold, and no WikiText revision (D17). So jpp-it against base
+J++ changes more than the checkpoint: the code version, the items and the model they are graded on (D8), the weights
+fitted at 29 layers (D11), and perhaps the corpus revision. R3 holds the result to R2's rules unchanged, on 320 new
+prompts. Beside that it bounds, for plain J-lenses and in direction only, two differences through the Miru lens (bf16
+instruct): Miru against Neuronpedia's JLens, and a 4-bit J-lens fitted here against Miru. Each also changes the code
+and the prompts, so neither is fine-tuning or quantisation alone, and H6 does not separate them.
 
 ### 1.1 Hypotheses
 
@@ -96,21 +111,28 @@ quantisation, through the Miru lens (bf16 instruct).
   under R2's five rules (§7) at one or more of the bands 30–39, 40–49, 50, 51–54, 55, 56–57, 58. Two candidates are
   tested: **jpp-it**, the full recipe (eight neighbourhood lenses per layer, weighed by J++'s fitter), and **rl-it**,
   the pooled R-lens Jacobian (the same rows, no clusters, no weights).
-- **H2 (recipe or checkpoint).** How far jpp-it agrees with base J++, in the quiet dimensions (q10) and the loud ones,
-  measured against R1's yardsticks (§8.1). If the recipe, more than the checkpoint, sets the lens, jpp-it agrees with
-  base J++ about as well as two methods on one model do; if the checkpoint dominates, it agrees about as badly as R1's
-  instruct covectors did.
-- **H3 (concentration).** Whether J++'s recipe itself concentrates a lens's energy in about 100 output directions.
+- **H2 (recipe or checkpoint).** How far jpp-it and rl-it agree with base J++, in the quiet dimensions (q10) and the
+  loud ones, measured against R1's yardsticks (§8.1). What differs between them and base J++ is the checkpoint
+  together with the recipe's code version (D13) and, for jpp-it only, the item set and the weights fitted on it (D8,
+  D11); rl-it uses no items and no weights, so jpp-it beside rl-it shows the weighting's share. If the recipe, more
+  than these, sets the lens, it agrees with base J++ about as well as two methods on one model do; if the checkpoint
+  with the recipe version and items dominates, it agrees about as badly as R1's instruct covectors did.
+- **H3 (concentration).** Whether J++'s recipe concentrates a lens's energy in about 100 output directions beyond
+  what a plain J-lens on the same instruct model (Miru) shows.
   R1 measured 76–97% of the shipped Gemma J++'s energy in its top 100 output directions (R1_IT_LENS_REPORT.md:45–48,
   354). No explicit low-rank step exists in the code at `d7efc0de` (no SVD, truncation or rank penalty); whether the
   recipe yields concentration is H3. The J++ post (Appendix G) reports its Qwen maps as numerically full rank.
 - **H4 (fidelity).** On R1/E3's held-out positions (R1_10's 4,808), whether jpp-it and rl-it reproduce the model's own
   final readout better than base J++: top-1 and top-10 agreement, KL and calibrated KL at code 40, 45, 50, 55, 58.
 - **H5 (Jacobian filtering on instruct).** Whether the weighted experts (jpp-it) beat the pooled R-lens (rl-it) on
-  the instruct model, as J++'s post found on Qwen (Appendix H, Table 4: 55.2 against 43.5 pooled).
-- **H6 (fine-tuning against quantisation).** For plain J-lenses, how much of the base-to-served difference is
-  fine-tuning and how much quantisation: Miru (bf16 instruct) against Neuronpedia's JLens (bf16 base) gives the
-  fine-tuning axis; a plain J-lens fitted here on the 4-bit model (Q1) against Miru gives the quantisation axis.
+  Gemma 4's instruct model, as J++'s post found on Qwen3.6-27B (Appendix H, Table 4: 55.2 against 43.5 pooled).
+- **H6 (two bounded differences).** For plain J-lenses, two comparisons in direction only. **Miru against JLens:
+  fine-tuning together with code and prompt differences** (Miru Tracer against anthropics/jacobian-lens as Neuronpedia
+  ran it, Miru's 425 re-chunked passages against JLens's 861 WikiText records, and Miru's unrecorded estimator details,
+  D22). **Q1 against Miru: quantisation together with code differences** (a plain J-lens fitted here on the 4-bit
+  model by R3's code against Miru Tracer's), with the QAT checkpoint's further training rather than bf16 weights
+  merely rounded, and, under the fallback (§3.3), different prompts and fewer of them (J++'s 64 against Miru's 425).
+  H6 says how large each difference is beside the other; it does not separate fine-tuning from quantisation.
 
 Only H1 decides anything (§7). H2–H6 are secondary readings, reported whatever they show.
 
@@ -119,26 +141,48 @@ Only H1 decides anything (§7). H2–H6 are secondary readings, reported whateve
 - **H1** is refuted at a band when no candidate passes there. If no candidate passes at any band, refitting J++'s
   recipe on the served checkpoint did not give a second reading that beats base J++ and the naked eye by R2's
   standard; the base fit is then not shown to be what holds the second reading back. It does not show that no
-  instruct lens could pass: a true effect below 0.05, or one that fails Holm's correction over 14 tests, fails too
-  (§7.3). A pass at a band refutes, for that band and these prompt kinds, the claim that base J++ reads the instruct
-  model as well as an instruct fit does.
-- **H2.** "The recipe sets the lens" is refuted at a band if the upper end of the 95% interval (over the 98 token-pair
-  directions) of jpp-it against base J++ in q10 is at or below R1's instruct covectors against base J++ (Q0: 0.27 /
-  0.29 / 0.29 at code 30–39 / 40–49 / 50–58, §8.1). "The checkpoint dominates" is refuted if the lower end is at or
-  above J++ against JLens (Q0: 0.77 / 0.68 / 0.66). Otherwise the reading is "both", and is reported as such.
-- **H3.** "The recipe yields concentration" is refuted at a layer if jpp-it's own top-100 share is below 0.76, the
-  lowest share R1 reported for the shipped file at the layers it measured; it is supported if the share is at least
-  the shipped file's own share at the same layer, measured the same way (§8.2). rl-it (no weighting) is reported beside it, to say which step concentrates.
-- **H4.** "jpp-it reads the instruct model more faithfully than base J++" is refuted at a layer if its top-1 agreement
-  on all 4,808 positions is not above J++'s. R3_05 keeps these figures per class, not per sequence, so no interval is
-  registered: like R1 §4.2's, they are point values over a fixed set of positions.
-- **H5.** "Jacobian filtering helps on instruct" is refuted if jpp-it − rl-it, pooled, has a 95% interval that does
-  not lie above 0 at every band where either is above the naked eye, and J++'s own held-out recall@10 (§8.3) is not
-  higher for jpp-it than for rl-it at the four recall layers.
-- **H6.** Per band (code 30–39 / 40–49 / 50–58, in q10), quantisation is the smaller axis if Q1 against Miru is at
-  least R1's same-model, different-data yardstick (0.77 / 0.78 / 0.82, R1_04 `cos_chat_prose`); it is the larger axis
-  if Q1 against Miru is at or below Miru against JLens (Q0: 0.37 / 0.39 / 0.40); between the two, both count. While Q1 runs on J++'s 64 prompts rather than Miru's own (§3.3),
-  a low agreement cannot be laid on quantisation alone: the prompts changed too.
+  instruct lens could pass: a true effect below 0.05, or one that fails Holm's correction over 14 tests, fails too,
+  and §7.3 shows that a lens with gains near 0.05 would most likely fail rule 4. A pass at a band refutes, for that
+  band and these prompt kinds, the claim that base J++ reads the instruct model as well as an instruct fit does.
+- **H2.** For jpp-it and for rl-it, each read alone: "the recipe sets the lens" is refuted at a band if the upper end of
+  the 95% interval (over the 98 token-pair directions) of the lens against base J++ in q10 is at or below R1's
+  instruct covectors against base J++ (Q0: 0.27 / 0.29 / 0.29 at code 30–39 / 40–49 / 50–58, §8.1). "The checkpoint,
+  with the recipe version and (for jpp-it) the items, dominates" is refuted if the lower end is at or above J++
+  against JLens (Q0: 0.77 / 0.68 / 0.66). Otherwise the reading is "both", and is reported as such. No reading of H2
+  is laid on the checkpoint alone (§1).
+- **H3.** Judged at R1 §3.2's seven layers (code 30, 35, 40, 45, 50, 55, 58) and reported at all 29, with the share
+  measured as §8.2 fixes it (R1's coordinates y, and split-half debiased for R3's own lenses). "The recipe concentrates
+  beyond a plain J-lens" is supported at a layer if jpp-it's raw share is above Miru's raw share at that layer (Miru
+  is the plain J-lens on the instruct model; jpp-it is fitted on fewer prompts, 64 against 425, so its raw share
+  carries more of the spread that noise adds, and the comparison is conservative); it is refuted at a layer if even
+  jpp-it's debiased share is at or below Miru's raw share; otherwise it is "not separated". rl-it is read the same way
+  (the rules and the neighbourhoods without the weighting); JLens (a plain J-lens on the base model, 0.86–0.96 in R1
+  §3.2) and the shipped file (0.76–0.97) are reported beside them. Miru also differs in code and prompts, so a
+  "supported" says that the recipe as R3 runs it concentrates more than Miru's lens does, not which of its steps does.
+- **H4.** "jpp-it reads the instruct model more faithfully than base J++" is supported at a layer if the lower end of
+  the 95% interval of jpp-it's top-1 agreement minus J++'s, over all 4,808 positions, is above 0, and refuted there
+  otherwise; rl-it is read the same way. The interval is a bootstrap over R1_10's 48 sequences (2,000 resamples, seed
+  `[20261023, class index]`, the same resampled sequences for every lens and layer), as R1 §4.2 bootstrapped its
+  passages; R3_05 keeps every position's values (§8.3). The reading is coded (`R3_05_eval.h4_tables`).
+- **H5.** Judged on the bands alone. At each of the seven bands, whether or not either lens beats the naked eye there
+  (so no band can drop out and the reading cannot be empty): "Jacobian filtering helps" if the lower end of the pooled
+  interval of jpp-it − rl-it is above 0, "hurts" if its upper end is below 0, otherwise "not shown". The intervals are
+  Bonferroni-adjusted over the seven bands (99.29%: the 0.357th and 99.643th percentiles of the same 2,000 paired
+  resamples), with the 95% ones beside them. H5 is refuted if no band reads "helps". J++'s own held-out recall@10
+  (§8.3) is reported for both lenses and decides nothing: jpp-it's weights were fitted to maximise pass@10 on fitting
+  items of the same evals and rl-it was never tuned, so that comparison favours jpp-it.
+- **H6.** Per band of code 30–39 / 40–49 / 50–57 (code 58 is left out, because Miru collapses there, R2_03, and is
+  reported apart), in q10 (loud beside it), with b = Q1 against Miru and a = Miru against JLens, each with its 95%
+  interval over the 98 token-pair directions, and s = Q1's own split-half (half A against half B, D22), all cosines:
+  the difference b measures is "smaller" than the one a measures if b's lower end is above a's upper end (Q1 agrees
+  with Miru better than Miru agrees with JLens); "larger" if b's upper end is at or below a's lower end and s is above
+  a's upper end (so that a low b is not Q1's own noise alone); otherwise "not separated". a is known (Q0,
+  in H6's bands: 0.368 [0.347, 0.389] / 0.390 [0.371, 0.408] / 0.409 [0.390, 0.429]). Q1 against JLens and against
+  J++, the triangle's other sides, are reported beside it. The verdict names what each side compares (§1.1), never
+  "fine-tuning" or "quantisation" alone, and while Q1 runs on J++'s 64 prompts rather than Miru's (§3.3) every Q1
+  number says that the prompts and their number changed too. R1_04's same-model yardstick (`cos_chat_prose`, 0.77 /
+  0.78 / 0.82) comes from another estimator (same-position VJPs, R1_IT_LENS_REPORT.md:14) and is context only. The
+  reading is coded (`R3_Q1_jlens.h6_reading`).
 
 ## 2. The fit recipe
 
@@ -193,23 +237,23 @@ planned from.
 | D13 | The two old-code fields of the shipped file's config (`num_s2_fitting_prompts` 10, `mask_non_semantic_fit_positions` false) are not reproduced. | R3 runs the code at `d7efc0de`, not the older code the shipped file came from. |
 | D14 | The router is per layer, seed 0, E = 8, PCA 64, jpp_lens's own k-means++, up to 100 iterations, tolerance 1e-6, on the 110,804 kept positions of the 1,000 records. | J++'s recipe constants (`jpp_cli.py`), fixed here. |
 | D15 | `CondenseConfig` defaults (pass_k 10, top_n 3, steps 200, learning rate 0.05, temperature 0.1, exact_every 5), fit fraction 0.2, split seed 0, minimum 50 kept positions per expert. | J++'s defaults, fixed here. |
-| D16 | **The per-eval floor, fixed before grading.** An eval that keeps fewer than 10 correct items, or fewer than 2 fitting items, is dropped from the macro; the per-eval counts at each step are recorded in `R3_04_weights.json`. The primary macro leaves poetry out (multihop, multilingual, typo, association), as J++'s own Gemma lens did (koayon/jpp-lenses README: 1 of 98 poetry items passed its correctness filter); the full macro, poetry in, is fitted too (`jpp-it-full-macro`) and reported only. Fewer than 20 fitting (item, intermediate) pairs in the primary macro: the run stops for an amendment and writes no lens. | With `max(1, ⌊0.2n⌋)` fitting items per eval, one item could carry a fifth of the objective that sets the weights at every layer. |
+| D16 | **The per-eval floor, fixed before grading.** An eval that keeps fewer than 10 scoreable items (graded correct, or ungraded, and with a one-word-piece candidate), or fewer than 2 fitting items, is dropped from the macro; the per-eval counts at each step are recorded in `R3_04_weights.json`. Association and typo have no correctness target, so they are never graded and always pass the floor (102 and 96 scoreable items, so 20 and 19 fitting items, whatever the model gets right); so the 20-pair stop below cannot fire on its own, and a second stop is registered: fewer than 2 graded evals (multihop, multilingual) left in the primary macro stops the run for an amendment and writes no lens. The primary macro leaves poetry out (multihop, multilingual, typo, association), as J++'s own Gemma lens did (koayon/jpp-lenses README: 1 of 98 poetry items passed its correctness filter); the full macro, poetry in, is fitted too (`jpp-it-full-macro`) and reported only. Fewer than 20 fitting (item, intermediate) pairs in the primary macro: the run stops for an amendment and writes no lens. | With `max(1, ⌊0.2n⌋)` fitting items per eval, one item could carry a fifth of the objective that sets the weights at every layer. |
 | D17 | WikiText is read at revision `b08601e04326c79dfdd32d625aee71d232d685c3` (Miru's pin). J++'s loader pins no revision, so the shipped fit's revision is unknown. | A fixed corpus. The selection rule is J++'s. |
 | D18 | R3 runs its own implementation, not jpp_lens's driver. `R3_lrp.py` reimplements the R-lens rules for Gemma 4's classes only and raises on any norm or MLP class it cannot patch; its rows equal jpp_lens's patcher bit for bit. `R3_fitlib.py` imports jpp_lens's pure functions (k-means, `normalize_center_project`, `candidate_token_ids`, the non-semantic scan, `ExpertWeightingFitter`, `combine`) and reimplements the rest (the batched-row estimator, the streamed PCA, the expert sums, the merge, the item code). | The 4-bit model and the streamed memory plan need their own loop. The positive control (§2.3) checks each piece. |
 | D19 | The positive control's own conditions. PD1: jpp_lens's stages run as the library functions of `scripts/jpp_cli.py`, with a stand-in module named `pandas` (pandas is not installed) that raises on any use; no stage used it. `grade_model_correctness` and the correctness CSV need pandas and were not run, so R3's grading equals jpp_lens's by construction (both use `next_token_matches_target`), not by test. PD2: the tiny model forces smaller sizes (PCA 16, 96 router records, 32 fit prompts in 4 shards, 48 word-pieces, 8 rows per pass, a character tokenizer, made-up items in J++'s format); E = 8, skip 16, minimum 50, the rules, the split and the condense defaults are the registered ones. PD3: the weights are fitted by jpp_lens's own fitter, so the weight parity tests R3's inputs to it. | No download beyond the three approved sources is allowed; a 32-wide model cannot hold 64 components. |
 | D20 | jpp_lens runs with the shared environment's versions, not its pins: torch 2.14.1 (pinned 2.13.0), transformers 5.20.0 (5.14.1), numpy 2.5.4 (2.5.1), huggingface_hub 2.2.0 (1.26.0), accelerate 1.15.0 (1.12.0); pytest matches. pandas, pyarrow and datasets are absent, so its command line and the pandas parts of `lens_evals` do not import. WikiText is read by `R3_fetch.py`'s own parquet reader; J++'s own loader, run on the cached rows, returns exactly the 1,000 records. | No download beyond the three approved sources (§3). With `--tests`, jpp_lens's own suite gives 83 passed, 0 failed; 17 test modules could not load, each only for want of pandas. |
-| D21 | The evaluation loads the checkpoint itself (`R3_gpu.load_w4a16`) and calls the multimodal wrapper's `Gemma4Model` with an attention mask; R2 went through `TheodoliteRuntime` and `labkit.forward_resid`. Every readout still goes through the instrument's `jpp_readout_logits` and `unembed_gemma4` (§0). | R3 loads no runtime and no J++ on the GPU beside its own lenses. The replication on R2's prompts (§8.6) shows whether the path changes R2's numbers. |
-| D22 | **Q1, the 4-bit J-lens arm** (`R3_Q1_jlens.py`, not a mode of R3_03): directional covectors for R1's 128 directions at code 30–58, not a full J-lens matrix; plain gradients; the sum over this and every later kept target (Miru's estimator); kept positions 16 to T−2; a mean over positions and a uniform mean over prompts; target block 59; the directions in batches of 32 (Miru's `dim_batch`); split halves by prompt parity. Not knowable from Miru's header, and set here: its last position is dropped (as J++ does), and its gradient mode is taken as plain only as far as "no LRP rule recorded". **Fallback:** Miru's prompts could not be rebuilt (§3.3), so Q1 runs on J++'s 64 fit prompts, and bf16 against W4A16 then also changes the prompts. | The directions are all Q0 compares; four passes per prompt instead of 5,376. |
-| D23 | H4's positions are R1_10's 4,808, rebuilt on the CPU from E3's own files: 24 prose paragraphs and 24 chats (48 sequences, the longest 141 ids; the design said 40 chats). The list's sha256 is pinned (`fd596c3b…`) and was checked against `R1_10_evalfull.pt`'s own record; the states are regenerated on the GPU. J++, JLens and the naked eye must reproduce R1_10's top-1 within 0.01. | R1_10 stored summaries, not states. |
-| D24 | The dry run uses the local bf16 Gemma 4 12B (`gemma4_unified`), with blocks 0–14 on the CPU (its weights do not fit under the job cap), source layers 24, 36 and 46 and target 47, a floor of 1 and 1, and 10 items per eval. `R3_lrp` accepts the 12B's norm and MLP classes only while their `forward` and `_norm` source is Gemma 4's; a changed copy raises. | A whole-pipeline run on a real Gemma 4 before touching the 31B. |
-| D25 | The pilot's parity compares R3's batched rows for six output dimensions (R1's unit directions) with an independent single-direction backward from a graph rooted at block 0, in both batching modes. | The design's full rows projected on 6 directions would take a whole prompt's passes inside the 30-minute pilot. |
+| D21 | The evaluation loads the checkpoint itself (`R3_gpu.load_w4a16`) and calls the multimodal wrapper's `Gemma4Model` with an attention mask; R2 went through `TheodoliteRuntime` and `labkit.forward_resid`. Every readout still goes through the instrument's `jpp_readout_logits` and `unembed_gemma4` (§0). | R3 loads no runtime and no J++ on the GPU beside its own lenses. The replication on R2's prompts (§8.6) compares the path's readings with R2's, with registered tolerances and a consequence. |
+| D22 | **Q1, the 4-bit J-lens arm** (`R3_Q1_jlens.py`, not a mode of R3_03): directional covectors for R1's 128 directions at code 30–58, not a full J-lens matrix; plain gradients; the sum over this and every later kept target (Miru's estimator, by R3's code, not Miru Tracer's); kept positions 16 to T−2; a mean over positions and a uniform mean over prompts; target block 59; the directions in batches of 32 (Miru's `dim_batch`); split halves by prompt parity. Not knowable from Miru's header, and set here: its last position is dropped (as J++ does), and its gradient mode is taken as plain only as far as "no LRP rule recorded". **Fallback:** Miru's prompts could not be rebuilt (§3.3), so Q1 runs on J++'s 64 fit prompts, and bf16 against W4A16 then also changes the prompts. | The directions are all Q0 compares; four passes per prompt instead of 5,376. |
+| D23 | H4's positions are R1_10's 4,808, rebuilt on the CPU from E3's own files: 24 prose paragraphs and 24 chats (48 sequences, the longest 141 ids; the design said 40 chats). The list's sha256 is pinned (`fd596c3b…`) and was checked against `R1_10_evalfull.pt`'s own record; the states are regenerated on the GPU. J++, JLens and the naked eye must reproduce R1_10's top-1 within 0.01; if they do not (or the check cannot run), H4's output says `ok: false` with a caution, the runs log records the failed check, and every H4 number is reported with that caution (§9). | R1_10 stored summaries, not states. |
+| D24 | The dry run uses the local bf16 Gemma 4 12B (`gemma4_unified`), with blocks 0–14 on the CPU (its weights do not fit under the job cap), source layers 24, 36 and 46 and target 47, a floor of 1 and 1 without the graded-eval stop, and 10 items per eval. `R3_lrp` accepts the 12B's norm and MLP classes only while their `forward` and `_norm` source is Gemma 4's; a changed copy raises. | A whole-pipeline run on a real Gemma 4 before touching the 31B. |
+| D25 | The pilot's parity compares R3's batched rows for six output dimensions (R1's unit directions) with an independent single-direction backward from a graph rooted at block 0, in both batching modes, with the rules off and with them on (the rows the fit uses); both gate the pilot. The replicated mode takes the dimensions one at a time (the smallest replicated batch of the timing grid), so that it holds no more copies of the graph than the grid measures; an out-of-memory error there fails the check and the pilot writes "stop" with the reason. | The design's full rows projected on 6 directions would take a whole prompt's passes inside the 30-minute pilot. |
 | D26 | J++'s item files are not vendored into `experiments/scripts/R3_jpp_items/`, as the design said; they stay in the gitignored cache with their sha256 and counts committed. The WikiText cache holds every row from 0 to the 1,000th record (4,597 rows), not only the records. | The repository does not redistribute third-party data (README.md:407–408). The rows between records let J++'s selection be proven and Miru's prompts be tried. |
 | D27 | R3's integrity record is HEAD and the refusal of dirty registered files (§0); R2_02 also wrote every registered file's sha256 into its output. | The commit pins every file; §0's table gives the hashes. |
 | D28 | R1's pinned lens (`80ce5609…`, 173,411,927 bytes) is read from the `it-second-reading` worktree. The main checkout's `R1_18_it_lens.pt` has the same size and the same three matrices but another sha256 (`37252f5e…`, an older provenance note) and is not used. | Only the pinned file is read. |
 | D29 | R2's earlier held-out script (`heldout_eval.py`) no longer exists; its prompts are not in the freshness corpus. | It lived in another session's scratchpad. R2's prompts and every other source R2 used are in. |
 | D30 | **No GPU budget is approved yet** (`R3_common.APPROVED_GPU_HOURS = None`, [NOT YET APPROVED]). The pilot writes "stop" until one is registered; the fit jobs refuse a pilot judged against another budget value. The pilot's projection is multiplied by a registered margin of 1.25. | The user decides the budget (§10.2). |
-| D31 | The H2–H5 tables of `R3_06_analyze.py` are not written yet: they need the fitted lens files and R3_05's outputs. They are registered here in words (§8). Their code is to be committed before `R3_04_weights.py --run` writes any lens file; if it is not, every number it gives is labelled as analysed after the lens files existed. | The band evaluation, the sensitivity analyses and the reproduction of R2 are written and tested (§7.4). |
-| D32 | Q0 was run before this registration, on lens files that already existed (§8.5). Its fine-tuning axis (Miru against JLens, 0.37 / 0.39 / 0.40 in q10) was known when H6's reading (§1.2) was written. | Q0 needs no GPU and checks the pullback code against R1. The reading thresholds come from R1's yardsticks and Q0's own rows, not from Q1, which has not run. |
+| D31 | The H2, H3 and H5 tables of `R3_06_analyze.py` are not written yet: they need the fitted lens files and R3_05's outputs. They are registered here in words (§1.2, §8). Their code is to be committed before `R3_04_weights.py --run` writes any lens file; if it is not, every number it gives is labelled as analysed after the lens files existed. H4's reading (`R3_05_eval.h4_tables`), H6's reading (`R3_Q1_jlens.h6_reading`), the replication's comparison (`R3_06_analyze.replication`) and jpp-it-full-macro's place as a reported lens are written and self-tested. | The band evaluation, the sensitivity analyses and the reproduction of R2 are written and tested (§7.4). |
+| D32 | Q0 was run before this registration, on lens files that already existed (§8.5). Miru against JLens (0.37 / 0.39 / 0.40 in q10 at Q0's bands, 0.37 / 0.39 / 0.41 at H6's bands 30–39 / 40–49 / 50–57) was known when H6's reading (§1.2) was written. | Q0 needs no GPU and checks the pullback code against R1. The reading compares Q1 with that row's own intervals and with Q1's split half, not with any number from Q1, which has not run. |
 
 ### 2.3 Matched, not deviations (the positive control decided)
 
@@ -247,12 +291,15 @@ Five places where R3 could have departed from J++ were set by the control to mat
 - **Not used:** R1's chat corpus as a second fit. The design listed it as optional and reported only; it is not part of
   R3.
 
-So the data and the recipe are those of the shipped J++, with the deviations of §2, and only the checkpoint is meant to
-change.
+So the data selection is the shipped J++'s, and the recipe is the code at `d7efc0de` with the deviations of §2. The
+shipped Gemma file came from older code (D13) whose router and weighting it does not record, so more than the
+checkpoint changes between it and R3's lenses: the code version, the item set and its grading model (D8), and the
+weights fitted at 29 layers (D11); §1.1 and H2 read every comparison with base J++ that way.
 
 ### 3.2 Disjointness
 
-- **R3's prompts** (§4) have 0 flags against every source R2 used (R2's own 220 prompts among them), every cached
+- **R3's prompts** (§4) have 0 flags against every source R2 used except the lists of the lost `heldout_eval.py`
+  (D29) (R2's own 220 prompts among them), every cached
   WikiText row (the 1,000 records and the rows between them), every J++ item string (prompt, target, intermediates)
   and each other (§4.2).
 - **R2's 220 prompts**, R3's replication set (§8.6), were checked against R3's fit sources, which R2 could not do
@@ -265,10 +312,10 @@ Miru's header records its selection (`concatenate_and_rechunk`, headings exclude
 1,000 prompts at revision `b08601e0`), a hash of the 1,000-prompt sequence (`dcb2a738…`) and of the 425 prompts it
 processed (`f5797115…`), after which its convergence rule stopped it. `R3_01_check.py` tried 24 readings of that
 description (paragraph packing or stream cutting, stripped or not, four separators), each hashed in 12 ways: 288
-comparisons, no match. Every reading yields at most 862 prompts from the cached rows, fewer than the 1,000 the full
-hash covers, and Miru Tracer's own code is not an approved source. **So Miru's prompts are not rebuilt**, and Q1 falls
-back to J++'s 64 prompts (D22). Rebuilding them needs the user's approval for Miru Tracer's selection code at a pinned
-commit, and probably more WikiText rows.
+comparisons, no match. Every reading yields at most 857 prompts from the cached rows (`R3_01_check.json`,
+`miru_prompts.max_prompts_from_cache`), fewer than the 1,000 the full hash covers, and Miru Tracer's own code is not an
+approved source. **So Miru's prompts are not rebuilt**, and Q1 falls back to J++'s 64 prompts (D22). Rebuilding them
+needs the user's approval for Miru Tracer's selection code at a pinned commit, and probably more WikiText rows.
 
 ## 4. Prompts
 
@@ -318,12 +365,14 @@ removed), 0 among the R3 prompts, and the closest difflib ratio is 0.788.
 ### 4.3 What the check does not cover
 
 - *Paraphrase and shared topics with a fit source.* The lexical check passes, but some prompts paraphrase one of R1's
-  fit questions, or ask about something a WikiText record's article is about, or ask the same kind of question as a
-  J++ eval. The list `R3_common.FIT_OVERLAP` was fixed from the prompt texts alone, before any data, in the same commit
-  as the prompts. It names **83 prompts** (20 chat-no-answer, 21 chat-begun, 19 bare, 23 mid-reply), each with the
-  source it overlaps: 32 a WikiText record's article (by record number), 27 J++'s items (by eval and item number), 45
-  R1's fit set (some prompts more than one). The rule is generous on purpose (R3_common's comment); sensitivity
-  analysis S2 reruns the rule without them, and S1 without the 32 prompts about the model.
+  fit questions, or ask about something a WikiText record's article is about, or ask the same kind of question as a J++
+  eval. The list `R3_common.FIT_OVERLAP` was fixed from the prompt texts alone, before any data, in the same commit as
+  the prompts. It names **83 prompts** (20 chat-no-answer, 21 chat-begun, 19 bare, 23 mid-reply), each with the source
+  it overlaps: 32 a WikiText record's article (by record number, the article described in the study's own words), 27
+  J++'s items (by eval and item number, with no description of an item; where the overlap is with a whole eval, the kind
+  of question in the study's own words), 45 R1's fit set (some prompts more than one). The rule is generous on purpose
+  (R3_common's comment); sensitivity analysis S2 reruns the rule without them, and S1 without the 32 prompts about the
+  model.
 - *Miru's fit passages.* Not rebuilt (§3.3). The cached rows hold the start of the WikiText stream Miru drew from, and
   R3's prompts have no flag against them; the rest of Miru's 425 passages is unchecked, as in R2.
 - *The 40 /usr/share/doc chunks of R1's corpus* are in only as R1 stored them (token ids removed); R2 had the same gap.
@@ -413,21 +462,37 @@ Every comparison uses unrounded values.
   must also pass the gates a second lens needs (orientation, bf16 against fp32 precision, the stuck-word check), keep
   the server's defaults, add a filtered second reading as a request option, and withhold R1 and Miru as R2 decided.
   Its lens card would say what was tested: the next content word, not neuron labels (E45, E47), and no pronoun
-  sentence unless a pronoun gate is built. Layers 11–30 keep their caution whatever R3 finds.
+  sentence unless a pronoun gate is built. Code layers 10–29 (pages 11–30) keep their caution whatever R3 finds.
 
 No page text changes while R3 is open: the pages already say that every lens reading comes through base-fitted J++.
 
 ### 7.3 Power
 
-Effective n. In R2, 199 of the 220 prompts could be read: every chat-no-answer, chat-begun and mid-reply prompt, but
-only 39 of the 60 bare ones (55 had a content target, 16 of them a collapse word), about 65%. With the same shares, R3
-expects about 80 + 80 + 52 + 80 = 292 valid prompts. R2's pooled intervals resolved differences of about 0.06–0.07;
-with √(199/292) ≈ 0.83, R3's should resolve about 0.05–0.06. Per condition (about 52–80 prompts) intervals should be
-about ±0.10–0.15, so rule 2 still catches only large harms.
+Every figure here is computed from R2's own files by `R3_power.py` (CPU, before any R3 data; `R3_power.json`).
 
-Rule 5 is a threshold on the point estimates and does not move with n: a true difference of +0.046, R1's at code 58
-in R2, fails it with any number of prompts. Holm over 14 tests instead of 9 makes rule 4 stricter: the smallest
-adjusted p is 14 times the smallest raw one.
+- **Effective n.** In R2, 199 of the 220 prompts could be read: every chat-no-answer, chat-begun and mid-reply prompt,
+  but only 39 of the 60 bare ones (55 had a content target, 16 of them a collapse word), about 65%. With the same
+  shares, R3 expects about 80 + 80 + 52 + 80 = 292 valid prompts.
+- **Interval width.** R2's realised pooled half-widths (both baselines, its nine lens-bands) were 0.035–0.070; R2's
+  registration had expected 0.06–0.07 at about 220 prompts (R2_PREREG.md:349–350). Scaled by √(199/292) they become
+  about 0.029–0.058 at R3's n. Per condition (52–80 prompts) the intervals are much wider than pooled, so rule 2 catches
+  only large harms.
+- **Rule 4 binds near the threshold.** The sign test drops ties, and most prompts tie: the sign test's n is the
+  discordant prompts, not 292. R2's median discordant share was 0.30 at its single-layer bands (about 87 of 292),
+  0.50 at 51–54 (145), 0.48 at 56–57 (141) and 0.57 at the ten-layer 40–49 (166, standing in for 30–39, which R2 did
+  not read). Holm's first step needs p below 0.025 / 14 = 0.0018. If each discordant prompt counts +1 or −1, a true
+  pooled difference of +0.050 / +0.063 / +0.075 passes one baseline's sign test with probability 0.07 / 0.14 / 0.25
+  at a single-layer band, 0.04 / 0.07 / 0.12 at 51–54, 0.03 / 0.07 / 0.11 at 56–57 and 0.03 / 0.05 / 0.09 at a
+  ten-layer band; both baselines must pass, so these are upper bounds. Resampling R2's own prompt-level differences
+  to R3's counts per condition (4,000 draws), Miru at 51–54 (+0.084 over J++ and +0.063 over the naked eye in R2)
+  passes rule 4 in 23% of the draws and rule 5 in 75%; R1 at 55 and 58 pass rule 4 in 99% and more, and rule 5 in
+  51% and 53%. **A lens with gains the size of Miru's at 51–54 would most likely fail rule 4**, and Holm over 14 tests
+  instead of R2's 9 makes that worse.
+- **Rule 5 at R3's n.** Rule 5 compares the point estimates with 0.05, so it is passed or failed by chance near the
+  threshold. With the standard error of the pooled difference against the naked eye at R3's n (0.015 from R1 at code
+  58 in R2, 0.022 the median over R2's lens-bands), a true +0.046 (R1 at code 58 in R2) still reaches 0.05 with
+  probability 0.39–0.43, and a true +0.050 reaches it half the time. Only as n grows without limit does a +0.046
+  surely fail.
 
 ### 7.4 The rule's code is R2's
 
@@ -448,7 +513,9 @@ Pullbacks d·Jₗ of R1's 128 final-space directions through jpp-it, rl-it, thei
 covectors (`R1_04_gbar.pt`). Cosines as R1_04_analyze_dir.py: over the coordinates of a mask (q10: each layer's bottom
 10% of dimensions by the spread of the 4-bit instruct model's states, `V6_quiet_dims_stats.pt`; loud: the rest), per
 direction and layer, averaged over a band's layers (code 30–39, 40–49, 50–58), then over the 98 token-pair directions,
-with 95% intervals over them. The split-half ceiling is jpp-it-A against jpp-it-B.
+with 95% intervals over them. The split-half ceiling is jpp-it-A against jpp-it-B (and rl-it-A against rl-it-B). H2 is
+read for jpp-it and for rl-it alike (§1.2): rl-it carries the checkpoint and the code version without the items and
+weights, so the two side by side show the weighting's share.
 
 Yardsticks (q10): J++ against JLens, two methods on the base model, 0.77 / 0.68 / 0.66 (R1_IT_LENS_REPORT.md:233,
 reproduced by Q0 as 0.767 / 0.685 / 0.657); R1's instruct covectors against J++ 0.27 / 0.29 / 0.29 and against JLens
@@ -459,42 +526,74 @@ split-half ceiling 0.96 / 0.98 / 0.99.
 
 For each lens and fitted layer: the share of its squared Frobenius norm in its own top 100 singular directions on the
 output side, and the share inside base J++'s top-100 output subspace (R1 §3.2's method), for jpp-it, rl-it, base J++,
-JLens and Miru.
+JLens and Miru. Fixed before any lens file exists:
+
+- **Coordinates.** R1's: y = fnw ⊙ output, so the matrix is diag(fnw)·J (J read `h @ J.T`, its rows the output side;
+  fnw the final norm's weight). R1's 0.76 for the shipped file at code 35 is this figure; its raw one is 0.78. Raw
+  shares are reported beside, never used for H3.
+- **Debiasing.** For jpp-it and rl-it, with U the top 100 left singular vectors of the whole lens in y, the debiased
+  share is Σᵢ uᵢᵀ (Ã Bᵀ) uᵢ / ⟨Ã, B̃⟩_F, where Ã and B̃ are the half-lenses A and B in y (D6): the cross product of
+  two independent halves carries no estimation noise in expectation, so the share is not pulled down by it. The
+  plain share is reported beside it. Base J++, JLens and Miru have no halves and are measured plain, as R1 measured
+  them.
+- **Layers.** Judged at code 30, 35, 40, 45, 50, 55, 58 (R1 §3.2's), reported at all 29.
 
 ### 8.3 H4 and J++'s own recall
 
-- **H4.** On R1_10's 4,808 held-out positions: KL(final ‖ lens) at R1_10's seven logit scales (0.25, 0.5, 0.75, 1, 1.5,
-  2, 3), the calibrated KL (the smallest), and top-1 and top-10 agreement with the model's own final readout, at code
-  40, 45, 50, 55, 58, over all positions and per class (prose, chat), for jpp-it, rl-it, base J++, JLens, the naked
-  eye, R1 and Miru (point values, as R1 §4.2 gave them). R1's figures for
-  comparison (R1_IT_LENS_REPORT.md:463–465), top-1 at those layers: R1's instruct full matrix 0.21 / 0.37 / 0.45 /
-  0.55 / 0.85, J++ 0.13 / 0.22 / 0.25 / 0.39 / 0.69.
+- **H4.** On R1_10's 4,808 held-out positions (48 sequences: 24 prose paragraphs, 24 chats): KL(final ‖ lens) at
+  R1_10's seven logit scales (0.25, 0.5, 0.75, 1, 1.5, 2, 3); the calibrated KL cross-fitted as R1_14 did it (the
+  scale with the least mean KL on one sequence parity, sorted by name, scored on the other, and back; the in-sample
+  minimum over the scales is reported beside it and so named); and top-1 and top-10 agreement with the model's own
+  final readout; at code 40, 45, 50, 55, 58, over all positions and per class (R1_10's classes: prose, and in the
+  chats asst, self and user), for jpp-it, rl-it, base J++, JLens, the naked eye, R1 and Miru. Every lens is set
+  against J++ with a 95% interval from a bootstrap over sequences within the class (§1.2), as R1 §4.2 gave
+  passage-bootstrap intervals for its IT − J++ rows. The per-position values are kept (`R3_05_h4_positions.pt`,
+  gitignored). R1's figures for comparison (R1_IT_LENS_REPORT.md:454–465) are its **assistant-turn tokens (2,452
+  positions)**, so they are set beside R3's asst row, not its all-position one: top-1 at those layers for R1's
+  instruct full matrix 0.21 / 0.37 / 0.45 / 0.55 / 0.85, and for J++ 0.13 / 0.22 / 0.25 / 0.39 / 0.69.
 - **J++'s own held-out recall@10** at code 30, 38, 45, 52 (its README's readout layers from 30), with J++'s filter, on
   the held-out (non-fitting) items of the evals the floor kept, through jpp_lens's own rank code, for jpp-it, rl-it,
-  base J++, the naked eye and Miru, under the primary macro and the full one.
+  jpp-it-full-macro, base J++, the naked eye and Miru, under the primary macro and the full one. jpp-it's weights
+  were fitted on the fitting items of the same evals, and rl-it's on none. Base J++'s recall may include its own
+  fitting items: its weights came from an older split whose items are not recorded (its provenance names the
+  checkpoint `multi_model_jpp/jpp_gemma31b_fold0`).
 
 ### 8.4 H5
 
-jpp-it − rl-it, filtered top-1, pooled and per condition, per band, with paired intervals from the same bootstrap; and
-the recall of §8.3 for both.
+jpp-it − rl-it, filtered top-1, pooled and per condition, at every band, with paired intervals from the same bootstrap,
+at 95% and Bonferroni-adjusted over the seven bands (§1.2); and the recall of §8.3 for both, as a secondary reading.
 
-### 8.5 H6: fine-tuning against quantisation (Q0 and Q1)
+### 8.5 H6: two bounded differences (Q0 and Q1)
 
 - **Q0** (CPU, done; `R3_Q0_pullbacks.json`). The implementation check: from the pullbacks R1 stored, J++ against
   JLens equals R1_04's table in all six bands and all three masks (max difference 1.3e-8); recomputed from the two
   files, q10 at code 30–39 / 40–49 / 50–58 is 0.767 / 0.685 / 0.657 against R1's 0.77 / 0.68 / 0.66 (tolerance 0.02).
-  Then the **fine-tuning axis**, Miru (bf16 instruct) against JLens (bf16 base), plain J-lenses on WikiText both:
-  0.37 / 0.39 / 0.40 in q10. For reference only (different estimators): R1's 4-bit instruct covectors against Miru
-  0.65 / 0.69 / 0.72.
-- **Q1** (GPU, not run). The 4-bit J-lens covectors (D22) against Miru: the **quantisation axis**, with Q1's own
-  split-half ceiling (Miru's is unknown). Reported in q10 and loud coordinates per band; code 58 is reported apart,
-  because Miru collapses there (R2_03_report_section.md). While Q1 runs on J++'s 64 prompts, every Q1 number says so.
+  Then **Miru against JLens** (fine-tuning together with Miru Tracer's code against anthropics/jacobian-lens, and the
+  two fits' prompts; plain J-lenses on WikiText both): 0.37 / 0.39 / 0.40 in q10 at those bands, and in H6's bands
+  (code 30–39 / 40–49 / 50–57) 0.368 [0.347, 0.389] / 0.390 [0.371, 0.408] / 0.409 [0.390, 0.429], with code 58 apart
+  at 0.328. For reference only (different estimators): R1's 4-bit instruct covectors against Miru 0.65 / 0.69 / 0.72.
+- **Q1** (GPU, not run). The 4-bit J-lens covectors (D22) against Miru (quantisation together with the QAT
+  checkpoint's further training and R3's code against Miru Tracer's), with Q1's own split-half ceiling (Miru's is
+  unknown), and against JLens and J++ (the triangle). Reported in q10 and loud coordinates per band; code 58 is
+  reported apart, because Miru collapses there (R2_03_report_section.md), and is not read. While Q1 runs on J++'s 64
+  prompts, every Q1 number says so. H6's reading (§1.2) bounds the two differences beside each other; it does not
+  separate fine-tuning from quantisation.
 
 ### 8.6 The replication set, and other reported readings
 
-- **R2's 220 prompts**, read again by R3_05 with R2's own draw seed (20261018), so their positions are R2's. The rule
-  is applied to them and reported; it decides nothing. J++, the naked eye, R1 and Miru on them should reproduce R2's
-  numbers, which tests R3's reading path (D21).
+- **R2's 220 prompts**, read again by R3_05 with R2's own draw seed (20261018), so their positions are R2's. They test
+  R3's reading path (D21), by a comparison registered with its code (`R3_06_analyze.replication`):
+  (a) a position is found again when its prompt, condition, read position, draws, next token, content target and
+  (mid-reply) reply up to the read position equal `R2_02_eval.json`'s; at least 95% of R2's read positions must be;
+  (b) for each of J++, the naked eye, R1 and Miru, at R2's layers (code 40–59), the filtered top-1 id must equal R2's
+  at 99% or more of the (position, layer) pairs found again, every mismatch listed;
+  (c) R2's design applied to the replication file must give `R2_03_analysis.json`'s verdicts (pass and failed rules
+  at every lens-band) and decision.
+  R3's design is applied to them too and reported whole (bands, reference bands, per layer, decision, counts and the
+  sensitivity analyses, S2 with R2's own overlap list, `R2_common.R1_OVERLAP`, since `FIT_OVERLAP` names only R3's
+  prompts); its seeds and Holm family are R3's, so its intervals are not R2's. If (a), (b) or (c) fails, the report
+  says so first, the rule is still applied to R3's prompts, and no R3 pass is a recommendation to a serving track
+  until an amendment explains the difference.
 - Everything R2 §8 reports, for every readout: per layer, the primary metric with pooled intervals and its
   differences, the stuck-word share and word, the formatting share; the sign test's discordant counts and raw and
   Holm p; the unfiltered metrics; the exact-id variant and the target in the filtered top 5; mid-reply-content-next;
@@ -516,28 +615,43 @@ recommendation changes. The primary decision stands; a change is reported beside
 | S5 | with J++'s exclusion list for every readout in place of R2's filter | D7: the recipe's own filter |
 
 Also reported, not a sensitivity rerun of the decision: jpp-it-full-macro (poetry in the weights' macro) through the
-same rule, outside the Holm family.
+same rule, outside the Holm family (R3_06 evaluates it with the reference lenses, labelled "full-macro sensitivity",
+its p raw).
 
 ## 9. Failure handling
 
-**Stops before reading.** A GPU job stops before any reading if: a registered file is untracked or differs from HEAD
+**Stops before reading.** A GPU job stops before any reading if: a registered file is untracked or differs from HEAD,
+`backend/` differs from its tree at `d5405ee`, or an R2 or backend file of §0 differs from its sha256
 (`--allow-uncommitted` overrides, a recorded deviation); its output already exists, for the pilot, the router, the
-weights and the evaluation (`--force` overrides; the earlier run stays in the runs log and is reported); a pinned file's size or hash differs; the filters' counts differ from
-those recorded; the prompts fail validation or their sha256 differs from a passing `R3_01_check.json`'s; the pilot's
-decision is not "proceed", or was judged against another budget.
+weights and the evaluation (`--force` overrides; the earlier run stays in the runs log and is reported); a pinned file's
+size or hash differs; the filters' counts differ from those recorded; the prompts fail validation or their sha256
+differs from a passing `R3_01_check.json`'s; the pilot's decision is not "proceed", or was judged against another
+budget.
 
 **Stops for an amendment.** The pilot fails a check (§10.2) or projects more than the approved budget, or no budget
-is approved; fewer than 20 fitting pairs survive the per-eval floor (D16). Each stop writes its reason, and nothing
+is approved; fewer than 2 graded evals, or fewer than 20 fitting pairs, survive the per-eval floor in the primary
+macro (D16). Each stop writes its reason, and nothing
 after it runs until an amendment is registered.
 
-**Resumable jobs.** The router, each shard and Q1 checkpoint their state and resume after the last checkpoint. A
-resumed job is not a deviation; a job restarted from the start after a change of code is, and is reported.
+**Resumable jobs.** The router, each shard and Q1 checkpoint their state and resume after the last checkpoint. Each
+checkpoint records its settings (the router's also the sha256 of its code), and one written with other settings is
+refused rather than resumed. A resumed job is not a deviation; a job restarted from the start after a change of code
+is, and is reported.
 
 **Partial evaluation.** A run of R3_05 that stops part-way is rerun from the start; partial data is not analysed; the
 stopped run stays in `R3_05_runs.jsonl` and is reported.
 
 **Agreement below 0.95** between the reading forward's top-1 at 59 and the next token, in any condition: said in the
 report; the rule is applied unchanged.
+
+**R3_06 refuses its input** unless R3_05's output has the registered prompt counts and the prompts' sha256 that a
+passing `R3_01_check.json` records, and unless every one of the 14 candidate-band tests is in the Holm family (a band
+with a readout missing fails rule 2 and stays in it with p = 1, §7.1). The replication file must have R2's counts and
+`R2_prompts.json`'s sha256.
+
+**H4's reproduction of R1_10 fails** (D23): H4 is reported with that caution on every number; nothing stops.
+
+**The replication fails** (§8.6): said first in the report; no R3 pass is a recommendation until an amendment.
 
 ## 10. How to run
 
@@ -552,6 +666,7 @@ GPU themselves; `CUDA_VISIBLE_DEVICES=""` is given anyway.
    - the self-tests: `R3_lrp.py`, `R3_fitlib.py`, `R3_gpu.py`, `R3_02_router.py`, `R3_03_fit.py`, `R3_04_weights.py`,
      `R3_Q1_jlens.py`, `R3_00_pilot.py`, `R3_06_analyze.py` with `--selftest`, and `R3_05_eval.py --selftest --limit
      3 --out <scratch>`; the positive control `R3_parity.py`; `R3_06_analyze.py --reproduce-r2`; `R3_Q0_pullbacks.py`;
+     `R3_power.py`;
    - `--check-only` of R3_00, R3_02, R3_03, R3_04, R3_05 and R3_Q1.
    For example: `CUDA_VISIBLE_DEVICES="" /home/eric/bin/ai/theodolite2/.venv/bin/python -I experiments/scripts/
    R3_01_check.py`.
@@ -572,13 +687,14 @@ design recommends 24 GPU-hours.
 - **The dry run** (`--dry-run-12b`) runs the whole pipeline once on the local bf16 Gemma 4 12B (D24). The pilot refuses
   to start without it.
 - **The pilot** (`--pilot`, at most 30 minutes, on WikiText fit records 0 and 1; it reads no lens on an evaluation
-  prompt): (a) the R-lens rules' coverage (the patched module names, counted) and the forward under the rules, whose
-  top-1 word-piece must be unchanged at 99.9% of positions or more; (b) parity at cos 0.99 or more at every fitted
-  layer, in both batching modes (D25); (c) memory and seconds per backward pass at B in {8, 16, 32, 64, 128}
-  (`is_grads_batched`) and {1, 2, 3, 4} (replicated), each under the job cap, an out-of-memory error being a result;
-  (d) the fastest configuration and the projection of GPU-hours for every R3 GPU job (shards, router, weights, Q1,
-  H4's states, the evaluation), times 1.25. A failed check, a projection over the approved budget or no approved
-  budget writes "stop"; only "proceed" lets R3_02–R3_05 and Q1 run.
+  prompt): (a) the R-lens rules' coverage (the patched module names, counted) and the forward under the rules, read
+  forward only on fit records 0–15 (about 2,000 positions), whose top-1 word-piece may differ at no more than ⌊0.001 ×
+  positions⌋ positions (two at 2,000; at fewer than 1,000 positions none may differ); (b) parity at cos 0.99 or more at
+  every fitted layer, in both batching modes, with the rules off and with them on (D25); (c) memory and seconds per
+  backward pass at B in {8, 16, 32, 64, 128} (`is_grads_batched`) and {1, 2, 3, 4} (replicated), each under the job cap,
+  an out-of-memory error being a result; (d) the fastest configuration and the projection of GPU-hours for every R3 GPU
+  job (shards, router, weights, Q1, H4's states, the evaluation), times 1.25. A failed check, a projection over the
+  approved budget or no approved budget writes "stop"; only "proceed" lets R3_02–R3_05 and Q1 run.
 - **The job cap.** Every GPU job caps its own allocations at 24 GiB (torch's per-process fraction) and records the
   card's free memory before and after (nvidia-smi and torch). When R3 was designed, other processes held 4,703 MiB of
   the card with no model loaded, so the headroom beside the 21–23 GB model may be only a few GB, which pushes B down.
@@ -592,7 +708,8 @@ design recommends 24 GPU-hours.
 ## 11. Amendments before any data
 
 The design R3 was planned from was reviewed once before this registration; the user then settled its open decisions.
-No R3 GPU job had been run, and none has been run since, so none of these is a deviation.
+The registration itself was then reviewed (A12). No R3 GPU job had been run, and none has been run since, so none of
+these is a deviation.
 
 | | change | reason |
 |---|---|---|
@@ -607,3 +724,4 @@ No R3 GPU job had been run, and none has been run since, so none of these is a d
 | A9 | Third-party texts kept out of git: only indices and hashes are committed (D26). | README.md:407–408. |
 | A10 | The power statement (§7.3), the job cap and the B = 1 bound (§10.2), the 12B dry run (D24), and H3's wording (§1.1). | The first power claim was optimistic; the card's headroom is tighter than R1 found; a real Gemma 4 was on disk; finding no low-rank step in the code does not show the shipped file's concentration is not the recipe's. |
 | A11 | The user's decisions: R3 may fetch, once and pinned, the 1,000 WikiText records, jpp_lens at `d7efc0de` (into its own environment) and J++'s six item files, and nothing else; fine-tuning is separated from quantisation through Miru, with no bf16 checkpoint downloaded; registration, scripts and CPU checks only in this round, no GPU run. | Recorded in R3_sources.json and in this file. |
+| A12 | After a review of this registration, before any data (22 October 2026). **Readings:** H6's two comparisons named for what they compare and read against their own intervals and Q1's split half, code 58 out of its band, the reading coded (§1.1, §1.2, §8.5); H3 judged against Miru (a plain instruct J-lens), in R1's coordinates, debiased by halves (§8.2); H4 given a sequence-bootstrap interval and R1_14's cross-fitted calibrated KL, R1's comparison figures labelled as its assistant-turn row, the reading coded (§1.2, §8.3); H5 judged on the bands alone, every band read, Bonferroni over seven, recall secondary; H2 read for rl-it too and laid on the checkpoint with the recipe version and items, not the checkpoint alone; "only the checkpoint changes" withdrawn (§1, §3.1); the "no instruct J++ lens" claim scoped to Gemma 4 31B. **Power:** §7.3 rewritten from R2's realised numbers (`R3_power.py`), with rule 4's power and rule 5's chance at finite n. **Code:** the replication on R2's prompts compared with R2's readings and verdicts, with tolerances and a consequence (§8.6); jpp-it-full-macro analysed as a reported lens; the Holm family held at 14 and R3_06's input checked (§9); the pilot's parity gating the rules-on rows too, the replicated parity a dimension at a time, an out-of-memory parity a failed check, the identity check on 16 records with a tolerance in positions (§10.2, D25); a graded-eval stop beside the 20-pair stop (D16); the router's checkpoint refusing other settings (§9); the GPU jobs refusing a changed backend or R2 file (§0); H4's failed reproduction logged and cautioned (D23). **Text:** 857, not 862 (§3.3); the lost held-out script's exception (§3.2); code layers 10–29 (§7.2); `R3_01_check.json` among the records rewritten on a rerun (§0); R2's cherry-picks mapped to their originals (§0); FIT_OVERLAP's J++ entries without item descriptions (§4.3). **The roadmap line** suggested by the design said "the same selection rule and recipe code as the shipped J++" and "on Miru's own prompts", which D13 and §3.3 contradict; the line offered instead: "**Being tried (R3).** J++'s published recipe as the code at jpp_lens `d7efc0de` runs it (newer code than the shipped Gemma J++ came from, whose router and weighting are not recorded), fitted on the instruct checkpoint with the deviations recorded in R3_PREREG §2, is registered on branch `it-jpp-refit`, with R2's rules on 320 new prompts. A plain J-lens fitted here on the 4-bit model, on J++'s 64 WikiText prompts because Miru's own could not be rebuilt, will be set beside Miru's unquantised instruct lens; that comparison also changes the code and the prompts. Result: [NOT YET RUN]." | Independent reviewers found readings that would lay results on causes the design cannot separate, open quantifiers, checks that were registered but not coded, and statements the files do not support. |

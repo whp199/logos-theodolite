@@ -3,14 +3,21 @@
  "scripts": {
   "R3_lrp.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_lrp.py --selftest",
-   "at": "2026-10-21T23:40:56",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:41:46",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 1.9,
+   "seconds": 2.0,
    "ok": true,
    "n_checks": 22,
    "n_failed": 0,
@@ -113,14 +120,21 @@
   },
   "R3_fitlib.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_fitlib.py --selftest",
-   "at": "2026-10-21T23:41:09",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:41:56",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 11.8,
+   "seconds": 8.4,
    "ok": true,
    "n_checks": 17,
    "n_failed": 0,
@@ -203,15 +217,23 @@
   },
   "R3_06_analyze.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_06_analyze.py --selftest",
-   "at": "2026-10-21T23:24:56",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:43:24",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 33.6,
+   "seconds": 42.3,
    "ok": true,
-   "n_checks": 31,
+   "n_checks": 37,
    "n_failed": 0,
    "checks": [
     {
@@ -332,11 +354,35 @@
     },
     {
      "ok": true,
+     "check": "a readout missing at one layer of a band fails rule 2 and keeps the band in the Holm family (14 tests)"
+    },
+    {
+     "ok": true,
+     "check": "a family of fewer than 14 tests is refused before anything is written (8 reasons)"
+    },
+    {
+     "ok": true,
+     "check": "the input check: the registered prompt counts and the prompts' sha256"
+    },
+    {
+     "ok": true,
+     "check": "the replication's readout check: R2's own file against itself passes (every position found, every top-1 the same); 494 changed Miru top-1s fail Miru's tolerance and are counted"
+    },
+    {
+     "ok": true,
+     "check": "the replication's verdict check: R2_03's verdicts against themselves agree; one changed verdict is caught"
+    },
+    {
+     "ok": true,
+     "check": "a failed replication is said first in the report"
+    },
+    {
+     "ok": true,
      "check": "the bootstrap is deterministic"
     },
     {
      "ok": true,
-     "check": "the report renders"
+     "check": "the report renders; reference rows give a raw p, outside Holm"
     }
    ],
    "env": {
@@ -348,16 +394,23 @@
   },
   "R3_gpu.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_gpu.py --selftest",
-   "at": "2026-10-21T23:41:12",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:41:59",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
    "seconds": 2.0,
    "ok": true,
-   "n_checks": 14,
+   "n_checks": 16,
    "n_failed": 0,
    "checks": [
     {
@@ -414,7 +467,15 @@
     },
     {
      "ok": true,
-     "check": "git state of the registered files is read"
+     "check": "git state of the registered files is read; they include R2's imported files, the two backend modules and R3_01_check.json"
+    },
+    {
+     "ok": true,
+     "check": "the registered runtime holds: backend/ is d5405ee's tree and every pinned file has its sha256 (differs: [], [])"
+    },
+    {
+     "ok": true,
+     "check": "a pinned file whose sha256 differs is caught, and a GPU job refuses to start"
     }
    ],
    "env": {
@@ -426,16 +487,23 @@
   },
   "R3_02_router.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_02_router.py --selftest",
-   "at": "2026-10-21T23:41:26",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:42:08",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 12.0,
+   "seconds": 7.7,
    "ok": true,
-   "n_checks": 6,
+   "n_checks": 7,
    "n_failed": 0,
    "checks": [
     {
@@ -449,6 +517,10 @@
     {
      "ok": true,
      "check": "a job killed between records (in pass 1 and in pass 2, several times) resumes from its checkpoint and ends with the same router and record"
+    },
+    {
+     "ok": true,
+     "check": "a leftover checkpoint written with other settings (PCA size, skip, model snapshot) is refused, not resumed"
     },
     {
      "ok": true,
@@ -472,14 +544,21 @@
   },
   "R3_03_fit.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_03_fit.py --selftest",
-   "at": "2026-10-21T23:41:31",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:42:12",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 3.0,
+   "seconds": 3.1,
    "ok": true,
    "n_checks": 12,
    "n_failed": 0,
@@ -530,7 +609,7 @@
     },
     {
      "ok": true,
-     "check": "--check-only: 8 shards of 8 fit prompts, disk {'free_gb': 1019.2, 'needed_gb': 276.3}; waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no R3_02_router.pt yet (R3_02)']"
+     "check": "--check-only: 8 shards of 8 fit prompts, disk {'free_gb': 1017.8, 'needed_gb': 276.3}; waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no R3_02_router.pt yet (R3_02)']"
     }
    ],
    "env": {
@@ -542,21 +621,32 @@
   },
   "R3_04_weights.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_04_weights.py --selftest",
-   "at": "2026-10-21T23:41:37",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:42:20",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 4.7,
+   "seconds": 6.1,
    "ok": true,
-   "n_checks": 9,
+   "n_checks": 10,
    "n_failed": 0,
    "checks": [
     {
      "ok": true,
      "check": "grading: a greedy step against the target for multihop, multilingual and poetry; none for association and typo (kept whole)"
+    },
+    {
+     "ok": true,
+     "check": "with multilingual dropped, one graded eval survives (['multihop']; association and typo always pass, ungraded): the run stops for an amendment, before any lens"
     },
     {
      "ok": true,
@@ -600,16 +690,23 @@
   },
   "R3_Q1_jlens.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_Q1_jlens.py --selftest",
-   "at": "2026-10-21T23:41:40",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:53:28",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 2.2,
+   "seconds": 4.9,
    "ok": true,
-   "n_checks": 7,
+   "n_checks": 9,
    "n_failed": 0,
    "checks": [
     {
@@ -634,6 +731,14 @@
     },
     {
      "ok": true,
+     "check": "H6's reading: intervals apart either way, a split-half ceiling too low to read a low agreement, and overlap (['smaller', 'larger', 'not separated', 'not separated']); the fallback prompts carry a caution"
+    },
+    {
+     "ok": true,
+     "check": "--analyze-only on made-up sums equal to Miru's own pullbacks: in every H6 band Q1 against Miru reads 'smaller' (it agrees better than Miru against JLens), code 58 apart, with the fallback's caution"
+    },
+    {
+     "ok": true,
      "check": "the comparison: an identical reference gives cosine 1 in every band and mask, an unrelated one about 0"
     },
     {
@@ -650,16 +755,23 @@
   },
   "R3_00_pilot.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_00_pilot.py --selftest",
-   "at": "2026-10-21T23:41:45",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:42:33",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 3.6,
+   "seconds": 4.0,
    "ok": true,
-   "n_checks": 9,
+   "n_checks": 11,
    "n_failed": 0,
    "checks": [
     {
@@ -668,11 +780,19 @@
     },
     {
      "ok": true,
-     "check": "(b) parity through the recompute-in-backward linears, both modes: min cos plain 1.0, R-lens 1.0 (>= 0.99 on the GPU)"
+     "check": "(b) parity through the recompute-in-backward linears, both modes (the replicated one a dimension at a time): min cos plain 1.0, R-lens 1.0 (>= 0.99 on the GPU); both gate the pilot"
     },
     {
      "ok": true,
-     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 8, 's_per_prompt': 0.03}"
+     "check": "(a) the identity tolerance is a count of positions: none may differ below 1,000 positions; the pilot reads 16 records forward only (at least 1664 positions)"
+    },
+    {
+     "ok": true,
+     "check": "(b) a pilot whose rows with the rules on disagree fails parity_rlens; an out-of-memory parity fails"
+    },
+    {
+     "ok": true,
+     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 16, 's_per_prompt': 0.04}"
     },
     {
      "ok": true,
@@ -680,7 +800,7 @@
     },
     {
      "ok": true,
-     "check": "(d) the decision: stop with no approved budget, stop over budget, proceed within it, stop on a failed check or when nothing ran within the cap"
+     "check": "(d) the decision: stop with no approved budget, stop over budget, proceed within it, stop on a failed check (the rules-on parity alone included) or when nothing ran within the cap"
     },
     {
      "ok": true,
@@ -708,15 +828,23 @@
   },
   "R3_05_eval.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_05_eval.py --selftest",
-   "at": "2026-10-21T23:35:15",
-   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
+   "at": "2026-10-22T00:49:54",
+   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_00_pilot.py",
+    "experiments/scripts/R3_02_router.py",
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_05_eval.py",
+    "experiments/scripts/R3_06_analyze.py",
+    "experiments/scripts/R3_Q0_pullbacks.py",
+    "experiments/scripts/R3_Q1_jlens.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_prompts.json"
+    "experiments/scripts/R3_gpu.py",
+    "experiments/scripts/R3_power.py"
    ],
-   "seconds": 519.9,
+   "seconds": 389.5,
    "ok": true,
-   "n_checks": 8,
+   "n_checks": 10,
    "n_failed": 0,
    "checks": [
     {
@@ -746,6 +874,14 @@
     {
      "ok": true,
      "check": "H4's KL at a logit scale equals torch's kl_div of the scaled, softcapped logits"
+    },
+    {
+     "ok": true,
+     "check": "H4 on the fake model fails the R1_10 reproduction, and the output says so (ok false, with the caution)"
+    },
+    {
+     "ok": true,
+     "check": "H4's tables: the cross-fitted calibrated KL is R1_14's; a lens equal to J++ differs by exactly 0 in every resample; a lens right everywhere has an interval above 0 and reads 'supported'; one equal to J++ 'refuted'; per class too"
     },
     {
      "ok": true,

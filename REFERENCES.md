@@ -1,6 +1,6 @@
 # References
 
-This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18.
+This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18; section H's were not opened (see there).
 
 ## A. Model, lenses and lens methods
 
@@ -162,4 +162,4 @@ These entries were written on 2026-10-21 from the local files named in them. The
     - Tool: Miru Tracer, https://github.com/returnmoe/miru-tracer (not read by this repository).
     - File used: `miru/google/gemma-4-31B-it.safetensors` at revision `134a973cf473ad12a885d3880f3b2e01ef495cd6`, 3,410,446,944 bytes, sha256 `cedd4b62f49a7f79e07c1bb107ad1d48d39dc7ad2790611de7e9480b4543386a`.
     - Its header's fit metadata (format `miru-tracer/jacobian-lens` 1): model `google/gemma-4-31B-it` at commit `842da379…`, computed in bfloat16; estimator `summed_current_and_future_targets_v1`, 32 output dimensions per pass, target layer 59, 128 word-pieces, the first 16 skipped, a mean over positions and a uniform mean over prompts; source layers 0–58; 425 prompts processed, where its convergence rule stopped it (threshold 0.002, at least 160 prompts), of 1,000 selected from WikiText-103 [7] (`wikitext-103-raw-v1`, train, revision `b08601e0…`, concatenated and rechunked, headings excluded, 200–2,000 characters), with a hash of the selected sequence and of the processed prefix. No LRP rule is recorded.
-    - *Use:* the community instruct J-lens R2 tested and did not serve (`experiments/results/R2_03_report_section.md`). In R3 it is a reference lens only, and the fine-tuned side of the separation of fine-tuning from quantisation (R3_PREREG §1, H6). It is downloaded to the local cache and not redistributed.
+    - *Use:* the community instruct J-lens R2 tested and did not serve (`experiments/results/R2_03_report_section.md`). In R3 it is a reference lens only, and the bf16 instruct lens on both sides of H6's two bounded comparisons, which do not separate fine-tuning from quantisation (R3_PREREG §1, H6). It is downloaded to the local cache and not redistributed.

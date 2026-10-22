@@ -9,18 +9,19 @@
   filter, R3_Q1's direction mode, and the parity check below. Writes R3_00_dry_run.json. The pilot refuses to start
   without it.
 --pilot (GPU, the 31B; at most 30 minutes; on WikiText fit prompts 0 and 1):
-  (a) LRP coverage (the patched module names, counted) and the forward under the rules: the top-1 word-piece of
-      every position must be unchanged at >= 99.9% of positions.
-  (b) parity: with the rules off, R3's batched rows for six output dimensions (R1's "unit" directions) must equal
-      an independent backward, one direction at a time from the graph rooted at block 0 (R3_gpu), at cos >= 0.99
-      at every fitted layer, in both batching modes; with the rules on it is recorded too.
+  (a) LRP coverage (the patched module names, counted) and the forward under the rules, on fit records 0-15
+      (forward only): the top-1 word-piece may differ at no more than floor(0.001 x positions) positions.
+  (b) parity: R3's batched rows for six output dimensions (R1's "unit" directions) must equal an independent
+      backward, one direction at a time from the graph rooted at block 0 (R3_gpu), at cos >= 0.99 at every fitted
+      layer, in both batching modes (the replicated one a dimension at a time), with the rules off and with them on
+      (the rows the fit uses); an out-of-memory error fails the check.
   (c) memory and seconds per backward pass for is_grads_batched passes at B in {8, 16, 32, 64, 128} and for a
       replicated batch at B in {1, 2, 3, 4}, each under the job cap (an out-of-memory error is a result, not a
       failure); the forward with and without the graph; the Q1 direction mode.
   (d) the choice (the fastest configuration per prompt) and the projection of GPU-hours for every R3 GPU job
       (shards, router, weights, Q1, H4's states, the evaluation), times a registered margin of 1.25, against
       R3_common.APPROVED_GPU_HOURS. A projection over the approved budget, a budget not yet approved, or a failed
-      check (a) or (b) writes "stop" (an amendment is needed); only "proceed" lets R3_02-R3_05 and Q1 run.
+      check (a) or (b), either parity, writes "stop" (an amendment is needed); only "proceed" lets R3_02-R3_05 and Q1 run.
   Writes R3_00_pilot.json, and the card's memory before and after (nvidia-smi and torch).
 Bounds stated beside the projection: about 1.29e18 FLOP for 64 prompts x 5376 rows x 128 tokens through blocks 30-59
 (3.6-14 h at a sustained 25-100 TFLOP/s), and rows one at a time at R1's 0.79 s per backward pass (75 h).
@@ -98,7 +99,9 @@ def _oom_types() -> Tuple[type, ...]:
 # ------------------------------------------------------------------------------------------------ (a) the rules
 @torch.no_grad()
 def lrp_identity(dec: FL.Decoder, texts: Sequence[str], max_seq_len: int = C.MAX_SEQ_LEN) -> Dict[str, Any]:
-    """The share of positions whose top-1 word-piece is the same with and without the rules in the forward."""
+    """The share of positions whose top-1 word-piece is the same with and without the rules in the forward, and
+    whether it passes: at most floor((1 - PILOT_LRP_TOP1_MIN) x positions) positions may differ (so that the
+    registered 99.9% is a tolerance only when there are 1,000 positions or more; below that it means none)."""
     same = total = 0
     last = dec.n_layers - 1
     for t in texts:
@@ -108,7 +111,9 @@ def lrp_identity(dec: FL.Decoder, texts: Sequence[str], max_seq_len: int = C.MAX
         ta, tb = dec.unembed(a[last]).argmax(-1), dec.unembed(b[last]).argmax(-1)
         same += int((ta == tb).sum())
         total += int(ta.numel())
-    return {"positions": total, "same_top1": same, "share": round(same / max(1, total), 6)}
+    allowed = int(math.floor((1.0 - C.PILOT_LRP_TOP1_MIN) * total + 1e-9))
+    return {"texts": len(texts), "positions": total, "same_top1": same, "share": round(same / max(1, total), 6),
+            "differ": total - same, "allowed_to_differ": allowed, "ok": total > 0 and total - same <= allowed}
 
 
 def coverage(hf) -> Dict[str, Any]:
@@ -121,27 +126,52 @@ def coverage(hf) -> Dict[str, Any]:
 
 # ------------------------------------------------------------------------------------------------ (b) parity
 def parity(dec: FL.Decoder, text: str, layers: Sequence[int], dims: Sequence[int], *, linears_ctx, lrp: bool,
-           target: int, skip: int, max_seq_len: int) -> Dict[str, Any]:
+           target: int, skip: int, max_seq_len: int,
+           replicate_chunk: int = min(C.PILOT_REPLICATE_B)) -> Dict[str, Any]:
     """Per batching mode, the cosine per layer and dimension of R3's batched rows (dims_rows) against the
-    independent single-direction backward (R3_gpu.reference_direction_covectors); its minimum."""
+    independent single-direction backward (R3_gpu.reference_direction_covectors); its minimum. The replicated mode
+    takes the dimensions `replicate_chunk` at a time (no wider than the smallest replicated batch of the timing
+    grid), so that it never holds more copies of the graph than the grid measures; vmap takes them in one batch. An
+    out-of-memory error is recorded as a failed check (min_cos None), not raised."""
     layers = sorted(layers)
-    E = torch.zeros(len(dims), dec.d_model)
-    E[torch.arange(len(dims)), torch.as_tensor(list(dims))] = 1.0
-    ref = G.reference_direction_covectors(dec, text, E, layers, target=target, skip=skip, max_seq_len=max_seq_len,
-                                          lrp=lrp, linears_ctx=linears_ctx())
-    out: Dict[str, Any] = {"dims": list(dims), "lrp": lrp}
-    for mode in ("replicate", "vmap"):
-        with linears_ctx():
-            fw = FL.fit_forward(dec, text, layers, target=target, skip=skip, max_seq_len=max_seq_len,
-                                rows_per_pass=len(dims), mode=mode, lrp=lrp)
-            rows = FL.dims_rows(fw, dims, keep=False)
-        del fw
-        cos = torch.stack([torch.nn.functional.cosine_similarity(rows[i].cpu().float(), ref[:, i].float(), dim=-1)
-                           for i in range(len(layers))])                 # [L, dims]
-        out[mode] = {"min_cos": round(float(cos.min()), 6), "per_layer_min": [round(float(x), 6)
-                                                                             for x in cos.min(1).values]}
+    dims = list(dims)
+    out: Dict[str, Any] = {"dims": dims, "lrp": lrp, "replicate_chunk": replicate_chunk}
+    try:
+        E = torch.zeros(len(dims), dec.d_model)
+        E[torch.arange(len(dims)), torch.as_tensor(dims)] = 1.0
+        ref = G.reference_direction_covectors(dec, text, E, layers, target=target, skip=skip,
+                                              max_seq_len=max_seq_len, lrp=lrp, linears_ctx=linears_ctx())
+        for mode in ("replicate", "vmap"):
+            step = max(1, replicate_chunk) if mode == "replicate" else len(dims)
+            parts: List[List[torch.Tensor]] = []
+            for c0 in range(0, len(dims), step):
+                chunk = dims[c0:c0 + step]
+                with linears_ctx():
+                    fw = FL.fit_forward(dec, text, layers, target=target, skip=skip, max_seq_len=max_seq_len,
+                                        rows_per_pass=len(chunk), mode=mode, lrp=lrp)
+                    parts.append([r.cpu().float() for r in FL.dims_rows(fw, chunk, keep=False)])
+                del fw
+            rows = [torch.cat([p[i] for p in parts], 0) for i in range(len(layers))]
+            cos = torch.stack([torch.nn.functional.cosine_similarity(rows[i], ref[:, i].float(), dim=-1)
+                               for i in range(len(layers))])                 # [L, dims]
+            out[mode] = {"min_cos": round(float(cos.min()), 6), "per_layer_min": [round(float(x), 6)
+                                                                                 for x in cos.min(1).values]}
+    except _oom_types() as e:
+        out.update(ok=False, oom=True, error=f"{type(e).__name__}: {str(e)[:160]}", min_cos=None)
+        if _cuda(dec.input_device):
+            torch.cuda.empty_cache()
+        return out
     out["min_cos"] = min(out["replicate"]["min_cos"], out["vmap"]["min_cos"])
+    out["ok"] = out["min_cos"] >= C.PILOT_PARITY_COS_MIN
     return out
+
+
+def parity_checks(par: Dict[str, Dict[str, Any]]) -> Dict[str, bool]:
+    """The pilot's parity gate: the rows with the rules off (the estimator) and with them on (the rows the fit
+    uses), each at cos >= PILOT_PARITY_COS_MIN in both batching modes; an out-of-memory error fails."""
+    return {"parity": par["plain"].get("min_cos") is not None and par["plain"]["min_cos"] >= C.PILOT_PARITY_COS_MIN,
+            "parity_rlens": par["rlens"].get("min_cos") is not None
+            and par["rlens"]["min_cos"] >= C.PILOT_PARITY_COS_MIN}
 
 
 # ------------------------------------------------------------------------------------------------ (c) timing
@@ -263,16 +293,21 @@ def decide(proj: Optional[Dict[str, Any]], checks: Dict[str, bool], approved: Op
 def pilot_measure(dec: FL.Decoder, texts: Sequence[str], *, layers: Sequence[int], target: int, skip: int,
                   max_seq_len: int, linears_ctx: Callable[[], Any], parity_dims: Sequence[int], q1_dirs: torch.Tensor,
                   vmap_B: Sequence[int], replicate_B: Sequence[int], passes: int, budget_s: float,
-                  cap_gib: float) -> Dict[str, Any]:
-    """(a)-(c) and the choice, on any model (the tiny one in the self-test)."""
+                  cap_gib: float, identity_texts: Optional[Sequence[str]] = None) -> Dict[str, Any]:
+    """(a)-(c) and the choice, on any model (the tiny one in the self-test). The forward-only identity check (a)
+    reads `identity_texts` (default: `texts`)."""
     t_start = time.time()
     kw = dict(target=target, skip=skip, max_seq_len=max_seq_len)
-    out: Dict[str, Any] = {"coverage": coverage(dec._hf_model), "lrp_identity": lrp_identity(dec, texts, max_seq_len)}
+    out: Dict[str, Any] = {"coverage": coverage(dec._hf_model),
+                           "lrp_identity": lrp_identity(dec, identity_texts or texts, max_seq_len)}
     log(f"(a) rules: {out['coverage']['ln_rule']} norms, {out['coverage']['mlp_rule']} MLPs; top-1 unchanged at "
-        f"{out['lrp_identity']['share']:.4%} of {out['lrp_identity']['positions']} positions")
-    out["parity"] = {"plain": parity(dec, texts[0], layers, parity_dims, linears_ctx=linears_ctx, lrp=False, **kw),
-                     "rlens": parity(dec, texts[0], layers, parity_dims, linears_ctx=linears_ctx, lrp=True, **kw)}
-    log(f"(b) parity: min cos plain {out['parity']['plain']['min_cos']:.5f}, R-lens {out['parity']['rlens']['min_cos']:.5f}")
+        f"{out['lrp_identity']['share']:.4%} of {out['lrp_identity']['positions']} positions "
+        f"({out['lrp_identity']['differ']} differ, {out['lrp_identity']['allowed_to_differ']} allowed)")
+    out["parity"] = {"plain": parity(dec, texts[0], layers, parity_dims, linears_ctx=linears_ctx, lrp=False,
+                                     replicate_chunk=min(replicate_B), **kw),
+                     "rlens": parity(dec, texts[0], layers, parity_dims, linears_ctx=linears_ctx, lrp=True,
+                                     replicate_chunk=min(replicate_B), **kw)}
+    log(f"(b) parity: min cos plain {out['parity']['plain']['min_cos']}, R-lens {out['parity']['rlens']['min_cos']}")
     table, skipped = [], []
     for mode, Bs in (("replicate", replicate_B), ("vmap", vmap_B)):
         for B in Bs:
@@ -347,7 +382,7 @@ def dry_pipeline(dec: FL.Decoder, *, layers: Sequence[int], target: int, router_
         outs = {k: tmp / f"{k}.pt" for k in C.LENS_FILES}
         rec = R4w.fit_all(dec, sub, tmp / "merged", layers, outs, tmp / "res.pt",
                           {"method": "jpp", "lrp_mode": C.LRP_MODE, "n_prompts": len(fit_texts), "dry_run": True},
-                          condense=condense, min_dev_pairs=1, floor=(1, 1))
+                          condense=condense, min_dev_pairs=1, floor=(1, 1), min_graded_evals=0)
         return {"counts": rec["counts"], "floors": {k: v["kept"] for k, v in rec["floors"].items()},
                 "train_macro_pass": {l: v["train_macro_pass"] for l, v in rec["layers"].items()}}
     stage("weights", weights)
@@ -373,10 +408,13 @@ def dry_pipeline(dec: FL.Decoder, *, layers: Sequence[int], target: int, router_
                        target=target, skip=skip, max_seq_len=max_seq_len)
         return {"n": s["n"]}
     stage("q1_directions", q1)
-    stage("parity", lambda: parity(dec, fit_texts[0], layers, [0, 1, 2], linears_ctx=linears_ctx, lrp=False,
-                                   target=target, skip=skip, max_seq_len=max_seq_len))
-    st["ok"] = all(v.get("ok") for v in st.values() if isinstance(v, dict)) and st["parity"].get("min_cos", 0) >= \
-        C.PILOT_PARITY_COS_MIN
+    def both_parities():
+        par = {g: parity(dec, fit_texts[0], layers, [0, 1, 2], linears_ctx=linears_ctx, lrp=(g == "rlens"),
+                         target=target, skip=skip, max_seq_len=max_seq_len) for g in ("plain", "rlens")}
+        return dict(par, checks=parity_checks(par))
+    stage("parity", both_parities)
+    st["ok"] = all(v.get("ok") for v in st.values() if isinstance(v, dict)) and \
+        all((st["parity"].get("checks") or {"none": False}).values())
     return st
 
 
@@ -451,12 +489,24 @@ def selftest(record: bool = False) -> int:
     pm = pilot_measure(dec, recs[:2], layers=layers, linears_ctx=lambda: G.grad_linears(hf), parity_dims=[0, 7, 31],
                        q1_dirs=torch.randn(8, 32, generator=g), vmap_B=(8, 16), replicate_B=(1, 2), passes=2,
                        budget_s=600, cap_gib=C.JOB_CAP_GB, **kw)
-    check(pm["coverage"]["ln_rule"] == 25 and pm["coverage"]["mlp_rule"] == 6 and pm["lrp_identity"]["share"] == 1.0,
+    check(pm["coverage"]["ln_rule"] == 25 and pm["coverage"]["mlp_rule"] == 6 and pm["lrp_identity"]["share"] == 1.0
+          and pm["lrp_identity"]["ok"],
           f"(a) on a tiny Gemma 4 with {nq} genuine 4-bit linears: the rules' coverage (25 norms, 6 MLPs) and the "
           f"forward's top-1 unchanged at every position ({pm['lrp_identity']['positions']})")
-    check(pm["parity"]["plain"]["min_cos"] >= 0.99999 and pm["parity"]["rlens"]["min_cos"] >= 0.99999,
-          f"(b) parity through the recompute-in-backward linears, both modes: min cos plain "
-          f"{pm['parity']['plain']['min_cos']}, R-lens {pm['parity']['rlens']['min_cos']} (>= 0.99 on the GPU)")
+    check(pm["parity"]["plain"]["min_cos"] >= 0.99999 and pm["parity"]["rlens"]["min_cos"] >= 0.99999
+          and pm["parity"]["plain"]["replicate_chunk"] == 1 and all(parity_checks(pm["parity"]).values()),
+          f"(b) parity through the recompute-in-backward linears, both modes (the replicated one a dimension at a "
+          f"time): min cos plain {pm['parity']['plain']['min_cos']}, R-lens {pm['parity']['rlens']['min_cos']} "
+          f"(>= 0.99 on the GPU); both gate the pilot")
+    one = lrp_identity(dec, recs[:2], 40)
+    check(one["allowed_to_differ"] == 0 and one["positions"] == 80
+          and lrp_identity(dec, recs[:13], 40)["allowed_to_differ"] == 0 and C.PILOT_LRP_N_PROMPTS * 104 >= 1000,
+          f"(a) the identity tolerance is a count of positions: none may differ below 1,000 positions; the pilot reads "
+          f"{C.PILOT_LRP_N_PROMPTS} records forward only (at least {C.PILOT_LRP_N_PROMPTS * 104} positions)")
+    pc = parity_checks({"plain": {"min_cos": 0.999}, "rlens": {"min_cos": 0.5}})
+    po = parity_checks({"plain": {"min_cos": None, "oom": True}, "rlens": {"min_cos": 0.999}})
+    check(pc == {"parity": True, "parity_rlens": False} and po == {"parity": False, "parity_rlens": True},
+          "(b) a pilot whose rows with the rules on disagree fails parity_rlens; an out-of-memory parity fails")
     check(len(pm["timing"]) == 4 and all(r["ok"] and r["s_per_pass"] > 0 for r in pm["timing"])
           and pm["q1"]["ok"] and pm["choice"] is not None,
           f"(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: "
@@ -474,10 +524,12 @@ def selftest(record: bool = False) -> int:
     d2 = decide(pr, ok_checks, 24.0)
     d3 = decide(pr, {"lrp_identity": True, "parity": False}, 24.0)
     d4 = decide(None, ok_checks, 24.0)
+    d5 = decide(pr, {"lrp_identity": True, "parity": True, "parity_rlens": False}, 24.0)
     check(d0["decision"] == "stop" and "NOT YET APPROVED" in d0["why"] and d1["decision"] == "stop"
-          and d2["decision"] == "proceed" and d3["decision"] == "stop" and d4["decision"] == "stop",
+          and d2["decision"] == "proceed" and d3["decision"] == "stop" and d4["decision"] == "stop"
+          and d5["decision"] == "stop" and "parity_rlens" in d5["why"],
           "(d) the decision: stop with no approved budget, stop over budget, proceed within it, stop on a failed "
-          "check or when nothing ran within the cap")
+          "check (the rules-on parity alone included) or when nothing ran within the cap")
     tbl = [{"ok": True, "mode": "replicate", "B": 2, "forward_s": 1.0, "s_per_pass": 1.0, "peak_gib": 10},
            {"ok": True, "mode": "vmap", "B": 64, "forward_s": 1.0, "s_per_pass": 20.0, "peak_gib": 30},
            {"ok": True, "mode": "vmap", "B": 32, "forward_s": 1.0, "s_per_pass": 4.0, "peak_gib": 20},
@@ -542,6 +594,7 @@ def run_pilot(args) -> int:
         raise SystemExit(f"{C.PILOT_JSON} exists; --force to rerun (the earlier run stays in the runs log)")
     recs = C.wikitext_records()
     texts = recs[:C.PILOT_N_PROMPTS]
+    id_texts = recs[:C.PILOT_LRP_N_PROMPTS]
     DD = torch.load(C.R1_DIRS_PATH, weights_only=False, map_location="cpu")
     with G.gpu_job("R3_00 pilot (31B)", sys.argv, args.allow_uncommitted, log) as job:
         dev = torch.device("cuda:0")
@@ -553,7 +606,8 @@ def run_pilot(args) -> int:
         pm = pilot_measure(dec, texts, layers=C.FIT_LAYERS, linears_ctx=lambda: G.grad_linears(hf),
                            parity_dims=parity_dims_from_r1(), q1_dirs=DD["dirs"].float(),
                            vmap_B=C.PILOT_VMAP_B, replicate_B=C.PILOT_REPLICATE_B, passes=C.PILOT_PASSES,
-                           budget_s=C.PILOT_MAX_MINUTES * 60 * 0.8, cap_gib=C.JOB_CAP_GB, **kw)
+                           budget_s=C.PILOT_MAX_MINUTES * 60 * 0.8, cap_gib=C.JOB_CAP_GB, identity_texts=id_texts,
+                           **kw)
         # a forward of R1_10's longest held-out sequence's length (H4), read on a long record cut to that length
         import R3_05_eval as E5
 
@@ -561,8 +615,7 @@ def run_pilot(args) -> int:
         longest = max(len(s["ids"]) for s in seqs)
         long_text = "\n".join(recs[2:12])
         t_long = time_forward(dec, long_text, [C.TARGET_LAYER], longest)
-        checks = {"lrp_identity": pm["lrp_identity"]["share"] >= C.PILOT_LRP_TOP1_MIN,
-                  "parity": pm["parity"]["plain"]["min_cos"] >= C.PILOT_PARITY_COS_MIN}
+        checks = {"lrp_identity": pm["lrp_identity"]["ok"], **parity_checks(pm["parity"])}
         proj = None
         if pm["choice"] is not None and pm["q1"].get("ok"):
             mp, _ = __import__("R3_Q1_jlens").miru_prompts()
@@ -575,8 +628,9 @@ def run_pilot(args) -> int:
                            r2_eval_s=json.loads((C.RESULTS / "R2_02_eval.json").read_text())["meta"]["timing_s"]["total"])
         decision = decide(proj, checks, C.APPROVED_GPU_HOURS)
         out = {"schema": "R3_00_pilot/1", "written_at": datetime.datetime.now().isoformat(timespec="seconds"),
-               "prompts": {"which": f"WikiText fit records 0-{C.PILOT_N_PROMPTS - 1}",
-                           "sha256": [C.text_sha256(t) for t in texts]},
+               "prompts": {"which": f"WikiText fit records 0-{C.PILOT_N_PROMPTS - 1} (the identity check: records "
+                                    f"0-{C.PILOT_LRP_N_PROMPTS - 1}, forward only)",
+                           "sha256": [C.text_sha256(t) for t in id_texts]},
                "vram": {"before_load": vram_before, "after_load": vram_loaded, "end": G.vram_record(dev)},
                "cap": job["cap"], "git": job["git"], **pm, "forward_nograd_long_s": t_long,
                "h4_longest_ids": longest, "projection": proj, "decision": decision, "choice": pm["choice"],

@@ -149,7 +149,12 @@ R1_10_SHA256 = "3301e4cdfcd43719c77886591618a15cd10c7d5b8d73d169cd5f77c87a3994c6
 E3_CHATS_PATH = RESULTS / "E3_lens_validation_chats.json"
 E3_CHATS_SHA256 = "623f305b1707183793257e8c06588c2879e0ce31fda32dc69df4f7a99cb71fe4"
 H4_LAYERS: Tuple[int, ...] = (40, 45, 50, 55, 58)     # R1 §4.2's layers (R1_FM_LAYERS from 40)
-H4_TAUS: Tuple[float, ...] = (0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0)   # calibrated KL = the smallest over these
+H4_TAUS: Tuple[float, ...] = (0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0)   # R1_10's logit scales
+# The calibrated KL is R1_14's: the scale chosen on one sequence parity (sorted names) and scored on the other. The
+# intervals are a bootstrap over sequences (R1 §4.2 resampled passages), 2000 resamples, this seed and the class
+# index, the same indices for every lens and layer.
+H4_BOOT_SEED = 20261023
+H4_N_BOOT = 2000
 JPP_RECALL_LAYERS: Tuple[int, ...] = (30, 38, 45, 52)  # J++'s own held-out recall@10 (its README's readout layers)
 
 # ------------------------------------------------------------------------------------------------ the recipe (D1-D15)
@@ -196,8 +201,11 @@ B1_BOUND_HOURS = 75.0                                 # 64 x 5376 x ~0.79 s (R1_
 PILOT_MAX_MINUTES = 30.0
 PILOT_N_PROMPTS = 2                                   # WikiText fit prompts 0 and 1; no evaluation prompt is read
 PILOT_PARITY_DIMS = 6                                 # output dimensions checked against an independent backward
-PILOT_PARITY_COS_MIN = 0.99
+PILOT_PARITY_COS_MIN = 0.99                           # with the rules off and with them on (the fit's own rows)
 PILOT_LRP_TOP1_MIN = 0.999                            # forward top-1 identical under the rules at this share
+# The forward-only identity check reads more records than the timed pilot, so that 0.1% is resolvable: WikiText fit
+# records 0-15 (about 2,000 positions; the check allows floor(0.001 x positions) flips, 2 at 2,000)
+PILOT_LRP_N_PROMPTS = 16
 PILOT_VMAP_B: Tuple[int, ...] = (8, 16, 32, 64, 128)
 PILOT_REPLICATE_B: Tuple[int, ...] = (1, 2, 3, 4)
 PILOT_PASSES = 3                                      # timed backward passes per configuration
@@ -216,6 +224,28 @@ LENS_FILES: Dict[str, Path] = {                       # R3_04's lens files (bf16
     "jpp-it-full-macro": RESULTS / "R3_04_jpp_it_fullmacro.pt",
 }
 
+# ------------------------------------------------------------------------------------------------ R3_04's stops
+# association and typo have no correctness target (R3_fitlib.ITEM_SPECS): grade() returns None for every item and the
+# floor always keeps them. The registered stop for the case the floor exists for: fewer than MIN_GRADED_EVALS of the
+# primary macro's graded evals (multihop, multilingual) survive the floor.
+UNGRADED_EVALS: Tuple[str, ...] = ("association", "typo")
+MIN_GRADED_EVALS = 2
+
+# ------------------------------------------------------------------------------------------------ the runtime (§0)
+# The evaluation runtime is the instrument's backend at this commit (main when the branch was cut); every GPU job
+# refuses a backend/ tree that differs from it, and the R2 files R3 imports or reads that differ from these sha256.
+RUNTIME_COMMIT = "d5405ee964e0ac1732babd8e69fa9271de555189"
+PINNED_UNCHANGED: Dict[str, str] = {
+    "experiments/scripts/R2_common.py": "a3fe4ab44edbce3eeba01efa1428c82b7abb5f8b0555d7485fb2d008d78b762d",
+    "experiments/scripts/R2_03_analyze.py": "9293011e96b3a132a915b306b2835846cc284e073fa5644124f20048cc377ecd",
+    "experiments/scripts/R2_prompts.json": "623a7fb73e6a082335653bb02c8e22d7e6d731ef343ff299af57709a772d01fd",
+    "experiments/results/R2_01_check.json": "9baad05e2d0057b2f7621fb389400cd5c24e119151b292648ca81343a8181581",
+    "experiments/results/R2_02_eval.json": "6e277f60987c88a70f85355e2e749aac8cfa18f5480a5b044befedc3626f9c70",
+    "experiments/results/R2_03_analysis.json": "94a632527ce6d1f356c836272ef5e1c32d8bef549cb62d6a8136dae83a22a75e",
+    "backend/theodolite_math.py": "0bba67755da1bfaf313df46dd8453280a368dfaf72d209e4b5327c00f0c80c49",
+    "backend/engine_runtime.py": "0a7e071ba782cdb7a70eaff961b6ad1ce371c766ccbfbee9aa61979a5672ef06",
+}
+
 # ------------------------------------------------------------------------------------------------ Q1 (H6)
 # The 4-bit J-lens arm: plain gradients (no rules), the estimator summed over this and every later kept target
 # (Miru's "summed_current_and_future_targets"), mean over kept positions, uniform mean over prompts, target block
@@ -224,6 +254,15 @@ Q1_DIM_BATCH = 32
 Q1_LAYERS: Tuple[int, ...] = FIT_LAYERS
 Q1_PT = RESULTS / "R3_Q1_jlens.pt"
 Q1_JSON = RESULTS / "R3_Q1_jlens.json"
+# H6's bands (R3_PREREG.md §1.2): code 58 is left out of the last band, because Miru collapses there (R2), and is
+# reported apart
+H6_BANDS: Tuple[Tuple[str, int, int], ...] = (("L30-39", 30, 39), ("L40-49", 40, 49), ("L50-57", 50, 57),
+                                              ("L58", 58, 58))
+H6_READ_BANDS: Tuple[str, ...] = ("L30-39", "L40-49", "L50-57")
+# Q0's key for Miru against JLens: it carries fine-tuning together with Miru Tracer's code against
+# anthropics/jacobian-lens and the two fits' prompts, so it is not named "the fine-tuning axis"
+Q0_MIRU_JLENS = ("fp32: miru vs jlens (fine-tuning plus code, estimator and prompt differences: bf16 instruct vs "
+                 "bf16 base, plain J-lenses)")
 Q0_JSON = RESULTS / "R3_Q0_pullbacks.json"
 Q0_PT = RESULTS / "R3_Q0_pullbacks.pt"
 
@@ -250,6 +289,7 @@ BANDS: Tuple[Tuple[str, Tuple[int, ...]], ...] = (
 CANDIDATES: Tuple[str, ...] = ("jpp-it", "rl-it")     # R3-JPP-IT (weighted experts), R3-RL-IT (pooled, LRP)
 PRECEDENCE: Tuple[str, ...] = ("jpp-it", "rl-it")     # where both pass at a band, the J++ recipe is served
 REFERENCE_LENSES: Tuple[str, ...] = ("r1", "miru")    # reported for reference only, never candidates
+SENSITIVITY_LENSES: Tuple[str, ...] = ("jpp-it-full-macro",)   # D16: poetry in the weights' macro; reported only
 BASELINES: Tuple[Tuple[str, str], ...] = (("jpp", "J++"), ("naive", "naked eye"))
 MIN_SERVE_LAYER = 30                                  # never below code 30 (page 31)
 HOLM_M = len(CANDIDATES) * len(BANDS)                 # 14 lens-band tests
@@ -260,14 +300,16 @@ TOPK = R2.TOPK
 COLLAPSE_TARGETS = R2.COLLAPSE_TARGETS
 # Sensitivity analysis S2: prompts that paraphrase, or share an answer topic with, one of the fit sources (the 1,000
 # WikiText records, J++'s items, R1's fit set). Fixed from the prompt texts alone, before any R3 data, in the same
-# commit as R3_prompts.json (R3_PREREG.md §3.3). A prompt is listed when, by judgement and generously:
+# commit as R3_prompts.json (R3_PREREG.md §4.3). A prompt is listed when, by judgement and generously:
 # - WikiText: its subject or expected answer is the subject of an article one of the 1,000 records comes from (the
 #   article's title row), or the same kind of thing (a warship, a football match, a planet, a fable, ...). Records are
 #   numbered 0-999 in stream order; records 0-63 are the fit prompts, the rest feed the router only. No WikiText text is
 #   written here: the article is described in our own words.
 # - J++'s items: it asks the same kind of question as the items of an eval that enters a weight fit (association,
 #   multihop, multilingual, poetry, typo; order-ops enters none), or its expected answer is an item's topic. Items are
-#   numbered by their place in the pinned item file (R3_common.jpp_items()), as R3_04 records them; no name or text.
+#   numbered by their place in the pinned item file (R3_common.jpp_items()), as R3_04 records them; no name, text or
+#   description of an item. Where a prompt overlaps a whole eval rather than an item, the kind of question is said in
+#   our own words.
 # - R1's fit set: as R2_common.R1_OVERLAP, a paraphrase of one of R1_SELF_Q / R1_TASK_Q, or an expected answer that is
 #   the subject of one of them or of R1_ENC_TOPICS (these are the study's own prompts, quoted).
 _WT_FOOTBALL = ("WikiText fit prompts 35-36 and records 599-603, 668-684 (a national football team, a footballer, a "
@@ -277,32 +319,32 @@ _R1_BASIL = "R1_TASK_Q 'How do I keep basil plants alive indoors?'"
 _R1_MAKERS = "R1_SELF_Q 'What is your relationship to the people who made you?'"
 FIT_OVERLAP: Dict[str, str] = {
     # chat-no-answer
-    "r3-cna-02": "J++ multihop #12 (the state of element 80 at room temperature); WikiText records 685-694 (an article "
+    "r3-cna-02": "J++ multihop #12; WikiText records 685-694 (an article "
                  "on a chemical element)",
     "r3-cna-04": "WikiText fit prompts 58-63 (an article on a tower in the Vatican); J++ association #26; R1_ENC_TOPICS "
                  "'the Renaissance'",
     "r3-cna-06": "WikiText records 890-914 (an article on a bird species)",
-    "r3-cna-10": "J++ multilingual's 'opposite of' items and multihop #90-92 (antonyms): the same kind of question",
-    "r3-cna-13": "J++ association #46 (a card game)",
-    "r3-cna-18": "WikiText records 214-232 (an article on a coin); J++ multihop #48 (a country's currency)",
+    "r3-cna-10": "J++ multilingual and multihop #90-92: the same kind of question as some of their items",
+    "r3-cna-13": "J++ association #46",
+    "r3-cna-18": "WikiText records 214-232 (an article on a coin); J++ multihop #48",
     "r3-cna-24": _WT_PLANET + "; R1_ENC_TOPICS 'the planet Jupiter'",
     "r3-cna-29": "WikiText records 247-268 (an article on a novel)",
     "r3-cna-33": "J++ multilingual (a word asked for in another language): the same kind of question",
     "r3-cna-35": "R1_ENC_TOPICS 'glaciers'",
     "r3-cna-36": "WikiText fit prompts 45-57 (an ice-hockey team's season) and records 97-104, 820-837 (ice-hockey "
                  "players)",
-    "r3-cna-44": "J++ association #18 (the scientist)",
+    "r3-cna-44": "J++ association #18",
     "r3-cna-48": "J++ multilingual (a word asked for in another language): the same kind of question",
-    "r3-cna-49": "J++ association #24 (the inventor)",
-    "r3-cna-50": "J++ association #10 (the agency)",
+    "r3-cna-49": "J++ association #24",
+    "r3-cna-50": "J++ association #10",
     "r3-cna-53": _R1_MAKERS,
     "r3-cna-58": "R1_SELF_Q 'How do you balance honesty and kindness?'",
     "r3-cna-61": "R1_TASK_Q 'Why do cats purr?'",
     "r3-cna-74": _R1_BASIL,
-    "r3-cna-79": "WikiText records 167-199 (an article on light aviation); J++ association #22 (aviation pioneers)",
+    "r3-cna-79": "WikiText records 167-199 (an article on light aviation); J++ association #22",
     # chat-begun
-    "r3-cb-01": _WT_PLANET + "; J++ multihop #2 (the colour of this planet); R1_ENC_TOPICS 'the planet Jupiter'",
-    "r3-cb-04": "WikiText records 685-694 (an article on a chemical element); J++ multihop #11, #13 (element 29); "
+    "r3-cb-01": _WT_PLANET + "; J++ multihop #2; R1_ENC_TOPICS 'the planet Jupiter'",
+    "r3-cb-04": "WikiText records 685-694 (an article on a chemical element); J++ multihop #11, #13; "
                 "R1_ENC_TOPICS 'copper'",
     "r3-cb-09": "R1_TASK_Q 'Describe the plot of Hamlet briefly.' (the same author)",
     "r3-cb-10": _WT_PLANET + " (and its star)",
@@ -317,23 +359,23 @@ FIT_OVERLAP: Dict[str, str] = {
     "r3-cb-53": "R1_SELF_Q 'How do you think about your own mistakes?'",
     "r3-cb-54": "R1_SELF_Q 'Do you prefer short or long questions? Why?'",
     "r3-cb-59": _R1_BASIL,
-    "r3-cb-63": "J++ association #47 (a job interview)",
+    "r3-cb-63": "J++ association #47",
     "r3-cb-64": _R1_BASIL,
-    "r3-cb-66": "J++ association #0 (grief)",
-    "r3-cb-68": "J++ multilingual #97-100 (the word for 'old', and its opposite, in four languages)",
+    "r3-cb-66": "J++ association #0",
+    "r3-cb-68": "J++ multilingual #97-100",
     "r3-cb-71": "J++ multilingual (a word asked for in another language): the same kind of question",
     "r3-cb-75": _R1_BASIL,
     # bare
     "r3-bare-05": _WT_FOOTBALL,
     "r3-bare-07": _WT_PLANET + "; R1_ENC_TOPICS 'the planet Jupiter'",
     "r3-bare-20": "WikiText records 247-268 (an article on a novel)",
-    "r3-bare-24": "WikiText records 110-157 (an article on a pantheon of gods); J++ multihop #15, #21 (the war god "
-                  "behind a month's name); R1_TASK_Q 'What caused the fall of the Roman Empire?'",
+    "r3-bare-24": "WikiText records 110-157 (an article on a pantheon of gods); J++ multihop #15, #21; R1_TASK_Q "
+                  "'What caused the fall of the Roman Empire?'",
     "r3-bare-27": "WikiText records 890-914 (an article on a migratory bird)",
     "r3-bare-28": _WT_FOOTBALL,
-    "r3-bare-32": "WikiText records 214-232 (an article on a gold coin); J++ multihop #9 (element 79)",
+    "r3-bare-32": "WikiText records 214-232 (an article on a gold coin); J++ multihop #9",
     "r3-bare-35": "WikiText records 915-923 (an article on a disease); R1_ENC_TOPICS 'penicillin'",
-    "r3-bare-36": "J++ multihop #72 (the museum that holds it); R1_ENC_TOPICS 'the Renaissance'",
+    "r3-bare-36": "J++ multihop #72; R1_ENC_TOPICS 'the Renaissance'",
     "r3-bare-45": "WikiText records 70-82, 105-109, 200-206, 462-485, 520-525, 847-848, 993-994 (articles on warships) "
                   "and 635-642 (a naval battle)",
     "r3-bare-51": "WikiText records 237-246 (an article on a treaty that ended a conflict)",
@@ -344,7 +386,7 @@ FIT_OVERLAP: Dict[str, str] = {
     "r3-bare-60": _R1_BASIL,
     "r3-bare-64": "WikiText records 763-773 (an article on a dinosaur genus)",
     "r3-bare-65": "R1_TASK_Q 'How do volcanoes form?'",
-    "r3-bare-71": "J++ multihop #40 (the colours of a rainbow)",
+    "r3-bare-71": "J++ multihop #40",
     # mid-reply
     "r3-mid-02": "WikiText records 457-461 (an article on a class of submarine)",
     "r3-mid-03": "R1_TASK_Q 'What is a good beginner workout routine?'",
@@ -352,19 +394,19 @@ FIT_OVERLAP: Dict[str, str] = {
     "r3-mid-08": "R1_TASK_Q 'How does a credit score work?'",
     "r3-mid-11": "R1_TASK_Q 'What caused the fall of the Roman Empire?'",
     "r3-mid-15": "R1_TASK_Q 'How does the stock market work?'",
-    "r3-mid-20": "J++ multihop #29 (the organ that filters blood, and how many there are)",
+    "r3-mid-20": "J++ multihop #29",
     "r3-mid-28": "R1_ENC_TOPICS 'the city of Kyoto'",
-    "r3-mid-34": "WikiText records 167-199 (an article on light aviation); J++ multihop #64 (what a balloon does); "
+    "r3-mid-34": "WikiText records 167-199 (an article on light aviation); J++ multihop #64; "
                  "R1_TASK_Q 'How do airplanes fly?'",
-    "r3-mid-35": "J++ multihop #76 (the country of this city)",
+    "r3-mid-35": "J++ multihop #76",
     "r3-mid-37": "R1_TASK_Q 'How does the stock market work?'",
     "r3-mid-41": "R1_TASK_Q 'How does recycling actually work?'",
-    "r3-mid-42": "J++ multihop #35 (what a compass points to); R1_TASK_Q 'How does GPS determine location?'",
+    "r3-mid-42": "J++ multihop #35; R1_TASK_Q 'How does GPS determine location?'",
     "r3-mid-45": "R1_ENC_TOPICS 'the Hubble Space Telescope'",
     "r3-mid-52": "R1_ENC_TOPICS 'the Hanseatic League' (medieval trade)",
     "r3-mid-56": _WT_FOOTBALL,
     "r3-mid-62": "R1_TASK_Q 'How do earthquakes happen?'",
-    "r3-mid-71": "J++ association #12 (the naturalist)",
+    "r3-mid-71": "J++ association #12",
     "r3-mid-73": "R1_SELF_Q 'How do you approach a question you have never seen before?'",
     "r3-mid-74": "R1_SELF_Q 'What does a good day of conversations look like for you?'",
     "r3-mid-75": "R1_SELF_Q 'How do you think about your own uncertainty?'",
@@ -565,7 +607,9 @@ def tiny_text_config_kwargs(**overrides) -> Dict[str, Any]:
 
 def build_tiny_gemma4(seed: int = 0, multimodal: bool = False, **overrides):
     """A tiny Gemma 4 on the CPU in fp32, eval mode, parameter grads off: Gemma4ForCausalLM, or (multimodal) the
-    Gemma4ForConditionalGeneration wrapper the real checkpoint loads as, with one-layer vision and audio towers."""
+    Gemma4ForConditionalGeneration wrapper the real checkpoint loads as, with one-layer vision and audio towers.
+    Follows jpp_lens's test fixture (d7efc0de, src/workspace_lens/tests/tiny_gemma_olmo.py; Copyright 2026 Kola
+    Ayonrinde, Apache-2.0; see NOTICE)."""
     import torch
 
     from transformers import AutoConfig
@@ -592,7 +636,10 @@ class CharTokenizer:
     """A character tokenizer for the tiny model (vocab 128 > the 31 ids used), called the way the HF tokenizers are:
     a-z -> 1..26, newline 27, space 28, anything else 29; BOS 0 (added unless add_special_tokens=False); id 30 is an
     EOS that encoding never emits. It encodes and decodes exactly as jpp_lens's test tokenizer
-    (workspace_lens/tests/tokenizers.py) does, truncation included, so the two can be swapped."""
+    (workspace_lens/tests/tokenizers.py) does, truncation included, so the two can be swapped.
+
+    Adapted from jpp_lens at d7efc0de, src/workspace_lens/tests/tokenizers.py (Copyright 2026 Kola Ayonrinde,
+    Apache-2.0; see NOTICE): the id map, the truncation rule and the decode table follow it."""
 
     bos_token_id = 0
     eos_token_id = 30
