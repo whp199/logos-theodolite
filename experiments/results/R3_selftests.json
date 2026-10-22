@@ -3,23 +3,14 @@
  "scripts": {
   "R3_lrp.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_lrp.py --selftest",
-   "at": "2026-10-22T00:41:46",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T10:29:47",
+   "head": "ffdf10ded41d6668d5cc73bb3c0e4ac9048cb826",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 2.0,
+   "seconds": 1.8,
    "ok": true,
-   "n_checks": 22,
+   "n_checks": 23,
    "n_failed": 0,
    "checks": [
     {
@@ -65,6 +56,10 @@
     {
      "ok": true,
      "check": "the rules change the rows (R-lens rows differ from plain gradients)"
+    },
+    {
+     "ok": true,
+     "check": "on blocks offloaded by accelerate (weights on the meta device between calls), the rules run inside the hook: the rows are bit-identical to the unoffloaded model's, and the hooked forward is restored on exit"
     },
     {
      "ok": true,

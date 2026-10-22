@@ -191,15 +191,19 @@ def rlens(model: nn.Module, *, final_norm: bool = True) -> Iterator[Report]:
         for names, fwd in ((rep.ln_rule, ln_rule_forward), (rep.mlp_rule, mlp_rule_forward)):
             for name in names:
                 module = model.get_submodule(name)
-                saved.append((module, module.__dict__.get("forward", _MISSING)))
-                object.__setattr__(module, "forward", MethodType(fwd, module))
+                # A module under an accelerate hook (the dry run's offloaded blocks, A13) keeps its weights on the meta
+                # device until the hook's wrapper in `forward` loads them: the rule then replaces `_old_forward`, the
+                # method that wrapper calls, so that the hook still runs around it.
+                attr = "_old_forward" if hasattr(module, "_hf_hook") and "_old_forward" in module.__dict__ else "forward"
+                saved.append((module, attr, module.__dict__.get(attr, _MISSING)))
+                object.__setattr__(module, attr, MethodType(fwd, module))
         yield rep
     finally:
-        for module, original in reversed(saved):
+        for module, attr, original in reversed(saved):
             if original is _MISSING:
-                module.__dict__.pop("forward", None)
+                module.__dict__.pop(attr, None)
             else:
-                object.__setattr__(module, "forward", original)
+                object.__setattr__(module, attr, original)
 
 
 # ------------------------------------------------------------------------------------------------ self-test
@@ -314,6 +318,24 @@ def selftest(record: bool = False) -> int:
                                           "final norm patched (it is off the path)")
     check(float((r_with - r_stock).abs().max()) > 1e-4, "the rules change the rows (R-lens rows differ from plain "
                                                         "gradients)")
+
+    # A13: blocks offloaded by accelerate (as the dry run's device map puts the 12B's lowest blocks "on the CPU":
+    # weights on the meta device between calls, loaded by a hook in `forward`) get the rules inside the hook
+    import copy
+
+    import accelerate
+
+    off = copy.deepcopy(model)
+    for i in range(3):                                   # block 2 lies on the path of the rows from block 1
+        accelerate.cpu_offload(off.model.layers[i], execution_device=torch.device("cpu"))
+    r_off = _block_rows(off, ids, 1, L - 1, cot, rlens(off))
+    with torch.no_grad():
+        o_stock = off(ids).logits
+    check(off.model.layers[0].mlp.gate_proj.weight.device.type == "meta" and torch.equal(r_off, r_with)
+          and torch.equal(o_stock, stock),
+          "on blocks offloaded by accelerate (weights on the meta device between calls), the rules run inside the "
+          "hook: the rows are bit-identical to the unoffloaded model's, and the hooked forward is restored on exit")
+    del off
 
     # unknown classes raise
     class FooRMSNorm(nn.Module):

@@ -1,8 +1,8 @@
 # R3: J++'s recipe fitted on the instruct checkpoint (pre-registration)
 
-*Written 21 October 2026, before any R3 data existed, and amended on 22 October 2026, still before any (A12). No R3
-GPU job has been run: not the dry run on the 12B model, not the pilot, the router, the fit, the weights, the
-evaluation or the 4-bit J-lens arm. What has been run is on the CPU only: the self-tests, the positive control against
+*Written 21 October 2026, before any R3 data existed, and amended on 22 October 2026, still before any (A12), and
+again on 22 October 2026 after the first 12B dry run failed on a bug and before it was rerun (A13). No other R3 GPU job
+had then been run: not the pilot, the router, the fit, the weights, the evaluation or the 4-bit J-lens arm. What has been run is on the CPU only: the self-tests, the positive control against
 jpp_lens (§2.3), the reproduction of R2's decisions (§7.4), the power figures from R2's own files (§7.3) and Q0, the
 pullbacks through lens files that already existed (§8.5). R3 follows R1 and R2. Branch `it-jpp-refit`, cut from
 `main` at `d5405ee`, with R2's two experiment commits (`cea0178`, `3f5941c`) picked onto it. Scripts:
@@ -59,7 +59,7 @@ shards, the lens files, the readings.
 | `experiments/scripts/R3_fetch.py` | `5e702f8dc746ce2fdf889d64de4e1608fd0390cd384b5f7e3ed887e6febaffba` |
 | `experiments/scripts/R3_fitlib.py` | `6d1ea02986d0f47f1b6ad33522eeed36f0e3bf66e2db67fdefa22c81bff9bbc1` |
 | `experiments/scripts/R3_gpu.py` | `3a2148a99a2d1451178b771c987229d816f4f0b2f06685e58a206c7f054118f9` |
-| `experiments/scripts/R3_lrp.py` | `18d67c6b4552ca56329fb2ce352d8eade88f3131ebabeba8af4d58386b6bac4a` |
+| `experiments/scripts/R3_lrp.py` | `649d7a6bb7c95d0e00fa25e34428a226a2a18e0e109ee2afb7b8e1387f2769c9` |
 | `experiments/scripts/R3_parity.py` | `cc7d1e2fe003e3bec8dd7030a8fc1808e1a0ae0414ed1688a0f120bdc8465763` |
 | `experiments/scripts/R3_power.py` | `3f3e4986c21bb829761c8671b481cc015935f7b7c749d11283c55687c33210ef` |
 | `experiments/scripts/R3_sources_check.py` | `a266fe54d1cd6f2b70badd70d2fa7cff075872fdc87cce73f566e661ed098315` |
@@ -79,7 +79,7 @@ shards, the lens files, the readings.
 | `experiments/results/R3_parity.json` | `70ecfbac988b0ea06db4574874f3466ad0801832f309f0314e1e684f4d8ba13c` |
 | `experiments/results/R3_06_r2_reproduction.json` | `1fd81d6bb74b3456afc749628b19b2f1ed3f760d8db0f51cb7eae160b7dec1b6` |
 | `experiments/results/R3_Q0_pullbacks.json` | `408808092e32bef87930fb6dfbd7bebdd8295ecb84a26ae128d51c1245b8b9f5` |
-| `experiments/results/R3_selftests.json` | `eb039fd404ffb708c462917e06e444d3f11857acda9b469ab97e0e0ca48513e5` |
+| `experiments/results/R3_selftests.json` | `de3303575ca526babd0e10924c48664d038a5f6f7a9f4fb3be4c69734036ea84` |
 | *the evaluation runtime at `d5405ee` (unchanged on this branch)* | |
 | `backend/theodolite_math.py` | `0bba67755da1bfaf313df46dd8453280a368dfaf72d209e4b5327c00f0c80c49` |
 | `backend/engine_runtime.py` | `0a7e071ba782cdb7a70eaff961b6ad1ce371c766ccbfbee9aa61979a5672ef06` |
@@ -708,8 +708,9 @@ design recommends 24 GPU-hours.
 ## 11. Amendments before any data
 
 The design R3 was planned from was reviewed once before this registration; the user then settled its open decisions.
-The registration itself was then reviewed (A12). No R3 GPU job had been run, and none has been run since, so none of
-these is a deviation.
+The registration itself was then reviewed (A12). No R3 GPU job had been run before A1–A12, so none of these is a
+deviation. A13 and on fix plain bugs in code that had never run on a GPU, found by the first runs of R3's GPU paths;
+each changes no hypothesis, rule, threshold, gate, prompt, seed or count, and the failed run stays in the runs log.
 
 | | change | reason |
 |---|---|---|
@@ -725,3 +726,4 @@ these is a deviation.
 | A10 | The power statement (§7.3), the job cap and the B = 1 bound (§10.2), the 12B dry run (D24), and H3's wording (§1.1). | The first power claim was optimistic; the card's headroom is tighter than R1 found; a real Gemma 4 was on disk; finding no low-rank step in the code does not show the shipped file's concentration is not the recipe's. |
 | A11 | The user's decisions: R3 may fetch, once and pinned, the 1,000 WikiText records, jpp_lens at `d7efc0de` (into its own environment) and J++'s six item files, and nothing else; fine-tuning is separated from quantisation through Miru, with no bf16 checkpoint downloaded; registration, scripts and CPU checks only in this round, no GPU run. | Recorded in R3_sources.json and in this file. |
 | A12 | After a review of this registration, before any data (22 October 2026). **Readings:** H6's two comparisons named for what they compare and read against their own intervals and Q1's split half, code 58 out of its band, the reading coded (§1.1, §1.2, §8.5); H3 judged against Miru (a plain instruct J-lens), in R1's coordinates, debiased by halves (§8.2); H4 given a sequence-bootstrap interval and R1_14's cross-fitted calibrated KL, R1's comparison figures labelled as its assistant-turn row, the reading coded (§1.2, §8.3); H5 judged on the bands alone, every band read, Bonferroni over seven, recall secondary; H2 read for rl-it too and laid on the checkpoint with the recipe version and items, not the checkpoint alone; "only the checkpoint changes" withdrawn (§1, §3.1); the "no instruct J++ lens" claim scoped to Gemma 4 31B. **Power:** §7.3 rewritten from R2's realised numbers (`R3_power.py`), with rule 4's power and rule 5's chance at finite n. **Code:** the replication on R2's prompts compared with R2's readings and verdicts, with tolerances and a consequence (§8.6); jpp-it-full-macro analysed as a reported lens; the Holm family held at 14 and R3_06's input checked (§9); the pilot's parity gating the rules-on rows too, the replicated parity a dimension at a time, an out-of-memory parity a failed check, the identity check on 16 records with a tolerance in positions (§10.2, D25); a graded-eval stop beside the 20-pair stop (D16); the router's checkpoint refusing other settings (§9); the GPU jobs refusing a changed backend or R2 file (§0); H4's failed reproduction logged and cautioned (D23). **Text:** 857, not 862 (§3.3); the lost held-out script's exception (§3.2); code layers 10–29 (§7.2); `R3_01_check.json` among the records rewritten on a rerun (§0); R2's cherry-picks mapped to their originals (§0); FIT_OVERLAP's J++ entries without item descriptions (§4.3). **The roadmap line** suggested by the design said "the same selection rule and recipe code as the shipped J++" and "on Miru's own prompts", which D13 and §3.3 contradict; the line offered instead: "**Being tried (R3).** J++'s published recipe as the code at jpp_lens `d7efc0de` runs it (newer code than the shipped Gemma J++ came from, whose router and weighting are not recorded), fitted on the instruct checkpoint with the deviations recorded in R3_PREREG §2, is registered on branch `it-jpp-refit`, with R2's rules on 320 new prompts. A plain J-lens fitted here on the 4-bit model, on J++'s 64 WikiText prompts because Miru's own could not be rebuilt, will be set beside Miru's unquantised instruct lens; that comparison also changes the code and the prompts. Result: [NOT YET RUN]." | Independent reviewers found readings that would lay results on causes the design cannot separate, open quantifiers, checks that were registered but not coded, and statements the files do not support. |
+| A13 | After the first 12B dry run (22 October 2026, 10:25, `R3_gpu_runs.jsonl`; its failed `R3_00_dry_run.json` committed with this change), before it was rerun and before the pilot. D24's blocks "on the CPU" (0–14) are offloaded by accelerate's `dispatch_model`: their weights sit on the meta device between calls and a hook wrapped in each module's `forward` loads them onto the card. `R3_lrp.rlens` replaced `forward` on the patched instances and so bypassed that hook: under the rules the offloaded norms read meta weights, and the stages that use them (the shards, the parity with the rules on) failed with "Tensor on device meta is not on the expected device cuda:0" (the merge, the weights and the readout then had no input). The rules now replace `_old_forward`, the method the hook calls, on a module that carries an accelerate hook, and `forward` as before on any other; nothing changes on the 31B, whose modules carry no such hook. A self-test check is added (`R3_lrp.py --selftest`: on a tiny Gemma 4 with blocks 0–2 offloaded, the R-lens rows equal the unoffloaded model's bit for bit, and the hooked forward is restored). The rules, their coverage and every registered constant are unchanged; `R3_lrp.py` and `R3_selftests.json` have new sha256 in §0. | A plain bug in code that had never run on a GPU: an offloaded module was not among the CPU self-tests. The failed dry run measured nothing R3 reads. |
