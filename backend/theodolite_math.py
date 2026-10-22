@@ -15,7 +15,7 @@ weight-based (virtual-weight) neuron coupling of Elhage et al. 2021 [14]; GeGLU 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -758,6 +758,85 @@ def frame_condition_numbers(vectors: torch.Tensor) -> torch.Tensor:
     Vn = vectors.float() / torch.linalg.vector_norm(vectors.float(), dim=-1, keepdim=True)
     sv = torch.linalg.svdvals(Vn)
     return sv[..., 0] / sv[..., -1]
+
+
+# ============================================================================
+# One word against another: contrast readings (V7 bug 3's "contrastive axes", E3 (c)'s background)
+# ============================================================================
+
+# What a contrast may be read against: "controls", the matched controls sent with the sweep (a difference of two
+# log-odds, E3 recommendation 1); "study_mean", E3's average state subtracted before the lens, as E3 centred it.
+CONTRAST_BACKGROUNDS: Tuple[str, ...] = ("controls", "study_mean")
+
+
+def _contrast_rows(
+    toward_ids: Sequence[int], away_ids: Sequence[int], lm_head_weight: torch.Tensor, device: torch.device
+) -> torch.Tensor:
+    """`[2n, D]` float32: the unembedding rows of the n toward words, then the n away words."""
+    if not toward_ids or len(toward_ids) != len(away_ids):
+        raise ValueError(
+            f"A contrast reads its words in pairs: {len(toward_ids)} toward and {len(away_ids)} away will not pair."
+        )
+    ids = torch.tensor([int(t) for t in toward_ids] + [int(t) for t in away_ids], device=lm_head_weight.device)
+    return lm_head_weight.index_select(0, ids).to(device=device, dtype=torch.float32)
+
+
+@torch.no_grad()
+def contrast_of_state(
+    state: torch.Tensor,
+    toward_ids: Sequence[int],
+    away_ids: Sequence[int],
+    final_norm_weight: torch.Tensor,
+    lm_head_weight: torch.Tensor,
+    softcap: Optional[float] = FINAL_LOGIT_SOFTCAP,
+) -> torch.Tensor:
+    """The mean over the pairs of the capped logit of toward[i] less that of away[i], for final-space state(s)
+    `[..., D]` (h_l J_l^T through the lens, h_l itself by the naked eye): `[...]` float32.
+
+    Computed in fp32 on the pair rows only, with the unembed's own norm (the 1e-12 floor below mean x^2 = 1e-3, as
+    `gemma4_rms_norm`) and softcap, so for one pair it is the log-odds of toward against away under that
+    distribution, and for the six pronoun pairs it is labkit's `gender_scores(...)["pron"]` (E3, V7)."""
+    rows = _contrast_rows(toward_ids, away_ids, lm_head_weight, state.device)
+    x = state.float()
+    ms = x.pow(2).mean(dim=-1, keepdim=True)
+    eps = torch.where(ms < 1e-3, torch.full_like(ms, 1e-12), torch.full_like(ms, RMS_NORM_EPS))
+    z = (x * torch.rsqrt(ms + eps) * final_norm_weight.to(device=x.device, dtype=torch.float32)) @ rows.T
+    if softcap is not None and softcap > 0.0:
+        z = torch.tanh(z / softcap) * softcap
+    n = len(toward_ids)
+    return (z[..., :n] - z[..., n:]).mean(dim=-1)
+
+
+@torch.no_grad()
+def contrast_direction(
+    toward_ids: Sequence[int],
+    away_ids: Sequence[int],
+    final_norm_weight: torch.Tensor,
+    lm_head_weight: torch.Tensor,
+) -> torch.Tensor:
+    """`[D]` float32: d = fnw * mean_i (W_U[toward_i] - W_U[away_i]), the direction a contrast reads before the
+    softcap (labkit's `gender_direction`)."""
+    rows = _contrast_rows(toward_ids, away_ids, lm_head_weight, lm_head_weight.device)
+    n = len(toward_ids)
+    return (rows[:n] - rows[n:]).mean(dim=0) * final_norm_weight.to(device=rows.device, dtype=torch.float32)
+
+
+@torch.no_grad()
+def contrast_mean_part(
+    mean_state: torch.Tensor,
+    state: torch.Tensor,
+    toward_ids: Sequence[int],
+    away_ids: Sequence[int],
+    final_norm_weight: torch.Tensor,
+    lm_head_weight: torch.Tensor,
+) -> torch.Tensor:
+    """The average state's share of a state's contrast, linear and softcap-free: <mu J, d> / rms(h J), with
+    `mean_state` = mu J and `state` = h J (or mu and h by the naked eye) `[..., D]`, and d as `contrast_direction`
+    (E3_lens_validation_09_background.py). With the deviation's share <(h - mu) J, d> / rms(h J) it sums to the raw
+    state's linear score <h J, d> / rms(h J). Not a log-odds the model gives."""
+    d = contrast_direction(toward_ids, away_ids, final_norm_weight, lm_head_weight).to(state.device)
+    rms = state.float().pow(2).mean(dim=-1).sqrt()
+    return (mean_state.float().to(state.device) @ d) / rms
 
 
 @torch.no_grad()

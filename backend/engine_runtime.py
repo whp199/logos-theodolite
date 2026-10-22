@@ -11,6 +11,8 @@ Neuronpedia [6]; the Gemma 4 QAT W4A16 checkpoint [1] loaded via compressed-tens
 from __future__ import annotations
 
 import gc
+import hashlib
+import io
 import logging
 import os
 import re
@@ -57,6 +59,7 @@ from transformers import AutoTokenizer, Gemma4ForConditionalGeneration
 
 from backend.label_gate import label_check, label_top_ids, writes_nothing
 from backend.theodolite_math import (
+    CONTRAST_BACKGROUNDS,
     FRAME_SQUARINGS,
     POLE_RANKINGS,
     THREAD_SCORES,
@@ -77,6 +80,8 @@ from backend.theodolite_math import (
     compute_causal_vector_split,
     compute_downstream_filaments,
     compute_linear_cka_matrix,
+    contrast_mean_part,
+    contrast_of_state,
     extract_bipolar_poles,
     frame_word_geometry,
     jpp_readout_logits,
@@ -189,6 +194,48 @@ QUIET_REFERENCE_CHAT: Tuple[Tuple[str, str], ...] = (
     ("Tell me a story about a king.", "Once upon a time, a king"),
 )
 QUIET_QUANTILE = 0.10
+
+# E3's average state mu, [60, 5376] float32 (scripts/export_E3_background_mu.py; its provenance is the .json beside it):
+# the contrast readings' "study_mean" background, subtracted before the lens as E3 (c) centred it. Read on first need,
+# and refused in plain words when it is absent or is not the file pinned here.
+STUDY_MEAN_PATH = Path(__file__).resolve().parent.parent / "experiments" / "results" / "E3_background_mu.npy"
+STUDY_MEAN_SHA256 = "de0fded6074a1a50719d0ccfc4b76b78f4450915a431c53d470f06d66a2daba8"
+
+
+def read_study_mean(path: Path = STUDY_MEAN_PATH, sha256: str = STUDY_MEAN_SHA256) -> np.ndarray:
+    """E3's average state as pinned: `[60, 5376]` float32, or a ValueError in plain words (absent, changed, malformed)."""
+    try:
+        data = path.read_bytes()
+    except OSError:
+        raise ValueError(
+            f"The study's average state is not on this server ({path.name} is missing from experiments/results), so "
+            'no contrast can be read against it: leave "study_mean" out, or restore the file '
+            "(scripts/export_E3_background_mu.py)."
+        ) from None
+    if hashlib.sha256(data).hexdigest() != sha256:
+        raise ValueError(
+            f"{path.name} is not the file this instrument pins (its sha256 differs), so no contrast is read against it: "
+            'leave "study_mean" out, or restore the file (scripts/export_E3_background_mu.py).'
+        )
+    arr = np.load(io.BytesIO(data), allow_pickle=False)
+    if arr.shape != (N_LAYERS, D_MODEL) or arr.dtype != np.float32:
+        raise ValueError(f"{path.name} is not a [{N_LAYERS}, {D_MODEL}] float32 array: {arr.shape} {arr.dtype}.")
+    return arr
+
+
+def study_mean_problem(path: Path = STUDY_MEAN_PATH, sha256: str = STUDY_MEAN_SHA256) -> Optional[str]:
+    """Why the "study_mean" background cannot be read, in plain words; None when it can."""
+    try:
+        read_study_mean(path, sha256)
+    except ValueError as exc:
+        return str(exc)
+    return None
+
+
+def _word_forms(text: str) -> Tuple[str, ...]:
+    """The forms a typed word is tried in, in order (the landmarks' rule): space-prefixed, as a word reads
+    mid-sentence; stripped; as typed."""
+    return tuple(dict.fromkeys((f" {text.strip()}", text.strip(), text)))
 
 
 def _provenance_text(v: Any) -> Optional[str]:
@@ -613,6 +660,9 @@ class TheodoliteSweepBundle:
     # word-pieces the lens and the naked eye share in their first ten, fp32, and whether the pages hold it back). The
     # 3-word lists above are unchanged; a (layer, rank) without words has no check.
     pole_label_checks: Dict[Tuple[int, int], Dict[str, Any]] = field(default_factory=dict)
+    # One word against another, one entry per contrast asked for, in order (`TheodoliteRuntime._contrast_readings`);
+    # empty when none was asked for
+    contrasts: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
     def read_pos(self) -> int:
@@ -670,6 +720,13 @@ class SweepShared:
     # [n - 1, 60, 5376] float32 CPU: the controls reading this very answer, rows k - 1 (filled on first need)
     answer_centre_raw: Optional[torch.Tensor] = None
     prepare_ms: float = 0.0
+    # One word against another (`resolve_contrasts`): each contrast as resolved, the backgrounds asked for, and the
+    # matched controls' mean contrast scores, one {"lens", "naked"} per readable contrast (CPU float32): at their own
+    # last piece ([60] each), and on first need reading this very answer ([n - 1, 60] each, row k - 1)
+    contrasts: List[Dict[str, Any]] = field(default_factory=list)
+    contrast_backgrounds: Tuple[str, ...] = ()
+    contrast_controls_k0: Optional[List[Dict[str, torch.Tensor]]] = None
+    contrast_controls_answer: Optional[List[Dict[str, torch.Tensor]]] = None
 
 
 class TheodoliteRuntime:
@@ -709,6 +766,10 @@ class TheodoliteRuntime:
         self._write_norm_cache: Dict[int, torch.Tensor] = {}
         self._quiet_mask: Optional[torch.Tensor] = None
         self._quiet_layer_masks: Optional[torch.Tensor] = None  # [60, 5376] bool, CPU
+        # E3's average state (`read_study_mean`) on the device, and its image through each layer's lens, float32
+        # [60, 5376]: read on the first contrast against "study_mean"
+        self._study_mean: Optional[torch.Tensor] = None
+        self._study_mean_J: Optional[torch.Tensor] = None
 
     def load(self) -> "TheodoliteRuntime":
         """Load the W4A16 Gemma-4-31B model into `interp-engine` and load/validate the J++ lenses."""
@@ -1022,7 +1083,7 @@ class TheodoliteRuntime:
             return concept_or_token, tok_str
         text = str(concept_or_token)
         # Prefer space-prefixed word token if it encodes to a single token
-        for candidate in (f" {text.strip()}", text.strip(), text):
+        for candidate in _word_forms(text):
             ids = self.tokenizer.encode(candidate, add_special_tokens=False)
             if len(ids) == 1:
                 return int(ids[0]), self.tokenizer.decode([ids[0]])
@@ -1030,6 +1091,62 @@ class TheodoliteRuntime:
         if not ids:
             raise ValueError(f"Could not tokenize concept {concept_or_token!r}")
         return int(ids[0]), self.tokenizer.decode([ids[0]])
+
+    def resolve_contrast_word(self, word: str) -> Dict[str, Any]:
+        """A contrast's word read as the landmarks read theirs (`resolve_concept_token_id`: " word", then the word),
+        but only ever as one word-piece: {"word", "id", "piece"}; or, when no form is one piece, id and piece None and
+        `pieces`, each form tried as the word-pieces it splits into. There is no first-piece fallback: the odds of a
+        word's first piece are not the word's."""
+        text = str(word)
+        pieces: Dict[str, List[str]] = {}
+        if text.strip():
+            for form in _word_forms(text):
+                ids = self.tokenizer.encode(form, add_special_tokens=False)
+                if len(ids) == 1:
+                    return {"word": text, "id": int(ids[0]), "piece": self.tokenizer.decode([ids[0]])}
+                pieces[form] = [self.tokenizer.decode([int(t)]) for t in ids]
+        return {"word": text, "id": None, "piece": None, "pieces": pieces}
+
+    def resolve_contrasts(self, contrasts: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Each contrast asked for ({"toward": [words], "away": [words], "label"}), its words resolved
+        (`resolve_contrast_word`): {"label", "toward", "away", "toward_ids", "away_ids", "error"}. A contrast with a
+        word that is no single word-piece, or with words that do not pair, is kept with its `error` in plain words
+        (and, for words, their `pieces`) and its ids None: it is not read, and the sweep goes on."""
+        out: List[Dict[str, Any]] = []
+        for c in contrasts:
+            toward = [self.resolve_contrast_word(w) for w in c.get("toward") or []]
+            away = [self.resolve_contrast_word(w) for w in c.get("away") or []]
+            entry: Dict[str, Any] = {
+                "label": c.get("label"),
+                "toward": toward,
+                "away": away,
+                "toward_ids": None,
+                "away_ids": None,
+                "error": None,
+            }
+            missing = [r for r in toward + away if r["id"] is None]
+            if missing:
+                named = "; ".join(
+                    f'"{r["word"]}" is not one word-piece in any form the landmarks try ('
+                    + (", ".join(f'"{f}"' for f in r["pieces"]) or "it is blank")
+                    + ")"
+                    for r in missing
+                )
+                entry["error"] = (
+                    f"Not read: {named}. A contrast compares the odds of single word-pieces, so it needs words that "
+                    "are one word-piece each."
+                )
+                entry["pieces"] = {r["word"]: r["pieces"] for r in missing}
+            elif not toward or len(toward) != len(away):
+                entry["error"] = (
+                    f"Not read: {len(toward)} word(s) toward and {len(away)} away. A contrast reads its words in pairs, "
+                    "the first toward against the first away, so it needs as many of each, at least one."
+                )
+            else:
+                entry["toward_ids"] = [r["id"] for r in toward]
+                entry["away_ids"] = [r["id"] for r in away]
+            out.append(entry)
+        return out
 
     def compose_prompt(
         self,
@@ -1603,6 +1720,135 @@ class TheodoliteRuntime:
         }
         return voice, first_logprobs
 
+    def _study_mean_states(self) -> Tuple[torch.Tensor, torch.Tensor]:
+        """E3's average state mu and its image through each layer's lens, mu_l J_l^T (bf16 matmul, as labkit's lens),
+        both `[60, 5376]` float32 on the device; read once (`read_study_mean`, refused in plain words if absent)."""
+        if self._study_mean is None or self._study_mean_J is None:
+            mu = torch.from_numpy(read_study_mean()).to(self.device)
+            self._study_mean_J = torch.stack(
+                [(mu[l].to(self.jpp_lenses[l].dtype) @ self.jpp_lenses[l].T).float() for l in range(N_LAYERS)], dim=0
+            )
+            self._study_mean = mu
+        return self._study_mean, self._study_mean_J
+
+    @torch.no_grad()
+    def _contrast_scores(
+        self, rows_by_layer: Sequence[torch.Tensor], specs: Sequence[Dict[str, Any]]
+    ) -> List[Dict[str, torch.Tensor]]:
+        """Raw states `rows_by_layer[l]` `[R, 5376]` (layer l's resid_post), each readable contrast's scores:
+        {"lens": [R, 60], "naked": [R, 60]} float32 CPU, read as a sighting's own (`contrast_of_state` of h_l J_l^T and
+        of h_l)."""
+        R = int(rows_by_layer[0].shape[0])
+        out = [{"lens": torch.zeros(R, N_LAYERS), "naked": torch.zeros(R, N_LAYERS)} for _ in specs]
+        for l in range(N_LAYERS):
+            J_l = self.jpp_lenses[l]
+            h = rows_by_layer[l].to(self.device)
+            hJ = h.to(dtype=J_l.dtype) @ J_l.T
+            for spec, o in zip(specs, out):
+                t, a = spec["toward_ids"], spec["away_ids"]
+                o["lens"][:, l] = contrast_of_state(hJ, t, a, self.final_norm_weight, self.lm_head_weight).cpu()
+                o["naked"][:, l] = contrast_of_state(h, t, a, self.final_norm_weight, self.lm_head_weight).cpu()
+        return out
+
+    async def _contrast_readings(
+        self,
+        cap: SweepCapture,
+        shared: SweepShared,
+        token_index: int,
+        h_raw: torch.Tensor,
+        h_J: torch.Tensor,
+    ) -> List[Dict[str, Any]]:
+        """One sighting's contrasts (`shared.contrasts`), from its states at every layer, `h_raw` = h_l and `h_J` =
+        h_l J_l^T (`[60, 5376]`): per contrast its words as resolved, and either its `error` (not read) or `lens` and
+        `naked`, the mean over pairs of capped logit(toward) - capped logit(away) at each layer (0-based) through the
+        lens and by the naked eye (nats of log-odds; at index 59 the lens is the identity, so the two agree), and
+        `backgrounds`, one entry per background asked for:
+        - "controls": the matched controls' mean score, and `delta_*` = the sighting's score less it, a difference of
+          two log-odds (E3 recommendation 1). Read where the centring reads its controls: at token 0 their own last
+          piece ("control_prompt_end"), past it the controls reading this very answer with `centre_answer`
+          ("control_reading_same_answer"); else none, and `why`.
+        - "study_mean": `centred_*` = the score of h - mu (mu: E3's average state; through the lens (h - mu) J_l^T), as
+          E3 centred it, which is not a log-odds the model gives; and `mean_part_*` = <mu J, d> / rms(h J) (by the
+          naked eye <mu, d> / rms(h)), the average state's linear share of the raw score."""
+        k = int(token_index)
+        fnw, W_U = self.final_norm_weight, self.lm_head_weight
+        readable = [c for c in shared.contrasts if c["error"] is None]
+        series = lambda t: [round(float(v), 4) for v in t.detach().float().cpu().tolist()]  # noqa: E731
+        controls: Optional[List[Dict[str, torch.Tensor]]] = None
+        controls_kind = "none"
+        controls_why: Optional[str] = None
+        if "controls" in shared.contrast_backgrounds and readable:
+            if not shared.control_ids:
+                controls_why = "No matched control was sent, so there is nothing to read this contrast against."
+            elif k == 0:
+                controls, controls_kind = shared.contrast_controls_k0, "control_prompt_end"
+            elif shared.centre_answer:
+                if shared.contrast_controls_answer is None:  # else read already, with the centre (analyse_position)
+                    await self._answer_centre(cap, shared, k)
+                assert shared.contrast_controls_answer is not None
+                controls = [{key: v[k - 1] for key, v in c.items()} for c in shared.contrast_controls_answer]
+                controls_kind = "control_reading_same_answer"
+            else:
+                controls_why = (
+                    "Past word-piece 0 the controls are read only with centre_answer, reading this very answer: a "
+                    "control's state at its own last piece is never set against a state read mid-answer."
+                )
+        centred_J: Optional[torch.Tensor] = None
+        mu = mu_J = None
+        if "study_mean" in shared.contrast_backgrounds and readable:
+            mu, mu_J = self._study_mean_states()
+            centred = h_raw.float() - mu
+            centred_J = torch.stack(
+                [(centred[l].to(self.jpp_lenses[l].dtype) @ self.jpp_lenses[l].T) for l in range(N_LAYERS)], dim=0
+            )
+        out: List[Dict[str, Any]] = []
+        i_read = 0
+        for spec in shared.contrasts:
+            entry = {key: spec[key] for key in ("label", "toward", "away", "toward_ids", "away_ids", "error")}
+            if spec["error"] is not None:
+                if "pieces" in spec:
+                    entry["pieces"] = spec["pieces"]
+                out.append(entry)
+                continue
+            t, a = spec["toward_ids"], spec["away_ids"]
+            lens = contrast_of_state(h_J, t, a, fnw, W_U)
+            naked = contrast_of_state(h_raw, t, a, fnw, W_U)
+            entry["lens"] = series(lens)
+            entry["naked"] = series(naked)
+            backgrounds: Dict[str, Any] = {}
+            if "controls" in shared.contrast_backgrounds:
+                if controls is not None:
+                    c_lens, c_naked = controls[i_read]["lens"], controls[i_read]["naked"]
+                    backgrounds["controls"] = {
+                        "kind": controls_kind,
+                        "n_controls": len(shared.control_ids),
+                        "control_lens": series(c_lens),
+                        "control_naked": series(c_naked),
+                        "delta_lens": series(lens.cpu() - c_lens),
+                        "delta_naked": series(naked.cpu() - c_naked),
+                        "why": None,
+                    }
+                else:
+                    backgrounds["controls"] = {
+                        "kind": "none", "n_controls": len(shared.control_ids), "control_lens": None,
+                        "control_naked": None, "delta_lens": None, "delta_naked": None, "why": controls_why,
+                    }
+            if "study_mean" in shared.contrast_backgrounds:
+                assert centred_J is not None and mu is not None and mu_J is not None
+                backgrounds["study_mean"] = {
+                    "kind": "study_mean",
+                    "centred_lens": series(contrast_of_state(centred_J, t, a, fnw, W_U)),
+                    "centred_naked": series(contrast_of_state(h_raw.float() - mu, t, a, fnw, W_U)),
+                    "mean_part_lens": series(contrast_mean_part(mu_J, h_J, t, a, fnw, W_U)),
+                    "mean_part_naked": series(contrast_mean_part(mu, h_raw, t, a, fnw, W_U)),
+                    "file": "experiments/results/" + STUDY_MEAN_PATH.name,
+                    "sha256": STUDY_MEAN_SHA256,
+                }
+            entry["backgrounds"] = backgrounds
+            out.append(entry)
+            i_read += 1
+        return out
+
     def _centre_in_frame_space(self, centre_raw: torch.Tensor, basis_space: str) -> torch.Tensor:
         """`[60, 5376]` raw centre states, moved into the space the frame reads (raw, or h_l J_l^T)."""
         if basis_space == "raw":
@@ -1629,6 +1875,8 @@ class TheodoliteRuntime:
         prepend_bos: bool = True,
         frame_override: Optional[Tuple[torch.Tensor, str, Dict[str, Any], Tuple[str, str, str]]] = None,
         centre_override: Optional[torch.Tensor] = None,
+        contrasts: Optional[Sequence[Dict[str, Any]]] = None,
+        contrast_backgrounds: Sequence[str] = (),
     ) -> SweepShared:
         """What every sighting of `cap` shares: the tracked words' ids, the survey frame and the matched controls.
 
@@ -1643,7 +1891,13 @@ class TheodoliteRuntime:
         instrument always did. With `centre_answer`, token k >= 1 is centred on the controls reading this very
         answer: control_ids + answer[:-1], row len(control_ids) - 1 + k ("control_reading_same_answer"), captured on
         first need. Without it, a position past token 0 is not centred: a control's state at its own last piece is
-        never subtracted from a state read mid-answer."""
+        never subtracted from a state read mid-answer.
+
+        Contrasts (one word against another; none by default, and then nothing here changes): `contrasts` as
+        `resolve_contrasts` takes them, read at every sighting (`_contrast_readings`), against the
+        `contrast_backgrounds` asked for (`CONTRAST_BACKGROUNDS`). With "controls", each control's contrast scores at
+        its own last piece are read from the same capture as the centre (and, with a `centre_override`, from a capture
+        of their own); with "study_mean", E3's average state is read here, so a missing file refuses the sweep."""
         assert self.eager_model is not None, "Call runtime.load() first."
         if frame_squaring not in FRAME_SQUARINGS:
             raise ValueError(f"Unknown frame_squaring {frame_squaring!r}; expected one of {FRAME_SQUARINGS}")
@@ -1707,17 +1961,39 @@ class TheodoliteRuntime:
             if not ids:
                 raise ValueError("A matched control given as word-piece ids has none: each needs at least one.")
             control_ids.append(ids)
+        # One word against another: the words resolved, the backgrounds known, E3's average state at hand
+        contrast_specs = self.resolve_contrasts(contrasts or [])
+        readable = [c for c in contrast_specs if c["error"] is None]
+        backgrounds = tuple(dict.fromkeys(str(b) for b in contrast_backgrounds or ()))
+        for b in backgrounds:
+            if b not in CONTRAST_BACKGROUNDS:
+                raise ValueError(f"Unknown contrast background {b!r}; expected one of {CONTRAST_BACKGROUNDS}")
+        if readable and "study_mean" in backgrounds:
+            self._study_mean_states()
+        contrast_controls = bool(readable and "controls" in backgrounds and control_ids)
+        contrast_controls_k0: Optional[List[Dict[str, torch.Tensor]]] = None
+
         centre_k0 = centre_override
-        if centre_override is None and control_ids:
+        if (centre_override is None and control_ids) or contrast_controls:
             centre_raw = torch.zeros(N_LAYERS, D_MODEL, dtype=torch.float32, device=self.device)
+            k0_sums = [{"lens": torch.zeros(N_LAYERS), "naked": torch.zeros(N_LAYERS)} for _ in readable]
             for c_ids in control_ids:
                 # its last row only: row 0 is position len(c_ids) - 1
                 c_caps = self.capture_rows(c_ids, read=[Address("resid_post", l) for l in range(N_LAYERS)], n_read=1)
-                for l in range(N_LAYERS):
-                    centre_raw[l] += c_caps[Address("resid_post", l)][0].to(self.device).float()
+                if centre_override is None:
+                    for l in range(N_LAYERS):
+                        centre_raw[l] += c_caps[Address("resid_post", l)][0].to(self.device).float()
+                if contrast_controls:
+                    scores = self._contrast_scores([c_caps[Address("resid_post", l)][:1] for l in range(N_LAYERS)], readable)
+                    for acc, sc in zip(k0_sums, scores):
+                        acc["lens"] += sc["lens"][0]
+                        acc["naked"] += sc["naked"][0]
                 del c_caps
-            centre_raw /= len(control_ids)
-            centre_k0 = self._centre_in_frame_space(centre_raw, basis_space)
+            if centre_override is None:
+                centre_raw /= len(control_ids)
+                centre_k0 = self._centre_in_frame_space(centre_raw, basis_space)
+            if contrast_controls:
+                contrast_controls_k0 = [{key: v / len(control_ids) for key, v in acc.items()} for acc in k0_sums]
 
         return SweepShared(
             tracked_map=tracked_map,
@@ -1732,6 +2008,9 @@ class TheodoliteRuntime:
             centre_k0=centre_k0,
             centre_answer=bool(centre_answer),
             prepare_ms=(time.perf_counter() - t_start) * 1000.0,
+            contrasts=contrast_specs,
+            contrast_backgrounds=backgrounds,
+            contrast_controls_k0=contrast_controls_k0,
         )
 
     async def _answer_centre(self, cap: SweepCapture, shared: SweepShared, token_index: int) -> torch.Tensor:
@@ -1740,18 +2019,39 @@ class TheodoliteRuntime:
         need, kept in `shared`."""
         assert self.eager_model is not None, "Call runtime.load() first."
         n = len(cap.answer_token_ids)
-        if shared.answer_centre_raw is None:
-            acc = torch.zeros(max(n - 1, 0), N_LAYERS, D_MODEL, dtype=torch.float32)
+        # the controls' contrast scores are read from the same captures, when a contrast is read against them
+        readable = [c for c in shared.contrasts if c["error"] is None]
+        need_raw = shared.answer_centre_raw is None
+        need_scores = bool(
+            shared.contrast_controls_answer is None and readable and "controls" in shared.contrast_backgrounds
+        )
+        if need_raw or need_scores:
+            acc = torch.zeros(max(n - 1, 0), N_LAYERS, D_MODEL, dtype=torch.float32) if need_raw else None
+            score_sums = [
+                {"lens": torch.zeros(max(n - 1, 0), N_LAYERS), "naked": torch.zeros(max(n - 1, 0), N_LAYERS)}
+                for _ in readable
+            ] if need_scores else []
             tail = cap.answer_token_ids[: max(n - 1, 0)]
             for c_ids in shared.control_ids:
                 # its last n - 1 rows only: positions len(c_ids) .. len(c_ids) + n - 2
                 c_caps = self.capture_rows(
                     c_ids + tail, read=[Address("resid_post", l) for l in range(N_LAYERS)], n_read=n - 1
                 )
-                for l in range(N_LAYERS):
-                    acc[:, l] += c_caps[Address("resid_post", l)].float()
+                if acc is not None:
+                    for l in range(N_LAYERS):
+                        acc[:, l] += c_caps[Address("resid_post", l)].float()
+                if need_scores:
+                    scores = self._contrast_scores([c_caps[Address("resid_post", l)] for l in range(N_LAYERS)], readable)
+                    for s_acc, sc in zip(score_sums, scores):
+                        s_acc["lens"] += sc["lens"]
+                        s_acc["naked"] += sc["naked"]
                 del c_caps
-            shared.answer_centre_raw = acc / len(shared.control_ids)
+            if acc is not None:
+                shared.answer_centre_raw = acc / len(shared.control_ids)
+            if need_scores:
+                shared.contrast_controls_answer = [
+                    {key: v / len(shared.control_ids) for key, v in s_acc.items()} for s_acc in score_sums
+                ]
         centre_raw = shared.answer_centre_raw[int(token_index) - 1].to(self.device)
         return self._centre_in_frame_space(centre_raw, shared.basis_space)
 
@@ -2042,6 +2342,12 @@ class TheodoliteRuntime:
         frame_info["centred"] = centre_states is not None
         frame_info["n_centre_prompts"] = len(shared.control_ids)
         frame_info["centre_kind"] = centre_kind
+        # One word against another, at every layer (none asked for: nothing read, and [] sent)
+        contrasts = (
+            await self._contrast_readings(cap, shared, k, resid_post_layers_t, resid_post_J_layers_t)
+            if shared.contrasts
+            else []
+        )
 
         trajectory_3d = project_trajectory_to_3d(
             resid_post_layers=resid_post_layers_t,
@@ -2126,6 +2432,7 @@ class TheodoliteRuntime:
             rank_lookahead=bool(rank_lookahead),
             analyse_ms=analyse_ms,
             pole_label_checks=pole_label_checks,
+            contrasts=contrasts,
         )
 
     async def run_theodolite_sweep(

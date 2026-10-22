@@ -55,3 +55,7 @@ experiments/results/E6_tool_audit_06_steering.log
 
 # re-include the 5.5 KB persistent quiet-dim index that several scripts load
 !experiments/results/V6_quiet_dims_pers181.npy
+# re-include E3's average state mu (1.29 MB, [60, 5376] float32), the contrast readings' "study_mean" background,
+# exported from E3's gitignored caches by scripts/export_E3_background_mu.py; its sha256 is pinned in
+# backend/engine_runtime.py and its provenance is E3_background_mu.json beside it (a .json, not ignored)
+!experiments/results/E3_background_mu.npy

@@ -598,9 +598,10 @@ async def main() -> int:
     # and the label gate's rule, the server's measure against the study's caches, and the results the pages quote
     # and the causal spot-check on a tiny stand-in Gemma 4 (its computation, the tool, the transports, the folio's figures)
     # and the chat template's thinking switch (the cached tokenizer), and an edit's voice on a stand-in runtime
+    # and the contrast readings (one word against another) on small random weights, and E3's average state as pinned
     for cpu_check in ("check_interface_defaults.py", "check_sampler_mirror.py", "check_saved_prompts.py",
                       "check_sweep_protocol.py", "check_capture_rows.py", "check_label_gate.py", "check_causal_check.py",
-                      "check_think_template.py", "check_vault_voice.py"):
+                      "check_think_template.py", "check_vault_voice.py", "check_contrast_readings.py"):
         res = subprocess.run(
             [sys.executable, "-I", str(ROOT_DIR / "scripts" / cpu_check)],
             capture_output=True, text=True, timeout=600, check=False,

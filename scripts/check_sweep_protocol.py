@@ -6,13 +6,13 @@ scripted word-pieces (calling the stream's `on_written` as the real one does, wi
 returns small but complete sweep bundles, which the real `pack_binary_and_json_frames` packs. The app's lifespan
 (which loads the model) is replaced and the GPU hidden, so nothing heavy can load. It checks:
 1. which token indices are sighted (`sight_order`), and the request's limits, id checks and reading options (pole
-   ranking, thread score, frame squaring, thinking on bare text), in plain words; and the server's own defaults for
-   those options, kept as first built for old callers (Gram–Schmidt on raw rows, one frame, no centring, |a|, C, the
-   old "<|think|>" before bare text);
+   ranking, thread score, frame squaring, thinking on bare text, contrasts and their backgrounds), in plain words; and
+   the server's own defaults for those options, kept as first built for old callers (Gram–Schmidt on raw rows, one
+   frame, no centring, |a|, C, the old "<|think|>" before bare text, no contrasts);
 2. a request without request_id: exactly one binary + one JSON pair, today's keys plus the additive ones, nothing
    else (the next reply on the socket is the next action's); every poles_labels entry keeps its old keys and gains
    label_check (the bundle's check where words were read, null elsewhere), and the frame carries label_gate just
-   before lens;
+   before lens; "contrasts" is [], and the runtime is asked for none (no contrast option reaches prepare_sweep);
 3. a stream: progress after each written piece, the answer once, then a sighting progress, one pair per word-piece
    in order (binary then its JSON, back to back), flags bit 2, `last` on the final pair, then theodolite_sweep_end;
    an end mark stops the writing; a given answer with sight_tokens (repeats and out-of-range indices dropped);
@@ -29,7 +29,10 @@ returns small but complete sweep bundles, which the real `pack_binary_and_json_f
    at all (no path, nothing written, think_left_out "bare_text"); a stop asked while the answer is written or its
    first position read skips it (think_skipped, cancelled), one asked while it is written cuts it short
    (think_stop_reason "stopped", cancelled also with one sighting); and other actions answered in the order they
-   came.
+   came;
+7. contrasts: sent to prepare_sweep as asked (backgrounds once each), read on every pair from the bundle, never on
+   the thinking comparison; an unknown background, "controls" with no control and a missing average state refused
+   before anything is written.
 
 Run: .venv/bin/python -I scripts/check_sweep_protocol.py   (exits 0 when every check holds)
 """
@@ -179,6 +182,41 @@ def check_rules() -> None:
     option({"think_bare": "template"}, 'think_bare is "template", which this instrument does not know: it must be '
            '"prefix" or "none"', "an unknown way with thinking on bare text")
     refused({"think_bare": "x" * 65}, "a 65-character think_bare")
+    she_he = {"toward": ["she"], "away": ["he"]}
+    refused({"contrasts": [she_he] * 5}, "five contrasts")
+    refused({"contrasts": [{"toward": ["a"] * 13, "away": ["b"] * 13}]}, "a contrast of 13 pairs")
+    refused({"contrasts": [{"toward": [], "away": ["he"]}]}, "a contrast with no word toward")
+    refused({"contrasts": [{"away": ["he"]}]}, "a contrast without toward")
+    refused({"contrasts": [{"toward": ["x" * 65], "away": ["he"]}]}, "a 65-character contrast word")
+    refused({"contrasts": [{**she_he, "label": "x" * 65}]}, "a 65-character contrast label")
+    refused({"contrast_backgrounds": ["controls", "study_mean", "controls"]}, "three backgrounds")
+    refused({"contrast_backgrounds": ["x" * 65]}, "a 65-character background")
+    option({"contrast_backgrounds": ["mean"]}, 'contrast_backgrounds holds "mean", which this instrument does not know: '
+           'each must be "controls" or "study_mean"', "an unknown background")
+    option({"contrasts": [she_he], "contrast_backgrounds": ["controls"]}, 'asks for "controls", but no matched control '
+           "was sent", '"controls" with no control')
+    option({"contrast_backgrounds": ["controls"], "centre_prompts": ["  "]}, "no matched control was sent",
+           '"controls" with only a blank control text (the runtime skips it)')
+    option({"contrasts": [{"toward": ["she", "her"], "away": ["he"]}]}, "Contrast 1 has 2 word(s) toward and 1 away",
+           "words that do not pair")
+    option({"contrasts": [she_he, {"toward": ["she"], "away": [" "]}]}, "Contrast 2 has a blank word", "a blank word")
+    real_problem = server.study_mean_problem
+    server.study_mean_problem = lambda: "The study's average state is not on this server (a stand-in)."  # type: ignore
+    try:
+        option({"contrasts": [she_he], "contrast_backgrounds": ["study_mean"]}, "is not on this server (a stand-in)",
+               "the average state missing")
+    finally:
+        server.study_mean_problem = real_problem  # type: ignore[assignment]
+    for ok in ({"contrasts": [she_he]}, {"contrasts": [she_he] * 4, "contrast_backgrounds": ["study_mean"]},
+               {"contrasts": [she_he], "contrast_backgrounds": ["controls", "study_mean"], "centre_prompts": ["x"]},
+               {"contrasts": [she_he], "contrast_backgrounds": ["controls"], "centre_token_ids": [[2, 5]]},
+               {"contrasts": [{"toward": ["antidisestablishmentarianism"], "away": ["he"]}]}):
+        server.check_sweep_options(server.SweepRequest(**ok))
+        check(True, f"contrast options taken {str(ok)[:60]}")
+    check(server._contrast_options(server.SweepRequest()) == {}, "no contrasts: no contrast option for the runtime")
+    check(server._contrast_options(server.SweepRequest(contrasts=[she_he], contrast_backgrounds=["study_mean", "study_mean"]))
+          == {"contrasts": [{"toward": ["she"], "away": ["he"], "label": None}], "contrast_backgrounds": ("study_mean",)},
+          "contrast options as the runtime takes them")
     for ok in ({}, {"pole_ranking": "write", "thread_score": "direct", "frame_squaring": "lowdin"},
                {"think_bare": "none"}, {"think_bare": "prefix"}):
         server.check_sweep_options(server.SweepRequest(**ok))
@@ -188,7 +226,7 @@ def check_rules() -> None:
     r = server.SweepRequest(prompt="x")
     as_built = {"frame_squaring": "gram_schmidt", "frame_per_layer": False, "frame_fnw": False, "centre_prompts": [],
                 "centre_token_ids": [], "centre_answer": False, "pole_ranking": "activation", "thread_score": "coupling",
-                "compare_think": False, "think_bare": "prefix"}
+                "compare_think": False, "think_bare": "prefix", "contrasts": [], "contrast_backgrounds": []}
     for key, want in as_built.items():
         check(getattr(r, key) == want, f"the server's default {key} is {getattr(r, key)!r}, not {want!r} as first built")
     tr = server.TraceReadersRequest(token_ids=[2, 5, 7])
@@ -243,6 +281,8 @@ class FakeRuntime:
         self.stop_at: Optional[Tuple[str, int]] = None
         self.conn: Any = None
         self.analysed: List[Tuple[str, int]] = []
+        # the contrast options each prepare_sweep was given (and whether it was the thinking comparison's)
+        self.prepared: List[Dict[str, Any]] = []
         # the model's sliding window, as the real runtime reads it from text_config (every pair must echo it)
         self.sliding_window: Optional[int] = 1024
 
@@ -326,11 +366,16 @@ class FakeRuntime:
         if self.fail_prepare:
             raise ValueError("a stand-in frame that cannot be built")
         basis = frame_override[0] if frame_override else torch.eye(3, D)
+        self.prepared.append(
+            {"think": cap.prompt.startswith("<|think|>"), **{k: v for k, v in _kw.items() if k.startswith("contrast")}}
+        )
         return SweepShared(
             tracked_map={"eight": 7}, survey_mode="monument", locked_pole=None, frame_squaring="gram_schmidt",
             basis=basis, basis_space="J", frame_info={"squaring": "gram_schmidt", "per_layer": False,
                                                        "fnw_weighted": False, "state": "h_J"},
             survey_labels=("a", "b", "c"), control_ids=[], centre_k0=centre_override, centre_answer=False,
+            contrasts=[dict(c) for c in _kw.get("contrasts") or []],
+            contrast_backgrounds=tuple(_kw.get("contrast_backgrounds") or ()),
         )
 
     async def analyse_position(self, cap, shared, k, *, rank_lookahead=True, **_kw) -> TheodoliteSweepBundle:
@@ -399,6 +444,9 @@ def fake_bundle(cap: SweepCapture, shared: SweepShared, k: int, rank_lookahead: 
         },
         kinship_n_states=P + k, tracked_from_next={l: {"eight": rank_lookahead and k == 0 and l == 59} for l in range(60)},
         rank_lookahead=rank_lookahead, analyse_ms=1.0, pole_label_checks=checks,
+        # as the runtime reads them, one entry per contrast in order; here only which contrast and which word-piece
+        contrasts=[{"label": c.get("label"), "token_index": k, "backgrounds": list(shared.contrast_backgrounds)}
+                   for c in shared.contrasts],
     )
 
 
@@ -470,7 +518,7 @@ NEW_KEYS = {
     "request_id", "token_index", "sight_index", "n_to_sight", "last", "read_pos", "sliding_window", "read_token",
     "read_token_id", "prompt_len", "chosen", "answer", "generation", "recapture_check", "kinship_n_states",
     "rank_lookahead", "sight_dropped", "timing", "think_seed", "think_read_token", "think_stop_reason", "think_skipped",
-    "label_gate", "think_protocol", "think_left_out",
+    "label_gate", "think_protocol", "think_left_out", "contrasts",
 }
 
 
@@ -523,6 +571,8 @@ def check_socket() -> None:
         keys = list(meta)
         check(meta["label_gate"] == LABEL_GATE_CARD and keys.index("label_gate") + 1 == keys.index("lens"),
               "label_gate: the gate's card, just before lens")
+        check(meta["contrasts"] == [] and rt.prepared[-1] == {"think": False},
+              f"no contrasts: [] sent, and none asked of the runtime: {meta['contrasts']} {rt.prepared[-1]}")
         n_entries = 0
         for l in range(60):
             entries = meta["poles_labels"][str(l)]
@@ -831,6 +881,43 @@ def check_socket() -> None:
         i_larql = order.index(("larql_result", None))
         i_first11 = next(i for i, t in enumerate(order) if t[1] == "r11")
         check(i_end10 < i_larql < i_first11, f"actions keep their order: {order}")
+
+        print("7. contrasts")
+        rt.prepared.clear()
+        cons = [{"toward": ["she"], "away": ["he"], "label": "pronoun"}, {"toward": ["queen", "woman"], "away": ["king", "man"]}]
+        s.sweep({"request_id": "r12", "prompt": "hi", "max_new_tokens": 3, "sight_every_token": True, "compare_think": True,
+                 "contrasts": cons, "contrast_backgrounds": ["controls", "controls"], "centre_prompts": ["a control"]})
+        frames = s.until_end("r12")
+        pairs = pairs_of(frames, "r12")
+        want = [{"toward": ["she"], "away": ["he"], "label": "pronoun"},
+                {"toward": ["queen", "woman"], "away": ["king", "man"], "label": None}]
+        check(rt.prepared[0] == {"think": False, "contrasts": want, "contrast_backgrounds": ("controls",)},
+              f"the contrasts as the runtime takes them: {rt.prepared[0]}")
+        check(len(rt.prepared) == 2 and rt.prepared[1] == {"think": True},
+              f"the thinking comparison is read without contrasts: {rt.prepared[1:]}")
+        check(len(pairs) == 3 and all(
+            m["contrasts"] == [{"label": "pronoun", "token_index": m["token_index"], "backgrounds": ["controls"]},
+                               {"label": None, "token_index": m["token_index"], "backgrounds": ["controls"]}]
+            for _b, m in pairs), f"every pair carries its own sighting's contrasts: {[m['contrasts'] for _b, m in pairs]}")
+        keys = list(pairs[0][1])
+        check(keys.index("frame") < keys.index("contrasts") < keys.index("label_gate"), "contrasts after frame")
+        s.sweep({"prompt": "hi", "max_new_tokens": 1, "contrasts": cons[:1]})
+        _k, _b = s.recv()
+        _k, meta = s.recv()
+        check(meta["contrasts"] == [{"label": "pronoun", "token_index": 0, "backgrounds": []}],
+              f"the one-pair reply carries them too: {meta['contrasts']}")
+        for rid, extra, words in (
+            ("r13", {"contrast_backgrounds": ["average"]}, 'contrast_backgrounds holds "average"'),
+            ("r14", {"contrast_backgrounds": ["controls"]}, 'asks for "controls", but no matched control was sent'),
+            ("r15", {"contrasts": [{"toward": ["she", "her"], "away": ["he"]}]}, "Contrast 1 has 2 word(s) toward"),
+        ):
+            n_writes = len(rt.writes)
+            s.sweep({"request_id": rid, "prompt": "hi", "max_new_tokens": 2, "contrasts": cons[:1], **extra})
+            frames = s.until_end(rid)
+            types = [o.get("type") for k, o in frames if k == "json"]
+            err = next((o for k, o in frames if k == "json" and o.get("type") == "error"), {})
+            check(types == ["error", "theodolite_sweep_end"] and words in err.get("message", "")
+                  and len(rt.writes) == n_writes, f"{rid}: refused before writing: {types} {err.get('message')}")
 
 
 def main() -> int:

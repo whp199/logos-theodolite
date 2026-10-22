@@ -1,0 +1,35 @@
+{
+ "file": "E3_background_mu.npy",
+ "sha256": "de0fded6074a1a50719d0ccfc4b76b78f4450915a431c53d470f06d66a2daba8",
+ "bytes": 1290368,
+ "shape": [
+  60,
+  5376
+ ],
+ "dtype": "float32",
+ "layers": "0-based, 0..59: row l is the mean of resid_post leaving layer l (the page's layer l + 1)",
+ "what": "E3's average state mu: the mean residual over every word-piece from the fifth on of E3's prose passages and chats, prose and chat pooled by word-piece count, as E3 (c) subtracted it before the lens",
+ "formula": "((prose mu_sum + chat mu_sum) / (n_prose + n_chat)).float()",
+ "n_prose": 2010,
+ "n_chat": 2990,
+ "read_with": "labkit.forward_resid: HF decoder-layer forward hooks on the instruct model (W4A16), not the server's interp_engine resid_post capture; that the two agree is not checked here",
+ "sources": {
+  "E3_lens_validation_musum_prose.pt": {
+   "sha256": "3e8669672c0f259b30af92e0f278d08bc85c643e3d036e387e98817290f06399"
+  },
+  "E3_lens_validation_musum_chat.pt": {
+   "sha256": "fa98e0406e933f9805e0e3c4134491fcfe0d877140869a77d0bee906010e6024"
+  },
+  "E3_lens_validation_mu.pt": {
+   "sha256": "184642b7263fa5b422b57960b2b4337ef832304e068454d2e887ef1fcf07a422"
+  }
+ },
+ "made_by": [
+  "experiments/scripts/E3_lens_validation_03a_fidelity_prose.py",
+  "experiments/scripts/E3_lens_validation_03b_fidelity_chat.py",
+  "experiments/scripts/E3_lens_validation_09_background.py"
+ ],
+ "checked": "equal bit for bit to E3_lens_validation_mu.pt['mu'], the mu E3 (c) saved and used",
+ "report": "experiments/results/E3_lens_validation_REPORT.md, section (c) Lens background prior",
+ "exported_by": "scripts/export_E3_background_mu.py"
+}

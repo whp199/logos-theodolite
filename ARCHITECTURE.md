@@ -25,6 +25,8 @@ theodolite2/
 │   └── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
 ├── scripts/
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
+│   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
+│   ├── export_E3_background_mu.py   # writes experiments/results/E3_background_mu.npy (+ .json) from E3's caches (CPU)
 │   ├── verify_causal_check.py       # the causal spot-check against N1A's and N1V's figures on the real model (GPU)
 │   ├── verify_e2e_ui_and_mcp.py     # server, MCP tools and headless-Chrome pages end to end (GPU)
 │   └── verify_optics.py             # Standalone deterministic CLI verification suite
@@ -185,6 +187,8 @@ at k = 0 and gives an old caller the same numbers bit for bit (scripts/check_swe
 | `centre_token_ids` | [] | matched controls as exact ids (≤ 16 lists, each non-empty), beside `centre_prompts`' texts |
 | `centre_answer` | false | centre token k ≥ 1 on the controls reading this very answer (control ids + w_0..w_{n-2}, row len(control)−1+k); without it a position past token 0 is not centred at all |
 | `think_bare` | "prefix" | with `compare_think` and bare text: "prefix" sets `<|think|>\n` before the text, as first built (not Gemma 4's switch; E6 §3, item 11); "none" leaves the thinking comparison out (`think_left_out` "bare_text"). A chat always uses the template's own switch (`compose_prompt(thinking=True)`: `enable_thinking`, `<|think|>` at the head of a system turn the template opens if there is none, and the model's turn begun with no empty thought; scripts/check_think_template.py checks the render). The interface sends "none" |
+| `contrasts` | [] | one word against another (≤ 4): `{toward: [words], away: [words], label}`, 1–12 words a side, as many of each (they pair by position, as the study's pronoun pairs); each word read as the landmarks read theirs (" word" first, then the word) but only as one word-piece. Read at every layer of every sighting (below); none: the runtime is called exactly as before and `contrasts` is [] |
+| `contrast_backgrounds` | [] | what each contrast is read against (≤ 2, once each): "controls" (the matched controls sent, read where the centring reads them) \| "study_mean" (E3's average state, experiments/results/E3_background_mu.npy, sha256 pinned in `STUDY_MEAN_SHA256`) |
 
 Which indices are sighted: `sight_tokens` if given, else 0..min(n, max_sighted)−1 with `sight_every_token`, else
 [0]; never empty ([0] when nothing asked for exists). `prompt`, `system` and `assistant_prefix` are at most 32000
@@ -202,7 +206,10 @@ look back to the start of the text. Neither the lens's fit (positions 16-127 of 
 checks (short texts: at most 141 word-pieces in its fidelity check) reached that far, and the lens card's caution
 says so.
 A refused id, control or length is answered in plain words, and so is a `pole_ranking`, `thread_score`,
-`frame_squaring` or `think_bare` the analysis does not know, before anything is written.
+`frame_squaring` or `think_bare` the analysis does not know, before anything is written; so are a contrast background
+it does not know, "controls" with no matched control sent, "study_mean" when the average state is missing or not the
+file pinned, and a contrast whose words do not pair or are blank. A word that is no single word-piece does not refuse
+the sweep: that contrast comes back with its `error` and `pieces`.
 
 ### 4.2 Messages, server → client
 
@@ -276,6 +283,30 @@ old fields unchanged. Layers in these fields count from 0.
   `trace_downstream_readers` (`trace_readers`) adds to each reader returned `dst_naive_tokens` (four, as through the
   lens) and `dst_label_check`, and `label_gate` to the reply; `test_motif_hypothesis` adds `pole_label_check` (its
   pole's face) and `label_gate`.
+
+Contrasts (one word against another; V7 bug 3's contrastive axes, E3 (c)'s background; backend/theodolite_math.py
+`contrast_of_state`, engine_runtime `_contrast_readings`; scripts/check_contrast_readings.py). Every pair's JSON adds
+`contrasts`, after `frame`: [] without any asked for, else one entry per contrast, in order, `{label, toward, away
+(each word as read: {word, id, piece}, or id and piece null and `pieces` {form tried: [word-pieces]}), toward_ids,
+away_ids, error}`. A contrast that cannot be read has its `error` in plain words, `pieces` by word, and nothing more.
+One that can adds, per layer (0-based, 60 values, 4 decimals):
+- `lens`, `naked`: the mean over the pairs of capped logit(toward_i) − capped logit(away_i) of h_l J_l^T and of h_l,
+  in fp32 on the pair rows only with the unembed's own norm and softcap (nats of log-odds; for the six pronoun pairs,
+  labkit's "pron"). At index 59 the lens is the identity, so the two agree.
+- `backgrounds`, one key per background asked for:
+  - "controls" = `{kind, n_controls, control_lens, control_naked, delta_lens, delta_naked, why}`: the controls' mean
+    score and the sighting's score less it, a difference of two log-odds (E3 recommendation 1), read where the
+    centring reads the controls: `kind` "control_prompt_end" at token 0 (their own last piece, from the centre's own
+    captures), "control_reading_same_answer" past it with `centre_answer` (from the same captures as that centre),
+    else "none" with the series null and `why`.
+  - "study_mean" = `{kind, centred_lens, centred_naked, mean_part_lens, mean_part_naked, file, sha256}`: the score of
+    h − μ (through the lens (h − μ) J_l^T), as E3 centred it, which is not a log-odds the model gives; and the mean
+    part <μJ, d>/rms(hJ) (by the naked eye <μ, d>/rms(h)), d = fnw ⊙ mean(W_U[toward] − W_U[away]), softcap-free. μ
+    was read by E3 through HF decoder-layer hooks (labkit.forward_resid), over every word-piece from the fifth on of
+    its prose passages and chats; that it is in the coordinates of the server's resid_post is not yet checked.
+`/api/health` adds `contrasts` = `{backgrounds, max_contrasts, max_words, study_mean_problem}` before `label_gate`
+(`study_mean_problem` null when the average state can be read, else why, in plain words). The thinking comparison is
+read without contrasts.
 
 The causal spot-check (§4.5): the WebSocket action `causal_check` is answered `{"type":"causal_check","data":REPLY}`,
 REPLY as `POST /api/scientist/causal_check` and the MCP tool `causal_spot_check` return it. `/api/health` adds

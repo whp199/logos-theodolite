@@ -28,7 +28,7 @@ import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Annotated, Any, Dict, List, Optional, Sequence, Tuple
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
@@ -49,6 +49,7 @@ from backend.engine_runtime import (
     SweepShared,
     TheodoliteRuntime,
     TheodoliteSweepBundle,
+    study_mean_problem,
 )
 from backend.label_gate import LABEL_GATE_CARD
 from backend.larql_vault import VOICE_MAX_NEW_TOKENS_DEFAULT, VOICE_MAX_NEW_TOKENS_LIMIT, LarqlVaultEngine
@@ -61,6 +62,7 @@ from backend.mcp_scientist import (
 )
 from backend.saved_prompts import router as saved_prompts_router
 from backend.theodolite_math import (
+    CONTRAST_BACKGROUNDS,
     D_FF,
     D_MODEL,
     FRAME_SQUARINGS,
@@ -152,6 +154,19 @@ class SamplerRequest(BaseModel):
     seed: Optional[int] = Field(None, ge=0, le=2**53 - 1)  # None: drawn by the server when sampling, and echoed
 
 
+# a typed word, as the landmarks take one: capped in length only (each is resolved, or refused, by the runtime)
+ContrastWord = Annotated[str, Field(max_length=64)]
+
+
+class ContrastRequest(BaseModel):
+    # One word against another: the mean over the pairs of logit(toward[i]) - logit(away[i]) at every layer, through
+    # the lens and by the naked eye. Words pair by position, as the study's pronoun pairs do (labkit.PRON_PAIRS); each
+    # is read as the landmarks read theirs (" word", then the word), and must be one word-piece in one of those forms.
+    toward: List[ContrastWord] = Field(..., min_length=1, max_length=12)
+    away: List[ContrastWord] = Field(..., min_length=1, max_length=12)
+    label: Optional[str] = Field(None, max_length=64)
+
+
 class SweepRequest(BaseModel):
     # Default two-hop prompt is the example from Gurnee et al. 2026 (REFERENCES.md [2]).
     prompt: str = Field("The number of legs on the animal that spins webs is", max_length=32000)
@@ -201,6 +216,12 @@ class SweepRequest(BaseModel):
     pole_ranking: str = "activation"
     # Threads (bug 4): "coupling" selects by C | "direct" by the direct-path estimate of the gate change.
     thread_score: str = "coupling"
+    # One word against another (V7 bug 3's contrastive axes; E3 (c)): at most four contrasts, each read at every layer
+    # of every sighting, and read against the backgrounds named here: "controls" (the matched controls sent: the
+    # sighting's score less theirs) | "study_mean" (E3's average state subtracted first, as E3 centred it). None by
+    # default: the sweep is read exactly as before, and each pair's "contrasts" is [].
+    contrasts: List[ContrastRequest] = Field(default_factory=list, max_length=4)
+    contrast_backgrounds: List[Annotated[str, Field(max_length=64)]] = Field(default_factory=list, max_length=2)
 
 
 class VoiceRequest(BaseModel):
@@ -606,6 +627,8 @@ def pack_binary_and_json_frames(
         "pole_ranking": sweep.pole_ranking,
         "thread_score": sweep.thread_score,
         "frame": sweep.frame_info,
+        # one word against another: one entry per contrast asked for (TheodoliteRuntime._contrast_readings), else []
+        "contrasts": list(getattr(sweep, "contrasts", None) or []),
         # the rule each poles_labels entry's label_check follows: which labels the pages hold back, and why
         "label_gate": LABEL_GATE_CARD,
         # which lens produced every reading below: what it was fitted on, what it reads, how, its source, and a caution
@@ -698,6 +721,32 @@ def check_sweep_options(req: SweepRequest) -> None:
             choices = " or ".join(f'"{k}"' for k in known)
             shown = value if len(value) <= 40 else value[:40] + "…"
             raise ValueError(f'{what} is "{shown}", which this instrument does not know: it must be {choices}.')
+    for value in req.contrast_backgrounds:
+        if value not in CONTRAST_BACKGROUNDS:
+            choices = " or ".join(f'"{k}"' for k in CONTRAST_BACKGROUNDS)
+            shown = value if len(value) <= 40 else value[:40] + "…"
+            raise ValueError(
+                f'contrast_backgrounds holds "{shown}", which this instrument does not know: each must be {choices}.'
+            )
+    if "controls" in req.contrast_backgrounds and not (
+        any(t and t.strip() for t in req.centre_prompts) or req.centre_token_ids
+    ):
+        raise ValueError(
+            'contrast_backgrounds asks for "controls", but no matched control was sent: give centre_prompts or '
+            'centre_token_ids, or leave "controls" out.'
+        )
+    if "study_mean" in req.contrast_backgrounds:
+        problem = study_mean_problem()
+        if problem is not None:
+            raise ValueError(problem)
+    for j, c in enumerate(req.contrasts):
+        if len(c.toward) != len(c.away):
+            raise ValueError(
+                f"Contrast {j + 1} has {len(c.toward)} word(s) toward and {len(c.away)} away: its words are read in "
+                "pairs, the first toward against the first away, so it needs as many of each."
+            )
+        if any(not w.strip() for w in c.toward + c.away):
+            raise ValueError(f"Contrast {j + 1} has a blank word: each word must be typed.")
 
 
 def check_sweep_positions(n_prompt: int, n_answer: int, what: str = "The prompt") -> None:
@@ -850,6 +899,17 @@ def _sweep_options(req: SweepRequest) -> Tuple[Tuple[str, str, str], Optional[Tu
     return monuments, locked_pole, tracked
 
 
+def _contrast_options(req: SweepRequest) -> Dict[str, Any]:
+    """The contrasts a request asks for, as `prepare_sweep` takes them; nothing at all without any, so a sweep
+    without contrasts calls the runtime exactly as before (the thinking comparison is read without them)."""
+    if not req.contrasts:
+        return {}
+    return {
+        "contrasts": [c.model_dump() for c in req.contrasts],
+        "contrast_backgrounds": tuple(dict.fromkeys(req.contrast_backgrounds)),
+    }
+
+
 async def _stream_sweep(
     out: _Outbox,
     conn: _SocketState,
@@ -980,6 +1040,7 @@ async def _stream_sweep(
             centre_prompts=req.centre_prompts,
             centre_token_ids=req.centre_token_ids,
             centre_answer=req.centre_answer,
+            **_contrast_options(req),
         )
         # the neurons a vault edit is in force on, for the label checks (no edit can land while the lock is held)
         edited = {(p.layer_idx, p.neuron_idx) for p in vault.edits_in_force()}
@@ -1317,6 +1378,14 @@ async def api_health() -> Dict[str, Any]:
             "k_max": cc.K_MAX,
             "k_floor": cc.K_FLOOR,
             "n_study_texts": len(cc.STUDY_TEXTS),
+        },
+        # one word against another (a sweep's `contrasts`): what a request may hold, and why the "study_mean"
+        # background cannot be read here, in plain words (null when it can: E3's average state is the file pinned)
+        "contrasts": {
+            "backgrounds": list(CONTRAST_BACKGROUNDS),
+            "max_contrasts": 4,
+            "max_words": 12,
+            "study_mean_problem": study_mean_problem(),
         },
         # the rule the label_check on every neuron label follows (backend/label_gate.py)
         "label_gate": LABEL_GATE_CARD,
