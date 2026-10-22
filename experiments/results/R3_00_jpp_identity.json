@@ -1,0 +1,913 @@
+{
+ "schema": "R3_00_jpp_identity/1",
+ "context_only": true,
+ "written_at": "2026-10-22T11:32:15",
+ "what": "the pilot's identity check (a), forward only, on WikiText fit records 0-15, each condition's top-1 word-piece at block 59 (the instrument's unembed) against the stock forward",
+ "positions": 2048,
+ "gate_a_allowed_to_differ_for_reference": 2,
+ "prompts_sha256": [
+  "a13e92ce18d8dd6a3b21db2f32e72969e3d1b135dc4e3c2dea107ee3d80460f0",
+  "a03fba1a21229a3bbc01bcd7e8a2e638a2e777a6ee6eebd162233edf1f722212",
+  "029f79969f9b843a8205e843c9ce1215ec46de1a44e91ea31d877e53f935c196",
+  "8cba9771b9d248acdb50208a6a63d769cf591960bd8f67edf58c52ca680dd435",
+  "cf7e76fa2a086aeb32bcc88b263cfd235743b0404febe1484ab1bdcb0304e792",
+  "1dda2576c6f5e067b88de16b9b1735afac8690a11dee5dd524efc9faa14854a3",
+  "9769cfd75c11d4523cb07ab06af0d30d9a67266fbd01109602d35696860ea95a",
+  "0fb2eefcd3ee183037c540bbee836b6bbbf2cd824e591564cbe707569ddeeb42",
+  "c34ace46a9dcd4e1e2ea27c2f9b67b0c3b097d4ae82d06a850c311bd2aba6da3",
+  "26cdc10c6f86aa74a5b5769f9457f33c6eacd9ac58bf9340d6d7b9e459bf5289",
+  "62d91bacceda549e6e6332659cb7d36c7a66ce746805f50b8ce3731eef849d39",
+  "1cbdbd8a9ec3392977639f37b0d737dc66e0530fc9cf3c4bb694bab7fb78795c",
+  "afe6aa6553cff81e43d226a46fc5a24f97c8a937ed8f8ad680827c08def166eb",
+  "054b9a6e96a6ede648445ff17c0bfd7c884381edb094f5bea2fd40eede70341d",
+  "57c8d81d200bd115aad765f366fe5e7a18740d9aff6dff178be2de205d6ec80d",
+  "e0089c9f892080d68b379b45ace9e4f71c29f67dcfdc61954e1380792fdeebcf"
+ ],
+ "differ": {
+  "stock_repeat": 0,
+  "jpp_lens_rlens": 90,
+  "r3_registered": 90,
+  "r3_d33": 0
+ },
+ "max_abs_block59_diff": {
+  "stock_repeat": 0.0,
+  "jpp_lens_rlens": 8.09375,
+  "r3_registered": 8.09375,
+  "r3_d33": 0.0
+ },
+ "overlap": {
+  "jpp_and_r3_registered": 90,
+  "jpp_only": 0,
+  "r3_registered_only": 0,
+  "jpp_and_r3_d33": 0,
+  "r3_registered_and_r3_d33": 0
+ },
+ "r3_registered_reproduces_first_pilot": true,
+ "flip_positions": {
+  "stock_repeat": [],
+  "jpp_lens_rlens": [
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    12
+   ],
+   [
+    0,
+    23
+   ],
+   [
+    1,
+    56
+   ],
+   [
+    1,
+    86
+   ],
+   [
+    1,
+    93
+   ],
+   [
+    2,
+    8
+   ],
+   [
+    2,
+    11
+   ],
+   [
+    2,
+    37
+   ],
+   [
+    2,
+    57
+   ],
+   [
+    2,
+    103
+   ],
+   [
+    3,
+    13
+   ],
+   [
+    3,
+    23
+   ],
+   [
+    3,
+    69
+   ],
+   [
+    3,
+    84
+   ],
+   [
+    3,
+    114
+   ],
+   [
+    3,
+    115
+   ],
+   [
+    4,
+    3
+   ],
+   [
+    4,
+    15
+   ],
+   [
+    4,
+    60
+   ],
+   [
+    4,
+    77
+   ],
+   [
+    4,
+    96
+   ],
+   [
+    4,
+    98
+   ],
+   [
+    4,
+    100
+   ],
+   [
+    4,
+    103
+   ],
+   [
+    5,
+    115
+   ],
+   [
+    6,
+    11
+   ],
+   [
+    6,
+    26
+   ],
+   [
+    6,
+    33
+   ],
+   [
+    6,
+    77
+   ],
+   [
+    6,
+    100
+   ],
+   [
+    6,
+    103
+   ],
+   [
+    6,
+    108
+   ],
+   [
+    6,
+    117
+   ],
+   [
+    7,
+    5
+   ],
+   [
+    7,
+    33
+   ],
+   [
+    7,
+    62
+   ],
+   [
+    7,
+    88
+   ],
+   [
+    7,
+    93
+   ],
+   [
+    7,
+    113
+   ],
+   [
+    7,
+    119
+   ],
+   [
+    8,
+    8
+   ],
+   [
+    8,
+    14
+   ],
+   [
+    8,
+    40
+   ],
+   [
+    8,
+    47
+   ],
+   [
+    8,
+    55
+   ],
+   [
+    8,
+    64
+   ],
+   [
+    8,
+    72
+   ],
+   [
+    8,
+    73
+   ],
+   [
+    8,
+    76
+   ],
+   [
+    8,
+    115
+   ],
+   [
+    8,
+    117
+   ],
+   [
+    9,
+    42
+   ],
+   [
+    9,
+    104
+   ],
+   [
+    9,
+    117
+   ],
+   [
+    9,
+    122
+   ],
+   [
+    10,
+    9
+   ],
+   [
+    10,
+    13
+   ],
+   [
+    10,
+    50
+   ],
+   [
+    10,
+    68
+   ],
+   [
+    10,
+    71
+   ],
+   [
+    10,
+    78
+   ],
+   [
+    10,
+    82
+   ],
+   [
+    11,
+    46
+   ],
+   [
+    11,
+    103
+   ],
+   [
+    11,
+    104
+   ],
+   [
+    12,
+    3
+   ],
+   [
+    12,
+    57
+   ],
+   [
+    12,
+    84
+   ],
+   [
+    12,
+    90
+   ],
+   [
+    13,
+    35
+   ],
+   [
+    13,
+    42
+   ],
+   [
+    13,
+    77
+   ],
+   [
+    13,
+    98
+   ],
+   [
+    13,
+    101
+   ],
+   [
+    13,
+    108
+   ],
+   [
+    13,
+    120
+   ],
+   [
+    13,
+    121
+   ],
+   [
+    14,
+    25
+   ],
+   [
+    14,
+    26
+   ],
+   [
+    14,
+    28
+   ],
+   [
+    14,
+    38
+   ],
+   [
+    14,
+    45
+   ],
+   [
+    14,
+    50
+   ],
+   [
+    14,
+    84
+   ],
+   [
+    14,
+    109
+   ],
+   [
+    14,
+    126
+   ],
+   [
+    15,
+    21
+   ],
+   [
+    15,
+    23
+   ],
+   [
+    15,
+    53
+   ]
+  ],
+  "r3_registered": [
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    12
+   ],
+   [
+    0,
+    23
+   ],
+   [
+    1,
+    56
+   ],
+   [
+    1,
+    86
+   ],
+   [
+    1,
+    93
+   ],
+   [
+    2,
+    8
+   ],
+   [
+    2,
+    11
+   ],
+   [
+    2,
+    37
+   ],
+   [
+    2,
+    57
+   ],
+   [
+    2,
+    103
+   ],
+   [
+    3,
+    13
+   ],
+   [
+    3,
+    23
+   ],
+   [
+    3,
+    69
+   ],
+   [
+    3,
+    84
+   ],
+   [
+    3,
+    114
+   ],
+   [
+    3,
+    115
+   ],
+   [
+    4,
+    3
+   ],
+   [
+    4,
+    15
+   ],
+   [
+    4,
+    60
+   ],
+   [
+    4,
+    77
+   ],
+   [
+    4,
+    96
+   ],
+   [
+    4,
+    98
+   ],
+   [
+    4,
+    100
+   ],
+   [
+    4,
+    103
+   ],
+   [
+    5,
+    115
+   ],
+   [
+    6,
+    11
+   ],
+   [
+    6,
+    26
+   ],
+   [
+    6,
+    33
+   ],
+   [
+    6,
+    77
+   ],
+   [
+    6,
+    100
+   ],
+   [
+    6,
+    103
+   ],
+   [
+    6,
+    108
+   ],
+   [
+    6,
+    117
+   ],
+   [
+    7,
+    5
+   ],
+   [
+    7,
+    33
+   ],
+   [
+    7,
+    62
+   ],
+   [
+    7,
+    88
+   ],
+   [
+    7,
+    93
+   ],
+   [
+    7,
+    113
+   ],
+   [
+    7,
+    119
+   ],
+   [
+    8,
+    8
+   ],
+   [
+    8,
+    14
+   ],
+   [
+    8,
+    40
+   ],
+   [
+    8,
+    47
+   ],
+   [
+    8,
+    55
+   ],
+   [
+    8,
+    64
+   ],
+   [
+    8,
+    72
+   ],
+   [
+    8,
+    73
+   ],
+   [
+    8,
+    76
+   ],
+   [
+    8,
+    115
+   ],
+   [
+    8,
+    117
+   ],
+   [
+    9,
+    42
+   ],
+   [
+    9,
+    104
+   ],
+   [
+    9,
+    117
+   ],
+   [
+    9,
+    122
+   ],
+   [
+    10,
+    9
+   ],
+   [
+    10,
+    13
+   ],
+   [
+    10,
+    50
+   ],
+   [
+    10,
+    68
+   ],
+   [
+    10,
+    71
+   ],
+   [
+    10,
+    78
+   ],
+   [
+    10,
+    82
+   ],
+   [
+    11,
+    46
+   ],
+   [
+    11,
+    103
+   ],
+   [
+    11,
+    104
+   ],
+   [
+    12,
+    3
+   ],
+   [
+    12,
+    57
+   ],
+   [
+    12,
+    84
+   ],
+   [
+    12,
+    90
+   ],
+   [
+    13,
+    35
+   ],
+   [
+    13,
+    42
+   ],
+   [
+    13,
+    77
+   ],
+   [
+    13,
+    98
+   ],
+   [
+    13,
+    101
+   ],
+   [
+    13,
+    108
+   ],
+   [
+    13,
+    120
+   ],
+   [
+    13,
+    121
+   ],
+   [
+    14,
+    25
+   ],
+   [
+    14,
+    26
+   ],
+   [
+    14,
+    28
+   ],
+   [
+    14,
+    38
+   ],
+   [
+    14,
+    45
+   ],
+   [
+    14,
+    50
+   ],
+   [
+    14,
+    84
+   ],
+   [
+    14,
+    109
+   ],
+   [
+    14,
+    126
+   ],
+   [
+    15,
+    21
+   ],
+   [
+    15,
+    23
+   ],
+   [
+    15,
+    53
+   ]
+  ],
+  "r3_d33": []
+ },
+ "jpp_patched": {
+  "ln_rule": 241,
+  "mlp_rule": 60,
+  "moe_experts": 0,
+  "moe_gates": 0,
+  "mhc": 0,
+  "shared_expert_forward_scale": 0
+ },
+ "jpp_patches_same_modules_as_r3": true,
+ "code": {
+  "jpp_lens_commit": "d7efc0de372e20589e899188c0cfe8434acc63ec",
+  "jpp_lens_lrp_py_sha256": "170883f83f8f6ebdd8be0a300677452c5e997632d26f3222bdf40b3d9d0fc5f6",
+  "this_script_sha256": "566f0375cd436e76578e2e747f90d05942150422bec058e571c05c764ddda4bd",
+  "r3_lrp_head_sha256": "97e96f218cad63c56619f9679d0174e0726e18cf67e0e55ec5518bcbb70f25bb",
+  "r3_lrp_registered_commit": "e1733fe4056600a6bc0f6fcb23ad549c9a862802",
+  "r3_lrp_registered_sha256": "649d7a6bb7c95d0e00fa25e34428a226a2a18e0e109ee2afb7b8e1387f2769c9"
+ },
+ "git": {
+  "head": "7088609cd70b9ba78ef8c3ac5006dd5a5a7d318b",
+  "dirty": [],
+  "runtime": {
+   "runtime_commit": "d5405ee964e0ac1732babd8e69fa9271de555189",
+   "backend_differs": [],
+   "pinned_differ": [],
+   "ok": true
+  }
+ },
+ "cap": {
+  "cap_gib": 24.0,
+  "fraction": 0.7654,
+  "free_before_gib": 27.219,
+  "total_gib": 31.355,
+  "nvidia_smi": {
+   "ok": true,
+   "name": "NVIDIA GeForce RTX 5090",
+   "total_mib": 32607,
+   "used_mib": 4236,
+   "free_mib": 27873,
+   "processes": [
+    {
+     "pid": "1475",
+     "name": "/usr/bin/kwin_wayland",
+     "used_mib": "377"
+    },
+    {
+     "pid": "656672",
+     "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
+     "used_mib": "545"
+    },
+    {
+     "pid": "1293728",
+     "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
+     "used_mib": "311"
+    },
+    {
+     "pid": "1312356",
+     "name": ".venv/bin/python",
+     "used_mib": "498"
+    }
+   ]
+  }
+ },
+ "vram": {
+  "before_load": {
+   "at": "2026-10-22T11:31:18",
+   "nvidia_smi": {
+    "ok": true,
+    "name": "NVIDIA GeForce RTX 5090",
+    "total_mib": 32607,
+    "used_mib": 4236,
+    "free_mib": 27873,
+    "processes": [
+     {
+      "pid": "1475",
+      "name": "/usr/bin/kwin_wayland",
+      "used_mib": "377"
+     },
+     {
+      "pid": "656672",
+      "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
+      "used_mib": "545"
+     },
+     {
+      "pid": "1293728",
+      "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
+      "used_mib": "311"
+     },
+     {
+      "pid": "1312356",
+      "name": ".venv/bin/python",
+      "used_mib": "498"
+     }
+    ]
+   },
+   "torch_free_gib": 27.219,
+   "torch_total_gib": 31.355,
+   "allocated_gib": 0.0,
+   "reserved_gib": 0.0,
+   "peak_allocated_gib": 0.0
+  },
+  "end": {
+   "at": "2026-10-22T11:32:15",
+   "nvidia_smi": {
+    "ok": true,
+    "name": "NVIDIA GeForce RTX 5090",
+    "total_mib": 32607,
+    "used_mib": 25510,
+    "free_mib": 6599,
+    "processes": [
+     {
+      "pid": "1475",
+      "name": "/usr/bin/kwin_wayland",
+      "used_mib": "377"
+     },
+     {
+      "pid": "656672",
+      "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
+      "used_mib": "545"
+     },
+     {
+      "pid": "1293728",
+      "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
+      "used_mib": "311"
+     },
+     {
+      "pid": "1312356",
+      "name": ".venv/bin/python",
+      "used_mib": "21772"
+     }
+    ]
+   },
+   "torch_free_gib": 6.443,
+   "torch_total_gib": 31.355,
+   "allocated_gib": 18.032,
+   "reserved_gib": 20.656,
+   "peak_allocated_gib": 23.023
+  }
+ },
+ "seconds": 57.9
+}
