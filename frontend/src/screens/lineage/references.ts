@@ -6,7 +6,8 @@
  * 2026-10-16). The "use" notes are short paraphrases of that file's own notes, in the pages' plain words.
  * Sections D to F ([29]–[41]: statistics, data and software) are not listed on the page; they are in REFERENCES.md.
  * Section G ([42]–[44], added 2026-10-18 with its links checked that day) holds the sampling methods the instrument applies
- * when it draws an answer by chance.
+ * when it draws an answer by chance. Section H ([45]–[46], added 2026-10-21 from local files, its links not opened) holds
+ * R3's sources; it is not listed on the page.
  */
 
 export interface Reference {
@@ -324,5 +325,5 @@ export const refsG: Reference[] = [
 /** Numbers of the REFERENCES.md entries in sections D to F, named on the page but listed only in that file. */
 export const REFS_D_TO_F = Array.from({ length: 13 }, (_, i) => 29 + i);
 
-/** Total entries in REFERENCES.md (A to G). */
-export const REFERENCE_COUNT = 44;
+/** Total entries in REFERENCES.md (A to H). */
+export const REFERENCE_COUNT = 46;

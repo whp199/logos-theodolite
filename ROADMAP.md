@@ -1,11 +1,12 @@
 # Roadmap
 
 *What is still open in Logos Theodolite, gathered from the places that already name it: the README’s fault table, the
-study’s report and its errata, the pages’ own “not yet” marks, and the one branch that is not merged. Nothing here has a
-date or an owner. Layers are counted 1–60, as on the pages; the study’s reports count from 0, so their L50 is layer 51
-here.*
+study’s report and its errata, the pages’ own “not yet” marks, and the records of the lens refits (R1 to R3). Nothing
+here has a date or an owner. Layers are counted 1–60, as on the pages; the study’s reports count from 0, so their L50 is
+layer 51 here.*
 
-<sub>Gathered on 21 October 2026, at `3cbc4b5`.</sub>
+<sub>Gathered on 21 October 2026, at `3cbc4b5`; gathered again on 22 October 2026, at `75ed78a`, after the first round of
+mends (the interface’s defaults, the label gate, the causal test and the smaller pieces) and R3’s registration.</sub>
 
 <br>
 
@@ -42,8 +43,20 @@ carry a `lens` object; the reading itself is unchanged.
   - keep the caution at layers 11–30 for every averaged lens: none tested was reliable there (E50);
   - re-validate the label gate of ii for the new lens: its AUC of 0.84 was measured for base-fitted J++ labels only
     (E47).
+- **Being tried (R3).** J++’s published recipe as the code at jpp_lens `d7efc0de` runs it (newer code than the shipped
+  Gemma J++ came from, whose router and weighting are not recorded), fitted on the instruct checkpoint with the deviations
+  recorded in [`R3_PREREG.md`](experiments/results/R3_PREREG.md) §2, is registered with R2’s rules on 320 new prompts.
+  A plain J-lens fitted here on the 4-bit model, on J++’s 64 WikiText prompts because Miru’s own could not be rebuilt,
+  will be set beside Miru’s unquantised instruct lens; that comparison also changes the code and the prompts. Result:
+  [NOT YET RUN]. Before any of its GPU jobs: a GPU budget (the pilot comes first, at most 30 minutes; the design
+  recommends 24 GPU-hours for the rest, R3_PREREG §10.2), and the code of its H2, H3 and H5 tables, which must be
+  committed before any lens file is written (D31). Rebuilding Miru’s own 425 prompts would need Miru Tracer’s selection
+  code, which this round was not cleared to fetch. R3’s jobs refuse a `backend/` that differs from the registered runtime,
+  `d5405ee` (R3_PREREG §0), so they run from the branch `it-jpp-refit`, not from a `main` that carries this round’s
+  mends.
 
-Nothing on record says what comes next for the branch.
+R3 serves nothing itself: a lens that passes is a recommendation to later serving work on a branch from `main`
+(R3_PREREG §7.2), so the serving work on `it-second-reading` stays there as R2’s record.
 
 <br>
 
@@ -94,7 +107,8 @@ against the instrument, leave four more:
   `larql`/`vindex` binaries are called only for `--version` (README §iv). Still open: the voice is not offered through
   MCP, whose vault tool does not hold the GPU lock, nor for an edit typed in the console; it is one question, so UPDATE
   and INSERT are still tested by cause and effect only as far as that one answer goes (the study tested only DELETE,
-  E6 §2.3).
+  E6 §2.3). The edit tab’s own example edit is not heard on the page’s own question: its answer does not change, so a
+  first reader hears nothing; the end-to-end check finds an edit that is heard, at layer 60, instead.
 - **Thinking on bare text. Built.** Sent as a chat, the sighting with thinking turned on uses the template’s own switch;
   sent as bare text, the interface leaves it out, since bare text has no turn to think in (`think_bare="none"`), and
   the first pair names how thinking was switched on (`think_protocol`; null on later pairs). Still open: the server’s own default stays the
@@ -127,3 +141,16 @@ Still open here:
   explained the same share of the feed-forward write as the fifteen loudest, within half a percentage point (10–41% at
   layers 21, 31, 41, 51 and 59; 70–74% at layers 3 and 11), so
   fault 8’s mend changes which neurons are named, not how much of the write they cover.
+
+<br>
+
+## v · loose ends from the first round
+
+- **Where the label gate cuts.** In N1’s own sample within layers 41–58 (`N1C_gate_cut.json`, `cuts`), holding back
+  labels that share one of ten or fewer would have held back 71 instead of 31 and kept 144 sound labels of 169 (85%),
+  against 160 of 209 (77%) at the cut chosen, none of ten. A cut chosen on that sample would be judged on the data it
+  was chosen from.
+- **The README’s pictures.** The views in README §ii were taken before this round, with the reading options as first
+  built and before the label gate; their captions say so. They want retaking from a live sighting.
+- **References.** Section H of `REFERENCES.md` ([45] and [46], R3’s sources) was written from local files; its links
+  were not opened.

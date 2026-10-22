@@ -20,6 +20,7 @@ import { HeldBackWords } from "../components/HeldBack";
 import { JPP as FOLIO_JPP, NAIVE as FOLIO_NAIVE, RECORDED as FOLIO_EXAMPLE } from "./NeuronFolio/recorded";
 import { STUDY_K10, STUDY_K10_LATE_P10 } from "./NeuronFolio/causal";
 import { ALIASES, INDEX } from "./lexicon/entries";
+import { REFERENCE_COUNT } from "./lineage/references";
 import { Cautions } from "./lexicon/Cautions";
 import {
   Astrolabe,
@@ -308,7 +309,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         </dd>
         <dt>references</dt>
         <dd>
-          [n] as numbered in <M>REFERENCES.md</M> (44 entries); E1–E7, V1–V8, N1 and R1 are the study’s experiments,
+          [n] as numbered in <M>REFERENCES.md</M> ({REFERENCE_COUNT} entries); E1–E7, V1–V8, N1 and R1 are the study’s experiments,
           verifiers, neuron-label study and lens refit, written up in <M>experiments/REPORT.md</M>.
         </dd>
       </dl>
