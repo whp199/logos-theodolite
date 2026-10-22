@@ -649,9 +649,18 @@ async def main() -> int:
             what = f"reader L{r['dst_layer']}:N{r['dst_neuron_idx']}{r['dst_polarity']}"
             assert again["label_check"] == r["dst_label_check"], (
                 f"{what}: {r['dst_label_check']} != inspect_pole's {again['label_check']}")
-            assert [t["token"] for t in again["naive_tokens"][:4]] == [t["token"] for t in r["dst_naive_tokens"]], (
-                f"{what}: naked-eye words {r['dst_naive_tokens']} are not inspect_pole's {again['naive_tokens'][:4]}")
-        print(f"  • the readers' checks and naked-eye words equal inspect_pole's own reading, all {len(top_readers)}")
+            # the naked eye's logits come out of a bf16 GEMM (theodolite_math.py unembed_gemma4), so word-pieces often
+            # tie exactly, and the two paths' top-k may break a tie either way (seen: L41:N4722-, its fourth word). So
+            # the logits must agree rank by rank (the reader rounds to 2 places, inspect_pole to 3), and each word must
+            # be inspect_pole's at that rank or, where it ties, one of inspect_pole's eight at the same logit
+            eye_r, eye_i = r["dst_naive_tokens"], again["naive_tokens"]
+            for i, t in enumerate(eye_r):
+                assert abs(t["logit"] - eye_i[i]["logit"]) <= 0.006, (
+                    f"{what}: naked-eye logits {eye_r} are not inspect_pole's {eye_i[:4]}")
+                assert t["token"] == eye_i[i]["token"] or any(
+                    u["token"] == t["token"] and abs(u["logit"] - t["logit"]) <= 0.006 for u in eye_i), (
+                    f"{what}: naked-eye words {eye_r} are not inspect_pole's {eye_i[:4]}, even allowing for ties")
+        print(f"  • the readers' checks and naked-eye words (ties aside) equal inspect_pole's own reading, all {len(top_readers)}")
 
         # Tool 3: test_motif_hypothesis on Layer 53 Neuron 16383 (Spider/Arachnid South-Pole neuron)
         hyp_res = await test_motif_hypothesis(
