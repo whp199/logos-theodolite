@@ -1,13 +1,13 @@
 {
  "result": "experiments/results/N1G_recorded_label_checks.json",
- "result_sha256": "015dc7013047bd37f219f788c0e5c7693ab04d910810db8e788ea272fb2fa8b3",
+ "result_sha256": "db74b5040a8db602a7fc009e60a4eb71b2bc9ca441775f5476f7928f17082d94",
  "script": "experiments/scripts/N1G_01_recorded_label_checks.py",
  "script_sha256": "d29abcb1a6faace302c1f3424201e53e3091e1aad54f92a0e5b2ad7516d34560",
  "code_sha256": {
-  "backend/label_gate.py": "50dc55a3e42ac97c76c63a28f84d3db04118af021f79c29ccabbd16b7f52a83a",
-  "backend/larql_vault.py": "30ad8943ef1d53087986014221cee0aff545ddfc23cc60d5231cf9ee213f2744",
+  "backend/label_gate.py": "83a998b746249b07a52e29b0dd1a06e999206d27a518f2f8271f439b946c136e",
+  "backend/larql_vault.py": "bd53bca7d2b576bf087d68e50555928b5e25ab8642a636317d028e7e6a62d882",
   "backend/theodolite_math.py": "0bba67755da1bfaf313df46dd8453280a368dfaf72d209e4b5327c00f0c80c49",
-  "backend/engine_runtime.py": "311fd232226542f2032c629f0cab122f95e2d46a966372acd231e8953522d707"
+  "backend/engine_runtime.py": "dcc32c9f32ed92d084ae6ad174f45541066b6f2ed0d26a834d0a2b913b711597"
  },
  "inputs": [
   {
@@ -39,10 +39,10 @@
    "max_seq_len": 128
   }
  },
- "git_head_when_run": "7786e7943c63d2bd8bbd765f678ae5181be2cd14",
- "run_at": "2026-10-22T04:21:30Z",
+ "git_head_when_run": "846c984e5d7f9d21cb92208ffb0bfa9397251770",
+ "run_at": "2026-10-22T04:59:04Z",
  "device": "NVIDIA GeForce RTX 5090",
  "python": "3.12.14",
  "torch": "2.14.1+cu130",
- "seconds": 18.4
+ "seconds": 26.9
 }

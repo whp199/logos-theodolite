@@ -26,13 +26,26 @@
   "measure": "word-piece ids in both readings' first ten, fp32, softcapped",
   "cut": "none of ten: the instrument's choice; the study set no threshold",
   "held_back_if_shared_top10_at_most": 0,
-  "validated": "AUC 0.84 within layers 40-57 (counting from 0), for base-fitted J++ labels on random neurons",
+  "validated": "the count used as a graded score, not the cut: AUC 0.84 within layers 40-57 (counting from 0), for base-fitted J++ labels on random neurons",
+  "cut_record": {
+   "layers": [
+    40,
+    57
+   ],
+   "faces": 240,
+   "held_back": 31,
+   "held_back_sound": 7,
+   "kept": 209,
+   "kept_sound": 160,
+   "auc": 0.64,
+   "source": "experiments/results/N1C_gate_cut.json (band)"
+  },
   "sources": [
    "N1_REPORT.md:124-127",
    "N1V_robustness.md:111-115",
    "REPORT.md erratum E47"
   ],
-  "caution": "The words are still sent: held_back marks the labels the instrument's pages leave out of their main reading, and they keep them in the apparatus. A label is held back below layer 40 (reason below_layer_40), and, under the base-fitted J++ lens (jpp-base) below layer 59, where its two readings share none of their first ten word-pieces (reason shares_nothing). Under any other lens the agreement gate is unvalidated (erratum E47): only the layer holds a label back, and shared_top10 is a count, not a verdict (lens_validated false). A neuron edited in the vault is read through its edit (edited true, lens_validated false). Below layer 40 shared_top10 depends on how ties at the softcap break, so it may differ from the study's count there; the hold-back there rests on the layer alone. At layer 59 the lens is the identity, so the two readings are one and always share ten."
+  "caution": "The words are still sent: held_back marks the labels the instrument's pages leave out of their main reading, and they keep them in the apparatus. A label is held back below layer 40 (reason below_layer_40), and, under the base-fitted J++ lens (jpp-base) below layer 59, where its two readings share none of their first ten word-pieces (reason shares_nothing). Under any other lens the agreement gate is unvalidated (erratum E47): only the layer holds a label back, and shared_top10 is a count, not a verdict (lens_validated false). A neuron edited in the vault is read through its edit (edited true, lens_validated false); the gate was never measured on edited neurons, but under jpp-base the cut still holds back an edited label that shares none. A neuron whose write vector is zero (silenced in the vault by DELETE) writes nothing: every word-piece ties, so it has no count (shared_top10 null) and is held back (reason writes_nothing). Below layer 40 shared_top10 depends on how ties at the softcap break, so it may differ from the study's count there; the hold-back there rests on the layer alone. At layer 59 the lens is the identity, so the two readings are one and always share ten."
  },
  "summary": {
   "fixture": {

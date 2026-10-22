@@ -15,7 +15,7 @@ export const RECORDED_LABEL_CHECKS_RUN: {
   sha256: string;
   runAt: string;
   lensId: string | null;
-} | null = {"results": "experiments/results/N1G_recorded_label_checks.json", "sha256": "015dc7013047bd37f219f788c0e5c7693ab04d910810db8e788ea272fb2fa8b3", "runAt": "2026-10-22T04:21:30Z", "lensId": "jpp-base"};
+} | null = {"results": "experiments/results/N1G_recorded_label_checks.json", "sha256": "db74b5040a8db602a7fc009e60a4eb71b2bc9ca441775f5476f7928f17082d94", "runAt": "2026-10-22T04:59:04Z", "lensId": "jpp-base"};
 
 export const FIXTURE_LABEL_CHECKS: Record<string, RawLabelCheck | null> = {
   "5:0": {"shared_top10": 0, "held_back": true, "reasons": ["below_layer_40", "shares_nothing"], "band": "below_sampled", "sampled_layer": false, "in_measured_band": false, "lens_validated": true, "edited": false},
