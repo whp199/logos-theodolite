@@ -24,7 +24,8 @@ import {
   type Writing,
 } from "../store/useTheodoliteStore";
 import { NudgePartLine, OneDrawLine, PenaltyLine } from "../lib/cautions";
-import { faceWord, firstWords, labelTrust, pieceWord, wp } from "../lib/words";
+import { faceWord, firstWords, pieceWord, wp } from "../lib/words";
+import { layerIdxOfPage, trustLine } from "../lib/labels";
 import { endsTurn } from "./instrument/moment";
 import { isBaseFitted, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
 import {
@@ -1237,7 +1238,7 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                       </>
                     )}
                   </p>
-                  {lensWords ? <Rubric style={{ margin: 0, maxWidth: 520 }}>{labelTrust(pl - 1)}</Rubric> : null}
+                  {lensWords ? <Rubric style={{ margin: 0, maxWidth: 520 }}>{trustLine(layerIdxOfPage(pl))}</Rubric> : null}
                   {(facePos ? 1 : -1) !== poleHere.face ? (
                     <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
                       Pushing with its {faceW} face sends the same push the other way.

@@ -1,0 +1,82 @@
+{
+ "result": "experiments/results/N1C_gate_cut.json",
+ "result_sha256": "f17c21815f7b2039f43262f6eebe4ff313d69ac330d85a15ffb5a14286367b21",
+ "script": "experiments/scripts/N1C_05_gate_cut.py",
+ "script_sha256": "55b4a627942e069009e70c2e66adb338a9dfea33cd5da30da794f4a267ece904",
+ "label_gate_sha256": "50dc55a3e42ac97c76c63a28f84d3db04118af021f79c29ccabbd16b7f52a83a",
+ "git_head_when_run": "9192d83f2811fbf1aa967fef33b4d66f0216732e",
+ "run_at": "2026-10-22T03:39:44Z",
+ "cpu_only": true,
+ "python": "3.12.14",
+ "torch": "2.14.1+cu130",
+ "numpy": "2.5.4",
+ "inputs": [
+  {
+   "path": "experiments/results/N1A_cache/static_L10.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "3def26be871c8a104f61afcfe519a1e03e38bef67aa6a8c617ff0bc07f5d99fd"
+  },
+  {
+   "path": "experiments/results/N1A_cache/static_L20.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "62deec1f213afc1dc7a50b8af132bf2d9bbf8926143e2570e737bca16df0346d"
+  },
+  {
+   "path": "experiments/results/N1A_cache/static_L30.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "33f7193a8c1e7981d81e68bf80c3069e8e0b92f376acd575a45c89d9b803eed0"
+  },
+  {
+   "path": "experiments/results/N1A_cache/static_L40.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "49b3ac0bf9c908021a575c439235f7d1f6a28eba4073c9c4009d8a5ea660dccc"
+  },
+  {
+   "path": "experiments/results/N1A_cache/static_L45.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "e6ad96bb7b7de79643d7cb74c1a5ef28a89504b1d667449a8625ad606ad36457"
+  },
+  {
+   "path": "experiments/results/N1A_cache/static_L50.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "6a1427bedb1356fcec1be4299821761521cf4f9dd067dd8ce4cea4760e2fec5f"
+  },
+  {
+   "path": "experiments/results/N1A_cache/static_L55.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "be13e3dbfe4e2e3f724162c5a9af3c05fa1138462c85f2aa4a5b08191b36147d"
+  },
+  {
+   "path": "experiments/results/N1A_cache/static_L57.pt",
+   "gitignored": true,
+   "bytes": 100665787,
+   "sha256": "f70f045bc0c0b46c2abfa49d50b63726624dfb3aaabc2411aef6bbdda1f71fe7"
+  },
+  {
+   "path": "experiments/results/N1_neurons.json",
+   "gitignored": false,
+   "bytes": 2137,
+   "sha256": "90ec57b01470714caf807de64873523d032f713da59dfe4ae25ee0447bf1205c"
+  },
+  {
+   "path": "experiments/results/N1C_per_pole.json",
+   "gitignored": false,
+   "bytes": 79762,
+   "sha256": "924834f6bb03414ab571b4e6d563a65a7a81e3a1f76ba1a838b79a81cc4635af"
+  },
+  {
+   "path": "experiments/results/N1C_matrix.json",
+   "gitignored": false,
+   "bytes": 2630353,
+   "sha256": "a34b009c137df3bc3da1911ef08e2d39fb8836bce7e55b0526d5c0cbd4da0e78"
+  }
+ ],
+ "cache_read_from": "/home/eric/bin/ai/theodolite2/experiments/results/N1A_cache"
+}

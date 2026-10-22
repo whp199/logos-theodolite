@@ -12,6 +12,7 @@
  */
 
 import { pieceWord } from "../lib/words";
+import { fixtureCheck, parseLabelCheck, type LabelCheck } from "../lib/labels";
 
 export const N_LAYERS = 60;
 export const D_FF = 21504;
@@ -42,6 +43,11 @@ export interface PoleReading {
   dir: [number, number, number] | null;
   /** s · |a| · ‖w_down ⊙ w_post‖ / rms(y), the length of what it adds to the stream; null = not sent */
   writeSize: number | null;
+  /** the label gate's check of these words (the server's label_check: the word-pieces both readings share in their
+   * first ten, and whether the pages hold the label back; lib/labels.ts); null = not sent (an older server, a pole
+   * whose words were not read) or, for the recorded sighting, not yet checked ten a side
+   * (experiments/scripts/N1G_01_recorded_label_checks.py) */
+  check: LabelCheck | null;
 }
 
 export interface LayerReading {
@@ -497,6 +503,7 @@ export function sightingFromLive(
           eye: lab ? toks(lab.naive_tokens) : null,
           dir: [bin.polesData[base + 3], bin.polesData[base + 4], bin.polesData[base + 5]],
           writeSize: Array.isArray(p.pole_write_sizes) ? numOrNull(p.pole_write_sizes[r]) : null,
+          check: lab ? parseLabelCheck(lab.label_check) : null,
         });
       }
     } else {
@@ -511,6 +518,7 @@ export function sightingFromLive(
           eye: toks(lab.naive_tokens),
           dir: null,
           writeSize: numOrNull(lab.write_size),
+          check: parseLabelCheck(lab.label_check),
         });
       }
     }
@@ -881,6 +889,8 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
         eye: eye ? eye.map(([token, logit]) => ({ token, prob: null, logit })) : null,
         dir: null,
         writeSize: null,
+        // checked ten a side from the weights, once (N1G_01_recorded_label_checks.py), or null until then
+        check: lens ? fixtureCheck(l, r) : null,
       };
     });
     const ranks: LayerReading["ranks"] = {};

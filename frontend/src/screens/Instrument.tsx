@@ -26,7 +26,8 @@ import {
   useShownSet,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
-import { certainty, comma, gloss, kindOf, labelTrust, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
+import { certainty, comma, gloss, kindOf, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
+import { layerIdx, trustLine } from "../lib/labels";
 import { InstrumentFigure, type Shown } from "./instrument/InstrumentFigure";
 import { Ascent } from "./instrument/Ascent";
 import { Kinship } from "./instrument/Kinship";
@@ -935,7 +936,7 @@ function poleNote(s: Sighting, L: LayerReading) {
     p,
     words: lens,
     gloss: recorded?.gloss ?? auto,
-    trust: recorded?.trust ?? labelTrust(L.idx),
+    trust: recorded?.trust ?? trustLine(layerIdx(L.idx)),
   };
 }
 

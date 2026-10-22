@@ -20,7 +20,16 @@ and the study's reports do (page layer = code layer + 1). It checks:
    again, shortlisted and ranked by `top_ids_from_shortlist`; for every face of every sampled neuron within layers
    40-57 its first ten must equal the study's, and its shared count the study's overlap (below 40 mismatches are
    reported, not failed: ties at the softcap break as they may there); and the in-band AUC of the count for causal
-   P@10 >= 0.3 must be N1C_matrix.json's 0.8432 to 1e-4.
+   P@10 >= 0.3 must be N1C_matrix.json's 0.8432 to 1e-4;
+5. the committed results the pages quote and read: experiments/results/N1C_gate_cut.json (the re-analysis of N1's data,
+   experiments/scripts/N1C_05_gate_cut.py) has the pinned sha256, which its provenance sidecar also records, the sidecar
+   names the script as committed and the committed inputs as they are, and, where the study's caches are at hand, the
+   analysis run again here gives the same result; the figures frontend/src/lib/labels.ts quotes (GATE_FIGURES) are the
+   file's and N1C_matrix.json's; frontend/src/fixtures/recordedLabelChecks.ts, which
+   experiments/scripts/N1G_01_recorded_label_checks.py writes, lists every labelled face of the demonstration sighting
+   and every row of the vault's 24 recorded searches, and either every check is null (not yet run on the GPU) or the
+   module names experiments/results/N1G_recorded_label_checks.json by its sha256, as the sidecar does, and each check
+   is the file's.
 
 Run: .venv/bin/python -I scripts/check_label_gate.py   (exits 0 when every check holds)
 """
@@ -34,7 +43,10 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
+import hashlib
+import importlib.util
 import json
+import re
 import subprocess
 import types
 from pathlib import Path
@@ -426,11 +438,119 @@ def check_against_study() -> None:
     print(f"  in-band AUC for P@10 >= 0.3: {auc:.4f} (N1C_matrix.json {recorded:.4f})")
 
 
+# --------------------------------------------------------------------------------------------------------------------
+# 5. the committed results the pages quote and read
+# --------------------------------------------------------------------------------------------------------------------
+
+# the sha256 of experiments/results/N1C_gate_cut.json as committed: a re-run that changes a byte must change this too
+GATE_CUT_SHA256 = "f17c21815f7b2039f43262f6eebe4ff313d69ac330d85a15ffb5a14286367b21"
+FRONTEND = ROOT_DIR / "frontend" / "src"
+
+
+def sha256_of(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def ts_object(text: str, name: str) -> Any:
+    """The value of `export const <name>: … = <JSON with trailing commas>;` in a generated module."""
+    m = re.search(rf"export const {name}:.*?= (null|\{{[^\n]*\}}|\{{\n.*?\n\}});\n", text, re.S)
+    if not m:
+        raise ValueError(f"{name} not found")
+    return json.loads(re.sub(r",(\s*[}\]])", r"\1", m.group(1)))
+
+
+def check_committed() -> None:
+    print("5. the committed results the pages quote and read")
+    out, side_p = RESULTS / "N1C_gate_cut.json", RESULTS / "N1C_gate_cut.provenance.json"
+    got = sha256_of(out)
+    side = json.loads(side_p.read_text())
+    check(got == GATE_CUT_SHA256, f"N1C_gate_cut.json sha256 {got} != the pinned {GATE_CUT_SHA256}")
+    check(side["result_sha256"] == got, "the sidecar records the result's sha256")
+    script = ROOT_DIR / side["script"]
+    check(side["script"] == "experiments/scripts/N1C_05_gate_cut.py" and side["script_sha256"] == sha256_of(script),
+          "the sidecar's script is the committed one")
+    for inp in side["inputs"]:
+        if not inp["gitignored"]:
+            check(sha256_of(ROOT_DIR / inp["path"]) == inp["sha256"], f"the sidecar's input {inp['path']} is as committed")
+    if side["label_gate_sha256"] != sha256_of(ROOT_DIR / "backend" / "label_gate.py"):
+        print("  note: backend/label_gate.py has changed since the re-analysis ran (the recomputation below decides)")
+    result = json.loads(out.read_text())
+    band = result["band"]
+    check(band["auc_shared10_p10_ge_0.3"] == band["auc_recorded_N1C_matrix"], "the re-analysis counts the study's overlap")
+    cache = study_cache()
+    if cache is None:
+        print("  skipped the recomputation: the study's static caches are not here")
+    else:
+        for inp in side["inputs"]:
+            if inp["gitignored"]:
+                p = cache / Path(inp["path"]).name
+                check(p.exists() and sha256_of(p) == inp["sha256"], f"the cache file {p.name} is the one the re-analysis read")
+        spec = importlib.util.spec_from_file_location("N1C_05_gate_cut", script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        again = json.loads(json.dumps(mod.analyse(cache)))
+        check(again == result, "the re-analysis run again gives N1C_gate_cut.json")
+        print(f"  the re-analysis run again from {cache} gives the committed file")
+    print(f"  L40-57: {band['share_nothing']['n']} of {band['all']['n']} faces share none of ten, "
+          f"{band['share_nothing']['n_sound']} of them sound; {band['share_some']['n_sound']} of {band['share_some']['n']} "
+          f"others sound")
+
+    # the figures the pages quote
+    labels_ts = (FRONTEND / "lib" / "labels.ts").read_text()
+    m = re.search(r"export const GATE_FIGURES = \{(.*?)\} as const;", labels_ts, re.S)
+    figs = dict(re.findall(r"(\w+): \"?([\d.]+)\"?,", m.group(1))) if m else {}
+    auc = json.loads((RESULTS / "N1C_matrix.json").read_text())["q"]["static_confidence_predictor"][
+        "jv_nv_top10_overlap"]["auc_late_target_p10_ge_0.3"]
+    want = {"auc": f"{auc:.2f}", "aucIn100": str(round(auc * 100)), "shareNothing": str(band["share_nothing"]["n"]),
+            "shareNothingSound": str(band["share_nothing"]["n_sound"]), "shareSome": str(band["share_some"]["n"]),
+            "shareSomeSound": str(band["share_some"]["n_sound"])}
+    check(figs == want, f"labels.ts GATE_FIGURES {figs} != the results' {want}")
+    consts = {k: v for k, v in re.findall(r"export const (LABEL_MIN_IDX|ONE_READING_IDX) = (\d+);", labels_ts)}
+    check(consts == {"LABEL_MIN_IDX": str(LABEL_MIN_LAYER), "ONE_READING_IDX": "59"}, f"labels.ts constants {consts}")
+    check(f"BAND_IDX: readonly [number, number] = [{BAND[0]}, {BAND[1]}]" in labels_ts
+          and f"SAMPLED_IDX: readonly number[] = [{', '.join(map(str, SAMPLED))}]" in labels_ts,
+          "labels.ts names the band and the sampled layers as the server does")
+
+    # the recorded checks the pages read
+    module = (FRONTEND / "fixtures" / "recordedLabelChecks.ts").read_text()
+    run = ts_object(module, "RECORDED_LABEL_CHECKS_RUN")
+    fx = ts_object(module, "FIXTURE_LABEL_CHECKS")
+    vx = ts_object(module, "VAULT_LABEL_CHECKS")
+    fixture = json.loads((FRONTEND / "fixtures" / "e6-demo-sighting.json").read_text())
+    check(list(fx) == sorted(fixture["poleLabels"]["lens"], key=lambda k: tuple(int(x) for x in k.split(":")))
+          and len(fx) == 75, f"the module lists the sighting's {len(fixture['poleLabels']['lens'])} labelled faces")
+    lists = json.loads((RESULTS / "E6_tool_audit_04_vault.partial.json").read_text())["lists"]
+    want_v = {k: [f"{int(r['n'])}{'+' if r['pol'] >= 0 else '-'}" for r in v] for k, v in lists.items()}
+    check({k: list(v) for k, v in vx.items()} == want_v and len(vx) == 24 and sum(len(v) for v in vx.values()) == 240,
+          "the module lists the 24 recorded vault searches, every row's face")
+    checks = list(fx.values()) + [c for v in vx.values() for c in v.values()]
+    if run is None:
+        check(all(c is None for c in checks), "not yet run: every recorded check is null")
+        print("  recordedLabelChecks.ts: not yet run on the GPU, every check null (the pages hold back by layer alone)")
+    else:
+        res_p = ROOT_DIR / run["results"]
+        res_side = json.loads((RESULTS / "N1G_recorded_label_checks.provenance.json").read_text())
+        check(res_p.exists() and sha256_of(res_p) == run["sha256"] == res_side["result_sha256"],
+              "the module names the recorded checks' results by their sha256, as the sidecar does")
+        res = json.loads(res_p.read_text())
+        check(all(fx[k] == v["label_check"] for k, v in res["fixture"]["faces"].items()) and
+              len(res["fixture"]["faces"]) == len(fx), "the module's sighting checks are the results'")
+        check(all(vx[k][f"{r['neuron']}{'+' if r['face'] > 0 else '-'}"] == r["label_check"]
+                  for k, s in res["vault"]["searches"].items() for r in s["rows"]), "the module's vault checks are the results'")
+        check(all(c is not None and list(c) == CHECK_KEYS for c in checks), "every recorded check is a full label_check")
+        print(f"  recordedLabelChecks.ts: {len(checks)} checks from {run['results']} ({run['runAt']})")
+
+
 def main() -> int:
     check_rule()
     check_ranking()
     check_vault()
     check_against_study()
+    check_committed()
     if failures:
         print(f"\nlabel gate: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1
