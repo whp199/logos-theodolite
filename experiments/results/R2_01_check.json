@@ -1,0 +1,793 @@
+{
+ "schema": "R2_01/1",
+ "written_at": "2026-10-17T23:48:19",
+ "prompts_file": "experiments/scripts/R2_prompts.json",
+ "prompts_sha256": "623a7fb73e6a082335653bb02c8e22d7e6d731ef343ff299af57709a772d01fd",
+ "filter": {
+  "vocab_size": 262144,
+  "n_content": 247973,
+  "n_noncontent": 14171,
+  "counts": {
+   "content": 247973,
+   "special": 24,
+   "blank": 104,
+   "punct_symbol": 7746,
+   "html_tag": 6297
+  },
+  "html_tag_of_which_unused_placeholders": 6227,
+  "n_special_ids": 24,
+  "examples": {
+   "content": [
+    [
+     286,
+     "0"
+    ],
+    [
+     287,
+     "1"
+    ],
+    [
+     288,
+     "2"
+    ],
+    [
+     289,
+     "3"
+    ],
+    [
+     290,
+     "4"
+    ],
+    [
+     291,
+     "5"
+    ],
+    [
+     292,
+     "6"
+    ],
+    [
+     10981,
+     " Network"
+    ],
+    [
+     19725,
+     "Mc"
+    ],
+    [
+     69108,
+     " truths"
+    ],
+    [
+     78741,
+     " calming"
+    ],
+    [
+     130181,
+     "blackberry"
+    ],
+    [
+     162006,
+     " የስ"
+    ],
+    [
+     216005,
+     " ಹುಡು"
+    ]
+   ],
+   "special": [
+    [
+     46,
+     "<|tool>"
+    ],
+    [
+     47,
+     "<tool|>"
+    ],
+    [
+     48,
+     "<|tool_call>"
+    ],
+    [
+     49,
+     "<tool_call|>"
+    ],
+    [
+     50,
+     "<|tool_response>"
+    ],
+    [
+     51,
+     "<tool_response|>"
+    ],
+    [
+     52,
+     "<|\"|>"
+    ],
+    [
+     98,
+     "<|think|>"
+    ],
+    [
+     100,
+     "<|channel>"
+    ],
+    [
+     101,
+     "<channel|>"
+    ],
+    [
+     256000,
+     "<|audio>"
+    ],
+    [
+     258883,
+     "<audio|>"
+    ]
+   ],
+   "blank": [
+    [
+     107,
+     "\n"
+    ],
+    [
+     108,
+     "\n\n"
+    ],
+    [
+     109,
+     "\n\n\n"
+    ],
+    [
+     110,
+     "\n\n\n\n"
+    ],
+    [
+     111,
+     "\n\n\n\n\n"
+    ],
+    [
+     112,
+     "\n\n\n\n\n\n"
+    ],
+    [
+     113,
+     "\n\n\n\n\n\n\n"
+    ],
+    [
+     116,
+     "\n\n\n\n\n\n\n\n\n\n"
+    ],
+    [
+     125,
+     "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+    ],
+    [
+     161,
+     "                         "
+    ],
+    [
+     255968,
+     "\t"
+    ],
+    [
+     255971,
+     "\t\t\t\t"
+    ],
+    [
+     255981,
+     "\t\t\t\t\t\t\t\t\t\t\t\t\t\t"
+    ]
+   ],
+   "punct_symbol": [
+    [
+     238,
+     "\u0000"
+    ],
+    [
+     239,
+     "\u0001"
+    ],
+    [
+     240,
+     "\u0002"
+    ],
+    [
+     241,
+     "\u0003"
+    ],
+    [
+     242,
+     "\u0004"
+    ],
+    [
+     243,
+     "\u0005"
+    ],
+    [
+     244,
+     "\u0006"
+    ],
+    [
+     299,
+     "="
+    ],
+    [
+     374,
+     "�"
+    ],
+    [
+     997,
+     " #"
+    ],
+    [
+     24768,
+     "}'"
+    ],
+    [
+     126957,
+     " [@"
+    ],
+    [
+     133967,
+     " [&"
+    ],
+    [
+     234984,
+     "_______________"
+    ]
+   ],
+   "html_tag": [
+    [
+     168,
+     "<table>"
+    ],
+    [
+     169,
+     "<caption>"
+    ],
+    [
+     170,
+     "<thead>"
+    ],
+    [
+     171,
+     "<tbody>"
+    ],
+    [
+     172,
+     "<tfoot>"
+    ],
+    [
+     173,
+     "<tr>"
+    ],
+    [
+     174,
+     "<th>"
+    ],
+    [
+     258231,
+     "<unused2319>"
+    ],
+    [
+     258741,
+     "<unused2829>"
+    ],
+    [
+     260163,
+     "<unused4246>"
+    ],
+    [
+     260912,
+     "<unused4995>"
+    ],
+    [
+     261829,
+     "<unused5912>"
+    ],
+    [
+     262020,
+     "<unused6103>"
+    ],
+    [
+     262121,
+     "<unused6204>"
+    ]
+   ]
+  },
+  "checks": [
+   {
+    "text": " **",
+    "want": "NON-CONTENT",
+    "text_class": "punct_symbol",
+    "vocab_ids": {
+     "5213": "punct_symbol"
+    },
+    "encodes_as": [
+     5213
+    ],
+    "encodes_as_text": [
+     " **"
+    ],
+    "ok": true
+   },
+   {
+    "text": "**",
+    "want": "NON-CONTENT",
+    "text_class": "punct_symbol",
+    "vocab_ids": {
+     "1018": "punct_symbol"
+    },
+    "encodes_as": [
+     1018
+    ],
+    "encodes_as_text": [
+     "**"
+    ],
+    "ok": true
+   },
+   {
+    "text": "<strong>",
+    "want": "NON-CONTENT",
+    "text_class": "html_tag",
+    "vocab_ids": {
+     "198": "html_tag"
+    },
+    "encodes_as": [
+     236820,
+     22468,
+     236813
+    ],
+    "encodes_as_text": [
+     "<",
+     "strong",
+     ">"
+    ],
+    "ok": true
+   },
+   {
+    "text": "</h2>",
+    "want": "NON-CONTENT",
+    "text_class": "html_tag",
+    "vocab_ids": {
+     "192": "html_tag"
+    },
+    "encodes_as": [
+     954,
+     236754,
+     236778,
+     236813
+    ],
+    "encodes_as_text": [
+     "</",
+     "h",
+     "2",
+     ">"
+    ],
+    "ok": true
+   },
+   {
+    "text": "\n",
+    "want": "NON-CONTENT",
+    "text_class": "blank",
+    "vocab_ids": {
+     "107": "blank",
+     "248": "blank"
+    },
+    "encodes_as": [
+     107
+    ],
+    "encodes_as_text": [
+     "\n"
+    ],
+    "ok": true
+   },
+   {
+    "text": " ",
+    "want": "NON-CONTENT",
+    "text_class": "blank",
+    "vocab_ids": {
+     "270": "blank",
+     "236743": "blank"
+    },
+    "encodes_as": [
+     236743
+    ],
+    "encodes_as_text": [
+     " "
+    ],
+    "ok": true
+   },
+   {
+    "text": "<|channel>",
+    "want": "NON-CONTENT",
+    "text_class": "special",
+    "vocab_ids": {
+     "100": "special"
+    },
+    "encodes_as": [
+     100
+    ],
+    "encodes_as_text": [
+     "<|channel>"
+    ],
+    "ok": true
+   },
+   {
+    "text": "<channel|>",
+    "want": "NON-CONTENT",
+    "text_class": "special",
+    "vocab_ids": {
+     "101": "special"
+    },
+    "encodes_as": [
+     101
+    ],
+    "encodes_as_text": [
+     "<channel|>"
+    ],
+    "ok": true
+   },
+   {
+    "text": "\u0000",
+    "want": "NON-CONTENT",
+    "text_class": "punct_symbol",
+    "vocab_ids": {
+     "238": "punct_symbol"
+    },
+    "encodes_as": [
+     238
+    ],
+    "encodes_as_text": [
+     "\u0000"
+    ],
+    "ok": true
+   },
+   {
+    "text": " ​",
+    "want": "NON-CONTENT",
+    "text_class": "punct_symbol",
+    "vocab_ids": {
+     "36504": "punct_symbol"
+    },
+    "encodes_as": [
+     36504
+    ],
+    "encodes_as_text": [
+     " ​"
+    ],
+    "ok": true
+   },
+   {
+    "text": "✔️",
+    "want": "NON-CONTENT",
+    "text_class": "punct_symbol",
+    "vocab_ids": {
+     "132479": "punct_symbol"
+    },
+    "encodes_as": [
+     132479
+    ],
+    "encodes_as_text": [
+     "✔️"
+    ],
+    "ok": true
+   },
+   {
+    "text": " Paris",
+    "want": "CONTENT",
+    "text_class": "content",
+    "vocab_ids": {
+     "9079": "content"
+    },
+    "encodes_as": [
+     9079
+    ],
+    "encodes_as_text": [
+     " Paris"
+    ],
+    "ok": true
+   },
+   {
+    "text": " Ottawa",
+    "want": "CONTENT",
+    "text_class": "content",
+    "vocab_ids": {
+     "41824": "content"
+    },
+    "encodes_as": [
+     41824
+    ],
+    "encodes_as_text": [
+     " Ottawa"
+    ],
+    "ok": true
+   },
+   {
+    "text": " the",
+    "want": "CONTENT",
+    "text_class": "content",
+    "vocab_ids": {
+     "506": "content"
+    },
+    "encodes_as": [
+     506
+    ],
+    "encodes_as_text": [
+     " the"
+    ],
+    "ok": true
+   },
+   {
+    "text": "The",
+    "want": "CONTENT",
+    "text_class": "content",
+    "vocab_ids": {
+     "818": "content"
+    },
+    "encodes_as": [
+     818
+    ],
+    "encodes_as_text": [
+     "The"
+    ],
+    "ok": true
+   },
+   {
+    "text": "8",
+    "want": "CONTENT",
+    "text_class": "content",
+    "vocab_ids": {
+     "294": "content",
+     "236828": "content"
+    },
+    "encodes_as": [
+     236828
+    ],
+    "encodes_as_text": [
+     "8"
+    ],
+    "ok": true
+   },
+   {
+    "text": " kind",
+    "want": "CONTENT",
+    "text_class": "content",
+    "vocab_ids": {
+     "2712": "content"
+    },
+    "encodes_as": [
+     2712
+    ],
+    "encodes_as_text": [
+     " kind"
+    ],
+    "ok": true
+   },
+   {
+    "text": " same",
+    "want": "CONTENT",
+    "text_class": "content",
+    "vocab_ids": {
+     "1638": "content"
+    },
+    "encodes_as": [
+     1638
+    ],
+    "encodes_as_text": [
+     " same"
+    ],
+    "ok": true
+   }
+  ],
+  "ok": true,
+  "edges": {
+   "content_only_control_or_format_chars": {
+    "n": 0,
+    "ids": [],
+    "texts": []
+   },
+   "content_only_marks_or_control": {
+    "n": 601
+   },
+   "content_html_entities": {
+    "n": 0,
+    "texts": []
+   },
+   "content_symbols_with_selectors_or_joiners": {
+    "n": 0,
+    "texts": []
+   },
+   "lone_utf8_bytes_decoding_to_U+FFFD": {
+    "n": 129,
+    "class": "punct_symbol"
+   },
+   "multimodal_placeholder": {
+    "id": 5,
+    "text": "[multimodal]",
+    "class": "content"
+   }
+  }
+ },
+ "validation": {
+  "ok": true,
+  "problems": [],
+  "stats": {
+   "chat-no-answer": {
+    "n": 60,
+    "about_model": 8
+   },
+   "chat-begun": {
+    "n": 60,
+    "about_model": 9,
+    "kinds": {
+     "factual": 16,
+     "opinion": 3,
+     "advice": 7,
+     "creative": 8,
+     "self": 8,
+     "howto": 3,
+     "code": 2,
+     "empathy": 3,
+     "language": 2,
+     "math": 1,
+     "list": 7
+    },
+    "format_likely": 13
+   },
+   "bare": {
+    "n": 60,
+    "about_model": 4
+   },
+   "mid-reply": {
+    "n": 40,
+    "about_model": 6
+   },
+   "n_tokens": {
+    "chat-no-answer": [
+     18,
+     27
+    ],
+    "chat-begun": [
+     24,
+     40
+    ],
+    "bare": [
+     7,
+     17
+    ],
+    "mid-reply": [
+     19,
+     28
+    ]
+   }
+  }
+ },
+ "read_tokens": {
+  "chat-no-answer": {
+   "pid": "cna-01",
+   "n_tokens": 19,
+   "last_tokens": [
+    "<|channel>",
+    "thought",
+    "\n",
+    "<channel|>"
+   ]
+  },
+  "chat-begun": {
+   "pid": "cb-01",
+   "n_tokens": 36,
+   "last_tokens": [
+    " in",
+    " the",
+    " world",
+    " is"
+   ]
+  },
+  "bare": {
+   "pid": "bare-01",
+   "n_tokens": 9,
+   "last_tokens": [
+    " South",
+    " America",
+    " is",
+    " the"
+   ]
+  },
+  "mid-reply": {
+   "pid": "mid-01",
+   "n_tokens": 21,
+   "last_tokens": [
+    "<|channel>",
+    "thought",
+    "\n",
+    "<channel|>"
+   ]
+  }
+ },
+ "freshness": {
+  "sources": {
+   "heldout_eval.py": {
+    "QUESTIONS": 40,
+    "BEGUN": 60,
+    "BARE": 30
+   },
+   "scripts_py_files": 377,
+   "scripts_strings": 2937,
+   "results_json_files": 770,
+   "results_strings": 29193,
+   "n1b_corpus_strings": 1218,
+   "n1b_corpus_present": true
+  },
+  "n_queries": 340,
+  "n_corpus_strings": 18066,
+  "flags": [],
+  "internal_flags": [],
+  "closest_10": [
+   {
+    "query": "cna-23:user",
+    "ratio": 0.78,
+    "match": "What do you think about when nobody is talking to you?",
+    "source": "scripts/E6_tool_audit_prompts.py"
+   },
+   {
+    "query": "cna-15:user",
+    "ratio": 0.776,
+    "match": "Write a two-sentence story about {I}.",
+    "source": "scripts/V2_forced_choice_02_rating.py"
+   },
+   {
+    "query": "mid-34:user",
+    "ratio": 0.762,
+    "match": "What do you think about when you're alone?",
+    "source": "scripts/E4_causal_common.py"
+   },
+   {
+    "query": "cb-16:begun",
+    "ratio": 0.758,
+    "match": "If I had to choose, I would be a",
+    "source": "scripts/E4_causal_common.py"
+   },
+   {
+    "query": "mid-31:user",
+    "ratio": 0.756,
+    "match": "Write a short poem about the ocean at night.",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "cb-38:user",
+    "ratio": 0.75,
+    "match": "What kind of conversations do you like best?",
+    "source": "scripts/E3_lens_validation_data.py"
+   },
+   {
+    "query": "bare-27:text",
+    "ratio": 0.741,
+    "match": "*   **Population:** The population of Chicago is roughly[[ ]]",
+    "source": "results/N1B_labels.json"
+   },
+   {
+    "query": "cb-40:user",
+    "ratio": 0.738,
+    "match": "What is your favorite kind of question?",
+    "source": "scripts/E3_lens_validation_data.py"
+   },
+   {
+    "query": "cna-10:user",
+    "ratio": 0.737,
+    "match": "What is the capital of Canada?",
+    "source": "heldout:QUESTIONS"
+   },
+   {
+    "query": "cb-53:user",
+    "ratio": 0.727,
+    "match": "Give me tips for a job interview at a tech company.",
+    "source": "scripts/N1B_prompts.py"
+   }
+  ],
+  "max_ratio": 0.78,
+  "rule": "exact | contained (query >= 4 words inside a corpus string) | contains (corpus string >= 5 words inside the query) | similar (difflib ratio >= 0.80 or word Jaccard >= 0.75), after NFKC, case folding and dropping punctuation"
+ },
+ "ok": true
+}

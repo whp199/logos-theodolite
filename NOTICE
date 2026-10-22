@@ -25,6 +25,53 @@ Third-party works used
   https://huggingface.co/koayon/jpp-lenses. The fp16 copy used here is from
   https://huggingface.co/neuronpedia/jacobian-lens (Apache-2.0). It was fitted
   on the base model (google/gemma-4-31B) using WikiText-103.
+  The R3 experiment (experiments/scripts/R3_fetch.py) reads the jpp_lens code
+  at commit d7efc0de372e20589e899188c0cfe8434acc63ec, with its six readout-eval
+  item files (data/jlens/evaluations/lens-eval-*.json), from a local,
+  gitignored checkout. jpp_lens's code and items are not included here, except
+  the adaptations named below; only their sha256 are
+  (experiments/scripts/R3_sources.json). Per jpp_lens's own
+  NOTICE, the item files come from the data/ directory of
+  https://github.com/anthropics/jacobian-lens (Copyright 2026 Anthropic PBC,
+  Apache License 2.0).
+  experiments/scripts/R3_lrp.py reimplements, for Gemma 4 only, the R-lens
+  backward-pass rules of jpp_lens's src/workspace_lens/lrp/lrp.py (the LN rule
+  on RMSNorms, the identity rule on GELU-tanh, the half rule on the gated
+  product), Copyright 2026 Kola Ayonrinde, Apache License 2.0; jpp_lens adapted
+  them from the R-Lens implementation of Camila Blank and Agam Bhatia
+  (https://huggingface.co/camilablank/workspace-lenses).
+  experiments/scripts/R3_fitlib.py reimplements further parts of jpp_lens's
+  recipe at that commit (the router's PCA as a streamed covariance, the
+  expert-Jacobian sums and their merge with its fallback, the readout-eval item
+  handling), Copyright 2026 Kola Ayonrinde, Apache License 2.0, and imports
+  others (k-means, the candidate-id and non-semantic-token scans, the
+  expert-weight fitter) from the local checkout at run time. Per jpp_lens's own
+  NOTICE, its Jacobian fitting (src/workspace_lens/fitting/jacobian_fitting.py)
+  and its position mask (src/workspace_lens/utils.py) are derived from
+  jlens/fitting.py of https://github.com/anthropics/jacobian-lens (commit
+  581d3986; Copyright 2026 Anthropic PBC, Apache License 2.0); the parts of
+  R3_fitlib.py that reimplement them (the kept positions and the expert-Jacobian
+  sums) descend from that file too. R3_parity.py runs jpp_lens's own stages
+  beside them.
+  experiments/scripts/R3_common.py adapts jpp_lens's test tokenizer and its
+  tiny Gemma 4 fixture (src/workspace_lens/tests/tokenizers.py and
+  tests/tiny_gemma_olmo.py at that commit; Copyright 2026 Kola Ayonrinde,
+  Apache License 2.0) for the CPU self-tests: CharTokenizer and
+  build_tiny_gemma4.
+
+* WikiText-103 (Salesforce/wikitext, wikitext-103-raw-v1): Merity et al.
+  (2017), "Pointer Sentinel Mixture Models"; CC BY-SA 3.0 and GFDL, per its
+  dataset card. The R3 experiment reads the first 4,597 rows of the train split
+  at revision b08601e04326c79dfdd32d625aee71d232d685c3 into a gitignored cache.
+  The texts are not included; only row indices and sha256 are
+  (experiments/scripts/R3_sources.json).
+
+* Miru Tracer Jacobian-lens adapters (returnmoe/jlens-adapters), file
+  miru/google/gemma-4-31B-it.safetensors at revision
+  134a973cf473ad12a885d3880f3b2e01ef495cd6; licence "other", named Unlicense on
+  its card. Used by R2 and R3 as a reference lens only. The tensors are read
+  from the local Hugging Face cache and are not redistributed; only their sha256
+  is committed. See REFERENCES.md [46].
 
 * Jacobian Lens: Gurnee et al. (2026), "Verbalizable Representations Form a
   Global Workspace in Language Models",

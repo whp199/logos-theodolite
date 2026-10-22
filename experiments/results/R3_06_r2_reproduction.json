@@ -1,0 +1,216 @@
+{
+ "schema": "R3_06_r2_reproduction/1",
+ "written_at": "2026-10-21T23:42:43",
+ "input": {
+  "path": "experiments/results/R2_02_eval.json",
+  "sha256": "6e277f60987c88a70f85355e2e749aac8cfa18f5480a5b044befedc3626f9c70"
+ },
+ "reference": {
+  "path": "experiments/results/R2_03_analysis.json",
+  "sha256": "94a632527ce6d1f356c836272ef5e1c32d8bef549cb62d6a8136dae83a22a75e"
+ },
+ "design": "R2 (R2_common: lenses r1, miru; bands 40-49, 50, 51-54, 55, 56-57, 58; miru 58 reference only; r1 over miru; bootstrap seed 20261019)",
+ "compared": 236,
+ "mismatches": [],
+ "ok": true,
+ "not_compared": "secondary.miru_minus_r1 (an R2-only table of Miru - R1, not part of the rule)",
+ "bands": [
+  {
+   "lens": "r1",
+   "band": "50",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "1",
+    "4",
+    "5"
+   ],
+   "p_sign": 0.03519711053353114,
+   "p_sign_holm": 0.21118266320118684,
+   "r2_p_sign_holm": 0.21118266320118684,
+   "diff_jpp_mean": 0.10485762144053602,
+   "diff_naive_mean": 0.013567839195979899
+  },
+  {
+   "lens": "r1",
+   "band": "55",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "1",
+    "5"
+   ],
+   "p_sign": 0.00035863483669729135,
+   "p_sign_holm": 0.002869078693578331,
+   "r2_p_sign_holm": 0.002869078693578331,
+   "diff_jpp_mean": 0.08458961474036851,
+   "diff_naive_mean": 0.043551088777219436
+  },
+  {
+   "lens": "r1",
+   "band": "58",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "5"
+   ],
+   "p_sign": 0.00014703843771712855,
+   "p_sign_holm": 0.001323345939454157,
+   "r2_p_sign_holm": 0.001323345939454157,
+   "diff_jpp_mean": 0.07504187604690117,
+   "diff_naive_mean": 0.04639865996649917
+  },
+  {
+   "lens": "miru",
+   "band": "40-49",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "p_sign": 0.9998143743984605,
+   "p_sign_holm": 1.0,
+   "r2_p_sign_holm": 1.0,
+   "diff_jpp_mean": 0.03907872696817421,
+   "diff_naive_mean": -0.040720268006700165
+  },
+  {
+   "lens": "miru",
+   "band": "50",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "1",
+    "3",
+    "4",
+    "5"
+   ],
+   "p_sign": 0.5530734525824892,
+   "p_sign_holm": 1.0,
+   "r2_p_sign_holm": 1.0,
+   "diff_jpp_mean": 0.07370184254606364,
+   "diff_naive_mean": -0.017587939698492462
+  },
+  {
+   "lens": "miru",
+   "band": "51-54",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "3",
+    "4"
+   ],
+   "p_sign": 0.08749194923148076,
+   "p_sign_holm": 0.4374597461574038,
+   "r2_p_sign_holm": 0.4374597461574038,
+   "diff_jpp_mean": 0.08391959798994975,
+   "diff_naive_mean": 0.06260469011725292
+  },
+  {
+   "lens": "miru",
+   "band": "55",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "1"
+   ],
+   "p_sign": 0.0025761985210460314,
+   "p_sign_holm": 0.01803338964732222,
+   "r2_p_sign_holm": 0.01803338964732222,
+   "diff_jpp_mean": 0.09296482412060302,
+   "diff_naive_mean": 0.05192629815745393
+  },
+  {
+   "lens": "miru",
+   "band": "56-57",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "1",
+    "4",
+    "5"
+   ],
+   "p_sign": 0.303147968846983,
+   "p_sign_holm": 1.0,
+   "r2_p_sign_holm": 1.0,
+   "diff_jpp_mean": 0.02428810720268007,
+   "diff_naive_mean": -0.0058626465661641555
+  },
+  {
+   "lens": "miru",
+   "band": "58",
+   "passes": false,
+   "served": false,
+   "failed_rules": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+   ],
+   "p_sign": 1.0,
+   "p_sign_holm": 1.0,
+   "r2_p_sign_holm": 1.0,
+   "diff_jpp_mean": -0.5772194304857622,
+   "diff_naive_mean": -0.6058626465661642
+  }
+ ],
+ "decision": {
+  "by_band": {
+   "40-49": null,
+   "50": null,
+   "51-54": null,
+   "55": null,
+   "56-57": null,
+   "58": null
+  },
+  "served_layers": {
+   "r1": [],
+   "miru": []
+  }
+ },
+ "sensitivity_changes": {
+  "S1_without_about_model": [
+   {
+    "lens_band": "r1 55",
+    "primary": {
+     "passes": false,
+     "served": false,
+     "failed_rules": [
+      "1",
+      "5"
+     ]
+    },
+    "sensitivity": {
+     "passes": true,
+     "served": true,
+     "failed_rules": []
+    }
+   }
+  ],
+  "S2_without_r1_overlap": [
+   {
+    "lens_band": "r1 55",
+    "primary": {
+     "passes": false,
+     "served": false,
+     "failed_rules": [
+      "1",
+      "5"
+     ]
+    },
+    "sensitivity": {
+     "passes": true,
+     "served": true,
+     "failed_rules": []
+    }
+   }
+  ],
+  "S3_without_bare": [],
+  "S4_without_formatlike_targets": []
+ }
+}

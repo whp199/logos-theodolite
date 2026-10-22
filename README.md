@@ -473,7 +473,7 @@ This instrument is its maker’s synthesis of four recent pieces of research, jo
 
 over older foundations: the logit lens [8], the residual-stream view of Elhage et al. [14], linear CKA [13], activation
 steering [21, 22], Löwdin’s symmetric orthogonalisation [33], and interp-engine [36], which runs the model. Bracketed numbers
-refer to [`REFERENCES.md`](REFERENCES.md), the full, web-checked list; the interface tells the same story on its Lineage page.
+refer to [`REFERENCES.md`](REFERENCES.md), the full list, web-checked except section H (whose links were not opened); the interface tells the same story on its Lineage page.
 
 **Provenance and AI assistance.** The experiments, analyses and reports in `experiments/` were designed, run and written by
 Claude Code agents (Anthropic), directed by the repository owner: parallel experiment agents, independent adversarial

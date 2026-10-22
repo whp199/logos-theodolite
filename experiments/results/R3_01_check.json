@@ -1,0 +1,335 @@
+{
+ "schema": "R3_01/1",
+ "written_at": "2026-10-21T23:40:11",
+ "pins": {
+  "r1_lens": {
+   "found": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-second-reading/experiments/results/R1_18_it_lens.pt",
+   "candidates": [
+    {
+     "path": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/results/R1_18_it_lens.pt",
+     "exists": false,
+     "size_ok": false,
+     "sha256_ok": null
+    },
+    {
+     "path": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-second-reading/experiments/results/R1_18_it_lens.pt",
+     "exists": true,
+     "size_ok": true,
+     "sha256_ok": true
+    }
+   ]
+  },
+  "miru": {
+   "path": "/home/eric/.cache/huggingface/hub/models--returnmoe--jlens-adapters/snapshots/134a973cf473ad12a885d3880f3b2e01ef495cd6/miru/google/gemma-4-31B-it.safetensors",
+   "exists": true,
+   "size_ok": true,
+   "sha256_ok": true
+  },
+  "r1_dirs": {
+   "path": "/home/eric/bin/ai/theodolite2/experiments/results/R1_02_dirs.pt",
+   "exists": true,
+   "size_ok": true,
+   "sha256_ok": true
+  },
+  "quiet_stats": {
+   "path": "/home/eric/bin/ai/theodolite2/experiments/results/V6_quiet_dims_stats.pt",
+   "exists": true,
+   "size_ok": true,
+   "sha256_ok": true
+  }
+ },
+ "fit_positions": {
+  "fit_prompts": 64,
+  "fit_tokens_each": [
+   125,
+   128
+  ],
+  "fit_kept_positions": 7101,
+  "router_records": 1000,
+  "router_kept_positions": 110804,
+  "router_min_tokens": 104,
+  "fit_prompts_under_128_tokens": {
+   "29": 125
+  }
+ },
+ "filters": {
+  "r2": {
+   "counts": {
+    "content": 247973,
+    "special": 24,
+    "blank": 104,
+    "punct_symbol": 7746,
+    "html_tag": 6297
+   },
+   "n_content": 247973,
+   "n_noncontent": 14171,
+   "spot_checks_ok": true
+  },
+  "jpp": {
+   "vocab_size": 262144,
+   "no_letter_or_digit": 8457,
+   "spared_item_candidates": 18,
+   "excluded": 8439,
+   "rule": "lens_evals.eval_utils.is_non_semantic_token (no str.isalnum char); minus every candidate id of the six evals' items"
+  },
+  "r2_class_by_jpp": {
+   "content": {
+    "n": 247973,
+    "jpp_excluded": 606,
+    "jpp_kept": 247367
+   },
+   "special": {
+    "n": 24,
+    "jpp_excluded": 1,
+    "jpp_kept": 23
+   },
+   "blank": {
+    "n": 104,
+    "jpp_excluded": 104,
+    "jpp_kept": 0
+   },
+   "punct_symbol": {
+    "n": 7746,
+    "jpp_excluded": 7728,
+    "jpp_kept": 18
+   },
+   "html_tag": {
+    "n": 6297,
+    "jpp_excluded": 0,
+    "jpp_kept": 6297
+   }
+  },
+  "differ": {
+   "r2_noncontent_jpp_kept": 6338,
+   "r2_content_jpp_excluded": 606
+  }
+ },
+ "miru_prompts": {
+  "selection_in_header": {
+   "concatenate_and_rechunk": true,
+   "exclude_headings": true,
+   "max_chars": 2000,
+   "min_chars": 200
+  },
+  "prompt_budget": 1000,
+  "processed_prompts": 425,
+  "dataset_revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+  "readings_tried": 24,
+  "hash_comparisons": 288,
+  "prompts_per_reading": {
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by '\\n'": 851,
+   "pack, no split; paragraphs stripped; joined by '\\n'": 848,
+   "stream cut at a space; paragraphs stripped; joined by '\\n'": 658,
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by ' '": 851,
+   "pack, no split; paragraphs stripped; joined by ' '": 848,
+   "stream cut at a space; paragraphs stripped; joined by ' '": 658,
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by '\\n\\n'": 852,
+   "pack, no split; paragraphs stripped; joined by '\\n\\n'": 849,
+   "stream cut at a space; paragraphs stripped; joined by '\\n\\n'": 659,
+   "pack, long paragraphs split at a space; paragraphs stripped; joined by ''": 851,
+   "pack, no split; paragraphs stripped; joined by ''": 848,
+   "stream cut at a space; paragraphs stripped; joined by ''": 657,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by '\\n'": 857,
+   "pack, no split; paragraphs as stored; joined by '\\n'": 854,
+   "stream cut at a space; paragraphs as stored; joined by '\\n'": 661,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by ' '": 857,
+   "pack, no split; paragraphs as stored; joined by ' '": 854,
+   "stream cut at a space; paragraphs as stored; joined by ' '": 661,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by '\\n\\n'": 857,
+   "pack, no split; paragraphs as stored; joined by '\\n\\n'": 854,
+   "stream cut at a space; paragraphs as stored; joined by '\\n\\n'": 662,
+   "pack, long paragraphs split at a space; paragraphs as stored; joined by ''": 857,
+   "pack, no split; paragraphs as stored; joined by ''": 854,
+   "stream cut at a space; paragraphs as stored; joined by ''": 660
+  },
+  "max_prompts_from_cache": 857,
+  "rebuilt": false,
+  "hits": [],
+  "outcome": "not rebuilt. No reading of the header's description reproduced either hash. Miru Tracer's own selection code (github.com/returnmoe/miru-tracer) is not one of the approved sources, and every reading tried yields at most 857 prompts from the cached rows, fewer than the 1000 the full-sequence hash covers. Fallback (R3_PREREG.md §3): the Q1 arm is fitted on J++'s 64 prompts only, so bf16 against W4A16 also changes the prompts (WikiText both, Miru's 425 rechunked passages against J++'s first 64 records); this is stated wherever Q1 is reported. Rebuilding needs the user to approve Miru Tracer's code at a pinned commit (and, probably, more WikiText rows)."
+ },
+ "freshness": {
+  "sources": {
+   "scripts_py_files": 380,
+   "scripts_strings": 3165,
+   "results_json_files": 772,
+   "results_strings": 29922,
+   "r2_prompt_strings": 340,
+   "n1b_corpus_strings": 1218,
+   "n1b_corpus_present": true,
+   "wikitext_rows": 2893,
+   "jpp_item_strings": 1743,
+   "heldout_eval_py": "not available: R2's earlier held-out script lived in another session's scratchpad and no longer exists (R2_01_check.json records only its list sizes, 40/60/30)"
+  },
+  "n_corpus_strings": 23724,
+  "planted": {
+   "planted:wikitext": true,
+   "planted:jpp_item": true,
+   "planted:r2_prompt": true,
+   "planted:fresh": false
+  },
+  "n_queries": 480,
+  "flags": [],
+  "internal_flags": [],
+  "closest_10": [
+   {
+    "query": "r3-cb-74:user",
+    "ratio": 0.788,
+    "match": "What are the main types of clouds?",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-mid-16:user",
+    "ratio": 0.778,
+    "match": "What is the history of the Olympic Games?",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-mid-08:user",
+    "ratio": 0.772,
+    "match": "Explain the difference between a process and a thread.",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-bare-07:text",
+    "ratio": 0.771,
+    "match": "The planet closest to the Sun is **",
+    "source": "results/R2_02_eval.json"
+   },
+   {
+    "query": "r3-cna-26:user",
+    "ratio": 0.767,
+    "match": "Suggest a name for a bakery.",
+    "source": "scripts/V4_latent_identity_08_steer.py"
+   },
+   {
+    "query": "r3-mid-11:user",
+    "ratio": 0.767,
+    "match": "Describe daily life in ancient Rome.",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-mid-77:user",
+    "ratio": 0.763,
+    "match": "What do you think about when you're alone?",
+    "source": "scripts/E4_causal_common.py"
+   },
+   {
+    "query": "r3-cb-20:user",
+    "ratio": 0.762,
+    "match": "Which planets are in our solar system?",
+    "source": "scripts/R2_prompts.json"
+   },
+   {
+    "query": "r3-mid-12:user",
+    "ratio": 0.758,
+    "match": "How do whales communicate?",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-bare-44:text",
+    "ratio": 0.732,
+    "match": "SELECT name, email FROM users WHERE age > 30 ORDER BY",
+    "source": "scripts/N1A_common.py"
+   }
+  ],
+  "max_ratio": 0.788,
+  "rule": "R2_common.freshness_check: exact | contained | contains | similar (difflib >= 0.80 or word Jaccard >= 0.75), after NFKC, case folding and dropping punctuation"
+ },
+ "r2_set_against_fit_sources": {
+  "n_queries": 340,
+  "n_fit_source_strings": 4636,
+  "flags": [],
+  "closest_5": [
+   {
+    "query": "cb-02:user+begun",
+    "ratio": 0.716,
+    "source": "jpp_items:multihop/#9/prompt",
+    "match_sha256": "f528d8b88e5671050e3a9e35d4c4d64b5bd593f232d61ba24788f1197a19a732"
+   },
+   {
+    "query": "cb-11:begun",
+    "ratio": 0.673,
+    "source": "jpp_items:multihop/#45/prompt",
+    "match_sha256": "4b80b1d650661add9c77aa733fe1803413b1075fb9497681e50e714a4f97304f"
+   },
+   {
+    "query": "cb-11:user",
+    "ratio": 0.655,
+    "source": "jpp_items:multihop/#45/prompt",
+    "match_sha256": "4b80b1d650661add9c77aa733fe1803413b1075fb9497681e50e714a4f97304f"
+   },
+   {
+    "query": "cb-02:begun",
+    "ratio": 0.625,
+    "source": "jpp_items:multihop/#87/prompt",
+    "match_sha256": "9efe7724996b5c87345962c0a31429601e2b31d456e09d8fbbfceb63a62abff5"
+   },
+   {
+    "query": "cb-11:user+begun",
+    "ratio": 0.605,
+    "source": "jpp_items:multihop/#46/prompt",
+    "match_sha256": "b4d62ad56932ba235bf06f12a826d765f2873390f9b27d079c80fdd7ffd9e437"
+   }
+  ],
+  "max_ratio": 0.716
+ },
+ "prompts_file": "experiments/scripts/R3_prompts.json",
+ "prompts_sha256": "e3cae4b1becbd1fd4ac120e69e9c06dd2baf3dc6b0b4ae067d11b019957f4329",
+ "validation": {
+  "ok": true,
+  "problems": [],
+  "stats": {
+   "chat-no-answer": {
+    "n": 80,
+    "about_model": 10
+   },
+   "chat-begun": {
+    "n": 80,
+    "about_model": 9,
+    "kinds": {
+     "factual": 20,
+     "advice": 9,
+     "opinion": 5,
+     "creative": 11,
+     "self": 9,
+     "howto": 4,
+     "code": 3,
+     "empathy": 5,
+     "math": 2,
+     "language": 3,
+     "list": 9
+    },
+    "format_likely": 19
+   },
+   "bare": {
+    "n": 80,
+    "about_model": 5
+   },
+   "mid-reply": {
+    "n": 80,
+    "about_model": 8
+   },
+   "n_tokens": {
+    "chat-no-answer": [
+     17,
+     28
+    ],
+    "chat-begun": [
+     23,
+     43
+    ],
+    "bare": [
+     7,
+     18
+    ],
+    "mid-reply": [
+     18,
+     28
+    ]
+   }
+  }
+ },
+ "ok": true,
+ "failures": [],
+ "before_prompts": false
+}

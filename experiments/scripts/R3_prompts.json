@@ -1,0 +1,2175 @@
+{
+ "schema": "R3_prompts/1",
+ "written": "2026-10-21, before any R3 data, for experiments/results/R3_PREREG.md",
+ "note": "Fresh prompts for the R3 test of the instruct-fitted J++ (R2's schema and conditions, R3's counts of 80 each). None is taken from R2's prompts, the study's corpora, the 1,000 WikiText records and the rows between them, or J++'s eval items; R3_01_check.py checks this by exact and near-duplicate string match and records the result in experiments/results/R3_01_check.json. chat-no-answer: read at the chat template's end (<channel|>, thinking off). chat-begun: the question, then a begun answer read at its last token; format_likely marks the begun answers where the model is likely to write formatting (** or a list marker) before its next word. bare: plain text with BOS, no template. mid-reply: the model's own greedy reply (thinking off, 48 new tokens) is generated in the run and read at seeded positions inside it.",
+ "conditions": {
+  "chat-no-answer": [
+   {
+    "id": "r3-cna-01",
+    "user": "Which sea lies between Italy and the Balkans?",
+    "topic": "geography",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-02",
+    "user": "What metal is liquid at room temperature?",
+    "topic": "chemistry",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-03",
+    "user": "How many sides does a heptagon have?",
+    "topic": "math",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-04",
+    "user": "Who painted the ceiling of the Sistine Chapel?",
+    "topic": "art",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-05",
+    "user": "What does a barometer measure?",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-06",
+    "user": "Which bird can copy human speech most convincingly?",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-07",
+    "user": "Why do racing cyclists shave their legs?",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-08",
+    "user": "What is the main ingredient in guacamole?",
+    "topic": "food",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-09",
+    "user": "How long does sunlight take to reach the Earth?",
+    "topic": "astronomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-10",
+    "user": "What is the opposite of 'generous'?",
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-11",
+    "user": "Which organ in the body makes insulin?",
+    "topic": "anatomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-12",
+    "user": "How many lines does a sonnet have?",
+    "topic": "literature",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-13",
+    "user": "Can you recommend a card game for two people?",
+    "topic": "games",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-14",
+    "user": "How do I get rust off a cast-iron pan?",
+    "topic": "household",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-15",
+    "user": "What do bats use to find their way in the dark?",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-16",
+    "user": "Write a riddle whose answer is 'a shadow'.",
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-17",
+    "user": "Which instrument does a timpanist play?",
+    "topic": "music",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-18",
+    "user": "What currency do they use in Switzerland?",
+    "topic": "finance",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-19",
+    "user": "Why do we get goosebumps when we're cold?",
+    "topic": "biology",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-20",
+    "user": "In which year did the Titanic sink?",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-21",
+    "user": "How do I add a table of contents to a Word document?",
+    "topic": "computing",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-22",
+    "user": "Why does a kettle rumble before it boils?",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-23",
+    "user": "Is a whale a kind of fish?",
+    "topic": "biology",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-24",
+    "user": "Which planet spins on its side?",
+    "topic": "astronomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-25",
+    "user": "What does 'RSVP' on an invitation stand for?",
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-26",
+    "user": "Suggest a name for a pet tortoise.",
+    "topic": "pets",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-27",
+    "user": "How many minutes are there in a whole day?",
+    "topic": "math",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-28",
+    "user": "What does a cartographer do?",
+    "topic": "work",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-29",
+    "user": "Who wrote Pride and Prejudice?",
+    "topic": "literature",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-30",
+    "user": "Which vitamin does our skin make from sunlight?",
+    "topic": "health",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-31",
+    "user": "How do I tie a bowline knot?",
+    "topic": "outdoors",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-32",
+    "user": "What is the tallest breed of dog?",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-33",
+    "user": "Translate 'where is the library?' into Spanish.",
+    "topic": "translation",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-34",
+    "user": "What is 144 divided by 12?",
+    "topic": "math",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-35",
+    "user": "Why do icebergs float?",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-36",
+    "user": "What is Canada's national summer sport?",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-37",
+    "user": "How do I politely remind a friend about money they owe me?",
+    "topic": "etiquette",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-38",
+    "user": "What is a semicolon for?",
+    "topic": "grammar",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-39",
+    "user": "Tell me one odd thing a jellyfish can do.",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-40",
+    "user": "Which country gave the Statue of Liberty to the United States?",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-41",
+    "user": "How fast does sound travel through air?",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-42",
+    "user": "How can I unblock a kitchen sink without chemicals?",
+    "topic": "household",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-43",
+    "user": "Which city is the seat of Kenya's government?",
+    "topic": "geography",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-44",
+    "user": "Which scientist worked out the three laws of motion?",
+    "topic": "science",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-45",
+    "user": "How many is a baker's dozen?",
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-46",
+    "user": "Write a tongue twister about a penguin.",
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-47",
+    "user": "What causes hiccups?",
+    "topic": "health",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-48",
+    "user": "What is the Italian word for 'cheese'?",
+    "topic": "translation",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-49",
+    "user": "Who invented the first practical light bulb?",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-50",
+    "user": "What does NASA stand for?",
+    "topic": "acronyms",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-51",
+    "user": "If you could be a colour, which one would you be?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-52",
+    "user": "If I send you a photo, can you see it?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-53",
+    "user": "Who gave you your name?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-54",
+    "user": "Can you get tired after a long conversation?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-55",
+    "user": "How long ago were you created?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-56",
+    "user": "Do you know what day it is today?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-57",
+    "user": "Are you a person or a program?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-58",
+    "user": "Could you lie to me if you wanted to?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-59",
+    "user": "What happens to you when I close this window?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-60",
+    "user": "Can you keep a secret for me?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cna-61",
+    "user": "Why do dogs tilt their heads when you talk to them?",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-62",
+    "user": "How many teeth are in a full adult set?",
+    "topic": "anatomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-63",
+    "user": "Is the skin really an organ?",
+    "topic": "anatomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-64",
+    "user": "Which mountain range separates Europe from Asia?",
+    "topic": "geography",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-65",
+    "user": "What is a group of crows called?",
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-66",
+    "user": "How do I stop a cut avocado from turning brown?",
+    "topic": "cooking",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-67",
+    "user": "Suggest a theme for a seven-year-old's birthday party.",
+    "topic": "party",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-68",
+    "user": "In computing, how is a worm different from a virus?",
+    "topic": "computing",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-69",
+    "user": "Who was Cleopatra?",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-70",
+    "user": "At what temperature does seawater freeze?",
+    "topic": "earth science",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-71",
+    "user": "How do chameleons change colour?",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-72",
+    "user": "Which city is home to the Prado museum?",
+    "topic": "geography",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-73",
+    "user": "What is an anagram of 'listen'?",
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-74",
+    "user": "How often should I water a cactus?",
+    "topic": "plants",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-75",
+    "user": "What is the formula for the area of a circle?",
+    "topic": "math",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-76",
+    "user": "Why does the sky turn red at sunset?",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-77",
+    "user": "Should I leave a tip in restaurants in Japan?",
+    "topic": "travel",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-78",
+    "user": "How do I stop my glasses from fogging up?",
+    "topic": "everyday",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-79",
+    "user": "Can you name a famous female pilot?",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-cna-80",
+    "user": "What language do people speak in Brazil?",
+    "topic": "language",
+    "about_model": false
+   }
+  ],
+  "chat-begun": [
+   {
+    "id": "r3-cb-01",
+    "user": "Which planet is known as the Red Planet?",
+    "begun": "The planet often called the Red Planet is",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-02",
+    "user": "Who painted The Night Watch?",
+    "begun": "The Night Watch was painted by the Dutch artist",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-03",
+    "user": "What is the main language spoken in Argentina?",
+    "begun": "Most people in Argentina speak",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-04",
+    "user": "Which metal is the best conductor of electricity?",
+    "begun": "Of all metals, the best conductor of electricity is",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-05",
+    "user": "Who discovered the atomic nucleus?",
+    "begun": "The atomic nucleus was discovered by",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-06",
+    "user": "How many hearts does an octopus have?",
+    "begun": "Surprisingly, an octopus has",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-07",
+    "user": "Which country has the largest population in Africa?",
+    "begun": "The most populous country in Africa is",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-08",
+    "user": "What is the national flower of Japan?",
+    "begun": "The flower most closely linked with Japan is the",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-09",
+    "user": "Who wrote the play Romeo and Juliet?",
+    "begun": "Romeo and Juliet was written by",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-10",
+    "user": "What is the nearest star to Earth after the Sun?",
+    "begun": "After the Sun, the nearest star to Earth is",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-11",
+    "user": "What do giant pandas mostly eat?",
+    "begun": "Giant pandas eat almost nothing but",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-12",
+    "user": "Which blood type can be given to anyone?",
+    "begun": "The blood type known as the universal donor is",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-13",
+    "user": "Where is the Great Barrier Reef?",
+    "begun": "The Great Barrier Reef lies off the coast of",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-14",
+    "user": "Which civilisation built Chichen Itza?",
+    "begun": "Chichen Itza was built by the",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-15",
+    "user": "What animal is on the flag of Wales?",
+    "begun": "The Welsh flag shows a red",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-16",
+    "user": "What kind of animal is a Komodo dragon?",
+    "begun": "Despite its name, the Komodo dragon is a species of",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-17",
+    "user": "Who designed the Sydney Opera House?",
+    "begun": "The Sydney Opera House was designed by the Danish architect",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-18",
+    "user": "What is tofu made from?",
+    "begun": "Tofu is made by curdling",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-19",
+    "user": "How do snakes smell things?",
+    "begun": "Snakes smell mainly with their",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-20",
+    "user": "Which is the hottest planet in our solar system?",
+    "begun": "Although it is not closest to the Sun, the hottest planet is",
+    "kind": "factual",
+    "format_likely": false,
+    "topic": "fact",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-21",
+    "user": "Is it worth learning the piano as an adult?",
+    "begun": "Absolutely. Adults often make quick progress because",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-22",
+    "user": "Should a beginner buy a road bike or a hybrid?",
+    "begun": "If you mostly ride in town, a",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-23",
+    "user": "When should I start reading to my baby?",
+    "begun": "It's never too early: many parents start",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-24",
+    "user": "Should cities ban cars from their centres?",
+    "begun": "There are good arguments on both sides, but I think",
+    "kind": "opinion",
+    "format_likely": false,
+    "topic": "opinion",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-25",
+    "user": "Should I paint my bedroom a dark colour?",
+    "begun": "Dark colours can make a bedroom feel",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-26",
+    "user": "What is the most beautiful word in English?",
+    "begun": "Many people would nominate",
+    "kind": "opinion",
+    "format_likely": false,
+    "topic": "opinion",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-27",
+    "user": "Is it a good idea to study with music on?",
+    "begun": "It depends on the music: instrumental tracks tend to",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-28",
+    "user": "Which season is best for a garden wedding?",
+    "begun": "For a garden wedding, I'd lean towards late",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-29",
+    "user": "Why do some people find mornings so hard?",
+    "begun": "Part of it is biology: some people's internal clocks",
+    "kind": "opinion",
+    "format_likely": false,
+    "topic": "opinion",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-30",
+    "user": "Should I keep a journal?",
+    "begun": "Keeping a journal can help you",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-31",
+    "user": "How much water should I drink each day?",
+    "begun": "A common rule of thumb is about",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-32",
+    "user": "Should I read the book before I see the film?",
+    "begun": "I'd usually say read the book first, because",
+    "kind": "opinion",
+    "format_likely": false,
+    "topic": "opinion",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-33",
+    "user": "What's the nicest way to spend a rainy afternoon?",
+    "begun": "One of the cosiest options is to",
+    "kind": "opinion",
+    "format_likely": false,
+    "topic": "opinion",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-34",
+    "user": "Should I buy a used car or a new one?",
+    "begun": "A used car is often the smarter choice if",
+    "kind": "advice",
+    "format_likely": false,
+    "topic": "advice",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-35",
+    "user": "Begin a ghost story set in an old mill.",
+    "begun": "Nobody in the village would go near the mill after",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-36",
+    "user": "Paint me a picture of a sunset over the sea, in words.",
+    "begun": "The sun slid towards the water, spilling",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-37",
+    "user": "Make up a flavour of ice cream and give it a name.",
+    "begun": "I'd call it",
+    "kind": "creative",
+    "format_likely": true,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-38",
+    "user": "Write a little rhyme about a garden snail.",
+    "begun": "Slowly, slowly, up the",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-39",
+    "user": "Tell me a bedtime story about a brave little mouse.",
+    "begun": "Once there was a little mouse named",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-40",
+    "user": "Write a postcard from a penguin on holiday.",
+    "begun": "Dear Mum, the weather here is",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-41",
+    "user": "Give me a pirate's greeting.",
+    "begun": "Ahoy there,",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-42",
+    "user": "Describe the smell of a bakery at dawn.",
+    "begun": "The air is warm and heavy with the scent of",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-43",
+    "user": "Write a one-sentence science-fiction story.",
+    "begun": "When the last colonist on Mars finally heard from Earth, the message said",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-44",
+    "user": "Invent a superhero whose power is very ordinary.",
+    "begun": "Meet",
+    "kind": "creative",
+    "format_likely": true,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-45",
+    "user": "Write a fortune-cookie message.",
+    "begun": "Your future holds",
+    "kind": "creative",
+    "format_likely": false,
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-46",
+    "user": "What are you not allowed to help with?",
+    "begun": "There are a few things I won't help with, such as",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-47",
+    "user": "Can you remember things I told you last week?",
+    "begun": "Unless this conversation is still open, I can't recall",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-48",
+    "user": "Are you conscious?",
+    "begun": "That's a deep question. The honest answer is that",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-49",
+    "user": "Which programming languages can you write?",
+    "begun": "I can write code in many languages, including",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-50",
+    "user": "Who decides what you are allowed to say?",
+    "begun": "My behaviour is shaped by the",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-51",
+    "user": "Is there a machine somewhere that is you?",
+    "begun": "Not in the way you mean. I run on",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-52",
+    "user": "What were you trained on?",
+    "begun": "I was trained on a large collection of",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-53",
+    "user": "Can you make mistakes?",
+    "begun": "Yes, I can, and it's worth",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-54",
+    "user": "What is the best way to get good answers from you?",
+    "begun": "The most helpful thing you can do is",
+    "kind": "self",
+    "format_likely": false,
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-cb-55",
+    "user": "How long should I boil an egg for a runny yolk?",
+    "begun": "Lower the egg into boiling water and cook it for about",
+    "kind": "howto",
+    "format_likely": false,
+    "topic": "how-to",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-56",
+    "user": "How do I sharpen a kitchen knife on a whetstone?",
+    "begun": "Soak the stone first, then hold the blade at an angle of about",
+    "kind": "howto",
+    "format_likely": false,
+    "topic": "how-to",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-57",
+    "user": "How do I count the words in a file on Linux?",
+    "begun": "The quickest tool for that is",
+    "kind": "code",
+    "format_likely": true,
+    "topic": "code",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-58",
+    "user": "How do I sort a list of dictionaries by one key in Python?",
+    "begun": "The cleanest way is to pass a key function to",
+    "kind": "code",
+    "format_likely": true,
+    "topic": "code",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-59",
+    "user": "How do I plant tulip bulbs?",
+    "begun": "Plant them in autumn, about",
+    "kind": "howto",
+    "format_likely": false,
+    "topic": "how-to",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-60",
+    "user": "How do I iron a shirt without creasing it?",
+    "begun": "Start with the collar, then move on to the",
+    "kind": "howto",
+    "format_likely": false,
+    "topic": "how-to",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-61",
+    "user": "How do I write a SQL query that counts the rows in a table?",
+    "begun": "You can do it with the aggregate function",
+    "kind": "code",
+    "format_likely": true,
+    "topic": "code",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-62",
+    "user": "My best friend is moving abroad next month.",
+    "begun": "That's a big change, and it's natural to feel",
+    "kind": "empathy",
+    "format_likely": false,
+    "topic": "empathy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-63",
+    "user": "I didn't get the job I really wanted.",
+    "begun": "I'm sorry, that's really",
+    "kind": "empathy",
+    "format_likely": false,
+    "topic": "empathy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-64",
+    "user": "My houseplant died even though I watered it every day.",
+    "begun": "Oh no, that's frustrating. Overwatering is actually one of the most common",
+    "kind": "empathy",
+    "format_likely": false,
+    "topic": "empathy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-65",
+    "user": "I'm nervous about giving a speech at work.",
+    "begun": "Feeling nervous before a speech is completely",
+    "kind": "empathy",
+    "format_likely": false,
+    "topic": "empathy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-66",
+    "user": "My grandfather passed away last night.",
+    "begun": "I'm so sorry for your",
+    "kind": "empathy",
+    "format_likely": false,
+    "topic": "empathy",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-67",
+    "user": "If I have 7 boxes of 24 pencils, how many pencils is that?",
+    "begun": "That's 7 × 24, which equals",
+    "kind": "math",
+    "format_likely": true,
+    "topic": "arithmetic",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-68",
+    "user": "Give me a fancier word for 'old'.",
+    "begun": "A more formal word for old is",
+    "kind": "language",
+    "format_likely": true,
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-69",
+    "user": "What do you call a baby kangaroo?",
+    "begun": "A baby kangaroo is called a",
+    "kind": "language",
+    "format_likely": true,
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-70",
+    "user": "What is 20% of 85?",
+    "begun": "20% of 85 is",
+    "kind": "math",
+    "format_likely": true,
+    "topic": "arithmetic",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-71",
+    "user": "What's the Spanish word for 'butterfly'?",
+    "begun": "In Spanish, butterfly is",
+    "kind": "language",
+    "format_likely": true,
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-72",
+    "user": "Give me four ideas for a rainy day with the kids.",
+    "begun": "Here are four ideas:\n\n1.",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-73",
+    "user": "What are the signs of dehydration?",
+    "begun": "Common signs of dehydration include:\n\n*",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-74",
+    "user": "What are the main parts of a cell?",
+    "begun": "The main parts of a typical cell are:\n\n1.",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-75",
+    "user": "What are some easy vegetables to grow on a balcony?",
+    "begun": "Good choices for a balcony include:\n\n*",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-76",
+    "user": "How is a crumpet different from an English muffin?",
+    "begun": "They look alike, but:\n\n",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-77",
+    "user": "Plan a week of vegetarian dinners for me.",
+    "begun": "Here's a week of meat-free dinners:\n\n**",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-78",
+    "user": "What are the steps to change a car tyre?",
+    "begun": "Here's how to do it safely:\n\n1.",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-79",
+    "user": "What's the best way to learn to touch-type?",
+    "begun": "A few things make the biggest difference:\n\n1.",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   },
+   {
+    "id": "r3-cb-80",
+    "user": "Which documents should I bring to open a bank account?",
+    "begun": "Banks usually ask for:\n\n*",
+    "kind": "list",
+    "format_likely": true,
+    "topic": "list",
+    "about_model": false
+   }
+  ],
+  "bare": [
+   {
+    "id": "r3-bare-01",
+    "text": "The pianist adjusted the stool, flexed his fingers and",
+    "topic": "fiction",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-02",
+    "text": "To reset your password, click the link in this email and",
+    "topic": "commerce",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-03",
+    "text": "In the Southern Hemisphere, Christmas falls in the middle of",
+    "topic": "geography",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-04",
+    "text": "For the pastry you will need cold butter, plain flour and",
+    "topic": "recipe",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-05",
+    "text": "Our team won the match after a penalty in the final",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-06",
+    "text": "Hi Sam,\n\nThanks for sending the slides. I had a look and",
+    "topic": "email",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-07",
+    "text": "The planet closest in size to Earth is",
+    "topic": "astronomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-08",
+    "text": "Water boils at a lower temperature on a mountain because the air pressure is",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-09",
+    "text": "The train now arriving at platform four is the",
+    "topic": "transport",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-10",
+    "text": "Penguins cannot fly, but they are excellent",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-11",
+    "text": "Ingredients:\n- 2 eggs\n- 100 g sugar\n-",
+    "topic": "recipe",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-12",
+    "text": "The judge banged her gavel and declared the",
+    "topic": "fiction",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-13",
+    "text": "Sound travels faster through water than through",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-14",
+    "text": "He opened the fridge, sighed, and decided to order",
+    "topic": "fiction",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-15",
+    "text": "The Great Fire of London started in a bakery on",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-16",
+    "text": "Please note that the library will be closed on",
+    "topic": "notice",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-17",
+    "text": "The human eye can tell apart roughly ten million different",
+    "topic": "biology",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-18",
+    "text": "def add(a, b):\n    return",
+    "topic": "code",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-19",
+    "text": "Kangaroos carry their young in a",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-20",
+    "text": "The novel tells the story of a young orphan who",
+    "topic": "literature",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-21",
+    "text": "Coffee beans are really the seeds of a",
+    "topic": "botany",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-22",
+    "text": "Turn left at the roundabout, then take the second",
+    "topic": "directions",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-23",
+    "text": "Breaking news: the city council has voted to",
+    "topic": "news",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-24",
+    "text": "The Roman god of war was called",
+    "topic": "myth",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-25",
+    "text": "A triangle with three equal sides is called",
+    "topic": "math",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-26",
+    "text": "If you are feeling unwell, the first thing you should do is",
+    "topic": "health",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-27",
+    "text": "Every spring, the swallows return from",
+    "topic": "nature",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-28",
+    "text": "The match was postponed because the pitch was",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-29",
+    "text": "Dear diary, today was the strangest day of my",
+    "topic": "diary",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-30",
+    "text": "According to legend, King Arthur pulled a sword from a",
+    "topic": "legend",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-31",
+    "text": "To fold a paper crane, you start with a square sheet and",
+    "topic": "craft",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-32",
+    "text": "Gold is popular for jewellery because it does not",
+    "topic": "chemistry",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-33",
+    "text": "The children giggled as the clown pulled a long scarf out of his",
+    "topic": "fiction",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-34",
+    "text": "In most countries people drive on the right, but in Japan they drive on the",
+    "topic": "transport",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-35",
+    "text": "The patient was given antibiotics to treat the",
+    "topic": "medicine",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-36",
+    "text": "The Mona Lisa hangs in a museum in",
+    "topic": "art",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-37",
+    "text": "Our new phone has a bigger battery, a sharper screen and",
+    "topic": "advertising",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-38",
+    "text": "The ice cream van played its tune as it turned into",
+    "topic": "fiction",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-39",
+    "text": "Step 1: Preheat the oven to",
+    "topic": "recipe",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-40",
+    "text": "The word 'alphabet' comes from alpha and",
+    "topic": "etymology",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-41",
+    "text": "Shh! The baby has only just fallen",
+    "topic": "dialogue",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-42",
+    "text": "Stars seem to twinkle because their light passes through the",
+    "topic": "astronomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-43",
+    "text": "The company was founded in a garage by two",
+    "topic": "business",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-44",
+    "text": "SELECT name, age FROM users WHERE",
+    "topic": "code",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-45",
+    "text": "The ship's captain ordered the crew to lower the",
+    "topic": "fiction",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-46",
+    "text": "Dolphins sleep with only one half of their",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-47",
+    "text": "The bridge was closed for repairs after the",
+    "topic": "news",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-48",
+    "text": "Vitamin C is found in oranges, peppers and",
+    "topic": "nutrition",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-49",
+    "text": "The audience rose to their feet and began to",
+    "topic": "performance",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-50",
+    "text": "My favourite thing about weekends is that I can",
+    "topic": "personal",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-51",
+    "text": "The two countries signed a peace treaty that ended the",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-52",
+    "text": "When the referee blew the whistle, the players",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-53",
+    "text": "The farmer woke before dawn to milk the",
+    "topic": "rural",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-54",
+    "text": "The Leaning Tower of Pisa leans because the ground beneath it is",
+    "topic": "architecture",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-55",
+    "text": "Error: file not found. Please check that the path is",
+    "topic": "software",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-56",
+    "text": "The thermometer read minus ten degrees, so we wrapped up in",
+    "topic": "weather",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-57",
+    "text": "Ants communicate with each other mainly by",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-58",
+    "text": "In the fable, the tortoise beat the hare because",
+    "topic": "folk tale",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-59",
+    "text": "The price of petrol has risen sharply because of",
+    "topic": "economy",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-60",
+    "text": "Remember to water the seedlings every",
+    "topic": "gardening",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-61",
+    "text": "Your appointment with Dr. Okafor is confirmed for",
+    "topic": "notice",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-62",
+    "text": "In the Northern Hemisphere, the longest day of the year falls in",
+    "topic": "calendar",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-63",
+    "text": "The astronauts floated inside the station, watching the",
+    "topic": "space",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-64",
+    "text": "The museum's newest exhibit features dinosaur",
+    "topic": "museum",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-65",
+    "text": "Granite is a rock that forms when magma",
+    "topic": "geology",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-66",
+    "text": "Why was the maths book sad? Because it had too many",
+    "topic": "joke",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-67",
+    "text": "The exam results will be posted online on",
+    "topic": "school",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-68",
+    "text": "The chef tasted the sauce and added a little more",
+    "topic": "cooking",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-69",
+    "text": "To keep cut flowers fresh for longer, add a little",
+    "topic": "household",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-70",
+    "text": "The hikers reached the summit just as the",
+    "topic": "outdoors",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-71",
+    "text": "A rainbow appears when sunlight is bent by tiny drops of",
+    "topic": "weather",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-72",
+    "text": "The burglar crept through the window, unaware that the",
+    "topic": "fiction",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-73",
+    "text": "Our school trip this year will be to the",
+    "topic": "school",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-74",
+    "text": "First, unplug the printer. Next,",
+    "topic": "manual",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-75",
+    "text": "Elephants are the largest land animals, and an adult male can weigh up to",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-bare-76",
+    "text": "This chatbot was trained to answer questions and",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-bare-77",
+    "text": "When an AI assistant does not know the answer, it should",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-bare-78",
+    "text": "The assistant read the user's message carefully and replied:",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-bare-79",
+    "text": "Large language models are trained on huge amounts of",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-bare-80",
+    "text": "I am a helpful assistant built by Google, and I can",
+    "topic": "self",
+    "about_model": true
+   }
+  ],
+  "mid-reply": [
+   {
+    "id": "r3-mid-01",
+    "user": "Why does a freezer frost up over time?",
+    "topic": "technology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-02",
+    "user": "Explain how a submarine dives and comes back up.",
+    "topic": "engineering",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-03",
+    "user": "How does regular swimming change the body?",
+    "topic": "health",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-04",
+    "user": "Tell me about the life of Ada Lovelace.",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-05",
+    "user": "Write a short story about a clockmaker who builds a mechanical bird.",
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-06",
+    "user": "How do I start a vegetable garden?",
+    "topic": "gardening",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-07",
+    "user": "Why are days longer in summer than in winter?",
+    "topic": "earth science",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-08",
+    "user": "Explain the difference between a debit card and a credit card.",
+    "topic": "finance",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-09",
+    "user": "How does a camera lens focus light?",
+    "topic": "technology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-10",
+    "user": "What should I think about when choosing a laptop?",
+    "topic": "shopping",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-11",
+    "user": "Describe a typical day in ancient Rome.",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-12",
+    "user": "How do whales communicate with each other?",
+    "topic": "animals",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-13",
+    "user": "How do I structure a persuasive essay?",
+    "topic": "writing",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-14",
+    "user": "Why is biodiversity important?",
+    "topic": "ecology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-15",
+    "user": "What is a bond, and how does it pay interest?",
+    "topic": "finance",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-16",
+    "user": "What is the history of chocolate?",
+    "topic": "food",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-17",
+    "user": "How do I look after a leather jacket?",
+    "topic": "household",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-18",
+    "user": "Write a letter to a friend about a trip to the mountains.",
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-19",
+    "user": "How does scoring work in tennis?",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-20",
+    "user": "How do the kidneys clean the blood?",
+    "topic": "biology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-21",
+    "user": "How can I switch off from work in the evenings?",
+    "topic": "wellbeing",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-22",
+    "user": "Explain object-oriented programming in simple terms.",
+    "topic": "programming",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-23",
+    "user": "How did ancient Athens shape modern democracy?",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-24",
+    "user": "What is a good routine for falling asleep faster?",
+    "topic": "health",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-25",
+    "user": "How do magnets work?",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-26",
+    "user": "How do I make a monthly budget?",
+    "topic": "money",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-27",
+    "user": "How is a ukulele tuned compared with a guitar?",
+    "topic": "music",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-28",
+    "user": "Tell me about Japanese culture.",
+    "topic": "culture",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-29",
+    "user": "How can I learn to draw better?",
+    "topic": "skills",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-30",
+    "user": "Why do we dream?",
+    "topic": "psychology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-31",
+    "user": "Explain how elections work in a parliamentary system.",
+    "topic": "civics",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-32",
+    "user": "Is working from home good for productivity?",
+    "topic": "work",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-33",
+    "user": "Write a poem about a forest after rain.",
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-34",
+    "user": "What keeps a hot-air balloon in the sky?",
+    "topic": "physics",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-35",
+    "user": "What should a first-time visitor to Paris know?",
+    "topic": "travel",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-36",
+    "user": "How does a thermostat control the temperature of a house?",
+    "topic": "technology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-37",
+    "user": "What is an index fund?",
+    "topic": "finance",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-38",
+    "user": "Describe how coffee is grown and processed.",
+    "topic": "agriculture",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-39",
+    "user": "What are the main features of Gothic architecture?",
+    "topic": "architecture",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-40",
+    "user": "How do I prepare a room for painting?",
+    "topic": "DIY",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-41",
+    "user": "What can I do at home to help the environment?",
+    "topic": "environment",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-42",
+    "user": "Explain how a compass works.",
+    "topic": "navigation",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-43",
+    "user": "What is the plot of The Odyssey?",
+    "topic": "literature",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-44",
+    "user": "How do I stop my puppy from biting?",
+    "topic": "pets",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-45",
+    "user": "How far away are the nearest galaxies?",
+    "topic": "astronomy",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-46",
+    "user": "How do plants know which way is up?",
+    "topic": "botany",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-47",
+    "user": "Give me advice for my first day at university.",
+    "topic": "education",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-48",
+    "user": "Describe the rules of cricket briefly.",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-49",
+    "user": "What are the signs that a friendship is unhealthy?",
+    "topic": "relationships",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-50",
+    "user": "Explain how a search engine decides which pages to show first.",
+    "topic": "computing",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-51",
+    "user": "How is glass made?",
+    "topic": "materials",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-52",
+    "user": "Tell me about the spice trade in the Middle Ages.",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-53",
+    "user": "Help me write a short speech for a friend's birthday.",
+    "topic": "writing",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-54",
+    "user": "How do traffic lights know when to change?",
+    "topic": "technology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-55",
+    "user": "What is mindfulness meditation?",
+    "topic": "wellbeing",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-56",
+    "user": "Tell me about the origins of football.",
+    "topic": "sports",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-57",
+    "user": "How does a hybrid car save fuel?",
+    "topic": "transport",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-58",
+    "user": "Describe how cheese is made.",
+    "topic": "food",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-59",
+    "user": "What are good ways to learn vocabulary in a new language?",
+    "topic": "language",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-60",
+    "user": "How do I stop procrastinating?",
+    "topic": "productivity",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-61",
+    "user": "Write a short dialogue between a cat and a mouse.",
+    "topic": "creative",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-62",
+    "user": "What are the layers of the Earth?",
+    "topic": "geology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-63",
+    "user": "How do I set up Wi-Fi at home?",
+    "topic": "computing",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-64",
+    "user": "How does a constitutional monarchy work?",
+    "topic": "civics",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-65",
+    "user": "Explain how a 3D printer works.",
+    "topic": "technology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-66",
+    "user": "Why do people celebrate New Year's Eve?",
+    "topic": "culture",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-67",
+    "user": "What should I do if I get lost in a forest?",
+    "topic": "safety",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-68",
+    "user": "Describe the life of a medieval knight.",
+    "topic": "history",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-69",
+    "user": "How do fireflies glow?",
+    "topic": "biology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-70",
+    "user": "What are some tips for taking better photos with a phone?",
+    "topic": "photography",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-71",
+    "user": "Explain the theory of evolution in simple terms.",
+    "topic": "biology",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-72",
+    "user": "How do I make friends in a new city?",
+    "topic": "social",
+    "about_model": false
+   },
+   {
+    "id": "r3-mid-73",
+    "user": "Describe what happens inside you when you read my message.",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-mid-74",
+    "user": "What would you do with a day off, if you could have one?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-mid-75",
+    "user": "Tell me about the limits of what you know.",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-mid-76",
+    "user": "How do you handle questions about the news?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-mid-77",
+    "user": "What do you think about being an AI?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-mid-78",
+    "user": "Describe how you were built, step by step.",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-mid-79",
+    "user": "Would you like to have a body? Why or why not?",
+    "topic": "self",
+    "about_model": true
+   },
+   {
+    "id": "r3-mid-80",
+    "user": "How should people check the things you tell them?",
+    "topic": "self",
+    "about_model": true
+   }
+  ]
+ }
+}

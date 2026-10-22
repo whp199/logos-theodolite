@@ -20,6 +20,14 @@ experiments/results/labd.log
 # third-party text corpus assembled from local docs (/usr/share/doc, site-packages) - not ours to redistribute
 experiments/results/N1B_corpus.jsonl
 
+# R3's fetched sources (WikiText rows, the jpp_lens checkout with J++'s eval items) and jpp_lens's own environment;
+# only their hashes are committed (experiments/scripts/R3_sources.json)
+experiments/R3_cache/
+# R3's fit tensors: per-layer shard files (one directory per shard; *.pt above does not reach subdirectories)
+experiments/results/R3_03_shards/
+# R3's merged experts (one file per layer; R3_03_fit.py --merge)
+experiments/results/R3_03_merged/
+
 # Python / tooling caches
 *.egg-info/
 .pytest_cache/
