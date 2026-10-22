@@ -47,6 +47,7 @@ from backend.engine_runtime import (
     TheodoliteRuntime,
     TheodoliteSweepBundle,
 )
+from backend.label_gate import LABEL_GATE_CARD
 from backend.larql_vault import LarqlVaultEngine
 from backend.mcp_scientist import (
     bind_runtime,
@@ -438,6 +439,9 @@ def pack_binary_and_json_frames(
                     "write_size": round(float(w_sizes[r_idx]), 4) if w_sizes else None,
                     "j_vindex_tokens": [{"token": t, "logit": round(v, 2)} for t, v in j_toks],
                     "naive_tokens": [{"token": t, "logit": round(v, 2)} for t, v in n_toks],
+                    # the label's check by the study's measure (first ten a side; backend/label_gate.py); None where
+                    # no words were read at this layer
+                    "label_check": sweep.pole_label_checks.get((l, r_idx)),
                 }
             )
         poles_labels[str(l)] = layer_pole_meta
@@ -557,6 +561,8 @@ def pack_binary_and_json_frames(
         "pole_ranking": sweep.pole_ranking,
         "thread_score": sweep.thread_score,
         "frame": sweep.frame_info,
+        # the rule each poles_labels entry's label_check follows: which labels the pages hold back, and why
+        "label_gate": LABEL_GATE_CARD,
         # which lens produced every reading below: what it was fitted on, what it reads, how, its source, and a caution
         "lens": runtime.lens_card(),
         "layer_plumes": layer_plumes,
@@ -920,6 +926,8 @@ async def _stream_sweep(
             centre_token_ids=req.centre_token_ids,
             centre_answer=req.centre_answer,
         )
+        # the neurons a vault edit is in force on, for the label checks (no edit can land while the lock is held)
+        edited = {(p.layer_idx, p.neuron_idx) for p in vault.edits_in_force()}
         request_echo = {
             "chat": bool(req.chat),
             "system": req.system if (req.chat and req.system) else None,
@@ -946,6 +954,7 @@ async def _stream_sweep(
                 pole_ranking=req.pole_ranking,
                 thread_score=req.thread_score,
                 rank_lookahead=req.rank_lookahead,
+                edited_neurons=edited,
             )
             think_cap: Optional[SweepCapture] = None
             think_bundle: Optional[TheodoliteSweepBundle] = None
@@ -999,6 +1008,7 @@ async def _stream_sweep(
                     pole_ranking=req.pole_ranking,
                     thread_score=req.thread_score,
                     rank_lookahead=req.rank_lookahead,
+                    edited_neurons=edited,
                 )
             stop_after = False
             if stream and idx + 1 < m:
@@ -1236,6 +1246,8 @@ async def api_health() -> Dict[str, Any]:
         # the model's sliding attention window in word-pieces (text_config.sliding_window), as every sighting sends it
         "sliding_window": runtime.sliding_window,
         "larql_cli": vault.cli_versions(),
+        # the rule the label_check on every neuron label follows (backend/label_gate.py)
+        "label_gate": LABEL_GATE_CARD,
         "lens": runtime.lens_card(),
     }
 

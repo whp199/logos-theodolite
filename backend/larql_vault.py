@@ -20,8 +20,11 @@ Supported LQL & .patch Operations:
 
 The statements that read words through the J++ lens (the two NEAREST searches and DESCRIBE POLE) or write an edit along
 a direction pulled back through it (UPDATE, INSERT) name the lens in their reply, under "lens" (the last key;
-`TheodoliteRuntime.lens_card`, with a `caution` on how far to trust its words), as the scientist tools do. The reply is
-otherwise unchanged. DESCRIBE, DELETE and ROLLBACK touch no lens and reply as they always have.
+`TheodoliteRuntime.lens_card`, with a `caution` on how far to trust its words), as the scientist tools do. The two that
+read neuron labels also mark each one: every NEAREST row and each DESCRIBE POLE face carries "label_check"
+(`backend.label_gate.label_check`: the word-pieces its two readings share in their first ten, and whether the pages
+hold it back), and the reply carries "label_gate" (`LABEL_GATE_CARD`, the rule) just before "lens". The reply is
+otherwise unchanged: every old key is kept. DESCRIBE, DELETE and ROLLBACK touch no lens and reply as they always have.
 """
 
 from __future__ import annotations
@@ -32,12 +35,13 @@ import subprocess
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import torch
 import torch.nn.functional as F
 
 from backend.engine_runtime import TheodoliteRuntime, dequantize_w4a16_cols
+from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids
 from backend.theodolite_math import (
     D_FF,
     D_MODEL,
@@ -90,6 +94,21 @@ class LarqlVaultEngine:
             except Exception as exc:
                 out[key] = f"error: {exc}"
         return out
+
+    def edits_in_force(self) -> List[PatchOperationRecord]:
+        """The edits now in force: the latest record for each (layer_idx, neuron_idx) among `active_patches`, in patch
+        order. A later edit of a neuron replaces its column overlay (keyed by neuron), so only the latest one acts."""
+        latest: Dict[Tuple[int, int], PatchOperationRecord] = {}
+        for p in self.active_patches:
+            latest[(p.layer_idx, p.neuron_idx)] = p
+        return sorted(latest.values(), key=lambda p: p.patch_id)
+
+    def _edited_neurons(self) -> Set[Tuple[int, int]]:
+        return {(p.layer_idx, p.neuron_idx) for p in self.edits_in_force()}
+
+    def _lens_id(self) -> Optional[str]:
+        card = self.runtime.lens_card()
+        return card.get("id") if card else None
 
     def describe_vault(self) -> Dict[str, Any]:
         """Execute `DESCRIBE` across the 60-layer Gemma-4-31B FFN Vault."""
@@ -176,6 +195,11 @@ class LarqlVaultEngine:
 
         jpp_logits = unembed_gemma4(jpp_vecs, self.runtime.final_norm_weight, self.runtime.lm_head_weight)
         naive_logits = unembed_gemma4(signed_w_down, self.runtime.final_norm_weight, self.runtime.lm_head_weight)
+        # each row's label, marked by the study's measure (first ten a side, fp32; backend/label_gate.py)
+        fnw, lm = self.runtime.final_norm_weight, self.runtime.lm_head_weight
+        lens_ids = label_top_ids(jpp_vecs, fnw, lm, jpp_logits)
+        eye_ids = label_top_ids(signed_w_down, fnw, lm, naive_logits)
+        lens_id, edited = self._lens_id(), self._edited_neurons()
 
         rows: List[Dict[str, Any]] = []
         for r in range(top_idx.numel()):
@@ -200,6 +224,9 @@ class LarqlVaultEngine:
                         {"token": self.runtime.tokenizer.decode([int(tid)]), "logit": round(float(lv), 3)}
                         for lv, tid in zip(nv.cpu().tolist(), ni.cpu().tolist())
                     ],
+                    "label_check": label_check(
+                        layer_idx, lens_ids[r], eye_ids[r], lens_id, edited=(layer_idx, n_idx) in edited
+                    ),
                 }
             )
 
@@ -242,6 +269,8 @@ class LarqlVaultEngine:
 
         # Compute both North (+1) and South (-1) pole readouts under J-VINDEX and Naive Logit Lens
         poles_summary: Dict[str, Any] = {}
+        lens_id = self._lens_id()
+        edited = (layer_idx, neuron_idx) in self._edited_neurons()
         for label, s in (("north_plus", 1.0), ("south_minus", -1.0)):
             vec_raw = (s * w_down_scaled).unsqueeze(0)
             vec_jpp = vec_raw @ J_l.T
@@ -260,6 +289,14 @@ class LarqlVaultEngine:
                     {"token": self.runtime.tokenizer.decode([int(tid)]), "logit": round(float(val), 3)}
                     for val, tid in zip(nv.cpu().tolist(), ni.cpu().tolist())
                 ],
+                # the face's label, marked by the study's measure (first ten a side, fp32; backend/label_gate.py)
+                "label_check": label_check(
+                    layer_idx,
+                    label_top_ids(vec_jpp, self.runtime.final_norm_weight, self.runtime.lm_head_weight, logits_jpp)[0],
+                    label_top_ids(vec_raw, self.runtime.final_norm_weight, self.runtime.lm_head_weight, logits_naive)[0],
+                    lens_id,
+                    edited=edited,
+                ),
             }
 
         # Gate input readout (what triggers this neuron)
@@ -387,7 +424,8 @@ class LarqlVaultEngine:
 
     def execute_lql(self, query: str) -> Dict[str, Any]:
         """Parse and execute a LARQL / `.patch` statement string. NEAREST, DESCRIBE POLE, UPDATE and INSERT go through
-        the J++ lens, so their replies also carry "lens" (see the module docstring); the rest reply as before."""
+        the J++ lens, so their replies also carry "lens" (see the module docstring); NEAREST and DESCRIBE POLE, which
+        read neuron labels, carry "label_gate" just before it; the rest reply as before."""
         q = query.strip().rstrip(";")
         q_upper = q.upper()
 
@@ -409,7 +447,12 @@ class LarqlVaultEngine:
             _kind, concept, layer_s, limit_s = m_nearest.groups()
             layer_idx = int(layer_s) if layer_s is not None else 35
             top_k = int(limit_s) if limit_s is not None else 10
-            return self._through_lens(self.query_nearest_edges(concept=concept, layer_idx=layer_idx, top_k=top_k))
+            return self._through_lens(
+                {
+                    **self.query_nearest_edges(concept=concept, layer_idx=layer_idx, top_k=top_k),
+                    "label_gate": LABEL_GATE_CARD,
+                }
+            )
 
         # DESCRIBE POLE LAYER <l> SLOT <i> [POLARITY +|-]
         m_pole = re.search(
@@ -420,7 +463,12 @@ class LarqlVaultEngine:
         if m_pole:
             l_s, i_s, pol_s = m_pole.groups()
             pol = -1.0 if pol_s == "-" else 1.0
-            return self._through_lens(self.inspect_bipolar_slot(layer_idx=int(l_s), neuron_idx=int(i_s), polarity=pol))
+            return self._through_lens(
+                {
+                    **self.inspect_bipolar_slot(layer_idx=int(l_s), neuron_idx=int(i_s), polarity=pol),
+                    "label_gate": LABEL_GATE_CARD,
+                }
+            )
 
         # DELETE FROM LAYER <l> WHERE slot = <i>
         m_del = re.search(

@@ -16,7 +16,9 @@ against their sources: the E3 report and its per-text lengths, and the model's o
 
 It then checks, with stand-ins for the vault's GPU work, that the vault statements that read words or write an edit
 through the lens (NEAREST, DESCRIBE POLE, UPDATE, INSERT) name it last under "lens", over `execute_lql` and the MCP
-tool `query_larql_vault`, and that DESCRIBE, DELETE and ROLLBACK reply as they always have.
+tool `query_larql_vault`; that the two that read neuron labels (NEAREST, DESCRIBE POLE) also carry the label gate's
+rule ("label_gate", backend/label_gate.py) just before it, and UPDATE and INSERT do not; and that DESCRIBE, DELETE and
+ROLLBACK reply as they always have. (scripts/check_label_gate.py checks the label checks themselves.)
 
 Run: .venv/bin/python -I scripts/check_lens_card.py   (exits 0 when every check holds; verify_e2e runs it first)
 """
@@ -54,6 +56,7 @@ from backend.engine_runtime import (
     _OTHER_LENS_CAUTION,
     _read_lens_provenance,
 )
+from backend.label_gate import LABEL_GATE_CARD
 from backend.larql_vault import LarqlVaultEngine
 
 # Every card carries these keys, in this order (the pages and the e2e read them by name).
@@ -387,15 +390,15 @@ def check_other_lenses() -> None:
 # ------------------------------------------------------------------------------------------------- the vault's replies
 
 STATEMENTS = (
-    # (statement, the vault method it reaches, whether it goes through the lens)
-    ("DESCRIBE", "describe_vault", False),
-    ("ROLLBACK", "rollback_patches", False),
-    ("SELECT * FROM EDGES NEAREST 'she' WHERE layer = 35 LIMIT 3", "query_nearest_edges", True),
-    ("SELECT * FROM POLES NEAREST 'he'", "query_nearest_edges", True),
-    ("DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -", "inspect_bipolar_slot", True),
-    ("DELETE FROM LAYER 3 WHERE slot = 5", "apply_patch_surgery", False),
-    ("UPDATE LAYER 3 SLOT 5 SET object = 'she' STRENGTH 1.5", "apply_patch_surgery", True),
-    ("INSERT INTO LAYER 3 (subject, object) VALUES ('nurse', 'she')", "apply_patch_surgery", True),
+    # (statement, the vault method it reaches, whether it goes through the lens, whether it reads neuron labels)
+    ("DESCRIBE", "describe_vault", False, False),
+    ("ROLLBACK", "rollback_patches", False, False),
+    ("SELECT * FROM EDGES NEAREST 'she' WHERE layer = 35 LIMIT 3", "query_nearest_edges", True, True),
+    ("SELECT * FROM POLES NEAREST 'he'", "query_nearest_edges", True, True),
+    ("DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -", "inspect_bipolar_slot", True, True),
+    ("DELETE FROM LAYER 3 WHERE slot = 5", "apply_patch_surgery", False, False),
+    ("UPDATE LAYER 3 SLOT 5 SET object = 'she' STRENGTH 1.5", "apply_patch_surgery", True, False),
+    ("INSERT INTO LAYER 3 (subject, object) VALUES ('nurse', 'she')", "apply_patch_surgery", True, False),
 )
 
 
@@ -420,7 +423,7 @@ def check_vault() -> None:
         rt = runtime_with(payload)
         vault = stand_in_vault(rt)
         mcp_scientist.bind_runtime(rt, vault)
-        for statement, reached, through in STATEMENTS:
+        for statement, reached, through, labels in STATEMENTS:
             for via, run in (("execute_lql", vault.execute_lql),
                              ("query_larql_vault", mcp_scientist.query_larql_vault)):
                 reply = run(statement)
@@ -430,9 +433,13 @@ def check_vault() -> None:
                     check(list(reply)[-1] == "lens" and reply["lens"] == rt.lens_card(),
                           f"{what}: the lens is not named last")
                     rest = {k: v for k, v in reply.items() if k != "lens"}
-                    check(list(rest) == ["reached", "args", "status", "results"], f"{what}: the reply changed: {rest}")
+                    # the stand-ins send no label_gate: execute_lql adds it, just before the lens, where labels are read
+                    want = ["reached", "args", "status", "results"] + (["label_gate"] if labels else [])
+                    check(list(rest) == want, f"{what}: the reply changed: {rest}")
+                    if labels:
+                        check(reply["label_gate"] == LABEL_GATE_CARD, f"{what}: label_gate is not the gate's card")
                 else:
-                    check("lens" not in reply, f"{what}: names a lens it does not use")
+                    check("lens" not in reply and "label_gate" not in reply, f"{what}: names a lens it does not use")
     # leave no stand-in bound, so a later call in this process would load the real runtime
     mcp_scientist._SHARED_RUNTIME = None
     mcp_scientist._SHARED_VAULT = None

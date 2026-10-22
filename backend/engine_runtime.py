@@ -20,7 +20,7 @@ import types
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import AbstractSet, Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -55,6 +55,7 @@ from interp_engine.steer import steering_spec_to_eager_specs
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, OrthogonalDecompSpec, SteeringSpec
 from transformers import AutoTokenizer, Gemma4ForConditionalGeneration
 
+from backend.label_gate import label_check, label_top_ids
 from backend.theodolite_math import (
     FRAME_SQUARINGS,
     POLE_RANKINGS,
@@ -605,6 +606,10 @@ class TheodoliteSweepBundle:
     tracked_from_next: Dict[int, Dict[str, bool]] = field(default_factory=dict)
     rank_lookahead: bool = True
     analyse_ms: float = 0.0
+    # Per (layer, rank) of each decoded label: its check by the study's measure (`backend.label_gate.label_check`: the
+    # word-pieces the lens and the naked eye share in their first ten, fp32, and whether the pages hold it back). The
+    # 3-word lists above are unchanged; a (layer, rank) without words has no check.
+    pole_label_checks: Dict[Tuple[int, int], Dict[str, Any]] = field(default_factory=dict)
 
     @property
     def read_pos(self) -> int:
@@ -1659,6 +1664,7 @@ class TheodoliteRuntime:
         pole_ranking: str = "activation",
         thread_score: str = "coupling",
         rank_lookahead: bool = True,
+        edited_neurons: Optional[AbstractSet[Tuple[int, int]]] = None,
     ) -> TheodoliteSweepBundle:
         """One sighting: all four modules at read position P - 1 + token_index, the stream that has just read the
         prompt's last piece (token 0) or answer[k - 1], and whose layer 60 chose answer[k].
@@ -1666,7 +1672,11 @@ class TheodoliteRuntime:
         `rank_lookahead` is the space-then-digit rule: when the piece chosen here decodes blank (Gemma writes a digit
         after a lone space) and the next position was read, each tracked word's J++ rank, logit and prob is taken
         from the next position where it ranks better there (recorded in `tracked_from_next`). At token 0 this is the
-        rule the instrument always applied."""
+        rule the instrument always applied.
+
+        `edited_neurons`, the (layer, neuron) pairs with a vault edit in force (the server passes
+        `LarqlVaultEngine.edits_in_force`), marks those neurons' label checks `edited`; None reads them from the
+        down_proj column overlays the vault writes, which hold the same edits."""
         assert self.eager_model is not None, "Call runtime.load() first."
         if pole_ranking not in POLE_RANKINGS:
             raise ValueError(f"Unknown pole_ranking {pole_ranking!r}; expected one of {POLE_RANKINGS}")
@@ -1702,6 +1712,16 @@ class TheodoliteRuntime:
         pole_top_tokens_jpp: Dict[Tuple[int, int], List[Tuple[str, float]]] = {}
         pole_top_tokens_naive: Dict[Tuple[int, int], List[Tuple[str, float]]] = {}
         tracked_from_next: Dict[int, Dict[str, bool]] = {}
+        pole_label_checks: Dict[Tuple[int, int], Dict[str, Any]] = {}
+        # read once per sighting: the lens the labels go through, and the neurons a vault edit is in force on
+        card = self.lens_card()
+        lens_id = card.get("id") if card else None
+        if edited_neurons is None:
+            edited_neurons = {
+                (l, int(n_id))
+                for l in range(N_LAYERS)
+                for n_id in (getattr(self.get_mlp_module(l).down_proj, "_memit_col_overlays", None) or {})
+            }
 
         resid_post_target_list: List[torch.Tensor] = []
         resid_post_J_target_list: List[torch.Tensor] = []
@@ -1816,6 +1836,21 @@ class TheodoliteRuntime:
                             (self.tokenizer.decode([int(tid)]), float(val))
                             for val, tid in zip(ntop_v.cpu().tolist(), ntop_i.cpu().tolist())
                         ]
+                if poles_l.naive_pole_logits is not None:
+                    # each decoded label's check, by the study's measure: first ten a side, fp32 (label_gate.py)
+                    lens_ids = label_top_ids(
+                        poles_l.jpp_pole_vectors[:n_decode_ranks], self.final_norm_weight, self.lm_head_weight,
+                        poles_l.pole_logits[:n_decode_ranks],
+                    )
+                    eye_ids = label_top_ids(
+                        poles_l.signed_w_down[:n_decode_ranks], self.final_norm_weight, self.lm_head_weight,
+                        poles_l.naive_pole_logits[:n_decode_ranks],
+                    )
+                    for r_idx in range(n_decode_ranks):
+                        n_id = int(poles_l.neuron_indices[r_idx].item())
+                        pole_label_checks[(l, r_idx)] = label_check(
+                            l, lens_ids[r_idx], eye_ids[r_idx], lens_id, edited=(l, n_id) in edited_neurons
+                        )
 
         # 5. Execute Module 3: Live Downstream Reader Circuit Filaments (C, plus the direct-path estimates)
         direct_inputs = (
@@ -1985,6 +2020,7 @@ class TheodoliteRuntime:
             tracked_from_next=tracked_from_next,
             rank_lookahead=bool(rank_lookahead),
             analyse_ms=analyse_ms,
+            pole_label_checks=pole_label_checks,
         )
 
     async def run_theodolite_sweep(

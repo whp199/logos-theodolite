@@ -9,7 +9,9 @@ returns small but complete sweep bundles, which the real `pack_binary_and_json_f
    ranking, thread score, frame squaring), in plain words; and the server's own defaults for those options, kept as
    first built for old callers (Gram–Schmidt on raw rows, one frame, no centring, |a|, C);
 2. a request without request_id: exactly one binary + one JSON pair, today's keys plus the additive ones, nothing
-   else (the next reply on the socket is the next action's);
+   else (the next reply on the socket is the next action's); every poles_labels entry keeps its old keys and gains
+   label_check (the bundle's check where words were read, null elsewhere), and the frame carries label_gate just
+   before lens;
 3. a stream: progress after each written piece, the answer once, then a sighting progress, one pair per word-piece
    in order (binary then its JSON, back to back), flags bit 2, `last` on the final pair, then theodolite_sweep_end;
    an end mark stops the writing; a given answer with sight_tokens (repeats and out-of-range indices dropped);
@@ -60,6 +62,7 @@ from backend.engine_runtime import (
     TheodoliteSweepBundle,
     WrittenStep,
 )
+from backend.label_gate import LABEL_GATE_CARD, label_check
 from backend.theodolite_math import BipolarPolesResult, CausalSplitResult, TheodoliteTrajectory3D
 
 failures: List[str] = []
@@ -205,6 +208,9 @@ class FakeTokenizer:
 
 class FakeVault:
     active_patches: List[Any] = []
+
+    def edits_in_force(self) -> List[Any]:
+        return []
 
     def execute_lql(self, query: str) -> Dict[str, Any]:
         return {"command": query}
@@ -361,12 +367,16 @@ def fake_bundle(cap: SweepCapture, shared: SweepShared, k: int, rank_lookahead: 
     P = len(cap.prompt_token_ids)
     ids = cap.prompt_token_ids + cap.answer_token_ids
     chosen = cap.steps[k] if k < len(cap.steps) else None
+    # words and their checks at the layers the runtime decodes by default here (two of them suffice): at 35 below the
+    # band (held back), at 59 one reading
+    words = {(l, r): [("a", 3.0), ("b", 2.0), ("c", 1.0)] for l in LABELLED_LAYERS for r in range(5)}
+    checks = {(l, r): label_check(l, list(range(10)), list(range(r, 10 + r)), "jpp-base") for l, r in words}
     return TheodoliteSweepBundle(
         prompt=cap.prompt, prompt_token_ids=cap.prompt_token_ids, prompt_token_strs=cap.prompt_token_strs,
         target_pos=P - 1 + k, generated_text=cap.answer_text, generated_token_ids=cap.answer_token_ids,
         trajectory_3d=traj, causal_splits=splits, bipolar_poles=poles, filaments=[], cka_matrix=torch.eye(60),
         jpp_layer_readouts={l: ro(l) for l in range(60)}, naive_layer_readouts={l: ro(l) for l in range(60)},
-        pole_top_tokens_jpp={}, pole_top_tokens_naive={}, survey_mode="monument", survey_labels=("a", "b", "c"),
+        pole_top_tokens_jpp=words, pole_top_tokens_naive=words, survey_mode="monument", survey_labels=("a", "b", "c"),
         peak_vram_gb=0.0, elapsed_ms=1.0, survey_basis=shared.basis, survey_basis_space="J",
         frame_info={**shared.frame_info, "centred": False, "n_centre_prompts": 0, "centre_kind": "none"},
         token_index=k, read_token_id=ids[P - 1 + k], read_token=FakeTokenizer().decode([ids[P - 1 + k]]),
@@ -378,7 +388,7 @@ def fake_bundle(cap: SweepCapture, shared: SweepShared, k: int, rank_lookahead: 
             "chosen_logit_diff": 0.0 if chosen.source == "written" else None,
         },
         kinship_n_states=P + k, tracked_from_next={l: {"eight": rank_lookahead and k == 0 and l == 59} for l in range(60)},
-        rank_lookahead=rank_lookahead, analyse_ms=1.0,
+        rank_lookahead=rank_lookahead, analyse_ms=1.0, pole_label_checks=checks,
     )
 
 
@@ -437,6 +447,9 @@ def header(binary: bytes) -> Tuple[int, ...]:
     return struct.unpack("<6I", binary[:24])
 
 
+LABELLED_LAYERS = (35, 59)
+# each poles_labels entry's keys as first sent, in order; label_check is added after them
+LABEL_KEYS = ["rank", "neuron_idx", "polarity", "abs_act", "write_size", "j_vindex_tokens", "naive_tokens"]
 LEGACY_KEYS = {
     "type", "prompt", "prompt_token_strs", "generated_text", "think_generated_text", "survey_mode", "survey_labels",
     "elapsed_ms", "peak_vram_gb", "global_layers_0based", "global_layers_1based", "n_filaments", "is_steered",
@@ -447,6 +460,7 @@ NEW_KEYS = {
     "request_id", "token_index", "sight_index", "n_to_sight", "last", "read_pos", "sliding_window", "read_token",
     "read_token_id", "prompt_len", "chosen", "answer", "generation", "recapture_check", "kinship_n_states",
     "rank_lookahead", "sight_dropped", "timing", "think_seed", "think_read_token", "think_stop_reason", "think_skipped",
+    "label_gate",
 }
 
 
@@ -494,6 +508,24 @@ def check_socket() -> None:
         check(gen["greedy"] is True and gen["seed"] is None and gen["max_new_tokens"] == 6 and gen["capped"] is False
               and gen["stop_at_end_of_turn"] is True, f"generation {gen}")
         check(set(meta["timing"]) == {"generate_ms", "capture_ms", "analyse_ms", "total_ms"}, "timing keys")
+        keys = list(meta)
+        check(meta["label_gate"] == LABEL_GATE_CARD and keys.index("label_gate") + 1 == keys.index("lens"),
+              "label_gate: the gate's card, just before lens")
+        n_entries = 0
+        for l in range(60):
+            entries = meta["poles_labels"][str(l)]
+            for r, e in enumerate(entries):
+                n_entries += 1
+                check(list(e) == LABEL_KEYS + ["label_check"], f"poles_labels[{l}][{r}] keys {list(e)}")
+                if l in LABELLED_LAYERS:
+                    want = label_check(l, list(range(10)), list(range(r, 10 + r)), "jpp-base")
+                    check(e["label_check"] == want and [w["token"] for w in e["j_vindex_tokens"]] == ["a", "b", "c"],
+                          f"poles_labels[{l}][{r}]: words and check {e}")
+                else:
+                    check(e["label_check"] is None and e["j_vindex_tokens"] == [], f"poles_labels[{l}][{r}]: {e}")
+        check(n_entries == 300, f"{n_entries} poles_labels entries")
+        held = meta["poles_labels"]["35"][0]["label_check"]
+        check(held["held_back"] and held["reasons"] == ["below_layer_40"], f"layer 35's label is held back: {held}")
         s.send({"action": "larql", "query": "DESCRIBE"})
         kind, obj = s.recv()
         check(kind == "json" and obj.get("type") == "larql_result", f"legacy: something came between ({obj.get('type')})")

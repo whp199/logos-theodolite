@@ -12,6 +12,14 @@ its words), so an agent calling them over MCP gets the same record as the HTTP a
 replies on unchanged. `query_larql_vault` does the same for the vault statements that read words or write an edit
 through that lens (NEAREST, DESCRIBE POLE, UPDATE, INSERT: `LarqlVaultEngine.execute_lql`, which also answers
 POST /api/larql and the WebSocket "larql" action).
+
+Every neuron label they send is also marked by the study's measure, under "label_check" (`backend.label_gate`: how
+many word-pieces the lens and the naked eye share in their first ten, fp32, and whether the instrument's pages hold the
+label back from their main reading, with the reasons): each face of `inspect_pole`, each reader of
+`trace_downstream_readers` (`dst_label_check`, beside its naked-eye words `dst_naive_tokens`), the pole of
+`test_motif_hypothesis` (`pole_label_check`), and each NEAREST row and DESCRIBE POLE face of the vault. The rule they
+follow travels with them under "label_gate" (`LABEL_GATE_CARD`), just before "lens". The words themselves are sent as
+before, and every old key is kept.
 """
 
 from __future__ import annotations
@@ -24,6 +32,7 @@ from fastmcp import FastMCP
 from interp_engine import Address
 
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
+from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids
 from backend.larql_vault import LarqlVaultEngine
 from backend.theodolite_math import (
     D_FF,
@@ -71,7 +80,10 @@ def inspect_pole(
     J-VINDEX (`(polarity * W_down[l, i]) @ J_pp[l].T`) and contrasts them against the naive
     Logit Lens (`W_U`), plus decodes the upstream `W_gate[l, i]` trigger tokens.
 
-    `lens` names the lens the J-VINDEX words went through; read its `caution` before trusting them.
+    `lens` names the lens the J-VINDEX words went through; read its `caution` before trusting them. Each face's
+    `label_check` counts the word-pieces its two readings share in their first ten; its `held_back` marks a label the
+    instrument's pages leave out of their main reading, for the reasons given (`label_gate`, the rule, comes just before
+    `lens`, so the keys come in the order of the WebSocket's DESCRIBE POLE reply).
     """
     rt, vault = get_runtime_and_vault()
     reply = vault.inspect_bipolar_slot(
@@ -80,7 +92,7 @@ def inspect_pole(
         polarity=float(polarity),
         top_k_tokens=8,
     )
-    return {**reply, "lens": rt.lens_card()}
+    return {**reply, "label_gate": LABEL_GATE_CARD, "lens": rt.lens_card()}
 
 
 @mcp.tool()
@@ -117,10 +129,12 @@ async def trace_downstream_readers(
     The trace always reads the model without any nudge (`steered: false`), on whatever text it is given.
 
     `lens` names the lens each reader's `dst_j_vindex_tokens` went through; read its `caution` before trusting them.
+    Each reader returned also carries the naked eye's words (`dst_naive_tokens`, four, as many as through the lens)
+    and `dst_label_check`, which marks its label by the study's measure (`label_gate`, the rule, comes before `lens`).
     """
     if score not in THREAD_SCORES:
         raise ValueError(f"Unknown score {score!r}; expected one of {THREAD_SCORES}")
-    runtime, _vault = get_runtime_and_vault()
+    runtime, vault = get_runtime_and_vault()
     assert runtime.eager_model is not None
 
     l_src = max(0, min(int(layer), N_LAYERS - 2))
@@ -174,6 +188,10 @@ async def trace_downstream_readers(
     )  # [1, 5376]
 
     candidates: List[Dict[str, Any]] = []
+    # where each candidate's pole came from (its layer and its rank there), and each layer's pole vectors (through the
+    # lens, and to the naked eye; not their logits, which are let go layer by layer), for the readers returned
+    found: List[Any] = []
+    layer_vecs: Dict[int, Any] = {}
     for l_dst in range(l_src + 1, l_end + 1):
         dst_mlp_act = caps[Address("mlp_act", l_dst)][0].to(runtime.device)
         poles_dst = extract_bipolar_poles(
@@ -188,6 +206,7 @@ async def trace_downstream_readers(
             compute_logits=True,
             compute_naive_logits=False,
         )
+        layer_vecs[l_dst] = (poles_dst.jpp_pole_vectors, poles_dst.signed_w_down)
         w_gate_dst = runtime.slice_w_gate(l_dst, poles_dst.neuron_indices).float()
         w_up_dst = runtime.slice_w_up(l_dst, poles_dst.neuron_indices).float()
         if l_dst in runtime._pre_ffn_norm_weights:
@@ -237,8 +256,31 @@ async def trace_downstream_readers(
                     "dst_j_vindex_tokens": jpp_tokens,
                 }
             )
+            found.append((candidates[-1], l_dst, r_idx))
 
     candidates.sort(key=lambda item: item["abs_score"], reverse=True)
+    # the readers returned (only those) are also read by the naked eye, and their labels checked (label_gate.py)
+    where = {id(c): (l, r) for c, l, r in found}
+    lens_id = (runtime.lens_card() or {}).get("id")
+    edited = {(p.layer_idx, p.neuron_idx) for p in vault.edits_in_force()}
+    fnw, lm = runtime.final_norm_weight, runtime.lm_head_weight
+    for cand in candidates[: int(top_k)]:
+        l_dst, r_idx = where[id(cand)]
+        lens_vec = layer_vecs[l_dst][0][r_idx : r_idx + 1]
+        eye_vec = layer_vecs[l_dst][1][r_idx : r_idx + 1]
+        eye_logits = unembed_gemma4(eye_vec, fnw, lm)
+        nv_top, ni_top = torch.topk(eye_logits[0], k=4)
+        cand["dst_naive_tokens"] = [
+            {"token": runtime.tokenizer.decode([int(tid)]), "logit": round(float(val), 2)}
+            for val, tid in zip(nv_top.cpu().tolist(), ni_top.cpu().tolist())
+        ]
+        cand["dst_label_check"] = label_check(
+            l_dst,
+            label_top_ids(lens_vec, fnw, lm, unembed_gemma4(lens_vec, fnw, lm))[0],
+            label_top_ids(eye_vec, fnw, lm, eye_logits)[0],
+            lens_id,
+            edited=(l_dst, cand["dst_neuron_idx"]) in edited,
+        )
     return {
         "prompt": text,
         "chat": bool(chat),  # as asked; with token_ids the template was not applied here (the ids may hold one)
@@ -256,6 +298,7 @@ async def trace_downstream_readers(
             "signed_activation_on_prompt": round(src_signed_act, 4),
         },
         "top_downstream_readers": candidates[: int(top_k)],
+        "label_gate": LABEL_GATE_CARD,
         "lens": runtime.lens_card(),
     }
 
@@ -280,6 +323,7 @@ async def test_motif_hypothesis(
     off); the last token is then the end of the model-turn header.
 
     `lens` names the lens the `pole_j_vindex_signature` words went through; read its `caution` before trusting them.
+    `pole_label_check` marks that pole's label by the study's measure (`label_gate`, the rule, comes before `lens`).
     """
     runtime, vault = get_runtime_and_vault()
     assert runtime.eager_model is not None
@@ -344,6 +388,8 @@ async def test_motif_hypothesis(
         "pos_prompt_results": pos_records,
         "neg_prompt_results": neg_records,
         "pole_j_vindex_signature": pole_info["active_pole"]["j_vindex_tokens"],
+        "pole_label_check": pole_info["active_pole"]["label_check"],
+        "label_gate": LABEL_GATE_CARD,
         "lens": runtime.lens_card(),
     }
 
@@ -355,6 +401,8 @@ def query_larql_vault(lql_query: str) -> Dict[str, Any]:
     The statements that read words through the J++ lens (`SELECT * FROM EDGES|POLES NEAREST`, `DESCRIBE POLE`) or
     write an edit along a direction pulled back through it (`UPDATE`, `INSERT`) also return `lens`, naming that lens;
     read its `caution` before trusting the words. `DESCRIBE`, `DELETE` and `ROLLBACK` touch no lens and return none.
+    The two that read neuron labels mark each one under `label_check` (each NEAREST row, each DESCRIBE POLE face) and
+    return the rule under `label_gate`, just before `lens`.
     """
     _rt, vault = get_runtime_and_vault()
     return vault.execute_lql(lql_query)
