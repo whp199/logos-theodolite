@@ -1,6 +1,6 @@
 {
  "schema": "R3_00_dry/1",
- "written_at": "2026-10-22T10:26:04",
+ "written_at": "2026-10-22T10:33:30",
  "model": "/home/eric/bin/ai-models/txt/google/gemma-4-12B",
  "layers": [
   24,
@@ -19,7 +19,7 @@
   "headroom_gib": 8.0
  },
  "git": {
-  "head": "ffdf10ded41d6668d5cc73bb3c0e4ac9048cb826",
+  "head": "e1733fe4056600a6bc0f6fcb23ad549c9a862802",
   "dirty": [],
   "runtime": {
    "runtime_commit": "d5405ee964e0ac1732babd8e69fa9271de555189",
@@ -31,46 +31,14 @@
  "cap": {
   "cap_gib": 24.0,
   "fraction": 0.7654,
-  "free_before_gib": 27.385,
+  "free_before_gib": 27.396,
   "total_gib": 31.355,
   "nvidia_smi": {
    "ok": true,
    "name": "NVIDIA GeForce RTX 5090",
    "total_mib": 32607,
-   "used_mib": 4066,
-   "free_mib": 28042,
-   "processes": [
-    {
-     "pid": "1475",
-     "name": "/usr/bin/kwin_wayland",
-     "used_mib": "377"
-    },
-    {
-     "pid": "656672",
-     "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
-     "used_mib": "545"
-    },
-    {
-     "pid": "1293728",
-     "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
-     "used_mib": "410"
-    },
-    {
-     "pid": "1300552",
-     "name": ".venv/bin/python",
-     "used_mib": "498"
-    }
-   ]
-  }
- },
- "vram": {
-  "at": "2026-10-22T10:26:04",
-  "nvidia_smi": {
-   "ok": true,
-   "name": "NVIDIA GeForce RTX 5090",
-   "total_mib": 32607,
-   "used_mib": 21060,
-   "free_mib": 11049,
+   "used_mib": 4054,
+   "free_mib": 28054,
    "processes": [
     {
      "pid": "1475",
@@ -85,20 +53,52 @@
     {
      "pid": "1293728",
      "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
-     "used_mib": "329"
+     "used_mib": "305"
     },
     {
-     "pid": "1300552",
+     "pid": "1302368",
      "name": ".venv/bin/python",
-     "used_mib": "17626"
+     "used_mib": "498"
+    }
+   ]
+  }
+ },
+ "vram": {
+  "at": "2026-10-22T10:33:30",
+  "nvidia_smi": {
+   "ok": true,
+   "name": "NVIDIA GeForce RTX 5090",
+   "total_mib": 32607,
+   "used_mib": 20905,
+   "free_mib": 11204,
+   "processes": [
+    {
+     "pid": "1475",
+     "name": "/usr/bin/kwin_wayland",
+     "used_mib": "376"
+    },
+    {
+     "pid": "656672",
+     "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
+     "used_mib": "545"
+    },
+    {
+     "pid": "1293728",
+     "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
+     "used_mib": "311"
+    },
+    {
+     "pid": "1302368",
+     "name": ".venv/bin/python",
+     "used_mib": "17456"
     }
    ]
   },
-  "torch_free_gib": 10.79,
+  "torch_free_gib": 10.941,
   "torch_total_gib": 31.355,
   "allocated_gib": 15.913,
-  "reserved_gib": 16.598,
-  "peak_allocated_gib": 23.084
+  "reserved_gib": 16.43,
+  "peak_allocated_gib": 23.086
  },
  "stages": {
   "lrp_coverage": {
@@ -167,26 +167,150 @@
    },
    "skipped": [],
    "ok": true,
-   "seconds": 25.64,
+   "seconds": 20.85,
    "peak_gib": 16.014
   },
   "shards_and_merge": {
-   "ok": false,
-   "error": "RuntimeError: Tensor on device meta is not on the expected device cuda:0!",
-   "seconds": 0.17,
-   "peak_gib": 15.887
+   "fallback": {
+    "24": [
+     false,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true
+    ],
+    "36": [
+     true,
+     false,
+     true,
+     true,
+     true,
+     true,
+     false,
+     true
+    ],
+    "46": [
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true,
+     true
+    ]
+   },
+   "ok": true,
+   "seconds": 90.44,
+   "peak_gib": 17.043
   },
   "weights": {
-   "ok": false,
-   "error": "FileNotFoundError: [Errno 2] No such file or directory: '/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/results/tmpm7fpn11o/merged/merged.json'",
-   "seconds": 22.58,
-   "peak_gib": 15.996
+   "counts": {
+    "multihop": {
+     "items": 10,
+     "graded_correct": 1,
+     "graded_wrong": 9,
+     "ungradeable_kept": 0,
+     "scoreable": 1,
+     "fitting": 1,
+     "heldout": 0,
+     "fitting_pairs": 1
+    },
+    "multilingual": {
+     "items": 10,
+     "graded_correct": 2,
+     "graded_wrong": 8,
+     "ungradeable_kept": 0,
+     "scoreable": 2,
+     "fitting": 1,
+     "heldout": 1,
+     "fitting_pairs": 4
+    },
+    "typo": {
+     "items": 10,
+     "graded_correct": 0,
+     "graded_wrong": 0,
+     "ungradeable_kept": 10,
+     "scoreable": 10,
+     "fitting": 2,
+     "heldout": 8,
+     "fitting_pairs": 2
+    },
+    "association": {
+     "items": 10,
+     "graded_correct": 0,
+     "graded_wrong": 0,
+     "ungradeable_kept": 10,
+     "scoreable": 10,
+     "fitting": 2,
+     "heldout": 8,
+     "fitting_pairs": 2
+    },
+    "poetry": {
+     "items": 10,
+     "graded_correct": 0,
+     "graded_wrong": 10,
+     "ungradeable_kept": 0,
+     "scoreable": 0,
+     "fitting": 0,
+     "heldout": 0,
+     "fitting_pairs": 0
+    }
+   },
+   "floors": {
+    "primary": [
+     "multihop",
+     "multilingual",
+     "typo",
+     "association"
+    ],
+    "full": [
+     "multihop",
+     "multilingual",
+     "typo",
+     "association"
+    ]
+   },
+   "train_macro_pass": {
+    "24": 0.125,
+    "36": 0.4375,
+    "46": 0.0625
+   },
+   "ok": true,
+   "seconds": 25.51,
+   "peak_gib": 16.356
   },
   "readout": {
-   "ok": false,
-   "error": "FileNotFoundError: [Errno 2] No such file or directory: '/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/results/tmpm7fpn11o/jpp-it.pt'",
-   "seconds": 0.0,
-   "peak_gib": 15.882
+   "filtered": true,
+   "top5_ids": {
+    "24": [
+     768,
+     901,
+     51679,
+     135449,
+     13660
+    ],
+    "36": [
+     901,
+     22816,
+     13550,
+     910,
+     20890
+    ],
+    "46": [
+     901,
+     22816,
+     13550,
+     910,
+     236751
+    ]
+   },
+   "ok": true,
+   "seconds": 0.44,
+   "peak_gib": 16.034
   },
   "q1_directions": {
    "n": [
@@ -194,16 +318,73 @@
     0
    ],
    "ok": true,
-   "seconds": 0.52,
-   "peak_gib": 16.553
+   "seconds": 0.48,
+   "peak_gib": 16.554
   },
   "parity": {
-   "ok": false,
-   "error": "RuntimeError: Tensor on device meta is not on the expected device cuda:0!",
-   "seconds": 2.41,
-   "peak_gib": 23.084
+   "plain": {
+    "dims": [
+     0,
+     1,
+     2
+    ],
+    "lrp": false,
+    "replicate_chunk": 1,
+    "replicate": {
+     "min_cos": 0.999928,
+     "per_layer_min": [
+      0.999928,
+      0.999981,
+      1.0
+     ]
+    },
+    "vmap": {
+     "min_cos": 0.999928,
+     "per_layer_min": [
+      0.999928,
+      0.999981,
+      0.999999
+     ]
+    },
+    "min_cos": 0.999928,
+    "ok": true
+   },
+   "rlens": {
+    "dims": [
+     0,
+     1,
+     2
+    ],
+    "lrp": true,
+    "replicate_chunk": 1,
+    "replicate": {
+     "min_cos": 0.999981,
+     "per_layer_min": [
+      0.999981,
+      0.999993,
+      1.0
+     ]
+    },
+    "vmap": {
+     "min_cos": 0.999978,
+     "per_layer_min": [
+      0.999978,
+      0.999991,
+      1.0
+     ]
+    },
+    "min_cos": 0.999978,
+    "ok": true
+   },
+   "checks": {
+    "parity": true,
+    "parity_rlens": true
+   },
+   "ok": true,
+   "seconds": 4.64,
+   "peak_gib": 23.086
   },
-  "ok": false
+  "ok": true
  },
- "ok": false
+ "ok": true
 }
