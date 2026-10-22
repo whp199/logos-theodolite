@@ -97,9 +97,12 @@ Runs inside a single process/network namespace to verify:
 12. E3's average state in this server's coordinates: one of E3's neutral prose passages read through the study's own
    capture (labkit.forward_resid, HF decoder-layer hooks) and the server's (capture_rows, resid_post) agree at every
    layer within 1e-2 (relative), and the server's contrast_of_state, with the μ it loads, gives back E3's figures at
-   layers 41-50 (report L40-49) from E3_lens_validation_c_background.json: μ's own pronoun score (+2.3, within 0.01)
-   and, on E3's twelve neutral passages, the raw score, the score centred on μ (−0.7) and μ's linear part (each
-   within 0.1).
+   layers 41-50 (report L40-49) from E3_lens_validation_c_background.json: μ's own pronoun score (+2.3) equals what
+   the study's own code (labkit's lens and gender_scores) gives for it today within 1e-3, and E3's recorded figure
+   within 0.05 (E3's run read +2.315 and this card reads +2.352 by labkit as by the server; an fp32 lens gives
+   +2.351, and without the lens μ's scores equal E3's at all 60 layers, so the drift is the bf16 lens product of a
+   state this large, not the server); and, on E3's twelve neutral passages, the raw score, the score centred on μ
+   (−0.7) and μ's linear part (each within 0.1).
 """
 
 from __future__ import annotations
@@ -664,6 +667,8 @@ async def check_study_mean_coordinates() -> None:
     async with _GPU_LOCK:
         mu, mu_J = runtime._study_mean_states()
         got_mu = float(np.mean([float(contrast_of_state(mu_J[l], pf, pm, fnw, W_U)) for l in band]))
+        # the study's own code today, on the same μ: labkit's lens (bf16) and its gender_scores
+        lab_mu = float(np.mean([float(lab.gender_scores(lab.lens(mu[l:l + 1], l, "jpp"))["pron"][0]) for l in band]))
         rows = {k: [] for k in want}
         worst_rel = 0.0
         for j, ids in enumerate(passages):
@@ -686,11 +691,15 @@ async def check_study_mean_coordinates() -> None:
             for k in want:
                 rows[k].append(per[k])
     got = {k: float(np.array(v).mean(0).mean()) for k, v in rows.items()}
-    assert abs(got_mu - want_mu) <= 0.01, f"μ's own pronoun score at layers 41-50: {got_mu:+.4f}, E3 {want_mu:+.4f}"
+    assert abs(got_mu - lab_mu) <= 1e-3, f"μ's own pronoun score at layers 41-50: {got_mu:+.4f} here, labkit {lab_mu:+.4f}"
+    # E3's recorded figure came from its own run of the bf16 lens product, which today reads 0.037 higher (by labkit
+    # as by the server; an fp32 lens agrees with today's): within 0.05, not 0.01
+    assert abs(got_mu - want_mu) <= 0.05, f"μ's own pronoun score at layers 41-50: {got_mu:+.4f}, E3 {want_mu:+.4f}"
     for k in want:
         assert abs(got[k] - want[k]) <= 0.1, f"neutral prose {k} at layers 41-50: {got[k]:+.4f} here, E3 {want[k]:+.4f}"
     print(f"  • E3's average state in this server's coordinates: resid_post within {worst_rel:.1e} (relative) of the "
-          f"study's own capture; at layers 41-50, μ reads {got_mu:+.3f} (E3 {want_mu:+.3f}); neutral prose raw "
+          f"study's own capture; at layers 41-50, μ reads {got_mu:+.3f} (labkit today {lab_mu:+.3f}, E3's record "
+          f"{want_mu:+.3f}); neutral prose raw "
           f"{got['raw']:+.3f} (E3 {want['raw']:+.3f}), centred {got['cent']:+.3f} (E3 {want['cent']:+.3f}), μ's part "
           f"{got['meanpart']:+.3f} (E3 {want['meanpart']:+.3f})")
 
