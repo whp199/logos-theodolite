@@ -411,8 +411,12 @@ const Keep: React.FC = () => (
         state="in part"
         condition="Each label spot-checked by cause and effect: turn the neuron up or down, and see."
       >
-        By hand: from a neuron’s folio you can <To dest="nudge">nudge</To> it and watch what the model says. Nothing yet
-        checks a label for you; the study did so for 384 faces (N1).
+        From a <To dest="neuron">neuron’s folio</To> you can now put its label to the test, gently by default, at one word-piece or
+        on the study’s 36 texts: the instrument turns the neuron up on each face and lists the words whose odds rose and
+        fell most. The folio counts how many of the label’s ten words are among the hundred whose odds rose most, as
+        the study did for 384 faces (N1), and says no more than that count: one word-piece is a smaller test than 36
+        texts, and only the test on the 36 texts compares with the study’s figures. It runs one label at a time, when
+        you ask; nothing yet tests every label on its own.
       </KeepRow>
     </div>
   </section>

@@ -405,7 +405,10 @@ export const Pillars: React.FC = () => (
             and naive top ten share, fp32, softcapped, as N1 counted) and the replies carry the rule as <M>label_gate</M>{" "}
             (<M>backend/label_gate.py</M>); the pages hold a label back from their main reading below index 40, and,
             under the base-fitted J++ only, below index 59 where the two share none of ten (the cut is the instrument’s;
-            the study set none), and keep it in the apparatus. Activation contexts stored per pole: not built.
+            the study set none), and keep it in the apparatus. The spot-check, in part: a neuron’s folio puts one
+            label at a time to the test when asked, N1A’s protocol at k = 10 with a frozen-norm write as a choice (
+            <M>causal_spot_check</M>, <M>backend/causal_check.py</M>), at a sighting’s word-piece or on N1A’s 36 texts, and
+            counts its P@10 as N1 did; nothing tests every label. Activation contexts stored per pole: not built.
           </dd>
           <dt>reports</dt>
           <dd>

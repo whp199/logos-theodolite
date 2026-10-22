@@ -19,11 +19,13 @@ export interface IndexItem {
  * renamed "through the lens", as the instrument and the layer's leaf now head it. Its old name, "what it was thinking",
  * stays as a cross-reference, and its anchor stays `thinking`, so older links still land on it. Since the canvas: how it
  * writes (with "sampler" as a cross-reference), the seed, a sighting of each word-piece, and the word it chose and its
- * likeliest; and write size, now that the instrument lists each layer's neurons by it.
+ * likeliest; and write size, now that the instrument lists each layer's neurons by it. Since the folio puts a label to
+ * the test: a test, with the specialist's "causal spot-check" as a cross-reference.
  */
 export const INDEX: IndexItem[] = [
   { label: "apparatus", id: "apparatus", section: "iii" },
   { label: "bearing and elevation", id: "bearing", section: "iii" },
+  { label: "causal spot-check", see: "a test", id: "test", section: "iv" },
   { label: "double-negative regime", id: "double-negative", section: "ii" },
   { label: "edit, an", id: "edit", section: "iv" },
   { label: "gathering", id: "gathering", section: "ii" },
@@ -47,6 +49,7 @@ export const INDEX: IndexItem[] = [
   { label: "sighting of each word-piece, a", id: "each-word-piece", section: "iii" },
   { label: "stream strength", id: "stream", section: "ii" },
   { label: "strength", id: "strength", section: "ii" },
+  { label: "test, a", id: "test", section: "iv" },
   { label: "threads", id: "threads", section: "ii" },
   { label: "through the lens", id: "thinking", section: "iii" },
   { label: "vault, the", id: "vault", section: "iv" },
@@ -66,13 +69,14 @@ export const ALIASES: Record<string, string[]> = {
   stream: ["stream-strength"],
   bearing: ["elevation"],
   thinking: ["through-the-lens"],
+  test: ["causal-check", "spot-check"],
 };
 
 /**
  * Every anchor on the page, for reference:
  * entries   layer word-piece stream gathering remembering global neuron double-negative strength write threads
  *           lens j-space thinking chosen landmarks bearing kinship how-it-writes seed each-word-piece rubric apparatus
- *           sighting matched-control vault nudge edit
+ *           sighting matched-control vault test nudge edit
  * cautions  labels single late quiet frame thread-score nudge-defaults template think split bos
- * aliases   naked-eye faces pole stream-strength elevation through-the-lens write-size
+ * aliases   naked-eye faces pole stream-strength elevation through-the-lens write-size causal-check spot-check
  */

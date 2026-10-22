@@ -6,7 +6,7 @@ Runs inside a single process/network namespace to verify:
    incomplete files and other lenses, and which vault statements name the lens. Then, also on the CPU, what the
    interface sends by default (scripts/check_interface_defaults.py: the store bundled and run under node).
 1. FastAPI + Binary Float32 WebSocket (`/ws/theodolite`) wire format (`0x5448454F`) & JSON metadata
-2. FastMCP Scientist Tools (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`)
+2. FastMCP Scientist Tools (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`, `causal_spot_check`)
 3. LARQL / VINDEX3 FFN Vault queries (`query_larql_vault`, `/api/larql`, the WebSocket `larql` action)
 4. Headless Chrome inspection of the UI (frontend/dist, built first) via CDP:
    - Zero console errors or page exceptions
@@ -58,6 +58,16 @@ Runs inside a single process/network namespace to verify:
    their count; the vault's recorded search for "she" at layer 59 holds back the rows its recorded checks hold back;
    and on the live sighting, layer 55's leaf gives each labelled row the count inspect_pole reads for that neuron and
    face ("they share k of ten"), or holds it back where that check does.
+9. The causal spot-check (ARCHITECTURE §4.5; scripts/check_causal_check.py runs first, on the CPU): /api/health
+   carries its card before the label gate; the MCP tool `causal_spot_check`, POST /api/scientist/causal_check and the
+   WebSocket action "causal_check" give the same reply for the same request (neuron 5313 at layer 50, counting from
+   0, at the plain sweep's last word-piece), read without a nudge, each face's label_check the one inspect_pole sends,
+   every push above its floor, label_gate and the lens last; the study max|a| is computed once and then kept; refusals
+   (HTTP 400 and 422; on the WebSocket, recoverable errors naming the action, the neuron and the contexts) are in plain
+   words, and the socket goes on to answer a test on the study's 36 texts. On the pages, the folio of neuron 15491 at
+   layer 54 tests its label at the live sighting's word-piece ("test it at this word-piece"): the words that rose and
+   fell most and the count of the label's words among the hundred are the MCP tool's own for the request the page's
+   apparatus shows, and the apparatus gives the test's full detail.
 """
 
 from __future__ import annotations
@@ -92,6 +102,7 @@ import uvicorn
 import websockets
 
 from backend.mcp_scientist import (
+    causal_spot_check,
     inspect_pole,
     query_larql_vault,
     test_motif_hypothesis,
@@ -351,6 +362,54 @@ def wp(token: str) -> str:
     return "“" + t.replace("\n", "↵") + "”"
 
 
+CAUSAL_CARD = {"version": 1, "writes": ["activation", "frozen_norm"], "contexts": ["given", "study"],
+               "scale_refs": ["study", "this_text"], "k_default": 10.0, "k_max": 200.0, "k_floor": 0.01, "n_study_texts": 36}
+CAUSAL_FACE_KEYS = ["delta", "kl_mean", "kl_median", "kl_by_context", "kl_over_floor", "split_half_rho", "rises", "falls",
+                    "tracked", "floor_top100_overlap", "linear", "label_overlap"]
+
+
+def assert_causal_reply(r: Any, sent: Dict[str, Any], lens: Dict[str, Any], model_id: str, what: str) -> None:
+    """A causal spot-check's reply (ARCHITECTURE §4.5) to the request `sent`, at the route's defaults (k = 10, the
+    activation write, max|a| over the study's texts, the floor on, ten words a list): read without a nudge and with no
+    vault edit in force, both faces measured and each above its floor, each face's label_check the one inspect_pole
+    sends for that face, its P@10 the share of the label's ten among the hundred, label_gate and the lens last."""
+    assert isinstance(r, dict) and list(r)[-2:] == ["label_gate", "lens"], f"{what}: keys end {list(r)[-4:]}"
+    assert r["label_gate"] == LABEL_GATE_CARD, f"{what}: label_gate"
+    assert_base_lens(r["lens"], model_id)
+    assert r["lens"] == lens, f"{what} and /api/health name different lenses"
+    contexts = sent.get("contexts", "given")
+    assert (r["layer"], r["neuron_idx"], r["contexts"]) == (sent["layer"], sent["neuron_idx"], contexts), what
+    assert r["steered"] is False and r["vault_edits"] == [], f"{what}: steered {r['steered']}, edits {r['vault_edits']}"
+    assert (r["k"], r["write"], r["scale_ref"], r["k_floor"]) == (10.0, "activation", "study", 0.01), what
+    assert r["base_rows_identical"] is not False and r["forwards"] >= 1, f"{what}: {r['forwards']} forwards"
+    assert r["max_abs_act"] > 0 and r["max_abs_act_over"], what
+    if contexts == "given":
+        ids = sent["token_ids"]
+        assert r["n_contexts"] == 1 and r["token_ids_given"] is True and r["read_pos"] == len(ids) - 1, what
+        assert r["read_token_id"] == ids[-1] and r["base_top"], what
+    else:
+        assert r["n_contexts"] == 36 and r["prompt"] is None and len(r["read_pos_by_context"]) == 36, what
+        assert r["base_top"] is None, what
+    assert list(r["faces"]) == ["+", "-"] and r["polarity"] in ("+", "-"), what
+    for face, sign, pole in (("+", 1.0, "north_pole"), ("-", -1.0, "south_pole")):
+        f = r["faces"][face]
+        assert list(f) == CAUSAL_FACE_KEYS, f"{what} face {face}: {list(f)}"
+        assert len(f["rises"]) == len(f["falls"]) == 10 and f["rises"][0]["dlogprob"] > 0 > f["falls"][0]["dlogprob"], what
+        assert len(f["kl_by_context"]) == r["n_contexts"], what
+        assert (f["split_half_rho"] is None) == (contexts == "given"), f"{what} face {face}: split-half {f['split_half_rho']}"
+        assert f["kl_mean"] > r["floor"][face]["kl_mean"], (
+            f"{what} face {face}: KL {f['kl_mean']} not above the floor's {r['floor'][face]['kl_mean']}")
+        assert f["linear"]["linearity"] is not None and f["linear"]["linearity"] > 0, f"{what}: {f['linear']}"
+        lo = f["label_overlap"]
+        assert lo["label_k"] == 10 and lo["causal_k"] == 100, what
+        for side in ("lens", "naked_eye"):
+            assert len(lo[side]["label_ids"]) == 10 and abs(lo[side]["p10"] - sum(lo[side]["in_top100"]) / 10) < 1e-9, (
+                f"{what} face {face} {side}: {lo[side]}")
+        check = assert_label_check(lo["label_check"], r["layer"], lens["id"], f"{what} face {face}")
+        assert check == inspect_pole(layer=r["layer"], neuron_idx=r["neuron_idx"], polarity=sign)[pole]["label_check"], (
+            f"{what} face {face}: its label_check is not inspect_pole's")
+
+
 # Set one of the "How to read these pages" switches ("rubrics", "apparatus") on or off, whatever it was: (name, on)
 SET_READING_JS = """((name, on) => {
     const b = Array.from(document.querySelectorAll('[aria-label="How to read these pages"] button'))
@@ -511,8 +570,9 @@ async def main() -> int:
     # interp_engine's capture bit for bit on a tiny stand-in Gemma 4, on the CPU too
     # and first, what the interface sends by default (its store, bundled with esbuild and run under node)
     # and the label gate's rule, the server's measure against the study's caches, and the results the pages quote
+    # and the causal spot-check on a tiny stand-in Gemma 4 (its computation, the tool, the transports, the folio's figures)
     for cpu_check in ("check_interface_defaults.py", "check_sampler_mirror.py", "check_saved_prompts.py",
-                      "check_sweep_protocol.py", "check_capture_rows.py", "check_label_gate.py"):
+                      "check_sweep_protocol.py", "check_capture_rows.py", "check_label_gate.py", "check_causal_check.py"):
         res = subprocess.run(
             [sys.executable, "-I", str(ROOT_DIR / "scripts" / cpu_check)],
             capture_output=True, text=True, timeout=600, check=False,
@@ -1004,6 +1064,63 @@ async def main() -> int:
         assert r_bad.status_code == 400 and "not a word-piece id" in r_bad.text, r_bad.text
         print("  • trace_readers on exact ids (MCP and HTTP) reads what the text read; a bad id refused in plain words")
 
+        # The causal spot-check (ARCHITECTURE §4.5), item 9: the card rides before the label gate; the MCP tool, the
+        # HTTP route and the WebSocket action answer one request alike: neuron 5313 at layer 50 (page layer 51, the
+        # study's she/he neuron), negative face first, at the plain sweep's last word-piece, following the word it chose
+        assert health.get("causal_check") == CAUSAL_CARD, f"health causal_check {health.get('causal_check')!r}"
+        assert hk.index("causal_check") < hk.index("label_gate"), hk
+        cc_body = {"layer": 50, "neuron_idx": 5313, "polarity": -1.0, "contexts": "given",
+                   "token_ids": json_msg["prompt_token_ids"], "track_ids": json_msg["answer"]["token_ids"][:1]}
+        cc_mcp = await causal_spot_check(**cc_body)
+        assert_causal_reply(cc_mcp, cc_body, lens, health["model_id"], "MCP causal_spot_check")
+        assert cc_mcp["polarity"] == "-" and [w["token_id"] for w in cc_mcp["faces"]["-"]["tracked"]] == cc_body["track_ids"]
+        # the study max|a| is computed by the first test since the server started, and kept for the next
+        assert cc_mcp["max_abs_act_cached"] is False, "the study max|a| was cached before any test ran"
+        r_cc = await client.post("/api/scientist/causal_check", json=cc_body)
+        assert r_cc.status_code == 200, r_cc.text
+        cc_http = r_cc.json()
+        assert list(cc_http) == list(cc_mcp), f"HTTP causal_check keys {list(cc_http)} != MCP keys {list(cc_mcp)}"
+        assert cc_http["max_abs_act_cached"] is True and cc_http["max_abs_act"] == cc_mcp["max_abs_act"], cc_http["max_abs_act"]
+        # the same rows in forwards of the same shape: the same numbers
+        assert cc_http["faces"] == cc_mcp["faces"] and cc_http["floor"] == cc_mcp["floor"], "HTTP and MCP tests differ"
+        for bad, status, said in (
+            ({**cc_body, "k": 0}, 400, "k must be more than 0"),
+            ({"layer": 60, "neuron_idx": 5313, "contexts": "study"}, 400, "the pages count them 1 to 60"),
+            ({"layer": 50, "neuron_idx": 5313, "contexts": "study", "token_ids": [2, 3]}, 400, "reads those texts only"),
+            ({"layer": "fifty", "neuron_idx": 5313}, 422, ""),
+        ):
+            rb = await client.post("/api/scientist/causal_check", json=bad)
+            assert rb.status_code == status and said in rb.text, f"HTTP causal_check {bad}: {rb.status_code} {rb.text[:300]}"
+        async with websockets.connect(f"ws://{HOST}:{PORT}/ws/theodolite", max_size=50 * 1024 * 1024) as ws_cc:
+            await ws_cc.send(json.dumps({"action": "causal_check", **cc_body}))
+            m_cc = json.loads(await asyncio.wait_for(ws_cc.recv(), timeout=600))
+            assert m_cc["type"] == "causal_check", str(m_cc)[:300]
+            assert list(m_cc["data"]) == list(cc_mcp) and m_cc["data"]["faces"] == cc_mcp["faces"], "WS and MCP tests differ"
+            # refusals stay on their request, in plain words, and name what the page needs to fail the right test
+            for bad, said in (
+                ({"layer": 50, "neuron_idx": 5313, "contexts": "study", "token_ids": [2, 3]}, "reads those texts only"),
+                ({"layer": 50, "neuron_idx": 5313, "contexts": "given", "k": 201}, "at most 200"),
+                ({"layer": 50, "neuron_idx": 5313, "contexts": "study", "k": "ten"}, "The test was refused."),
+            ):
+                await ws_cc.send(json.dumps({"action": "causal_check", **bad}))
+                e_cc = json.loads(await asyncio.wait_for(ws_cc.recv(), timeout=60))
+                assert e_cc["type"] == "error" and e_cc["recoverable"] is True and e_cc["action"] == "causal_check", e_cc
+                assert (e_cc["layer"], e_cc["neuron_idx"], e_cc["contexts"]) == (50, 5313, bad["contexts"]), e_cc
+                assert said in e_cc["message"], f"WS causal_check {bad}: {e_cc['message']!r}"
+            # and the socket goes on to answer: a test on the study's 36 texts, sized by the max|a| kept
+            study_body = {"layer": 50, "neuron_idx": 5313, "polarity": -1.0, "contexts": "study"}
+            await ws_cc.send(json.dumps({"action": "causal_check", **study_body}))
+            m_st = json.loads(await asyncio.wait_for(ws_cc.recv(), timeout=900))
+            assert m_st["type"] == "causal_check", str(m_st)[:300]
+            assert_causal_reply(m_st["data"], study_body, lens, health["model_id"], "WS causal_check (study)")
+            assert m_st["data"]["max_abs_act_cached"] is True and m_st["data"]["max_abs_act"] == cc_mcp["max_abs_act"]
+        fm = cc_mcp["faces"]["-"]
+        print(f"  • causal_check (MCP, HTTP, WS): one reply; L50 n5313 − at the sweep's last word-piece: "
+              f"{[w['token'] for w in fm['rises'][:3]]} rose, KL {fm['kl_mean']} ({fm['kl_over_floor']}× the floor), "
+              f"lens P@10 {fm['label_overlap']['lens']['p10']}; on the 36 texts, lens P@10 "
+              f"{m_st['data']['faces']['-']['label_overlap']['lens']['p10']}, split-half "
+              f"{m_st['data']['faces']['-']['split_half_rho']}; refusals in plain words, the socket still answers")
+
         # saved prompts, in the temporary file set at the start
         sp = (await client.get("/api/saved_prompts")).json()
         assert sp["file"] == os.environ["THEODOLITE_SAVED_PROMPTS"] and sp["questions"] == [] and sp["systems"] == []
@@ -1162,6 +1279,62 @@ async def main() -> int:
                 assert folio_ui == {"word": True, "held": False}, f"the folio of 15491 at layer 54: {folio_ui}"
             print(f"  • Neuron folio 54/15491: seal “{seal}”, its words "
                   f"{'held back' if folio_check['held_back'] else 'shown (' + folio_word + ' first)'}, as the server's check says")
+            # Item 9 on the page: the folio puts its label to the test at the live sighting's word-piece. The page must
+            # print what the MCP tool answers to the very request its apparatus shows (by hand, the WebSocket form): the
+            # words that rose and fell most, and how many of the label's words are among the hundred, no more
+            await go("#/instrument")
+            await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle instrument")
+            await go("#/neuron/54/15491/pos")
+            test_btn = """Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "test it at this word-piece")"""
+            await wait_for(f"(() => {{ const b = {test_btn}; return !!b && !b.disabled; }})()", "the folio's “test it at this word-piece”")
+            await cdp.eval_js(f"(() => {{ {test_btn}.click(); }})()")
+            await wait_for(
+                """(() => { const t = document.body.innerText;
+                    return t.includes("Turned up on its") && t.includes("of the lens’s ten words") && !t.includes("testing…"); })()""",
+                "the folio's test result", tries=600,
+            )
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            await asyncio.sleep(0.3)
+            folio_test = await cdp.eval_js(
+                """(() => { const ps = Array.from(document.querySelectorAll("p"));
+                    const flat = (e) => e.textContent.replace(/\\s+/g, " ");
+                    const count = ps.find((p) => p.textContent.includes("of the lens’s ten words"));
+                    return { turned: ps.filter((p) => p.textContent.startsWith("Turned up on its")).map(flat),
+                             count: count ? flat(count) : null,
+                             aside: document.body.innerText.includes("so it is set aside") }; })()"""
+            )
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', true)")
+            await asyncio.sleep(0.4)
+            folio_app = await cdp.eval_js(
+                """(() => {
+                    const pre = Array.from(document.querySelectorAll("pre")).find((e) => e.textContent.includes("# WebSocket /ws/theodolite"));
+                    const dt = Array.from(document.querySelectorAll("dt")).find((e) => e.textContent.trim() === "at this word-piece");
+                    const dd = dt ? dt.nextElementSibling : null;
+                    return { code: pre ? pre.textContent : null, detail: dd ? dd.textContent.replace(/\\s+/g, " ") : null };
+                })()"""
+            )
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            assert not folio_test["aside"] and len(folio_test["turned"]) == 2 and folio_test["count"], f"the folio's test: {folio_test}"
+            assert folio_app["code"] and folio_app["detail"] and "straight line" in folio_app["detail"], f"the folio's apparatus: {folio_app}"
+            page_sent = json.loads(folio_app["code"].split("# WebSocket /ws/theodolite", 1)[1])
+            assert page_sent.pop("action") == "causal_check" and page_sent["contexts"] == "given", page_sent
+            assert page_sent["layer"] == 53 and page_sent["neuron_idx"] == 15491 and len(page_sent["token_ids"]) >= 2, page_sent
+            again = await causal_spot_check(**page_sent)
+            opened = again["faces"][again["polarity"]]
+            n_word = ["none", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+            n_lens = sum(opened["label_overlap"]["lens"]["in_top100"])
+            n_eye = sum(opened["label_overlap"]["naked_eye"]["in_top100"])
+            face_word = "positive" if again["polarity"] == "+" else "negative"
+            want_count = (f"{n_word[n_lens].capitalize()} of the lens’s ten words and {n_word[n_eye]} of the naked eye’s are among "
+                          f"the hundred words whose odds this test raised most, on its {face_word} face.")
+            assert folio_test["count"].startswith(want_count), f"the folio says {folio_test['count']!r}, the tool {want_count!r}"
+            first = folio_test["turned"][0]
+            assert first.startswith(f"Turned up on its {face_word} face"), first
+            for w in (opened["rises"][0], opened["falls"][0]):
+                shown = " ".join(wp(w["token"]).split())  # as the page's text reads, white space run together
+                assert shown in first, f"the folio's first face lacks {shown}: {first!r}"
+            print(f"  • Neuron folio 54/15491: “test it at this word-piece” ({len(page_sent['token_ids'])} ids) printed the MCP "
+                  f"tool's own result: {want_count[:-1].lower()}; the apparatus gives the test in full")
             # Condition 3 on a live page: the leaf of layer 55 (index 54, inside the band, always labelled) lists its
             # neurons as the interface's own sighting ranked them; each labelled row must give the count inspect_pole
             # reads for that neuron and face (a label's check does not depend on the prompt), or be held back where

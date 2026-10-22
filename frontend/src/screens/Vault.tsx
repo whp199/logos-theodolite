@@ -148,7 +148,9 @@ export const Vault: React.FC<{ route: Route }> = ({ route }) => {
             naked eye, and each is checked by a causal test. The second and third are now done here: below layer 41, and where the two
             readings share none of their first ten word-pieces, the find board holds a neuron’s words back from its main reading and
             keeps them in the apparatus, and NEAREST and DESCRIBE POLE mark each label they send (<span className="mono">label_check</span>,
-            with the rule in <span className="mono">label_gate</span>).
+            with the rule in <span className="mono">label_gate</span>). The fourth is done in part: a{" "}
+            <a href={href.neuron(54, 15491)}>neuron’s folio</a>, and the MCP tool <span className="mono">causal_spot_check</span>, put
+            one label at a time to the test when asked; nothing yet tests every label the vault returns.
           </dd>
           <dt>counting</dt>
           <dd>

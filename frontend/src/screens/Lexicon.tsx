@@ -18,6 +18,7 @@ import { pieceWord, wp } from "../lib/words";
 import { fixtureCheck, labelGate, layerIdx, sharedLine, sharedShown } from "../lib/labels";
 import { HeldBackWords } from "../components/HeldBack";
 import { JPP as FOLIO_JPP, NAIVE as FOLIO_NAIVE, RECORDED as FOLIO_EXAMPLE } from "./NeuronFolio/recorded";
+import { STUDY_K10, STUDY_K10_LATE_P10 } from "./NeuronFolio/causal";
 import { ALIASES, INDEX } from "./lexicon/entries";
 import { Cautions } from "./lexicon/Cautions";
 import {
@@ -329,7 +330,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           i · the index
         </h2>
         <span style={{ fontSize: 15, color: "var(--muted)" }}>
-          twenty-nine words and three cross-references, in alphabetical order
+          thirty words and four cross-references, in alphabetical order
         </span>
       </div>
       <Rubric style={{ maxWidth: 760 }}>
@@ -1149,9 +1150,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
 
     {/* ---------------------------------------------------------------- iv · acts of the reader */}
     <LexSection id="acts-head" title="iv · acts of the reader">
-      <Lede cap="F">
-        ive things you can do here. The first three only look. The last two push on the model, and both pushes can be
-        undone.
+      <Lede cap="S">
+        ix things you can do here. The first three only look. The last three change the model: a test only for the one
+        reading it takes, a nudge only while it is on, an edit until you undo it.
       </Lede>
       <EntryGrid>
         <Entry id="sighting" head="a sighting" tech="sweep · all sixty layers" figure={<FigSighting />}>
@@ -1227,8 +1228,53 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             column scaled by the post-feed-forward norm weight, the sign naming the pole; <M>EDGES NEAREST</M> runs the
             same query; <M>DESCRIBE POLE</M> decodes both poles by lens and naked eye. Also as the MCP tools{" "}
             <M>query_larql_vault</M>, <M>inspect_pole</M>, <M>trace_downstream_readers</M>,{" "}
-            <M>test_motif_hypothesis</M>. Named after LARQL / VINDEX3 (chrishayuk) [10]; a projected contribution, not a
+            <M>test_motif_hypothesis</M>, and <M>causal_spot_check</M> for <LexLink to="test">a test</LexLink>. Named after LARQL / VINDEX3 (chrishayuk) [10]; a projected contribution, not a
             counterfactual (REPORT §3.3). Proposed: activation contexts stored per pole (REPORT §3.4, bug 7).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="test"
+          aliases={ALIASES.test}
+          head="a test"
+          tech="causal spot-check · the study’s N1A, gently, at k = 10"
+        >
+          <Body>
+            Put a neuron’s label to the test. The instrument turns the neuron up at one word-piece, once on each face,
+            keeps an untouched copy of the same reading beside it, and lists the words whose odds rose and fell most. A
+            label passes when its words are among those whose odds rose most. The test reads the model’s own odds, not
+            the lens, and nothing of it stays: the model answers as before.
+          </Body>
+          <Note>
+            The study tested 384 faces this way, each on 36 texts of its own: at layers 41–58 a label’s words were among
+            those that rose far more often than chance, and at layers 11–31 no more often. A neuron’s folio can test at
+            the word-piece of your sighting, or on the study’s 36 texts; only the second compares with the study’s
+            figures.
+          </Note>
+          <Rubric>
+            Read a test’s count as what that one test showed, not as a verdict on the label: one word-piece speaks for
+            its own text only, so test on the study’s 36 texts before you lean on a label. A test shows what a neuron
+            does when turned up, not what it does when it fires on its own.
+          </Rubric>
+          <Onward to={href.neuron(FOLIO_EXAMPLE.layerNo, FOLIO_EXAMPLE.neuron)}>put a label to the test on a neuron’s folio →</Onward>
+          <EntryApparatus title="a test" label="Apparatus for a test">
+            a<sub>i</sub> ← a<sub>i</sub> ± k · max|a<sub>i</sub>| at the read position p only (a pre-hook on down_proj),
+            k = 10 by default (erratum E47), max|a| over the study’s 36 texts (12 chats, 12 passages of prose, 12 of
+            code; every word-piece after the start mark); or the frozen-norm write, the same first-order change added
+            after the post-feed-forward norm, which cannot squash it (N1V). c = log_softmax(z<sub>pushed</sub>) −
+            log_softmax(z<sub>untouched</sub>) on fp32 softcapped logits at p, the untouched row in the same forward;
+            the same test at k = 0.01 measures bf16 rounding. P@10: the share of the label’s first ten ids (the lens’s
+            and the naked eye’s, as <M>label_check</M> counts them) among the hundred ids c raised most. On its 36 texts
+            at k = 10 the study’s lens labels scored {STUDY_K10_LATE_P10.map((v) => v.toFixed(2)).join("–")} at layers
+            41–56, and{" "}
+            {STUDY_K10[20].p10Lens === STUDY_K10[30].p10Lens
+              ? STUDY_K10[20].p10Lens.toFixed(2)
+              : `${STUDY_K10[20].p10Lens.toFixed(2)} and ${STUDY_K10[30].p10Lens.toFixed(2)}`}{" "}
+            at layers 21 and 31 (N1V code audit). Its bar of three in ten (P@10 ≥ 0.3, what N1’s agreement measure predicted with AUC 0.84)
+            was set on N1A’s tests of 384 faces at k = 60, which saturate the post-feed-forward norm at layers 21–51
+            (E47). The comparison with the label goes through the base-fitted J++ lens; the effect does
+            not. Sent as the WebSocket action <M>causal_check</M>, <M>POST /api/scientist/causal_check</M> and the MCP
+            tool <M>causal_spot_check</M> (ARCHITECTURE §4.5; <M>backend/causal_check.py</M>).
           </EntryApparatus>
         </Entry>
 

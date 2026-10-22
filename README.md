@@ -79,7 +79,9 @@ neuron's words below layer 41, and keeps them in the apparatus (§iv).
     <td width="50%" valign="top">
       <img src="docs/readme/neuron-folio.png" alt="A neuron's folio for neuron 15491 at layer 54, titled the I am neuron, with the particulars of the sighting it fired in.">
       <p><b>A neuron’s folio.</b> One of the 21,504 neurons in a layer: its two faces, what each writes through the lens and
-      through the naked eye, and the later neurons that read it.</p>
+      through the naked eye, and the later neurons that read it. Its label can be put to the test: the neuron turned up
+      at one word-piece, or on the study’s 36 texts, and the words whose odds rose most, read from the model’s own odds,
+      not the lens.</p>
     </td>
   </tr>
   <tr>
@@ -348,10 +350,11 @@ one such pair for each word-piece sighted (each JSON frame naming its `token_ind
 top-p 1 (no limit), no penalty, the seed drawn when it samples. The server passes every one on explicitly, since interp-engine
 reads a missing one as the checkpoint’s own setting (temperature 1, top-k 64, top-p 0.95). It holds its GPU lock for the whole
 sweep, so no vault edit lands between two word-pieces of one answer. The circuit tools
-(`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`, `query_larql_vault`) are served over HTTP and as
-FastMCP tools from `backend/mcp_scientist.py`. Every neuron label they and the sweep send carries `label_check`, and the
-replies carry the rule as `label_gate` (§iv). To check a build end to end, server, tools and pages together:
-`.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.
+(`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`, `query_larql_vault`, and `causal_spot_check`, a
+neuron's label tested by the study's N1A protocol at k = 10) are served over HTTP and as FastMCP tools from
+`backend/mcp_scientist.py`; the WebSocket also takes `trace_readers`, `larql` and `causal_check` (ARCHITECTURE §4.5).
+Every neuron label they and the sweep send carries `label_check`, and the replies carry the rule as `label_gate` (§iv).
+To check a build end to end, server, tools and pages together: `.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.
 
 **Reproduce the study**
 
@@ -380,9 +383,9 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 
 | Path | What is there |
 |---|---|
-| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py` |
+| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py`, `causal_check.py` (a label's causal test, N1A's protocol) |
 | `frontend/` | Vite and React: nine pages (welcome, instrument, layer leaf, neuron folio, landmarks, nudge, vault, lexicon, lineage), the rubrics and apparatus switches, and the study’s recorded sighting for when no server answers |
-| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks) |
+| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first) |
 | `experiments/REPORT.md` | The main write-up |
 | `experiments/lab/` | `labd.py` (the GPU daemon holding the model and lenses), `labclient.py` (submit jobs), `labkit.py` (lens readouts, gender scores, the corrected decomposition, interventions, exact same-position VJPs through the 4-bit model) |
 | `experiments/scripts/` | 376 scripts; the filename prefix is the experiment’s ID |

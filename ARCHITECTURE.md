@@ -24,6 +24,9 @@ theodolite2/
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
 │   └── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
 ├── scripts/
+│   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
+│   ├── verify_causal_check.py       # the causal spot-check against N1A's and N1V's figures on the real model (GPU)
+│   ├── verify_e2e_ui_and_mcp.py     # server, MCP tools and headless-Chrome pages end to end (GPU)
 │   └── verify_optics.py             # Standalone deterministic CLI verification suite
 └── frontend/
     ├── package.json
@@ -385,4 +388,10 @@ floor, base_top, forwards, slots_per_forward, base_rows_identical, vault_edits (
   row's five likeliest word-pieces `{token_id, token, logprob}` (given mode; null in study mode).
 
 scripts/check_causal_check.py checks all of this on a tiny CPU Gemma 4; scripts/verify_causal_check.py reproduces the
-study's N1A and N1V numbers on the real model.
+study's N1A and N1V numbers on the real model; scripts/verify_e2e_ui_and_mcp.py checks the three transports against
+one another and the folio's button against the MCP tool. On the pages the test sits in a neuron's folio, "ii · what it
+says": "test it at this word-piece" sends the shown sighting's exact ids up to its read position, with the word chosen
+there in `track_ids`; "test it on the study's 36 texts" sends `contexts: "study"`. Both send `floor: true`,
+`top_n: 10`, and the apparatus's k and write; the apparatus's scale_ref goes with a test at one word-piece only, the
+36 texts always being sized on themselves (`useTheodoliteStore.causalCheck`). The study's figures quoted beside a
+result are in frontend/src/screens/NeuronFolio/causal.ts.
