@@ -23,8 +23,9 @@ export * from "./sighting";
 
 /**
  * The instrument's state, wired to the backend:
- *   WebSocket /ws/theodolite  actions sweep | cancel_sweep | larql | inspect_pole | trace_readers
- *   HTTP      /api/health, /api/larql, /api/scientist/{inspect_pole,trace_readers,test_hypothesis}, /api/saved_prompts
+ *   WebSocket /ws/theodolite  actions sweep | cancel_sweep | larql | inspect_pole | trace_readers | causal_check
+ *   HTTP      /api/health, /api/larql, /api/scientist/{inspect_pole,trace_readers,causal_check,test_hypothesis},
+ *             /api/saved_prompts
  * When no server answers, the recorded demonstration sighting (E6) is shown instead, and every page
  * says so.
  *
@@ -309,6 +310,21 @@ export interface Health {
   larql_cli: Record<string, string>;
   /** the lens the server reads through (its `lens`, parsed); null when it does not name one */
   lens: LensInfo | null;
+  /** the causal spot-check's card (backend/causal_check.py): present only on a server that answers the "causal_check"
+   * action and POST /api/scientist/causal_check (an older server ignores the action without a word) */
+  causal_check?: CausalCheckCard;
+}
+
+/** /api/health's `causal_check`: what the server's test of a neuron's label takes, and its bounds. */
+export interface CausalCheckCard {
+  version: number;
+  writes: string[];
+  contexts: string[];
+  scale_refs: string[];
+  k_default: number;
+  k_max: number;
+  k_floor: number;
+  n_study_texts: number;
 }
 
 export interface LarqlEntry {
@@ -334,9 +350,17 @@ export interface Pending<T> {
   sightingId?: number | null;
   /** what was sent, so a page can say how the answer was read and how to ask it again by hand */
   sent?: Record<string, unknown>;
+  /** the vault's edits in force as this page knew them when it was sent (patch ids, the latest edit of each neuron):
+   * a causal check reads the model with them, so one taken under other edits is set aside */
+  edits?: number[];
 }
 
 export const poleKey = (idx: number, neuron: number) => `${idx}:${neuron}`;
+
+/** Where a test reads: one text at its last word-piece ("given"), or the study's 36 texts ("study"). */
+export type CausalContexts = "given" | "study";
+/** A causal check's key: a neuron's two tests are kept apart, one at a word-piece and one on the study's texts. */
+export const causalKey = (idx: number, neuron: number, contexts: CausalContexts) => `${poleKey(idx, neuron)}:${contexts}`;
 
 export interface TheodoliteState {
   conn: Conn;
@@ -390,6 +414,8 @@ export interface TheodoliteState {
   inspections: Keyed<Pending<Record<string, any>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readers: Keyed<Pending<Record<string, any>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
   hypotheses: Keyed<Pending<Record<string, any>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  /** causal spot-checks, keyed by causalKey(idx, neuron, contexts) */
+  causalChecks: Keyed<Pending<Record<string, any>>>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   // saved questions and system prompts, kept by the server only when asked
   saved: SavedLists;
@@ -441,6 +467,9 @@ export interface TheodoliteState {
   /** run test_motif_hypothesis; by default each sentence goes in as bare text and is read at its own last
    * word-piece (with `chat`, the server reads the end of the template instead) */
   testHypothesis: (idx: number, neuron: number, pos: string[], neg: string[], opts?: { chat?: boolean }) => Promise<void>;
+  /** test a neuron's label causally (causal_spot_check): turn it up on each face at the shown sighting's word-piece
+   * ("given", by its exact ids) or on the study's 36 texts, and read the model's own odds */
+  causalCheck: (idx: number, neuron: number, face: number, opts?: CausalOptions) => void;
 }
 
 export interface TakeOptions {
@@ -461,6 +490,20 @@ export interface TakeOptions {
   /** centre each later word-piece on the control reading this very answer (default, when centring on a control) */
   centreAnswer?: boolean;
 }
+
+export interface CausalOptions {
+  /** "given" (default): the shown sighting's exact ids up to its read position; "study": the study's 36 texts */
+  contexts?: CausalContexts;
+  /** the push is k times the neuron's strongest firing (default 10, erratum E47) */
+  k?: number;
+  write?: "activation" | "frozen_norm";
+  /** what the strongest firing is taken over: the study's 36 texts (default) or this text (given only) */
+  scaleRef?: "study" | "this_text";
+}
+
+/** The size of a test the page sends unless the reader sets another in the apparatus: E47's gentle k = 10, the
+ * activation write, max|a| over the study's 36 texts (the defaults of the server's own route). */
+export const CAUSAL_DEFAULTS = { k: 10, write: "activation", scaleRef: "study" } as const;
 
 export interface TraceOptions {
   /** max_layer_hop: how many later layers to look through (1-6) */
@@ -626,6 +669,17 @@ async function rereadSaved(reason: string) {
 
 const CLOSED_EARLY = "The connection closed before the instrument answered.";
 
+/** /api/health is read up to this many times, this far apart, while the socket stays open. */
+const HEALTH_TRIES = 4;
+const HEALTH_RETRY_MS = 2000;
+let healthAttempt = 0;
+
+/** The vault's edits in force, as patch ids: the latest edit of each neuron (the server's vault.edits_in_force, whose
+ * ids a causal check sends back as `vault_edits`), in patch order. */
+export function editIdsOf(edits: ActiveEdit[]): number[] {
+  return latestPerNeuron(edits).map((e) => e.patch_id);
+}
+
 export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   conn: "idle",
   health: null,
@@ -682,6 +736,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   inspections: {},
   readers: {},
   hypotheses: {},
+  causalChecks: {},
 
   saved: { questions: [], systems: [], status: "idle", error: null, file: null, warning: null },
 
@@ -842,6 +897,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
         sweepError: wasSweeping ? "The server closed the connection before the sighting came back." : s.sweepError,
         inspections: fail(s.inspections),
         readers: fail(s.readers),
+        causalChecks: fail(s.causalChecks),
       }));
       // statements in flight got no answer: say so in the vault's log rather than letting them vanish
       for (const q of lost) {
@@ -926,6 +982,15 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
           }));
           break;
         }
+        case "causal_check": {
+          reconnectDelay = 4000;
+          const d = msg.data ?? {};
+          const key = causalKey(d.layer, d.neuron_idx, d.contexts === "study" ? "study" : "given");
+          set((s) => ({
+            causalChecks: { ...s.causalChecks, [key]: { ...s.causalChecks[key], pending: false, data: d, error: null } },
+          }));
+          break;
+        }
         case "downstream_readers": {
           reconnectDelay = 4000;
           const src = msg.data?.source_pole ?? {};
@@ -960,6 +1025,10 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
               const key = poleKey(Number(msg.layer), Number(msg.neuron_idx));
               const which = msg.action === "inspect_pole" ? "inspections" : "readers";
               set((s) => ({ [which]: { ...s[which], [key]: { ...s[which][key], pending: false, error: message } } }) as Partial<TheodoliteState>);
+            } else if (msg.action === "causal_check") {
+              // the error echoes the contexts sent (the page always sends them), so only that test fails
+              const key = causalKey(Number(msg.layer), Number(msg.neuron_idx), msg.contexts === "study" ? "study" : "given");
+              set((s) => ({ causalChecks: { ...s.causalChecks, [key]: { ...s.causalChecks[key], pending: false, error: message } } }));
             } else set({ sweepError: message });
             break;
           }
@@ -976,6 +1045,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
             sweepError: message,
             inspections: fail(s.inspections),
             readers: fail(s.readers),
+            causalChecks: fail(s.causalChecks),
           }));
           break;
         }
@@ -994,14 +1064,24 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   },
 
   fetchHealth: async () => {
-    try {
-      const r = await fetch("/api/health");
-      if (r.ok) {
-        const h = await r.json();
-        set({ health: { ...h, lens: lensOf(h?.lens) } as Health });
+    // asked on every (re)connect, and by a page that needs it and finds none (the folio's test: only a server whose health
+    // carries causal_check answers that action); a failed read is tried again a few times while the socket is open, so
+    // a slow or failed first read does not leave the page saying the server lacks what it has
+    const attempt = ++healthAttempt;
+    for (let tries = 0; tries < HEALTH_TRIES; tries++) {
+      try {
+        const r = await fetch("/api/health");
+        if (r.ok) {
+          const h = await r.json();
+          set({ health: { ...h, lens: lensOf(h?.lens) } as Health });
+          return;
+        }
+      } catch {
+        // tried again below; the connection state already says what matters
       }
-    } catch {
-      // health is decorative; the connection state already says what matters
+      await new Promise((done) => window.setTimeout(done, HEALTH_RETRY_MS));
+      // a newer read has started, or the server has gone: this one stops
+      if (attempt !== healthAttempt || get().conn !== "open") return;
     }
   },
 
@@ -1083,6 +1163,53 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
       .then((data) => set((s) => ({ readers: { ...s.readers, [key]: { ...s.readers[key], pending: false, data, error: null } } })))
       .catch((e) =>
         set((s) => ({ readers: { ...s.readers, [key]: { ...s.readers[key], pending: false, data: null, error: String(e?.message ?? e) } } })),
+      );
+  },
+
+  causalCheck: (idx, neuron, face, opts) => {
+    const st = get();
+    const contexts: CausalContexts = opts?.contexts ?? "given";
+    const key = causalKey(idx, neuron, contexts);
+    const s = st.sighting;
+    // a test at one word-piece reads the shown sighting's exact ids up to its read position, pushed at the last (nothing
+    // is tokenized again, and no template is applied); the word the model chose there is followed on both faces
+    const ids = contexts === "given" && s?.source === "live" ? s.contextIds : null;
+    const scaleRef = contexts === "study" ? "study" : (opts?.scaleRef ?? CAUSAL_DEFAULTS.scaleRef);
+    const body = {
+      layer: idx,
+      neuron_idx: neuron,
+      polarity: face,
+      contexts,
+      k: opts?.k ?? CAUSAL_DEFAULTS.k,
+      write: opts?.write ?? CAUSAL_DEFAULTS.write,
+      scale_ref: scaleRef,
+      floor: true,
+      top_n: 10,
+      ...(contexts === "given" ? { token_ids: ids ?? [], track_ids: s?.chosen ? [s.chosen.id] : [] } : {}),
+    };
+    // a test at a word-piece depends on the sighting it was asked for; either test, on the vault's edits in force
+    const sightingId = contexts === "given" ? (s?.id ?? null) : null;
+    const edits = editIdsOf(st.activeEdits);
+    if (contexts === "given" && !(ids && ids.length)) {
+      set((x) => ({
+        causalChecks: {
+          ...x.causalChecks,
+          [key]: { pending: false, data: null, error: "A test at one word-piece needs a live sighting’s word-pieces.", sightingId, sent: body, edits },
+        },
+      }));
+      return;
+    }
+    set((x) => ({ causalChecks: { ...x.causalChecks, [key]: { pending: true, data: null, error: null, sightingId, sent: body, edits } } }));
+    if (wsOpen()) {
+      ws!.send(JSON.stringify({ action: "causal_check", ...body }));
+      return;
+    }
+    postJson("/api/scientist/causal_check", body)
+      .then((data) => set((x) => ({ causalChecks: { ...x.causalChecks, [key]: { ...x.causalChecks[key], pending: false, data, error: null } } })))
+      .catch((e) =>
+        set((x) => ({
+          causalChecks: { ...x.causalChecks, [key]: { ...x.causalChecks[key], pending: false, data: null, error: String(e?.message ?? e) } },
+        })),
       );
   },
 

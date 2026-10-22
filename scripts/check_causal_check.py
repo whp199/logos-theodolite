@@ -39,7 +39,10 @@ each layer (the identity at the last) and the shipped lens's provenance, so the 
 14. the transports (fastapi TestClient, the model-loading lifespan replaced): the WebSocket action answers
    {type "causal_check"} with the MCP reply's keys; its refusals (pydantic's too, in plain words) come back as
    recoverable errors naming action, layer, neuron_idx and contexts, and the socket keeps answering; HTTP gives 200,
-   400 and 422; /api/health carries the causal_check card.
+   400 and 422; /api/health carries the causal_check card;
+15. the study's figures the folio quotes beside a test (frontend/src/screens/NeuronFolio/causal.ts: STUDY_LINEARITY,
+   LINEARITY_TAIL, NOISE_RATIO_MAX, STUDY_K10) are the results files' own: N1V_audit_01_postnorm.json.full.json,
+   N1V_audit_04_smallk_metrics.json and N1V_code_audit.md F2.
 What it cannot show is the real weights' numbers on the GPU: scripts/verify_causal_check.py reproduces the study's.
 
 Run: .venv/bin/python -I scripts/check_causal_check.py   (exits 0 when every check holds)
@@ -789,6 +792,71 @@ def check_transports(rt: TheodoliteRuntime, vault: LarqlVaultEngine, mcp_reply: 
     section("the WebSocket action, the HTTP route and /api/health", before)
 
 
+def _ts_table(text: str, name: str) -> Dict[int, Dict[str, float]]:
+    """A `{ 10: { a: 0.1, b: 0.2 }, … }` constant of a TypeScript file, as numbers."""
+    import re
+
+    m = re.search(rf"export const {name}\b[^=]*= \{{(.*?)\n\}};", text, re.S)
+    if not m:
+        return {}
+    rows: Dict[int, Dict[str, float]] = {}
+    for layer, body in re.findall(r"(\d+): \{([^}]*)\}", m.group(1)):
+        rows[int(layer)] = {k: float(v) for k, v in re.findall(r"(\w+): (-?[\d.]+)", body)}
+    return rows
+
+
+def check_page_figures() -> None:
+    """Item 15: every figure the folio quotes beside a test is the results files' own."""
+    import json
+    import re
+
+    before = len(failures)
+    results = ROOT_DIR / "experiments" / "results"
+    ts = (ROOT_DIR / "frontend" / "src" / "screens" / "NeuronFolio" / "causal.ts").read_text()
+    diag = json.loads((results / "N1V_audit_01_postnorm.json.full.json").read_text())["result"]["diag"]
+    want_lin = {
+        int(layer): {
+            "k10Median": round(d["k10"]["sat"]["median"], 4),
+            "k10Q10": round(d["k10"]["sat"]["q10"], 4),
+            "k60Median": round(d["k60"]["sat"]["median"], 4),
+        }
+        for layer, d in diag.items()
+    }
+    got_lin = _ts_table(ts, "STUDY_LINEARITY")
+    check(got_lin == want_lin, f"causal.ts STUDY_LINEARITY {got_lin} != N1V_audit_01's {want_lin}")
+    sampled = [10, 20, 30, 40, 45, 50, 55, 57]  # lib/labels.ts SAMPLED_IDX, the layers N1 sampled
+    check(sorted(want_lin) == sampled, f"N1V_audit_01 holds layers {sorted(want_lin)}, not N1's {sampled}")
+    low = min(want_lin, key=lambda l: diag[str(l)]["k10"]["sat"]["q10"])
+    tail = re.search(r"export const LINEARITY_TAIL = ([\d.]+);", ts)
+    tail_idx = re.search(r"export const LINEARITY_TAIL_IDX = (\d+);", ts)
+    check(
+        tail is not None and float(tail.group(1)) == round(diag[str(low)]["k10"]["sat"]["q10"], 3)
+        and tail_idx is not None and int(tail_idx.group(1)) == low,
+        f"LINEARITY_TAIL is not the lowest k = 10 q10 ({diag[str(low)]['k10']['sat']['q10']:.5f} at layer index {low})",
+    )
+    audit = (results / "N1V_code_audit.md").read_text()
+    noise = re.search(r"export const NOISE_RATIO_MAX = ([\d.]+);", ts)
+    f2 = re.search(r"kA KL median is ([\d.]+), against a bf16 chaos floor of ([\d.]+)-([\d.]+)", audit)
+    check(
+        noise is not None and f2 is not None and float(noise.group(1)) == round(float(f2.group(1)) / float(f2.group(2)), 2),
+        "NOISE_RATIO_MAX is not N1V_code_audit.md F2's KL over the lowest floor",
+    )
+    small = json.loads((results / "N1V_audit_04_smallk_metrics.json").read_text())
+    want_k10 = {
+        int(key.split("_L")[1]): {
+            "splitHalf": round(v["split_rho_median"], 4),
+            "antipodal": round(v["rho_c+_c-"], 4),
+            "p10Lens": round(v["jpp|p10"]["real"], 4),
+            "p10Eye": round(v["naive|p10"]["real"], 4),
+        }
+        for key, v in small.items()
+        if key.startswith("k10_L")
+    }
+    got_k10 = _ts_table(ts, "STUDY_K10")
+    check(got_k10 == want_k10, f"causal.ts STUDY_K10 {got_k10} != N1V_audit_04's {want_k10}")
+    section("the study's figures beside a test (causal.ts) are the results files' own", before)
+
+
 def load_tokenizer() -> Optional[Any]:
     from transformers import AutoTokenizer
 
@@ -802,6 +870,8 @@ def load_tokenizer() -> Optional[Any]:
 
 def main() -> int:
     t0 = time.perf_counter()
+    print("the folio's figures")
+    check_page_figures()
     tokenizer = load_tokenizer()
     if tokenizer is not None:
         torch.set_grad_enabled(False)
