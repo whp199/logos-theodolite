@@ -25,6 +25,18 @@ Third-party works used
   https://huggingface.co/koayon/jpp-lenses. The fp16 copy used here is from
   https://huggingface.co/neuronpedia/jacobian-lens (Apache-2.0). It was fitted
   on the base model (google/gemma-4-31B) using WikiText-103.
+  The R3 experiment (experiments/scripts/R3_fetch.py) reads the jpp_lens code
+  at commit d7efc0de372e20589e899188c0cfe8434acc63ec, with its six readout-eval
+  item files (data/jlens/evaluations/lens-eval-*.json), from a local,
+  gitignored checkout. Neither the code nor the items are included here; only
+  their sha256 are (experiments/scripts/R3_sources.json).
+
+* WikiText-103 (Salesforce/wikitext, wikitext-103-raw-v1): Merity et al.
+  (2017), "Pointer Sentinel Mixture Models"; CC BY-SA 3.0 and GFDL, per its
+  dataset card. The R3 experiment reads the first 4,597 rows of the train split
+  at revision b08601e04326c79dfdd32d625aee71d232d685c3 into a gitignored cache.
+  The texts are not included; only row indices and sha256 are
+  (experiments/scripts/R3_sources.json).
 
 * Jacobian Lens: Gurnee et al. (2026), "Verbalizable Representations Form a
   Global Workspace in Language Models",
