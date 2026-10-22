@@ -1255,7 +1255,7 @@ const MakersMarks: React.FC = () => (
           Hayuk (chrishayuk), LARQL, the reference implementation of VINDEX3 [10]. The names come from LARQL; backend/larql_vault.py
           calls it only for <span className="mono">--version</span>, and its <span className="mono">EDGES/POLES NEAREST</span>,{" "}
           <span className="mono">.patch</span> and <span className="mono">ROLLBACK</span> are this project’s own. An edit (.patch) is
-          a single-neuron column nudge, not MEMIT [11] (REPORT §3.3).
+          a single-neuron column edit, not MEMIT [11] (REPORT §3.3).
         </dd>
         <dt>also</dt>
         <dd>

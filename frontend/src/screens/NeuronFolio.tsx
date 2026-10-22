@@ -4071,7 +4071,7 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
             <span>
               <span className="mono">POLES NEAREST</span> ranks every w<sub>down,i</sub> ⊙ w<sub>post</sub> in the layer by |cos| with (W
               <sub>U</sub>[t] ⊙ γ) · J<sub>ℓ</sub>, γ the final-norm weight, and the sign picks the pole: a projected contribution, not a
-              counterfactual, as the LARQL README warns [10]. An edit (.patch) is a single-neuron column nudge along a base-model J++ pullback, not
+              counterfactual, as the LARQL README warns [10]. An edit (.patch) is a single-neuron column edit along a base-model J++ pullback, not
               MEMIT [11] (REPORT §3.3). The vault borrows LARQL’s names but never calls it beyond <span className="mono">--version</span>.{" "}
               <a href={href.vault()}>vault</a>
             </span>

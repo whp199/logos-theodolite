@@ -1304,7 +1304,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </EntryApparatus>
         </Entry>
 
-        <Entry id="edit" head="an edit" tech=".patch · a single-neuron column nudge, not MEMIT" figure={<FigEdit />}>
+        <Entry id="edit" head="an edit" tech=".patch · a one-neuron column edit, not MEMIT" figure={<FigEdit />}>
           <Body>
             Change what one neuron writes, in the model’s own weights, and see what follows. An edit stays until you
             undo it; one command undoes them all:
@@ -1319,13 +1319,22 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             Despite its old label, an edit is not MEMIT: it rewrites one neuron’s output column and solves for nothing
             else.
           </Note>
+          <Note>
+            The vault can hear an edit: it asks the model one question just before the edit and again just after, and
+            shows both answers. That shows what the edit did to that one question only; it may change answers you never
+            asked for.
+          </Note>
           <EntryApparatus title="an edit">
             <M>UPDATE LAYER l SLOT i SET object = 't' [STRENGTH α] [POLARITY ±]</M>: w<sub>down,i</sub> ← w
             <sub>down,i</sub> + σ · α · max(‖w<sub>down,i</sub>‖, 0.25) · (fnw ⊙ W<sub>U</sub>[t]) · J<sub>ℓ</sub> /
             ‖(fnw ⊙ W<sub>U</sub>[t]) · J<sub>ℓ</sub>‖, α = 2.5 by default; <M>INSERT</M> picks the slot whose gate
             best matches the subject; <M>DELETE FROM LAYER l WHERE slot = i</M> sets the column to zero;{" "}
             <M>ROLLBACK</M> clears every overlay. Not MEMIT [11]: no covariance solve (REPORT §3.3); rank-one editing
-            as background [12].
+            as background [12]. Heard (<M>voice</M>): the vault writes the answer the likeliest way, with no nudge, at
+            most 12 word-pieces by default (1–64), before the edit and again after it under the one GPU lock, and gives
+            both with the KL between the two at the first word-piece. The vault page asks for it, 12 word-pieces long;
+            the console and the scientist’s tools make an edit unheard. The study tested only <M>DELETE</M> causally
+            (E6 §2.3).
           </EntryApparatus>
         </Entry>
       </EntryGrid>

@@ -3,8 +3,10 @@
 
 Runs the multi-hop prompt `"The number of legs on the animal that spins webs is"` (the two-hop example from
 Gurnee et al. 2026, REFERENCES.md [2])
-(with `<|think|>` disabled vs. enabled) through `interp-engine` + the `J++ Lens` (fitted on the base model
-`google/gemma-4-31B`, bf16) on `google/gemma-4-31b-it` (4-bit W4A16) and verifies:
+as bare text, alone and with `<|think|>` set before it (the old imitation, as first built: not Gemma 4's thinking
+switch, which the chat template sets at the head of a system turn; E6 §3, item 11), through `interp-engine` + the
+`J++ Lens` (fitted on the base model `google/gemma-4-31B`, bf16) on `google/gemma-4-31b-it` (4-bit W4A16) and
+verifies:
   (a) Intermediate bridge tokens (`"spider"`, `"arachnid"`) rising in J++-Space across
       global-attention layers (`L24, L30, L36, L42`) before transitioning to `"eight"` / `"8"`
       at `L54-L60`;

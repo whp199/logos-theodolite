@@ -16,9 +16,9 @@ theodolite2/
 ├── pyproject.toml                   # Python dependencies & project config
 ├── backend/
 │   ├── __init__.py
-│   ├── theodolite_math.py           # Four core vectorized mathematical modules + CKA + unembed
+│   ├── theodolite_math.py           # Four core vectorized mathematical modules + contrasts + CKA + unembed
 │   ├── engine_runtime.py            # interp-engine + J++ / JLens loader + 4-bit weight dequantizer
-│   ├── larql_vault.py               # LARQL / VINDEX3 FFN vault indexer, LQL parser & .patch surgery
+│   ├── larql_vault.py               # LARQL / VINDEX3 FFN vault indexer, LQL parser, .patch edits & their voice
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
@@ -26,6 +26,8 @@ theodolite2/
 ├── scripts/
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
+│   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)
+│   ├── check_vault_voice.py         # an edit's voice: order, failures, reply keys, over HTTP and the WebSocket (CPU only)
 │   ├── export_E3_background_mu.py   # writes experiments/results/E3_background_mu.npy (+ .json) from E3's caches (CPU)
 │   ├── verify_causal_check.py       # the causal spot-check against N1A's and N1V's figures on the real model (GPU)
 │   ├── verify_e2e_ui_and_mcp.py     # server, MCP tools and headless-Chrome pages end to end (GPU)
@@ -51,7 +53,9 @@ theodolite2/
         │   └── sighting.ts            # one normalised "sighting" from a live frame pair or the fixture
         ├── components/kit.tsx         # page frame, nav, reading toggles, <Rubric>, <Apparatus>, <Missing>, <NotYet>
         └── screens/                   # Incipit, Instrument, LayerLeaf, NeuronFolio, Landmarks, Nudge, Vault,
-                                       # Lexicon, Lineage (+ a folder of parts for each)
+                                       # Lexicon, Lineage (+ a folder of parts for each: landmarks/ContrastSection.tsx
+                                       # is section vii, one word against another; vault/EditPanel.tsx the edit
+                                       # and its voice)
 ```
 
 ---
@@ -138,6 +142,20 @@ For each layer $l \in \{0, \dots, 59\}$:
      (`frame_fnw=false`, since V7 did not measure the weighted rows), `pole_ranking="write"` and `thread_score="direct"`
      unless the reader chooses otherwise; in pole-locked motif mode it sends `frame_squaring="gram_schmidt"`, since that
      frame's axes have fixed roles.
+
+Beside the four, one word against another (V7 bug 3's contrastive axes, read one at a time rather than as a frame;
+E3 (c); requested as a sweep's `contrasts`, 4.1–4.2):
+   - `contrast_of_state(state, toward_ids, away_ids, fnw, W_U, softcap=30)`, for pairs $(a_i, b_i)$, $i = 1 \dots n$:
+     $$s(u) = \frac{1}{n}\sum_i \Big[\text{cap}\big\langle \text{n}(u), W_U[a_i] \big\rangle - \text{cap}\big\langle \text{n}(u), W_U[b_i] \big\rangle\Big], \quad \text{n}(u) = \frac{u}{\text{rms}(u)} \odot \text{fnw}, \quad \text{cap}(z) = 30\tanh(z/30)$$
+     in fp32 on the $2n$ pair rows only, with the unembed's own norm (eps 1e-6, or 1e-12 where mean $u^2$ < 1e-3, as
+     `gemma4_rms_norm`); through the lens $u = h_l J_{\text{pp}}[l]^\top$, by the naked eye $u = h_l$. For one pair it
+     is the log-odds of $a$ against $b$ under that distribution (nats); for the six pronoun pairs, labkit's
+     `gender_scores(...)["pron"]`.
+   - `contrast_direction`: $d = \text{fnw} \odot \frac{1}{n}\sum_i (W_U[a_i] - W_U[b_i])$ (labkit's `gender_direction`);
+     `contrast_mean_part(μJ, hJ, …)` $= \langle \mu_l J_l^\top, d \rangle / \text{rms}(h_l J_l^\top)$, softcap-free: the
+     average state's linear share of the score (E3_lens_validation_09_background.py).
+   - `CONTRAST_BACKGROUNDS = ("controls", "study_mean")`. Contrasts of three landmark words lie in the plane of their
+     differences, inside the landmark frame's span; read one at a time, in log-odds, they need no squaring.
 
 ---
 
@@ -279,7 +297,8 @@ old fields unchanged. Layers in these fields count from 0.
 - The scientist tools and the vault, over MCP, HTTP and the WebSocket alike: `inspect_pole` and DESCRIBE POLE add
   `label_check` to each face (`north_pole`, `south_pole`; `active_pole` is the same face) and `label_gate` before
   `lens`, so their keys match; each NEAREST row adds `label_check` (its five-word lists unchanged), and the reply
-  `label_gate` before `lens` (UPDATE, INSERT, DESCRIBE, DELETE and ROLLBACK reply as before);
+  `label_gate` before `lens` (UPDATE, INSERT, DESCRIBE, DELETE and ROLLBACK reply as before, but for an edit's voice,
+  4.6);
   `trace_downstream_readers` (`trace_readers`) adds to each reader returned `dst_naive_tokens` (four, as through the
   lens) and `dst_label_check`, and `label_gate` to the reply; `test_motif_hypothesis` adds `pole_label_check` (its
   pole's face) and `label_gate`.
@@ -307,6 +326,14 @@ One that can adds, per layer (0-based, 60 values, 4 decimals):
 `/api/health` adds `contrasts` = `{backgrounds, max_contrasts, max_words, study_mean_problem}` before `label_gate`
 (`study_mean_problem` null when the average state can be read, else why, in plain words). The thinking comparison is
 read without contrasts.
+On the pages (`contrastFields` in the store): the request always carries both keys, empty unless the landmarks page's
+section vii is on with words typed on both sides that pair; then it carries that one contrast (several words a side,
+by commas) and the one background chosen, dropping "controls" when no matched control goes with the request and
+"study_mean" when `/api/health` gives a `study_mean_problem`, so a sighting is never refused for them. Choosing the
+matched control also centres the frame, since the control goes with the request as `centre_token_ids`. Both keys are
+reading keys: changing them reads the answer shown again from its ids (`answer_token_ids`), nothing written again.
+`Sighting.contrasts` is null when the server sent none (the recorded sighting, an older server) and [] when none was
+asked for.
 
 The causal spot-check (§4.5): the WebSocket action `causal_check` is answered `{"type":"causal_check","data":REPLY}`,
 REPLY as `POST /api/scientist/causal_check` and the MCP tool `causal_spot_check` return it. `/api/health` adds
@@ -459,3 +486,11 @@ when they are the same, or after failed). Every patch record (the reply's `patch
 the same neuron that this one replaced, else null); DESCRIBE gains `edit_method`: one down_proj column per edit, rank
 one, no covariance solve, named after MEMIT but not MEMIT. The voice is one question, written by the model itself: it
 shows what the edit did to that answer only. scripts/check_vault_voice.py checks all of this on a stand-in runtime.
+
+On the pages: the vault's edit tab hears every edit unless the reader turns hearing off (`executeLarql(query, voice)`,
+`voicePayload`: the instrument page's question, begun answer, chat setting and system prompt unless typed there, at
+`VOICE_LENGTH` = 12 word-pieces); ROLLBACK, the console and every other statement are sent without one. The store
+keeps each voice heard in `editVoices`, keyed `${patch_id}:${timestamp}` (patch ids start again with the server): a
+DESCRIBE keeps only those of records the vault still holds, ROLLBACK forgets them all, and a sighting's cut-down
+`larql_status` is merged with the full records already held, so the ledger keeps each edit's time, norms and voice.
+scripts/check_interface_defaults.py checks what the bundled store sends and keeps.

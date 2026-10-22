@@ -239,7 +239,7 @@ REPORT §3.4). Where each fault stands now:
 |---|---|---|
 | **1** | The nudge’s defaults, scale 650 at five layers (2.4–7.4× the stream’s strength), with a clamped inverse direction, collapse the model | **Mended in the instrument.** `direction="fnw"`, `mask_quiet`, `spare_bos` and `strength` (a share of ‖h‖); the nudge page sends all four, at 0.01. The server’s own defaults are kept for old callers |
 | **2** | The attention / feed-forward split ignored Gemma 4’s `layer_scalar` | **Applied**: [`V7_module1_fix.patch`](experiments/results/V7_module1_fix.patch) |
-| **3** | The survey frame depends on the order of the words, and uses raw unembedding rows | **The order mended in the instrument**: `frame_squaring="lowdin"` (order-free) on the raw rows, which the interface sends by default; the server’s own default stays Gram–Schmidt on raw rows for old callers, and a neuron-locked frame keeps Gram–Schmidt (its three axes have fixed roles, so their order is not a choice). Squared all at once on the raw rows, the frame agreed with the sign of the lens’s she−he score in 79–89% of readings by stretch of layers, against 72–88% squared in order (V7). `frame_fnw` (the rows the model weighs, fnw ⊙ W<sub>U</sub>), `frame_per_layer` and `centre_prompts` stay choices, off unless chosen; V7 did not measure a frame on weighted rows. The fraction of the state the frame catches is always sent; the study’s 2.4–3.9% was measured on raw rows |
+| **3** | The survey frame depends on the order of the words, and uses raw unembedding rows | **The order mended in the instrument**: `frame_squaring="lowdin"` (order-free) on the raw rows, which the interface sends by default; the server’s own default stays Gram–Schmidt on raw rows for old callers, and a neuron-locked frame keeps Gram–Schmidt (its three axes have fixed roles, so their order is not a choice). Squared all at once on the raw rows, the frame agreed with the sign of the lens’s she−he score in 79–89% of readings by stretch of layers, against 72–88% squared in order (V7). `frame_fnw` (the rows the model weighs, fnw ⊙ W<sub>U</sub>), `frame_per_layer` and `centre_prompts` stay choices, off unless chosen; V7 did not measure a frame on weighted rows. The fraction of the state the frame catches is always sent; the study’s 2.4–3.9% was measured on raw rows. V7’s contrast axes are read beside the frame, not in it (`contrasts`, below) |
 | **4** | The thread score C is a weak guide: ρ ≈ 0.41 with measured effects, against 0.87 for a direct-path estimate | **Mended in the instrument**: `thread_score="direct"` chooses and ranks threads by the direct-path estimate, and the interface sends it by default; the server’s own default stays C for old callers. Each binary row carries the one score it was chosen by; the JSON's `filaments_meta` (its first 60 threads, in source-layer order) carries both |
 | **5** | No chat template: the instruct model ran as a raw language model | **Mended**: `chat`, `system`, `assistant_prefix`; on by default in the interface |
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
@@ -285,8 +285,27 @@ REPORT §3.4). Where each fault stands now:
   `think_left_out: "bare_text"`). The server's own default stays the old imitation for old callers, `<|think|>` set
   before the bare text (E6 §3, item 11), and every pair names which was used (`think_protocol`: `"template"` |
   `"bare_prefix"`, null without one).
-- **LARQL.** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault query runs in
-  Python, and its ".patch MEMIT" edit is a single-neuron column nudge, not MEMIT.
+- **One word against another.** A sweep can weigh one word against another at every layer, through the lens and by
+  the naked eye, in nats of log-odds (`contrasts`, at most four; the words pair by position, as the study’s pronoun
+  pairs, and each is read as the landmarks read theirs, but only as one word-piece). It can read them against the
+  matched controls it is sent (`contrast_backgrounds: ["controls"]`: the sighting’s score less the controls’, a
+  difference of two log-odds, as E3’s first recommendation asks) or against E3’s average state (`"study_mean"`: the
+  score of the state less the average, as E3 centred it, which is not a log-odds the model gives;
+  [`E3_background_mu.npy`](experiments/results/E3_background_mu.npy), exported from E3’s own caches and pinned by its
+  sha256). The server reads none unless asked (`contrasts: []`); the landmarks page reads one, in its section vii, when
+  the reader turns that section on. Alone, the scores carry a lean that comes from the average state as this lens reads
+  it, partly from how the lens was fitted, not from the question: +2.3 toward the female words on the six pronoun
+  pairs at layers 41–50 (E3). Through the lens they inherit fault 9, and the page marks each stretch of layers as E49
+  and E50 ask. That E3’s average state lies in the coordinates of the server’s `resid_post` is not yet checked.
+- **The vault (LARQL).** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault
+  query runs in Python. Its edit, named after MEMIT in the code and its statements (".patch MEMIT"), writes one neuron’s
+  down-projection column (rank one, no covariance solve; DELETE sets it to zero): it is not MEMIT, and the pages call it
+  an edit. Each edit can be heard before and after on a question of your choosing (`voice` on the `larql` request,
+  ARCHITECTURE §4.6): the vault writes the answer the likeliest way, up to 12 word-pieces by default (1–64), just
+  before the edit and again just after, under the one GPU lock, and the vault page asks for it by default. An edit
+  made in the console or through the MCP tool is not heard (the tool does not hold the GPU lock). The voice is one
+  question, so it shows what an edit did to that answer only; the study tested only DELETE by cause and effect (E6
+  §2.3).
 
 <br>
 

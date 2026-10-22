@@ -148,7 +148,7 @@ export const refsB: Reference[] = [
     "Mass-Editing Memory in a Transformer (MEMIT).",
     "ICLR 2023. arXiv:2210.07229.",
     "https://arxiv.org/abs/2210.07229",
-    "Named only: the vault’s edit is a single-neuron down_proj column overwrite with no covariance solve, not MEMIT.",
+    "Named only: the vault’s edit is a single-neuron down_proj column add (DELETE zeroes the column) with no covariance solve, not MEMIT.",
   ),
   R(
     12,

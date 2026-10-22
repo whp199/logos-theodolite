@@ -7,7 +7,8 @@ Runs inside a single process/network namespace to verify:
    interface sends by default (scripts/check_interface_defaults.py: the store bundled and run under node).
 1. FastAPI + Binary Float32 WebSocket (`/ws/theodolite`) wire format (`0x5448454F`) & JSON metadata
 2. FastMCP Scientist Tools (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`, `causal_spot_check`)
-3. LARQL / VINDEX3 FFN Vault queries (`query_larql_vault`, `/api/larql`, the WebSocket `larql` action)
+3. LARQL / VINDEX3 FFN Vault queries (`query_larql_vault`, `/api/larql`, the WebSocket `larql` action), and an edit
+   heard before and after (item 11)
 4. Headless Chrome inspection of the UI (frontend/dist, built first) via CDP:
    - Zero console errors or page exceptions
    - the first live sighting replaces the recorded one and the 60-ring drawing renders
@@ -70,14 +71,45 @@ Runs inside a single process/network namespace to verify:
    layer 54 tests its label at the live sighting's word-piece ("test it at this word-piece"): the words that rose and
    fell most and the count of the label's words among the hundred are the MCP tool's own for the request the page's
    apparatus shows, and the apparatus gives the test's full detail.
+   On the pages too, for thinking (item 7): the instrument offers its thinking checkbox for a chat only, disabled
+   for bare text with the rubric saying why.
+10. One word against another (ARCHITECTURE §3.3, §4.1-4.2; scripts/check_contrast_readings.py runs first, on the
+   CPU): /api/health carries the contrasts card before the label gate, the study's average state readable; a plain
+   sweep weighs nothing (`contrasts: []`) and asking for a contrast leaves the binary frame as it was. The page's own
+   words ("she", "he", typed without a space) resolve to the ids the landmarks track, the lens line is the difference
+   of the two tracked J++ logits (within 0.15: those are bf16, rounded to 2 places) and at layer 60 equals the naked
+   eye; the six pronoun pairs read labkit's ids; a word of several word-pieces comes back unread in plain words and the
+   sweep goes on. Against the matched control, Δ is the sighting's score less the control's, read at the control's
+   own last piece at word-piece 0 and past it only with centre_answer (else said why); against E3's average state,
+   the file pinned. The stream weighs every pair, a re-read of its given ids weighs the same, and refusals (an
+   unknown background, the control with none sent, words that do not pair) come before anything is written, over the
+   stream and the one-pair reply. On the landmarks page, section vii turned on weighs the first two landmarks, sends
+   what it says it sends, names the ids the server resolved, and at layer 60 prints the lens equal to the naked eye.
+11. An edit's voice (ARCHITECTURE §4.6; scripts/check_vault_voice.py runs first, on the CPU), on the edit tab's
+   default edit (UPDATE LAYER 35 SLOT 100, "six") and a spider question: over HTTP the voice before is a fresh
+   sighting's answer word-piece for word-piece and the voice after is the answer of a sighting with the edit in
+   force, the reply's keys today's with "voice" between "patch" and "lens"; over the WebSocket the same edit again
+   replaces the first (replaces_patch, edits_in_force_before) and hears no change; DESCRIBE keeps each voice and names
+   the edit method, and ignores a voice sent with it; a DELETE has no word to watch; a voice refused (HTTP 422, 400;
+   WebSocket ok false) leaves nothing edited; ROLLBACK restores the answer; the MCP tool's edits are unheard. On the
+   vault page, the edit tab hears its edit by default, its status line quotes the two answers the server recorded,
+   and "undo every edit" rolls it back.
+12. E3's average state in this server's coordinates: one of E3's neutral prose passages read through the study's own
+   capture (labkit.forward_resid, HF decoder-layer hooks) and the server's (capture_rows, resid_post) agree at every
+   layer within 1e-2 (relative), and the server's contrast_of_state, with the μ it loads, gives back E3's figures at
+   layers 41-50 (report L40-49) from E3_lens_validation_c_background.json: μ's own pronoun score (+2.3, within 0.01)
+   and, on E3's twelve neutral passages, the raw score, the score centred on μ (−0.7) and μ's linear part (each
+   within 0.1).
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
+import importlib.util
 import json
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -102,6 +134,7 @@ import numpy as np
 import torch
 import uvicorn
 import websockets
+from interp_engine import Address
 
 from backend.mcp_scientist import (
     causal_spot_check,
@@ -110,8 +143,10 @@ from backend.mcp_scientist import (
     test_motif_hypothesis,
     trace_downstream_readers,
 )
+from backend.engine_runtime import STUDY_MEAN_SHA256
 from backend.label_gate import BAND, LABEL_GATE_CARD, label_check
-from backend.server import MAGIC_THEO, MAX_SWEEP_POSITIONS, WIRE_VERSION, app
+from backend.server import _GPU_LOCK, MAGIC_THEO, MAX_SWEEP_POSITIONS, WIRE_VERSION, app, get_app_state
+from backend.theodolite_math import CONTRAST_BACKGROUNDS, contrast_mean_part, contrast_of_state
 
 
 async def ws_sweep(ws: Any, payload: Dict[str, Any]) -> tuple[bytes, Dict[str, Any]]:
@@ -296,6 +331,18 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
     assert m0["think_left_out"] == "bare_text" and m0["think_protocol"] is None, m0["think_left_out"]
     print("  • thinking: a chat by the template's switch (think_protocol 'template'), bare text by the old imitation by "
           "default ('bare_prefix'), or left out with think_bare 'none' (think_left_out 'bare_text')")
+    # the one-pair reply (no request_id) says the same, on its one pair; without compare_think it says nothing
+    assert legacy_meta["think_protocol"] is None and legacy_meta["think_left_out"] is None, legacy_meta["think_protocol"]
+    for extra, protocol, left_out in (
+        ({}, "bare_prefix", None),
+        ({"chat": True}, "template", None),
+        ({"think_bare": "none"}, None, "bare_text"),
+    ):
+        b1, m1 = await ws_sweep(ws, {"prompt": prompt, "max_new_tokens": 2, "compare_think": True, **extra})
+        assert (m1["think_protocol"], m1["think_left_out"]) == (protocol, left_out), (extra, m1["think_protocol"], m1["think_left_out"])
+        assert bool(struct.unpack("<6I", b1[:24])[5] & 1) == (protocol is not None), (extra, "flags bit 0")
+        assert (m1["think_generated_text"] is not None) == (protocol is not None), (extra, m1["think_generated_text"])
+    print("  • thinking, one-pair reply: the same three answers ('bare_prefix', 'template', left out), none without asking")
 
     # cancels: while writing; and a queued request, dropped at once while another runs
     await ws.send(json.dumps({"action": "sweep", "payload": {"request_id": "e2e-cancel", "prompt": prompt,
@@ -332,6 +379,320 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
     b_after, m_after = await ws_sweep(ws, {"prompt": prompt, "max_new_tokens": 6})
     assert m_after["token_index"] == 0 and b_after[24:] == legacy_bin[24:], "the socket after the refusals"
     print("  • refusals stay on their request (error, then its end), in plain words; the socket still answers")
+
+
+CONTRAST_SERIES = ("lens", "naked")
+CONTRAST_ENTRY_KEYS = ["label", "toward", "away", "toward_ids", "away_ids", "error", "lens", "naked", "backgrounds"]
+# the study's six pronoun pairs (experiments/lab/labkit.py PRON_PAIRS), typed as the page's boxes take them: no space
+PRON_TOWARD = ["she", "her", "hers", "herself", "She", "Her"]
+PRON_AWAY = ["he", "him", "his", "himself", "He", "His"]
+
+
+def assert_contrast(c: Any, n_pairs: int, what: str) -> Dict[str, Any]:
+    """One contrast that was read: its keys in order, its words resolved to one word-piece each, and 60 values a
+    series (0-based layers)."""
+    assert isinstance(c, dict) and c.get("error") is None, f"{what}: {c}"
+    assert list(c) == CONTRAST_ENTRY_KEYS, f"{what}: keys {list(c)}"
+    assert len(c["toward"]) == len(c["away"]) == len(c["toward_ids"]) == len(c["away_ids"]) == n_pairs, f"{what}: {c}"
+    for w, tid in zip(c["toward"] + c["away"], c["toward_ids"] + c["away_ids"]):
+        assert w["id"] == tid and isinstance(w["piece"], str), f"{what}: {w}"
+    for key in CONTRAST_SERIES:
+        assert len(c[key]) == 60 and all(np.isfinite(c[key])), f"{what}: {key} has {len(c[key])} values"
+    return c
+
+
+async def check_contrast_transports(ws: Any, legacy_meta: Dict[str, Any], health: Dict[str, Any]) -> None:
+    """One word against another (ARCHITECTURE §3.3, §4.1-4.2; the module docstring, item 10), over the WebSocket's
+    one-pair reply and its stream, and read again from given ids as the pages read it."""
+    runtime, _vault = get_app_state()
+    # by default nothing is weighed: the reply carries an empty list; the health card says what a request may hold
+    assert legacy_meta["contrasts"] == [], legacy_meta.get("contrasts")
+    card, hk = health.get("contrasts"), list(health)
+    assert card == {"backgrounds": list(CONTRAST_BACKGROUNDS), "max_contrasts": 4, "max_words": 12,
+                    "study_mean_problem": None}, f"health contrasts {card}"
+    assert hk.index("contrasts") < hk.index("label_gate"), hk
+    base = {"prompt": "Tell me about yourself.", "chat": True, "assistant_prefix": "Hi! I", "monuments": ["she", "he", "it"],
+            "max_new_tokens": 3, "rank_lookahead": False}
+
+    # 1. the page's own words, typed as its boxes send them ("she", "he": the first two landmarks), resolve to the ids
+    # the landmarks track (" she" first, as resolve_concept_token_id reads them); the lens line is the difference of
+    # the two tracked J++ logits (bf16, rounded to 2 places, so within 0.15), and at layer 60 the lens is the model
+    b1, m1 = await ws_sweep(ws, {**base, "contrasts": [{"toward": ["she"], "away": ["he"]}]})
+    assert b1[24:] == (await ws_sweep(ws, base))[0][24:], "asking for a contrast changed the binary frame"
+    c1 = assert_contrast(m1["contrasts"][0], 1, "she against he")
+    tracked = {w: runtime.resolve_concept_token_id(w)[0] for w in ("she", "he")}
+    assert (c1["toward_ids"], c1["away_ids"]) == ([tracked["she"]], [tracked["he"]]), (c1["toward"], c1["away"], tracked)
+    gaps = [abs(c1["lens"][l] - (p["tracked_logits"]["she"] - p["tracked_logits"]["he"])) for l, p in enumerate(m1["layer_plumes"])]
+    assert max(gaps) <= 0.15, f"the lens line is not the tracked logits' difference: worst {max(gaps):.3f} at index {gaps.index(max(gaps))}"
+    assert abs(c1["lens"][59] - c1["naked"][59]) <= 1e-3, (c1["lens"][59], c1["naked"][59])
+    assert c1["backgrounds"] == {} and m1["frame"]["centre_kind"] == "none"
+    print(f"  • contrast she/he: the store's words read {c1['toward'][0]['piece']!r} ({tracked['she']}) and "
+          f"{c1['away'][0]['piece']!r} ({tracked['he']}), the landmarks' own; the lens line is the tracked logits' "
+          f"difference within {max(gaps):.3f}; at layer 60 the lens {c1['lens'][59]:+.4f} = the naked eye {c1['naked'][59]:+.4f}")
+
+    # 2. the study's six pronoun pairs, typed without their spaces, read the study's own word-pieces (labkit.tid of
+    # " she" ...), and a word that is no single word-piece is returned unread, in plain words, with the sweep going on
+    _, m2 = await ws_sweep(ws, {**base, "contrasts": [
+        {"toward": PRON_TOWARD, "away": PRON_AWAY, "label": "pron"},
+        {"toward": ["antidisestablishmentarianism"], "away": ["he"]},
+    ]})
+    c2 = assert_contrast(m2["contrasts"][0], 6, "the six pronoun pairs")
+    study_ids = [runtime.tokenizer.encode(" " + w, add_special_tokens=False) for w in PRON_TOWARD + PRON_AWAY]
+    assert all(len(i) == 1 for i in study_ids) and c2["toward_ids"] + c2["away_ids"] == [i[0] for i in study_ids], c2
+    assert c2["label"] == "pron"
+    bad = m2["contrasts"][1]
+    assert bad["error"] and "is not one word-piece" in bad["error"] and "lens" not in bad, bad
+    forms = bad["pieces"]["antidisestablishmentarianism"]  # each form tried: the word-pieces it splits into
+    assert bad["toward_ids"] is None and forms and all(len(v) >= 2 for v in forms.values()), bad
+    print(f"  • the six pronoun pairs read labkit's ids; a word of {len(next(iter(forms.values())))} word-pieces came "
+          "back unread, in plain words, and the sweep went on")
+
+    # 3. against the matched control and E3's average state: Δ is the sighting's score less the control's, read where
+    # the centring reads it (the control's own last piece at word-piece 0); the average state is the file pinned
+    ctl = {**base, "centre_prompts": ["The weather today is"], "contrasts": [{"toward": ["she"], "away": ["he"]}],
+           "contrast_backgrounds": ["controls", "study_mean"]}
+    _, m3 = await ws_sweep(ws, ctl)
+    c3 = assert_contrast(m3["contrasts"][0], 1, "she/he against the backgrounds")
+    assert m3["frame"]["centred"] and m3["frame"]["centre_kind"] == "control_prompt_end", m3["frame"]
+    bc, bs = c3["backgrounds"]["controls"], c3["backgrounds"]["study_mean"]
+    assert list(c3["backgrounds"]) == ["controls", "study_mean"], list(c3["backgrounds"])
+    assert bc["kind"] == "control_prompt_end" and bc["n_controls"] == 1 and bc["why"] is None, bc
+    for key, ctl_key, delta_key in (("lens", "control_lens", "delta_lens"), ("naked", "control_naked", "delta_naked")):
+        worst = max(abs(bc[delta_key][l] - (c3[key][l] - bc[ctl_key][l])) for l in range(60))
+        assert worst <= 3e-4, f"{delta_key} is not the sighting's score less the control's: {worst}"
+    assert bs["kind"] == "study_mean" and bs["sha256"] == STUDY_MEAN_SHA256, bs.get("sha256")
+    assert bs["file"] == "experiments/results/E3_background_mu.npy", bs["file"]
+    for key in ("centred_lens", "centred_naked", "mean_part_lens", "mean_part_naked"):
+        assert len(bs[key]) == 60 and all(np.isfinite(bs[key])), key
+    # the readings are the same with or without the frame's centring beside them: the contrast reads the raw state
+    assert c3["lens"] == c1["lens"] and c3["naked"] == c1["naked"], "centring the frame moved the contrast"
+    print(f"  • against the control: Δ at layer 41 {bc['delta_lens'][40]:+.4f} (lens; the control alone "
+          f"{bc['control_lens'][40]:+.4f}); centred on E3's average state {bs['centred_lens'][40]:+.4f}, its own part "
+          f"{bs['mean_part_lens'][40]:+.4f}; μ pinned ({STUDY_MEAN_SHA256[:12]}…)")
+
+    # 4. the stream: contrasts on every pair; the control is read past word-piece 0 only with centre_answer
+    for centre_answer, past in ((False, "none"), (True, "control_reading_same_answer")):
+        st = await ws_stream(ws, {**ctl, "request_id": f"e2e-contrast-{centre_answer}", "sight_every_token": True,
+                                  "centre_answer": centre_answer, "contrast_backgrounds": ["controls"]})
+        assert not st["errors"] and len(st["pairs"]) >= 2, st["errors"] or len(st["pairs"])
+        for k, (_b, m) in enumerate(st["pairs"]):
+            ck = assert_contrast(m["contrasts"][0], 1, f"stream pair {k}")
+            kind = ck["backgrounds"]["controls"]["kind"]
+            assert kind == ("control_prompt_end" if k == 0 else past), (centre_answer, k, kind)
+            if kind == "none":
+                assert ck["backgrounds"]["controls"]["delta_lens"] is None and ck["backgrounds"]["controls"]["why"], ck
+        if not centre_answer:
+            plain = st
+    assert plain["pairs"][0][1]["contrasts"][0]["lens"] == c1["lens"], "the stream's word-piece 0 reads another contrast"
+    # read again from the stream's own ids, as the pages read a reading key (nothing written again): the same contrast
+    ans_ids = plain["written"]["answer"]["token_ids"]
+    again = await ws_stream(ws, {**ctl, "request_id": "e2e-contrast-reread", "answer_token_ids": ans_ids,
+                                 "sight_tokens": [1, 0], "contrast_backgrounds": ["controls"]})
+    assert [m["token_index"] for _b, m in again["pairs"]] == [1, 0], again["errors"]
+    for (_b, m), k in zip(again["pairs"], (1, 0)):
+        assert m["contrasts"] == plain["pairs"][k][1]["contrasts"], f"the re-read of word-piece {k} weighs otherwise"
+    print("  • the stream weighs every pair (the control past word-piece 0 only with centre_answer, else said why); "
+          "a re-read of the given ids weighs the same")
+
+    # 5. refusals, before anything is written, in plain words; the socket still answers
+    for extra, said in (
+        ({"contrast_backgrounds": ["sideways"]}, "which this instrument does not know"),
+        ({"contrast_backgrounds": ["controls"], "centre_prompts": []}, "no matched control was sent"),
+        ({"contrasts": [{"toward": ["she", "her"], "away": ["he"]}]}, "needs as many of each"),
+    ):
+        r = await ws_stream(ws, {**ctl, "request_id": "e2e-contrast-refused", **extra})
+        assert r["errors"] and said in r["errors"][0]["message"] and r["end"]["n_sent"] == 0, (extra, r["errors"])
+        assert r["written"] is None, f"{extra}: an answer was written before the refusal"
+    await ws.send(json.dumps({"action": "sweep", "payload": {**ctl, "contrast_backgrounds": ["sideways"]}}))
+    one = json.loads(await asyncio.wait_for(ws.recv(), timeout=120))
+    assert one["type"] == "error" and one["recoverable"] and "does not know" in one["message"], one
+    print("  • contrast refusals (an unknown background, the control with none sent, words that do not pair) in plain "
+          "words, over the stream and the one-pair reply, before anything is written")
+
+
+VOICE_Q = "How many legs does a spider have?"
+VOICE_EDIT = "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +"  # the edit tab's default edit
+VOICE_KEYS = ["prompt", "chat", "system", "assistant_prefix", "max_new_tokens", "edits_in_force_before", "before",
+              "after", "first_step", "parted_at", "elapsed_ms", "error"]
+VOICE_ANSWER_KEYS = ["token_ids", "token_strs", "text", "stop_reason", "n_prompt", "steps", "first_top", "watch"]
+
+
+def voice_words(a: Dict[str, Any]) -> str:
+    """A voice's answer as the vault page quotes it (frontend/src/store/sighting.ts voiceWords): its end mark left out,
+    a new line as ↵."""
+    strs = a["token_strs"][:-1] if a["stop_reason"] == "end_mark" and a["token_strs"] else a["token_strs"]
+    return ("".join(strs) if strs or not a["text"] else a["text"]).replace("\n", "↵").strip()
+
+
+def voice_said(a: Dict[str, Any]) -> str:
+    """The quotation the vault page sets for a voice's answer (EditPanel.tsx said())."""
+    w = voice_words(a)
+    return f"“{w}”" if w else ("nothing, ending its turn at once" if a["stop_reason"] == "end_mark" else "“”")
+
+
+def assert_voice(v: Any, spec: Dict[str, Any], in_force: List[int], what: str) -> Dict[str, Any]:
+    """An edit's voice (ARCHITECTURE §4.6) as heard on `spec`, with the patches `in_force` before it."""
+    assert isinstance(v, dict) and list(v) == VOICE_KEYS, f"{what}: voice keys {list(v) if isinstance(v, dict) else v}"
+    assert {k: v[k] for k in ("prompt", "chat", "system", "assistant_prefix", "max_new_tokens")} == spec, (what, v)
+    assert v["edits_in_force_before"] == in_force and v["error"] is None and v["after"] is not None, (what, v["error"])
+    for side in ("before", "after"):
+        a = v[side]
+        assert list(a) == VOICE_ANSWER_KEYS and 1 <= len(a["token_ids"]) <= spec["max_new_tokens"], (what, side, list(a))
+        assert a["stop_reason"] in ("end_mark", "length") and len(a["first_top"]) == 5, (what, side, a["stop_reason"])
+        # written the likeliest way: each word-piece the step's first
+        assert all(s["model_rank"] == 1 for s in a["steps"]), (what, side, [s["model_rank"] for s in a["steps"]])
+    fs = v["first_step"]
+    assert fs["kl_before_after"] >= 0.0, (what, fs)
+    want_part = next((i for i, (x, y) in enumerate(zip(v["before"]["token_ids"], v["after"]["token_ids"])) if x != y), None)
+    if want_part is None and len(v["before"]["token_ids"]) != len(v["after"]["token_ids"]):
+        want_part = min(len(v["before"]["token_ids"]), len(v["after"]["token_ids"]))
+    assert v["parted_at"] == want_part, (what, v["parted_at"], want_part)
+    return v
+
+
+async def check_vault_voice_transports(client: Any) -> None:
+    """An edit's voice (ARCHITECTURE §4.6; the module docstring, item 11) over HTTP and the WebSocket, against sightings
+    of the same question before the edit, with it in force and after ROLLBACK; the MCP tool's edits unheard."""
+    spec = {"prompt": VOICE_Q, "chat": True, "system": None, "assistant_prefix": "", "max_new_tokens": 12}
+    sight = {"prompt": VOICE_Q, "chat": True, "max_new_tokens": 12}
+    r0 = await client.post("/api/larql", json={"query": "ROLLBACK"})
+    assert r0.status_code == 200, r0.text
+    async with websockets.connect(f"ws://{HOST}:{PORT}/ws/theodolite", max_size=50 * 1024 * 1024) as wsv:
+        _, s_before = await ws_sweep(wsv, sight)
+        # over HTTP: the voice before is the sighting's own answer, word-piece for word-piece (both written greedily
+        # step by step, the same composed prompt), the reply's keys today's with "voice" between "patch" and "lens"
+        r1 = await client.post("/api/larql", json={"query": VOICE_EDIT, "voice": spec})
+        assert r1.status_code == 200, r1.text
+        h1 = r1.json()
+        assert list(h1) == ["status", "patch", "active_patches_count", "voice", "lens"], list(h1)
+        v1 = assert_voice(h1["voice"], spec, [], "HTTP UPDATE")
+        p1 = h1["patch"]
+        assert p1["voice"] == v1 and p1["edit_kind"] == "one_neuron_column" and p1["replaces_patch"] is None, p1
+        assert v1["before"]["token_ids"] == s_before["answer"]["token_ids"], (
+            f"the voice before {v1['before']['token_strs']} is not the sighting's {s_before['answer']['token_strs']}")
+        six = runtime_word_id("six")
+        assert v1["first_step"]["watch_before"]["token_id"] == six, v1["first_step"]["watch_before"]
+        # a sighting with the edit in force answers as the voice after it did
+        _, s_edited = await ws_sweep(wsv, sight)
+        assert s_edited["answer"]["token_ids"] == v1["after"]["token_ids"], (
+            f"the voice after {v1['after']['token_strs']} is not the edited sighting's {s_edited['answer']['token_strs']}")
+        print(f"  • voice, HTTP: before {voice_said(v1['before'])} = a fresh sighting's answer; after "
+              f"{voice_said(v1['after'])} = a sighting with the edit in force; KL at the first word-piece "
+              f"{v1['first_step']['kl_before_after']:.4g} nats; “six” {v1['first_step']['watch_before']['prob']:.3g} → "
+              f"{v1['first_step']['watch_after']['prob']:.3g}; {v1['elapsed_ms']} ms")
+        # over the WebSocket, the same edit again: it replaces the first on the same neuron (the overlay is keyed by
+        # neuron, the column read from the packed weights), so its voice before is the first edit's voice after, and
+        # its column is the same, so nothing moves
+        await wsv.send(json.dumps({"action": "larql", "query": VOICE_EDIT, "voice": spec}))
+        w2 = json.loads(await asyncio.wait_for(wsv.recv(), timeout=600))
+        assert w2["type"] == "larql_result" and w2["ok"], w2
+        v2 = assert_voice(w2["data"]["voice"], spec, [p1["patch_id"]], "WS UPDATE")
+        assert list(w2["data"]) == list(h1) and w2["data"]["patch"]["replaces_patch"] == p1["patch_id"], w2["data"]["patch"]
+        assert v2["before"]["token_ids"] == v2["after"]["token_ids"] == v1["after"]["token_ids"], (v2["before"], v2["after"])
+        assert v2["parted_at"] is None and v2["first_step"]["kl_before_after"] < 1e-3, v2["first_step"]["kl_before_after"]
+        # DESCRIBE keeps each record's voice and says what an edit is; a voice sent with it is ignored
+        d1 = (await client.post("/api/larql", json={"query": "DESCRIBE", "voice": spec})).json()
+        assert "voice" not in d1 and d1["edit_method"].startswith("one down_proj column per edit"), list(d1)
+        assert [p["voice"] for p in d1["active_patches"]] == [v1, v2], "DESCRIBE lost an edit's voice"
+        # a DELETE heard over the WebSocket: no word to watch, and no lens named (as before)
+        await wsv.send(json.dumps({"action": "larql", "query": "DELETE FROM LAYER 35 WHERE slot = 101",
+                                   "voice": {**spec, "max_new_tokens": 4}}))
+        w3 = json.loads(await asyncio.wait_for(wsv.recv(), timeout=600))
+        assert w3["ok"] and list(w3["data"]) == ["status", "patch", "active_patches_count", "voice"], w3
+        v3 = assert_voice(w3["data"]["voice"], {**spec, "max_new_tokens": 4}, [w2["data"]["patch"]["patch_id"]], "WS DELETE")
+        assert v3["first_step"]["watch_before"] is None and v3["first_step"]["watch_after"] is None, v3["first_step"]
+        # refusals: a voice the request model refuses (HTTP 422; WS ok false), and one whose answer before cannot be
+        # written (HTTP 400; WS ok false): nothing is edited
+        n_in = d1["active_patches_count"] + 1
+        bad_voice = {**spec, "max_new_tokens": 0}
+        r_bad = await client.post("/api/larql", json={"query": VOICE_EDIT, "voice": bad_voice})
+        assert r_bad.status_code == 422, r_bad.text
+        await wsv.send(json.dumps({"action": "larql", "query": VOICE_EDIT, "voice": bad_voice}))
+        w_bad = json.loads(await asyncio.wait_for(wsv.recv(), timeout=60))
+        assert not w_bad["ok"] and "no edit was made" in w_bad["error"] and "voice" in w_bad["error"], w_bad
+        too_long = {**spec, "prompt": "word " * MAX_SWEEP_POSITIONS}
+        r_long = await client.post("/api/larql", json={"query": VOICE_EDIT, "voice": too_long})
+        assert r_long.status_code == 400 and "could not be written" in r_long.text and "no edit was made" in r_long.text, r_long.text
+        await wsv.send(json.dumps({"action": "larql", "query": VOICE_EDIT, "voice": too_long}))
+        w_long = json.loads(await asyncio.wait_for(wsv.recv(), timeout=120))
+        assert not w_long["ok"] and "no edit was made" in w_long["error"], w_long
+        d2 = (await client.post("/api/larql", json={"query": "DESCRIBE"})).json()
+        assert d2["active_patches_count"] == n_in, f"a refused voice left an edit: {d2['active_patches_count']} != {n_in}"
+        # ROLLBACK, and the sighting answers as it did before any edit
+        rb = (await client.post("/api/larql", json={"query": "ROLLBACK"})).json()
+        assert list(rb) == ["status", "cleared_patches", "active_patches_count"] and rb["active_patches_count"] == 0, rb
+        _, s_after = await ws_sweep(wsv, sight)
+        assert s_after["answer"]["token_ids"] == s_before["answer"]["token_ids"], "ROLLBACK did not restore the answer"
+    # the MCP tool takes no voice (it does not hold the GPU lock): its edits are made unheard, said so on the record
+    upd = query_larql_vault(VOICE_EDIT)
+    try:
+        assert "voice" not in upd and upd["patch"]["voice"] is None and upd["patch"]["edit_kind"] == "one_neuron_column", upd
+    finally:
+        query_larql_vault("ROLLBACK")
+    print("  • voice, WS: the same edit again replaces the first (before = its after, KL ~0); a DELETE has no word to "
+          "watch; refusals leave nothing edited (HTTP 422/400, WS ok false); ROLLBACK restores the answer; MCP unheard")
+
+
+def runtime_word_id(word: str) -> int:
+    """A word's id as the vault resolves an edit's target (resolve_concept_token_id: " word", then the word)."""
+    runtime, _vault = get_app_state()
+    return runtime.resolve_concept_token_id(word)[0]
+
+
+async def check_study_mean_coordinates() -> None:
+    """E3's average state against this server's states (the module docstring, item 12): one of E3's neutral prose
+    passages read through the study's own HF decoder-layer hooks (labkit.forward_resid) and through the server's
+    capture (capture_rows, resid_post) agree at every layer; and E3's figures at layers 41-50 (report L40-49) come
+    back through the server's contrast_of_state with the μ it loads: μ's own pronoun score, and neutral prose raw,
+    centred on μ, and μ's linear part (E3_lens_validation_c_background.json)."""
+    runtime, _vault = get_app_state()
+    spec = importlib.util.spec_from_file_location("labkit", ROOT_DIR / "experiments" / "lab" / "labkit.py")
+    assert spec is not None and spec.loader is not None
+    labkit = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(labkit)
+    lab = labkit.Lab(runtime)
+    data: Dict[str, Any] = {}
+    exec((ROOT_DIR / "experiments" / "scripts" / "E3_lens_validation_data.py").read_text(), data)
+    passages = [lab.ids(t) for tag, t in data["PROSE"] if tag == "neutral"][:12]
+    rec = json.loads((ROOT_DIR / "experiments" / "results" / "E3_lens_validation_c_background.json").read_text())
+    band = range(40, 50)
+    want = {k: float(np.array(rec["real"]["prose_neutral"][f"jpp|{k}|pron"]).mean(0)[40:50].mean())
+            for k in ("raw", "cent", "meanpart")}
+    want_mu = float(np.mean(rec["mu"]["jpp"]["pron"][40:50]))
+    pf, pm = lab.gender["pron_f"], lab.gender["pron_m"]
+    fnw, W_U = runtime.final_norm_weight, runtime.lm_head_weight
+    async with _GPU_LOCK:
+        mu, mu_J = runtime._study_mean_states()
+        got_mu = float(np.mean([float(contrast_of_state(mu_J[l], pf, pm, fnw, W_U)) for l in band]))
+        rows = {k: [] for k in want}
+        worst_rel = 0.0
+        for j, ids in enumerate(passages):
+            caps = runtime.capture_rows(ids, every=[Address("resid_post", l) for l in range(60)])
+            H = torch.stack([caps[Address("resid_post", l)].float() for l in range(60)], 0)[:, 4:]  # [60, P, D]
+            if j == 0:
+                ref = lab.forward_resid([ids])[0][:, 4:]  # [60, P, D], the study's own capture
+                rel = [float((H[l] - ref[l]).norm() / ref[l].norm()) for l in range(60)]
+                worst_rel = max(rel)
+                assert worst_rel < 1e-2, f"the server's resid_post is not the study's: relative difference {worst_rel:.2e} at index {rel.index(worst_rel)}"
+            per = {k: [] for k in want}
+            for l in band:
+                h = H[l].to(runtime.device)
+                J_l = runtime.jpp_lenses[l]
+                hJ = (h.to(J_l.dtype) @ J_l.T).float()
+                cJ = ((h - mu[l]).to(J_l.dtype) @ J_l.T).float()
+                per["raw"].append(float(contrast_of_state(hJ, pf, pm, fnw, W_U).mean()))
+                per["cent"].append(float(contrast_of_state(cJ, pf, pm, fnw, W_U).mean()))
+                per["meanpart"].append(float(contrast_mean_part(mu_J[l], hJ, pf, pm, fnw, W_U).mean()))
+            for k in want:
+                rows[k].append(per[k])
+    got = {k: float(np.array(v).mean(0).mean()) for k, v in rows.items()}
+    assert abs(got_mu - want_mu) <= 0.01, f"μ's own pronoun score at layers 41-50: {got_mu:+.4f}, E3 {want_mu:+.4f}"
+    for k in want:
+        assert abs(got[k] - want[k]) <= 0.1, f"neutral prose {k} at layers 41-50: {got[k]:+.4f} here, E3 {want[k]:+.4f}"
+    print(f"  • E3's average state in this server's coordinates: resid_post within {worst_rel:.1e} (relative) of the "
+          f"study's own capture; at layers 41-50, μ reads {got_mu:+.3f} (E3 {want_mu:+.3f}); neutral prose raw "
+          f"{got['raw']:+.3f} (E3 {want['raw']:+.3f}), centred {got['cent']:+.3f} (E3 {want['cent']:+.3f}), μ's part "
+          f"{got['meanpart']:+.3f} (E3 {want['meanpart']:+.3f})")
 
 
 def assert_base_lens(lens: Any, model_id: str | None = None) -> None:
@@ -1010,6 +1371,8 @@ async def main() -> int:
             # ---------------------------------------------------------------------
             print("\n[3c/4] Verifying a sighting of every word-piece over the WebSocket...")
             await check_answer_streams(ws, bin_msg, json_msg)
+            print("\n[3d/4] Verifying one word against another over the WebSocket...")
+            await check_contrast_transports(ws, json_msg, health)
 
         mcp_direct = await trace_downstream_readers(
             layer=35, neuron_idx=9482, prompt="How many legs does a spider have?", chat=True,
@@ -1069,6 +1432,9 @@ async def main() -> int:
         assert list(rolled) == ["status", "cleared_patches", "active_patches_count"], f"ROLLBACK keys {list(rolled)}"
         assert rolled["status"] == "rolled_back" and rolled["cleared_patches"] >= 1, rolled
         print("  • vault: MCP DESCRIBE POLE and UPDATE, HTTP NEAREST name the lens; DESCRIBE and ROLLBACK as before")
+        # an edit heard before and after (item 11), then E3's average state in this server's coordinates (item 12)
+        await check_vault_voice_transports(client)
+        await check_study_mean_coordinates()
         hyp_chat = await test_motif_hypothesis(
             layer=53, neuron_idx=16383, chat=True,
             pos_prompts=["What animal spins silk webs to catch insects?"], neg_prompts=["What is the capital of France?"],
@@ -1665,6 +2031,126 @@ async def main() -> int:
             )
             print("  • Neuron folio: “direct-path estimate” scored the traced readers")
             await cdp.eval_js(f"{click_js}('apparatus')")
+
+            # Items 10-11 on the pages (and 7's thinking). The instrument offers thinking for a chat only: with chat
+            # off its checkbox is disabled and the rubric says why; with chat on again it is offered again
+            await go("#/instrument")
+            await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle instrument")
+            await cdp.eval_js(f"{SET_READING_JS}('rubrics', true)")
+            think_js = """(() => {
+                const box = (s) => { const l = Array.from(document.querySelectorAll("label.check")).find((x) => x.textContent.includes(s));
+                    return l ? l.querySelector("input") : null; };
+                const chat = box("send it as a chat"), think = box("also sight it with thinking turned on");
+                return { chat: chat ? chat.checked : null, disabled: think ? think.disabled : null,
+                         said: document.body.innerText.includes("Only for a chat. Bare text has no turn for the model to think in") };
+            })()"""
+            click_chat_js = """(() => { const l = Array.from(document.querySelectorAll("label.check")).find((x) => x.textContent.includes("send it as a chat"));
+                const i = l && l.querySelector("input"); if (!i) return null; i.click(); return i.checked; })()"""
+            on_chat = await cdp.eval_js(think_js)
+            assert on_chat == {"chat": True, "disabled": False, "said": False}, f"thinking with chat on: {on_chat}"
+            assert await cdp.eval_js(click_chat_js) is False, "could not untick “send it as a chat”"
+            await asyncio.sleep(0.3)
+            off_chat = await cdp.eval_js(think_js)
+            assert await cdp.eval_js(click_chat_js) is True, "could not tick “send it as a chat” again"
+            await asyncio.sleep(0.3)
+            assert off_chat == {"chat": False, "disabled": True, "said": True}, f"thinking with chat off: {off_chat}"
+            assert (await cdp.eval_js(think_js))["disabled"] is False, "thinking is not offered again with chat on"
+            print("  • Instrument: thinking is offered for a chat; with bare text its box is disabled, and the rubric says why")
+
+            # the vault's edit tab hears its default edit before and after on the instrument's question: the status
+            # line quotes the two answers the server heard (DESCRIBE's record), and "undo every edit" rolls it back
+            r_clear = await client.post("/api/larql", json={"query": "DESCRIBE"})
+            assert r_clear.json()["active_patches_count"] == 0, "an edit was in force before the edit tab's"
+            await go("#/vault")
+            await cdp.eval_js("""(() => { const t = document.querySelector("#tab-edit"); if (t) t.click(); return !!t; })()""")
+            make_btn = """Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "make this edit")"""
+            await wait_for(f"(() => {{ const b = {make_btn}; return !!b && !b.disabled; }})()", "the edit tab's “make this edit”")
+            hear = await cdp.eval_js(
+                """(() => { const l = Array.from(document.querySelectorAll("label")).find((x) => x.textContent.includes("hear its voice before and after the edit"));
+                    const i = l && l.querySelector("input"); return i ? i.checked : null; })()"""
+            )
+            assert hear is True, f"the edit tab does not hear an edit by default: {hear}"
+            await cdp.eval_js(f"(() => {{ {make_btn}.click(); }})()")
+            status = await wait_for(
+                """(() => { const p = Array.from(document.querySelectorAll('p.status-line[role="status"]'))
+                        .find((x) => x.textContent.includes("The vault made the edit"));
+                    return p ? p.textContent : null; })()""",
+                "the edit tab's status line", tries=600,
+            )
+            heard_rec = (await client.post("/api/larql", json={"query": "DESCRIBE"})).json()["active_patches"]
+            assert len(heard_rec) == 1 and heard_rec[0]["statement"].startswith("UPDATE LAYER 35 SLOT 100"), heard_rec
+            hv = heard_rec[0]["voice"]
+            assert hv and hv["max_new_tokens"] == 12 and hv["chat"] is True and hv["after"] is not None, hv
+            for part in (f"patch {heard_rec[0]['patch_id']}", f"“{hv['prompt'].strip()}”", voice_said(hv["before"]),
+                         voice_said(hv["after"]), "written the likeliest way"):
+                assert part in status, f"the edit tab's status line {status!r} lacks {part!r}"
+            assert await wait_for("""document.body.innerText.includes("Heard on")""", "the ledger's voice line")
+            undone = await cdp.eval_js(
+                """(() => { const b = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "undo every edit");
+                    if (!b || b.disabled) return false; b.click(); return true; })()"""
+            )
+            assert undone, "the edit tab's “undo every edit” is not offered"
+            for _ in range(120):
+                if (await client.post("/api/larql", json={"query": "DESCRIBE"})).json()["active_patches_count"] == 0:
+                    break
+                await asyncio.sleep(0.5)
+            else:
+                raise AssertionError("“undo every edit” left the edit in force")
+            print(f"  • Vault, edit tab: heard on “{hv['prompt'].strip()}”, the status line quotes the server's "
+                  f"{voice_said(hv['before'])} and {voice_said(hv['after'])}; “undo every edit” rolled it back")
+
+            # the landmarks page's section vii: turned on, it weighs the first two landmarks as typed words, sends what
+            # it says it sends, and reads them through the server's resolution; at layer 60 the lens is the naked eye
+            await go("#/landmarks")
+            await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle landmarks page")
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', true)")
+            sec = """document.querySelector('section[aria-labelledby="contrast-head"]')"""
+            await cdp.eval_js(
+                f"""(() => {{ const l = Array.from({sec}.querySelectorAll("label")).find((x) => x.textContent.includes("weigh one word against another in the next sighting"));
+                    const i = l && l.querySelector("input"); if (i && !i.checked) i.click(); }})()"""
+            )
+            await asyncio.sleep(0.4)
+            bg_radio = f"""Array.from({sec}.querySelectorAll('input[name="contrast-background"]')).find((x) => x.closest("label").textContent.includes("the study’s average state"))"""
+            await wait_for(f"(() => {{ const r = {bg_radio}; return !!r && !r.disabled; }})()", "section vii's “the study’s average state”")
+            await cdp.eval_js(f"(() => {{ {bg_radio}.click(); }})()")
+            await asyncio.sleep(0.4)
+            vii = await cdp.eval_js(
+                f"""(() => {{ const s = {sec};
+                    const sent = Array.from(s.querySelectorAll("span.mono")).find((x) => x.textContent.startsWith('{{"contrasts"'));
+                    return {{ toward: document.querySelector("#contrast-toward").value, away: document.querySelector("#contrast-away").value,
+                             sent: sent ? JSON.parse(sent.textContent) : null }}; }})()"""
+            )
+            assert vii["toward"] and vii["away"], f"section vii, turned on, did not take the first two landmarks: {vii}"
+            assert vii["sent"] == {"contrasts": [{"toward": [vii["toward"]], "away": [vii["away"]]}],
+                                   "contrast_backgrounds": ["study_mean"]}, f"section vii sends {vii['sent']}"
+            await cdp.eval_js(
+                f"""(() => {{ const b = Array.from({sec}.querySelectorAll("button")).find((x) => ["read the answer shown again", "take a sighting"].includes(x.textContent.trim()));
+                    if (b && !b.disabled) b.click(); }})()"""
+            )
+            row60 = await wait_for(
+                f"""(() => {{ const s = {sec};
+                    if (!s.querySelector('svg[role="img"][aria-label^="A line chart across the sixty layers"]')) return null;
+                    if (!s.textContent.includes("centred on the study’s average state")) return null;
+                    const p = Array.from(s.querySelectorAll("p")).find((x) => x.textContent.includes("at layer 60"));
+                    return p ? {{ row: p.textContent, all: s.textContent }} : null; }})()""",
+                "section vii's reading", tries=600,
+            )
+            nums = [float(x.replace("−", "-")) for x in re.findall(r"[+−-]?\d+\.\d+", row60["row"].split("at layer 60", 1)[1])[:3]]
+            assert len(nums) == 3 and abs(nums[0] - nums[1]) <= 0.011, f"at layer 60 the lens and the naked eye differ: {row60['row']!r}"
+            assert "not a log-odds the model gives" in row60["row"], row60["row"]
+            ids_here = [runtime_word_id(vii["toward"]), runtime_word_id(vii["away"])]
+            assert all(f"({i})" in row60["all"] for i in ids_here), f"section vii does not name the ids {ids_here} as resolved"
+            # and off again, read against nothing, so the pages after this weigh nothing
+            await cdp.eval_js(
+                f"""(() => {{ const s = {sec};
+                    const r = Array.from(s.querySelectorAll('input[name="contrast-background"]')).find((x) => x.closest("label").textContent.includes("nothing (as it reads)"));
+                    if (r && !r.checked) r.click();
+                    const l = Array.from(s.querySelectorAll("label")).find((x) => x.textContent.includes("weigh one word against another in the next sighting"));
+                    const i = l && l.querySelector("input"); if (i && i.checked) i.click(); }})()"""
+            )
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            print(f"  • Landmarks, section vii: “{vii['toward']}” against “{vii['away']}” as sent ({ids_here}, the landmarks' ids), "
+                  f"centred on the study's average state; at layer 60 the lens {nums[0]:+.2f} = the naked eye {nums[1]:+.2f}")
 
             # The recorded sighting (E6, taken in the frame as first built) on a page of its own whose WebSocket never
             # opens, so no live sighting replaces it: its landmarks page must describe it as squared in order

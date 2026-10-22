@@ -70,16 +70,34 @@ against the instrument, leave four more:
 
 <br>
 
-## iii · smaller pieces still missing
+## iii · smaller pieces, now built
 
-- **Landmarks.** Contrast axes such as fnw · (W<sub>U</sub>[she] − W<sub>U</sub>[he]), less a background mean, which V7
-  suggests ([`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md)): not in the server.
-- **The vault.** An edit’s voice before and after: not in the server’s reply. The “.patch MEMIT” edit is a single-neuron
-  column nudge, not MEMIT, and every vault query runs in Python; the `larql`/`vindex` binaries are called only for
-  `--version` (README §iv).
-- **Thinking on bare text.** A bare-text sighting with thinking turned on still sets `<|think|>` before the text, which is
-  not how Gemma 4 switches thinking on; sent as a chat, it uses the template’s own switch. The study recorded no fix for
-  the bare case (the Lexicon’s cautions; E6 audit, item 11).
+- **Landmarks: one word against another. Built.** A sweep can weigh one word against another at every layer, through
+  the lens and by the naked eye, against the matched controls sent or against E3’s average state (`contrasts`,
+  `contrast_backgrounds`; ARCHITECTURE §4.1–4.2): the contrast axes V7 suggests
+  ([`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md)), read in log-odds beside the frame rather
+  than as an axis of it. The landmarks page reads one in its section vii. Still open: through the lens the reading
+  inherits the base-fitted J++ (i), so the page marks layers 1–10 as never tested by the study, 11–30 as where no
+  averaged lens tested was reliable (E50), 31–50 as to be confirmed with an instruct-fitted reading (E49) and 51–59 as
+  counting only where one agrees (E49, E50); that E3’s average state lies in the coordinates of the
+  server’s `resid_post` is not yet checked; the study measured the average state’s lean on the six pronoun pairs only,
+  not on one pair or on other words; and the page sends one contrast and one background at a time, where the server
+  takes four and two.
+- **The vault: an edit’s voice. Built.** An edit can be heard before and after on a question of the reader’s choosing,
+  written the likeliest way under the one GPU lock (`voice`; ARCHITECTURE §4.6), and the vault page asks for it by
+  default. The pages now call the “.patch MEMIT” edit an edit, a one-neuron column edit and not MEMIT; the code’s
+  names and the statements are kept for old callers and the study’s scripts. Every vault query runs in Python; the
+  `larql`/`vindex` binaries are called only for `--version` (README §iv). Still open: the voice is not offered through
+  MCP, whose vault tool does not hold the GPU lock, nor for an edit typed in the console; it is one question, so UPDATE
+  and INSERT are still tested by cause and effect only as far as that one answer goes (the study tested only DELETE,
+  E6 §2.3).
+- **Thinking on bare text. Built.** Sent as a chat, the sighting with thinking turned on uses the template’s own switch;
+  sent as bare text, the interface leaves it out, since bare text has no turn to think in (`think_bare="none"`), and
+  every pair names how thinking was switched on (`think_protocol`). Still open: the server’s own default stays the
+  old imitation, `<|think|>` set before the text, for old callers, and the question’s apparatus keeps it as a marked
+  choice; the study recorded no fix for the bare case (the Lexicon’s cautions; E6 audit, item 11). Even in a chat the
+  thinking sighting is read at the end of its own prompt, where the silent one is read at the close of its empty
+  thought, unless an answer is begun (`think_read_token` names the word-piece it was read at).
 
 <br>
 

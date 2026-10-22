@@ -433,7 +433,7 @@ export const Pillars: React.FC = () => (
       found={
         <>
           The vault does not run LARQL: it asks the LARQL programs only for their version number and answers every
-          question in its own Python. Its edit, named after MEMIT, is a nudge to a single neuron’s column, not MEMIT. A
+          question in its own Python. Its edit, named after MEMIT, changes a single neuron’s column; it is not MEMIT. A
           list of nearest neurons is a projection, not an experiment, as LARQL’s own README warns. Even so, the “she”
           neurons it found were partly real: 35 of 102 were selective; deleting the top ten at layer 51 clearly
           weakened the model’s pull toward <i>she</i> after a woman’s name, where ten random neurons did nothing; neuron

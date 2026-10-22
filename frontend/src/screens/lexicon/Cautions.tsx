@@ -631,7 +631,7 @@ export const Cautions: React.FC = () => (
           [
             "where (as audited)",
             <>
-              <M>backend/server.py:464</M> then; <M>backend/server.py:897</M> now, which still prepends{" "}
+              <M>backend/server.py:464</M> then; <M>backend/server.py:957</M> now, which still prepends{" "}
               <M>{"<|think|>\\n"}</M> to bare text for callers that do not ask otherwise (E6 §3, item 11)
             </>,
           ],
