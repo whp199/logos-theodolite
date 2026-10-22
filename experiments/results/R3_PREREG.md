@@ -51,6 +51,7 @@ the first pilot had written output, and are deviations D34 and D33 (§2.2, §11)
 |---|---|
 | *R3's scripts* | |
 | `experiments/scripts/R3_00_pilot.py` | `446711f1e3d333e0be520b391d61ec6c079094736f13b978a345b5abcbe2e5ec` |
+| `experiments/scripts/R3_00_jpp_identity.py` (context only, A14; gates nothing) | `566f0375cd436e76578e2e747f90d05942150422bec058e571c05c764ddda4bd` |
 | `experiments/scripts/R3_01_check.py` | `43eb815ca431ac84a26fc5acadc5b00709cd56d64d92f3c52519adbd72023082` |
 | `experiments/scripts/R3_02_router.py` | `c4139ab411ef8f0905c69c46e778c26554c646bc1faf905dd7e0da3e121298d0` |
 | `experiments/scripts/R3_03_fit.py` | `d6ec212dd58079b43a262bf722efd573aa571b48203b40df9755a8e986a70d2d` |
