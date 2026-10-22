@@ -155,12 +155,13 @@
   },
   "R3_fitlib.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_fitlib.py --selftest",
-   "at": "2026-10-22T11:21:23",
-   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
+   "at": "2026-10-22T18:11:12",
+   "head": "f6266a9fe31abefd90d89d6fa2a9e407213a6a49",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_lrp.py"
+    "experiments/scripts/R3_04_weights.py",
+    "experiments/scripts/R3_fitlib.py"
    ],
-   "seconds": 7.5,
+   "seconds": 7.2,
    "ok": true,
    "n_checks": 17,
    "n_failed": 0,
@@ -765,23 +766,15 @@
   },
   "R3_04_weights.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_04_weights.py --selftest",
-   "at": "2026-10-22T00:42:20",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T18:11:18",
+   "head": "f6266a9fe31abefd90d89d6fa2a9e407213a6a49",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
     "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_fitlib.py"
    ],
-   "seconds": 6.1,
+   "seconds": 4.8,
    "ok": true,
-   "n_checks": 10,
+   "n_checks": 11,
    "n_failed": 0,
    "checks": [
     {
@@ -799,6 +792,10 @@
     {
      "ok": true,
      "check": "weights fitted one layer at a time (each layer's experts loaded alone) equal all layers at once"
+    },
+    {
+     "ok": true,
+     "check": "the weight fit accepts the 31B as loaded (name_or_path the pinned snapshot directory, the decoder named C.MODEL_ID) and refuses any other snapshot (D35)"
     },
     {
      "ok": true,
@@ -822,7 +819,7 @@
     },
     {
      "ok": true,
-     "check": "--check-only: the six pinned item files (551 items, names unique); waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no experiments/results/R3_03_merged/merged.json yet (R3_03 --merge)']"
+     "check": "--check-only: the six pinned item files (551 items, names unique); waiting for: []"
     }
    ],
    "env": {

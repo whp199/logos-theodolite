@@ -296,6 +296,29 @@ def selftest(record: bool = False) -> int:
         same = all([round(float(x), 6) for x in at_once.learned_weights_L_dict[l].weights_E]
                    == rec["layers"][str(l)]["weights"] for l in layers)
         check(same, "weights fitted one layer at a time (each layer's experts loaded alone) equal all layers at once")
+        # D35: the 31B is loaded from the pinned local snapshot, so its config.name_or_path is C.MODEL_DIR while the
+        # run names the decoder C.MODEL_ID; jpp_lens's identity check must accept that pairing and no other
+        hf = dec._hf_model
+        saved_name, saved_path = dec.name, getattr(hf.config, "name_or_path", "")
+        one = {layers[0]: experts[layers[0]]}
+        tiny_cfg = dict(small, steps=5)
+        try:
+            dec.name, hf.config.name_or_path = C.MODEL_ID, str(C.MODEL_DIR)
+            try:
+                FL.fit_weights(dec, one, res, res_saved["excluded"], [layers[0]], prim, tiny_cfg)
+                ok_pinned = True
+            except ValueError:
+                ok_pinned = False
+            hf.config.name_or_path = str(C.MODEL_DIR.parent / "another-snapshot")
+            try:
+                FL.fit_weights(dec, one, res, res_saved["excluded"], [layers[0]], prim, tiny_cfg)
+                ok_other = False
+            except ValueError:
+                ok_other = True
+        finally:
+            dec.name, hf.config.name_or_path = saved_name, saved_path
+        check(ok_pinned and ok_other, "the weight fit accepts the 31B as loaded (name_or_path the pinned snapshot "
+                                      "directory, the decoder named C.MODEL_ID) and refuses any other snapshot (D35)")
         lens = torch.load(outs["jpp-it"], weights_only=True)
         ok = sorted(lens["J"]) == layers and all(lens["J"][l].dtype == torch.bfloat16 for l in layers)
         ok &= lens["provenance"]["lens"] == "jpp-it" and lens["provenance"]["lrp_mode"] == "rlens"
