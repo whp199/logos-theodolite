@@ -20,6 +20,7 @@ theodolite2/
 │   ├── engine_runtime.py            # interp-engine + J++ / JLens loader + 4-bit weight dequantizer
 │   ├── larql_vault.py               # LARQL / VINDEX3 FFN vault indexer, LQL parser & .patch surgery
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
+│   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
 │   └── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
 ├── scripts/
@@ -268,10 +269,19 @@ old fields unchanged. Layers in these fields count from 0.
   lens) and `dst_label_check`, and `label_gate` to the reply; `test_motif_hypothesis` adds `pole_label_check` (its
   pole's face) and `label_gate`.
 
+The causal spot-check (§4.5): the WebSocket action `causal_check` is answered `{"type":"causal_check","data":REPLY}`,
+REPLY as `POST /api/scientist/causal_check` and the MCP tool `causal_spot_check` return it. `/api/health` adds
+`causal_check` = `{version: 1, writes: ["activation", "frozen_norm"], contexts: ["given", "study"], scale_refs:
+["study", "this_text"], k_default: 10, k_max: 200, k_floor: 0.01, n_study_texts: 36}` before `label_gate`: an older
+server has no such card, and ignores the action without a word, so a page offers the test only when the card is there.
+
 Errors: a request with a `request_id` that is refused or fails gets `{"type":"error","action":"sweep","request_id",
 "recoverable":true,"message","n_sent","token_index"}` and then its `theodolite_sweep_end`; the socket stays open
 (the request_id of a refused payload is read from the raw message). Without one, the old refusal
-`{"type":"error","message","action","recoverable","layer","neuron_idx"}`.
+`{"type":"error","message","action","recoverable","layer","neuron_idx","contexts"}`; `contexts` (added) is the
+request's own `contexts` as sent, so a page can fail the right one of a neuron's two tests (null for the other
+actions). A refused or failed `causal_check` (a bad option, a CausalCheckRequest that does not parse, the GPU out of
+memory) comes back this way, in plain words, and the socket stays open.
 
 ### 4.3 Cancel, client → server
 
@@ -303,3 +313,76 @@ current piece (`think_stop_reason` "stopped"); either way the request ends `canc
   port (a DNS-rebinding page sends its own name as the Host, and a same-origin GET sends no Origin; vite's proxy sends
   the server's own Host), and so must the Origin when there is one; no Origin (a script) is allowed. A name or text
   holding half of a character (a lone surrogate) is refused with 422.
+
+### 4.5 The causal spot-check (`backend/causal_check.py`)
+
+WebSocket `{"action":"causal_check", …}`, `POST /api/scientist/causal_check` (400 for a plain-word refusal, 422 when
+the body does not parse) and the MCP tool `causal_spot_check` take the same fields and give the same reply, under the
+GPU lock. A neuron's label is tested by the study's N1A protocol (experiments/scripts/N1A_02_causal_core.py:3-8,
+79-120) at erratum E47's k = 10. It is a new request, so its defaults are the mended ones.
+
+Request (CausalCheckRequest: types only; every bound is checked by the tool, in plain words):
+
+| field | default | meaning |
+| --- | --- | --- |
+| `layer`, `neuron_idx` | required | whole numbers, counting from 0 (layer 0–59, neuron 0–21503) |
+| `polarity` | null | the face put first in the reply's `polarity`; null: the face it fired with at the read position (given), else + |
+| `contexts` | "given" | "given": one text, read at its last word-piece; "study": the study's 36 texts, each at its last |
+| `token_ids` | null | given: 2–2048 exact ids (a sighting's ids up to its read position), pushed at the last |
+| `prompt`, `chat`, `system`, `assistant_prefix` | null, false, null, "" | given, without `token_ids`: composed as `trace_readers` composes them |
+| `k` | 10 | the push is k · max\|a\|; 0 < k ≤ 200, and k > 0.01 with the floor on |
+| `write` | "activation" | "activation" \| "frozen_norm" |
+| `scale_ref` | "study" | max\|a\| over the study's 36 texts (cached per set of vault edits in force) \| "this_text" (given only) |
+| `floor` | true | also push at k = 0.01, N1A's bf16 floor |
+| `top_n` | 10 | 1–50 word-pieces that rose and fell most, per face |
+| `track_ids` | null | at most 16 ids followed on both faces |
+
+Computation:
+- max\|a\| = max \|mlp_act[l, ·, i]\| over the study's 36 texts (N1A_common.py:19-60: 12 chats through the chat
+  template, thinking off, with their begun answers; 12 passages of prose and 12 of code as bare text), every word-piece
+  after the start mark, from one forward with a pre-hook on every down_proj; or over the given text. δ± = ±k · max\|a\|,
+  and ±0.01 · max\|a\| for the floor.
+- Rows are slot-major: base, +k, −k, +0.01, −0.01; the base sits in the same forward as the pushes (rows of one
+  forward are bit-identical; different batch shapes were not, KL up to 0.014).
+- write "activation": mlp_act[l, p, i] += δ (a pre-hook on down_proj, at the read position p only). write
+  "frozen_norm": the post-feed-forward norm's output at p gains δ · (w_post ⊙ W_down[:, i]) / rms(y_p), with y_p that
+  norm's input (the layer's feed-forward output) and rms over its eps, in fp32 (N1V_02_causal.py:73-83). W_down[:, i]
+  is the column as the model now uses it (`slice_w_down`, vault edits included); w_post the norm's own weight.
+- Given mode: the text before p runs once, batch 1, with a cache; then only p runs, for every row, over that shared
+  prefix (a push at p changes nothing before it). Study mode: one right-padded forward of every row.
+- Read-out: fp32 softcapped logits at p (fp32 GEMM on the final-normed state), c = log_softmax(pushed) −
+  log_softmax(base) over the whole vocabulary; in study mode c is the mean over the texts.
+- On running out of memory, the pushed slots per forward halve, down to one, each forward with its own base row
+  (`forwards`, `slots_per_forward`, `base_rows_identical`); a forward of the base and one push that still fails is
+  refused in plain words.
+- The check reads the model without any nudge and with any vault edits in force.
+
+Reply keys, in order: `layer, neuron_idx, polarity, contexts, n_contexts, prompt (the text read; null in study mode),
+chat, token_ids_given, read_pos | read_pos_by_context, read_token_id, read_token, study_texts (the texts' source),
+steered (false), write, k, k_floor (null with the floor off), scale_ref, max_abs_act, max_abs_act_over,
+max_abs_act_cached, act_here | act_here_by_context (the neuron's own activation at p, unpushed), faces, antipodal,
+floor, base_top, forwards, slots_per_forward, base_rows_identical, vault_edits (patch ids in force), timing_ms
+{scale_ms, check_ms, total_ms}, label_gate, lens`.
+- `faces["+"]`, `faces["-"]`: `{delta, kl_mean, kl_median, kl_by_context, kl_over_floor (this KL over the floor's of
+  the same sign; null when the floor's is not above 0), split_half_rho (even against odd texts; null in given mode),
+  rises, falls, tracked ([WORD]), floor_top100_overlap (how many of the hundred ids this push raised most the floor's
+  raised too), linear, label_overlap}`. WORD = `{token_id, token (decoded alone), dlogprob (c), base_logprob,
+  steered_logprob}` (means over the texts in study mode).
+- `linear` (closed form from the base y at p, N1V_audit_01_postnorm.py:90-104): `write_over_ffn` (‖δ W_down[:, i]‖ /
+  ‖y‖), `linearity` (‖pn(y + δw) − pn(y)‖ / ‖w_post ⊙ δw / rms(y)‖: 1 is a straight push), `ablation_cos` (cos of the
+  change with −pn(y)), `linearity_q10`, each the median over the texts (the one text in given mode), and `by_context`
+  lists. For write "frozen_norm", `linearity` and `linearity_q10` are null, with `linearity_reason`: that write cannot
+  squash the norm, so `write_over_ffn` and `antipodal.rho` are its size guards (and `ablation_cos` is that of the
+  straight write itself).
+- `label_overlap` = `{lens, naked_eye: {p10, label_ids, tokens, in_top100}, label_k: 10, causal_k: 100,
+  label_check}`: the face's label ids are its first ten through the lens and to the naked eye, the same ids
+  `inspect_pole`'s `label_check` counts (`label_gate.label_top_ids`), and `p10` the share of them among the hundred
+  ids c raised most, by signed rise (N1_REPORT.md:84-86); null when the neuron writes nothing (a DELETE in force).
+  Only this comparison goes through the lens; the effect itself does not.
+- `antipodal` = `{rho (Spearman of c+ and c−), top10_in_neg_top100 (of the ten ids the + push raised most, how many
+  are among the hundred the − push lowered most)}`.
+- `floor` = `{"+", "-": {delta, kl_mean, kl_median, kl_by_context, split_half_rho}}` | null; `base_top` the base
+  row's five likeliest word-pieces `{token_id, token, logprob}` (given mode; null in study mode).
+
+scripts/check_causal_check.py checks all of this on a tiny CPU Gemma 4; scripts/verify_causal_check.py reproduces the
+study's N1A and N1V numbers on the real model.

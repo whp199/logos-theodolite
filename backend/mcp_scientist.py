@@ -1,12 +1,14 @@
 """FastMCP Autonomous Circuit Scientist (`backend/mcp_scientist.py`).
 
-Exposes three core mechanistic interpretability tools via FastMCP:
+Exposes four core mechanistic interpretability tools via FastMCP:
 1. `inspect_pole(layer, neuron_idx, polarity)`
 2. `trace_downstream_readers(layer, neuron_idx, prompt)`
 3. `test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts)`
+4. `causal_spot_check(layer, neuron_idx, contexts, token_ids | prompt, k, write)`: the label tested causally (the
+   study's N1A protocol at k = 10, `backend/causal_check.py`)
 Plus `query_larql_vault(lql_query)` for declarative VINDEX3 & `.patch` weight surgery.
 
-The three scientist tools decode words through the J++ lens, and each reply names it under "lens"
+The first three scientist tools decode words through the J++ lens, and each reply names it under "lens"
 (`TheodoliteRuntime.lens_card`: what it was fitted on, what it reads, its source, and a `caution` on how far to trust
 its words), so an agent calling them over MCP gets the same record as the HTTP and WebSocket replies, which pass these
 replies on unchanged. `query_larql_vault` does the same for the vault statements that read words or write an edit
@@ -20,17 +22,24 @@ label back from their main reading, with the reasons): each face of `inspect_pol
 `test_motif_hypothesis` (`pole_label_check`), and each NEAREST row and DESCRIBE POLE face of the vault. The rule they
 follow travels with them under "label_gate" (`LABEL_GATE_CARD`), just before "lens". The words themselves are sent as
 before, and every old key is kept.
+
+`causal_spot_check` reads its effect from the model's own odds, with no lens; only the label it compares the effect
+with goes through the J++ lens (the same first ten ids each face's `label_check` counts), so its reply names the lens
+too, last, with `label_gate` before it. It answers POST /api/scientist/causal_check and the WebSocket "causal_check"
+action, which pass its reply on unchanged.
 """
 
 from __future__ import annotations
 
 import math
+import time
 from typing import Any, Dict, List, Optional
 
 import torch
 from fastmcp import FastMCP
 from interp_engine import Address
 
+from backend import causal_check as cc
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
 from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids, writes_nothing
 from backend.larql_vault import LarqlVaultEngine
@@ -390,6 +399,431 @@ async def test_motif_hypothesis(
         "neg_prompt_results": neg_records,
         "pole_j_vindex_signature": pole_info["active_pole"]["j_vindex_tokens"],
         "pole_label_check": pole_info["active_pole"]["label_check"],
+        "label_gate": LABEL_GATE_CARD,
+        "lens": runtime.lens_card(),
+    }
+
+
+def _whole(x: Any) -> bool:
+    return isinstance(x, int) and not isinstance(x, bool)
+
+
+def _number(x: Any) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(float(x))
+
+
+def _known(what: str, value: Any, known: tuple) -> None:
+    if value not in known:
+        choices = " or ".join(f'"{k}"' for k in known)
+        shown = str(value) if len(str(value)) <= 40 else str(value)[:40] + "…"
+        raise ValueError(f'{what} is "{shown}", which this instrument does not know: it must be {choices}.')
+
+
+def _check_ids(ids: Any, what: str, vocab: int) -> List[int]:
+    for t in ids:
+        if not _whole(t) or not 0 <= t < vocab:
+            raise ValueError(f"{what} holds {t!r}, which is not a word-piece id: ids are whole numbers from 0 to {vocab - 1}.")
+    return [int(t) for t in ids]
+
+
+def _ffn_width(down_proj: Any) -> int:
+    """The feed-forward width a down_proj reads (21,504 on Gemma-4-31B): a plain Linear's in_features, else the packed
+    W4A16 weight's eight nibbles per int32."""
+    n = getattr(down_proj, "in_features", None)
+    if _whole(n) and n > 0:
+        return int(n)
+    return 8 * int(down_proj.weight_packed.shape[1])
+
+
+def _study_ids(runtime: TheodoliteRuntime) -> List[List[int]]:
+    """The study's 36 texts as the model reads them: each chat through the chat template (thinking off) with its begun
+    answer after the model-turn header, as lab.chat(user, assistant=prefix) composes it; prose and code as bare text
+    after the start mark (`causal_check.STUDY_TEXTS`; scripts/check_causal_check.py compares the ids with labkit's)."""
+    cached = getattr(runtime, "_causal_study_ids", None)
+    if cached is not None:
+        return cached
+    out: List[List[int]] = []
+    for t in cc.STUDY_TEXTS:
+        text = runtime.compose_prompt(t[1], chat=True, assistant_prefix=t[2]) if t[0] == "chat" else t[1]
+        out.append(runtime.tokenize_prompt(text))
+    setattr(runtime, "_causal_study_ids", out)
+    return out
+
+
+def _study_max_abs(runtime: TheodoliteRuntime, vault: LarqlVaultEngine, lm: Any) -> tuple:
+    """max |a| of every neuron over the study's 36 texts, [n_layers, d_ff], for the model as it now stands: cached on the
+    runtime per set of vault edits in force (their patch ids; the empty tuple is the clean model, reused after a
+    ROLLBACK). Returns (table, whether it was cached)."""
+    cache: Optional[Dict[tuple, torch.Tensor]] = getattr(runtime, "_causal_study_maxabs", None)
+    if cache is None:
+        cache = {}
+        setattr(runtime, "_causal_study_maxabs", cache)
+    key = tuple(int(p.patch_id) for p in vault.edits_in_force())
+    if key in cache:
+        return cache[key], True
+    inp, att, _last, valid = cc.pad_right(_study_ids(runtime), cc.model_device(lm))
+    table = cc.study_max_abs(lm, inp, att, valid)
+    for old in [k for k in cache if k and k != key][: max(0, len(cache) - 3)]:
+        del cache[old]  # keep the clean model's table and a few edited ones
+    cache[key] = table
+    return table, False
+
+
+def _sig(x: Optional[float], n: int = 6) -> Optional[float]:
+    """A float to `n` significant figures (KL at k = 10 is often ~1e-3), None kept, not-finite sent as None."""
+    if x is None or not math.isfinite(float(x)):
+        return None
+    return float(f"{float(x):.{n}g}")
+
+
+@mcp.tool()
+async def causal_spot_check(
+    layer: int,
+    neuron_idx: int,
+    polarity: Optional[float] = None,
+    contexts: str = "given",
+    token_ids: Optional[List[int]] = None,
+    prompt: Optional[str] = None,
+    chat: bool = False,
+    system: Optional[str] = None,
+    assistant_prefix: str = "",
+    k: float = cc.K_DEFAULT,
+    write: str = "activation",
+    scale_ref: str = "study",
+    floor: bool = True,
+    top_n: int = 10,
+    track_ids: Optional[List[int]] = None,
+) -> Dict[str, Any]:
+    """Test a neuron's label causally: turn neuron `(layer, neuron_idx)` up by k times its strongest firing, on each face
+    (+ and -), and list the word-pieces whose log-probability the model's own odds raised and lowered most, beside an
+    untouched copy of the same reading in the same forward (the study's N1A protocol, at the k = 10 its second look
+    advised, erratum E47; `backend/causal_check.py`).
+
+    `contexts="given"` (default) reads one text at its last word-piece: `token_ids` (2 to MAX_SWEEP_POSITIONS exact ids,
+    a sighting's ids up to its read position; position 0, the start mark, is never pushed) or else `prompt`, composed as
+    `trace_downstream_readers` composes it (`chat`, `system`, `assistant_prefix`). `contexts="study"` reads the study's
+    36 texts (12 chats, 12 passages of prose, 12 of code), each at its own last word-piece, and averages over them; only
+    this mode compares with the study's numbers. `write` is "activation" (mlp_act += delta at the read position) or
+    "frozen_norm" (the same first-order change added after the post-feed-forward norm, which cannot squash it; its
+    `linearity` is then null). `scale_ref` sizes the push by the neuron's strongest firing on the study's texts
+    ("study", default; cached per set of vault edits in force) or on the given text ("this_text", given mode only).
+    `floor` (default on) also runs the same push at k = 0.01, the bf16 rounding floor the study measured beside every
+    push. `top_n` (1-50) words rise and fall per face; `track_ids` (at most 16) are followed on both faces whatever
+    their rank. `polarity` names the face the reply puts first (`polarity`): None takes the face the neuron fired with
+    at the read position in given mode, else "+"; both faces are always measured.
+
+    The effect is read from the model's own odds, without any nudge (`steered: false`) and with any vault edits in
+    force (`vault_edits`), so it does not depend on the lens. Only the label it is compared with goes through the J++
+    lens: each face's `label_overlap` counts how many of its label's first ten ids (the lens's and the naked eye's, the
+    same ids `inspect_pole`'s label_check counts) are among the hundred ids this push raised most (P@10, whole
+    vocabulary), and carries that face's `label_check`; `label_gate` and `lens` come last. The study's bar (three of
+    ten, over 36 texts) was set on pushes at k = 60; one word-piece is a smaller test than 36 texts. A push
+    shows what the neuron does when turned up, not what it does when it fires on its own. Refusals are plain-word
+    ValueErrors, and running out of GPU memory comes back as one.
+    """
+    t0 = time.perf_counter()
+    runtime, vault = get_runtime_and_vault()
+    assert runtime.hf_model is not None, "Call runtime.load() first."
+    lm = cc.language_model(runtime.hf_model)
+    n_layers = len(lm.layers)
+    vocab = int(runtime.lm_head_weight.shape[0])
+
+    # plain-word refusals, all before the GPU is touched
+    if not _whole(layer) or not 0 <= layer < n_layers:
+        raise ValueError(
+            f"layer is {layer!r}: layers count from 0 to {n_layers - 1} here (the pages count them 1 to {n_layers})."
+        )
+    d_ff = _ffn_width(lm.layers[layer].mlp.down_proj)
+    if not _whole(neuron_idx) or not 0 <= neuron_idx < d_ff:
+        raise ValueError(f"neuron_idx is {neuron_idx!r}: each layer's neurons count from 0 to {d_ff - 1}.")
+    if polarity is not None and not _number(polarity):
+        raise ValueError(f"polarity is {polarity!r}: it must be a number (+1 or -1 names the face), or left out.")
+    _known("contexts", contexts, cc.CAUSAL_CONTEXTS)
+    _known("write", write, cc.CAUSAL_WRITES)
+    _known("scale_ref", scale_ref, cc.SCALE_REFS)
+    if not isinstance(floor, bool) or not isinstance(chat, bool):
+        raise ValueError("floor and chat are true or false.")
+    if not _number(k) or not 0 < float(k) <= cc.K_MAX:
+        raise ValueError(
+            f"k is {k!r}: the push is k times the neuron's strongest firing, and k must be more than 0 and at most "
+            f"{cc.K_MAX:g} (the study pushed at 10, 60 and 180)."
+        )
+    k = float(k)
+    if floor and k <= cc.K_FLOOR:
+        raise ValueError(
+            f"k is {k:g}: with the floor on, the push must be larger than the floor's own k = {cc.K_FLOOR:g}, the "
+            "rounding-noise push it is compared with. Push harder, or turn the floor off (floor false)."
+        )
+    if not _whole(top_n) or not 1 <= top_n <= cc.TOP_N_MAX:
+        raise ValueError(f"top_n is {top_n!r}: the lists of words that rose and fell hold 1 to {cc.TOP_N_MAX} each.")
+    if track_ids is not None and not isinstance(track_ids, (list, tuple)):
+        raise ValueError("track_ids is a list of word-piece ids.")
+    if track_ids is not None and len(track_ids) > cc.TRACK_MAX:
+        raise ValueError(f"track_ids holds {len(track_ids)} ids: at most {cc.TRACK_MAX} word-pieces can be followed.")
+    tracked = _check_ids(track_ids or [], "track_ids", vocab)
+
+    ids: Optional[List[int]] = None
+    text: Optional[str] = None
+    if contexts == "given":
+        if token_ids is not None:
+            if not isinstance(token_ids, (list, tuple)):
+                raise ValueError("token_ids is a list of word-piece ids.")
+            if not 2 <= len(token_ids) <= MAX_SWEEP_POSITIONS:
+                n = len(token_ids)
+                raise ValueError(
+                    f"token_ids holds {n} word-piece ids: the test pushes the last of them, after the start mark, so "
+                    f"it needs 2 to {MAX_SWEEP_POSITIONS}."
+                )
+            ids = _check_ids(token_ids, "token_ids", vocab)
+            text = runtime.tokenizer.decode(ids)
+        elif prompt is not None:
+            text = runtime.compose_prompt(str(prompt), chat=chat, system=system, assistant_prefix=assistant_prefix)
+            ids = runtime.tokenize_prompt(text)
+            if not 2 <= len(ids) <= MAX_SWEEP_POSITIONS:
+                raise ValueError(
+                    f"The prompt is {len(ids)} word-pieces with its start mark: the test pushes the last of them, so it "
+                    f"needs 2 to {MAX_SWEEP_POSITIONS}."
+                )
+        else:
+            raise ValueError(
+                "A test at one word-piece needs the text it is read on: give token_ids (a sighting's ids up to its read "
+                "position) or a prompt."
+            )
+    else:
+        if token_ids is not None or prompt is not None:
+            raise ValueError(
+                "A test on the study's 36 texts reads those texts only: leave out token_ids and prompt (they are for a "
+                'test at one word-piece, contexts "given").'
+            )
+        if scale_ref == "this_text":
+            raise ValueError(
+                'scale_ref "this_text" sizes the push by the given text, and a test on the study\'s texts has none: use '
+                'scale_ref "study".'
+            )
+
+    l, i = int(layer), int(neuron_idx)
+    edits = vault.edits_in_force()
+    read_pos_by_context: Optional[List[int]] = None
+    decode = lambda t: runtime.tokenizer.decode([int(t)], clean_up_tokenization_spaces=False)  # noqa: E731
+    try:
+        # 1. the push's size: k times the neuron's strongest firing on the reference texts
+        t_scale = time.perf_counter()
+        scale_cached = False
+        if scale_ref == "study":
+            table, scale_cached = _study_max_abs(runtime, vault, lm)
+            max_abs = float(table[l, i])
+        else:
+            assert ids is not None
+            max_abs = cc.text_max_abs(lm, l, i, ids)
+        scale_ms = (time.perf_counter() - t_scale) * 1000.0
+        if not max_abs > 0.0:
+            where = "the study's 36 texts" if scale_ref == "study" else "this text"
+            raise ValueError(
+                f"Neuron {i} of layer {l} never fired on {where} (its strongest firing is 0), so there is nothing to "
+                "size the push by."
+            )
+        deltas = [k * max_abs, -k * max_abs]
+        if floor:
+            deltas += [cc.K_FLOOR * max_abs, -cc.K_FLOOR * max_abs]
+
+        # 2. the push and its untouched copy, in one forward (halving on out of memory)
+        idx_t = torch.tensor([i], device=runtime.device, dtype=torch.long)
+        w_down = runtime.slice_w_down(l, idx_t)[0]  # the column as the model now uses it (vault edits included)
+        post_norm = lm.layers[l].post_feedforward_layernorm
+        w_post, eps = post_norm.weight.detach(), float(getattr(post_norm, "eps", 1e-6))
+        t_check = time.perf_counter()
+        study_ids = _study_ids(runtime) if contexts == "study" else None
+        run = cc.run_check(
+            lm,
+            l,
+            i,
+            deltas,
+            write,
+            w_down,
+            w_post,
+            eps,
+            runtime.lm_head_weight,
+            token_ids=ids,
+            texts_ids=study_ids,
+        )
+        check_ms = (time.perf_counter() - t_check) * 1000.0
+
+        # 3. the labels each face is compared with: the same first ten ids as inspect_pole's label_check
+        J = runtime.jpp_lenses[l]
+        w_scaled = w_down.float()
+        if l in runtime._post_ffn_norm_weights:
+            w_scaled = w_scaled * runtime._post_ffn_norm_weights[l].to(w_scaled.device).float()
+        w_scaled = w_scaled.to(J.dtype)
+        fnw, lmw = runtime.final_norm_weight, runtime.lm_head_weight
+        lens_id = (runtime.lens_card() or {}).get("id")
+        edited = (l, i) in {(p.layer_idx, p.neuron_idx) for p in edits}
+
+        effects = [cc.face_effect(s, b) for s, b in zip(run.steered, run.bases)]
+        acts = [float(a) for a in run.act.cpu().tolist()]
+        sign_here = (1.0 if acts[0] >= 0 else -1.0) if contexts == "given" else 1.0
+        opened = "+" if (float(polarity) if polarity is not None else sign_here) >= 0 else "-"
+
+        def word(t: int, eff: cc.FaceEffect) -> Dict[str, Any]:
+            return {
+                "token_id": int(t),
+                "token": decode(t),
+                "dlogprob": _sig(float(eff.c[t])),
+                "base_logprob": _sig(float(eff.base_lp[t])),
+                "steered_logprob": _sig(float(eff.steered_lp[t])),
+            }
+
+        def linear(delta: float) -> Dict[str, Any]:
+            lr = cc.linear_regime(run.y, w_down, w_post, delta, eps)
+            wof = lr["write_over_ffn"]
+            if write == "activation":
+                lin, abl = lr["linearity"], lr["ablation_cos"]
+            else:
+                lin, abl = None, lr["frozen_ablation_cos"]  # the change written is the straight one itself
+            out: Dict[str, Any] = {
+                "write_over_ffn": _sig(cc.summary(wof)[0], 4),
+                "linearity": _sig(cc.summary(lin)[0], 4) if lin is not None else None,
+                "ablation_cos": _sig(cc.summary(abl)[0], 4),
+                "linearity_q10": _sig(cc.summary(lin)[1], 4) if lin is not None else None,
+                "by_context": {
+                    "write_over_ffn": [_sig(x, 4) for x in wof.tolist()],
+                    "linearity": [_sig(x, 4) for x in lin.tolist()] if lin is not None else None,
+                    "ablation_cos": [_sig(x, 4) for x in abl.tolist()],
+                },
+            }
+            if lin is None:
+                out["linearity_reason"] = cc.FROZEN_NORM_NO_LINEARITY
+            return out
+
+        def stats(eff: cc.FaceEffect) -> Dict[str, Any]:
+            kl_ctx = eff.kl_by_context.float().cpu()
+            return {
+                "kl_mean": _sig(float(kl_ctx.mean())),
+                "kl_median": _sig(float(kl_ctx.median())),
+                "kl_by_context": [_sig(x) for x in kl_ctx.tolist()],
+                "split_half_rho": _sig(eff.split_half_rho, 4),
+            }
+
+        faces: Dict[str, Any] = {}
+        for j, (face, s) in enumerate((("+", 1.0), ("-", -1.0))):
+            eff = effects[j]
+            rises, falls = cc.movers(eff.c, int(top_n))
+            vec_raw = (s * w_scaled).unsqueeze(0)
+            vec_jpp = vec_raw @ J.T
+            lens_ids = label_top_ids(vec_jpp, fnw, lmw, unembed_gemma4(vec_jpp, fnw, lmw))[0]
+            eye_ids = label_top_ids(vec_raw, fnw, lmw, unembed_gemma4(vec_raw, fnw, lmw))[0]
+            check = label_check(l, lens_ids, eye_ids, lens_id, edited=edited, silenced=writes_nothing(vec_raw)[0])
+            silenced = "writes_nothing" in check["reasons"]
+            top100 = set(cc.top_ids(eff.c, cc.CAUSAL_REF_K))
+
+            def overlap(label: List[int]) -> Dict[str, Any]:
+                # a silenced neuron (a DELETE in force) writes nothing: every word ties, so it has no label to test
+                return {
+                    "p10": None if silenced else round(cc.p_at(label, eff.c), 4),
+                    "label_ids": [int(t) for t in label],
+                    "tokens": [decode(t) for t in label],
+                    "in_top100": [int(t) in top100 for t in label],
+                }
+
+            st = stats(eff)
+            fl = effects[2 + j] if floor else None
+            faces[face] = {
+                "delta": _sig(deltas[j]),
+                **{key: st[key] for key in ("kl_mean", "kl_median", "kl_by_context")},
+                "kl_over_floor": (
+                    _sig(float(eff.kl_by_context.mean()) / float(fl.kl_by_context.mean()), 4)
+                    if fl is not None and float(fl.kl_by_context.mean()) > 0
+                    else None
+                ),
+                "split_half_rho": st["split_half_rho"],
+                "rises": [word(t, eff) for t in rises],
+                "falls": [word(t, eff) for t in falls],
+                "tracked": [word(t, eff) for t in tracked],
+                # how many of the hundred word-pieces this push raised most the floor's push of this sign raised too
+                "floor_top100_overlap": (
+                    len(top100 & set(cc.top_ids(fl.c, cc.CAUSAL_REF_K))) if fl is not None else None
+                ),
+                "linear": linear(deltas[j]),
+                "label_overlap": {
+                    "lens": overlap(lens_ids),
+                    "naked_eye": overlap(eye_ids),
+                    "label_k": cc.LABEL_K,
+                    "causal_k": cc.CAUSAL_REF_K,
+                    "label_check": check,
+                },
+            }
+        c_plus, c_minus = effects[0].c, effects[1].c
+        neg_top100 = set(cc.top_ids(-c_minus, cc.CAUSAL_REF_K))
+        floor_reply = None
+        if floor:
+            floor_reply = {}
+            for j, face in ((2, "+"), (3, "-")):
+                st = stats(effects[j])
+                floor_reply[face] = {"delta": _sig(deltas[j]), **st}
+        base_top = None
+        if contexts == "given":
+            b = run.base[0]
+            tv, ti = torch.topk(b, k=5)
+            base_top = [
+                {"token_id": int(t), "token": decode(t), "logprob": _sig(float(v))}
+                for v, t in zip(tv.cpu().tolist(), ti.cpu().tolist())
+            ]
+        if study_ids is not None:
+            read_pos_by_context = [len(x) - 1 for x in study_ids]
+    except torch.cuda.OutOfMemoryError as exc:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        raise ValueError(
+            "The GPU ran out of memory during this test, even with its pushed rows split over separate forwards. Try a "
+            "shorter text, or test it on the study's 36 texts."
+        ) from exc
+
+    given = contexts == "given"
+    return {
+        "layer": l,
+        "neuron_idx": i,
+        "polarity": opened,
+        "contexts": contexts,
+        "n_contexts": 1 if given else len(cc.STUDY_TEXTS),
+        "prompt": text,
+        "chat": bool(chat),  # as asked; with token_ids the template was not applied here
+        "token_ids_given": token_ids is not None,
+        "read_pos": (len(ids) - 1) if given and ids is not None else None,
+        "read_pos_by_context": None if given else read_pos_by_context,
+        "read_token_id": int(ids[-1]) if given and ids is not None else None,
+        "read_token": decode(ids[-1]) if given and ids is not None else None,
+        "study_texts": None if given else cc.STUDY_TEXTS_SOURCE,
+        # read without any nudge, also when the sighting it reads for was nudged
+        "steered": False,
+        "write": write,
+        "k": k,
+        "k_floor": cc.K_FLOOR if floor else None,
+        "scale_ref": scale_ref,
+        "max_abs_act": _sig(max_abs),
+        "max_abs_act_over": (
+            "the study's 36 texts, every word-piece after the start mark"
+            if scale_ref == "study"
+            else "this text, every word-piece after the start mark"
+        ),
+        "max_abs_act_cached": scale_cached,
+        "act_here": _sig(acts[0]) if given else None,
+        "act_here_by_context": None if given else [_sig(a) for a in acts],
+        "faces": faces,
+        "antipodal": {
+            "rho": _sig(cc.spearman(c_plus, c_minus), 4),
+            # of the ten word-pieces the + push raised most, how many are among the hundred the - push lowered most
+            "top10_in_neg_top100": len(set(cc.top_ids(c_plus, cc.LABEL_K)) & neg_top100),
+        },
+        "floor": floor_reply,
+        "base_top": base_top,
+        "forwards": run.forwards,
+        "slots_per_forward": run.slots_per_forward,
+        "base_rows_identical": run.base_rows_identical,
+        "vault_edits": [int(p.patch_id) for p in edits],
+        "timing_ms": {
+            "scale_ms": round(scale_ms, 1),
+            "check_ms": round(check_ms, 1),
+            "total_ms": round((time.perf_counter() - t0) * 1000.0, 1),
+        },
         "label_gate": LABEL_GATE_CARD,
         "lens": runtime.lens_card(),
     }

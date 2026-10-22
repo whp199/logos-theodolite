@@ -38,6 +38,7 @@ from fastapi.staticfiles import StaticFiles
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, NormScaledAddSpec, SteeringSpec
 from pydantic import BaseModel, Field, StrictInt, ValidationError
 
+from backend import causal_check as cc
 from backend.engine_runtime import (
     DEFAULT_TRACKED_CONCEPTS,
     MAX_SWEEP_POSITIONS,
@@ -51,6 +52,7 @@ from backend.label_gate import LABEL_GATE_CARD
 from backend.larql_vault import LarqlVaultEngine
 from backend.mcp_scientist import (
     bind_runtime,
+    causal_spot_check,
     inspect_pole,
     test_motif_hypothesis,
     trace_downstream_readers,
@@ -218,6 +220,28 @@ class TraceReadersRequest(BaseModel):
     # exact word-piece ids to read (a sighting's ids up to its read position): used as they are, read at the last;
     # prompt, chat, system and assistant_prefix are then not used
     token_ids: Optional[List[StrictInt]] = Field(None, min_length=1, max_length=MAX_SWEEP_POSITIONS)
+
+
+class CausalCheckRequest(BaseModel):
+    # A new request, so its defaults are the mended ones (k = 10, erratum E47). Types only: every bound is checked by
+    # the tool itself (`mcp_scientist.causal_spot_check`), in plain words, so a refusal reads the same over the
+    # WebSocket, HTTP and MCP; strings only get a length cap.
+    layer: StrictInt
+    neuron_idx: StrictInt
+    polarity: Optional[float] = None
+    contexts: str = Field("given", max_length=64)  # "given" | "study"
+    # given mode: exact word-piece ids (a sighting's ids up to its read position), pushed at the last; else `prompt`
+    token_ids: Optional[List[StrictInt]] = None
+    prompt: Optional[str] = Field(None, max_length=32000)
+    chat: bool = False
+    system: Optional[str] = Field(None, max_length=32000)
+    assistant_prefix: str = Field("", max_length=32000)
+    k: float = cc.K_DEFAULT
+    write: str = Field("activation", max_length=64)  # "activation" | "frozen_norm"
+    scale_ref: str = Field("study", max_length=64)  # "study" | "this_text"
+    floor: bool = True
+    top_n: StrictInt = 10
+    track_ids: Optional[List[StrictInt]] = None
 
 
 class MotifHypothesisRequest(BaseModel):
@@ -665,13 +689,13 @@ def check_sweep_positions(n_prompt: int, n_answer: int, what: str = "The prompt"
         )
 
 
-def _plain_validation(exc: ValidationError) -> str:
+def _plain_validation(exc: ValidationError, lead: str = "The sweep was refused.") -> str:
     """A pydantic refusal as one line: where, and what was wrong."""
     parts = []
     for err in exc.errors():
         where = ".".join(str(p) for p in err.get("loc", ())) or "request"
         parts.append(f"{where}: {err.get('msg', 'not accepted')}")
-    return "The sweep was refused. " + "; ".join(parts)
+    return f"{lead} " + "; ".join(parts)
 
 
 def _plain_error(exc: BaseException) -> str:
@@ -1246,6 +1270,18 @@ async def api_health() -> Dict[str, Any]:
         # the model's sliding attention window in word-pieces (text_config.sliding_window), as every sighting sends it
         "sliding_window": runtime.sliding_window,
         "larql_cli": vault.cli_versions(),
+        # the causal spot-check (backend/causal_check.py): the WebSocket action "causal_check" and POST
+        # /api/scientist/causal_check exist on this server (an older one ignores the action without a word)
+        "causal_check": {
+            "version": cc.CAUSAL_CHECK_VERSION,
+            "writes": list(cc.CAUSAL_WRITES),
+            "contexts": list(cc.CAUSAL_CONTEXTS),
+            "scale_refs": list(cc.SCALE_REFS),
+            "k_default": cc.K_DEFAULT,
+            "k_max": cc.K_MAX,
+            "k_floor": cc.K_FLOOR,
+            "n_study_texts": len(cc.STUDY_TEXTS),
+        },
         # the rule the label_check on every neuron label follows (backend/label_gate.py)
         "label_gate": LABEL_GATE_CARD,
         "lens": runtime.lens_card(),
@@ -1290,6 +1326,38 @@ async def api_trace_readers(req: TraceReadersRequest) -> Dict[str, Any]:
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+async def _causal_check(req: CausalCheckRequest) -> Dict[str, Any]:
+    """The causal spot-check under the GPU lock, passed on unchanged (the tool refuses in plain words, ValueError, and
+    turns running out of GPU memory into one)."""
+    async with _GPU_LOCK:
+        return await causal_spot_check(
+            layer=req.layer,
+            neuron_idx=req.neuron_idx,
+            polarity=req.polarity,
+            contexts=req.contexts,
+            token_ids=req.token_ids,
+            prompt=req.prompt,
+            chat=req.chat,
+            system=req.system,
+            assistant_prefix=req.assistant_prefix,
+            k=req.k,
+            write=req.write,
+            scale_ref=req.scale_ref,
+            floor=req.floor,
+            top_n=req.top_n,
+            track_ids=req.track_ids,
+        )
+
+
+@app.post("/api/scientist/causal_check")
+async def api_causal_check(req: CausalCheckRequest) -> Dict[str, Any]:
+    _runtime, _vault = get_app_state()
+    try:
+        return await _causal_check(req)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/api/scientist/test_hypothesis")
@@ -1366,6 +1434,14 @@ async def ws_theodolite(websocket: WebSocket) -> None:
                             token_ids=tr.token_ids,
                         )
                     await out.json({"type": "downstream_readers", "data": res})
+
+                elif action == "causal_check":
+                    try:
+                        cc_req = CausalCheckRequest(**{k: v for k, v in raw_msg.items() if k != "action"})
+                    except ValidationError as exc:
+                        raise ValueError(_plain_validation(exc, "The test was refused.")) from exc
+                    res = await _causal_check(cc_req)
+                    await out.json({"type": "causal_check", "data": res})
             except (ValidationError, ValueError) as exc:
                 # A malformed request (a bad option value, say) fails alone and the socket stays open; the reply
                 # names the action and its neuron so the client can fail just that request.
@@ -1378,6 +1454,8 @@ async def ws_theodolite(websocket: WebSocket) -> None:
                         "recoverable": True,
                         "layer": raw_msg.get("layer"),
                         "neuron_idx": raw_msg.get("neuron_idx"),
+                        # which of a neuron's tests failed (causal_check: "given" | "study"); null for other actions
+                        "contexts": raw_msg.get("contexts"),
                     }
                 )
 

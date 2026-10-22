@@ -19,7 +19,7 @@ returns small but complete sweep bundles, which the real `pack_binary_and_json_f
    after the current pair), and of a queued request (its end comes at once, n_sent 0, and it never runs);
 5. refusals and failures on one request alone: a pydantic refusal and a plain-words ValueError with a request_id
    (error, then sweep_end), an unknown reading option refused before anything is written, the legacy refusal
-   without one, a failure while the frame is built (the answer already sent), a failure mid-stream (error with
+   without one (its old keys, and the additive "contexts", null outside the causal check), a failure while the frame is built (the answer already sent), a failure mid-stream (error with
    n_sent and token_index, then sweep_end) after which the socket still answers;
 6. the thinking comparison's path only on the first pair (flags bit 0, think_seed, think_read_token,
    think_stop_reason, think_skipped); a stop asked while the answer is written or its first position read skips it
@@ -665,7 +665,9 @@ def check_socket() -> None:
         s.sweep({"max_new_tokens": 300})
         _k, err = s.recv()
         check(err.get("type") == "error" and err.get("action") == "sweep" and err.get("recoverable") is True
-              and "request_id" not in err and set(err) == {"type", "message", "action", "recoverable", "layer", "neuron_idx"},
+              and "request_id" not in err
+              and set(err) == {"type", "message", "action", "recoverable", "layer", "neuron_idx", "contexts"}
+              and err["contexts"] is None,
               f"the legacy refusal: {err}")
         for opt, val in (("pole_ranking", "loudest"), ("thread_score", "Direct"), ("frame_squaring", "qr")):
             n_writes = len(rt.writes)
