@@ -1,0 +1,48 @@
+{
+ "result": "experiments/results/N1G_recorded_label_checks.json",
+ "result_sha256": "015dc7013047bd37f219f788c0e5c7693ab04d910810db8e788ea272fb2fa8b3",
+ "script": "experiments/scripts/N1G_01_recorded_label_checks.py",
+ "script_sha256": "d29abcb1a6faace302c1f3424201e53e3091e1aad54f92a0e5b2ad7516d34560",
+ "code_sha256": {
+  "backend/label_gate.py": "50dc55a3e42ac97c76c63a28f84d3db04118af021f79c29ccabbd16b7f52a83a",
+  "backend/larql_vault.py": "30ad8943ef1d53087986014221cee0aff545ddfc23cc60d5231cf9ee213f2744",
+  "backend/theodolite_math.py": "0bba67755da1bfaf313df46dd8453280a368dfaf72d209e4b5327c00f0c80c49",
+  "backend/engine_runtime.py": "311fd232226542f2032c629f0cab122f95e2d46a966372acd231e8953522d707"
+ },
+ "inputs": [
+  {
+   "path": "frontend/src/fixtures/e6-demo-sighting.json",
+   "sha256": "9e9ef716f870f3013659584e2249756be3a96401e985a668c17c378d6768a69b"
+  },
+  {
+   "path": "experiments/results/E6_tool_audit_04_vault.partial.json",
+   "sha256": "8e96b5327831b5be690bb498e22dfa661e627de1bbee0156364f06de48e01f51"
+  }
+ ],
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "lens": {
+  "id": "jpp-base",
+  "name": "J++",
+  "fitted_on": "google/gemma-4-31B (base, bf16)",
+  "applied_to": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "method": "J++, R-lens LRP backward pass",
+  "fit_data": "64 WikiText passages of 128 word-pieces",
+  "source": "koayon/jpp-lenses@6c96867a91c43c14cec17cf0f6d157b933c5fee5:gemma-4-31b/lens.pt",
+  "file": "neuronpedia/jacobian-lens:gemma-4-31b/jpp/Salesforce-wikitext/gemma-4-31B_jpp_lens.pt",
+  "caution": "Fitted on the base model, not on the model it reads: compare its readings between matched sightings; do not take its words as this model's own. Layers count from 0 here (the pages count from 1). The order of conditions it gives was checked against the model's behaviour from layer 20; at layers 20-29 trust only that order; below layer 20 the study's two checks disagreed, so treat even comparisons there as unconfirmed. Use layers 30-49 for condition contrasts. At layers 50-58 this lens reads 'she' at or above a woman persona for 6-7 of the 9 AI personas the study tried: flag pronoun readouts there unless a lens fitted on the instruct model agrees. Neuron-pole word labels predicted causal effects only at the sampled layers 40-57; they were at chance at 10-30, and 31-39 were not sampled. It was fitted on positions 16-127 (counting from 0) of 128-piece passages and the study checked it only on short texts (at most 141 word-pieces in its fidelity check), so how well it reads further in is unmeasured; from position 1024 on, 50 of the model's 60 layers no longer look back to the start of the text.",
+  "provenance": {
+   "source": "koayon/jpp-lenses@6c96867a91c43c14cec17cf0f6d157b933c5fee5:gemma-4-31b/lens.pt",
+   "method": "jpp",
+   "lrp_mode": "rlens",
+   "hf_model_name": "google/gemma-4-31B",
+   "n_prompts": 64,
+   "max_seq_len": 128
+  }
+ },
+ "git_head_when_run": "7786e7943c63d2bd8bbd765f678ae5181be2cd14",
+ "run_at": "2026-10-22T04:21:30Z",
+ "device": "NVIDIA GeForce RTX 5090",
+ "python": "3.12.14",
+ "torch": "2.14.1+cu130",
+ "seconds": 18.4
+}

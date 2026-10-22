@@ -269,8 +269,10 @@ REPORT §3.4). Where each fault stands now:
   are sent as before, and layers in these fields count from 0. The agreement cut applies only through the base-fitted
   J++ lens, the one it was validated for (erratum E47). Labels at layer 59 are untested; at layer 60 the lens is the
   identity, so the cut cannot fire there. The demonstration sighting's labels and the vault's recorded searches carry
-  three and five words a side, too few for the count, so until they are checked ten a side
-  (`experiments/scripts/N1G_01_recorded_label_checks.py`, on the GPU) only the layer holds them back.
+  three and five words a side, too few for the count, so each was checked ten a side through the server's own
+  DESCRIBE POLE (`experiments/scripts/N1G_01_recorded_label_checks.py`, on the GPU;
+  [`N1G_recorded_label_checks.json`](experiments/results/N1G_recorded_label_checks.json)): the pages hold back 46 of
+  the sighting's 75 labelled faces and 98 of the vault's 240 rows.
 - **LARQL.** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault query runs in
   Python, and its ".patch MEMIT" edit is a single-neuron column nudge, not MEMIT.
 
