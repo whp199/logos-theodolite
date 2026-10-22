@@ -3,14 +3,14 @@
  "scripts": {
   "R3_lrp.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_lrp.py --selftest",
-   "at": "2026-10-22T10:29:47",
-   "head": "ffdf10ded41d6668d5cc73bb3c0e4ac9048cb826",
+   "at": "2026-10-22T11:21:14",
+   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
    "scripts_uncommitted_then": [
     "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 1.8,
+   "seconds": 1.9,
    "ok": true,
-   "n_checks": 23,
+   "n_checks": 33,
    "n_failed": 0,
    "checks": [
     {
@@ -40,6 +40,38 @@
     {
      "ok": true,
      "check": "identity rule: value equals GELU-tanh (<= 1e-6) and the gradient equals the gate exactly"
+    },
+    {
+     "ok": true,
+     "check": "the fused bf16 kernel is fp32 rounded once: F.gelu in fp32, cast to bf16, equals F.gelu in bf16 on all 65,280 finite bf16 inputs"
+    },
+    {
+     "ok": true,
+     "check": "bf16, every finite input: the rule's forward equals F.gelu at 65,276 of 65,280 (largest |diff| 1.54e-07; where they differ both values are below 1e-6 in magnitude, max 1.54e-07); jpp_lens's bf16 product: 64,278 of 65,280 (largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 0.3^2): the rule's forward differs from F.gelu at 0 (0.0000%, largest |diff| 0.00e+00, every one where both values are below 1e-6); jpp_lens's bf16 product at 293,023 (29.30%, largest |diff| 7.81e-03)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 1^2): the rule's forward differs from F.gelu at 1 (0.0001%, largest |diff| 1.54e-07, every one where both values are below 1e-6); jpp_lens's bf16 product at 393,850 (39.38%, largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 3^2): the rule's forward differs from F.gelu at 3,943 (0.3943%, largest |diff| 1.54e-07, every one where both values are below 1e-6); jpp_lens's bf16 product at 418,746 (41.87%, largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 10^2): the rule's forward differs from F.gelu at 4,455 (0.4455%, largest |diff| 1.54e-07, every one where both values are below 1e-6); jpp_lens's bf16 product at 182,838 (18.28%, largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "identity rule, bf16: the gradient is exactly the detached gate times the incoming gradient (the gate and product in fp32, one rounding to bf16; jpp_lens's is the same rule with gate and product in bf16, and the two differ by one bf16 rounding at 87,811 of 200,000)"
+    },
+    {
+     "ok": true,
+     "check": "identity rule, fp32: value and gradient bit-identical to jpp_lens's arithmetic (z * gate(z).detach()), the gradient exactly g * gate(z)"
     },
     {
      "ok": true,
@@ -104,6 +136,14 @@
     {
      "ok": true,
      "check": "on the multimodal wrapper too, jpp_lens's patcher patches the same modules"
+    },
+    {
+     "ok": true,
+     "check": "jpp_lens's _gelu_tanh_with_detached_gate is bit for bit the bf16 product above on every finite bf16 input, and R3's rule in fp32"
+    },
+    {
+     "ok": true,
+     "check": "bf16 tiny Gemma 4, forward under the rules against the stock forward (160 positions): R3's rules max |logit diff| 0.00e+00 (bit-identical), top-1 changed at 0; jpp_lens's patcher 2.66e-02, top-1 changed at 5"
     }
    ],
    "env": {
@@ -115,21 +155,12 @@
   },
   "R3_fitlib.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_fitlib.py --selftest",
-   "at": "2026-10-22T00:41:56",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T11:21:23",
+   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 8.4,
+   "seconds": 7.5,
    "ok": true,
    "n_checks": 17,
    "n_failed": 0,
@@ -389,21 +420,12 @@
   },
   "R3_gpu.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_gpu.py --selftest",
-   "at": "2026-10-22T00:41:59",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T11:21:26",
+   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 2.0,
+   "seconds": 1.9,
    "ok": true,
    "n_checks": 16,
    "n_failed": 0,
@@ -750,21 +772,12 @@
   },
   "R3_00_pilot.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_00_pilot.py --selftest",
-   "at": "2026-10-22T00:42:33",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T11:21:30",
+   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 4.0,
+   "seconds": 3.2,
    "ok": true,
    "n_checks": 11,
    "n_failed": 0,
@@ -787,7 +800,7 @@
     },
     {
      "ok": true,
-     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 16, 's_per_prompt': 0.04}"
+     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 8, 's_per_prompt': 0.03}"
     },
     {
      "ok": true,
@@ -811,7 +824,7 @@
     },
     {
      "ok": true,
-     "check": "--check-only: the pilot's prompts, the 12B's device map and both module trees; waiting for: ['no GPU budget approved yet (R3_common.APPROVED_GPU_HOURS): the pilot would write stop', 'the 12B dry run has not run (R3_00_dry_run.json)']"
+     "check": "--check-only: the pilot's prompts, the 12B's device map and both module trees; waiting for: ['no GPU budget approved yet (R3_common.APPROVED_GPU_HOURS): the pilot would write stop']"
     }
    ],
    "env": {

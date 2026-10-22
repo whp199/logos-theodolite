@@ -8,7 +8,9 @@ the R-Lens implementation of Camila Blank and Agam Bhatia; see NOTICE), preset "
   factor detached, then the plain weight when the norm has one. The final norm is patched too, as J++ patches it; it is
   off the path of a block-59 target, so it changes no fitted row (--selftest shows this).
 - identity rule (lrp.py:343-350): the MLP's GELU-tanh is written z * gate(z) with gate(z) = 0.5 (1 + tanh(...))
-  detached;
+  detached. Deviation D33: the forward is computed in fp32 and rounded once to the model's dtype, as F.gelu's fused
+  kernel computes it, where jpp_lens takes the product in the model's dtype; the backward rule (the gate held fixed,
+  the gradient through z only) is J++'s, and in fp32 nothing changes;
 - half rule (lrp.py:363-366, 394-399): the gated product p becomes 0.5 p + 0.5 p.detach().
 Attention, its q/k/v norms and a multimodal wrapper's vision and audio towers keep standard gradients. Detaching
 changes no forward value, only gradients; the graph recorded inside the context keeps the detached ops after exit.
@@ -119,7 +121,19 @@ def gelu_tanh_gate(z: Tensor) -> Tensor:
 
 
 def identity_rule_gelu(z: Tensor) -> Tensor:
-    """GELU-tanh with its gate held fixed (equal to F.gelu(z, approximate="tanh") up to kernel rounding)."""
+    """GELU-tanh with its gate held fixed (the identity rule), its forward computed as F.gelu's fused kernel computes
+    it (D33): in fp32, rounded once to z's dtype. The gate is computed from z in fp32 and detached, the product taken
+    in fp32, and the result cast back once, so the gradient reaching z is the incoming gradient times the detached
+    gate (in fp32, rounded once to z's dtype), as in J++'s rule. In fp32 this is J++'s z * gate(z).detach() op for op
+    (.float() and .to() return z and the product themselves); in bf16 it removes the one-ulp differences of J++'s
+    bf16 product from the kernel (R3_00_pilot.json at 8996fb5: 90 of 2,048 top-1 changes under the rules)."""
+    z32 = z.float()
+    return (z32 * gelu_tanh_gate(z32).detach()).to(z.dtype)
+
+
+def identity_rule_gelu_in_dtype(z: Tensor) -> Tensor:
+    """jpp_lens's arithmetic for the identity rule (lrp.py:343-350): z * gate(z).detach() in z's own dtype. Not used by
+    the rules; kept so that the self-test shows the registered code's figure beside the rule's."""
     return z * gelu_tanh_gate(z).detach()
 
 
@@ -289,6 +303,66 @@ def selftest(record: bool = False) -> int:
           and torch.allclose(gz, gelu_tanh_gate(z.detach()), atol=0, rtol=0),
           "identity rule: value equals GELU-tanh (<= 1e-6) and the gradient equals the gate exactly")
 
+    # identity rule in the model's dtype (D33): the forward in fp32, rounded once, against the fused kernel, with the
+    # registered code's arithmetic (jpp_lens's bf16 product) beside it
+    gelu = lambda t: nn.functional.gelu(t, approximate="tanh")  # noqa: E731
+    allb = torch.arange(-32768, 32768, dtype=torch.int32).to(torch.int16).view(torch.bfloat16)
+    allb = allb[torch.isfinite(allb)]                  # every finite bf16 value (65,280)
+    check(torch.equal(gelu(allb.float()).to(torch.bfloat16), gelu(allb)),
+          f"the fused bf16 kernel is fp32 rounded once: F.gelu in fp32, cast to bf16, equals F.gelu in bf16 on all "
+          f"{allb.numel():,} finite bf16 inputs")
+
+    def vs_kernel(f, zz):
+        ref, out = gelu(zz), f(zz)
+        diff = out != ref
+        return {"n": zz.numel(), "differ": int(diff.sum()), "max": float((out.float() - ref.float()).abs().max()),
+                "max_abs_where_differ": float(torch.maximum(out.float().abs(), ref.float().abs())[diff].max())
+                if bool(diff.any()) else 0.0}
+    new_all, old_all = vs_kernel(identity_rule_gelu, allb), vs_kernel(identity_rule_gelu_in_dtype, allb)
+    check(new_all["differ"] <= 1e-4 * new_all["n"] and new_all["max_abs_where_differ"] < 1e-6,
+          f"bf16, every finite input: the rule's forward equals F.gelu at {new_all['n'] - new_all['differ']:,} of "
+          f"{new_all['n']:,} (largest |diff| {new_all['max']:.2e}; where they differ both values are below 1e-6 "
+          f"in magnitude, max {new_all['max_abs_where_differ']:.2e}); jpp_lens's bf16 product: "
+          f"{old_all['n'] - old_all['differ']:,} of {old_all['n']:,} (largest |diff| {old_all['max']:.2e})")
+    gen = torch.Generator().manual_seed(20261022)
+    for scale in (0.3, 1.0, 3.0, 10.0):
+        zr = (torch.randn(1_000_000, generator=gen) * scale).to(torch.bfloat16)
+        nr, orr = vs_kernel(identity_rule_gelu, zr), vs_kernel(identity_rule_gelu_in_dtype, zr)
+        check(nr["differ"] <= 0.01 * nr["n"] and nr["max_abs_where_differ"] < 1e-6,
+              f"bf16, 1,000,000 inputs N(0, {scale:g}^2): the rule's forward differs from F.gelu at {nr['differ']:,} "
+              f"({nr['differ'] / nr['n']:.4%}, largest |diff| {nr['max']:.2e}, every one where both values are below "
+              f"1e-6); jpp_lens's bf16 product at {orr['differ']:,} ({orr['differ'] / orr['n']:.2%}, largest |diff| "
+              f"{orr['max']:.2e})")
+    notes.append("where the rule's bf16 forward still differs from F.gelu (on this CPU only at z = -5.0625, -5.09375, "
+                 "-5.125 and -5.15625), 1 + tanh cancels to about one fp32 ulp: the GELU kernel's own tanh rounds to "
+                 "-1 there and gives -0.0, torch.tanh does not and the rule gives about -1.5e-7 (the exact value is "
+                 "-0.8e-7 to -1.5e-7)")
+
+    # (ii) the gradient is the detached gate times the incoming gradient, in fp32 and rounded once to z's dtype
+    zb = (torch.randn(200_000, generator=gen) * 3.0).to(torch.bfloat16).requires_grad_(True)
+    gb = torch.randn(200_000, generator=gen).to(torch.bfloat16)
+    (gzb,) = torch.autograd.grad(identity_rule_gelu(zb), zb, grad_outputs=gb)
+    zd = zb.detach()
+    want_b = (gb.float() * gelu_tanh_gate(zd.float())).to(torch.bfloat16)
+    zj = zd.clone().requires_grad_(True)
+    (gzj,) = torch.autograd.grad(identity_rule_gelu_in_dtype(zj), zj, grad_outputs=gb)
+    check(gzb.dtype == torch.bfloat16 and torch.equal(gzb, want_b)
+          and torch.equal(gzj, gb * gelu_tanh_gate(zd)),
+          f"identity rule, bf16: the gradient is exactly the detached gate times the incoming gradient (the gate and "
+          f"product in fp32, one rounding to bf16; jpp_lens's is the same rule with gate and product in bf16, and "
+          f"the two differ by one bf16 rounding at {int((gzb != gzj).sum()):,} of {zb.numel():,})")
+
+    # (iii) in fp32 nothing changes: the same value and the same gradient, bit for bit
+    z3 = torch.randn(100_000, generator=gen) * 3.0
+    g3 = torch.randn(100_000, generator=gen)
+    za, zc = z3.clone().requires_grad_(True), z3.clone().requires_grad_(True)
+    va, vc = identity_rule_gelu(za), identity_rule_gelu_in_dtype(zc)
+    (ga,) = torch.autograd.grad(va, za, grad_outputs=g3)
+    (gc,) = torch.autograd.grad(vc, zc, grad_outputs=g3)
+    check(torch.equal(va, vc) and torch.equal(ga, gc) and torch.equal(ga, g3 * gelu_tanh_gate(z3)),
+          "identity rule, fp32: value and gradient bit-identical to jpp_lens's arithmetic (z * gate(z).detach()), "
+          "the gradient exactly g * gate(z)")
+
     # half rule: exact value, half the gradient
     p = torch.randn(1000, requires_grad=True)
     h = half_rule(p)
@@ -446,6 +520,31 @@ def selftest(record: bool = False) -> int:
         jm = jrm.patched_names()
         check(sorted(jm["ln_rule"]) == sorted(rep_mm.ln_rule) and sorted(jm["mlp_rule"]) == sorted(rep_mm.mlp_rule),
               "on the multimodal wrapper too, jpp_lens's patcher patches the same modules")
+
+        # D33 against jpp_lens's own code: its identity rule is the bf16 product shown above, and in bf16 the tiny
+        # model's forward under R3's rules equals the stock forward where under jpp_lens's it does not
+        from workspace_lens.lrp.lrp import _gelu_tanh_with_detached_gate as jpp_gelu
+
+        check(torch.equal(jpp_gelu(allb), identity_rule_gelu_in_dtype(allb))
+              and torch.equal(jpp_gelu(allb.float()), identity_rule_gelu(allb.float())),
+              "jpp_lens's _gelu_tanh_with_detached_gate is bit for bit the bf16 product above on every finite bf16 "
+              "input, and R3's rule in fp32")
+        mb = C.build_tiny_gemma4().to(torch.bfloat16)
+        idb = torch.randint(1, 30, (4, 40))
+        with torch.no_grad():
+            lb_stock = mb(idb).logits
+            with rlens(mb):
+                lb_r3 = mb(idb).logits
+            with apply_lrp_rules_for_mode(mb, "rlens"):
+                lb_jpp = mb(idb).logits
+        t_stock, t_r3, t_jpp = (x.argmax(-1) for x in (lb_stock, lb_r3, lb_jpp))
+        d_r3, d_jpp = float((lb_r3 - lb_stock).abs().max()), float((lb_jpp - lb_stock).abs().max())
+        check(d_r3 <= d_jpp and int((t_r3 != t_stock).sum()) <= int((t_jpp != t_stock).sum()),
+              f"bf16 tiny Gemma 4, forward under the rules against the stock forward ({idb.numel()} positions): R3's "
+              f"rules max |logit diff| {d_r3:.2e} ({'bit-identical' if d_r3 == 0 else 'not bit-identical'}), "
+              f"top-1 changed at {int((t_r3 != t_stock).sum())}; jpp_lens's patcher {d_jpp:.2e}, top-1 changed at "
+              f"{int((t_jpp != t_stock).sum())}")
+        del mb
     for n in notes:
         print("note:", n)
     print(f"R3_lrp self-test: {'ALL PASS' if not fails else str(len(fails)) + ' FAILURES'}")
