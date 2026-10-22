@@ -6,7 +6,9 @@ Streams packed Binary Float32 frames (`ArrayBuffer`) containing:
 - 60x60 Linear CKA similarity matrix
 - 60 x 15 Bipolar GeGLU dipole needles (`+` North / `-` South) oriented in the 3D Survey Frame
 - Verified Downstream Reader Circuit Filaments (`C_{(l,i)->(l',j)}`)
-- Optional `<|think|>` vs. silent comparison trajectory
+- Optional thinking vs. silent comparison trajectory: for a chat, thinking switched on by the chat template's own switch
+  (`enable_thinking`); for bare text, the old `<|think|>` set before the text unless `think_bare` is "none", which
+  leaves it out (`think_protocol` and `think_left_out` say which)
 
 Paired with a JSON metadata frame for token strings, J-VINDEX vs. Naive Logit Lens pole labels,
 live `SteeringSpec` laser interventions, LARQL `.patch` weight surgery, and FastMCP scientist endpoints.
@@ -49,7 +51,7 @@ from backend.engine_runtime import (
     TheodoliteSweepBundle,
 )
 from backend.label_gate import LABEL_GATE_CARD
-from backend.larql_vault import LarqlVaultEngine
+from backend.larql_vault import VOICE_MAX_NEW_TOKENS_DEFAULT, VOICE_MAX_NEW_TOKENS_LIMIT, LarqlVaultEngine
 from backend.mcp_scientist import (
     bind_runtime,
     causal_spot_check,
@@ -157,6 +159,11 @@ class SweepRequest(BaseModel):
     survey_mode: str = "monument"  # "monument" | "pole_motif"
     locked_pole: Optional[List[float]] = None  # [layer, neuron_idx, polarity]
     compare_think: bool = False
+    # Thinking on bare text (E6 §3, item 11): "prefix" sets "<|think|>\n" before the text, as first built, which is not
+    # Gemma 4's switch (the template's: <|think|> at the head of a system turn, the model's turn begun with no empty
+    # thought); "none" leaves the thinking comparison out for bare text, and the pair says so (think_left_out). A chat
+    # always uses the template's switch. Every pair names the one used (think_protocol).
+    think_bare: str = Field("prefix", max_length=64)
     max_new_tokens: int = Field(6, ge=0, le=256)
     steering: Optional[SteeringLaserRequest] = None
     # Chat template (bug 5): wrap `prompt` as the user turn, after an optional system turn, thinking off, and
@@ -196,8 +203,20 @@ class SweepRequest(BaseModel):
     thread_score: str = "coupling"
 
 
+class VoiceRequest(BaseModel):
+    # The question an edit is heard by: just before it and again just after, the model writes its answer the likeliest
+    # way (LarqlVaultEngine._heard). Sent as compose_prompt sends a sweep's: as a chat (the default) or bare text.
+    prompt: str = Field(..., min_length=1, max_length=32000)
+    chat: bool = True
+    system: Optional[str] = Field(None, max_length=32000)
+    assistant_prefix: str = Field("", max_length=32000)
+    max_new_tokens: int = Field(VOICE_MAX_NEW_TOKENS_DEFAULT, ge=1, le=VOICE_MAX_NEW_TOKENS_LIMIT)
+
+
 class LarqlRequest(BaseModel):
     query: str = "DESCRIBE"
+    # optional: hear an edit (DELETE, UPDATE, INSERT) before and after; every other statement ignores it
+    voice: Optional[VoiceRequest] = None
 
 
 class PoleInspectRequest(BaseModel):
@@ -254,6 +273,8 @@ class MotifHypothesisRequest(BaseModel):
 
 
 STEERING_DIRECTIONS = ("legacy", "fnw")
+# how a sweep with compare_think treats bare text: the old imitation, as first built, or no thinking comparison
+THINK_BARE = ("prefix", "none")
 
 
 def _steering_op(vector: torch.Tensor, req: SteeringLaserRequest):
@@ -671,6 +692,7 @@ def check_sweep_options(req: SweepRequest) -> None:
         ("pole_ranking", req.pole_ranking, POLE_RANKINGS),
         ("thread_score", req.thread_score, THREAD_SCORES),
         ("frame_squaring", req.frame_squaring, FRAME_SQUARINGS),
+        ("think_bare", req.think_bare, THINK_BARE),
     ):
         if value not in known:
             choices = " or ".join(f'"{k}"' for k in known)
@@ -858,16 +880,25 @@ async def _stream_sweep(
         len(runtime.tokenize_prompt(text)), max(int(req.max_new_tokens), len(req.answer_token_ids or []))
     )
     think_prompt: Optional[str] = None
+    # how the thinking comparison was switched on: "template" (a chat: enable_thinking, <|think|> at the head of a
+    # system turn the template opens if there is none, and the model's turn begun with no empty thought) or
+    # "bare_prefix" (bare text with "<|think|>\n" before it: the imitation, not Gemma 4's switch); None without one
+    think_protocol: Optional[str] = None
+    # "bare_text" when compare_think asked for a comparison that bare text cannot have (think_bare "none")
+    think_left_out: Optional[str] = None
     # the thinking comparison writes its own start, as long as the answer (at least 10, at most 64 word-pieces)
     think_len = max(min(int(req.max_new_tokens), 64), 10)
-    if req.compare_think:
-        think_prompt = (
-            runtime.compose_prompt(
-                req.prompt, chat=True, system=req.system, assistant_prefix=req.assistant_prefix, thinking=True
-            )
-            if req.chat
-            else f"<|think|>\n{text}"
+    if req.compare_think and req.chat:
+        think_prompt = runtime.compose_prompt(
+            req.prompt, chat=True, system=req.system, assistant_prefix=req.assistant_prefix, thinking=True
         )
+        think_protocol = "template"
+    elif req.compare_think and req.think_bare == "prefix":
+        think_prompt = f"<|think|>\n{text}"
+        think_protocol = "bare_prefix"
+    elif req.compare_think:
+        think_left_out = "bare_text"
+    if think_prompt is not None:
         check_sweep_positions(len(runtime.tokenize_prompt(think_prompt)), think_len, "The thinking prompt")
     sampler = SamplerSettings(
         temperature=float(req.sampler.temperature),
@@ -1074,6 +1105,11 @@ async def _stream_sweep(
                     if think_cap is not None
                     else None
                 ),
+                # how the thinking answer was switched on ("template" | "bare_prefix"), beside the other think_* keys:
+                # null without one (later pairs, skipped, or not asked)
+                "think_protocol": think_protocol if think_cap is not None else None,
+                # "bare_text" on the first pair when the comparison was asked for and left out (think_bare "none")
+                "think_left_out": think_left_out if idx == 0 else None,
             }
             binary_frame, json_frame = pack_binary_and_json_frames(
                 runtime=runtime,
@@ -1288,12 +1324,20 @@ async def api_health() -> Dict[str, Any]:
     }
 
 
+def _execute_lql(vault: LarqlVaultEngine, query: str, voice: Optional[VoiceRequest]) -> Dict[str, Any]:
+    """The statement, heard when a voice is given (the caller holds `_GPU_LOCK` around the voice before, the edit and
+    the voice after); without one, called exactly as before."""
+    if voice is None:
+        return vault.execute_lql(query)
+    return vault.execute_lql(query, voice=voice.model_dump())
+
+
 @app.post("/api/larql")
 async def api_larql(req: LarqlRequest) -> Dict[str, Any]:
     _runtime, vault = get_app_state()
     async with _GPU_LOCK:
         try:
-            return vault.execute_lql(req.query)
+            return _execute_lql(vault, req.query, req.voice)
         except Exception as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -1402,9 +1446,16 @@ async def ws_theodolite(websocket: WebSocket) -> None:
 
                 elif action == "larql":
                     query = raw_msg.get("query", "DESCRIBE")
+                    try:
+                        # the voice alone is checked here; the statement goes to the vault as it always did
+                        voice = LarqlRequest(voice=raw_msg.get("voice")).voice
+                    except ValidationError as exc:
+                        why = _plain_validation(exc, "The voice was refused, and no edit was made.")
+                        await out.json({"type": "larql_result", "ok": False, "error": why})
+                        continue
                     async with _GPU_LOCK:
                         try:
-                            res = vault.execute_lql(query)
+                            res = _execute_lql(vault, query, voice)
                             await out.json({"type": "larql_result", "ok": True, "data": res})
                         except Exception as exc:
                             await out.json({"type": "larql_result", "ok": False, "error": str(exc)})

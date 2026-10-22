@@ -13,8 +13,8 @@ Gurnee et al. 2026, REFERENCES.md [2])
   (c) Live `SteeringSpec` (`LayerSteeringSpec` + `AddSpec`) intervention flipping the
       trajectory during `capture_generation`;
   (d) Peak VRAM staying safely under 30.0 GB on a single 32GB GPU;
-  (e) LARQL / VINDEX3 FFN Vault (`DESCRIBE`, `SELECT * FROM EDGES NEAREST`) and `.patch`
-      MEMIT weight surgery (`UPDATE`, `ROLLBACK`);
+  (e) LARQL / VINDEX3 FFN Vault (`DESCRIBE`, `SELECT * FROM EDGES NEAREST`) and a `.patch`
+      one-neuron column edit, named after MEMIT but not MEMIT (`UPDATE`, `ROLLBACK`);
   (f) the lens named by `TheodoliteRuntime.lens_card()` (the API's "lens"): J++, fitted on google/gemma-4-31B as the
       file's own provenance says, with its caution.
 """

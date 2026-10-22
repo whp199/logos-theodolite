@@ -154,7 +154,8 @@ Each sweep over WebSocket `/ws/theodolite` transmits:
 2. **JSON Frame** carrying human-readable token labels:
    - Top-5 J++ Ghost Token Plumes per layer (`token_str`, `prob`, `logit`)
    - Top J-VINDEX vs. Naive Logit Lens token labels for active Bipolar Poles
-   - Generated continuation text, `<|think|>` vs. silent comparison metrics, and active LARQL `.patch` / `SteeringSpec` status.
+   - Generated continuation text, the thinking vs. silent comparison (`think_protocol` names how thinking was switched
+     on, 4.2), and active LARQL `.patch` / `SteeringSpec` status.
    - Added without changing the binary layout: `prompt` (the exact text read), `prompt_token_ids`, `chat`, `system`,
      `user_prompt`, `assistant_prefix`, `pole_ranking`, `thread_score`, `frame` (squaring, per-layer, weighting, centring,
      word geometry), `steering_applied`; per layer `proj_frac`, `pole_write_sizes`, `poles_ffn_explained`; per filament
@@ -183,6 +184,7 @@ at k = 0 and gives an old caller the same numbers bit for bit (scripts/check_swe
 | `rank_lookahead` | true | the old space-then-digit rule: where the chosen piece is blank, a tracked word's J++ rank is taken from the next position when better there (`tracked_from_next` says where); the new pages send false |
 | `centre_token_ids` | [] | matched controls as exact ids (≤ 16 lists, each non-empty), beside `centre_prompts`' texts |
 | `centre_answer` | false | centre token k ≥ 1 on the controls reading this very answer (control ids + w_0..w_{n-2}, row len(control)−1+k); without it a position past token 0 is not centred at all |
+| `think_bare` | "prefix" | with `compare_think` and bare text: "prefix" sets `<|think|>\n` before the text, as first built (not Gemma 4's switch; E6 §3, item 11); "none" leaves the thinking comparison out (`think_left_out` "bare_text"). A chat always uses the template's own switch (`compose_prompt(thinking=True)`: `enable_thinking`, `<|think|>` at the head of a system turn the template opens if there is none, and the model's turn begun with no empty thought; scripts/check_think_template.py checks the render). The interface sends "none" |
 
 Which indices are sighted: `sight_tokens` if given, else 0..min(n, max_sighted)−1 with `sight_every_token`, else
 [0]; never empty ([0] when nothing asked for exists). `prompt`, `system` and `assistant_prefix` are at most 32000
@@ -199,8 +201,8 @@ Every sighting's metadata sends `sliding_window` (the model's, from `text_config
 look back to the start of the text. Neither the lens's fit (positions 16-127 of 128-piece passages) nor the study's
 checks (short texts: at most 141 word-pieces in its fidelity check) reached that far, and the lens card's caution
 says so.
-A refused id, control or length is answered in plain words, and so is a `pole_ranking`, `thread_score` or
-`frame_squaring` the analysis does not know, before anything is written.
+A refused id, control or length is answered in plain words, and so is a `pole_ranking`, `thread_score`,
+`frame_squaring` or `think_bare` the analysis does not know, before anything is written.
 
 ### 4.2 Messages, server → client
 
@@ -220,9 +222,12 @@ Added to every pair's JSON (the one-pair reply too; `generated_text` is the whol
 `request_id, token_index, sight_index, n_to_sight, last, read_pos, sliding_window, read_token, read_token_id,
 prompt_len, chosen (STEP | null), answer, generation, recapture_check, kinship_n_states (= read_pos + 1),
 rank_lookahead, sight_dropped, timing {generate_ms, capture_ms, analyse_ms, total_ms}, think_seed, think_read_token,
-think_stop_reason, think_skipped` (the last four, and `think_generated_text`, set on the first pair only:
-`think_stop_reason` is how the thinking answer's writing ended, "end_mark" | "length" | "stopped", null without one;
-`think_skipped` is true when a stop asked before the comparison began left it unwritten, else false);
+think_stop_reason, think_skipped, think_protocol, think_left_out` (the last six, and `think_generated_text`, set on the
+first pair only: `think_stop_reason` is how the thinking answer's writing ended, "end_mark" | "length" | "stopped",
+null without one; `think_skipped` is true when a stop asked before the comparison began left it unwritten, else false;
+`think_protocol` is how thinking was switched on, "template" (a chat) | "bare_prefix" (the imitation), null when none
+was written; `think_left_out` is "bare_text" when `compare_think` was asked with bare text and `think_bare` "none",
+else null);
 `frame.centre_kind` ("none" | "control_prompt_end" | "control_reading_same_answer") and, for a pole-motif frame,
 `frame.reader {layer, neuron, from_token_index}` (built at the first position analysed and kept for the whole answer);
 per layer `jpp_top_ids` (5), `naive_top_id`, `tracked_from_next {word: bool}`.
@@ -395,3 +400,31 @@ there in `track_ids`; "test it on the study's 36 texts" sends `contexts: "study"
 `top_n: 10`, and the apparatus's k and write; the apparatus's scale_ref goes with a test at one word-piece only, the
 36 texts always being sized on themselves (`useTheodoliteStore.causalCheck`). The study's figures quoted beside a
 result are in frontend/src/screens/NeuronFolio/causal.ts.
+
+### 4.6 An edit's voice (`larql`, `voice`)
+
+WebSocket `{"action":"larql","query":…,"voice":{…}}` and `POST /api/larql` `{"query":…,"voice":{…}}` take an optional
+`voice` (VoiceRequest): `prompt` (1–32000 characters, required), `chat` (true), `system` (null), `assistant_prefix`
+(""), `max_new_tokens` (1–64, default 12, the length V7 judged steering by). It is heard only by an edit (DELETE,
+UPDATE, INSERT); every other statement ignores it, and without one every reply is exactly as before. With one,
+`LarqlVaultEngine._heard` composes the question as a sweep's (`compose_prompt`), notes the edits in force (the latest
+per neuron, `edits_in_force`), has the model write its answer the likeliest way (`write_voice`: greedy, no nudge, no
+re-read, stopping at the end of its turn), makes the edit, and writes the answer again, all inside the one
+`_GPU_LOCK` the route holds. If the answer before cannot be written, nothing is edited and the statement is refused
+in plain words (HTTP 400; over the WebSocket `larql_result` ok false, as is a voice the request model refuses, which
+over HTTP is 422). If the answer after cannot be written, the edit stays in force with `after` null and `error` set.
+The MCP tool `query_larql_vault` takes no voice, since it does not hold the GPU lock.
+
+Reply: today's keys plus `voice`, after `patch` and before `lens` (UPDATE, INSERT: `status, patch,
+active_patches_count, voice, lens`; DELETE without `lens`). `voice` = `{prompt, chat, system, assistant_prefix,
+max_new_tokens, edits_in_force_before (patch ids), before, after, first_step, parted_at, elapsed_ms, error}`, with
+before and after = `{token_ids, token_strs, text, stop_reason ("end_mark" | "length"), n_prompt, steps [{index, token,
+token_id, model_prob, model_rank}], first_top [{token_id, token, prob}]×5, watch}` (watch: the edit's target word's
+`{token_id, token, prob, rank}` at the first word-piece; null for DELETE), `first_step` = `{kl_before_after (nats,
+KL(before ‖ after) of the first word-piece's float32 distributions), top_before, top_after, watch_before,
+watch_after}` (null when after failed), and `parted_at` the first word-piece index where the two answers differ (null
+when they are the same, or after failed). Every patch record (the reply's `patch`, DESCRIBE's `active_patches`) gains
+`voice` (null when not heard), `edit_kind` ("one_neuron_column") and `replaces_patch` (the id of the edit in force on
+the same neuron that this one replaced, else null); DESCRIBE gains `edit_method`: one down_proj column per edit, rank
+one, no covariance solve, named after MEMIT but not MEMIT. The voice is one question, written by the model itself: it
+shows what the edit did to that answer only. scripts/check_vault_voice.py checks all of this on a stand-in runtime.

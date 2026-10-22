@@ -279,6 +279,12 @@ REPORT §3.4). Where each fault stands now:
   DESCRIBE POLE (`experiments/scripts/N1G_01_recorded_label_checks.py`, on the GPU;
   [`N1G_recorded_label_checks.json`](experiments/results/N1G_recorded_label_checks.json)): the pages hold back 46 of
   the sighting's 75 labelled faces and 98 of the vault's 240 rows.
+- **Thinking turned on.** A chat's sighting with thinking turned on is switched on by the chat template's own switch
+  (`enable_thinking`: `<|think|>` at the head of a system turn, the model's turn begun with no empty thought). Bare
+  text has no turn to think in, so the interface leaves it out there (`think_bare="none"`; the pair says
+  `think_left_out: "bare_text"`). The server's own default stays the old imitation for old callers, `<|think|>` set
+  before the bare text (E6 §3, item 11), and every pair names which was used (`think_protocol`: `"template"` |
+  `"bare_prefix"`, null without one).
 - **LARQL.** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault query runs in
   Python, and its ".patch MEMIT" edit is a single-neuron column nudge, not MEMIT.
 

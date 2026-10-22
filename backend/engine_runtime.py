@@ -303,17 +303,20 @@ def dequantize_w4a16_cols(
 
 
 def _make_w4a16_linear_forward(module: nn.Module) -> Callable[[torch.Tensor], torch.Tensor]:
-    """Create an on-the-fly W4A16 forward method with live LARQL `.patch` MEMIT overlay support."""
+    """Create an on-the-fly W4A16 forward method that applies the vault's live `.patch` overlays (one-neuron column
+    edits: named after MEMIT in the code, not MEMIT)."""
 
     def _w4a16_forward(self: nn.Module, x: torch.Tensor) -> torch.Tensor:
         w = dequantize_w4a16_full(self.weight_packed, self.weight_scale)
-        # Apply any active LARQL .patch MEMIT column overlays (on down_proj: w[:, col_idx] = new_vec)
+        # Apply any active LARQL .patch column overlays (on down_proj: w[:, col_idx] = new_vec): the vault's one-neuron
+        # column edits (the attribute is named after MEMIT; the edit is not MEMIT)
         col_overlays: Optional[Dict[int, torch.Tensor]] = getattr(self, "_memit_col_overlays", None)
         if col_overlays:
             w = w.clone()
             for col_idx, new_col in col_overlays.items():
                 w[:, col_idx] = new_col.to(device=w.device, dtype=w.dtype)
-        # Apply any active LARQL .patch MEMIT row overlays (on gate_proj / up_proj: w[row_idx, :] = new_vec)
+        # Apply any active LARQL .patch row overlays (on gate_proj / up_proj: w[row_idx, :] = new_vec), named after
+        # MEMIT like the columns; none is written today: every vault edit, INSERT too, moves one down_proj column
         row_overlays: Optional[Dict[int, torch.Tensor]] = getattr(self, "_memit_row_overlays", None)
         if row_overlays:
             if not col_overlays:
@@ -925,7 +928,7 @@ class TheodoliteRuntime:
     @torch.no_grad()
     def slice_w_down(self, layer_idx: int, neuron_indices: torch.Tensor) -> torch.Tensor:
         """Return `W_down[l, idx]` of shape `[K, 5376]` (columns `idx` of `down_proj.weight`),
-        incorporating any active LARQL `.patch` MEMIT overlays.
+        incorporating the vault's live `.patch` column edits (named after MEMIT in the code; not MEMIT).
         """
         down_proj = self.get_mlp_module(layer_idx).down_proj
         if hasattr(down_proj, "weight_packed"):
@@ -1500,6 +1503,105 @@ class TheodoliteRuntime:
             generate_ms=(t1 - t0) * 1000.0,
             capture_ms=(t2 - t1) * 1000.0,
         )
+
+    @torch.no_grad()
+    def write_voice(
+        self,
+        prompt_text: str,
+        *,
+        max_new_tokens: int = 12,
+        stop_token_ids: Optional[Sequence[int]] = None,
+        watch_token_id: Optional[int] = None,
+    ) -> Tuple[Dict[str, Any], torch.Tensor]:
+        """Write the model's answer to `prompt_text` (the exact text it reads, as `compose_prompt` gives it), for the
+        vault to hear an edit by: `capture_for_sweep`'s writing loop alone, with no steering and no recapture.
+
+        Greedy (`SamplerSettings()`: temperature 0, no penalty), at most `max_new_tokens` word-pieces, stopping after
+        the first of `stop_token_ids` it writes (and interp_engine's eos). Synchronous: the vault calls it from
+        `execute_lql`, under the caller's GPU lock. Returns the voice ({token_ids, token_strs, text, stop_reason
+        ("end_mark" | "length"), n_prompt, steps (each piece's id, word-piece, model prob and rank, from
+        `_written_step`), first_top (step 0's five likeliest), watch (`watch_token_id`'s prob and rank at step 0,
+        else None)}) and step 0's log-softmax in float32 ([vocab], on the device), for a divergence between two
+        voices; the caller drops it. Refuses, in plain words, a prompt that with the answer would pass
+        `MAX_SWEEP_POSITIONS`."""
+        assert self.eager_model is not None, "Call runtime.load() first."
+        n_new = int(max_new_tokens)
+        if n_new < 1:
+            raise ValueError(f"A voice needs at least one word-piece to write, not {n_new}.")
+        prompt_token_ids = self.tokenize_prompt(prompt_text)
+        if len(prompt_token_ids) + n_new > MAX_SWEEP_POSITIONS:
+            raise ValueError(
+                f"The question is {len(prompt_token_ids)} word-pieces and its answer may run to {n_new} more, more "
+                f"than the {MAX_SWEEP_POSITIONS} the instrument writes in one go. Shorten the question."
+            )
+        sampler = SamplerSettings()
+        resolved = self.eager_model.sampling_settings(
+            temperature=float(sampler.temperature), top_k=int(sampler.top_k), top_p=float(sampler.top_p),
+            presence_penalty=float(sampler.presence_penalty),
+        )
+        eos = getattr(self.tokenizer, "eos_token_id", None)
+        stop_set = {int(t) for t in (stop_token_ids or [])} | ({int(eos)} if eos is not None else set())
+
+        answer: List[int] = []
+        answer_strs: List[str] = []
+        steps: List[WrittenStep] = []
+        first_logprobs: Optional[torch.Tensor] = None
+        stop_reason = "length"
+        gen = ie_generate_stream(
+            self.eager_model,
+            torch.tensor([prompt_token_ids], device=self.eager_model.device),
+            max_tokens=n_new,
+            temperature=float(sampler.temperature),
+            top_k=int(sampler.top_k),
+            top_p=float(sampler.top_p),
+            presence_penalty=float(sampler.presence_penalty),
+            stop_at_eos=True,
+            n_logprobs=0,
+            seed=None,
+        )
+        try:
+            for i, st in enumerate(gen):
+                tid = int(st.token_id)
+                end = tid in stop_set
+                if i == 0:
+                    first_logprobs = F.log_softmax(st.logits.float().reshape(-1), dim=-1)
+                steps.append(self._written_step(st.logits, tid, resolved, answer, i, "written", end))
+                answer.append(tid)
+                answer_strs.append(st.token_str)
+                del st  # its logits are a view of the prefill's output
+                if end:
+                    stop_reason = "end_mark"
+                    break
+        finally:
+            gen.close()  # frees the loop's KV cache
+        if first_logprobs is None:
+            raise ValueError("The model wrote nothing.")
+
+        watch: Optional[Dict[str, Any]] = None
+        if watch_token_id is not None:
+            w = int(watch_token_id)
+            lp = first_logprobs[w]
+            watch = {
+                "token_id": w,
+                "token": self.tokenizer.decode([w], clean_up_tokenization_spaces=False),
+                "prob": float(lp.exp().item()),
+                "rank": int((first_logprobs > lp).sum().item()) + 1,
+            }
+        voice = {
+            "token_ids": answer,
+            "token_strs": answer_strs,
+            "text": "".join(answer_strs),
+            "stop_reason": stop_reason,
+            "n_prompt": len(prompt_token_ids),
+            "steps": [
+                {"index": s.index, "token": s.token, "token_id": s.token_id, "model_prob": s.model_prob,
+                 "model_rank": s.model_rank}
+                for s in steps
+            ],
+            "first_top": [{"token_id": i, "token": t, "prob": p} for i, t, p in steps[0].top],
+            "watch": watch,
+        }
+        return voice, first_logprobs
 
     def _centre_in_frame_space(self, centre_raw: torch.Tensor, basis_space: str) -> torch.Tensor:
         """`[60, 5376]` raw centre states, moved into the space the frame reads (raw, or h_l J_l^T)."""

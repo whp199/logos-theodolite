@@ -8,6 +8,7 @@ import {
   SIGHT_CAP,
   about,
   generationWords,
+  effectiveThink,
   paceOf,
   samplerPayload,
   useTheodoliteStore,
@@ -176,7 +177,8 @@ const SamplerFields: React.FC = () => {
 export const HowItWrites: React.FC<{ apparatus?: boolean }> = ({ apparatus = true }) => {
   const w = useTheodoliteStore((s) => s.writing);
   const setW = useTheodoliteStore((s) => s.setWriting);
-  const think = useTheodoliteStore((s) => s.compareThink);
+  // what will be sent: with bare text the thinking sighting is left out unless the old imitation is chosen
+  const think = useTheodoliteStore((s) => effectiveThink(s));
   const sampled = w.mode === "sampled";
   const pace = paceOf(w, think);
   // a repeat penalty applies with its likeliest word too (before the argmax): the field then stays in view, apparatus or

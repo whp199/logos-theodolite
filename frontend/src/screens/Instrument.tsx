@@ -23,6 +23,7 @@ import {
   readWhere,
   readsInsideAnswer,
   retakeIfLive,
+  thinkingOf,
   useShownSet,
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
@@ -174,6 +175,7 @@ const Question: React.FC = () => {
   const setAnswerBegins = useTheodoliteStore((s) => s.setAnswerBegins);
   const compareThink = useTheodoliteStore((s) => s.compareThink);
   const setCompareThink = useTheodoliteStore((s) => s.setCompareThink);
+  const thinkBare = useTheodoliteStore((s) => s.thinkBare);
   const chat = useTheodoliteStore((s) => s.chat);
   const setChat = useTheodoliteStore((s) => s.setChat);
   const system = useTheodoliteStore((s) => s.system);
@@ -286,10 +288,29 @@ const Question: React.FC = () => {
               Off: the words go in as bare text. In the study two of six bare prompts came back as one word repeated.
             </span>
           )}
+          {/* bare text has no turn to think in: offered only for a chat, unless the old imitation is chosen in the
+              question's apparatus (think_bare "prefix") */}
           <label className="check" style={{ color: "#6B5D4D" }}>
-            <input type="checkbox" checked={compareThink} onChange={(e) => setCompareThink(e.target.checked)} />
+            <input
+              type="checkbox"
+              checked={compareThink && (chat || thinkBare === "prefix")}
+              disabled={!chat && thinkBare !== "prefix"}
+              onChange={(e) => setCompareThink(e.target.checked)}
+            />
             also sight it with thinking turned on
           </label>
+          {!chat && thinkBare !== "prefix" ? (
+            <Rubric style={{ margin: "0 0 0 28px", fontSize: 15, maxWidth: 560 }}>
+              Only for a chat. Bare text has no turn for the model to think in: Gemma 4 turns thinking on with a mark at the head of a
+              system turn, and begins its answer without the empty thought it writes otherwise. Send it as a chat to sight it with
+              thinking.
+            </Rubric>
+          ) : !chat && compareThink ? (
+            <span style={{ fontSize: 15, color: "#6B5D4D", paddingLeft: 28, fontStyle: "italic" }}>
+              With bare text this sends the old imitation chosen in the question’s apparatus, <span className="mono">&lt;|think|&gt;</span>{" "}
+              before the text: not Gemma 4’s own switch.
+            </span>
+          ) : null}
           {compareThink && chat && answerBegins.trim() ? (
             <span style={{ fontSize: 15, color: "#6B5D4D", paddingLeft: 28, fontStyle: "italic" }}>
               With a begun answer the reply starts straight after the model’s header, before any thought, so this second sighting
@@ -356,6 +377,43 @@ const RecaptureWords: React.FC<{ s: Sighting }> = ({ s }) => {
   );
 };
 
+/** How the sighting with thinking turned on was switched on, as the server says it (think_protocol). */
+const ThinkProtocolWords: React.FC<{ protocol: "template" | "bare_prefix" | null | undefined }> = ({ protocol }) =>
+  protocol === "template" ? (
+    <span className="muted">
+      It was switched on by the chat template’s own switch (enable_thinking: <span className="mono">&lt;|think|&gt;</span> at the head of
+      the system turn, opened for it if there is none; the answer begun with no empty thought).
+    </span>
+  ) : protocol === "bare_prefix" ? (
+    <span className="red">
+      It was switched on by the old imitation: <span className="mono">&lt;|think|&gt;</span> set before bare text, not Gemma 4’s switch
+      (E6 §3, item 11), so a difference it shows may not be a difference in thinking.
+    </span>
+  ) : (
+    <span className="muted">How it was switched on was not said: an older server, which sent a chat by the template’s switch and bare text by the old imitation.</span>
+  );
+
+/** The expert's choice of the old imitation for bare text (think_bare "prefix"), kept in the apparatus with its reason. */
+const ThinkBareChoice: React.FC = () => {
+  const thinkBare = useTheodoliteStore((s) => s.thinkBare);
+  const setThinkBare = useTheodoliteStore((s) => s.setThinkBare);
+  return (
+    <span style={{ display: "block", marginTop: 6 }}>
+      <label className="check">
+        <input type="checkbox" checked={thinkBare === "prefix"} onChange={(e) => setThinkBare(e.target.checked ? "prefix" : "none")} />
+        <span>
+          send the old imitation with bare text (<span className="mono">&lt;|think|&gt;</span> before the text, as first built)
+        </span>
+      </label>
+      <span className="muted" style={{ display: "block", paddingLeft: 28 }}>
+        It is not Gemma 4’s switch, so a difference it shows may not be a difference in thinking. Left off, a bare question is sighted
+        without thinking, and the request says so (think_bare “none”); the server’s own default, for older callers, is still the
+        imitation (“prefix”).
+      </span>
+    </span>
+  );
+};
+
 const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
   const set = useShownSet();
   const s = sighting;
@@ -371,14 +429,12 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
   const sighted = set ? Object.keys(set.sightings).length : null;
   const capped = (wrote ?? g)?.capped === true;
   // the thinking comparison comes with the first pair only, so the set keeps it for its later word-pieces
-  const thinking =
-    set?.thinking ??
-    (s.thinkingContinuation != null
-      ? { continuation: s.thinkingContinuation, seed: s.thinkSeed, readAt: s.thinkReadAt, path: s.thinkingPath, stopReason: s.thinkStopReason }
-      : null);
+  const thinking = set?.thinking ?? thinkingOf(s);
   // asked for, but not written: "stop here" came before the thinking comparison began (the set keeps the flag, since
   // its thinking record stays empty)
   const thinkSkipped = set?.thinkSkipped ?? s.thinkSkipped;
+  // asked for, and left out by the server: bare text has no turn to think in (think_bare "none")
+  const thinkLeftOut = set?.thinkLeftOut ?? s.thinkLeftOut;
   const answeredFirst = s.chatWrapped && s.answerBegins.trim() !== "";
   return (
     <Apparatus title="the question" style={{ padding: "12px 0 22px" }}>
@@ -501,15 +557,22 @@ const QuestionApparatus: React.FC<{ sighting: Sighting }> = ({ sighting }) => {
                   {" "}
                   The begun answer came straight after the model’s header, so the model answered before any thought.
                 </span>
-              ) : null}
+              ) : null}{" "}
+              <ThinkProtocolWords protocol={thinking.protocol} />
             </>
           ) : thinkSkipped ? (
             <span className="muted">
               asked for, but not written: “stop here” was asked before the sighting with thinking turned on began, so it was left out
             </span>
+          ) : thinkLeftOut === "bare_text" ? (
+            <span className="muted">
+              left out: bare text has no turn to think in, so the server wrote no sighting with thinking turned on (think_left_out
+              “bare_text”)
+            </span>
           ) : (
             <span className="muted">not sighted with thinking turned on</span>
           )}
+          <ThinkBareChoice />
         </dd>
         <dt>matched control</dt>
         <dd style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "4px 14px" }}>

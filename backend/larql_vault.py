@@ -12,7 +12,7 @@ Supported LQL & .patch Operations:
 - `DESCRIBE POLE LAYER <l> SLOT <i> [POLARITY +|-]`
 - Declarative `.patch` weight overlays (live GPU mutation + instant rollback). Named after, but NOT an
   implementation of, MEMIT (Meng et al. 2023): each edit is a single-neuron rank-1 down_proj column overlay with no
-  covariance solve:
+  covariance solve (INSERT too: it only chooses the neuron by its gate; E6 §3, item 12):
   - `UPDATE LAYER <l> SLOT <i> SET object = '<concept>' [STRENGTH <alpha>] [POLARITY +|-]`
   - `INSERT INTO LAYER <l> (subject, object) VALUES ('<subj>', '<obj>') [STRENGTH <alpha>]`
   - `DELETE FROM LAYER <l> WHERE slot = <i>`
@@ -25,6 +25,13 @@ read neuron labels also mark each one: every NEAREST row and each DESCRIBE POLE 
 (`backend.label_gate.label_check`: the word-pieces its two readings share in their first ten, and whether the pages
 hold it back), and the reply carries "label_gate" (`LABEL_GATE_CARD`, the rule) just before "lens". The reply is
 otherwise unchanged: every old key is kept. DESCRIBE, DELETE and ROLLBACK touch no lens and reply as they always have.
+
+An edit (DELETE, UPDATE, INSERT) can be heard: given a `voice` (a question, how it is sent, and how long an answer),
+`execute_lql` has the model write its answer the likeliest way just before the edit and again just after, with nothing
+between (`TheodoliteRuntime.write_voice`; the caller holds the GPU lock around all three). The reply then carries
+"voice" after "patch" and before "lens", and the edit's record keeps it. Without a voice, and for every other
+statement, the reply is exactly as before. Each record also says what kind of edit it is (`edit_kind`) and which
+earlier edit of the same neuron, if any, it replaces (`replaces_patch`).
 """
 
 from __future__ import annotations
@@ -35,7 +42,7 @@ import subprocess
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple
 
 import torch
 import torch.nn.functional as F
@@ -51,10 +58,76 @@ from backend.theodolite_math import (
     unembed_gemma4,
 )
 
+# What an edit is, for DESCRIBE (and the pages): E6 §3, item 12; REPORT §3.3
+EDIT_METHOD = "one down_proj column per edit, rank one, no covariance solve: named after MEMIT, not MEMIT"
+# A voice's answer: how long it may run (VoiceRequest in backend/server.py takes the same bounds), and its default.
+# V7 judged steering by 12-word-piece greedy answers (V7_tool_bugs_NOTES.md), hence 12.
+VOICE_MAX_NEW_TOKENS_DEFAULT = 12
+VOICE_MAX_NEW_TOKENS_LIMIT = 64
+
+
+def voice_spec(voice: Any) -> Dict[str, Any]:
+    """`voice` (a mapping, or the server's `VoiceRequest`) as `execute_lql` hears an edit by: the question (`prompt`),
+    whether it is sent as a chat (`chat`, default True), its `system` prompt and begun answer (`assistant_prefix`), as
+    `TheodoliteRuntime.compose_prompt` takes them, and how many word-pieces the answer may run to (`max_new_tokens`,
+    1-64, default 12). Refused in plain words, before anything is written or edited."""
+    if hasattr(voice, "model_dump"):
+        voice = voice.model_dump()
+    if not isinstance(voice, Mapping):
+        raise ValueError("The voice must give at least a question to ask (its prompt); no edit was made.")
+    prompt = voice.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        raise ValueError("The voice has no question to ask before and after the edit (its prompt); no edit was made.")
+    system = voice.get("system")
+    prefix = voice.get("assistant_prefix") or ""
+    if (system is not None and not isinstance(system, str)) or not isinstance(prefix, str):
+        raise ValueError("The voice's system prompt and begun answer must be text; no edit was made.")
+    n_new = voice.get("max_new_tokens", VOICE_MAX_NEW_TOKENS_DEFAULT)
+    if isinstance(n_new, bool) or not isinstance(n_new, int) or not 1 <= n_new <= VOICE_MAX_NEW_TOKENS_LIMIT:
+        raise ValueError(
+            f"The voice's answer may run to 1-{VOICE_MAX_NEW_TOKENS_LIMIT} word-pieces, not {n_new!r}; no edit was "
+            "made."
+        )
+    return {
+        "prompt": prompt,
+        "chat": bool(voice.get("chat", True)),
+        "system": system or None,
+        "assistant_prefix": prefix,
+        "max_new_tokens": int(n_new),
+    }
+
+
+def _plain(exc: BaseException) -> str:
+    """A failure while a voice is written, as words to put inside a sentence."""
+    if isinstance(exc, torch.cuda.OutOfMemoryError):
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return "the GPU ran out of memory"
+    words = str(exc) if isinstance(exc, ValueError) else f"{type(exc).__name__}: {exc}"
+    return words.rstrip(". ") or type(exc).__name__
+
+
+def parted_at(before: List[int], after: List[int]) -> Optional[int]:
+    """The first word-piece index at which two answers differ (one ending sooner counts), or None if they are the
+    same."""
+    for i, (a, b) in enumerate(zip(before, after)):
+        if a != b:
+            return i
+    return None if len(before) == len(after) else min(len(before), len(after))
+
+
+def kl_nats(logp_before: torch.Tensor, logp_after: torch.Tensor) -> float:
+    """KL(before || after) = sum p_b (log p_b - log p_a), in nats, from two [vocab] log-softmaxes (float64 sum; a
+    rounding below zero is read as zero)."""
+    lb, la = logp_before.double(), logp_after.double()
+    return max(float((lb.exp() * (lb - la)).sum().item()), 0.0)
+
 
 @dataclass
 class PatchOperationRecord:
-    """Audit record of an active declarative `.patch` MEMIT weight surgery overlay."""
+    """Audit record of an active declarative `.patch` edit: one neuron's down_proj column overlay (named after MEMIT
+    in the code; not MEMIT). `voice` is its answer before and after when it was heard (`execute_lql`'s voice), else
+    None; `replaces_patch` the earlier edit of the same (layer, neuron) whose overlay it replaced, else None."""
 
     patch_id: int
     op_type: str  # "INSERT" | "UPDATE" | "DELETE"
@@ -67,6 +140,9 @@ class PatchOperationRecord:
     timestamp: float
     orig_norm: float
     new_norm: float
+    voice: Optional[Dict[str, Any]] = None
+    edit_kind: str = "one_neuron_column"
+    replaces_patch: Optional[int] = None
 
 
 class LarqlVaultEngine:
@@ -128,6 +204,7 @@ class LarqlVaultEngine:
             "cli_binaries": cli_info,
             "active_patches_count": len(self.active_patches),
             "active_patches": [asdict(p) for p in self.active_patches],
+            "edit_method": EDIT_METHOD,
         }
 
     @torch.no_grad()
@@ -336,8 +413,10 @@ class LarqlVaultEngine:
         polarity: float = 1.0,
         statement: str = "",
     ) -> Dict[str, Any]:
-        """Apply a live declarative `.patch` MEMIT weight surgery overlay (`INSERT`, `UPDATE`, `DELETE`)
-        onto layer `layer_idx`'s FFN `down_proj` (and `gate_proj` for `INSERT`).
+        """Apply a live declarative `.patch` edit (`INSERT`, `UPDATE`, `DELETE`): one column of layer `layer_idx`'s FFN
+        `down_proj`, overlaid (rank one, no covariance solve: named after MEMIT, not MEMIT). `INSERT` reads `gate_proj`
+        only to choose the neuron; it edits only the `down_proj` column, as the others do (E6 §3, item 12). A later
+        edit of the same neuron replaces its overlay, and its record names the one it replaced (`replaces_patch`).
         """
         op = op_type.upper().strip()
         layer_idx = max(0, min(int(layer_idx), N_LAYERS - 1))
@@ -387,6 +466,12 @@ class LarqlVaultEngine:
         else:
             raise ValueError(f"Unsupported .patch operation: {op_type!r}")
 
+        # the edit in force on this neuron until now, whose overlay this one has just replaced (the dict is keyed by
+        # neuron)
+        replaced = next(
+            (p.patch_id for p in self.edits_in_force() if (p.layer_idx, p.neuron_idx) == (layer_idx, neuron_idx)),
+            None,
+        )
         self._patch_counter += 1
         rec = PatchOperationRecord(
             patch_id=self._patch_counter,
@@ -400,6 +485,7 @@ class LarqlVaultEngine:
             timestamp=time.time(),
             orig_norm=round(orig_norm, 5),
             new_norm=round(new_norm, 5),
+            replaces_patch=replaced,
         )
         self.active_patches.append(rec)
         return {
@@ -409,7 +495,7 @@ class LarqlVaultEngine:
         }
 
     def rollback_patches(self) -> Dict[str, Any]:
-        """Clear all active `.patch` MEMIT overlays across all 60 layers."""
+        """Clear all active `.patch` overlays (the one-neuron column edits) across all 60 layers, and their records."""
         cleared = len(self.active_patches)
         for l in range(N_LAYERS):
             mlp = self.runtime.get_mlp_module(l)
@@ -421,14 +507,81 @@ class LarqlVaultEngine:
         self.active_patches.clear()
         return {"status": "rolled_back", "cleared_patches": cleared, "active_patches_count": 0}
 
+    def _heard(
+        self, voice: Optional[Any], watch_word: Optional[str], do_edit: Callable[[], Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """`do_edit()`, heard: with no `voice`, just the edit's reply. With one (`voice_spec`), the model writes its
+        answer to the voice's question the likeliest way, then the edit is made, then it writes the answer again,
+        with nothing between (the caller holds the GPU lock around all three, as the server's routes do). If the
+        answer before cannot be written, nothing is edited (ValueError, in plain words). If the answer after cannot
+        be written, the edit stays in force, with "after" None and "error" saying why. `watch_word` (the edit's target
+        word, None for DELETE) is followed at the first word-piece. The voice is kept on the edit's record, and the
+        reply gains it under "voice", after "patch" (serialised again, so it carries the voice too)."""
+        if voice is None:
+            return do_edit()
+        spec = voice_spec(voice)
+        rt = self.runtime
+        t0 = time.perf_counter()
+        # the edits in force as it is heard (the latest per neuron): "before" includes them all
+        in_force_before = [p.patch_id for p in self.edits_in_force()]
+        try:
+            text = rt.compose_prompt(
+                spec["prompt"], chat=spec["chat"], system=spec["system"], assistant_prefix=spec["assistant_prefix"]
+            )
+            watch_id = rt.resolve_concept_token_id(watch_word)[0] if watch_word else None
+            write = lambda: rt.write_voice(  # noqa: E731
+                text, max_new_tokens=spec["max_new_tokens"], stop_token_ids=rt.end_of_turn_ids(),
+                watch_token_id=watch_id,
+            )
+            before, logp_before = write()
+        except Exception as exc:
+            why = _plain(exc)
+            raise ValueError(f"The voice before the edit could not be written: {why}; no edit was made.") from exc
+
+        reply = do_edit()
+
+        after: Optional[Dict[str, Any]] = None
+        first_step: Optional[Dict[str, Any]] = None
+        error: Optional[str] = None
+        try:
+            after, logp_after = write()
+        except Exception as exc:
+            error = f"The voice after the edit could not be written: {_plain(exc)}; the edit is in force."
+        else:
+            first_step = {
+                "kl_before_after": round(kl_nats(logp_before, logp_after), 6),
+                "top_before": before["first_top"],
+                "top_after": after["first_top"],
+                "watch_before": before["watch"],
+                "watch_after": after["watch"],
+            }
+            del logp_after
+        del logp_before
+        heard = {
+            **spec,
+            "edits_in_force_before": in_force_before,
+            "before": before,
+            "after": after,
+            "first_step": first_step,
+            "parted_at": parted_at(before["token_ids"], after["token_ids"]) if after is not None else None,
+            "elapsed_ms": round((time.perf_counter() - t0) * 1000.0, 1),
+            "error": error,
+        }
+        pid = reply["patch"]["patch_id"]
+        rec = next(p for p in self.active_patches if p.patch_id == pid)
+        rec.voice = heard
+        return {**reply, "patch": asdict(rec), "voice": heard}
+
     def _through_lens(self, reply: Dict[str, Any]) -> Dict[str, Any]:
         """`reply` with the lens its words were read, or its edit written, through named last, under "lens"."""
         return {**reply, "lens": self.runtime.lens_card()}
 
-    def execute_lql(self, query: str) -> Dict[str, Any]:
+    def execute_lql(self, query: str, voice: Optional[Any] = None) -> Dict[str, Any]:
         """Parse and execute a LARQL / `.patch` statement string. NEAREST, DESCRIBE POLE, UPDATE and INSERT go through
         the J++ lens, so their replies also carry "lens" (see the module docstring); NEAREST and DESCRIBE POLE, which
-        read neuron labels, carry "label_gate" just before it; the rest reply as before."""
+        read neuron labels, carry "label_gate" just before it; the rest reply as before. With a `voice`, an edit
+        (DELETE, UPDATE, INSERT) is heard before and after (`_heard`; the caller holds the GPU lock), and its reply
+        carries "voice" before "lens"; every other statement ignores it."""
         q = query.strip().rstrip(";")
         q_upper = q.upper()
 
@@ -481,11 +634,15 @@ class LarqlVaultEngine:
         )
         if m_del:
             l_s, i_s = m_del.groups()
-            return self.apply_patch_surgery(
-                op_type="DELETE",
-                layer_idx=int(l_s),
-                neuron_idx=int(i_s),
-                statement=q,
+            return self._heard(
+                voice,
+                None,
+                lambda: self.apply_patch_surgery(
+                    op_type="DELETE",
+                    layer_idx=int(l_s),
+                    neuron_idx=int(i_s),
+                    statement=q,
+                ),
             )
 
         # UPDATE LAYER <l> SLOT <i> SET object = '<concept>' [STRENGTH <alpha>] [POLARITY +|-]
@@ -499,14 +656,18 @@ class LarqlVaultEngine:
         if m_upd:
             l_s, i_s, obj_c, str_s, pol_s = m_upd.groups()
             return self._through_lens(
-                self.apply_patch_surgery(
-                    op_type="UPDATE",
-                    layer_idx=int(l_s),
-                    neuron_idx=int(i_s),
-                    target_concept=obj_c,
-                    strength=float(str_s) if str_s else 2.5,
-                    polarity=-1.0 if pol_s == "-" else 1.0,
-                    statement=q,
+                self._heard(
+                    voice,
+                    obj_c,
+                    lambda: self.apply_patch_surgery(
+                        op_type="UPDATE",
+                        layer_idx=int(l_s),
+                        neuron_idx=int(i_s),
+                        target_concept=obj_c,
+                        strength=float(str_s) if str_s else 2.5,
+                        polarity=-1.0 if pol_s == "-" else 1.0,
+                        statement=q,
+                    ),
                 )
             )
 
@@ -520,14 +681,18 @@ class LarqlVaultEngine:
         if m_ins:
             l_s, subj_c, obj_c, str_s = m_ins.groups()
             return self._through_lens(
-                self.apply_patch_surgery(
-                    op_type="INSERT",
-                    layer_idx=int(l_s),
-                    neuron_idx=None,
-                    subject_concept=subj_c,
-                    target_concept=obj_c,
-                    strength=float(str_s) if str_s else 2.5,
-                    statement=q,
+                self._heard(
+                    voice,
+                    obj_c,
+                    lambda: self.apply_patch_surgery(
+                        op_type="INSERT",
+                        layer_idx=int(l_s),
+                        neuron_idx=None,
+                        subject_concept=subj_c,
+                        target_concept=obj_c,
+                        strength=float(str_s) if str_s else 2.5,
+                        statement=q,
+                    ),
                 )
             )
 

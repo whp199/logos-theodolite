@@ -6,8 +6,9 @@ scripted word-pieces (calling the stream's `on_written` as the real one does, wi
 returns small but complete sweep bundles, which the real `pack_binary_and_json_frames` packs. The app's lifespan
 (which loads the model) is replaced and the GPU hidden, so nothing heavy can load. It checks:
 1. which token indices are sighted (`sight_order`), and the request's limits, id checks and reading options (pole
-   ranking, thread score, frame squaring), in plain words; and the server's own defaults for those options, kept as
-   first built for old callers (Gram–Schmidt on raw rows, one frame, no centring, |a|, C);
+   ranking, thread score, frame squaring, thinking on bare text), in plain words; and the server's own defaults for
+   those options, kept as first built for old callers (Gram–Schmidt on raw rows, one frame, no centring, |a|, C, the
+   old "<|think|>" before bare text);
 2. a request without request_id: exactly one binary + one JSON pair, today's keys plus the additive ones, nothing
    else (the next reply on the socket is the next action's); every poles_labels entry keeps its old keys and gains
    label_check (the bundle's check where words were read, null elsewhere), and the frame carries label_gate just
@@ -22,9 +23,13 @@ returns small but complete sweep bundles, which the real `pack_binary_and_json_f
    without one (its old keys, and the additive "contexts", null outside the causal check), a failure while the frame is built (the answer already sent), a failure mid-stream (error with
    n_sent and token_index, then sweep_end) after which the socket still answers;
 6. the thinking comparison's path only on the first pair (flags bit 0, think_seed, think_read_token,
-   think_stop_reason, think_skipped); a stop asked while the answer is written or its first position read skips it
-   (think_skipped, cancelled), one asked while it is written cuts it short (think_stop_reason "stopped", cancelled
-   also with one sighting); and other actions answered in the order they came.
+   think_stop_reason, think_skipped, think_protocol); how it was switched on, read from think_protocol and the prompt
+   actually written (the stand-in marks both thinking prompts alike): a chat by the template's switch ("template"),
+   bare text by the old imitation by default ("bare_prefix"), and with think_bare "none" bare text has no comparison
+   at all (no path, nothing written, think_left_out "bare_text"); a stop asked while the answer is written or its
+   first position read skips it (think_skipped, cancelled), one asked while it is written cuts it short
+   (think_stop_reason "stopped", cancelled also with one sighting); and other actions answered in the order they
+   came.
 
 Run: .venv/bin/python -I scripts/check_sweep_protocol.py   (exits 0 when every check holds)
 """
@@ -171,14 +176,19 @@ def check_rules() -> None:
            '"activation" or "write"', "an unknown pole ranking")
     option({"thread_score": "Direct"}, 'must be "coupling" or "direct"', "a thread score in the wrong case")
     option({"frame_squaring": "qr"}, 'must be "gram_schmidt" or "lowdin"', "an unknown frame squaring")
-    for ok in ({}, {"pole_ranking": "write", "thread_score": "direct", "frame_squaring": "lowdin"}):
+    option({"think_bare": "template"}, 'think_bare is "template", which this instrument does not know: it must be '
+           '"prefix" or "none"', "an unknown way with thinking on bare text")
+    refused({"think_bare": "x" * 65}, "a 65-character think_bare")
+    for ok in ({}, {"pole_ranking": "write", "thread_score": "direct", "frame_squaring": "lowdin"},
+               {"think_bare": "none"}, {"think_bare": "prefix"}):
         server.check_sweep_options(server.SweepRequest(**ok))
         check(True, f"known reading options {ok}")
     # the server keeps the instrument as first built for old callers; the interface sends the mends as options
     # (scripts/check_interface_defaults.py checks what it sends)
     r = server.SweepRequest(prompt="x")
     as_built = {"frame_squaring": "gram_schmidt", "frame_per_layer": False, "frame_fnw": False, "centre_prompts": [],
-                "centre_token_ids": [], "centre_answer": False, "pole_ranking": "activation", "thread_score": "coupling"}
+                "centre_token_ids": [], "centre_answer": False, "pole_ranking": "activation", "thread_score": "coupling",
+                "compare_think": False, "think_bare": "prefix"}
     for key, want in as_built.items():
         check(getattr(r, key) == want, f"the server's default {key} is {getattr(r, key)!r}, not {want!r} as first built")
     tr = server.TraceReadersRequest(token_ids=[2, 5, 7])
@@ -460,7 +470,7 @@ NEW_KEYS = {
     "request_id", "token_index", "sight_index", "n_to_sight", "last", "read_pos", "sliding_window", "read_token",
     "read_token_id", "prompt_len", "chosen", "answer", "generation", "recapture_check", "kinship_n_states",
     "rank_lookahead", "sight_dropped", "timing", "think_seed", "think_read_token", "think_stop_reason", "think_skipped",
-    "label_gate",
+    "label_gate", "think_protocol", "think_left_out",
 }
 
 
@@ -508,6 +518,8 @@ def check_socket() -> None:
         check(gen["greedy"] is True and gen["seed"] is None and gen["max_new_tokens"] == 6 and gen["capped"] is False
               and gen["stop_at_end_of_turn"] is True, f"generation {gen}")
         check(set(meta["timing"]) == {"generate_ms", "capture_ms", "analyse_ms", "total_ms"}, "timing keys")
+        check(meta["think_protocol"] is None and meta["think_left_out"] is None,
+              f"legacy, no thinking asked: think_protocol {meta['think_protocol']!r}, left out {meta['think_left_out']!r}")
         keys = list(meta)
         check(meta["label_gate"] == LABEL_GATE_CARD and keys.index("label_gate") + 1 == keys.index("lens"),
               "label_gate: the gate's card, just before lens")
@@ -669,7 +681,8 @@ def check_socket() -> None:
               and set(err) == {"type", "message", "action", "recoverable", "layer", "neuron_idx", "contexts"}
               and err["contexts"] is None,
               f"the legacy refusal: {err}")
-        for opt, val in (("pole_ranking", "loudest"), ("thread_score", "Direct"), ("frame_squaring", "qr")):
+        for opt, val in (("pole_ranking", "loudest"), ("thread_score", "Direct"), ("frame_squaring", "qr"),
+                         ("think_bare", "off")):
             n_writes = len(rt.writes)
             s.sweep({"request_id": f"r7-{opt}", "prompt": "hi", "max_new_tokens": 5, "sight_every_token": True, opt: val})
             frames = s.until_end(f"r7-{opt}")
@@ -722,6 +735,47 @@ def check_socket() -> None:
               "no think stop reason on later pairs")
         check(rt.writes[-1].startswith("<|think|>"), "the thinking prompt was written")
         check(frames[-1][1]["cancelled"] is False, "a thinking comparison left alone is not cancelled")
+        # bare text, think_bare left at its default: the old imitation, named as such (the stand-in's prompt is "hi")
+        check(m0["think_protocol"] == "bare_prefix" and m0["think_left_out"] is None,
+              f"bare text by default: think_protocol {m0['think_protocol']!r}, left out {m0['think_left_out']!r}")
+        check(rt.writes[-1] == "<|think|>\nhi", f"the imitation sets <|think|> before the bare text: {rt.writes[-1]!r}")
+        check(all(m["think_protocol"] is None and m["think_left_out"] is None for _b, m in pairs[1:]),
+              "no think_protocol on later pairs")
+
+        # a chat: the template's own switch (compose_prompt with thinking=True), whatever think_bare says
+        for tb in ("prefix", "none"):
+            s.sweep({"request_id": f"r9-chat-{tb}", "prompt": "hi", "chat": True, "system": "S", "max_new_tokens": 2,
+                     "sight_every_token": True, "compare_think": True, "think_bare": tb})
+            frames = s.until_end(f"r9-chat-{tb}")
+            pairs = pairs_of(frames, f"r9-chat-{tb}")
+            m0 = pairs[0][1] if pairs else {}
+            want = rt.compose_prompt("hi", chat=True, system="S", thinking=True)
+            check(m0.get("think_protocol") == "template" and m0.get("think_left_out") is None
+                  and header(pairs[0][0])[5] & 1 and rt.writes[-1] == want,
+                  f"a chat, think_bare {tb!r}: {m0.get('think_protocol')!r}, written {rt.writes[-1]!r}")
+
+        # bare text with think_bare "none": no thinking comparison is written, and the first pair says why
+        n_writes = len(rt.writes)
+        s.sweep({"request_id": "r9-none", "prompt": "hi", "max_new_tokens": 3, "sight_every_token": True,
+                 "compare_think": True, "think_bare": "none"})
+        frames = s.until_end("r9-none")
+        pairs = pairs_of(frames, "r9-none")
+        m0 = pairs[0][1] if pairs else {}
+        check(len(pairs) == 3 and not any(header(b)[5] & 1 for b, _m in pairs)
+              and (len(pairs[0][0]) - 24) // 4 == (len(pairs[1][0]) - 24) // 4,
+              "think_bare none: no thinking path in any binary frame")
+        check(m0.get("think_left_out") == "bare_text" and m0.get("think_protocol") is None
+              and m0.get("think_generated_text") is None and m0.get("think_seed") is None
+              and m0.get("think_skipped") is False and m0.get("think_stop_reason") is None,
+              f"think_bare none: left out, said so: {m0.get('think_left_out')!r} {m0.get('think_protocol')!r}")
+        check(all(m["think_left_out"] is None for _b, m in pairs[1:]), "think_left_out on the first pair only")
+        check(rt.writes[n_writes:] == ["hi"], f"think_bare none: only the answer written: {rt.writes[n_writes:]}")
+        check(frames[-1][1]["cancelled"] is False and frames[-1][1]["n_sent"] == 3, f"its end: {frames[-1][1]}")
+        # think_bare "none" without compare_think: nothing asked, nothing left out
+        s.sweep({"request_id": "r9-none-off", "prompt": "hi", "max_new_tokens": 1, "think_bare": "none"})
+        m0 = (pairs_of(s.until_end("r9-none-off"), "r9-none-off") or [(b"", {})])[0][1]
+        check(m0.get("think_left_out") is None and m0.get("think_protocol") is None,
+              f"no comparison asked: {m0.get('think_left_out')!r}")
 
         # a stop while the answer is written: the comparison is skipped, and the one pair says so
         rt.write_s = 0.02

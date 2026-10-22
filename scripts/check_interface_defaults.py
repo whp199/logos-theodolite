@@ -19,7 +19,11 @@ itself, not a copy of it. It checks:
    and that the server's own default stays as first built;
 5. the text pages give for E3 and the order: E3's seven sampled layers give 10–41% at layers 21–59 and 70–74% at
    layers 3 and 11, and no page names the five later layers alone as those sampled; no page says a Löwdin bearing does
-   not change with the order, and the first page's caution does not give the 58–99° swing as the default frame's.
+   not change with the order, and the first page's caution does not give the 58–99° swing as the default frame's;
+6. thinking on bare text (E6 §3, item 11): the interface sends think_bare "none" (the server keeps "prefix", the old
+   imitation, for old callers), and compare_think as asked, so with bare text the server leaves thinking out and says
+   so; the old imitation goes only when chosen; effectiveThink, which the pace and wording follow, is true for a chat
+   or for bare text with the imitation chosen, and only when asked.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -98,6 +102,19 @@ out.asBuiltNeuron = send(NEURON);
 st().setReadingPreset("mended");
 out.mendedWords = send();
 out.mendedNeuron = send(NEURON);
+out.think = {
+  initialThinkBare: st().thinkBare,
+  chat: send({ compareThink: true }),
+  bare: send({ compareThink: true, chat: false }),
+  barePrefix: send({ compareThink: true, chat: false, thinkBare: "prefix" }),
+  effective: [
+    T.effectiveThink({ compareThink: true, chat: true }),
+    T.effectiveThink({ compareThink: true, chat: false }),
+    T.effectiveThink({ compareThink: true, chat: false, thinkBare: "prefix" }),
+    T.effectiveThink({ compareThink: false, chat: true }),
+    T.effectiveThink({ compareThink: false, chat: false, thinkBare: "prefix" }),
+  ],
+};
 st().setFrame({ centre: true });
 st().setReadingPreset("as_built");
 out.centreKeptAsBuilt = st().frame.centre;
@@ -188,6 +205,22 @@ def check_requests(out: Dict[str, Any], server: Dict[str, Any]) -> None:
           "a preset dropped the centring the reader chose")
 
 
+def check_think(out: Dict[str, Any]) -> None:
+    print("6. thinking on bare text")
+    import backend.server as server
+
+    t, words = out["think"], out["words"]
+    check(t["initialThinkBare"] == "none", f"the initial thinkBare is {t['initialThinkBare']!r}, not 'none'")
+    check(words.get("think_bare") == "none" and words.get("compare_think") is False,
+          f"words: think_bare {words.get('think_bare')!r}, compare_think {words.get('compare_think')!r}")
+    check(server.SweepRequest(prompt="x").think_bare == "prefix", "the server's own default is no longer the imitation")
+    check(t["chat"].get("compare_think") is True and t["chat"].get("chat") is True, f"a chat: {t['chat'].get('chat')}")
+    check(t["bare"].get("compare_think") is True and t["bare"].get("think_bare") == "none"
+          and t["bare"].get("chat") is False, "bare text: compare_think sent as asked, with think_bare 'none'")
+    check(t["barePrefix"].get("think_bare") == "prefix", "bare text, the imitation chosen: think_bare 'prefix'")
+    check(t["effective"] == [True, False, True, False, False], f"effectiveThink {t['effective']}")
+
+
 def check_text() -> None:
     print("4. the text the checks and pages lean on")
     store = (STORE_DIR / "useTheodoliteStore.ts").read_text(encoding="utf-8")
@@ -276,6 +309,8 @@ def main() -> int:
         check_requests(out, server_defaults())
     check_text()
     check_e3_and_order_text()
+    if out is not None:
+        check_think(out)
     if failures:
         print(f"\ninterface defaults: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

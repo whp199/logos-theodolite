@@ -607,20 +607,23 @@ export const Cautions: React.FC = () => (
       <Caution
         id="think"
         n={9}
-        title="“Thinking turned on” is an imitation"
-        status="mended for chats"
+        title="“Thinking turned on” was an imitation"
+        status="mended; bare text left out"
         tone="mended"
         found={
           <>
-            To sight with thinking turned on, the instrument sets the marker{" "}
+            As first built, to sight with thinking turned on, the instrument set the marker{" "}
             <code style={{ fontFamily: "var(--mono)", fontSize: 15 }}>{"<|think|>"}</code> in front of your bare text.
-            That is not how Gemma 4’s thinking is actually switched on.
+            That is not how Gemma 4’s thinking is switched on: its chat template sets the marker at the head of a system
+            turn, and begins the model’s answer without the empty thought it writes otherwise. Bare text has no turn to
+            think in.
           </>
         }
         means={
           <>
-            Treat the thinking sighting as a rough imitation; a difference it shows may not be a difference in real
-            thinking.
+            Sent as a chat, the sighting with thinking turned on now uses the model’s own switch. Sent as bare text, it is
+            no longer offered. A thinking sighting taken the old way (marked so in its question’s apparatus) is a rough
+            imitation: a difference it shows may not be a difference in real thinking.
           </>
         }
         from="From the E6 tool-audit report, item 11."
@@ -628,15 +631,20 @@ export const Cautions: React.FC = () => (
           [
             "where (as audited)",
             <>
-              <M>backend/server.py:464</M> prepends <M>{"<|think|>\\n"}</M> to the raw prompt (E6 §3, item 11)
+              <M>backend/server.py:464</M> then; <M>backend/server.py:897</M> now, which still prepends{" "}
+              <M>{"<|think|>\\n"}</M> to bare text for callers that do not ask otherwise (E6 §3, item 11)
             </>,
           ],
           ["proposed fix", <Missing what="none recorded in the study" />],
           [
             "fix, applied",
             <>
-              sent as a chat, the thinking sighting uses the template’s own switch (<M>enable_thinking=True</M>); sent as
-              bare text, it is still the imitation.
+              Sent as a chat, the thinking sighting uses the template’s own switch (<M>enable_thinking=True</M>:{" "}
+              <M>{"<|think|>"}</M> at the head of a system turn, which the template opens when there is none, and the
+              model’s turn begun with no empty thought). Sent as bare text, the instrument no longer offers it, since bare
+              text has no turn to think in; the old imitation stays in the question’s apparatus, marked. The server keeps
+              the imitation for callers that do not ask otherwise (<M>think_bare "prefix"</M>), and every reply names
+              which was used (<M>think_protocol</M>).
             </>,
           ],
         ]}

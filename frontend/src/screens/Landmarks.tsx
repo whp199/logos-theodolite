@@ -422,6 +422,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const question = useTheodoliteStore((s) => s.question);
   const answerBegins = useTheodoliteStore((s) => s.answerBegins);
   const compareThink = useTheodoliteStore((s) => s.compareThink);
+  const thinkBare = useTheodoliteStore((s) => s.thinkBare);
   const writing = useTheodoliteStore((s) => s.writing);
   const steering = useTheodoliteStore((s) => s.steering);
   const chat = useTheodoliteStore((s) => s.chat);
@@ -446,6 +447,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
     surveyMode,
     lockedPole,
     compareThink,
+    thinkBare,
     writing,
     frame: frameOpts,
     neuronSquaring,

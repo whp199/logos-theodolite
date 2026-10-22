@@ -238,6 +238,8 @@ export interface AnswerPiece {
 }
 
 export type CentreKind = "none" | "control_prompt_end" | "control_reading_same_answer";
+/** How a sighting with thinking turned on was switched on (the server's think_protocol). */
+export type ThinkProtocol = "template" | "bare_prefix";
 
 export interface Sighting {
   /** a number unique to this sighting in this page's life, so results asked of it can be told from older ones */
@@ -306,6 +308,14 @@ export interface Sighting {
   /** the thinking comparison was asked for but not written, because "stop here" was asked before it began (the
    * server's think_skipped, first pair only); false otherwise, and for an older server */
   thinkSkipped: boolean;
+  /** how the thinking answer was switched on (the server's think_protocol, first pair only): "template" (a chat: the
+   * template's own switch, <|think|> at the head of a system turn, the model's turn begun with no empty thought) or
+   * "bare_prefix" (<|think|> set before bare text: the old imitation, not Gemma 4's switch); null when none was
+   * written; undefined when the server did not say (an older server, which always used one of the two) */
+  thinkProtocol: ThinkProtocol | null | undefined;
+  /** "bare_text" when thinking was asked for and left out, since bare text has no turn to think in (the server's
+   * think_left_out, first pair only, with think_bare "none"); null otherwise, and for an older server */
+  thinkLeftOut: "bare_text" | null;
   landmarks: [string, string, string];
   surveyMode: string;
   elapsedMs: number | null;
@@ -636,6 +646,12 @@ export function sightingFromLive(
     thinkReadAt: typeof meta.think_read_token === "string" ? meta.think_read_token : null,
     thinkStopReason: typeof meta.think_stop_reason === "string" && meta.think_stop_reason ? meta.think_stop_reason : null,
     thinkSkipped: meta.think_skipped === true,
+    thinkProtocol: !("think_protocol" in meta)
+      ? undefined
+      : meta.think_protocol === "template" || meta.think_protocol === "bare_prefix"
+        ? meta.think_protocol
+        : null,
+    thinkLeftOut: meta.think_left_out === "bare_text" ? "bare_text" : null,
     landmarks: (Array.isArray(meta.survey_labels) && meta.survey_labels.length === 3
       ? meta.survey_labels
       : ["", "", ""]) as [string, string, string],
@@ -969,6 +985,9 @@ export function sightingFromFixture(f: FixtureFile): Sighting {
     thinkReadAt: null,
     thinkStopReason: null,
     thinkSkipped: false,
+    // the recording has no sighting with thinking turned on
+    thinkProtocol: null,
+    thinkLeftOut: null,
     landmarks: f.landmarks,
     surveyMode: "monument",
     elapsedMs: f.elapsedMs,

@@ -6,7 +6,10 @@ Exposes four core mechanistic interpretability tools via FastMCP:
 3. `test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts)`
 4. `causal_spot_check(layer, neuron_idx, contexts, token_ids | prompt, k, write)`: the label tested causally (the
    study's N1A protocol at k = 10, `backend/causal_check.py`)
-Plus `query_larql_vault(lql_query)` for declarative VINDEX3 & `.patch` weight surgery.
+Plus `query_larql_vault(lql_query)` for declarative VINDEX3 queries and `.patch` edits (each one neuron's down_proj
+column, rank one, with no covariance solve: named after MEMIT in the code, not MEMIT). It takes no voice: the server's
+routes can hear an edit before and after (`LarqlRequest.voice`) because they hold the GPU lock around it, and this tool
+does not take that lock.
 
 The first three scientist tools decode words through the J++ lens, and each reply names it under "lens"
 (`TheodoliteRuntime.lens_card`: what it was fitted on, what it reads, its source, and a `caution` on how far to trust
@@ -831,7 +834,10 @@ async def causal_spot_check(
 
 @mcp.tool()
 def query_larql_vault(lql_query: str) -> Dict[str, Any]:
-    """Execute a LARQL / VINDEX3 query or declarative `.patch` weight surgery statement.
+    """Execute a LARQL / VINDEX3 query or declarative `.patch` edit statement. An edit (`UPDATE`, `INSERT`, `DELETE`)
+    moves one column of one layer's down_proj, rank one, with nothing solved for: the statements are named after
+    MEMIT, but it is not MEMIT. This tool takes no voice (the model's answer before and after an edit): only POST
+    /api/larql and the WebSocket "larql" action, which hold the GPU lock around the edit, offer one.
 
     The statements that read words through the J++ lens (`SELECT * FROM EDGES|POLES NEAREST`, `DESCRIBE POLE`) or
     write an edit along a direction pulled back through it (`UPDATE`, `INSERT`) also return `lens`, naming that lens;

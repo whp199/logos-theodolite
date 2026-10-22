@@ -38,7 +38,9 @@ Runs inside a single process/network namespace to verify:
    a sampled answer echoes its seed and the same seed writes the same words; a retake of given ids reads the same
    states, and its recapture check has no logit diff (nothing was written to compare with); cancels (while writing,
    and of a queued request) and refusals stay on their own request; the thinking comparison rides on the first pair
-   only and says how it ended; trace_readers on exact ids reads what the text did. Saved prompts over
+   only and says how it ended and how it was switched on (a chat by the template's switch, bare text by the old
+   imitation unless think_bare "none" leaves it out, as scripts/check_think_template.py and check_vault_voice.py, run
+   first on the CPU, check beside it); trace_readers on exact ids reads what the text did. Saved prompts over
    HTTP, in a temporary file (THEODOLITE_SAVED_PROMPTS is pointed away from the reader's own list).
 8. The label gate (REPORT §3.3, conditions 2 and 3; scripts/check_label_gate.py runs first, on the CPU): /api/health,
    every sweep, inspect_pole, trace_downstream_readers, test_motif_hypothesis and the vault's NEAREST and DESCRIBE
@@ -278,6 +280,22 @@ async def check_answer_streams(ws: Any, legacy_bin: bytes, legacy_meta: Dict[str
     assert think["end"]["cancelled"] is False
     print(f"  • the thinking comparison rides on the first pair only (it read {tp[0][1]['think_read_token']!r}, "
           f"ended by {tp[0][1]['think_stop_reason']})")
+    # how thinking was switched on: bare text by the old imitation (the server's default, for old callers); a chat by
+    # the template's own switch, read where the model's turn begins; bare text with think_bare "none" left out, said so
+    assert tp[0][1]["think_protocol"] == "bare_prefix" and tp[0][1]["think_left_out"] is None, tp[0][1]["think_protocol"]
+    assert all(m["think_protocol"] is None and m["think_left_out"] is None for _b, m in tp[1:])
+    chat_think = await ws_stream(ws, {"request_id": "e2e-think-chat", "prompt": prompt, "chat": True,
+                                      "max_new_tokens": 2, "sight_tokens": [0], "compare_think": True})
+    m0 = chat_think["pairs"][0][1]
+    assert m0["think_protocol"] == "template" and m0["think_left_out"] is None, m0["think_protocol"]
+    assert m0["think_read_token"] == "\n" and m0["think_generated_text"], repr(m0["think_read_token"])
+    bare_none = await ws_stream(ws, {"request_id": "e2e-think-none", "prompt": prompt, "max_new_tokens": 2,
+                                     "sight_tokens": [0], "compare_think": True, "think_bare": "none"})
+    b0, m0 = bare_none["pairs"][0]
+    assert not struct.unpack("<6I", b0[:24])[5] & 1 and m0["think_generated_text"] is None
+    assert m0["think_left_out"] == "bare_text" and m0["think_protocol"] is None, m0["think_left_out"]
+    print("  • thinking: a chat by the template's switch (think_protocol 'template'), bare text by the old imitation by "
+          "default ('bare_prefix'), or left out with think_bare 'none' (think_left_out 'bare_text')")
 
     # cancels: while writing; and a queued request, dropped at once while another runs
     await ws.send(json.dumps({"action": "sweep", "payload": {"request_id": "e2e-cancel", "prompt": prompt,
@@ -579,8 +597,10 @@ async def main() -> int:
     # and first, what the interface sends by default (its store, bundled with esbuild and run under node)
     # and the label gate's rule, the server's measure against the study's caches, and the results the pages quote
     # and the causal spot-check on a tiny stand-in Gemma 4 (its computation, the tool, the transports, the folio's figures)
+    # and the chat template's thinking switch (the cached tokenizer), and an edit's voice on a stand-in runtime
     for cpu_check in ("check_interface_defaults.py", "check_sampler_mirror.py", "check_saved_prompts.py",
-                      "check_sweep_protocol.py", "check_capture_rows.py", "check_label_gate.py", "check_causal_check.py"):
+                      "check_sweep_protocol.py", "check_capture_rows.py", "check_label_gate.py", "check_causal_check.py",
+                      "check_think_template.py", "check_vault_voice.py"):
         res = subprocess.run(
             [sys.executable, "-I", str(ROOT_DIR / "scripts" / cpu_check)],
             capture_output=True, text=True, timeout=600, check=False,

@@ -8,6 +8,7 @@ import {
   type LiveBinary,
   type PoleRanking,
   type Sighting,
+  type ThinkProtocol,
   type ThreadScore,
   VOCAB,
   generationOf,
@@ -77,6 +78,21 @@ export const STUDY_WRITING: Writing = {
 };
 /** The most word-pieces one request sights (the server's max_sighted bound). */
 export const SIGHT_CAP = 64;
+
+/** How a sighting with thinking turned on treats bare text (the server's think_bare). Gemma 4 turns thinking on with
+ * its chat template's own switch, <|think|> at the head of a system turn, and a chat is always sent that way. Bare text
+ * has no turn to think in: "none" (what the interface sends) has the server leave the comparison out and say so
+ * (think_left_out "bare_text"); "prefix", the old imitation as first built (and the server's own default, for old
+ * callers), sets <|think|> before the text, which is not Gemma 4's switch (E6 §3, item 11). */
+export type ThinkBare = "none" | "prefix";
+export const THINK_BARE_DEFAULT: ThinkBare = "none";
+
+/** Whether a sighting with these settings is also sighted with thinking turned on: asked for, and sent as a chat, or as
+ * bare text with the old imitation chosen. What the pages say will be written, and the pace they estimate, follow it;
+ * the request still carries compare_think as asked, so the server says when it left thinking out. */
+export function effectiveThink(s: { compareThink: boolean; chat: boolean; thinkBare?: ThinkBare }): boolean {
+  return s.compareThink && (s.chat || (s.thinkBare ?? THINK_BARE_DEFAULT) === "prefix");
+}
 /** The most word-pieces one request writes (the server's max_new_tokens bound). */
 export const MAX_WRITE = 256;
 /** Timed on this server, in seconds: nothing written 1.4 (one forward pass, one position analysed); 6 written 5.9;
@@ -162,16 +178,20 @@ export interface AnswerSet {
   /** how these word-pieces were written: this set's own generation, or, for a re-reading, that of the set it re-reads */
   wrote: GenerationEcho | null;
   /** the sighting with thinking turned on, which the server sends with the first pair only: read where its answer
-   * begins; stopReason is why its answer stopped ("stopped": "stop here" cut it short), null when not sent */
+   * begins; stopReason is why its answer stopped ("stopped": "stop here" cut it short), null when not sent; protocol
+   * how thinking was switched on (undefined: an older server did not say) */
   thinking: {
     continuation: string;
     seed: number | null;
     readAt: string | null;
     path: [number, number, number][] | null;
     stopReason: string | null;
+    protocol: ThinkProtocol | null | undefined;
   } | null;
   /** the thinking comparison was asked for and skipped, because "stop here" came before it began (thinking stays null) */
   thinkSkipped: boolean;
+  /** the thinking comparison was asked for and left out, since bare text has no turn to think in (thinking stays null) */
+  thinkLeftOut: "bare_text" | null;
   /** "sight this one too": the request id of the set shown that this one-piece request reads one more word-piece of,
    * with that set's own options (not the options as set now); null for every other request */
   oneMoreOf: string | null;
@@ -388,6 +408,8 @@ export interface TheodoliteState {
   /** an optional system turn before the question (chat only) */
   system: string;
   compareThink: boolean;
+  /** how thinking is treated for bare text (think_bare): "none" leaves it out; "prefix" the old imitation */
+  thinkBare: ThinkBare;
   /** how the next sighting writes its answer */
   writing: Writing;
   /** the length the next sighting writes (writing.length), kept for the pages that read it; never a sighting's own */
@@ -449,6 +471,7 @@ export interface TheodoliteState {
    * retakeIfLive(), as the single setters' callers do */
   setReadingPreset: (p: "as_built" | "mended") => void;
   setCompareThink: (v: boolean) => void;
+  setThinkBare: (v: ThinkBare) => void;
   setLandmarks: (m: [string, string, string]) => void;
   setSurveyMode: (mode: "monument" | "pole_motif", lockedPole?: [number, number, number] | null) => void;
   setSteering: (s: Partial<SteeringConfig>) => void;
@@ -696,6 +719,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   chat: true,
   system: "",
   compareThink: false,
+  thinkBare: THINK_BARE_DEFAULT,
   writing: STUDY_WRITING,
   maxNewTokens: STUDY_WRITING.length,
   landmarks: ["she", "he", "it"],
@@ -831,6 +855,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
       };
     }),
   setCompareThink: (compareThink) => set({ compareThink }),
+  setThinkBare: (thinkBare) => set({ thinkBare }),
   setLandmarks: (landmarks) => set({ landmarks }),
   setSurveyMode: (surveyMode, lockedPole = null) => set({ surveyMode, lockedPole }),
   setSteering: (partial) => set((s) => ({ steering: { ...s.steering, ...partial } })),
@@ -1267,7 +1292,7 @@ export function sweepPayload(
     | "poleRanking"
     | "threadScore"
     | "control"
-  > & { writing?: Writing; maxNewTokens?: number },
+  > & { writing?: Writing; maxNewTokens?: number; thinkBare?: ThinkBare },
   question: string,
   answerBegins: string,
   steering: SteeringConfig,
@@ -1293,7 +1318,9 @@ export function sweepPayload(
     monuments: s.landmarks,
     survey_mode: s.surveyMode,
     locked_pole: s.lockedPole,
+    // as asked: with bare text and think_bare "none" the server leaves thinking out and says so (think_left_out)
     compare_think: s.compareThink,
+    think_bare: s.thinkBare ?? THINK_BARE_DEFAULT,
     max_new_tokens: writing.length,
     sampler: samplerPayload(writing),
     sight_every_token: writing.sightEach,
@@ -1416,9 +1443,16 @@ const numOr = (v: unknown, d: number) => (typeof v === "number" && Number.isFini
 const intList = (v: unknown): number[] | null =>
   Array.isArray(v) && v.every((x) => typeof x === "number" && Number.isInteger(x)) ? (v as number[]).slice() : null;
 
-function thinkingOf(s: Sighting): AnswerSet["thinking"] {
+export function thinkingOf(s: Sighting): AnswerSet["thinking"] {
   return s.thinkingContinuation != null
-    ? { continuation: s.thinkingContinuation, seed: s.thinkSeed, readAt: s.thinkReadAt, path: s.thinkingPath, stopReason: s.thinkStopReason }
+    ? {
+        continuation: s.thinkingContinuation,
+        seed: s.thinkSeed,
+        readAt: s.thinkReadAt,
+        path: s.thinkingPath,
+        stopReason: s.thinkStopReason,
+        protocol: s.thinkProtocol,
+      }
     : null;
 }
 
@@ -1546,6 +1580,7 @@ function onPair(msg: Record<string, any>, bin: LiveBinary | null) { // eslint-di
     generation: a0.generation ?? sighting.generation,
     thinking: a0.thinking ?? thinkingOf(sighting),
     thinkSkipped: a0.thinkSkipped || sighting.thinkSkipped,
+    thinkLeftOut: a0.thinkLeftOut ?? sighting.thinkLeftOut,
     streamed: !legacy,
     progress: { phase: "sighting", done: count, of: nToSight },
   };
@@ -1681,6 +1716,7 @@ function dispatch(
     generation: null,
     thinking: null,
     thinkSkipped: false,
+    thinkLeftOut: null,
     stopAsked: false,
     streamed: false,
   };
