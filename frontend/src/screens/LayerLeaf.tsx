@@ -5,6 +5,8 @@ import { href, navigate, type Route } from "../router";
 import {
   DEFAULT_NUDGE_LAYERS,
   N_LAYERS,
+  RANKW,
+  RANKW_WRITE,
   VOCAB,
   chosenOf,
   chosenPhrase,
@@ -1541,9 +1543,6 @@ const Ranks: React.FC<{ c: Ctx }> = ({ c }) => {
 
 /* ---------------------------------------------------- iv · the neurons that fired */
 
-const RANKW = ["the loudest", "second", "third", "fourth", "fifth"];
-/** when the server ranked the poles by write size, |a| · ‖w_down ⊙ w_post‖, the list's order is the writers' */
-const RANKW_WRITE = ["the biggest writer", "second", "third", "fourth", "fifth"];
 const Loz: React.FC<{ pos: boolean; size?: number }> = ({ pos, size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 13 13" aria-hidden="true">
     <path d="M6.5 0.9 L12.1 6.5 L6.5 12.1 L0.9 6.5 Z" fill={pos ? "#A07A2E" : "none"} stroke="#A07A2E" strokeWidth="1.2" />

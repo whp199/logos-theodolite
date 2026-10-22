@@ -411,6 +411,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const system = useTheodoliteStore((s) => s.system);
   const frameOpts = useTheodoliteStore((s) => s.frame);
   const setFrame = useTheodoliteStore((s) => s.setFrame);
+  const neuronSquaring = useTheodoliteStore((s) => s.neuronSquaring);
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const threadScore = useTheodoliteStore((s) => s.threadScore);
   const control = useTheodoliteStore((s) => s.control);
@@ -429,6 +430,7 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
     compareThink,
     writing,
     frame: frameOpts,
+    neuronSquaring,
     poleRanking,
     threadScore,
     control,

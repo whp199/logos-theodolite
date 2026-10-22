@@ -31,7 +31,7 @@ export interface TokenReading {
 }
 
 export interface PoleReading {
-  rank: number; // 0 = loudest
+  rank: number; // 0 = first in the sighting's own ranking (poleRanking): the loudest by |a|, or the biggest writer
   neuron: number;
   act: number; // signed activation a = mlp_act; the face is sign(a)
   face: 1 | -1;
@@ -1125,9 +1125,22 @@ export function generationWords(g: GenerationEcho | null | undefined): string | 
 
 /* ------------------------------------------------------------- loudness */
 
+// The poles of a layer come in the order the server ranked them: by |a| (loudness), or by write size when
+// `pole_ranking` is "write". The listed fifteen are the top fifteen of the layer's 21,504 by that measure.
+
 /**
- * The poles of a layer come in the order the server ranked them: by |a| (loudness), or by write size when
- * `pole_ranking` is "write". Pages that speak of "the loudest" use these, which always go by |a|.
+ * The first listed neuron in the sighting's own ranking: the loudest by |a|, or the biggest writer. Since the list is
+ * the top fifteen by that measure, its rank among all 21,504 in the layer is exact. The server reads words for the
+ * first five listed only (engine_runtime.py), so the lead always has them when they were read.
+ */
+export function leadOf(L: LayerReading): PoleReading | null {
+  return L.poles[0] ?? null;
+}
+
+/**
+ * The loudest by |a| among the fifteen listed only. When the sighting ranks by write size the listed fifteen are not
+ * the fifteen loudest, so a page must then say "of the fifteen listed", never "in its layer"; and this neuron may lie
+ * past the first five, whose words alone are read. A page that names the layer's leading neuron uses leadOf.
  */
 export function loudestOf(L: LayerReading): PoleReading | null {
   return L.poles.length ? L.poles.reduce((a, b) => (Math.abs(b.act) > Math.abs(a.act) ? b : a)) : null;
@@ -1143,4 +1156,33 @@ export function loudnessRank(L: LayerReading, neuron: number): number | null {
 /** the largest |a| among the layer's listed poles (for strength bars), or null */
 export function maxAct(L: LayerReading): number | null {
   return L.poles.length ? Math.max(...L.poles.map((p) => Math.abs(p.act))) : null;
+}
+
+/* -------------------------------------------------------- the ranking's words */
+
+const RANK_ORDINALS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth",
+  "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth"];
+/** the first five listed rows of a layer, in the words of a ranking by |a| (the read rows' labels) */
+export const RANKW = ["the loudest", "second", "third", "fourth", "fifth"];
+/** the same when the server ranked the poles by write size, |a| · ‖w_down ⊙ w_post‖: the list's order is the writers' */
+export const RANKW_WRITE = ["the biggest writer", "second", "third", "fourth", "fifth"];
+
+/**
+ * One vocabulary for a sighting's ranking of its fifteen neurons, by |a| ("activation", as first built) or by write
+ * size ("write"). `nth(rank)` takes a rank from 0 in that ranking ("loudest", "third loudest"; "biggest writer", "third
+ * biggest writer"); `measure` is the score as a formula; `rows` labels the first five listed.
+ */
+export function rankingWords(r: PoleRanking) {
+  const write = r === "write";
+  const lead = write ? "biggest writer" : "loudest";
+  return {
+    fifteen: write ? "the fifteen that wrote most" : "the fifteen that fired hardest",
+    lead: `the ${lead}`,
+    nth: (rank: number) => (rank === 0 ? lead : `${RANK_ORDINALS[rank] ?? ordinal(rank + 1)} ${lead}`),
+    did: write ? "wrote the most into the stream" : "fired hardest",
+    measure: write ? "|a| · ‖w_down ⊙ w_post‖" : "|a|",
+    head: write ? "the neuron that wrote most" : "its loudest neuron",
+    notAmong: write ? "not among the fifteen that wrote most" : "not among the fifteen that fired hardest",
+    rows: write ? RANKW_WRITE : RANKW,
+  };
 }

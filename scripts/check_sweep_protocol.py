@@ -6,7 +6,8 @@ scripted word-pieces (calling the stream's `on_written` as the real one does, wi
 returns small but complete sweep bundles, which the real `pack_binary_and_json_frames` packs. The app's lifespan
 (which loads the model) is replaced and the GPU hidden, so nothing heavy can load. It checks:
 1. which token indices are sighted (`sight_order`), and the request's limits, id checks and reading options (pole
-   ranking, thread score, frame squaring), in plain words;
+   ranking, thread score, frame squaring), in plain words; and the server's own defaults for those options, kept as
+   first built for old callers (Gram–Schmidt on raw rows, one frame, no centring, |a|, C);
 2. a request without request_id: exactly one binary + one JSON pair, today's keys plus the additive ones, nothing
    else (the next reply on the socket is the next action's);
 3. a stream: progress after each written piece, the answer once, then a sighting progress, one pair per word-piece
@@ -170,6 +171,13 @@ def check_rules() -> None:
     for ok in ({}, {"pole_ranking": "write", "thread_score": "direct", "frame_squaring": "lowdin"}):
         server.check_sweep_options(server.SweepRequest(**ok))
         check(True, f"known reading options {ok}")
+    # the server keeps the instrument as first built for old callers; the interface sends the mends as options
+    # (scripts/check_interface_defaults.py checks what it sends)
+    r = server.SweepRequest(prompt="x")
+    as_built = {"frame_squaring": "gram_schmidt", "frame_per_layer": False, "frame_fnw": False, "centre_prompts": [],
+                "centre_token_ids": [], "centre_answer": False, "pole_ranking": "activation", "thread_score": "coupling"}
+    for key, want in as_built.items():
+        check(getattr(r, key) == want, f"the server's default {key} is {getattr(r, key)!r}, not {want!r} as first built")
     tr = server.TraceReadersRequest(token_ids=[2, 5, 7])
     check(tr.token_ids == [2, 5, 7], "trace token_ids")
     for bad in ([], ["2"], [2.5], list(range(MAX_SWEEP_POSITIONS + 1))):

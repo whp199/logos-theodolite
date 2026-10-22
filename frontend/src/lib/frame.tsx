@@ -1,4 +1,4 @@
-import type { Sighting } from "../store/useTheodoliteStore";
+import { FNW_DEFAULT, FRAME_AS_BUILT, type FrameOptions, type Sighting } from "../store/useTheodoliteStore";
 
 /**
  * How a sighting's survey frame was built, in the pages' words, from what the server echoed (`sighting.frame`)
@@ -7,7 +7,8 @@ import type { Sighting } from "../store/useTheodoliteStore";
  *
  * The share of the state the frame catches (proj_frac) is ‖p‖ / ‖target‖, where the target is h·Jᵀ, or the raw h
  * when each layer has its own frame, less the matched control's state when centred (theodolite_math
- * project_trajectory_to_3d). Only the uncentred h·Jᵀ share compares with the study's 2.4–3.9% (V7).
+ * project_trajectory_to_3d). Only the uncentred h·Jᵀ share of a frame on the raw rows compares with the study's
+ * 2.4–3.9% (V7): the weighted rows fnw ⊙ W_U span another space, which V7 did not measure.
  */
 export function describeFrame(s: Sighting) {
   const fr = s.frame;
@@ -77,7 +78,11 @@ export function describeFrame(s: Sighting) {
     </>
   );
   const notes: string[] = [];
-  notes.push(lowdin ? "squared all at once, the same for every order" : "order-dependent (REPORT §3.4, bug 3)");
+  notes.push(
+    lowdin
+      ? "squared all at once: one frame for every order, the order naming only which axis is first"
+      : "order-dependent (REPORT §3.4, bug 3)",
+  );
   if (raw) notes.push("each layer read in its own frame");
   else notes.push("every layer read in the last layer’s frame");
   if (centred) notes.push(`read against a matched control’s state${fr && fr.nCentre > 1 ? ` (the mean of ${fr.nCentre})` : ""}`);
@@ -95,8 +100,47 @@ export function describeFrame(s: Sighting) {
     notes,
     /** the frame as first built, whose caught share the study measured */
     asBuilt: !fr || (!lowdin && !raw && !centred && !fnw && !poleMotif),
-    /** the caught share compares with V7's 2.4–3.9% only for the uncentred h·Jᵀ frame */
-    studyComparable: !raw && !centred && !poleMotif,
+    /** the interface's default frame (FRAME_MENDED): squared all at once, one frame from the last layer, uncentred */
+    mended: lowdin && !raw && !centred && !poleMotif && fnw === FNW_DEFAULT,
+    /** the caught share compares with V7's 2.4–3.9% only for the uncentred h·Jᵀ frame of raw rows (Löwdin spans the
+     * same space as Gram–Schmidt; the weighted rows do not) */
+    studyComparable: !raw && !centred && !poleMotif && !fnw,
     exportKey: raw ? (centred ? "proj_frac_of_h_minus_control" : "proj_frac_of_h") : centred ? "proj_frac_of_hJ_minus_control" : "proj_frac_of_hJ",
   };
+}
+
+/** The frame options a page's frame-dependent words describe. `own`: they are the shown sighting's own frame (else the
+ * frame the next sighting will be taken in); `recorded`: that frame was not echoed but known, as for the recorded
+ * sighting, which was taken in the frame as first built. */
+export type ShownFrame = FrameOptions & { own: boolean; recorded: boolean };
+
+/**
+ * The frame a page should describe: the shown sighting's own when it was taken with the landmarks (or neuron) set on
+ * the page (`matches`), else the frame the next sighting will be taken in.
+ * - A live sighting's frame is the one the server echoed. A live reply that echoes none came from a server older than
+ *   the frame options, which built every frame as first built.
+ * - The recorded sighting carries no frame: it was taken in the frame as first built, Gram–Schmidt on the raw rows.
+ * - The next sighting's frame is `frameOpts`; in a neuron frame (pole_motif) squared by `neuron.neuronSquaring`, and
+ *   never weighted or per layer, which apply to a frame from words only (engine_runtime.py prepare_sweep).
+ * Every frame-dependent text, label and drawing on a page should come from this one helper.
+ */
+export function shownFrameOptions(
+  sighting: Sighting | null,
+  matches: boolean,
+  frameOpts: FrameOptions,
+  neuron: { surveyMode: "monument" | "pole_motif"; neuronSquaring: FrameOptions["squaring"] } | null = null,
+): ShownFrame {
+  if (matches && sighting) {
+    const fr = sighting.frame;
+    if (sighting.source === "live" && fr) {
+      const centre = fr.centred || fr.nCentre > 0;
+      return { squaring: fr.squaring, perLayer: fr.perLayer, fnw: fr.fnwWeighted, centre, own: true, recorded: false };
+    }
+    return { ...FRAME_AS_BUILT, own: true, recorded: true };
+  }
+  if (neuron?.surveyMode === "pole_motif") {
+    const squaring = neuron.neuronSquaring;
+    return { squaring, perLayer: false, fnw: false, centre: frameOpts.centre, own: false, recorded: false };
+  }
+  return { ...frameOpts, own: false, recorded: false };
 }

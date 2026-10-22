@@ -244,7 +244,8 @@ export const SAFE_NUDGE_SCALE = 0.883;
 export const SAFE_NUDGE_STRENGTH = 0.01;
 export const DEFAULT_NUDGE_LAYERS = [29, 35, 41, 47, 53];
 
-/** How the survey frame is built (SweepRequest frame_* fields; the defaults are the frame as first built). */
+/** How the survey frame is built (SweepRequest frame_* fields): the interface's default is FRAME_MENDED; the server's
+ * own defaults, kept for old callers, are FRAME_AS_BUILT. */
 export interface FrameOptions {
   squaring: "gram_schmidt" | "lowdin";
   perLayer: boolean;
@@ -253,6 +254,47 @@ export interface FrameOptions {
   centre: boolean;
 }
 export const FRAME_AS_BUILT: FrameOptions = { squaring: "gram_schmidt", perLayer: false, fnw: false, centre: false };
+/**
+ * Whether the interface squares its word frame from the final-norm weighted rows fnw ⊙ W_U by default. Off: V7
+ * measured frames on the raw rows only (the share of ‖h̃‖ they catch, 2.4–3.9%, the same for either squaring, and the
+ * order-free frame's agreement with the sign of the lens's she−he score) and never a frame on the weighted rows, so
+ * the default frame shows only what the study measured. The weighted rows stay an option, to be measured in a later
+ * instrument check.
+ */
+export const FNW_DEFAULT = false;
+/** The frame the interface sends unless the reader chooses otherwise: squared all at once (Löwdin, V7 bug 3), the
+ * same for every order of the words; one frame from the last layer, uncentred. */
+export const FRAME_MENDED: FrameOptions = { squaring: "lowdin", perLayer: false, fnw: FNW_DEFAULT, centre: false };
+/** How the interface ranks each layer's fifteen neurons by default: by write size, |a| · ‖w_down ⊙ w_post‖ (bug 8). In
+ * E3 (12 prompts, last word-piece, indicative) the fifteen explained the same share of the feed-forward write ranked
+ * either way, within half a percentage point (E3_lens_validation_d_analysis.json, frac_ffn_top15_*); threads among the
+ * biggest writers were not measured by V7. */
+export const POLE_RANKING_DEFAULT: PoleRanking = "write";
+
+/** The options that change only how an answer is read (sweepPayload), as one preset. `neuronSquaring` squares a
+ * neuron-locked frame (pole_motif), sent as its frame_squaring in place of frame.squaring. */
+export interface ReadingOptions {
+  frame: FrameOptions;
+  poleRanking: PoleRanking;
+  threadScore: ThreadScore;
+  neuronSquaring: FrameOptions["squaring"];
+}
+/** The reading options as the instrument was first built, and the server's own defaults for old callers. */
+export const READING_AS_BUILT: ReadingOptions = {
+  frame: FRAME_AS_BUILT,
+  poleRanking: "activation",
+  threadScore: "coupling",
+  neuronSquaring: "gram_schmidt",
+};
+/** The reading options the interface sends by default: the frame's order (fault 3), the thread score (4) and the ranking
+ * (8) mended. A neuron frame keeps Gram–Schmidt: its three axes have fixed roles (gate, write, reader), so their order
+ * is not a choice and the order fault does not arise, and axis 1 stays exactly w_gate. */
+export const READING_MENDED: ReadingOptions = {
+  frame: FRAME_MENDED,
+  poleRanking: POLE_RANKING_DEFAULT,
+  threadScore: "direct",
+  neuronSquaring: "gram_schmidt",
+};
 
 export interface Health {
   status: string;
@@ -331,6 +373,8 @@ export interface TheodoliteState {
   lockedPole: [number, number, number] | null;
   steering: SteeringConfig;
   frame: FrameOptions;
+  /** how a neuron-locked frame (pole_motif) is squared; a frame from words is squared by frame.squaring */
+  neuronSquaring: FrameOptions["squaring"];
   poleRanking: PoleRanking;
   threadScore: ThreadScore;
 
@@ -372,8 +416,12 @@ export interface TheodoliteState {
   setChat: (v: boolean) => void;
   setSystem: (v: string) => void;
   setFrame: (f: Partial<FrameOptions>) => void;
+  setNeuronSquaring: (q: FrameOptions["squaring"]) => void;
   setPoleRanking: (r: PoleRanking) => void;
   setThreadScore: (t: ThreadScore) => void;
+  /** set every reading option from a preset (the frame keeps its current centring); the caller then calls
+   * retakeIfLive(), as the single setters' callers do */
+  setReadingPreset: (p: "as_built" | "mended") => void;
   setCompareThink: (v: boolean) => void;
   setLandmarks: (m: [string, string, string]) => void;
   setSurveyMode: (mode: "monument" | "pole_motif", lockedPole?: [number, number, number] | null) => void;
@@ -613,8 +661,13 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
     spare_bos: true,
     strength: SAFE_NUDGE_STRENGTH,
   },
-  frame: FRAME_AS_BUILT,
-  poleRanking: "activation",
+  // the frame squared all at once (Löwdin, REPORT §3.4, bug 3), the same for every order of the words to 1.19e-7
+  // (V7_tool_bugs_04_bos_monument_summary.json), on the raw rows unless FNW_DEFAULT; per-layer frames and centring stay
+  // choices. Neurons by write size (bug 8). A neuron frame keeps Gram–Schmidt. The server's own defaults stay
+  // Gram–Schmidt, raw rows and |a| for old callers
+  frame: FRAME_MENDED,
+  neuronSquaring: READING_MENDED.neuronSquaring,
+  poleRanking: POLE_RANKING_DEFAULT,
   // the direct-path estimate (ρ ≈ 0.87 with measured effects) rather than C (≈ 0.41), whose largest scores sit at
   // layer 1 where the real effects are tiny (REPORT §3.4, bug 4); the server's own default stays C for old callers
   threadScore: "direct",
@@ -708,8 +761,20 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
   setChat: (chat) => set({ chat }),
   setSystem: (system) => set({ system }),
   setFrame: (partial) => set((s) => ({ frame: { ...s.frame, ...partial } })),
+  setNeuronSquaring: (neuronSquaring) => set({ neuronSquaring }),
   setPoleRanking: (poleRanking) => set({ poleRanking }),
   setThreadScore: (threadScore) => set({ threadScore }),
+  setReadingPreset: (p) =>
+    set((s) => {
+      const r = p === "as_built" ? READING_AS_BUILT : READING_MENDED;
+      // centring needs a kept control, so it is the reader's own choice in either preset
+      return {
+        frame: { ...r.frame, centre: s.frame.centre },
+        neuronSquaring: r.neuronSquaring,
+        poleRanking: r.poleRanking,
+        threadScore: r.threadScore,
+      };
+    }),
   setCompareThink: (compareThink) => set({ compareThink }),
   setLandmarks: (landmarks) => set({ landmarks }),
   setSurveyMode: (surveyMode, lockedPole = null) => set({ surveyMode, lockedPole }),
@@ -1067,6 +1132,7 @@ export function sweepPayload(
     | "lockedPole"
     | "compareThink"
     | "frame"
+    | "neuronSquaring"
     | "poleRanking"
     | "threadScore"
     | "control"
@@ -1105,7 +1171,8 @@ export function sweepPayload(
     // the legacy space-then-digit rule took a rank from the next position; with every word-piece sighted it is not used
     rank_lookahead: false,
     steering,
-    frame_squaring: s.frame.squaring,
+    // the server squares a neuron-locked frame by this same field, so in pole_motif it carries neuronSquaring
+    frame_squaring: s.surveyMode === "pole_motif" ? s.neuronSquaring : s.frame.squaring,
     frame_per_layer: s.frame.perLayer,
     frame_fnw: s.frame.fnw,
     centre_prompts: control && !centreIds && control.textSent ? [control.textSent] : [],

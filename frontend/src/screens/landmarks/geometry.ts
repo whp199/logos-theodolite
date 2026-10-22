@@ -57,8 +57,9 @@ export const PLATE = (() => {
 })();
 
 /**
- * Dashed rays: where the second and third words truly point before squaring, from the recorded raw-row
- * cosines c12, c13, c23.
+ * Dashed rays for a frame squared in order (Gram–Schmidt): where the second and third words truly point before
+ * squaring, from the cosines c12, c13, c23 of the rows the frame was squared from (raw, or final-norm weighted). The
+ * first word lies along axis I.
  */
 export function ghostGeometry(c12: number, c13: number, c23: number) {
   const s2 = Math.sqrt(1 - c12 * c12);
@@ -79,6 +80,96 @@ export function ghostGeometry(c12: number, c13: number, c23: number) {
     ax: mid[0],
     ay: f1(mid[1] + 5),
     angle: Math.round(th / RAD),
+  };
+}
+
+/** The eigenvalues and eigenvectors (as columns of V) of a symmetric 3×3 matrix, by cyclic Jacobi rotations. */
+function jacobi3(A: number[][]): { values: number[]; V: number[][] } {
+  const a = A.map((r) => r.slice());
+  const V = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ];
+  for (let sweep = 0; sweep < 50; sweep++) {
+    const off = a[0][1] * a[0][1] + a[0][2] * a[0][2] + a[1][2] * a[1][2];
+    if (off < 1e-24) break;
+    for (const [p, q] of [
+      [0, 1],
+      [0, 2],
+      [1, 2],
+    ]) {
+      if (Math.abs(a[p][q]) < 1e-300) continue;
+      // the rotation that zeroes a[p][q]: tan 2θ = 2 a_pq / (a_qq − a_pp)
+      const th = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+      const t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th * th + 1));
+      const c = 1 / Math.sqrt(t * t + 1);
+      const sn = t * c;
+      for (let k = 0; k < 3; k++) {
+        const akp = a[k][p];
+        const akq = a[k][q];
+        a[k][p] = c * akp - sn * akq;
+        a[k][q] = sn * akp + c * akq;
+      }
+      for (let k = 0; k < 3; k++) {
+        const apk = a[p][k];
+        const aqk = a[q][k];
+        a[p][k] = c * apk - sn * aqk;
+        a[q][k] = sn * apk + c * aqk;
+      }
+      for (let k = 0; k < 3; k++) {
+        const vkp = V[k][p];
+        const vkq = V[k][q];
+        V[k][p] = c * vkp - sn * vkq;
+        V[k][q] = sn * vkp + c * vkq;
+      }
+    }
+  }
+  return { values: [a[0][0], a[1][1], a[2][2]], V };
+}
+
+/**
+ * Dashed rays for a frame squared all at once (Löwdin): where each of the three words truly points. The frame is
+ * E = (V Vᵀ)^−½ V on the unit rows V, so word m stands at E v_m, column m of G^½, where G is the Gram of the unit rows
+ * (G^½ = Q diag(√λ) Qᵀ). Each column is of unit length and lies a little off its own axis; from the cosines c12, c13,
+ * c23 of the rows the frame was squared from (raw, or final-norm weighted).
+ */
+export function lowdinGhost(c12: number, c13: number, c23: number) {
+  const G = [
+    [1, c12, c13],
+    [c12, 1, c23],
+    [c13, c23, 1],
+  ];
+  const { values, V } = jacobi3(G);
+  const root = values.map((v) => Math.sqrt(Math.max(0, v)));
+  const half = (i: number, j: number) => V[i][0] * root[0] * V[j][0] + V[i][1] * root[1] * V[j][1] + V[i][2] * root[2] * V[j][2];
+  const cols = [0, 1, 2].map((m) => [half(0, m), half(1, m), half(2, m)] as [number, number, number]);
+  const u = cols.map((c) => P(c[0], c[1], c[2]));
+  // the arc between the first two words, at radius 0.62, along the great circle joining them
+  const th = Math.acos(Math.max(-1, Math.min(1, c12)));
+  const along = (r: number, t: number): Pt => {
+    const s0 = Math.sin(th);
+    const wa = s0 > 1e-9 ? Math.sin((1 - t) * th) / s0 : 1 - t;
+    const wb = s0 > 1e-9 ? Math.sin(t * th) / s0 : t;
+    const [a, b] = [cols[0], cols[1]];
+    return P(r * (wa * a[0] + wb * b[0]), r * (wa * a[1] + wb * b[1]), r * (wa * a[2] + wb * b[2]));
+  };
+  const mid = along(0.7, 0.5);
+  return {
+    rays: u.map((p) => "M" + pt(O) + " L" + pt(p)).join(" "),
+    arc: poly((t) => along(0.62, t), 0, 1, 24),
+    tips: u.map((p) => loz(p, 4.5)).join(""),
+    /** label positions for the three words' rays */
+    labels: u.map((p, m) => [f1(p[0] + (m === 2 ? 10 : 8)), f1(p[1] + (m === 2 ? -6 : 20))] as Pt),
+    ax: mid[0],
+    ay: f1(mid[1] + 5),
+    angle: Math.round(th / RAD),
+    /** each word's bearing and elevation in the frame, and how far it stands from its own axis, in degrees */
+    words: cols.map((c, m) => ({
+      az: Math.atan2(c[1], c[0]) / RAD,
+      el: Math.asin(Math.max(-1, Math.min(1, c[2]))) / RAD,
+      off: Math.acos(Math.max(-1, Math.min(1, c[m]))) / RAD,
+    })),
   };
 }
 
