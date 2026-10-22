@@ -1,6 +1,6 @@
 {
  "schema": "R3_00_pilot/1",
- "written_at": "2026-10-22T10:35:22",
+ "written_at": "2026-10-22T11:30:33",
  "prompts": {
   "which": "WikiText fit records 0-1 (the identity check: records 0-15, forward only)",
   "sha256": [
@@ -24,18 +24,18 @@
  },
  "vram": {
   "before_load": {
-   "at": "2026-10-22T10:33:53",
+   "at": "2026-10-22T11:29:21",
    "nvidia_smi": {
     "ok": true,
     "name": "NVIDIA GeForce RTX 5090",
     "total_mib": 32607,
-    "used_mib": 3943,
-    "free_mib": 28166,
+    "used_mib": 4236,
+    "free_mib": 27873,
     "processes": [
      {
       "pid": "1475",
       "name": "/usr/bin/kwin_wayland",
-      "used_mib": "376"
+      "used_mib": "377"
      },
      {
       "pid": "656672",
@@ -45,34 +45,34 @@
      {
       "pid": "1293728",
       "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
-      "used_mib": "305"
+      "used_mib": "311"
      },
      {
-      "pid": "1302980",
+      "pid": "1311962",
       "name": ".venv/bin/python",
       "used_mib": "498"
      }
     ]
    },
-   "torch_free_gib": 27.506,
+   "torch_free_gib": 27.219,
    "torch_total_gib": 31.355,
    "allocated_gib": 0.0,
    "reserved_gib": 0.0,
    "peak_allocated_gib": 0.0
   },
   "after_load": {
-   "at": "2026-10-22T10:34:03",
+   "at": "2026-10-22T11:29:27",
    "nvidia_smi": {
     "ok": true,
     "name": "NVIDIA GeForce RTX 5090",
     "total_mib": 32607,
-    "used_mib": 25290,
-    "free_mib": 6819,
+    "used_mib": 25492,
+    "free_mib": 6617,
     "processes": [
      {
       "pid": "1475",
       "name": "/usr/bin/kwin_wayland",
-      "used_mib": "376"
+      "used_mib": "377"
      },
      {
       "pid": "656672",
@@ -82,34 +82,34 @@
      {
       "pid": "1293728",
       "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
-      "used_mib": "305"
+      "used_mib": "311"
      },
      {
-      "pid": "1302980",
+      "pid": "1311962",
       "name": ".venv/bin/python",
       "used_mib": "21754"
      }
     ]
    },
-   "torch_free_gib": 6.659,
+   "torch_free_gib": 6.461,
    "torch_total_gib": 31.355,
    "allocated_gib": 18.001,
    "reserved_gib": 20.648,
    "peak_allocated_gib": 23.023
   },
   "end": {
-   "at": "2026-10-22T10:35:22",
+   "at": "2026-10-22T11:30:33",
    "nvidia_smi": {
     "ok": true,
     "name": "NVIDIA GeForce RTX 5090",
     "total_mib": 32607,
-    "used_mib": 25765,
-    "free_mib": 6343,
+    "used_mib": 25960,
+    "free_mib": 6149,
     "processes": [
      {
       "pid": "1475",
       "name": "/usr/bin/kwin_wayland",
-      "used_mib": "376"
+      "used_mib": "377"
      },
      {
       "pid": "656672",
@@ -119,16 +119,16 @@
      {
       "pid": "1293728",
       "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
-      "used_mib": "313"
+      "used_mib": "311"
      },
      {
-      "pid": "1302980",
+      "pid": "1311962",
       "name": ".venv/bin/python",
       "used_mib": "22222"
      }
     ]
    },
-   "torch_free_gib": 6.194,
+   "torch_free_gib": 6.004,
    "torch_total_gib": 31.355,
    "allocated_gib": 18.064,
    "reserved_gib": 21.086,
@@ -138,19 +138,19 @@
  "cap": {
   "cap_gib": 24.0,
   "fraction": 0.7654,
-  "free_before_gib": 27.506,
+  "free_before_gib": 27.219,
   "total_gib": 31.355,
   "nvidia_smi": {
    "ok": true,
    "name": "NVIDIA GeForce RTX 5090",
    "total_mib": 32607,
-   "used_mib": 3943,
-   "free_mib": 28166,
+   "used_mib": 4236,
+   "free_mib": 27873,
    "processes": [
     {
      "pid": "1475",
      "name": "/usr/bin/kwin_wayland",
-     "used_mib": "376"
+     "used_mib": "377"
     },
     {
      "pid": "656672",
@@ -160,10 +160,10 @@
     {
      "pid": "1293728",
      "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
-     "used_mib": "305"
+     "used_mib": "311"
     },
     {
-     "pid": "1302980",
+     "pid": "1311962",
      "name": ".venv/bin/python",
      "used_mib": "498"
     }
@@ -171,7 +171,7 @@
   }
  },
  "git": {
-  "head": "e1733fe4056600a6bc0f6fcb23ad549c9a862802",
+  "head": "ed94d73d6150f05d00ef78a9fc99a9a92b8575a6",
   "dirty": [],
   "runtime": {
    "runtime_commit": "d5405ee964e0ac1732babd8e69fa9271de555189",
@@ -211,11 +211,11 @@
  "lrp_identity": {
   "texts": 16,
   "positions": 2048,
-  "same_top1": 1958,
-  "share": 0.956055,
-  "differ": 90,
+  "same_top1": 2048,
+  "share": 1.0,
+  "differ": 0,
   "allowed_to_differ": 2,
-  "ok": false
+  "ok": true
  },
  "parity": {
   "plain": {
@@ -230,33 +230,33 @@
    "lrp": false,
    "replicate_chunk": 1,
    "replicate": {
-    "min_cos": 0.999947,
+    "min_cos": 0.999953,
     "per_layer_min": [
-     0.999947,
-     0.999955,
-     0.999958,
-     0.99996,
-     0.999963,
-     0.999964,
-     0.999966,
-     0.999968,
+     0.999953,
+     0.999962,
+     0.999965,
+     0.999967,
+     0.999969,
+     0.999969,
+     0.999971,
+     0.999971,
+     0.999975,
+     0.999972,
      0.999973,
-     0.999972,
-     0.999972,
      0.999982,
-     0.999985,
+     0.999983,
      0.99999,
-     0.99999,
+     0.999992,
      0.999993,
      0.999994,
-     0.999995,
-     0.999997,
+     0.999994,
+     0.999994,
      0.999996,
-     0.999997,
+     0.999996,
      0.999997,
      0.999998,
      0.999999,
-     0.999999,
+     1.0,
      1.0,
      1.000001,
      1.000001,
@@ -264,29 +264,29 @@
     ]
    },
    "vmap": {
-    "min_cos": 0.999943,
+    "min_cos": 0.999951,
     "per_layer_min": [
-     0.999943,
-     0.999952,
+     0.999951,
      0.999956,
-     0.999958,
      0.999961,
-     0.999962,
-     0.999967,
+     0.999963,
+     0.999965,
+     0.999966,
+     0.999968,
      0.999969,
+     0.999973,
      0.999972,
      0.999971,
-     0.99997,
-     0.999982,
-     0.999985,
-     0.99999,
+     0.99998,
+     0.999983,
+     0.999989,
      0.999991,
      0.999992,
      0.999993,
+     0.999994,
+     0.999996,
      0.999995,
      0.999996,
-     0.999996,
-     0.999997,
      0.999997,
      0.999998,
      0.999999,
@@ -297,7 +297,7 @@
      1.000001
     ]
    },
-   "min_cos": 0.999943,
+   "min_cos": 0.999951,
    "ok": true
   },
   "rlens": {
@@ -312,60 +312,26 @@
    "lrp": true,
    "replicate_chunk": 1,
    "replicate": {
-    "min_cos": 0.999983,
+    "min_cos": 0.999986,
     "per_layer_min": [
-     0.999984,
-     0.999983,
-     0.999985,
-     0.999985,
-     0.999986,
      0.999986,
      0.999987,
      0.999987,
      0.999988,
-     0.999988,
-     0.999988,
-     0.99999,
-     0.999992,
-     0.999994,
-     0.999995,
-     0.999995,
-     0.999996,
-     0.999997,
-     0.999998,
-     0.999998,
-     0.999998,
-     0.999999,
-     0.999999,
-     1.0,
-     1.000001,
-     1.000001,
-     1.000001,
-     1.000001,
-     1.000001
-    ]
-   },
-   "vmap": {
-    "min_cos": 0.999984,
-    "per_layer_min": [
-     0.999984,
-     0.999984,
-     0.999985,
-     0.999986,
-     0.999987,
-     0.999986,
-     0.999987,
-     0.999987,
      0.999989,
      0.999989,
      0.99999,
+     0.99999,
+     0.999991,
      0.999992,
-     0.999994,
+     0.999991,
+     0.999992,
+     0.999993,
      0.999996,
      0.999996,
      0.999997,
-     0.999996,
-     0.999997,
+     0.999998,
+     0.999998,
      0.999998,
      0.999999,
      0.999999,
@@ -379,7 +345,41 @@
      1.000001
     ]
    },
-   "min_cos": 0.999983,
+   "vmap": {
+    "min_cos": 0.999987,
+    "per_layer_min": [
+     0.999987,
+     0.999987,
+     0.999987,
+     0.999988,
+     0.999989,
+     0.999989,
+     0.99999,
+     0.99999,
+     0.999991,
+     0.999991,
+     0.999991,
+     0.999992,
+     0.999994,
+     0.999996,
+     0.999996,
+     0.999997,
+     0.999997,
+     0.999998,
+     0.999998,
+     0.999999,
+     0.999999,
+     0.999999,
+     1.0,
+     1.0,
+     1.0,
+     1.000001,
+     1.000001,
+     1.000001,
+     1.000001
+    ]
+   },
+   "min_cos": 0.999986,
    "ok": true
   }
  },
@@ -387,145 +387,143 @@
   {
    "mode": "replicate",
    "B": 1,
-   "forward_s": 0.765,
-   "peak_after_forward_gib": 19.884,
+   "forward_s": 0.661,
+   "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 0.37,
+   "s_per_pass": 0.3134,
    "passes_timed": 3,
-   "peak_gib": 20.026,
-   "s_per_row": 0.36999,
-   "s_per_prompt": 1989.88
+   "peak_gib": 20.179,
+   "s_per_row": 0.3134,
+   "s_per_prompt": 1685.5
   },
   {
    "mode": "replicate",
    "B": 2,
-   "forward_s": 0.823,
-   "peak_after_forward_gib": 20.837,
+   "forward_s": 0.695,
+   "peak_after_forward_gib": 21.143,
    "ok": true,
-   "s_per_pass": 0.3853,
+   "s_per_pass": 0.3327,
    "passes_timed": 3,
-   "peak_gib": 21.057,
-   "s_per_row": 0.19266,
-   "s_per_prompt": 1036.51
+   "peak_gib": 21.364,
+   "s_per_row": 0.16635,
+   "s_per_prompt": 894.99
   },
   {
    "mode": "replicate",
    "B": 3,
-   "forward_s": 0.875,
-   "peak_after_forward_gib": 21.787,
+   "forward_s": 0.74,
+   "peak_after_forward_gib": 22.236,
    "ok": true,
-   "s_per_pass": 0.4182,
+   "s_per_pass": 0.3563,
    "passes_timed": 3,
-   "peak_gib": 22.084,
-   "s_per_row": 0.13938,
-   "s_per_prompt": 750.29
+   "peak_gib": 22.532,
+   "s_per_row": 0.11877,
+   "s_per_prompt": 639.23
   },
   {
    "mode": "replicate",
    "B": 4,
-   "forward_s": 0.898,
-   "peak_after_forward_gib": 22.739,
    "ok": false,
    "oom": true,
-   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.61 GiB is free. Process 1475 has 376.88 MiB memory in use. ",
-   "peak_gib": 22.942
+   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.41 GiB is free. Process 1475 has 377.26 MiB memory in use. ",
+   "peak_gib": 23.238
   },
   {
    "mode": "vmap",
    "B": 8,
-   "forward_s": 0.776,
-   "peak_after_forward_gib": 19.884,
+   "forward_s": 0.661,
+   "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 0.572,
+   "s_per_pass": 0.4939,
    "passes_timed": 3,
-   "peak_gib": 20.627,
-   "s_per_row": 0.07151,
-   "s_per_prompt": 385.16
+   "peak_gib": 20.78,
+   "s_per_row": 0.06173,
+   "s_per_prompt": 332.56
   },
   {
    "mode": "vmap",
    "B": 16,
-   "forward_s": 0.774,
-   "peak_after_forward_gib": 19.884,
+   "forward_s": 0.662,
+   "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 0.8265,
+   "s_per_pass": 0.7167,
    "passes_timed": 3,
-   "peak_gib": 21.315,
-   "s_per_row": 0.05166,
-   "s_per_prompt": 278.48
+   "peak_gib": 21.469,
+   "s_per_row": 0.04479,
+   "s_per_prompt": 241.47
   },
   {
    "mode": "vmap",
    "B": 32,
-   "forward_s": 0.776,
-   "peak_after_forward_gib": 19.884,
+   "forward_s": 0.661,
+   "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 1.3731,
+   "s_per_pass": 1.1982,
    "passes_timed": 3,
-   "peak_gib": 22.688,
-   "s_per_row": 0.04291,
-   "s_per_prompt": 231.46
+   "peak_gib": 22.841,
+   "s_per_row": 0.03744,
+   "s_per_prompt": 201.96
   },
   {
    "mode": "vmap",
    "B": 64,
-   "forward_s": 0.765,
-   "peak_after_forward_gib": 19.884,
+   "forward_s": 0.661,
+   "peak_after_forward_gib": 20.036,
    "ok": false,
    "oom": true,
-   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.55 GiB is free. Process 1475 has 376.88 MiB memory in use. ",
-   "peak_gib": 23.057
+   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.36 GiB is free. Process 1475 has 377.26 MiB memory in use. ",
+   "peak_gib": 23.115
   },
   {
    "mode": "vmap",
    "B": 128,
-   "forward_s": 0.765,
-   "peak_after_forward_gib": 19.884,
+   "forward_s": 0.661,
+   "peak_after_forward_gib": 20.036,
    "ok": false,
    "oom": true,
-   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.71 GiB is free. Process 1475 has 376.88 MiB memory in use. ",
-   "peak_gib": 23.391
+   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 1024.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.55 GiB is free. Process 1475 has 377.26 MiB memory in use.",
+   "peak_gib": 23.06
   }
  ],
  "timing_skipped": [],
  "q1": {
   "ok": true,
-  "forward_s": 0.769,
-  "directions_s": 5.795,
+  "forward_s": 0.651,
+  "directions_s": 4.947,
   "n_directions": 128,
   "peak_gib": 21.832
  },
- "forward_nograd_s": 0.7601,
+ "forward_nograd_s": 0.6498,
  "choice": {
   "mode": "vmap",
   "rows_per_pass": 32,
-  "s_per_prompt": 231.46
+  "s_per_prompt": 201.96
  },
- "seconds": 77.6,
- "forward_nograd_long_s": 0.7793,
+ "seconds": 65.1,
+ "forward_nograd_long_s": 0.666,
  "h4_longest_ids": 141,
  "projection": {
   "hours": {
-   "shards": 4.115,
-   "router": 0.422,
-   "weights": 0.209,
-   "q1": 0.117,
-   "h4_states": 0.01,
+   "shards": 3.59,
+   "router": 0.361,
+   "weights": 0.179,
+   "q1": 0.1,
+   "h4_states": 0.009,
    "evaluation": 0.378
   },
   "margin": 1.25,
-  "total_hours": 6.56
+  "total_hours": 5.77
  },
  "decision": {
   "approved_gpu_hours": null,
-  "projected_gpu_hours": 6.56,
+  "projected_gpu_hours": 5.77,
   "checks": {
-   "lrp_identity": false,
+   "lrp_identity": true,
    "parity": true,
    "parity_rlens": true
   },
   "decision": "stop",
-  "why": "pilot checks failed: ['lrp_identity']; an amendment is needed"
+  "why": "projected 5.77 GPU-hours; no budget is approved yet (R3_common.APPROVED_GPU_HOURS [NOT YET APPROVED])"
  },
  "bounds": {
   "flop_lower_hours": [

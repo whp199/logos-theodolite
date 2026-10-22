@@ -1,6 +1,6 @@
 {
  "schema": "R3_00_dry/1",
- "written_at": "2026-10-22T10:33:30",
+ "written_at": "2026-10-22T11:28:52",
  "model": "/home/eric/bin/ai-models/txt/google/gemma-4-12B",
  "layers": [
   24,
@@ -19,7 +19,7 @@
   "headroom_gib": 8.0
  },
  "git": {
-  "head": "e1733fe4056600a6bc0f6fcb23ad549c9a862802",
+  "head": "ed94d73d6150f05d00ef78a9fc99a9a92b8575a6",
   "dirty": [],
   "runtime": {
    "runtime_commit": "d5405ee964e0ac1732babd8e69fa9271de555189",
@@ -31,51 +31,19 @@
  "cap": {
   "cap_gib": 24.0,
   "fraction": 0.7654,
-  "free_before_gib": 27.396,
+  "free_before_gib": 27.198,
   "total_gib": 31.355,
   "nvidia_smi": {
    "ok": true,
    "name": "NVIDIA GeForce RTX 5090",
    "total_mib": 32607,
-   "used_mib": 4054,
-   "free_mib": 28054,
+   "used_mib": 4258,
+   "free_mib": 27851,
    "processes": [
     {
      "pid": "1475",
      "name": "/usr/bin/kwin_wayland",
-     "used_mib": "376"
-    },
-    {
-     "pid": "656672",
-     "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
-     "used_mib": "545"
-    },
-    {
-     "pid": "1293728",
-     "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
-     "used_mib": "305"
-    },
-    {
-     "pid": "1302368",
-     "name": ".venv/bin/python",
-     "used_mib": "498"
-    }
-   ]
-  }
- },
- "vram": {
-  "at": "2026-10-22T10:33:30",
-  "nvidia_smi": {
-   "ok": true,
-   "name": "NVIDIA GeForce RTX 5090",
-   "total_mib": 32607,
-   "used_mib": 20905,
-   "free_mib": 11204,
-   "processes": [
-    {
-     "pid": "1475",
-     "name": "/usr/bin/kwin_wayland",
-     "used_mib": "376"
+     "used_mib": "377"
     },
     {
      "pid": "656672",
@@ -88,16 +56,48 @@
      "used_mib": "311"
     },
     {
-     "pid": "1302368",
+     "pid": "1311136",
      "name": ".venv/bin/python",
-     "used_mib": "17456"
+     "used_mib": "498"
+    }
+   ]
+  }
+ },
+ "vram": {
+  "at": "2026-10-22T11:28:52",
+  "nvidia_smi": {
+   "ok": true,
+   "name": "NVIDIA GeForce RTX 5090",
+   "total_mib": 32607,
+   "used_mib": 21350,
+   "free_mib": 10759,
+   "processes": [
+    {
+     "pid": "1475",
+     "name": "/usr/bin/kwin_wayland",
+     "used_mib": "377"
+    },
+    {
+     "pid": "656672",
+     "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
+     "used_mib": "545"
+    },
+    {
+     "pid": "1293728",
+     "name": "/opt/discord/Discord --type=gpu-process --enable-gpu-rasterization=true --ozone-platform=wayland --render-node-override=/dev/dri/renderD128 --crashpad-handler-pid=1293704 --enable-crash-reporter=58ea1afd-7c38-4e07-b643-d65f8c3a994a?no_channel --user-data-dir=/home/eric/.config/discord --gpu-preferences=UAAAAAAAAAAgAQAMAAAAAAAAAAAAAGAAAQAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAYAAAAAAAAABgAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAgAAAAAAAAA --shared-files --field-trial-handle=3?i?5580111630686002065?17324837132340072463?262144 --enable-features=DocumentPolicyIncludeJSCallStacksInCrashReports --disable-features=AllowAggressiveThrottlingWithWebSocket?DropInputEventsWhilePaintHolding?HardwareMediaKeyHandling?IntensiveWakeUpThrottling?LocalNetworkAccessChecks?MediaSessionService?ScreenAIOCREnabled?SpareRendererForSitePerProcess?TraceSiteInstanceGetProcessCreation?UseEcoQoSForBackgroundProcess?WaylandWpColorManagerV1?WinRetrieveSuggestionsOnlyOnDemand --variations-seed-version --pseudonymization-salt-handle=7?i?4753294458093073898?9342796342460412862?4 --trace-process-track-uuid=3190708988185955192",
+     "used_mib": "311"
+    },
+    {
+     "pid": "1311136",
+     "name": ".venv/bin/python",
+     "used_mib": "17612"
     }
    ]
   },
-  "torch_free_gib": 10.941,
+  "torch_free_gib": 10.506,
   "torch_total_gib": 31.355,
   "allocated_gib": 15.913,
-  "reserved_gib": 16.43,
+  "reserved_gib": 16.582,
   "peak_allocated_gib": 23.086
  },
  "stages": {
@@ -167,7 +167,7 @@
    },
    "skipped": [],
    "ok": true,
-   "seconds": 20.85,
+   "seconds": 22.01,
    "peak_gib": 16.014
   },
   "shards_and_merge": {
@@ -204,8 +204,8 @@
     ]
    },
    "ok": true,
-   "seconds": 90.44,
-   "peak_gib": 17.043
+   "seconds": 83.55,
+   "peak_gib": 17.182
   },
   "weights": {
    "counts": {
@@ -280,7 +280,7 @@
     "46": 0.0625
    },
    "ok": true,
-   "seconds": 25.51,
+   "seconds": 25.57,
    "peak_gib": 16.356
   },
   "readout": {
@@ -309,7 +309,7 @@
     ]
    },
    "ok": true,
-   "seconds": 0.44,
+   "seconds": 0.43,
    "peak_gib": 16.034
   },
   "q1_directions": {
@@ -318,7 +318,7 @@
     0
    ],
    "ok": true,
-   "seconds": 0.48,
+   "seconds": 0.47,
    "peak_gib": 16.554
   },
   "parity": {
@@ -331,22 +331,22 @@
     "lrp": false,
     "replicate_chunk": 1,
     "replicate": {
-     "min_cos": 0.999928,
+     "min_cos": 0.999936,
      "per_layer_min": [
-      0.999928,
-      0.999981,
+      0.999936,
+      0.999983,
       1.0
      ]
     },
     "vmap": {
-     "min_cos": 0.999928,
+     "min_cos": 0.999926,
      "per_layer_min": [
-      0.999928,
-      0.999981,
+      0.999926,
+      0.999982,
       0.999999
      ]
     },
-    "min_cos": 0.999928,
+    "min_cos": 0.999926,
     "ok": true
    },
    "rlens": {
@@ -358,9 +358,9 @@
     "lrp": true,
     "replicate_chunk": 1,
     "replicate": {
-     "min_cos": 0.999981,
+     "min_cos": 0.999982,
      "per_layer_min": [
-      0.999981,
+      0.999982,
       0.999993,
       1.0
      ]
@@ -370,7 +370,7 @@
      "per_layer_min": [
       0.999978,
       0.999991,
-      1.0
+      0.999999
      ]
     },
     "min_cos": 0.999978,
@@ -381,7 +381,7 @@
     "parity_rlens": true
    },
    "ok": true,
-   "seconds": 4.64,
+   "seconds": 4.4,
    "peak_gib": 23.086
   },
   "ok": true
