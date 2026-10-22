@@ -19,7 +19,7 @@ export interface IndexItem {
  * renamed "through the lens", as the instrument and the layer's leaf now head it. Its old name, "what it was thinking",
  * stays as a cross-reference, and its anchor stays `thinking`, so older links still land on it. Since the canvas: how it
  * writes (with "sampler" as a cross-reference), the seed, a sighting of each word-piece, and the word it chose and its
- * likeliest.
+ * likeliest; and write size, now that the instrument lists each layer's neurons by it.
  */
 export const INDEX: IndexItem[] = [
   { label: "apparatus", id: "apparatus", section: "iii" },
@@ -53,6 +53,7 @@ export const INDEX: IndexItem[] = [
   { label: "what it was thinking", see: "through the lens", id: "thinking", section: "iii" },
   { label: "word it chose and its likeliest, the", id: "chosen", section: "iii" },
   { label: "word-piece", id: "word-piece", section: "ii" },
+  { label: "write size", id: "write", section: "ii" },
 ];
 
 /**
@@ -69,9 +70,9 @@ export const ALIASES: Record<string, string[]> = {
 
 /**
  * Every anchor on the page, for reference:
- * entries   layer word-piece stream gathering remembering global neuron double-negative strength threads
+ * entries   layer word-piece stream gathering remembering global neuron double-negative strength write threads
  *           lens j-space thinking chosen landmarks bearing kinship how-it-writes seed each-word-piece rubric apparatus
  *           sighting matched-control vault nudge edit
  * cautions  labels single late quiet frame thread-score nudge-defaults template think split bos
- * aliases   naked-eye faces pole stream-strength elevation through-the-lens
+ * aliases   naked-eye faces pole stream-strength elevation through-the-lens write-size
  */

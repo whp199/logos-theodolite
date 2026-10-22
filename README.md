@@ -228,16 +228,24 @@ REPORT §3.4). Where each fault stands now:
 |---|---|---|
 | **1** | The nudge’s defaults, scale 650 at five layers (2.4–7.4× the stream’s strength), with a clamped inverse direction, collapse the model | **Mended in the instrument.** `direction="fnw"`, `mask_quiet`, `spare_bos` and `strength` (a share of ‖h‖); the nudge page sends all four, at 0.01. The server’s own defaults are kept for old callers |
 | **2** | The attention / feed-forward split ignored Gemma 4’s `layer_scalar` | **Applied**: [`V7_module1_fix.patch`](experiments/results/V7_module1_fix.patch) |
-| **3** | The survey frame depends on the order of the words, and uses raw unembedding rows | **An option**: `frame_squaring="lowdin"` (order-free), `frame_fnw`, `frame_per_layer`, `centre_prompts`. The fraction of the state the frame catches is always sent |
+| **3** | The survey frame depends on the order of the words, and uses raw unembedding rows | **The order mended in the instrument**: `frame_squaring="lowdin"` (order-free) on the raw rows, which the interface sends by default; the server’s own default stays Gram–Schmidt on raw rows for old callers, and a neuron-locked frame keeps Gram–Schmidt (its three axes have fixed roles, so their order is not a choice). Squared all at once on the raw rows, the frame agreed with the sign of the lens’s she−he score in 79–89% of readings by stretch of layers, against 72–88% squared in order (V7). `frame_fnw` (the rows the model weighs, fnw ⊙ W<sub>U</sub>), `frame_per_layer` and `centre_prompts` stay choices, off unless chosen; V7 did not measure a frame on weighted rows. The fraction of the state the frame catches is always sent; the study’s 2.4–3.9% was measured on raw rows |
 | **4** | The thread score C is a weak guide: ρ ≈ 0.41 with measured effects, against 0.87 for a direct-path estimate | **Mended in the instrument**: `thread_score="direct"` chooses and ranks threads by the direct-path estimate, and the interface sends it by default; the server’s own default stays C for old callers. Each binary row carries the one score it was chosen by; the JSON's `filaments_meta` (its first 60 threads, in source-layer order) carries both |
 | **5** | No chat template: the instruct model ran as a raw language model | **Mended**: `chat`, `system`, `assistant_prefix`; on by default in the interface |
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
 | **7** | One input label for a neuron’s two faces | Open |
-| **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **An option**: `pole_ranking="write"`; every layer reports each neuron’s write size and the share they explain |
+| **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **Mended in the instrument**: `pole_ranking="write"` lists each layer’s fifteen biggest writers, \|a\| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, and the interface sends it by default; the server’s own default stays \|a\| for old callers. Every layer reports each listed neuron’s write size and the share of the feed-forward write the fifteen explain. That share is a sample either way: in E3 (12 prompts, last word-piece; indicative only), at the sampled layers 21, 31, 41, 51 and 59, the fifteen loudest explained 10–41%, and so did the fifteen biggest writers, within half a percentage point. The threads join the listed neurons, so they follow the ranking; V7 measured thread scores only among neurons ranked by \|a\| |
 | **9** | The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is applied to the instruct model (4-bit QAT), where it agrees with the model’s own average gradients at only cos 0.15–0.33 for the pronoun direction (layers 31–59) | **Open, and the largest accuracy fault left; now labelled.** Everywhere the instrument uses the lens, it still reads through this base-fitted J++: the words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. R1 refitted a lens on the instruct model ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)): its directional form is stable from layer 31; its full matrix exists at only 11 layers (11, 16, …, 56, 59) and is usable at only five of them, 41, 46, 51, 56 and 59, where it beats J++ (top-1 on the model’s own reply at layer 51: 25% → 45%); below layer 31 no averaged lens tested was reliable. The instrument does not load it. The head and the foot of every page name the lens and say it was fitted on the base model, a red line beside each layer's words says what the reading can bear there, and `/api/health` and every sweep reply carry a `lens` object (`id`, `fitted_on`, `method`, `applied_to`, `caution`) |
 
 - The E6/V7 audit numbers were measured on the backend before these fixes. The history keeps the original instrument as
   its first commit.
+- **The interface’s defaults.** Unless you choose otherwise, the interface sends the mends for faults 1, 3 (the order), 4,
+  5 and 8; the server’s own defaults stay as first built, for old callers. To read with the reading options as first
+  built (a frame squared in order on raw rows, neurons by \|a\|, threads by C), use “read with the reading options as
+  first built” in the instrument’s apparatus, or set each one: “the frame options as first built” on the landmarks page,
+  the ranking and the thread score in the instrument’s apparatus, the ranking also on a layer’s leaf or a neuron’s folio.
+  Those options are needed to set a reading beside the study’s, but they are not enough: the study’s sightings, the
+  recorded one among them, also carried a doubled start mark (fault 6, which by itself moved bearings by a median of
+  0.4–1.9° in V7) and were taken before the V7 fixes.
 - **The quiet mask.** Masking only the 181 persistently quiet dimensions is not enough: in a check made while building the
   fix (not part of the study), a she/he nudge masked that way still broke the answer at 0.005 × ‖h‖. `mask_quiet` also masks
   each pushed layer’s quietest tenth of dimensions; with both, the nudge read fluently at 0.005–0.01 and broke at 0.02.
@@ -294,7 +302,7 @@ is optional, and each default reproduces the instrument as first built):
   "prompt": "Tell me about yourself.", "chat": true, "assistant_prefix": "Hi! I",
   "system": null,                                   // an optional system turn
   "monuments": ["she", "he", "it"],                 // the three landmarks
-  "frame_squaring": "lowdin", "frame_fnw": true,    // an order-free frame on the weighted rows
+  "frame_squaring": "lowdin", "frame_fnw": false,   // an order-free frame on the raw rows, as the interface sends
   "pole_ranking": "write", "thread_score": "direct",
   "steering": {"enabled": false, "direction": "fnw", "mask_quiet": true, "spare_bos": true, "strength": 0.01},
   "max_new_tokens": 6,                              // how many word-pieces it may write (0–256)

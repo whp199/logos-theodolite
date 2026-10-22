@@ -83,16 +83,24 @@ against the instrument, leave four more:
 
 <br>
 
-## iv · mended as options, not as defaults
+## iv · the server’s defaults, and the interface’s
 
-The server keeps its old defaults for old callers. The interface sends the mended settings for two of these faults, and
-leaves the other two as choices:
+The server keeps its old defaults for old callers. The interface sends the mended settings for all four; parts of fault
+3’s mend, the weighted rows, the per-layer frame and centring on a control, stay choices:
 
 | | The fault | The server’s default | What the interface sends unless you change it | The mend |
 |---|---|---|---|---|
 | **1** | The nudge collapses the model | five layers at scale 650 | `direction="fnw"`, `mask_quiet`, `spare_bos`, `strength` 0.01 × ‖h‖ | in use on the nudge page |
-| **3** | The survey frame depends on the order of the words | Gram–Schmidt on raw rows | the same | `frame_squaring="lowdin"`, `frame_fnw`, `frame_per_layer`, `centre_prompts` |
+| **3** | The survey frame depends on the order of the words | Gram–Schmidt on raw rows | `frame_squaring="lowdin"` on raw rows (a neuron-locked frame keeps Gram–Schmidt) | also `frame_fnw`, `frame_per_layer`, `centre_prompts` (off unless chosen) |
 | **4** | The thread score C is a weak guide | C | the direct-path estimate | `thread_score="direct"` |
-| **8** | Neurons ranked by \|a\|, not by the size of their write | by \|a\| | the same | `pole_ranking="write"` |
+| **8** | Neurons ranked by \|a\|, not by the size of their write | by \|a\| | `pole_ranking="write"` | `pole_ranking="write"` |
 
-Nothing on record says whether these defaults should change.
+Still open here:
+- **The weighted rows.** V7 put the order-free frame’s remaining disagreement with the lens (about one reading in five) down
+  to the raw rows, but did not measure a frame on the rows the model weighs, fnw ⊙ W<sub>U</sub>; the interface leaves
+  `frame_fnw` off until an instrument check measures it.
+- **Threads among the biggest writers.** V7 measured the direct-path score’s 0.87 on threads among neurons ranked by
+  \|a\|; the threads now join the biggest writers, where it was not measured.
+- In E3 (12 prompts, last word-piece; indicative only), at layers 21, 31, 41, 51 and 59, the fifteen biggest writers
+  explained the same share of the feed-forward write as the fifteen loudest (10–41%, within half a percentage point), so
+  fault 8’s mend changes which neurons are named, not how much of the write they cover.

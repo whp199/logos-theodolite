@@ -563,7 +563,7 @@ const Practices: React.FC = () => (
       <dt>the essay</dt>
       <dd>
         practices paraphrased from [9]. The essay’s own list is longer. It also asks for a neuron to be read among its
-        neighbours, which a neuron’s folio does in part (iv, the loudest neurons beside it), and watched as it forms
+        neighbours, which a neuron’s folio does in part (iv, the neurons listed beside it), and watched as it forms
         across training checkpoints, which this instrument cannot do: [NOT YET IN THE INSTRUMENT].
       </dd>
       <dt>field notes</dt>

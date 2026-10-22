@@ -1,5 +1,6 @@
 import React from "react";
 import { Apparatus, Missing, Rubric } from "../../components/kit";
+import { FNW_DEFAULT } from "../../store/useTheodoliteStore";
 import { Lede, LexLink, LexSection, M } from "./parts";
 
 /*
@@ -323,7 +324,11 @@ export const Cautions: React.FC = () => (
         id="frame"
         n={5}
         title="The landmark frame depends on their order"
-        status="mended, as an option"
+        status={
+          FNW_DEFAULT
+            ? "the order mended in the instrument; the weighting applied, not yet measured"
+            : "the order mended in the instrument"
+        }
         tone="mended"
         found={
           <>
@@ -334,11 +339,16 @@ export const Cautions: React.FC = () => (
         }
         means={
           <>
-            Compare bearings only between sightings that used the same landmarks in the same order, or square the frame
-            all at once on the landmarks page; either way, read them as a sketch of direction, not a measurement.
+            The instrument now squares the frame all at once,{" "}
+            {FNW_DEFAULT ? "on the rows the model weighs" : "on the same raw rows as before"}, so the order of the
+            landmarks no longer changes the frame. A sighting squared in order, the recorded one or one you choose, still
+            turns with the order: compare it only with sightings named in the same order. To set a bearing beside the
+            study’s, take it in the frame as first built; that is needed but not enough, for the study’s sightings also
+            carried a doubled start mark, which by itself moved bearings by a median of 0.4–1.9°, and were taken before
+            the V7 fixes. Either way, read a bearing as a sketch of direction, not a measurement.
           </>
         }
-        from="From the README’s “Status and known issues”, the report’s §3.4 (bug 3) and the V7 notes."
+        from="From the README’s “Status and known issues”, the report’s §3.4 (bugs 3 and 6) and the V7 notes."
         notes={[
           [
             "where (as audited)",
@@ -350,7 +360,11 @@ export const Cautions: React.FC = () => (
             "measured",
             <>
               median azimuth swing 58–99° across the six orders of (she, he, it), above 30° in 75–98% of cells; the frame
-              captures 2.4–3.9% of ‖h̃‖ (V7).
+              captures 2.4–3.9% of ‖h̃‖ (V7). Squared all at once on the raw rows, the frame agreed with the sign of the
+              lens’s she−he score in 79–89% of readings by stretch of layers, against 72–88% squared in order (
+              <M>V7_tool_bugs_04_bos_monument_summary.json</M>, 18 prompts; the V7 notes print 74–86%, 79–85% and 75–89%);
+              a frame on the weighted rows was not measured. A doubled start mark alone moved bearings by a median of
+              0.4–1.9° (max 98°; V7, bug 6).
             </>,
           ],
           [
@@ -364,9 +378,22 @@ export const Cautions: React.FC = () => (
           [
             "fix, applied",
             <>
-              options of the request, off by default so the study’s readings stay comparable: <M>frame_squaring="lowdin"</M>,{" "}
-              <M>frame_fnw</M>, <M>frame_per_layer</M>, <M>centre_prompts</M>; the fraction caught is sent at every layer (
-              <M>proj_frac</M>), and the frame’s cosines and squareness for any three words. Contrastive axes are not built.
+              <M>frame_squaring="lowdin"</M>
+              {FNW_DEFAULT ? (
+                <>
+                  {" "}
+                  and <M>frame_fnw</M>, which the instrument sends by default (the weighted rows not yet measured)
+                </>
+              ) : (
+                <>
+                  , which the instrument sends by default, on the raw rows (<M>frame_fnw</M>, the weighted rows, is a choice
+                  V7 did not measure)
+                </>
+              )}
+              ; the server’s own default stays Gram–Schmidt on raw rows, so old callers get what they got before. A
+              neuron-locked frame keeps Gram–Schmidt by default, its axes having fixed roles. <M>frame_per_layer</M> and{" "}
+              <M>centre_prompts</M> are off unless you choose them. The fraction caught is sent at every layer (
+              <M>proj_frac</M>), with the frame’s cosines and squareness for any three words. Contrastive axes are not built.
             </>,
           ],
         ]}

@@ -2,6 +2,7 @@ import React from "react";
 import { Apparatus, Missing, Page, ReadingThrough, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
 import {
+  FNW_DEFAULT,
   MAX_WRITE,
   MODEL_SAMPLING,
   SIGHT_CAP,
@@ -314,7 +315,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           i · the index
         </h2>
         <span style={{ fontSize: 15, color: "var(--muted)" }}>
-          twenty-eight words and three cross-references, in alphabetical order
+          twenty-nine words and three cross-references, in alphabetical order
         </span>
       </div>
       <Rubric style={{ maxWidth: 760 }}>
@@ -600,10 +601,12 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           }
         >
           <Body>
-            How hard a neuron fired on this word-piece, whichever face it showed. At each layer the instrument lists the
-            fifteen strongest.
+            How hard a neuron fired on this word-piece, whichever face it showed. At each layer the instrument lists
+            fifteen neurons: by default the fifteen that <LexLink to="write">wrote most</LexLink> into the stream, or, if
+            you choose, the fifteen that fired hardest.
           </Body>
-          {/* a recorded example: the demonstration sighting's loudest neuron at layer 36 (act −7.156) */}
+          {/* a recorded example: the demonstration sighting's loudest neuron at layer 36 (act −7.156); that sighting ranks
+              its neurons by |a|, as first built */}
           <p
             className="num"
             style={{
@@ -618,15 +621,50 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             neuron 21189 · layer 36 · negative face · strength 7.2
           </p>
           <Note>
-            Those fifteen carry only 10–41% of what a layer remembers (layers 21–59): a sample of the layer’s work, not
-            the whole of it.
+            However they are ranked, those fifteen carried only 10–41% of what a layer remembers at the layers the study
+            looked at, from 21 to 59: a sample of the layer’s work, not the whole of it.
           </Note>
           <EntryApparatus title="strength">
-            |a| = |mlp_act<sub>ℓ</sub>[i]| at the read position; the instrument keeps the top 15 by |a| and σ = sign(a).
-            Magnitudes and shown shares are not calibrated (eps floor; softcap). Ranking by write size |a| · ‖w
-            <sub>down</sub> ⊙ w<sub>post</sub>‖ is an option (<M>"pole_ranking": "write"</M>), and each layer reports the
-            fraction of its FFN write the fifteen explain (REPORT §3.4, bug 8). Poles after
-            Cammarata 2026 [9]; GeGLU [15].
+            |a| = |mlp_act<sub>ℓ</sub>[i]| at the read position; σ = sign(a). The interface keeps the top 15 by write size
+            |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ (<M>"pole_ranking": "write"</M>) unless you choose otherwise; the
+            server’s own default, the recorded sighting and the instrument as first built keep the top 15 by |a| (
+            <M>"activation"</M>). Each layer reports the fraction of its FFN write the fifteen explain. In E3 (12 prompts,
+            last word-piece; indicative only) the two lists had a Jaccard index of 0.67–0.96 by layer, and at the layers it
+            sampled, 21, 31, 41, 51 and 59, the fifteen explained 10–41% of the FFN write ranked either way, within half a
+            percentage point (REPORT §3.4, bug 8). Magnitudes and shown shares are not calibrated (eps floor; softcap).
+            Poles after Cammarata 2026 [9]; GeGLU [15].
+          </EntryApparatus>
+        </Entry>
+
+        <Entry
+          id="write"
+          aliases={["write-size"]}
+          head="write size"
+          tech={
+            <>
+              <Sym>
+                s · |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ / rms(y)
+              </Sym>
+            </>
+          }
+        >
+          <Body>
+            How much a neuron changed the stream at this word-piece: how hard it fired, times the length of what it
+            writes. A neuron can fire hard and write little. The instrument lists each layer’s neurons by it unless you
+            choose otherwise.
+          </Body>
+          <Note>
+            The biggest writers explained no more of what a layer remembers than the loudest did: 10–41% either way, at
+            the layers the study looked at.
+          </Note>
+          <EntryApparatus title="write size">
+            write_size = s · |a<sub>i</sub>| · ‖w<sub>down,i</sub> ⊙ w<sub>post</sub>‖ / rms(y) (<M>pole_write_sizes</M>;{" "}
+            <M>poles_labels[].write_size</M>). Within a layer s and rms(y) are shared, so the server ranks by |a| · ‖w
+            <sub>down</sub> ⊙ w<sub>post</sub>‖ (<M>"pole_ranking": "write"</M>, what the interface sends; the server’s own
+            default ranks by |a|, for old callers); an edit in the vault changes its column, and its write size with it. The
+            share explained is ⟨Σ c<sub>i</sub>, f⟩ / ⟨f, f⟩, f = post − s · mid (<M>poles_ffn_explained</M>). In E3 (12
+            prompts, last word-piece; indicative only), at layers 21, 31, 41, 51 and 59, the fifteen biggest writers explained
+            10–41% of the FFN write, within half a percentage point of the fifteen loudest (REPORT §3.4, bug 8).
           </EntryApparatus>
         </Entry>
 
@@ -646,7 +684,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             <sup>(ℓ′,j)</sup>⟩ · |a<sub>ℓ′,j</sub>|, for ℓ &lt; ℓ′ ≤ ℓ + 6, norm weights folded in; a virtual-weight
             score after [14]. ρ(|C|, measured effect) = +0.41; the direct-path estimate reaches +0.87, the true gradient
             +0.93 (V7; REPORT §3.4, bug 4). The instrument chooses and ranks threads by the direct-path estimate (
-            <M>thread_score="direct"</M>); C remains the server’s default and a choice on the instrument.
+            <M>thread_score="direct"</M>); C remains the server’s default and a choice on the instrument. Threads join the
+            fifteen neurons listed at each layer, so they follow the sighting’s ranking: by default, between the biggest
+            writers. V7 measured the direct-path score’s agreement with silencing (0.87) on threads among the neurons ranked
+            by |a|; among the biggest writers it was not measured.
           </EntryApparatus>
         </Entry>
       </EntryGrid>
@@ -802,30 +843,47 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         <Entry
           id="landmarks"
           head="landmarks"
-          tech="monuments · survey frame · Gram–Schmidt"
+          tech="monuments · survey frame · Löwdin"
           figure={<FigLandmarks />}
         >
           <Body>
-            Three word-pieces you choose, such as “she”, “he” and “it”, that fix the directions of the survey: the first
-            sets 0°, the second 90°, the third points straight up. Every layer’s stream is then measured against them.
+            Three word-pieces you choose, such as “she”, “he” and “it”, that fix the directions of the survey. The
+            instrument squares them into three axes all at once, each as near its own word as the others allow: the first
+            word’s axis sets 0°, the second’s 90°, and the third’s points straight up. Every layer’s stream is then
+            measured against them.
           </Body>
           <Note>
             Choose them on <a href={href.landmarks()}>the landmarks page</a>.
           </Note>
           <Rubric>
-            Keep the same three, in the same order, whenever you compare sightings: the order changes the bearings.{" "}
+            Keep the same three, in the same order, whenever you compare sightings, and compare only sightings squared the
+            same way: a frame squared in order, as first built and in the recorded sighting, turns with the order of the
+            words.{" "}
             <LexLink to="frame">Read the fifth caution.</LexLink>
           </Rubric>
           <EntryApparatus title="landmarks">
-            e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = Gram–Schmidt(W<sub>U</sub>[t<sub>1</sub>], W<sub>U</sub>[t
-            <sub>2</sub>], W<sub>U</sub>[t<sub>3</sub>]) in fp32, on raw W<sub>U</sub> without the final-norm weight;
-            the server’s default landmarks are “spider”, “eight”, “insect”, chosen for its default two-hop prompt, which
-            comes from [2]. A second mode locks the frame to one neuron: w<sub>gate</sub>, (σ · w<sub>down</sub>) · J
+            e<sub>1</sub>, e<sub>2</sub>, e<sub>3</sub> = (V V<sup>⊤</sup>)<sup>−½</sup> V on the unit rows{" "}
+            {FNW_DEFAULT ? (
+              <>
+                fnw ⊙ W<sub>U</sub>[t<sub>m</sub>]
+              </>
+            ) : (
+              <>
+                W<sub>U</sub>[t<sub>m</sub>]
+              </>
+            )}
+            , in fp32 [33] (<M>"frame_squaring": "lowdin"</M>, <M>"frame_fnw": {FNW_DEFAULT ? "true" : "false"}</M>: what
+            the interface sends unless you choose otherwise); as first built, and in the server’s own default, modified
+            Gram–Schmidt on raw W<sub>U</sub> without the final-norm weight, which turns with the order of the words. The
+            server’s default landmarks are “spider”, “eight”, “insect”, chosen for its default two-hop prompt, which comes
+            from [2]. A second mode locks the frame to one neuron: w<sub>gate</sub>, (σ · w<sub>down</sub>) · J
             <sub>ℓ</sub>
             <sup>⊤</sup> and the w<sub>gate</sub> of the reader on its first thread, up to six layers on, else of the
-            next layer’s loudest neuron (<M>"survey_mode": "pole_motif"</M>). A Löwdin frame (W W<sup>⊤</sup>)
-            <sup>−½</sup> W [33], order-free, is an option for either (<M>"frame_squaring": "lowdin"</M>), on fnw ⊙ W
-            <sub>U</sub> with <M>"frame_fnw": true</M> (REPORT §3.4, bug 3).
+            next layer’s first listed neuron (its loudest, or, ranked by write size, its biggest writer) (
+            <M>"survey_mode": "pole_motif"</M>). A neuron frame keeps Gram–Schmidt by default: its three axes have fixed
+            roles, so their order is not a choice and the order fault does not arise; Löwdin is a choice there. The
+            squaring applies to either mode; the weighted rows fnw ⊙ W<sub>U</sub> (<M>"frame_fnw": true</M>
+            {FNW_DEFAULT ? ", the default" : ", a choice V7 did not measure"}) to words only (REPORT §3.4, bug 3).
           </EntryApparatus>
         </Entry>
 
@@ -846,14 +904,19 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             from −90° to +90°.
           </Body>
           <Note>
-            The three landmarks catch only a sliver of the stream, 2.4–3.9% of it in the study, so a bearing is a rough
-            sketch of direction.
+            The three landmarks catch only a sliver of the stream, 2.4–3.9% of it in the study’s frame of raw rows, so a
+            bearing is a rough sketch of direction. Each sighting shows its own share.
           </Note>
           <EntryApparatus title="bearing and elevation">
             (x, y, z) = (⟨h̃<sub>ℓ</sub>, e<sub>1</sub>⟩, ⟨h̃<sub>ℓ</sub>, e<sub>2</sub>⟩, ⟨h̃<sub>ℓ</sub>, e
             <sub>3</sub>⟩); θ = atan2(y, x), φ = asin(z / ‖(x, y, z)‖). In the frame as first built the frame catches
-            2.4–3.9% of ‖h̃‖, and reordering the landmarks swings θ by a median of 58–99° (V7; REPORT §3.4, bug 3). Löwdin’s
-            symmetric orthonormalisation [33], order-free, is now an option on the landmarks page.
+            2.4–3.9% of ‖h̃‖, and reordering the landmarks swings θ by a median of 58–99° (V7; REPORT §3.4, bug 3). The
+            interface now squares the frame all at once (Löwdin’s symmetric orthonormalisation [33]) on{" "}
+            {FNW_DEFAULT ? "the weighted rows fnw ⊙ W_U" : "the raw rows"} unless you choose otherwise; there reordering
+            only relabels the axes (swap the first two and θ reads 90° − θ, with φ unchanged).{" "}
+            {FNW_DEFAULT
+              ? "Its caught share was not measured in the study; every sighting reports its own."
+              : "On the same raw rows it spans the same three directions as the frame squared in order, so it catches the same share; on the weighted rows the share was not measured in the study. Every sighting reports its own."}
           </EntryApparatus>
         </Entry>
 

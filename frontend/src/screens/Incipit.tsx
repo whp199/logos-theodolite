@@ -3,6 +3,7 @@ import { Apparatus, Lozenge, Missing, Page, ReadingThrough, Rubric } from "../co
 import { useReading } from "../reading";
 import { href, navigate, type Route } from "../router";
 import {
+  FNW_DEFAULT,
   type Sighting,
   type SweepProgress,
   endMarkWords,
@@ -379,8 +380,10 @@ const FrontApparatus: React.FC<{ s: Sighting | null; geo: Frontispiece }> = ({ s
             )}{" "}
             of {s ? describeFrame(s).denom : "the state"} across the sixty layers
             {s && describeFrame(s).lowdin
-              ? "; a Löwdin frame squares the words all at once, so their order does not turn the bearing."
-              : ", and with a Gram–Schmidt frame the bearing turns with the order of the three words (58–99°, bug 3)."}{" "}
+              ? `; a Löwdin frame squares ${describeFrame(s).poleMotif ? "its three axes" : "the words"} all at once, so their order does not change the frame.`
+              : s && describeFrame(s).poleMotif
+                ? "; a neuron’s frame is squared in the fixed order of its roles (Gram–Schmidt), so axis 1 is exactly the neuron’s gate."
+                : ", and with a Gram–Schmidt frame the bearing turns with the order of the three words (58–99°, bug 3)."}{" "}
             <a href={href.landmarks()}>landmarks</a>
           </dd>
 
@@ -1113,9 +1116,14 @@ const BeforeYouSetOut: React.FC = () => {
           </dd>
           <dt>bearing</dt>
           <dd>
-            Gram–Schmidt on the raw W<sub>U</sub> rows, without the final-norm weight: 58–99° across orders, and the frame catches
-            2.4–3.9% of ‖h<sub>J</sub>‖ (bug 3). Fix: a Löwdin frame (Löwdin 1950) [33] on fnw · W<sub>U</sub>, with the captured
-            fraction shown; now an option of the server, with the fraction caught sent at every layer. <a href={href.landmarks()}>landmarks</a>
+            as first built, Gram–Schmidt on the raw W<sub>U</sub> rows, without the final-norm weight: 58–99° across orders, and
+            the frame catches 2.4–3.9% of ‖h<sub>J</sub>‖ (bug 3). Fix: a Löwdin frame (Löwdin 1950) [33] on fnw · W<sub>U</sub>,
+            with the captured fraction shown. The interface now sends a Löwdin frame by default,{" "}
+            {FNW_DEFAULT
+              ? "on fnw · W_U, which V7 did not measure"
+              : "on the raw rows, where V7 measured it (it agreed with the sign of the lens’s she−he score in 79–89% of readings by stretch of layers, against 72–88% squared in order); fnw · W_U is a choice V7 did not measure"}
+            , with the fraction caught sent at every layer; the server’s own default stays as first built, for old callers.{" "}
+            <a href={href.landmarks()}>landmarks</a>
           </dd>
           <dt>nudge</dt>
           <dd>
@@ -1134,9 +1142,10 @@ const BeforeYouSetOut: React.FC = () => {
             the two verified patches are in the backend: V7_module1_fix.patch (the gathering and remembering split, with the layer
             scalar s; bug 2) and V7_bos_fix.patch (one start mark; bug 6). Since then the server also takes the fixes for bugs 1, 3,
             4, 5 and 8 as options (the mended nudge, the Löwdin and weighted frames with the fraction caught, the direct-path thread
-            score, the chat template, poles ranked by write size); the instrument sends the nudge, chat and thread-score fixes by
-            default. Still
-            open: bugs 7 and 9.
+            score, the chat template, poles ranked by write size); the instrument sends the nudge, chat, frame, thread-score and
+            write-ranking fixes by default (the frame squared all at once,{" "}
+            {FNW_DEFAULT ? "on the weighted rows" : "on the raw rows; the weighted rows stay a choice"}), while the server’s own
+            frame, ranking and thread defaults stay as first built, for old callers. Still open: bugs 7 and 9.
           </dd>
         </dl>
       </Apparatus>

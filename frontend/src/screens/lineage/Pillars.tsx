@@ -332,7 +332,7 @@ export const Pillars: React.FC = () => (
         </>
       }
       rubric="On the instrument, a filled lozenge is a neuron’s positive face and a hollow one its negative face."
-      lends="Its unit of reading. Every neuron is shown with its two faces: as lozenges on the rings, in a layer’s list of the neurons that fired, and on a neuron’s own folio, which sets its two faces side by side and whose field notes take one face at a time. The vault finds neurons face by face."
+      lends="Its unit of reading. Every neuron is shown with its two faces: as lozenges on the rings, in a layer’s list of the fifteen that wrote most (or, if you choose, that fired hardest), and on a neuron’s own folio, which sets its two faces side by side and whose field notes take one face at a time. The vault finds neurons face by face."
       links={[
         ["neuron", "a neuron’s folio →"],
         ["layer", "a layer’s leaf →"],
@@ -367,8 +367,9 @@ export const Pillars: React.FC = () => (
           <dd>bipolar GeGLU poles, after Cammarata 2026 [9], in the GeGLU block of [15]; output labels “J-VINDEX”.</dd>
           <dt>formula</dt>
           <dd>
-            a = GeLU<sub>tanh</sub>(x W<sub>gate</sub>) ⊙ (x W<sub>up</sub>) at <M>mlp_act</M>; the 15 strongest by |a|,
-            σ = sign(a); label = unembed((σ · w<sub>down</sub>) · J<sup>⊤</sup>), against the naked eye’s unembed(σ · w
+            a = GeLU<sub>tanh</sub>(x W<sub>gate</sub>) ⊙ (x W<sub>up</sub>) at <M>mlp_act</M>; the 15 with the largest
+            write, |a| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖ (by |a| as first built and in the server’s default), σ =
+            sign(a); label = unembed((σ · w<sub>down</sub>) · J<sup>⊤</sup>), against the naked eye’s unembed(σ · w
             <sub>down</sub>). 21,504 neurons, 43,008 poles per layer.
           </dd>
           <dt>N1 design</dt>
@@ -387,8 +388,9 @@ export const Pillars: React.FC = () => (
           <dt>caveat</dt>
           <dd className="num">
             input-side <M>gate_trigger_tokens</M> carry ~6–8% of the reproducible signal, and give one label for two
-            poles (§3.4 bug 7); pole magnitudes are not meaningful and the top 15 explain only 10–41% of the FFN write
-            at index 20–58 (bug 8).
+            poles (§3.4 bug 7); pole magnitudes are not meaningful, and the top 15 explain only 10–41% of the FFN write at
+            the sampled index 20, 30, 40, 50 and 58, ranked by |a| or by write size alike, within half a percentage point
+            (bug 8; E3, 12 prompts at the last position, indicative only).
           </dd>
           <dt>recommended</dt>
           <dd>

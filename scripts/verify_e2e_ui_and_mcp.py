@@ -3,7 +3,8 @@
 
 Runs inside a single process/network namespace to verify:
 0. The lens card on the CPU, before anything loads (scripts/check_lens_card.py, in its own process): the shipped file,
-   incomplete files and other lenses, and which vault statements name the lens.
+   incomplete files and other lenses, and which vault statements name the lens. Then, also on the CPU, what the
+   interface sends by default (scripts/check_interface_defaults.py: the store bundled and run under node).
 1. FastAPI + Binary Float32 WebSocket (`/ws/theodolite`) wire format (`0x5448454F`) & JSON metadata
 2. FastMCP Scientist Tools (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`)
 3. LARQL / VINDEX3 FFN Vault queries (`query_larql_vault`, `/api/larql`, the WebSocket `larql` action)
@@ -15,7 +16,12 @@ Runs inside a single process/network namespace to verify:
      (default: artifacts/e2e/)
 5. The options added for V7 bugs 1, 3, 4, 5 and 8 (chat template and system turn, Löwdin / weighted / per-layer /
    centred survey frames with proj_frac, the mended nudge, the direct-path thread score, write-size pole ranking),
-   over the WebSocket and the MCP tools, and the formerly disabled UI controls that drive them.
+   over the WebSocket and the MCP tools, while the server's own defaults stay as first built; the first write-ranked
+   sweep after the server starts is timed against an identical second one. The interface sends the mends for
+   bugs 3 (the order, on raw rows) and 8 by default: the Lexicon's default request says so, the first live sighting
+   is squared all at once and ranked by write size, unticking the ranking retakes it by |a|, and "the frame options
+   as first built" on the landmarks page retakes it squared in order, from raw rows. The recorded sighting, on a page
+   whose WebSocket never opens, is described on the landmarks page as squared in order ("kept exactly as it lies").
 6. The lens is named: /api/health, every sweep, every scientist tool reply (called as MCP tools, over HTTP and over
    the WebSocket) and every vault statement that reads words or writes an edit through the lens (NEAREST, DESCRIBE
    POLE, UPDATE; over MCP, HTTP and the WebSocket) carry "lens", fitted on the base model google/gemma-4-31B as the
@@ -410,8 +416,9 @@ async def main() -> int:
     assert lens_check.returncode == 0, f"the lens card check failed:\n{lens_check.stdout}\n{lens_check.stderr}"
     # the sampler's mirrored odds, the saved-prompts routes, the sweep's wire protocol, and capture_rows against
     # interp_engine's capture bit for bit on a tiny stand-in Gemma 4, on the CPU too
-    for cpu_check in ("check_sampler_mirror.py", "check_saved_prompts.py", "check_sweep_protocol.py",
-                      "check_capture_rows.py"):
+    # and first, what the interface sends by default (its store, bundled with esbuild and run under node)
+    for cpu_check in ("check_interface_defaults.py", "check_sampler_mirror.py", "check_saved_prompts.py",
+                      "check_sweep_protocol.py", "check_capture_rows.py"):
         res = subprocess.run(
             [sys.executable, "-I", str(ROOT_DIR / "scripts" / cpu_check)],
             capture_output=True, text=True, timeout=600, check=False,
@@ -577,32 +584,38 @@ async def main() -> int:
             # ---------------------------------------------------------------------
             print("\n[3b/4] Verifying the chat template, survey-frame, nudge, thread-score and pole-ranking options...")
             system_turn = "You are a careful assistant."
-            bin2, meta = await ws_sweep(
-                ws,
-                {
-                    "prompt": "Tell me about yourself.",
-                    "chat": True,
-                    "system": system_turn,
-                    "assistant_prefix": "Hi! I",
-                    "monuments": ["she", "he", "it"],
-                    "max_new_tokens": 4,
-                    "frame_squaring": "lowdin",
-                    "frame_fnw": True,
-                    "centre_prompts": ["The weather today is"],
-                    "pole_ranking": "write",
-                    "thread_score": "direct",
-                    "steering": {
-                        "enabled": True,
-                        "target_concept": "she",
-                        "contrast_concept": "he",
-                        "layers": [29, 35, 41, 47, 53],
-                        "direction": "fnw",
-                        "mask_quiet": True,
-                        "spare_bos": True,
-                        "strength": 0.01,
-                    },
+            options_payload: Dict[str, Any] = {
+                "prompt": "Tell me about yourself.",
+                "chat": True,
+                "system": system_turn,
+                "assistant_prefix": "Hi! I",
+                "monuments": ["she", "he", "it"],
+                "max_new_tokens": 4,
+                "frame_squaring": "lowdin",
+                "frame_fnw": True,
+                "centre_prompts": ["The weather today is"],
+                "pole_ranking": "write",
+                "thread_score": "direct",
+                "steering": {
+                    "enabled": True,
+                    "target_concept": "she",
+                    "contrast_concept": "he",
+                    "layers": [29, 35, 41, 47, 53],
+                    "direction": "fnw",
+                    "mask_quiet": True,
+                    "spare_bos": True,
+                    "strength": 0.01,
                 },
-            )
+            }
+            # the first write-ranked sweep since the server started: it computes each layer's write-column norms once
+            # (engine_runtime.py write_col_norms, cached); an identical second call shows what that first cost was
+            t_first = time.perf_counter()
+            bin2, meta = await ws_sweep(ws, options_payload)
+            t_first = time.perf_counter() - t_first
+            t_again = time.perf_counter()
+            await ws_sweep(ws, options_payload)
+            t_again = time.perf_counter() - t_again
+            print(f"  • the first write-ranked sweep took {t_first:.1f} s; the same request again, {t_again:.1f} s")
             assert meta["prompt"].startswith(f"<bos><|turn>system\n{system_turn}<turn|>\n<|turn>user\nTell me about yourself.")
             assert meta["prompt"].endswith("<|turn>model\n<|channel>thought\n<channel|>Hi! I"), meta["prompt"][-80:]
             assert meta["prompt_token_ids"][0] == 2 and meta["prompt_token_ids"][1] != 2, "expected exactly one BOS"
@@ -981,19 +994,18 @@ async def main() -> int:
             assert chat_ui["found"] and chat_ui["checked"] and not chat_ui["disabled"] and chat_ui["system"], f"chat control: {chat_ui}"
             assert not chat_ui["notYet"], "the instrument page still shows a [NOT YET IN THE SERVER] control"
             print("  • Instrument: “send it as a chat” is enabled (ticked by default), with a system-prompt field")
-            # threads are scored by the direct-path estimate by default: tick "rank them by write size" (a sighting
-            # with direct threads), then untick "score threads by the direct-path estimate" to read C; each retakes it
-            for label, want_checked, done in (
-                ("rank them by write size", True, "by write size |a|"),
-                ("score threads by the direct-path estimate", False, "A weak guide (ρ ≈ 0.41"),
+            # neurons are ranked by write size and threads scored by the direct-path estimate by default: untick "rank
+            # them by write size" to read by |a|, then "score threads by the direct-path estimate" to read C; each
+            # retakes the sighting
+            for label, want_checked, default_text, done in (
+                ("rank them by write size", False, "the top fifteen by write size |a|", "the top fifteen by |a| = |mlp_act|"),
+                ("score threads by the direct-path estimate", False,
+                 "A direct-path linear estimate, not a verified circuit", "A weak guide (ρ ≈ 0.41"),
             ):
                 await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle instrument")
-                if not want_checked:
-                    await wait_for(
-                        """document.body.innerText.includes("A direct-path linear estimate, not a verified circuit")""",
-                        "threads scored by the direct-path estimate by default",
-                    )
-                    print("  • Instrument: threads are scored by the direct-path estimate by default")
+                await wait_for(f"""document.body.innerText.includes({json.dumps(default_text)})""",
+                               f"the default sighting, before “{label}” is changed")
+                print(f"  • Instrument: by default the sighting reads “{default_text}”")
                 clicked = await cdp.eval_js(
                     f"""(() => {{
                         const l = Array.from(document.querySelectorAll("label.check")).find((x) => x.textContent.includes({json.dumps(label)}));
@@ -1004,21 +1016,61 @@ async def main() -> int:
                 assert clicked is want_checked, f"could not set “{label}” to {want_checked} (got {clicked})"
                 await wait_for(f"""document.body.innerText.includes({json.dumps(done)})""", f"a sighting after “{label}”")
                 print(f"  • Instrument: “{label}” {'ticked' if want_checked else 'unticked'}, a new sighting taken")
+            # the Lexicon prints the request the interface sends by default, built by the store's own sweepPayload
+            await go("#/lexicon")
+            lex_req = await cdp.eval_js(
+                """(() => {
+                    const e = Array.from(document.querySelectorAll("span.mono-wrap")).find((x) => x.textContent.includes('"action":"sweep"'));
+                    return e ? e.textContent : null;
+                })()"""
+            )
+            assert lex_req, "the Lexicon shows no default request (is its apparatus open?)"
+            lex_payload = json.loads(lex_req)["payload"]
+            want_lex = {"frame_squaring": "lowdin", "frame_fnw": False, "frame_per_layer": False,
+                        "pole_ranking": "write", "thread_score": "direct", "survey_mode": "monument"}
+            got_lex = {k: lex_payload.get(k) for k in want_lex}
+            assert got_lex == want_lex, f"the Lexicon's default request sends {got_lex}, not {want_lex}"
+            assert not lex_payload.get("centre_prompts"), f"the default request centres: {lex_payload.get('centre_prompts')}"
+            print("  • Lexicon: the default request squares all at once on raw rows and ranks by write size")
             await go("#/landmarks")
             await wait_for("""(() => !document.body.innerText.includes("taking a sighting…"))()""", "an idle landmarks page")
+            # the live sightings so far were taken in the default frame: squared all at once, on raw rows
+            await wait_for(
+                """document.body.innerText.includes("The sighting shown was squared all at once, from raw rows, at the final layer")""",
+                "a sighting in the default frame",
+            )
+            stones = await cdp.eval_js(
+                """(() => { const t = document.body.innerText;
+                    return { atOnce: t.includes("squared with the other two, all at once"), inOrder: t.includes("kept exactly as it lies") }; })()"""
+            )
+            assert stones == {"atOnce": True, "inOrder": False}, f"the stones do not describe a frame squared all at once: {stones}"
+            print("  • Landmarks: the default sighting was squared all at once, from raw rows, and the stones say so")
             frame_ui = await cdp.eval_js(
                 """(() => {
                     const radios = Array.from(document.querySelectorAll('input[name="frame-squaring"], input[name="frame-place"]'));
-                    const i = document.querySelectorAll('input[name="frame-squaring"]')[1];
-                    if (i && !i.disabled) i.click();
-                    const b = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.includes("take a sighting with these landmarks"));
-                    if (b && !b.disabled) b.click();
-                    return { radios: radios.length, disabled: radios.filter((r) => r.disabled).length, clicked: !!(i && b) };
+                    const p = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "the frame options as first built");
+                    if (p && !p.disabled) p.click();
+                    return { radios: radios.length, disabled: radios.filter((r) => r.disabled).length, clicked: !!p };
                 })()"""
             )
             assert frame_ui["radios"] == 4 and frame_ui["disabled"] == 0 and frame_ui["clicked"], f"frame options: {frame_ui}"
-            await wait_for("""document.body.innerText.includes("The sighting shown was squared all at once")""", "a Löwdin sighting")
-            print("  • Landmarks: the frame options are live; a sighting squared all at once came back")
+            await asyncio.sleep(0.4)  # let the page re-render with the frame as first built before taking it
+            took = await cdp.eval_js(
+                """(() => {
+                    const p = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "the frame options as first built");
+                    const b = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.includes("take a sighting with these landmarks"));
+                    if (!b || b.disabled) return { took: false };
+                    b.click();
+                    return { took: true, pressed: p ? p.getAttribute("aria-pressed") : null };
+                })()"""
+            )
+            assert took == {"took": True, "pressed": "true"}, f"the frame as first built was not set and taken: {took}"
+            await wait_for(
+                """document.body.innerText.includes("The sighting shown was squared in order, from raw rows, at the final layer")""",
+                "a sighting in the frame options as first built",
+            )
+            await wait_for("""document.body.innerText.includes("kept exactly as it lies")""", "the stones of a frame squared in order")
+            print("  • Landmarks: “the frame options as first built” retook the sighting squared in order, from raw rows")
             await go("#/neuron/36/9482/pos")
             await asyncio.sleep(0.5)
             picked = await cdp.eval_js(
@@ -1048,6 +1100,48 @@ async def main() -> int:
             )
             print("  • Neuron folio: “direct-path estimate” scored the traced readers")
             await cdp.eval_js(f"{click_js}('apparatus')")
+
+            # The recorded sighting (E6, taken in the frame as first built) on a page of its own whose WebSocket never
+            # opens, so no live sighting replaces it: its landmarks page must describe it as squared in order
+            async with httpx.AsyncClient(timeout=10.0, trust_env=False) as cdp_http:
+                rec_target = (await cdp_http.put(f"http://127.0.0.1:{CDP_PORT}/json/new?about:blank")).json()
+            rec = CDPClient(rec_target["webSocketDebuggerUrl"])
+            await rec.connect()
+            try:
+                await rec.send(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": "window.WebSocket = class { static CONNECTING = 0; static OPEN = 1; static CLOSING = 2; "
+                               "static CLOSED = 3; constructor() { this.readyState = 0; } send() {} close() {} };"},
+                )
+                await rec.send("Page.navigate", {"url": f"http://{HOST}:{PORT}/#/landmarks"})
+                # the stones are on the main reading; the sentence on how it was squared is in the apparatus, opened here
+                recorded_js = """(() => { const t = document.body ? document.body.innerText : "";
+                    return { inOrder: t.includes("kept exactly as it lies"), atOnce: t.includes("squared with the other two, all at once"),
+                             said: t.includes("The recorded sighting was squared in order, from raw rows, at the final layer") }; })()"""
+                recorded = None
+                for _ in range(60):
+                    recorded = await rec.eval_js(recorded_js)
+                    if recorded and recorded["inOrder"]:
+                        break
+                    await asyncio.sleep(0.5)
+                await rec.eval_js(
+                    """(() => {
+                        const b = Array.from(document.querySelectorAll('[aria-label="How to read these pages"] button'))
+                            .find((x) => x.textContent.includes("apparatus"));
+                        if (b && b.getAttribute("aria-pressed") !== "true") b.click();
+                    })()"""
+                )
+                await asyncio.sleep(0.4)
+                recorded = await rec.eval_js(recorded_js)
+                assert recorded == {"inOrder": True, "atOnce": False, "said": True}, (
+                    f"the recorded sighting's landmarks page does not describe the frame as first built: {recorded}")
+                assert not rec.console_errors and not rec.page_exceptions, (
+                    f"the recorded sighting's page logged errors: {rec.console_errors} {rec.page_exceptions}")
+                print("  • Landmarks, recorded sighting: “kept exactly as it lies”, squared in order, from raw rows")
+            finally:
+                await rec.close()
+                async with httpx.AsyncClient(timeout=10.0, trust_env=False) as cdp_http:
+                    await cdp_http.get(f"http://127.0.0.1:{CDP_PORT}/json/close/{rec_target['id']}")
 
             print(
                 f"  • Console Errors: {len(cdp.console_errors)} | Page Exceptions: {len(cdp.page_exceptions)}"

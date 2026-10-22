@@ -93,6 +93,10 @@ For each layer $l \in \{0, \dots, 59\}$:
 2. **Bipolar GeGLU Neuron Poles & J-VINDEX Fusion**:
    - Top-$k$ active poles per layer ($k = 15$):
      $$\text{vals}, \text{idx} = \text{topk}\!\left(|\text{mlp\_act}[l]|, k=15, \text{dim}=-1\right), \quad \sigma = \text{sign}\!\left(\text{mlp\_act}[l][\text{idx}]\right) \in \{-1, +1\}$$
+   - Ranked by write size instead (V7 bug 8; `pole_ranking="write"`), the top 15 by
+     $$\text{score}_i = |\text{mlp\_act}[l][i]| \cdot \big\|W_{\text{down}}[l][:, i] \odot w_{\text{post}}\big\|$$
+     with $w_{\text{post}}$ the post-FFN norm weight; each listed pole's `write_size` is $s \cdot \text{score}_i / \text{rms}(y)$,
+     and `poles_ffn_explained` is the share of the feed-forward write the fifteen explain, sent under either ranking.
    - Down-projection vector $w_{\text{down}}^{(l, i)} = W_{\text{down}}[l][:, i] \in \mathbb{R}^{5376}$ (including post-FFN norm weight scaling when projecting into residual space).
    - **J-VINDEX Readout**:
      $$\text{pole\_logits}(l, i, \sigma) = \text{unembed}\!\left((\sigma \cdot w_{\text{down}}^{(l, i)}) \, J_{\text{pp}}[l]^\top\right)$$
@@ -109,16 +113,21 @@ For each layer $l \in \{0, \dots, 59\}$:
      with exact RMSNorm Jacobians; `direct_act` adds $W_{\text{up}}$ and the clean pre-activations. Selected with
      `thread_score="direct"`.
 
-4. **Projective Theodolite Triangulation (Gram-Schmidt Survey Frame)**:
+4. **Projective Theodolite Triangulation (Survey Frame, Gram–Schmidt or Löwdin)**:
    - Orthonormal basis $(e_1, e_2, e_3) \in \mathbb{R}^{3 \times 5376}$ in J++-aligned final residual space (or layer-pulled-back space):
      - **Monument Mode**: Given 3 vocabulary tokens $(t_1, t_2, t_3)$, take their unembedding directions $u_m = W_U[t_m]$ (or layer-pulled-back $v_m^{(l)} = W_U[t_m] J_{\text{pp}}[l]$) and orthonormalize in `fp32` via modified Gram-Schmidt to obtain $(e_1, e_2, e_3)$.
-     - **Pole-Locked Motif Mode**: Given a selected pole $(l, i, \sigma_i)$, set raw vectors $v_1 = w_{\text{gate}}^{(l, i)}$, $v_2 = (\sigma_i w_{\text{down}}^{(l, i)}) J_{\text{pp}}[l]^\top$, $v_3 = w_{\text{gate}}^{(l+1, j^*)}$ (dominant downstream reader), and orthonormalize via Gram-Schmidt.
+     - **Pole-Locked Motif Mode**: Given a selected pole $(l, i, \sigma_i)$, set raw vectors $v_1 = w_{\text{gate}}^{(l, i)}$, $v_2 = (\sigma_i w_{\text{down}}^{(l, i)}) J_{\text{pp}}[l]^\top$, $v_3 = w_{\text{gate}}^{(l+1, j^*)}$ (dominant downstream reader), and orthonormalize via Gram-Schmidt (or Löwdin, if `frame_squaring` asks for it).
    - Project each layer's J++-aligned state $\tilde{h}_l = h_l J_{\text{pp}}[l]^\top$:
      $$x_l = \langle \tilde{h}_l, e_1 \rangle, \quad y_l = \langle \tilde{h}_l, e_2 \rangle, \quad z_l = \langle \tilde{h}_l, e_3 \rangle$$
      $$\theta_l = \text{atan2}(y_l, x_l), \quad \phi_l = \text{asin}\!\left(\frac{z_l}{\sqrt{x_l^2 + y_l^2 + z_l^2 + \epsilon}}\right), \quad \|h_l\|_2 = \sqrt{\sum_{d=1}^{5376} h_{l,d}^2}$$
    - Options (V7 bug 3): `frame_squaring="lowdin"` squares symmetrically, $E = (VV^\top)^{-1/2}V$ on unit rows (order-free);
      `frame_fnw` uses $\text{fnw} \odot W_U[t_m]$; `frame_per_layer` reads the raw $h_l$ in the frame of $W_U[t_m] J_{\text{pp}}[l]$;
      `centre_prompts` subtracts a matched control's state before projecting. `proj_frac` $= \|(x_l, y_l, z_l)\| / \|\tilde{h}_l\|$.
+   - Whose defaults are whose: the server's defaults (Gram–Schmidt on raw rows; poles by $|a|$; threads by $C$) reproduce
+     the instrument as first built, for old callers. The interface sends `frame_squaring="lowdin"` on raw rows
+     (`frame_fnw=false`, since V7 did not measure the weighted rows), `pole_ranking="write"` and `thread_score="direct"`
+     unless the reader chooses otherwise; in pole-locked motif mode it sends `frame_squaring="gram_schmidt"`, since that
+     frame's axes have fixed roles.
 
 ---
 

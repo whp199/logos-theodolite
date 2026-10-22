@@ -14,7 +14,8 @@ itself, not a copy of it. It checks:
    "mended" sends the initial request again; neither changes a centring the reader chose;
 4. the text the other checks and pages lean on: FRAME_AS_BUILT is the frame as first built, word for word; the
    recorded sighting keeps its ranking by |a| and no echoed frame; frame.tsx's studyComparable is false for a frame
-   on the weighted rows.
+   on the weighted rows; README §iv's rows 3 and 8 say the interface sends the mend by default, on the rows decided,
+   and that the server's own default stays as first built.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -193,6 +194,23 @@ def check_text() -> None:
     check(m is not None, "frame.tsx: studyComparable not found")
     if m is not None:
         check("!fnw" in m.group(1), f"frame.tsx: studyComparable ignores the weighted rows: {m.group(1)}")
+    readme = (ROOT_DIR / "README.md").read_text(encoding="utf-8")
+    rows = {n: re.search(rf"^\| \*\*{n}\*\* \|.*$", readme, re.M) for n in (3, 8)}
+    for n, row in rows.items():
+        check(row is not None, f"README.md: row {n} of the fault table not found")
+    if rows[3] is not None:
+        row3 = rows[3].group(0)
+        check('`frame_squaring="lowdin"`' in row3 and "which the interface sends by default" in row3,
+              "README.md row 3 does not say the interface sends the Löwdin frame by default")
+        check("server’s own default stays Gram–Schmidt on raw rows" in row3,
+              "README.md row 3 does not say the server keeps Gram–Schmidt on raw rows")
+        rows_said = '"lowdin"`, `frame_fnw`' in row3 if DECIDED_FNW_DEFAULT else '(order-free) on the raw rows' in row3
+        check(rows_said, "README.md row 3 does not name the rows the interface's frame is squared from")
+    if rows[8] is not None:
+        row8 = rows[8].group(0)
+        check('`pole_ranking="write"`' in row8 and "the interface sends it by default" in row8,
+              "README.md row 8 does not say the interface ranks by write size by default")
+        check("server’s own default stays \\|a\\|" in row8, "README.md row 8 does not say the server keeps |a|")
 
 
 def main() -> int:
