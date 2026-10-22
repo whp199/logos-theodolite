@@ -29,13 +29,22 @@ Third-party works used
   at commit d7efc0de372e20589e899188c0cfe8434acc63ec, with its six readout-eval
   item files (data/jlens/evaluations/lens-eval-*.json), from a local,
   gitignored checkout. Neither the code nor the items are included here; only
-  their sha256 are (experiments/scripts/R3_sources.json).
+  their sha256 are (experiments/scripts/R3_sources.json). Per jpp_lens's own
+  NOTICE, the item files come from the data/ directory of
+  https://github.com/anthropics/jacobian-lens (Copyright 2026 Anthropic PBC,
+  Apache License 2.0).
   experiments/scripts/R3_lrp.py reimplements, for Gemma 4 only, the R-lens
   backward-pass rules of jpp_lens's src/workspace_lens/lrp/lrp.py (the LN rule
   on RMSNorms, the identity rule on GELU-tanh, the half rule on the gated
   product), Copyright 2026 Kola Ayonrinde, Apache License 2.0; jpp_lens adapted
   them from the R-Lens implementation of Camila Blank and Agam Bhatia
   (https://huggingface.co/camilablank/workspace-lenses).
+  experiments/scripts/R3_fitlib.py reimplements further parts of jpp_lens's
+  recipe at that commit (the router's PCA as a streamed covariance, the
+  expert-Jacobian sums and their merge with its fallback, the readout-eval item
+  handling), Copyright 2026 Kola Ayonrinde, Apache License 2.0, and imports
+  others (k-means, the candidate-id and non-semantic-token scans, the
+  expert-weight fitter) from the local checkout at run time. R3_parity.py runs jpp_lens's own stages beside them.
 
 * WikiText-103 (Salesforce/wikitext, wikitext-103-raw-v1): Merity et al.
   (2017), "Pointer Sentinel Mixture Models"; CC BY-SA 3.0 and GFDL, per its

@@ -22,7 +22,9 @@
    WikiText row (the 1,000 records and the rows between them, which hold the start of Miru's prompt stream), every J++
    eval item (prompt, target, intermediates), and the other R3 prompts. Matching is R2_common.freshness_check. Before
    the prompts exist (--before-prompts), the corpus is built and checked with planted queries only.
-   Matches inside third-party texts are recorded by source and sha256, never by text.
+   Matches inside third-party texts are recorded by source and sha256, never by text. R2's 220 prompts (R3's
+   replication set) are checked the same way against R3's fit sources (the WikiText rows and J++'s items), which R2
+   could not do; that is recorded, not a failure.
 
 Writes experiments/results/R3_01_check.json and exits 1 if any check fails (without --before-prompts, a missing
 R3_prompts.json is a failure).
@@ -234,14 +236,14 @@ def build_corpus(main: Path, tok, rows: List[str], items: Dict[str, List[Dict[st
             corpus.append((f"wikitext:row{i}", t))
             n_wt += 1
     n_it = 0
-    for slug, its in items.items():
-        for it in its:
+    for slug, its in items.items():                        # items by their place in the pinned file, not by name
+        for j, it in enumerate(its):
             for k, v in (("prompt", it.get("prompt")), ("target", it.get("target"))):
                 if isinstance(v, str):
-                    corpus.append((f"jpp_items:{slug}/{it['name']}/{k}", v))
+                    corpus.append((f"jpp_items:{slug}/#{j}/{k}", v))
                     n_it += 1
             for v in it.get("intermediates", []):
-                corpus.append((f"jpp_items:{slug}/{it['name']}/intermediate", v))
+                corpus.append((f"jpp_items:{slug}/#{j}/intermediate", v))
                 n_it += 1
     sources = {"scripts_py_files": len(seen_py), "scripts_strings": n_py, "results_json_files": len(seen_json),
                "results_strings": n_js, "r2_prompt_strings": len(queries_of(r2p)), "n1b_corpus_strings": n_n1b,
@@ -397,6 +399,18 @@ def main() -> int:
           "the corpus flags planted copies of a WikiText record, a J++ item and an R2 prompt, and not a fresh one")
     rec["freshness"] = {"sources": sources, "n_corpus_strings": pc["n_corpus_strings"],
                         "planted": {lab: lab in flagged for lab, _ in planted}}
+    # R2's 220 prompts are R3's replication set (secondary). R2 could not check them against WikiText (R2_PREREG.md
+    # §3.2); here they are checked against R3's fit sources: every cached WikiText row and every J++ item string.
+    # Recorded, not a failure: the replication set is reported whatever this finds.
+    fit_src = [(s, t) for s, t in corpus if s.startswith(("wikitext:", "jpp_items:"))]
+    r2q = queries_of(json.loads(R2.PROMPTS_PATH.read_text(encoding="utf-8")))
+    rc = R2.freshness_check(r2q, fit_src)
+    rec["r2_set_against_fit_sources"] = {
+        "n_queries": rc["n_queries"], "n_fit_source_strings": rc["n_corpus_strings"],
+        "flags": [redact(f) for f in rc["flags"]], "closest_5": [redact(c) for c in rc["closest"][:5]],
+        "max_ratio": rc["closest"][0]["ratio"] if rc["closest"] else 0.0}
+    log(f"R2's prompts against R3's fit sources (WikiText rows, J++ items): {len(rc['flags'])} flags over "
+        f"{rc['n_queries']} queries and {rc['n_corpus_strings']:,} strings (recorded, not a failure)")
     if C.PROMPTS_PATH.is_file():
         data = json.loads(C.PROMPTS_PATH.read_text(encoding="utf-8"))
         rec["prompts_file"] = str(C.PROMPTS_PATH.relative_to(C.REPO))

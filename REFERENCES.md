@@ -23,6 +23,7 @@ This file lists the external sources, prior ideas and software that Logos Theodo
      - it computes Jacobians with an LRP backward pass (`lrp_mode="rlens"`, following [5]);
      - it removes non-semantic tokens from the readout.
    - The gemma-4-31b J++ lens was fitted on the **base** model, on 64 × 128-token WikiText-103 sequences [7]. This instrument applies only the lens matrix, not the readout token filter.
+   - R3 (`experiments/results/R3_PREREG.md`, branch `it-jpp-refit`) reads the code at commit `d7efc0de372e20589e899188c0cfe8434acc63ec` (17 October 2026) from a local, gitignored checkout, pinned file by file in `experiments/scripts/R3_sources.json`, and refits its recipe on the instruct checkpoint [1]. Its R-lens rules cite RelP [45].
 
 5. **Blank, C., Bhatia, A., Nanda, N. *R-lens: Making J-lens More Faithful on Early Layers.* Alignment Forum / LessWrong, 5 August 2026.** https://www.alignmentforum.org/posts/nv8oedrnLXKRzNEL9
    - *Use:* source of the LRP rules J++ uses: LN-rule on RMSNorm, identity and half rules on gated MLPs, plain gradients through attention. R1 §2.4 discusses these rules.
@@ -149,3 +150,16 @@ Where the study read the lens on answers the model wrote itself, they were writt
 
 44. **vLLM project. *SamplingParams* (`vllm/sampling_params.py`). Apache-2.0.** https://github.com/vllm-project/vllm/blob/main/vllm/sampling_params.py
     - *Use:* the presence penalty as vLLM defines it: a fixed amount taken off the score of every token that has appeared in the generated text so far, the prompt not counted ("hold back repeats"; `presence_penalty`). interp-engine [36] applies it the same way, on the raw scores before the temperature and on the greedy path too, which its code gives as vLLM's order (`interp_engine.sampling.apply_presence_penalty`, `interp_engine.steer._sample_next`).
+
+## H. The instruct refit (R3)
+
+These entries were written on 2026-10-21 from the local files named in them. Their links were not opened then: R3's network use was limited to its three approved sources (J++'s code, its item files and WikiText-103).
+
+45. **RelP (relevance patching). arXiv:2508.21258, 2025.** https://arxiv.org/abs/2508.21258
+    - *Use:* jpp_lens's LRP module (`src/workspace_lens/lrp/lrp.py` at the commit pinned under [4]) names RelP as what its R-lens backward pass computes: an LRP propagation coefficient in place of the raw gradient, obtained by ordinary autograd over a forward graph with chosen sub-expressions detached. `experiments/scripts/R3_lrp.py` reimplements those rules for Gemma 4 (see NOTICE). Its authors and full title are cited here only as far as jpp_lens cites them.
+
+46. **returnmoe. *jlens-adapters*: Jacobian-lens adapters for Miru Tracer (Hugging Face; licence "other", named Unlicense on its card).** https://huggingface.co/returnmoe/jlens-adapters
+    - Tool: Miru Tracer, https://github.com/returnmoe/miru-tracer (not read by this repository).
+    - File used: `miru/google/gemma-4-31B-it.safetensors` at revision `134a973cf473ad12a885d3880f3b2e01ef495cd6`, 3,410,446,944 bytes, sha256 `cedd4b62f49a7f79e07c1bb107ad1d48d39dc7ad2790611de7e9480b4543386a`.
+    - Its header's fit metadata (format `miru-tracer/jacobian-lens` 1): model `google/gemma-4-31B-it` at commit `842da379…`, computed in bfloat16; estimator `summed_current_and_future_targets_v1`, 32 output dimensions per pass, target layer 59, 128 word-pieces, the first 16 skipped, a mean over positions and a uniform mean over prompts; source layers 0–58; 425 prompts processed, where its convergence rule stopped it (threshold 0.002, at least 160 prompts), of 1,000 selected from WikiText-103 [7] (`wikitext-103-raw-v1`, train, revision `b08601e0…`, concatenated and rechunked, headings excluded, 200–2,000 characters), with a hash of the selected sequence and of the processed prefix. No LRP rule is recorded.
+    - *Use:* the community instruct J-lens R2 tested and did not serve (`experiments/results/R2_03_report_section.md`). In R3 it is a reference lens only, and the fine-tuned side of the separation of fine-tuning from quantisation (R3_PREREG §1, H6). It is downloaded to the local cache and not redistributed.

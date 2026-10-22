@@ -3,11 +3,11 @@
  "ok": true,
  "reproduced_r1": true,
  "meta": {
-  "written_at": "2026-10-21T23:10:27",
-  "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+  "written_at": "2026-10-21T23:42:41",
+  "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
   "host": "gentoo",
   "torch": "2.14.1+cu130",
-  "seconds": 21.0,
+  "seconds": 25.1,
   "files": {
    "R1_02_dirs.pt": {
     "path": "/home/eric/bin/ai/theodolite2/experiments/results/R1_02_dirs.pt",

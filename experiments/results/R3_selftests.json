@@ -3,22 +3,14 @@
  "scripts": {
   "R3_lrp.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_lrp.py --selftest",
-   "at": "2026-10-21T23:02:32",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:40:56",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 2.7,
+   "seconds": 1.9,
    "ok": true,
    "n_checks": 22,
    "n_failed": 0,
@@ -121,22 +113,14 @@
   },
   "R3_fitlib.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_fitlib.py --selftest",
-   "at": "2026-10-21T23:02:42",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:41:09",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 8.4,
+   "seconds": 11.8,
    "ok": true,
    "n_checks": 17,
    "n_failed": 0,
@@ -219,17 +203,13 @@
   },
   "R3_06_analyze.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_06_analyze.py --selftest",
-   "at": "2026-10-21T22:06:16",
-   "head": "42d0d3fcb38fc86105134ed9107fb85774be05ba",
+   "at": "2026-10-21T23:24:56",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_01_check.py",
-    "experiments/scripts/R3_06_analyze.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_parity.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 35.5,
+   "seconds": 33.6,
    "ok": true,
    "n_checks": 31,
    "n_failed": 0,
@@ -368,20 +348,12 @@
   },
   "R3_gpu.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_gpu.py --selftest",
-   "at": "2026-10-21T23:02:46",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:41:12",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
    "seconds": 2.0,
    "ok": true,
@@ -454,22 +426,14 @@
   },
   "R3_02_router.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_02_router.py --selftest",
-   "at": "2026-10-21T23:02:54",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:41:26",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 7.5,
+   "seconds": 12.0,
    "ok": true,
    "n_checks": 6,
    "n_failed": 0,
@@ -508,22 +472,14 @@
   },
   "R3_03_fit.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_03_fit.py --selftest",
-   "at": "2026-10-21T23:02:59",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:41:31",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 3.1,
+   "seconds": 3.0,
    "ok": true,
    "n_checks": 12,
    "n_failed": 0,
@@ -574,7 +530,7 @@
     },
     {
      "ok": true,
-     "check": "--check-only: 8 shards of 8 fit prompts, disk {'free_gb': 1019.5, 'needed_gb': 276.3}; waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no R3_02_router.pt yet (R3_02)']"
+     "check": "--check-only: 8 shards of 8 fit prompts, disk {'free_gb': 1019.2, 'needed_gb': 276.3}; waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no R3_02_router.pt yet (R3_02)']"
     }
    ],
    "env": {
@@ -586,22 +542,14 @@
   },
   "R3_04_weights.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_04_weights.py --selftest",
-   "at": "2026-10-21T23:03:05",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:41:37",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 5.1,
+   "seconds": 4.7,
    "ok": true,
    "n_checks": 9,
    "n_failed": 0,
@@ -652,20 +600,12 @@
   },
   "R3_Q1_jlens.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_Q1_jlens.py --selftest",
-   "at": "2026-10-21T23:03:09",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:41:40",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
    "seconds": 2.2,
    "ok": true,
@@ -710,22 +650,14 @@
   },
   "R3_00_pilot.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_00_pilot.py --selftest",
-   "at": "2026-10-21T23:03:14",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:41:45",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
+    "experiments/scripts/R3_01_check.py",
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 3.5,
+   "seconds": 3.6,
    "ok": true,
    "n_checks": 9,
    "n_failed": 0,
@@ -740,7 +672,7 @@
     },
     {
      "ok": true,
-     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 16, 's_per_prompt': 0.03}"
+     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 8, 's_per_prompt': 0.03}"
     },
     {
      "ok": true,
@@ -776,29 +708,20 @@
   },
   "R3_05_eval.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_05_eval.py --selftest",
-   "at": "2026-10-21T23:09:17",
-   "head": "2623c1e0deb5c011c96f59fc0ffe0aba5996d260",
+   "at": "2026-10-21T23:35:15",
+   "head": "e789a53664d5f3f47d864bb5ab6d537cf3978445",
    "scripts_uncommitted_then": [
     "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_fitlib.py",
-    "experiments/scripts/R3_lrp.py",
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_03_fit.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_gpu.py"
+    "experiments/scripts/R3_prompts.json"
    ],
-   "seconds": 361.3,
+   "seconds": 519.9,
    "ok": true,
    "n_checks": 8,
    "n_failed": 0,
    "checks": [
     {
      "ok": true,
-     "check": "every check before the model passes on the CPU (sizes only here); waiting for: [\"R3_prompts.json is not written yet (the registration's prompts)\", 'jpp-it: no lens file recorded by R3_04_weights.json yet', 'rl-it: no lens file recorded by R3_04_weights.json yet', 'jpp-it-full-macro: no lens file recorded by R3_04_weights.json yet', \"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\"]; failed: []"
+     "check": "every check before the model passes on the CPU (sizes only here); waiting for: ['jpp-it: no lens file recorded by R3_04_weights.json yet', 'rl-it: no lens file recorded by R3_04_weights.json yet', 'jpp-it-full-macro: no lens file recorded by R3_04_weights.json yet', \"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\"]; failed: []"
     },
     {
      "ok": true,

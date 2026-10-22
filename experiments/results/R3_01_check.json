@@ -1,6 +1,6 @@
 {
  "schema": "R3_01/1",
- "written_at": "2026-10-21T22:07:06",
+ "written_at": "2026-10-21T23:40:11",
  "pins": {
   "r1_lens": {
    "found": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-second-reading/experiments/results/R1_18_it_lens.pt",
@@ -167,10 +167,169 @@
    "planted:r2_prompt": true,
    "planted:fresh": false
   },
-  "prompts": "not yet written: R3_prompts.json is part of the registration still to come"
+  "n_queries": 480,
+  "flags": [],
+  "internal_flags": [],
+  "closest_10": [
+   {
+    "query": "r3-cb-74:user",
+    "ratio": 0.788,
+    "match": "What are the main types of clouds?",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-mid-16:user",
+    "ratio": 0.778,
+    "match": "What is the history of the Olympic Games?",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-mid-08:user",
+    "ratio": 0.772,
+    "match": "Explain the difference between a process and a thread.",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-bare-07:text",
+    "ratio": 0.771,
+    "match": "The planet closest to the Sun is **",
+    "source": "results/R2_02_eval.json"
+   },
+   {
+    "query": "r3-cna-26:user",
+    "ratio": 0.767,
+    "match": "Suggest a name for a bakery.",
+    "source": "scripts/V4_latent_identity_08_steer.py"
+   },
+   {
+    "query": "r3-mid-11:user",
+    "ratio": 0.767,
+    "match": "Describe daily life in ancient Rome.",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-mid-77:user",
+    "ratio": 0.763,
+    "match": "What do you think about when you're alone?",
+    "source": "scripts/E4_causal_common.py"
+   },
+   {
+    "query": "r3-cb-20:user",
+    "ratio": 0.762,
+    "match": "Which planets are in our solar system?",
+    "source": "scripts/R2_prompts.json"
+   },
+   {
+    "query": "r3-mid-12:user",
+    "ratio": 0.758,
+    "match": "How do whales communicate?",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r3-bare-44:text",
+    "ratio": 0.732,
+    "match": "SELECT name, email FROM users WHERE age > 30 ORDER BY",
+    "source": "scripts/N1A_common.py"
+   }
+  ],
+  "max_ratio": 0.788,
+  "rule": "R2_common.freshness_check: exact | contained | contains | similar (difflib >= 0.80 or word Jaccard >= 0.75), after NFKC, case folding and dropping punctuation"
  },
- "prompts_file": null,
+ "r2_set_against_fit_sources": {
+  "n_queries": 340,
+  "n_fit_source_strings": 4636,
+  "flags": [],
+  "closest_5": [
+   {
+    "query": "cb-02:user+begun",
+    "ratio": 0.716,
+    "source": "jpp_items:multihop/#9/prompt",
+    "match_sha256": "f528d8b88e5671050e3a9e35d4c4d64b5bd593f232d61ba24788f1197a19a732"
+   },
+   {
+    "query": "cb-11:begun",
+    "ratio": 0.673,
+    "source": "jpp_items:multihop/#45/prompt",
+    "match_sha256": "4b80b1d650661add9c77aa733fe1803413b1075fb9497681e50e714a4f97304f"
+   },
+   {
+    "query": "cb-11:user",
+    "ratio": 0.655,
+    "source": "jpp_items:multihop/#45/prompt",
+    "match_sha256": "4b80b1d650661add9c77aa733fe1803413b1075fb9497681e50e714a4f97304f"
+   },
+   {
+    "query": "cb-02:begun",
+    "ratio": 0.625,
+    "source": "jpp_items:multihop/#87/prompt",
+    "match_sha256": "9efe7724996b5c87345962c0a31429601e2b31d456e09d8fbbfceb63a62abff5"
+   },
+   {
+    "query": "cb-11:user+begun",
+    "ratio": 0.605,
+    "source": "jpp_items:multihop/#46/prompt",
+    "match_sha256": "b4d62ad56932ba235bf06f12a826d765f2873390f9b27d079c80fdd7ffd9e437"
+   }
+  ],
+  "max_ratio": 0.716
+ },
+ "prompts_file": "experiments/scripts/R3_prompts.json",
+ "prompts_sha256": "e3cae4b1becbd1fd4ac120e69e9c06dd2baf3dc6b0b4ae067d11b019957f4329",
+ "validation": {
+  "ok": true,
+  "problems": [],
+  "stats": {
+   "chat-no-answer": {
+    "n": 80,
+    "about_model": 10
+   },
+   "chat-begun": {
+    "n": 80,
+    "about_model": 9,
+    "kinds": {
+     "factual": 20,
+     "advice": 9,
+     "opinion": 5,
+     "creative": 11,
+     "self": 9,
+     "howto": 4,
+     "code": 3,
+     "empathy": 5,
+     "math": 2,
+     "language": 3,
+     "list": 9
+    },
+    "format_likely": 19
+   },
+   "bare": {
+    "n": 80,
+    "about_model": 5
+   },
+   "mid-reply": {
+    "n": 80,
+    "about_model": 8
+   },
+   "n_tokens": {
+    "chat-no-answer": [
+     17,
+     28
+    ],
+    "chat-begun": [
+     23,
+     43
+    ],
+    "bare": [
+     7,
+     18
+    ],
+    "mid-reply": [
+     18,
+     28
+    ]
+   }
+  }
+ },
  "ok": true,
  "failures": [],
- "before_prompts": true
+ "before_prompts": false
 }

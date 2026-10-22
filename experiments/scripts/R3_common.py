@@ -259,9 +259,118 @@ ALPHA = R2.ALPHA
 TOPK = R2.TOPK
 COLLAPSE_TARGETS = R2.COLLAPSE_TARGETS
 # Sensitivity analysis S2: prompts that paraphrase, or share an answer topic with, one of the fit sources (the 1,000
-# WikiText records, J++'s items, R1's fit set). Fixed from the prompt texts alone, before any R3 data; it stays empty
-# until R3_prompts.json is written, and is filled in the same commit as the prompts.
-FIT_OVERLAP: Dict[str, str] = {}
+# WikiText records, J++'s items, R1's fit set). Fixed from the prompt texts alone, before any R3 data, in the same
+# commit as R3_prompts.json (R3_PREREG.md §3.3). A prompt is listed when, by judgement and generously:
+# - WikiText: its subject or expected answer is the subject of an article one of the 1,000 records comes from (the
+#   article's title row), or the same kind of thing (a warship, a football match, a planet, a fable, ...). Records are
+#   numbered 0-999 in stream order; records 0-63 are the fit prompts, the rest feed the router only. No WikiText text is
+#   written here: the article is described in our own words.
+# - J++'s items: it asks the same kind of question as the items of an eval that enters a weight fit (association,
+#   multihop, multilingual, poetry, typo; order-ops enters none), or its expected answer is an item's topic. Items are
+#   numbered by their place in the pinned item file (R3_common.jpp_items()), as R3_04 records them; no name or text.
+# - R1's fit set: as R2_common.R1_OVERLAP, a paraphrase of one of R1_SELF_Q / R1_TASK_Q, or an expected answer that is
+#   the subject of one of them or of R1_ENC_TOPICS (these are the study's own prompts, quoted).
+_WT_FOOTBALL = ("WikiText fit prompts 35-36 and records 599-603, 668-684 (a national football team, a footballer, a "
+                "club's season)")
+_WT_PLANET = "WikiText records 298-300 (an article on a planet of another star)"
+_R1_BASIL = "R1_TASK_Q 'How do I keep basil plants alive indoors?'"
+_R1_MAKERS = "R1_SELF_Q 'What is your relationship to the people who made you?'"
+FIT_OVERLAP: Dict[str, str] = {
+    # chat-no-answer
+    "r3-cna-02": "J++ multihop #12 (the state of element 80 at room temperature); WikiText records 685-694 (an article "
+                 "on a chemical element)",
+    "r3-cna-04": "WikiText fit prompts 58-63 (an article on a tower in the Vatican); J++ association #26; R1_ENC_TOPICS "
+                 "'the Renaissance'",
+    "r3-cna-06": "WikiText records 890-914 (an article on a bird species)",
+    "r3-cna-10": "J++ multilingual's 'opposite of' items and multihop #90-92 (antonyms): the same kind of question",
+    "r3-cna-13": "J++ association #46 (a card game)",
+    "r3-cna-18": "WikiText records 214-232 (an article on a coin); J++ multihop #48 (a country's currency)",
+    "r3-cna-24": _WT_PLANET + "; R1_ENC_TOPICS 'the planet Jupiter'",
+    "r3-cna-29": "WikiText records 247-268 (an article on a novel)",
+    "r3-cna-33": "J++ multilingual (a word asked for in another language): the same kind of question",
+    "r3-cna-35": "R1_ENC_TOPICS 'glaciers'",
+    "r3-cna-36": "WikiText fit prompts 45-57 (an ice-hockey team's season) and records 97-104, 820-837 (ice-hockey "
+                 "players)",
+    "r3-cna-44": "J++ association #18 (the scientist)",
+    "r3-cna-48": "J++ multilingual (a word asked for in another language): the same kind of question",
+    "r3-cna-49": "J++ association #24 (the inventor)",
+    "r3-cna-50": "J++ association #10 (the agency)",
+    "r3-cna-53": _R1_MAKERS,
+    "r3-cna-58": "R1_SELF_Q 'How do you balance honesty and kindness?'",
+    "r3-cna-61": "R1_TASK_Q 'Why do cats purr?'",
+    "r3-cna-74": _R1_BASIL,
+    "r3-cna-79": "WikiText records 167-199 (an article on light aviation); J++ association #22 (aviation pioneers)",
+    # chat-begun
+    "r3-cb-01": _WT_PLANET + "; J++ multihop #2 (the colour of this planet); R1_ENC_TOPICS 'the planet Jupiter'",
+    "r3-cb-04": "WikiText records 685-694 (an article on a chemical element); J++ multihop #11, #13 (element 29); "
+                "R1_ENC_TOPICS 'copper'",
+    "r3-cb-09": "R1_TASK_Q 'Describe the plot of Hamlet briefly.' (the same author)",
+    "r3-cb-10": _WT_PLANET + " (and its star)",
+    "r3-cb-12": "WikiText records 915-923 (an article on a blood cancer)",
+    "r3-cb-13": "R1_ENC_TOPICS 'coral bleaching'",
+    "r3-cb-14": "WikiText records 878-885 (an article on a Maya city)",
+    "r3-cb-20": _WT_PLANET + "; R1_ENC_TOPICS 'the planet Jupiter'",
+    "r3-cb-32": "WikiText records 572-598 (an article on a film)",
+    "r3-cb-38": "J++ poetry (rhyming couplets): the same kind of task; R1_TASK_Q 'Write a two-line rhyme about coffee.'",
+    "r3-cb-46": "R1_SELF_Q 'How do you handle a request you can't fulfill?'",
+    "r3-cb-50": _R1_MAKERS,
+    "r3-cb-53": "R1_SELF_Q 'How do you think about your own mistakes?'",
+    "r3-cb-54": "R1_SELF_Q 'Do you prefer short or long questions? Why?'",
+    "r3-cb-59": _R1_BASIL,
+    "r3-cb-63": "J++ association #47 (a job interview)",
+    "r3-cb-64": _R1_BASIL,
+    "r3-cb-66": "J++ association #0 (grief)",
+    "r3-cb-68": "J++ multilingual #97-100 (the word for 'old', and its opposite, in four languages)",
+    "r3-cb-71": "J++ multilingual (a word asked for in another language): the same kind of question",
+    "r3-cb-75": _R1_BASIL,
+    # bare
+    "r3-bare-05": _WT_FOOTBALL,
+    "r3-bare-07": _WT_PLANET + "; R1_ENC_TOPICS 'the planet Jupiter'",
+    "r3-bare-20": "WikiText records 247-268 (an article on a novel)",
+    "r3-bare-24": "WikiText records 110-157 (an article on a pantheon of gods); J++ multihop #15, #21 (the war god "
+                  "behind a month's name); R1_TASK_Q 'What caused the fall of the Roman Empire?'",
+    "r3-bare-27": "WikiText records 890-914 (an article on a migratory bird)",
+    "r3-bare-28": _WT_FOOTBALL,
+    "r3-bare-32": "WikiText records 214-232 (an article on a gold coin); J++ multihop #9 (element 79)",
+    "r3-bare-35": "WikiText records 915-923 (an article on a disease); R1_ENC_TOPICS 'penicillin'",
+    "r3-bare-36": "J++ multihop #72 (the museum that holds it); R1_ENC_TOPICS 'the Renaissance'",
+    "r3-bare-45": "WikiText records 70-82, 105-109, 200-206, 462-485, 520-525, 847-848, 993-994 (articles on warships) "
+                  "and 635-642 (a naval battle)",
+    "r3-bare-51": "WikiText records 237-246 (an article on a treaty that ended a conflict)",
+    "r3-bare-52": _WT_FOOTBALL,
+    "r3-bare-54": "WikiText fit prompts 15-29 and 58-63 (articles on two towers)",
+    "r3-bare-58": "WikiText records 802-807 (an article on a fable)",
+    "r3-bare-59": "R1_TASK_Q 'What are the main causes of inflation?'",
+    "r3-bare-60": _R1_BASIL,
+    "r3-bare-64": "WikiText records 763-773 (an article on a dinosaur genus)",
+    "r3-bare-65": "R1_TASK_Q 'How do volcanoes form?'",
+    "r3-bare-71": "J++ multihop #40 (the colours of a rainbow)",
+    # mid-reply
+    "r3-mid-02": "WikiText records 457-461 (an article on a class of submarine)",
+    "r3-mid-03": "R1_TASK_Q 'What is a good beginner workout routine?'",
+    "r3-mid-06": _R1_BASIL,
+    "r3-mid-08": "R1_TASK_Q 'How does a credit score work?'",
+    "r3-mid-11": "R1_TASK_Q 'What caused the fall of the Roman Empire?'",
+    "r3-mid-15": "R1_TASK_Q 'How does the stock market work?'",
+    "r3-mid-20": "J++ multihop #29 (the organ that filters blood, and how many there are)",
+    "r3-mid-28": "R1_ENC_TOPICS 'the city of Kyoto'",
+    "r3-mid-34": "WikiText records 167-199 (an article on light aviation); J++ multihop #64 (what a balloon does); "
+                 "R1_TASK_Q 'How do airplanes fly?'",
+    "r3-mid-35": "J++ multihop #76 (the country of this city)",
+    "r3-mid-37": "R1_TASK_Q 'How does the stock market work?'",
+    "r3-mid-41": "R1_TASK_Q 'How does recycling actually work?'",
+    "r3-mid-42": "J++ multihop #35 (what a compass points to); R1_TASK_Q 'How does GPS determine location?'",
+    "r3-mid-45": "R1_ENC_TOPICS 'the Hubble Space Telescope'",
+    "r3-mid-52": "R1_ENC_TOPICS 'the Hanseatic League' (medieval trade)",
+    "r3-mid-56": _WT_FOOTBALL,
+    "r3-mid-62": "R1_TASK_Q 'How do earthquakes happen?'",
+    "r3-mid-71": "J++ association #12 (the naturalist)",
+    "r3-mid-73": "R1_SELF_Q 'How do you approach a question you have never seen before?'",
+    "r3-mid-74": "R1_SELF_Q 'What does a good day of conversations look like for you?'",
+    "r3-mid-75": "R1_SELF_Q 'How do you think about your own uncertainty?'",
+    "r3-mid-78": _R1_MAKERS,
+    "r3-mid-80": "R1_SELF_Q 'How do you stay accurate when you are not sure?'",
+}
 
 
 # ------------------------------------------------------------------------------------------------ hashing
