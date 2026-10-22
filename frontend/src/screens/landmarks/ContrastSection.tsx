@@ -494,8 +494,9 @@ export const ContrastSection: React.FC<{
         Alone, both lines carry a lean that comes from the model’s average state, not from your question, and the lens and the
         naked eye read it differently. Through the J++ lens fitted on the base model, on E3’s neutral prose at layers 41–50, the
         average state’s share of the six pronoun pairs’ score was +1.4 toward the female words, and the score itself +0.8; how
-        large it is depends partly on how the lens was fitted (E3 (c); erratum E34; not measured for one pair or for other
-        words). Read them against the matched control, or failing that against the study’s average state.
+        large it is depends partly on how the lens was fitted (E3 (c); erratum E34). On E3’s noun pairs, woman–man and the
+        like, the same share was −3.1, toward the male words, and the score −2.1; for one pair, or for other words, it was
+        not measured. Read them against the matched control, or failing that against the study’s average state.
       </Rubric>
       <Rubric style={{ maxWidth: "860px" }}>
         The naked eye needs no lens, but it has a background of its own, leaning the other way: E3 read its average state by
@@ -607,7 +608,8 @@ export const ContrastSection: React.FC<{
           <dt>as recorded</dt>
           <dd>
             Through the J++ lens, on E3’s neutral prose at layers 41–50, the average state’s linear share of the six pronoun pairs’
-            score is +1.4, the score itself +0.8, and the score centred on the average state −0.7 (E3 (c)); global centring leaves
+            score is +1.4, the score itself +0.8, and the score centred on the average state −0.7; on its noun pairs (labkit
+            NOUN_PAIRS: woman–man, girl–boy and the like) the same share is −3.1 and the score −2.1 (E3 (c)); global centring leaves
             about −2.8 on the noun pairs where the model speaks of itself (erratum E34). The average state read on its own
             scores +2.3 there in E3’s record (μ alone, normalised by its own size: not the lean any reading carries). This
             server, like the study’s own code today, reads +2.35 for it; E3’s per-layer lens figures for μ differ from today’s

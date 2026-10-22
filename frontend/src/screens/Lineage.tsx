@@ -126,7 +126,7 @@ const PageApparatus: React.FC = () => (
     <dt>numbering</dt>
     <dd>
       Bracketed numbers are those of <M>REFERENCES.md</M> ({REFERENCE_COUNT} entries, links checked 2026-10-16, those of G on
-      2026-10-18; those of H, R3's two sources, were not opened); the full list of A–C and G is at the foot of this page.
+      2026-10-18; those of H, written from local files, were not opened); the full list of A–C and G is at the foot of this page.
     </dd>
     <dt>layers</dt>
     <dd className="num">
@@ -726,7 +726,8 @@ const Sources: React.FC<{ anchor: string | undefined }> = ({ anchor }) => (
       </h2>
       <p style={{ margin: 0, fontSize: 16, maxWidth: 900 }}>
         Numbered as in <M>REFERENCES.md</M>, sections A to C and G. Sections D to F (statistics, data and software,
-        [29]–[41]) are listed there.
+        [29]–[41]) are listed there, and so is section H ([45]–[46], written from local files, their links not opened),
+        on which no reading on these pages relies.
         {/* anchors for links to [29]–[41], which are listed only in REFERENCES.md: they land on this line */}
         {REFS_D_TO_F.map((n) => (
           <span key={n} id={refId(n)} style={{ scrollMarginTop: 16 }} />

@@ -245,7 +245,7 @@ REPORT §3.4). Where each fault stands now:
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
 | **7** | One input label for a neuron’s two faces | Open |
 | **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **Mended in the instrument**: `pole_ranking="write"` lists each layer’s fifteen biggest writers, \|a\| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, and the interface sends it by default; the server’s own default stays \|a\| for old callers. Every layer reports each listed neuron’s write size and the share of the feed-forward write the fifteen explain. That share is a sample either way: in E3 (12 prompts, last word-piece; indicative only), the fifteen loudest explained 10–41% at layers 21, 31, 41, 51 and 59 and 70–74% at layers 3 and 11, the seven sampled, and so did the fifteen biggest writers, within half a percentage point. The threads join the listed neurons, so they follow the ranking; V7 measured thread scores only among neurons ranked by \|a\| |
-| **9** | The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is applied to the instruct model (4-bit QAT), where it agrees with the model’s own average gradients at only cos 0.15–0.33 for the pronoun direction (layers 31–59) | **Open, and the largest accuracy fault left; now labelled.** Everywhere the instrument uses the lens, it still reads through this base-fitted J++: the words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. R1 refitted a lens on the instruct model ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)): its directional form is stable from layer 31; its full matrix exists at only 11 layers (11, 16, …, 56, 59) and is usable at only five of them, 41, 46, 51, 56 and 59, where it beats J++ (top-1 on the model’s own reply at layer 51: 25% → 45%); below layer 31 no averaged lens tested was reliable. The instrument does not load it. The head and the foot of every page name the lens and say it was fitted on the base model, a red line beside each layer's words says what the reading can bear there, and `/api/health` and every sweep reply carry a `lens` object (`id`, `fitted_on`, `method`, `applied_to`, `caution`) |
+| **9** | The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is applied to the instruct model (4-bit QAT), where it agrees with the model’s own average gradients at only cos 0.15–0.33 for the pronoun direction (layers 31–59) | **Open, and the largest accuracy fault left; now labelled.** Everywhere the instrument uses the lens, it still reads through this base-fitted J++: the words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. R1 refitted a lens on the instruct model ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)): its directional form is stable from layer 31; its full matrix exists at only 11 layers (11, 16, …, 56, 59) and is usable at only five of them, 41, 46, 51, 56 and 59, where it beats J++ (top-1 on the model’s own reply at layer 51: 25% → 45%); below layer 31 no averaged lens tested was reliable. The instrument does not load it. The head and the foot of every page name the lens and say it was fitted on the base model, a red line beside each layer's words says what the reading can bear there, and `/api/health` and every sweep reply carry a `lens` object (`id`, `fitted_on`, `method`, `applied_to`, `caution`). R2’s pre-registered test served no second lens at any layer; R3, J++’s recipe on the instruct model, is registered and not yet run ([ROADMAP §i](ROADMAP.md#i--the-lens-the-largest-fault-left)) |
 
 - The E6/V7 audit numbers were measured on the backend before these fixes. The history keeps the original instrument as
   its first commit.
@@ -306,9 +306,9 @@ REPORT §3.4). Where each fault stands now:
   and E3’s neutral-prose figures at layers 41–50 come back through the server’s own scoring (the end-to-end check, item
   12; its figures in
   [`E3_background_mu_check.json`](experiments/results/E3_background_mu_check.json)). E3’s own per-layer lens
-  figures for the average state do not all reproduce today (+2.35 against its +2.3 at layers 41–50, by the study’s own
-  code as by the server; more at some other layers), though its naked-eye ones agree to within 0.03 at every layer;
-  the cause is not established.
+  figures for the average state reproduce today only as a band mean (+2.35 against its +2.3 at layers 41–50); layer
+  by layer they miss by more than 0.04 at 33 of the 60 layers, layers 41 and 42 among them, by the study’s own code as
+  by the server, though its naked-eye ones agree to within 0.03 at every layer; the cause is not established.
 - **The vault (LARQL).** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault
   query runs in Python. Its edit, named after MEMIT in the code and its statements (".patch MEMIT"), writes one neuron’s
   down-projection column (rank one, no covariance solve; DELETE sets it to zero): it is not MEMIT, and the pages call it
@@ -425,8 +425,9 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 | `frontend/` | Vite and React: nine pages (welcome, instrument, layer leaf, neuron folio, landmarks, nudge, vault, lexicon, lineage), the rubrics and apparatus switches, and the study’s recorded sighting for when no server answers |
 | `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first) |
 | `experiments/REPORT.md` | The main write-up |
+| `ROADMAP.md` | What is still open, gathered from this README’s fault table, the report’s errata, the pages and the records of R1, R2 and R3 |
 | `experiments/lab/` | `labd.py` (the GPU daemon holding the model and lenses), `labclient.py` (submit jobs), `labkit.py` (lens readouts, gender scores, the corrected decomposition, interventions, exact same-position VJPs through the 4-bit model) |
-| `experiments/scripts/` | 376 scripts; the filename prefix is the experiment’s ID |
+| `experiments/scripts/` | 402 files, 399 of them scripts and three the prompt and source lists of R2 and R3; the filename prefix is the experiment’s ID |
 | `experiments/results/` | Per-experiment `*_REPORT.md` / `*_NOTES.md`, JSON results, the two patches, the frozen job log `labd_exec_log_2026-10-16.jsonl` |
 
 <details>
@@ -449,7 +450,10 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 - **Neuron-label study:** N1A (output, causal), N1B (activation labels) and N1C (integration) in the
   [N1 report](experiments/results/N1_REPORT.md); the N1V verifiers’ [code audit](experiments/results/N1V_code_audit.md) and
   [robustness check](experiments/results/N1V_robustness.md).
-- **Lens refit on the instruct model:** R1 ([report](experiments/results/R1_IT_LENS_REPORT.md)).
+- **Lens refit on the instruct model:** R1 ([report](experiments/results/R1_IT_LENS_REPORT.md)) · R2, the pre-registered
+  test of which layers to serve a second lens at, which served none
+  ([registration](experiments/results/R2_PREREG.md), [report](experiments/results/R2_03_report_section.md)) · R3, J++’s
+  recipe fitted on the instruct model, registered and not yet run ([registration](experiments/results/R3_PREREG.md)).
 - **Other scripts:** S1/S2, quick checks on the neuron and lens synthesis; `pilot_self_gender.py`, the first pilot;
   `patch_verify.py`, an end-to-end check of the applied patches.
 

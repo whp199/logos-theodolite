@@ -1382,7 +1382,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             readings went mostly through lenses fitted on the base model <M>google/gemma-4-31B</M> in bf16; E3 and V6
             also took the instruct model’s own average gradients, and R1 fitted a lens on it. The study’s
             verdict on the synthesis of [2], [4], [9] and [10]: neat as a question, oversold as built (REPORT §3.3).
-            Statistics use bootstrap intervals [30] and Wilson intervals [29]; the full list of 44 references is{" "}
+            Statistics use bootstrap intervals [30] and Wilson intervals [29]; the full list of {REFERENCE_COUNT} references is{" "}
             <M>REFERENCES.md</M>.
           </p>
         </Apparatus>

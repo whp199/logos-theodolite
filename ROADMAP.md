@@ -1,9 +1,9 @@
 # Roadmap
 
 *What is still open in Logos Theodolite, gathered from the places that already name it: the README’s fault table, the
-study’s report and its errata, the pages’ own “not yet” marks, and the records of the lens refits (R1 to R3). Nothing
-here has a date or an owner. Layers are counted 1–60, as on the pages; the study’s reports count from 0, so their L50 is
-layer 51 here.*
+study’s report and its errata, the pages’ own “not yet” marks, and the records of R1’s instruct refit, R2’s test of
+what to serve and R3’s registration. Nothing here has a date or an owner. Layers are counted 1–60, as on the pages; the
+study’s reports count from 0, so their L50 is layer 51 here.*
 
 <sub>Gathered on 21 October 2026, at `3cbc4b5`; gathered again on 22 October 2026, at `75ed78a`, after the first round of
 mends (the interface’s defaults, the label gate, the causal test and the smaller pieces) and R3’s registration.</sub>
@@ -28,15 +28,18 @@ carry a `lens` object; the reading itself is unchanged.
   52–55 and 57–58. Each lens file is checksum-pinned and loaded only at layers that `scripts/check_second_lenses.py` has
   passed, and the layer and instrument leaves mark the reading checked or provisional. Its own commit says it is not for
   merge as is.
-- **R2 served nothing.** The pre-registered test of which layers to serve (`R2_PREREG.md` and `R2_03_report_section.md`
-  in `experiments/results/` on that branch) passed no lens at any layer, so under its rules the second reading shows
-  nothing anywhere. The nearest miss is R1’s lens at layer 59, which failed only the minimum-size rule (+0.046 over the
-  naked eye, where 0.05 was required). Two of the pre-registered sensitivity checks, one without the prompts about the
-  model itself and one without the prompts that share a topic with R1’s fit prompts, would serve R1’s lens at layer 56;
-  the registered decision stands.
-- **Not yet tried.** R1’s lens is a plain same-position Jacobian, not the J++ recipe: J++’s published R-Lens rules,
-  cluster weighting and token filter were never tested on the instruct checkpoint, and fine-tuning and quantisation cannot
-  be told apart (E50). Whether an instruct lens gives better neuron labels is untested (E45).
+- **R2 served nothing.** The pre-registered test of which layers to serve
+  ([`R2_PREREG.md`](experiments/results/R2_PREREG.md) and
+  [`R2_03_report_section.md`](experiments/results/R2_03_report_section.md), brought here with R3’s registration; the
+  serving code and `scripts/check_second_lenses.py` stay on `it-second-reading`) passed no lens at any layer, so under
+  its rules the second reading shows nothing anywhere. The nearest miss is R1’s lens at layer 59, which failed only the
+  minimum-size rule (+0.046 over the naked eye, where 0.05 was required). Two of the pre-registered sensitivity checks,
+  one without the prompts about the model itself and one without the prompts that share a topic with R1’s fit prompts,
+  would serve R1’s lens at layer 56; the registered decision stands.
+- **Not yet tested.** R1’s lens is a plain same-position Jacobian, not the J++ recipe: J++’s published R-Lens rules,
+  cluster weighting and token filter were never tested on the instruct checkpoint (R3, below, registers that test, with
+  no data yet), and fine-tuning and quantisation cannot be told apart (E50). Whether an instruct lens gives better
+  neuron labels is untested (E45).
 - **Rules for any lens served later**, from the errata:
   - confirm condition contrasts at layers 31–50 with an instruct reading (E49);
   - show pronoun readings at layers 51–59 only where J++ and the instruct reading agree (E49, E50);
@@ -44,16 +47,19 @@ carry a `lens` object; the reading itself is unchanged.
   - re-validate the label gate of ii for the new lens: its AUC of 0.84 was measured for base-fitted J++ labels only
     (E47).
 - **Being tried (R3).** J++’s published recipe as the code at jpp_lens `d7efc0de` runs it (newer code than the shipped
-  Gemma J++ came from, whose router and weighting are not recorded), fitted on the instruct checkpoint with the deviations
-  recorded in [`R3_PREREG.md`](experiments/results/R3_PREREG.md) §2, is registered with R2’s rules on 320 new prompts.
-  A plain J-lens fitted here on the 4-bit model, on J++’s 64 WikiText prompts because Miru’s own could not be rebuilt,
-  will be set beside Miru’s unquantised instruct lens; that comparison also changes the code and the prompts. Result:
-  [NOT YET RUN]. Before any of its GPU jobs: a GPU budget (the pilot comes first, at most 30 minutes; the design
-  recommends 24 GPU-hours for the rest, R3_PREREG §10.2), and the code of its H2, H3 and H5 tables, which must be
-  committed before any lens file is written (D31). Rebuilding Miru’s own 425 prompts would need Miru Tracer’s selection
-  code, which this round was not cleared to fetch. R3’s jobs refuse a `backend/` that differs from the registered runtime,
-  `d5405ee` (R3_PREREG §0), so they run from the branch `it-jpp-refit`, not from a `main` that carries this round’s
-  mends.
+  Gemma J++ came from, whose router and weighting are not recorded), fitted on the instruct checkpoint with the
+  deviations recorded in [`R3_PREREG.md`](experiments/results/R3_PREREG.md) §2, is registered with R2’s rules on 320 new
+  prompts. A plain J-lens fitted here on the 4-bit model, on J++’s 64 WikiText prompts because Miru’s own could not be
+  rebuilt, will be set beside Miru’s unquantised instruct lens; that comparison also changes the code and the prompts.
+  Result: [NOT YET RUN]. Before its fit: the dry run on the local Gemma 4 12B, without which the pilot will not start;
+  then the pilot (at most 30 minutes), which writes “stop” until a GPU budget is approved (none is yet, D30; the design
+  recommends 24 GPU-hours, R3_PREREG §10.2), and only a pilot that says “proceed” against the approved budget lets the
+  fit and the evaluation run (a pilot judged before a budget exists must be run again); and the code of its H2, H3 and
+  H5 tables, which must be committed before any lens file is written (D31). Rebuilding Miru’s own 425 prompts would need
+  Miru Tracer’s selection code, which this round was not cleared to fetch. R3’s jobs refuse a `backend/` that differs
+  from the registered runtime, `d5405ee` (R3_PREREG §0), so they run from the branch `it-jpp-refit`, not from a `main`
+  that carries this round’s mends. Its line cites to the README (D26 and A9, `README.md:407–408`) are to `d5405ee`’s
+  README; on this tree that passage is the licence paragraph of README §vii.
 
 R3 serves nothing itself: a lens that passes is a recommendation to later serving work on a branch from `main`
 (R3_PREREG §7.2), so the serving work on `it-second-reading` stays there as R2’s record.
@@ -94,9 +100,12 @@ against the instrument, leave four more:
   (1–20 the least trusted, where E3 (b) found the lens barely agreeing with the model’s own pronoun direction; 21–30
   orderings only; 31–50 to be confirmed with an instruct-fitted reading; 51–59 counting only where one agrees: errata
   E49 and E50), and the naked eye with its own background, which runs the other way (E3 (c)); the study measured the
-  average state’s lean on the six pronoun pairs only, not on one pair or on other words; E3’s own per-layer lens
-  figures for the average state reproduce today only to within about 0.04 at layers 41–50 and less well at some other
-  layers, by the study’s own code as by the server, with the cause not established (by layer:
+  average state’s lean on its six pronoun pairs and on its noun pairs (woman–man and the like), where it leans toward
+  the male words and is larger (E3 (c): at layers 41–50 a share of +1.4 on the pronouns and −3.1 on the nouns), not on
+  one pair or on other words; E3’s own lens figures for the average state reproduce today only as a band mean at
+  layers 41–50 (+2.35 against its +2.31, within 0.04): layer by layer they miss by 0.20 and 0.10 at layers 41 and 42,
+  and by more than 0.04 at 33 of the 60 layers (median 0.18, at most 1.85 at layer 3), by the study’s own code as by
+  the server, with the cause not established (by layer:
   [`E3_background_mu_check.json`](experiments/results/E3_background_mu_check.json)); and the page sends one contrast
   and one background at a time, where the server takes four and two. That E3’s average state is in the coordinates of
   the server’s `resid_post` is checked by the end-to-end check (item 12) on one of E3’s neutral passages.
