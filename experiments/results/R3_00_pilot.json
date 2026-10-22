@@ -1,6 +1,6 @@
 {
  "schema": "R3_00_pilot/1",
- "written_at": "2026-10-22T11:30:33",
+ "written_at": "2026-10-22T12:42:12",
  "prompts": {
   "which": "WikiText fit records 0-1 (the identity check: records 0-15, forward only)",
   "sha256": [
@@ -24,23 +24,18 @@
  },
  "vram": {
   "before_load": {
-   "at": "2026-10-22T11:29:21",
+   "at": "2026-10-22T12:41:01",
    "nvidia_smi": {
     "ok": true,
     "name": "NVIDIA GeForce RTX 5090",
     "total_mib": 32607,
-    "used_mib": 4236,
-    "free_mib": 27873,
+    "used_mib": 3406,
+    "free_mib": 28703,
     "processes": [
      {
       "pid": "1475",
       "name": "/usr/bin/kwin_wayland",
-      "used_mib": "377"
-     },
-     {
-      "pid": "656672",
-      "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
-      "used_mib": "545"
+      "used_mib": "408"
      },
      {
       "pid": "1293728",
@@ -48,36 +43,31 @@
       "used_mib": "311"
      },
      {
-      "pid": "1311962",
+      "pid": "1322183",
       "name": ".venv/bin/python",
       "used_mib": "498"
      }
     ]
    },
-   "torch_free_gib": 27.219,
+   "torch_free_gib": 28.03,
    "torch_total_gib": 31.355,
    "allocated_gib": 0.0,
    "reserved_gib": 0.0,
    "peak_allocated_gib": 0.0
   },
   "after_load": {
-   "at": "2026-10-22T11:29:27",
+   "at": "2026-10-22T12:41:06",
    "nvidia_smi": {
     "ok": true,
     "name": "NVIDIA GeForce RTX 5090",
     "total_mib": 32607,
-    "used_mib": 25492,
-    "free_mib": 6617,
+    "used_mib": 24662,
+    "free_mib": 7447,
     "processes": [
      {
       "pid": "1475",
       "name": "/usr/bin/kwin_wayland",
-      "used_mib": "377"
-     },
-     {
-      "pid": "656672",
-      "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
-      "used_mib": "545"
+      "used_mib": "408"
      },
      {
       "pid": "1293728",
@@ -85,36 +75,31 @@
       "used_mib": "311"
      },
      {
-      "pid": "1311962",
+      "pid": "1322183",
       "name": ".venv/bin/python",
       "used_mib": "21754"
      }
     ]
    },
-   "torch_free_gib": 6.461,
+   "torch_free_gib": 7.272,
    "torch_total_gib": 31.355,
    "allocated_gib": 18.001,
    "reserved_gib": 20.648,
    "peak_allocated_gib": 23.023
   },
   "end": {
-   "at": "2026-10-22T11:30:33",
+   "at": "2026-10-22T12:42:12",
    "nvidia_smi": {
     "ok": true,
     "name": "NVIDIA GeForce RTX 5090",
     "total_mib": 32607,
-    "used_mib": 25960,
-    "free_mib": 6149,
+    "used_mib": 25132,
+    "free_mib": 6976,
     "processes": [
      {
       "pid": "1475",
       "name": "/usr/bin/kwin_wayland",
-      "used_mib": "377"
-     },
-     {
-      "pid": "656672",
-      "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
-      "used_mib": "545"
+      "used_mib": "408"
      },
      {
       "pid": "1293728",
@@ -122,40 +107,35 @@
       "used_mib": "311"
      },
      {
-      "pid": "1311962",
+      "pid": "1322183",
       "name": ".venv/bin/python",
-      "used_mib": "22222"
+      "used_mib": "22224"
      }
     ]
    },
-   "torch_free_gib": 6.004,
+   "torch_free_gib": 6.812,
    "torch_total_gib": 31.355,
    "allocated_gib": 18.064,
-   "reserved_gib": 21.086,
+   "reserved_gib": 21.088,
    "peak_allocated_gib": 21.832
   }
  },
  "cap": {
   "cap_gib": 24.0,
   "fraction": 0.7654,
-  "free_before_gib": 27.219,
+  "free_before_gib": 28.03,
   "total_gib": 31.355,
   "nvidia_smi": {
    "ok": true,
    "name": "NVIDIA GeForce RTX 5090",
    "total_mib": 32607,
-   "used_mib": 4236,
-   "free_mib": 27873,
+   "used_mib": 3406,
+   "free_mib": 28703,
    "processes": [
     {
      "pid": "1475",
      "name": "/usr/bin/kwin_wayland",
-     "used_mib": "377"
-    },
-    {
-     "pid": "656672",
-     "name": "/usr/lib64/firefox/firefox -contentproc -parentBuildID 20261020173812 -prefsHandle 0:36994 -prefMapHandle 1:291340 -ipcHandle 2 -initialChannelId {e9729419-682b-4528-b523-ee5d08423e36} -parentPid 656519 -appDir /usr/lib64/firefox/browser 4 rdd",
-     "used_mib": "545"
+     "used_mib": "408"
     },
     {
      "pid": "1293728",
@@ -163,7 +143,7 @@
      "used_mib": "311"
     },
     {
-     "pid": "1311962",
+     "pid": "1322183",
      "name": ".venv/bin/python",
      "used_mib": "498"
     }
@@ -171,7 +151,7 @@
   }
  },
  "git": {
-  "head": "ed94d73d6150f05d00ef78a9fc99a9a92b8575a6",
+  "head": "6554d6c5a6b3ffbc4167fa6b63a042d4e16be597",
   "dirty": [],
   "runtime": {
    "runtime_commit": "d5405ee964e0ac1732babd8e69fa9271de555189",
@@ -230,33 +210,33 @@
    "lrp": false,
    "replicate_chunk": 1,
    "replicate": {
-    "min_cos": 0.999953,
+    "min_cos": 0.999934,
     "per_layer_min": [
+     0.999934,
+     0.999946,
+     0.999948,
      0.999953,
+     0.999957,
+     0.999959,
      0.999962,
      0.999965,
+     0.999966,
      0.999967,
-     0.999969,
-     0.999969,
-     0.999971,
-     0.999971,
-     0.999975,
-     0.999972,
-     0.999973,
-     0.999982,
-     0.999983,
-     0.99999,
-     0.999992,
+     0.999966,
+     0.999981,
+     0.999985,
+     0.999989,
+     0.999991,
      0.999993,
+     0.999995,
+     0.999995,
+     0.999995,
      0.999994,
-     0.999994,
-     0.999994,
-     0.999996,
      0.999996,
      0.999997,
      0.999998,
      0.999999,
-     1.0,
+     0.999999,
      1.0,
      1.000001,
      1.000001,
@@ -264,28 +244,28 @@
     ]
    },
    "vmap": {
-    "min_cos": 0.999951,
+    "min_cos": 0.999942,
     "per_layer_min": [
+     0.999942,
      0.999951,
-     0.999956,
-     0.999961,
-     0.999963,
+     0.999953,
+     0.999958,
+     0.99996,
+     0.999962,
      0.999965,
-     0.999966,
-     0.999968,
-     0.999969,
-     0.999973,
-     0.999972,
      0.999971,
-     0.99998,
+     0.999975,
+     0.999976,
+     0.999973,
      0.999983,
-     0.999989,
+     0.999985,
+     0.99999,
      0.999991,
-     0.999992,
      0.999993,
-     0.999994,
-     0.999996,
      0.999995,
+     0.999996,
+     0.999996,
+     0.999996,
      0.999996,
      0.999997,
      0.999998,
@@ -297,7 +277,7 @@
      1.000001
     ]
    },
-   "min_cos": 0.999951,
+   "min_cos": 0.999934,
    "ok": true
   },
   "rlens": {
@@ -315,51 +295,17 @@
     "min_cos": 0.999986,
     "per_layer_min": [
      0.999986,
-     0.999987,
-     0.999987,
-     0.999988,
-     0.999989,
-     0.999989,
-     0.99999,
-     0.99999,
-     0.999991,
-     0.999992,
-     0.999991,
-     0.999992,
-     0.999993,
-     0.999996,
-     0.999996,
-     0.999997,
-     0.999998,
-     0.999998,
-     0.999998,
-     0.999999,
-     0.999999,
-     0.999999,
-     0.999999,
-     1.0,
-     1.0,
-     1.000001,
-     1.000001,
-     1.000001,
-     1.000001
-    ]
-   },
-   "vmap": {
-    "min_cos": 0.999987,
-    "per_layer_min": [
-     0.999987,
-     0.999987,
+     0.999986,
      0.999987,
      0.999988,
      0.999989,
      0.999989,
+     0.999989,
      0.99999,
      0.99999,
-     0.999991,
-     0.999991,
-     0.999991,
      0.999992,
+     0.999992,
+     0.999994,
      0.999994,
      0.999996,
      0.999996,
@@ -370,9 +316,43 @@
      0.999999,
      0.999999,
      0.999999,
+     0.999999,
      1.0,
      1.0,
+     1.000001,
+     1.000001,
+     1.000002,
+     1.000001
+    ]
+   },
+   "vmap": {
+    "min_cos": 0.999987,
+    "per_layer_min": [
+     0.999987,
+     0.999988,
+     0.999989,
+     0.999989,
+     0.99999,
+     0.99999,
+     0.999991,
+     0.999991,
+     0.999992,
+     0.999993,
+     0.999992,
+     0.999994,
+     0.999995,
+     0.999997,
+     0.999997,
+     0.999998,
+     0.999998,
+     0.999998,
+     0.999998,
+     0.999999,
+     0.999999,
+     0.999999,
      1.0,
+     1.0,
+     1.000001,
      1.000001,
      1.000001,
      1.000001,
@@ -390,79 +370,79 @@
    "forward_s": 0.661,
    "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 0.3134,
+   "s_per_pass": 0.3139,
    "passes_timed": 3,
    "peak_gib": 20.179,
-   "s_per_row": 0.3134,
-   "s_per_prompt": 1685.5
+   "s_per_row": 0.31385,
+   "s_per_prompt": 1688.19
   },
   {
    "mode": "replicate",
    "B": 2,
-   "forward_s": 0.695,
+   "forward_s": 0.696,
    "peak_after_forward_gib": 21.143,
    "ok": true,
-   "s_per_pass": 0.3327,
+   "s_per_pass": 0.3329,
    "passes_timed": 3,
    "peak_gib": 21.364,
-   "s_per_row": 0.16635,
-   "s_per_prompt": 894.99
+   "s_per_row": 0.16647,
+   "s_per_prompt": 895.53
   },
   {
    "mode": "replicate",
    "B": 3,
-   "forward_s": 0.74,
+   "forward_s": 0.741,
    "peak_after_forward_gib": 22.236,
    "ok": true,
-   "s_per_pass": 0.3563,
+   "s_per_pass": 0.3559,
    "passes_timed": 3,
    "peak_gib": 22.532,
-   "s_per_row": 0.11877,
-   "s_per_prompt": 639.23
+   "s_per_row": 0.11862,
+   "s_per_prompt": 638.51
   },
   {
    "mode": "replicate",
    "B": 4,
    "ok": false,
    "oom": true,
-   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.41 GiB is free. Process 1475 has 377.26 MiB memory in use. ",
+   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 4.22 GiB is free. Process 1475 has 408.88 MiB memory in use. ",
    "peak_gib": 23.238
   },
   {
    "mode": "vmap",
    "B": 8,
-   "forward_s": 0.661,
+   "forward_s": 0.66,
    "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 0.4939,
+   "s_per_pass": 0.4947,
    "passes_timed": 3,
    "peak_gib": 20.78,
-   "s_per_row": 0.06173,
-   "s_per_prompt": 332.56
+   "s_per_row": 0.06184,
+   "s_per_prompt": 333.1
   },
   {
    "mode": "vmap",
    "B": 16,
-   "forward_s": 0.662,
+   "forward_s": 0.661,
    "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 0.7167,
+   "s_per_pass": 0.7176,
    "passes_timed": 3,
    "peak_gib": 21.469,
-   "s_per_row": 0.04479,
-   "s_per_prompt": 241.47
+   "s_per_row": 0.04485,
+   "s_per_prompt": 241.77
   },
   {
    "mode": "vmap",
    "B": 32,
-   "forward_s": 0.661,
+   "forward_s": 0.66,
    "peak_after_forward_gib": 20.036,
    "ok": true,
-   "s_per_pass": 1.1982,
+   "s_per_pass": 1.1993,
    "passes_timed": 3,
    "peak_gib": 22.841,
-   "s_per_row": 0.03744,
-   "s_per_prompt": 201.96
+   "s_per_row": 0.03748,
+   "s_per_prompt": 202.14
   },
   {
    "mode": "vmap",
@@ -471,7 +451,7 @@
    "peak_after_forward_gib": 20.036,
    "ok": false,
    "oom": true,
-   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.36 GiB is free. Process 1475 has 377.26 MiB memory in use. ",
+   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 442.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 4.17 GiB is free. Process 1475 has 408.88 MiB memory in use. ",
    "peak_gib": 23.115
   },
   {
@@ -481,30 +461,30 @@
    "peak_after_forward_gib": 20.036,
    "ok": false,
    "oom": true,
-   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 1024.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 3.55 GiB is free. Process 1475 has 377.26 MiB memory in use.",
+   "error": "OutOfMemoryError: CUDA out of memory. Tried to allocate 1024.00 MiB. GPU 0 has a total capacity of 31.36 GiB of which 4.36 GiB is free. Process 1475 has 408.88 MiB memory in use.",
    "peak_gib": 23.06
   }
  ],
  "timing_skipped": [],
  "q1": {
   "ok": true,
-  "forward_s": 0.651,
-  "directions_s": 4.947,
+  "forward_s": 0.652,
+  "directions_s": 4.949,
   "n_directions": 128,
   "peak_gib": 21.832
  },
- "forward_nograd_s": 0.6498,
+ "forward_nograd_s": 0.6492,
  "choice": {
   "mode": "vmap",
   "rows_per_pass": 32,
-  "s_per_prompt": 201.96
+  "s_per_prompt": 202.14
  },
- "seconds": 65.1,
- "forward_nograd_long_s": 0.666,
+ "seconds": 65.2,
+ "forward_nograd_long_s": 0.6651,
  "h4_longest_ids": 141,
  "projection": {
   "hours": {
-   "shards": 3.59,
+   "shards": 3.594,
    "router": 0.361,
    "weights": 0.179,
    "q1": 0.1,
@@ -515,15 +495,15 @@
   "total_hours": 5.77
  },
  "decision": {
-  "approved_gpu_hours": null,
+  "approved_gpu_hours": 8.0,
   "projected_gpu_hours": 5.77,
   "checks": {
    "lrp_identity": true,
    "parity": true,
    "parity_rlens": true
   },
-  "decision": "stop",
-  "why": "projected 5.77 GPU-hours; no budget is approved yet (R3_common.APPROVED_GPU_HOURS [NOT YET APPROVED])"
+  "decision": "proceed",
+  "why": "projected 5.77 of 8.0 approved GPU-hours"
  },
  "bounds": {
   "flop_lower_hours": [
