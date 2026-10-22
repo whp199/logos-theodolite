@@ -3,7 +3,8 @@ import { Apparatus, Rubric } from "../../components/kit";
 import { useTheodoliteStore } from "../../store/useTheodoliteStore";
 import { DESCRIBE_RECORDED, RAW_LISTS, VAULT_ANSWERS } from "./recorded";
 import { FORMS, QUICK, clampL, clampN, esc, mutates, parseLql, pyRepr, type Parsed } from "./lql";
-import { clock, prettyJson, replyTo } from "./live";
+import { clock, heldBackIn, prettyJson, replyTo } from "./live";
+import { labelGate, layerIdx, vaultCheck } from "../../lib/labels";
 import { EmptyAnswer, MONO, rawJson, smallCaps } from "./bits";
 import { useVaultUi } from "./ui";
 
@@ -120,9 +121,18 @@ export const ConsolePanel: React.FC = () => {
   let ph = "[THE VAULT’S RAW REPLY, AS JSON, APPEARS HERE WHEN YOU RUN THE STATEMENT]";
   let phNote = "This page answers from the study’s records; anything else is answered by the running instrument.";
   let unanswered: string | null = null;
+  // the labels in the reply shown that the reading pages hold back (lib/labels.ts): the console hides none of them, and
+  // says so (the server's own label_check marks them; a recorded search carries none, so its rows go by their layer)
+  let held = 0;
+  let heldCaption = "";
   if (R !== null) {
     if (entry && entry.ok) {
       json = esc(prettyJson(entry.data));
+      held = heldBackIn(entry.data);
+      if (held)
+        heldCaption =
+          "This is the server’s raw reply, every word included; label_check marks the labels the reading pages hold back (below layer 41, or sharing none of ten): " +
+          (held === 1 ? "one here." : held + " here.");
       caption =
         "Answered by the running instrument at " +
         clock(entry.at) +
@@ -152,6 +162,16 @@ export const ConsolePanel: React.FC = () => {
       } else if (R.kind === "select" && selRecorded(R)) {
         const lim = selLim(R);
         json = rawJson(selKey(R), Math.min(lim, 10));
+        const idx = R.layerS === null ? 35 : clampL(R.layerS);
+        held = (VAULT_ANSWERS[selKey(R)] ?? [])
+          .slice(0, Math.min(lim, 10))
+          .filter((r) => labelGate(layerIdx(idx), vaultCheck(selKey(R), r[0], r[1])).heldBack).length;
+        if (held)
+          heldCaption =
+            "This is the study’s raw record, every word included. The reading pages hold back the words of " +
+            (held === 1 ? "one of these rows" : held + " of these rows") +
+            (idx < 40 ? ", since layer " + (idx + 1) + " lies below layer 41" : ", whose two readings share none of their first ten") +
+            "; the record itself carries no label_check.";
         caption =
           "Recorded 16 October 2026, lists[\"" +
           selKey(R) +
@@ -319,6 +339,16 @@ export const ConsolePanel: React.FC = () => {
             </p>
           ) : null}
           {caption ? <p style={{ margin: 0, fontSize: 15, color: "var(--muted)", maxWidth: 820 }}>{caption}</p> : null}
+          {held && json ? (
+            <>
+              <p style={{ margin: 0, fontSize: 15, color: "var(--muted)", maxWidth: 820 }}>{heldCaption}</p>
+              <Rubric style={{ maxWidth: 720 }}>
+                The reading pages set out a neuron’s words only from layer 41 up, and only where the lens and the naked eye share at least
+                one of their first ten word-pieces; elsewhere they keep them in the apparatus, with the reason. This console hides
+                nothing: it shows the reply whole, so words held back elsewhere stand here too.
+              </Rubric>
+            </>
+          ) : null}
           {json ? (
             <pre className="raw" style={{ maxHeight: 420, padding: "12px 0", fontSize: 13, lineHeight: 1.55, overflowWrap: "anywhere" }}>
               {json}
@@ -432,7 +462,10 @@ export const ConsolePanel: React.FC = () => {
             returns both faces through the lens and to the naked eye, the norms of the neuron’s three weight vectors, and{" "}
             <span className="mono-wrap">gate_trigger_tokens</span>: a read covector passed through J as if it were a state, one label for two
             faces, holding about 6–8% of the reproducible input signal (REPORT §3.4, bug 7). Stored activation contexts per pole are the
-            proposed fix.
+            proposed fix. Each face, like each NEAREST row, also carries <span className="mono-wrap">label_check</span> (the word-pieces
+            its two readings share in their first ten, and whether the reading pages hold the label back), and both replies carry the
+            rule as <span className="mono-wrap">label_gate</span>, just before <span className="mono-wrap">lens</span>; an older server
+            sends neither.
           </dd>
           <dt>the original instrument’s buttons</dt>
           <dd style={{ margin: 0, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>

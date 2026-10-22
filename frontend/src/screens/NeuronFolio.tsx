@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Apparatus, IfRubrics, LensRecord, Missing, NotYet, Page, Rubric } from "../components/kit";
+import { Apparatus, IfApparatus, IfRubrics, LensRecord, Missing, NotYet, Page, Rubric } from "../components/kit";
 import { href, type Route } from "../router";
+import { useApparatus } from "../reading";
 import {
   type AnswerSet,
   type Conn,
@@ -23,6 +24,19 @@ import {
 } from "../store/useTheodoliteStore";
 import { andList, agreement, cap, count, glossFor, scoresText, shortToken, signedRaw, type Agreement } from "./NeuronFolio/util";
 import { faceWord, numberWord, pct, pieceWord, signed, wp } from "../lib/words";
+import { HeldBackWords } from "../components/HeldBack";
+import {
+  type Gate,
+  fixtureCheck,
+  heldLine,
+  heldRubric,
+  heldTag,
+  labelCheckJson,
+  labelGate,
+  layerIdx,
+  sharedLine,
+  trustLine,
+} from "../lib/labels";
 import { AnswerMarks, useAnswerPieces } from "./layerLeaf/AnswerMarks";
 import { lensLabel, useReadingLens } from "../lib/lens";
 import { OneDrawLine, PenaltyLine } from "../lib/cautions";
@@ -189,6 +203,11 @@ interface Model {
   focus: Labels;
   other: FaceReading | null;
   agr: Agreement | null;
+  /** the label gate for the face read first (lib/labels.ts): from the inspection's check of that face, else the
+   * sighting's (or, for the recorded neuron, the recorded check); with none, the layer alone decides */
+  focusGate: Gate;
+  /** the same for the other face, from the inspection's check of it */
+  otherGate: Gate;
   defaultNick: string | null;
   readAt: string;
   inReply: string;
@@ -231,6 +250,16 @@ function useModel(route: NeuronRoute): Model {
       focus = { lens: tokFromReading(pole.lens), eye: tokFromReading(pole.eye), from: "sighting" };
     const other = pick(inspection, otherFace);
     const agr = focus.lens && focus.eye ? agreement(focus.lens, focus.eye) : null;
+    // the sighting's check is of the face that fired, which is the face read first whenever the pole was listed
+    const poleCheck = pole && pole.face === focusFace ? pole.check : null;
+    const focusCheck =
+      focus.from === "inspection"
+        ? (inspFocus?.check ?? poleCheck)
+        : focus.from === "recorded"
+          ? (poleCheck ?? fixtureCheck(RECORDED.idx, RECORDED.rank))
+          : poleCheck;
+    const focusGate = labelGate(layerIdx(idx), focusCheck);
+    const otherGate = labelGate(layerIdx(idx), other?.check ?? null);
     const readAt = sighting?.readAt != null ? pieceWord(sighting.readAt) : "";
     const inReply = afterTheWord(sighting);
     return {
@@ -262,6 +291,8 @@ function useModel(route: NeuronRoute): Model {
       focus,
       other,
       agr,
+      focusGate,
+      otherGate,
       defaultNick: isCanvasNeuron ? RECORDED.nick : null,
       readAt,
       inReply,
@@ -578,7 +609,10 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
         )}
         <p style={{ margin: "6px 0 0", maxWidth: "660px" }}>
           One of 21,504 neurons in layer {m.layerNo}. {firedLine}{" "}
-          {m.recorded ? (
+          {(m.focus.lens || m.focus.eye) && m.focusGate.heldBack ? (
+            // the label gate holds the words back (§ii says why, and its apparatus keeps them)
+            <>{heldLine(m.focusGate)}</>
+          ) : m.recorded ? (
             <>
               Through the {lens.name} lens its positive face reads as English “Am”, Polish “jestem” and Spanish “Somos”; to the naked eye,
               as Polish “jestem”, Czech “jsem” and French “êtes”. Both readings are forms of one verb, <i>to be</i>, in several tongues.
@@ -590,7 +624,7 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
           ) : null}
         </p>
         <p style={{ margin: 0, maxWidth: "660px", fontStyle: "italic", color: MUTED }}>
-          {m.recorded
+          {m.recorded && !m.focusGate.heldBack
             ? "One small cell of an unfamiliar model. At layers 41 to 58, a third to two-thirds of such a reading’s top ten words were among those the neuron pushed when the study made it louder: a guide to what it pushes toward, not to what it does in running text."
             : "One small cell of an unfamiliar model."}
         </p>
@@ -938,8 +972,13 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
 
   const focusName = faceWord(m.focusFace);
   const otherName = faceWord(m.otherFace);
-  const leftWords = m.focus.lens?.slice(0, 3).map((t) => t.token) ?? null;
-  const rightWords = m.other?.lens?.slice(0, 3).map((t) => t.token) ?? null;
+  // a face whose label the gate holds back shows "[held back]" at its needle end; the words come back, muted, with the
+  // apparatus open (lib/labels.ts)
+  const apparatus = useApparatus();
+  const leftHeld = !!m.focus.lens && m.focusGate.heldBack;
+  const rightHeld = !!m.other?.lens && m.otherGate.heldBack;
+  const leftWords = m.focus.lens && (!leftHeld || apparatus) ? m.focus.lens.slice(0, 3).map((t) => t.token) : null;
+  const rightWords = m.other?.lens && (!rightHeld || apparatus) ? m.other.lens.slice(0, 3).map((t) => t.token) : null;
   const longest = (ws: string[] | null) => (ws ? Math.max(...ws.map((w) => shortToken(w).length)) : 0);
   const leftSize = longest(leftWords) > 8 ? 20 : 24;
   const rightSize = longest(rightWords) > 8 ? 20 : 24;
@@ -955,9 +994,17 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
       : m.notAmong
         ? `The left end, the ${focusName} face, was ${m.rw.notAmong} at this word`
         : `The left end, the ${focusName} face; its strength at this word was not recorded`) +
-    (leftWords ? ` and writes ${quoted(leftWords)}. ` : `; its words were not read. `) +
+    (leftHeld && !apparatus
+      ? `; its words are held back here. `
+      : leftWords
+        ? ` and writes ${quoted(leftWords)}${leftHeld ? ", words held back from the main reading" : ""}. `
+        : `; its words were not read. `) +
     `The hollow end, the ${otherName} face, ${m.fired ? "was silent" : "is the other way to fire"}` +
-    (rightWords ? ` and writes ${quoted(rightWords)}.` : ` and its words were not read in this sighting.`);
+    (rightHeld && !apparatus
+      ? ` and its words are held back here.`
+      : rightWords
+        ? ` and writes ${quoted(rightWords)}${rightHeld ? ", words held back from the main reading" : ""}.`
+        : ` and its words were not read in this sighting.`);
 
   return (
     <section aria-labelledby="faces-head" style={SECTION}>
@@ -1025,14 +1072,14 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
                   strokeWidth="0.8"
                   strokeDasharray="2 3"
                 />
-                <g fontFamily={SERIF} fontStyle="italic" fontSize={leftSize} fill={INK} textAnchor="end">
+                <g fontFamily={SERIF} fontStyle="italic" fontSize={leftSize} fill={leftHeld ? MUTED : INK} textAnchor="end">
                   {leftWords.map((w, i) => (
                     <text key={i} x={i === 1 ? 136 : 142} y={[146, 208, 270][i]}>
                       “{shortToken(w)}”
                     </text>
                   ))}
                   <text x="136" y="306" fontSize="13" fill={MUTED}>
-                    through the lens
+                    {leftHeld ? "through the lens · held back" : "through the lens"}
                   </text>
                 </g>
               </>
@@ -1040,12 +1087,20 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
               <>
                 <path d="M200,200 L156,200" fill="none" stroke={MUTED} strokeOpacity="0.6" strokeWidth="0.8" strokeDasharray="2 3" />
                 <g fontFamily={SERIF} fontSize="12" letterSpacing="1.2" fill={MUTED} textAnchor="end">
-                  <text x="148" y="196">
-                    [NOT READ IN
-                  </text>
-                  <text x="148" y="214">
-                    THIS SIGHTING]
-                  </text>
+                  {leftHeld ? (
+                    <text x="148" y="205">
+                      [HELD BACK]
+                    </text>
+                  ) : (
+                    <>
+                      <text x="148" y="196">
+                        [NOT READ IN
+                      </text>
+                      <text x="148" y="214">
+                        THIS SIGHTING]
+                      </text>
+                    </>
+                  )}
                 </g>
               </>
             )}
@@ -1066,7 +1121,7 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
                     </text>
                   ))}
                   <text x="624" y="306" fontSize="13">
-                    through the lens
+                    {rightHeld ? "through the lens · held back" : "through the lens"}
                   </text>
                 </g>
               </>
@@ -1074,12 +1129,20 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
               <>
                 <path d="M560,200 L604,200" fill="none" stroke={MUTED} strokeOpacity="0.6" strokeWidth="0.8" strokeDasharray="2 3" />
                 <g fontFamily={SERIF} fontSize="12" letterSpacing="1.2" fill={MUTED}>
-                  <text x="612" y="196">
-                    [NOT READ IN
-                  </text>
-                  <text x="612" y="214">
-                    THIS SIGHTING]
-                  </text>
+                  {rightHeld ? (
+                    <text x="612" y="205">
+                      [HELD BACK]
+                    </text>
+                  ) : (
+                    <>
+                      <text x="612" y="196">
+                        [NOT READ IN
+                      </text>
+                      <text x="612" y="214">
+                        THIS SIGHTING]
+                      </text>
+                    </>
+                  )}
                 </g>
               </>
             )}
@@ -1161,8 +1224,28 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
               ) : (
                 <>Its strength at this word was not recorded. </>
               )}
-              {leftWords ? <>It writes toward {quoted(leftWords)}.</> : <>What it writes: <Missing what={awaitWhat(m, pending)} /></>}
+              {leftHeld ? (
+                <>{heldLine(m.focusGate)}</>
+              ) : leftWords ? (
+                <>It writes toward {quoted(leftWords)}.</>
+              ) : (
+                <>
+                  What it writes: <Missing what={awaitWhat(m, pending)} />
+                </>
+              )}
             </p>
+            {leftHeld ? (
+              // the line above says why; the apparatus brings the words back (and §ii's rubric explains)
+              <IfApparatus>
+                <HeldBackWords
+                  gate={m.focusGate}
+                  words={m.focus.lens?.slice(0, 3).map((t) => t.token) ?? null}
+                  eye={m.focus.eye?.slice(0, 3).map((t) => t.token) ?? null}
+                  compact
+                  style={{ fontSize: 16 }}
+                />
+              </IfApparatus>
+            ) : null}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -1174,7 +1257,14 @@ const Faces: React.FC<{ m: Model }> = ({ m }) => {
             <p style={{ margin: 0, fontSize: "17px" }}>
               {m.fired ? "Silent at this word. " : ""}Fired, it would push the other way, away from the words above.
             </p>
-            {m.other?.lens ? (
+            {m.other?.lens && rightHeld ? (
+              <HeldBackWords
+                gate={m.otherGate}
+                words={m.other.lens.slice(0, 3).map((t) => t.token)}
+                eye={m.other.eye?.slice(0, 3).map((t) => t.token) ?? null}
+                size={20}
+              />
+            ) : m.other?.lens ? (
               <>
                 <div
                   style={{
@@ -1401,7 +1491,8 @@ const WordColumn: React.FC<{ title: string; sub: string; toks: Tok[] | null; sha
   sharedWith,
   missing,
 }) => {
-  const other = new Set((sharedWith ?? []).slice(0, 3).map((t) => t.token.trim().toLowerCase()));
+  // ◆ marks a word-piece the other column also shows, spelt exactly (lib/labels.ts sharedShown), among the three shown
+  const other = new Set((sharedWith ?? []).slice(0, 3).map((t) => t.token));
   return (
     <div style={{ breakInside: "avoid", display: "flex", flexDirection: "column", minWidth: 0, marginBottom: "28px" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "4px 12px", paddingBottom: "8px" }}>
@@ -1426,7 +1517,7 @@ const WordColumn: React.FC<{ title: string; sub: string; toks: Tok[] | null; sha
         <span style={{ textAlign: "right" }}>score</span>
       </div>
       {toks ? (
-        toks.slice(0, 3).map((t, i) => <WordRow key={i} t={t} shared={other.has(t.token.trim().toLowerCase())} />)
+        toks.slice(0, 3).map((t, i) => <WordRow key={i} t={t} shared={other.has(t.token)} />)
       ) : (
         <div style={{ padding: "14px 0", borderBottom: `1px solid ${HAIR_FAINT}` }}>
           <Missing what={missing} />
@@ -1436,20 +1527,24 @@ const WordColumn: React.FC<{ title: string; sub: string; toks: Tok[] | null; sha
   );
 };
 
-/** A labelled neighbour at this layer, other than this neuron, whose two readings agree most. */
+/** A labelled neighbour at this layer, other than this neuron, whose two readings agree most among the words shown; a
+ * neighbour the label gate holds back is never picked. */
 function comparisonPick(m: Model) {
-  let best: { pole: PoleReading; agr: Agreement } | null = null;
+  let best: { pole: PoleReading; agr: Agreement; gate: Gate } | null = null;
   for (const p of m.poles) {
     if (p.neuron === m.neuron || !p.lens || !p.eye) continue;
+    const gate = labelGate(layerIdx(m.idx), p.check);
+    if (gate.heldBack) continue;
     const a = agreement(tokFromReading(p.lens)!, tokFromReading(p.eye)!);
     if (a.k === 0) continue;
-    if (!best || a.k > best.agr.k) best = { pole: p, agr: a };
+    if (!best || a.k > best.agr.k) best = { pole: p, agr: a, gate };
   }
   return best;
 }
 
 /** How far labels held at a layer. N1 sampled layers 11, 21, 31, 41, 46, 51, 56 and 58 (counting from 1): labels held up at 41–58,
- * were at chance at 11–31, and were not tested at 32–40 or below 11 (N1_REPORT; REPORT errata E9, E43). */
+ * were at chance at 11–31, and were not tested at 32–40 or below 11 (N1_REPORT; REPORT errata E9, E43). Above 58, lib/labels.ts
+ * trustLine: layer 59 was not tested, and at layer 60 the two readings are one. */
 function trustText(n: number): string {
   const rumour = "Read both columns as a rumour, not a finding.";
   if (n >= 41 && n <= 58) {
@@ -1476,8 +1571,15 @@ function trustText(n: number): string {
       `Layer ${n} lies below every layer the study tested; the lowest was layer 11, where labels did no better than chance. Of the layers ` +
       `sampled, labels held up only at 41 to 58. ${rumour}`
     );
-  return `Layer ${n} lies above the band the study tested, layers 41 to 58. At the last layers the lens and the naked eye see much the same thing.`;
+  return `${trustLine(layerIdx(n - 1))} Labels held up at layers 41 to 58.`;
 }
+
+/** The canvas's comparison neuron in the recorded sighting: layer index 53, rank 2 (NeuronFolio/recorded.ts CMP). */
+const CMP_IDX = 53;
+const CMP_RANK = 2;
+
+/** The seal's verdict from the server's ten-a-side count (the gate's own measure). */
+const verdictOfTen = (k: number): Agreement["verdict"] => (k === 0 ? "disagree" : k === 10 ? "agree" : "partly agree");
 
 const Says: React.FC<{ m: Model }> = ({ m }) => {
   const rx = (l: number) => f1(24 + ((l - 1) * 852) / 59);
@@ -1493,6 +1595,8 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
   const missing = awaitWhat(m, m.insp?.pending);
   const agr = m.agr;
   const cmp = m.recorded ? null : comparisonPick(m);
+  // the canvas's comparison neuron, 18422 (the recorded sighting's 53:2), is held back like any other if the gate says so
+  const cmpRecordedGate = labelGate(layerIdx(CMP_IDX), fixtureCheck(CMP_IDX, CMP_RANK));
   const x = rx(m.layerNo);
   const band =
     m.layerNo > 58
@@ -1504,7 +1608,23 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
           : m.layerNo >= 11
             ? "in the stretch where labels did no better than chance"
             : "below every layer the study tested";
-  const sealLines = !agr ? ["not yet", "read"] : agr.verdict === "partly agree" ? ["partly", "agree"] : [agr.verdict];
+  // the gate decides first: a held-back label's seal reads "held back"; with the server's count the seal goes by the first
+  // ten, as the study counted, else by the three shown, as a hint
+  const g = m.focusGate;
+  const held = !!(m.focus.lens || m.focus.eye) && g.heldBack;
+  const ten = g.sharedTop10;
+  const verdict = ten != null ? verdictOfTen(ten) : (agr?.verdict ?? null);
+  const sealLines = held
+    ? ["held", "back"]
+    : g.condition3 === "one-reading"
+      ? ["one", "reading"]
+      : !verdict
+        ? ["not yet", "read"]
+        : verdict === "partly agree"
+          ? ["partly", "agree"]
+          : [verdict];
+  const sealSub = ten != null ? `${ten} IN 10` : held ? (g.reasons.includes("below_layer_40") ? "BELOW 41" : "") : agr ? `${agr.k} IN 3` : "[UNREAD]";
+  const unchecked = m.focus.from === "recorded" ? "not yet checked ten a side: this sighting carries three words a side" : "not yet in the server";
   const { lens } = useReadingLens(m.sighting);
 
   return (
@@ -1517,12 +1637,23 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
       </div>
       <Rubric style={{ maxWidth: "760px" }}>
         Read across, as in a book with two languages on facing pages. The first column shows this face seen through the lens; the second, the
-        same face seen with the naked eye. A word that stands in both is marked ◆.
+        same face seen with the naked eye. A word-piece that stands in both, among the words shown, is marked ◆.
       </Rubric>
-      <div style={{ columns: "2 340px", columnGap: "88px", columnRule: `1px solid ${HAIR}`, paddingTop: "6px" }}>
-        <WordColumn title="through the lens" sub={`(${lensLabel(lens)})`} toks={m.focus.lens} sharedWith={m.focus.eye} missing={missing} />
-        <WordColumn title="to the naked eye" sub="(logit lens)" toks={m.focus.eye} sharedWith={m.focus.lens} missing={missing} />
-      </div>
+      {held ? (
+        // the label gate holds this face's words back: the plate, the reason and its rubric; the apparatus keeps the words
+        <HeldBackWords
+          gate={g}
+          words={m.focus.lens?.slice(0, 3).map((t) => t.token) ?? null}
+          eye={m.focus.eye?.slice(0, 3).map((t) => t.token) ?? null}
+          unchecked={unchecked}
+          style={{ maxWidth: "760px", paddingTop: "6px", marginBottom: "12px" }}
+        />
+      ) : (
+        <div style={{ columns: "2 340px", columnGap: "88px", columnRule: `1px solid ${HAIR}`, paddingTop: "6px" }}>
+          <WordColumn title="through the lens" sub={`(${lensLabel(lens)})`} toks={m.focus.lens} sharedWith={m.focus.eye} missing={missing} />
+          <WordColumn title="to the naked eye" sub="(logit lens)" toks={m.focus.eye} sharedWith={m.focus.lens} missing={missing} />
+        </div>
+      )}
       <Rubric style={{ maxWidth: "760px" }}>
         These are the words each reading says this face pushes the model toward when it fires; how far to trust them depends on the layer, as
         set out below. They are not a forecast: in the study, the words that follow when a
@@ -1546,9 +1677,13 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
           viewBox="0 0 140 140"
           role="img"
           aria-label={
-            agr
-              ? `A seal reading: ${agr.verdict}. ${cap(numberWord(agr.k))} word-piece${agr.k === 1 ? "" : "s"} in three ${agr.k === 1 ? "is" : "are"} shared.`
-              : "A seal reading: not yet read. The two readings have not been compared."
+            held
+              ? `A seal reading: held back. ${heldLine(g)}${ten != null ? ` ${cap(numberWord(ten))} word-piece${ten === 1 ? "" : "s"} in ten ${ten === 1 ? "is" : "are"} shared.` : ""}`
+              : ten != null
+                ? `A seal reading: ${g.condition3 === "one-reading" ? "one reading" : verdict}. ${cap(numberWord(ten))} word-piece${ten === 1 ? "" : "s"} in ten ${ten === 1 ? "is" : "are"} shared.`
+                : agr
+                  ? `A seal reading: ${agr.verdict}. ${cap(numberWord(agr.k))} word-piece${agr.k === 1 ? "" : "s"} in three ${agr.k === 1 ? "is" : "are"} shared.`
+                  : "A seal reading: not yet read. The two readings have not been compared."
           }
           style={{ flex: "0 0 auto" }}
         >
@@ -1573,14 +1708,36 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
               </text>
             )}
             <text x="70" y="106" fontSize="12" letterSpacing="1.4" fill={MUTED} style={NUM}>
-              {agr ? `${agr.k} IN 3` : "[UNREAD]"}
+              {sealSub}
             </text>
           </g>
         </svg>
         <div style={{ flex: "999 1 460px", minWidth: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
-          <h3 className="h-sub">{agr ? `the lens and the naked eye ${agr.verdict}` : "the lens and the naked eye, not yet compared"}</h3>
+          <h3 className="h-sub">
+            {held
+              ? "the lens and the naked eye, held back"
+              : g.condition3 === "one-reading"
+                ? "the lens and the naked eye, one reading"
+                : verdict
+                  ? `the lens and the naked eye ${verdict}`
+                  : "the lens and the naked eye, not yet compared"}
+          </h3>
           <p style={{ margin: 0, fontSize: "18px", maxWidth: "700px" }}>
-            {m.focus.from === "recorded" ? (
+            {held ? (
+              // the plate above already says why; here only what was counted
+              ten != null ? (
+                `Counted ten a side, by word-piece, they share ${numberWord(ten)}.`
+              ) : (
+                "Below layer 41 the two readings are not compared on this page; the apparatus keeps them both."
+              )
+            ) : ten != null ? (
+              <>
+                {cap(numberWord(ten))} of their first ten word-pieces stand on both sides, counted by word-piece, as the study counted
+                {g.condition3 === "one-reading" ? ": at layer 60 the two readings are one" : ""}.
+                {m.focus.from === "recorded" ? <> Among the three shown, “jestem”; and every word in both columns is a form of one verb, <i>to be</i>.</> : null}
+                {g.condition3 === "unvalidated" ? ` ${sharedLine(g)}.` : ""}
+              </>
+            ) : m.focus.from === "recorded" ? (
               <>
                 One word-piece in three, “jestem”, stands on both sides; and every word in both columns is a form of one verb, <i>to be</i>.
               </>
@@ -1596,16 +1753,25 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
           </p>
           <p style={{ margin: 0, fontSize: "16px", color: MUTED, maxWidth: "700px" }}>
             Why it matters: in the study, agreement between the two readings was a free sign that a neuron’s label is real. Take one sound label
-            and one unsound, and agreement ranked the sound one higher 84 times in 100 <span style={{ fontStyle: "italic" }}>(AUC 0.84, layers 41–58)</span>.
-            The study compared ten words a side; the instrument shows three, so treat this seal as a hint, not a verdict.
+            and one unsound, from its sample of random neurons, and agreement ranked the sound one higher 84 times in 100{" "}
+            <span style={{ fontStyle: "italic" }}>(AUC 0.84, layers 41–58, for labels read through the base-fitted J++ lens)</span>.{" "}
+            {ten != null
+              ? "The instrument counted the first ten a side, as the study did, and shows three."
+              : "The study compared ten words a side; the instrument shows three, so treat this seal as a hint, not a verdict."}{" "}
+            A label whose two readings share none of their first ten is held back from this page, and so is any label below layer 41; the
+            cut at none is the instrument’s, since the study set none.
           </p>
         </div>
-        {m.recorded ? (
+        {m.recorded && !cmpRecordedGate.heldBack ? (
           <ComparisonBlock
             neuron={CMP.neuron}
             lens="“Am” “am” “Am”"
             eye="“am” “Am” “am”"
-            text="Third loudest in this layer, fired on its negative face. Both readings give only “am”: they agree, and such a label earns more trust."
+            text={
+              "Third loudest in this layer, fired on its negative face. Both readings give only forms of “am”; among the words shown, two " +
+              "word-pieces in three, “ Am” and “ am”, stand on both sides" +
+              (cmpRecordedGate.sharedTop10 != null ? `, and ${numberWord(cmpRecordedGate.sharedTop10)} of their first ten.` : ".")
+            }
           />
         ) : cmp ? (
           <ComparisonBlock
@@ -1615,8 +1781,9 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
             text={
               `${cap(m.rw.nth(cmp.pole.rank))} in this layer, fired on its ${faceWord(cmp.pole.face)} face. ` +
               (cmp.agr.verdict === "agree"
-                ? "Both readings give the same words: they agree, and such a label earns more trust."
-                : `${cap(numberWord(cmp.agr.k))} word-piece${cmp.agr.k === 1 ? "" : "s"} in three stand${cmp.agr.k === 1 ? "s" : ""} on both sides.`)
+                ? "Both readings show the same words"
+                : `${cap(numberWord(cmp.agr.k))} word-piece${cmp.agr.k === 1 ? "" : "s"} in three stand${cmp.agr.k === 1 ? "s" : ""} on both sides`) +
+              (cmp.gate.sharedTop10 != null ? `, and ${numberWord(cmp.gate.sharedTop10)} of their first ten.` : ", among the words shown.")
             }
           />
         ) : null}
@@ -1727,7 +1894,7 @@ const ComparisonBlock: React.FC<{ neuron: number; lens: string; eye: string; tex
   </div>
 );
 
-const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreement } | null }> = ({ m, cmp }) => {
+const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreement; gate: Gate } | null }> = ({ m, cmp }) => {
   const exact = m.focus.from === "recorded";
   const lensRaw = m.focus.lens ? scoresText(m.focus.lens, exact ? 4 : undefined) : null;
   const eyeRaw = m.focus.eye ? scoresText(m.focus.eye, exact ? 4 : undefined) : null;
@@ -1792,7 +1959,7 @@ const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreeme
         <dd>
           {agr ? (
             <>
-              {agr.k} of 3 shared{agr.k ? <>, {agr.sharedRaw.map((t) => `“${t}”`).join(", ")}</> : null}.
+              among the words shown, {agr.k} of 3 shared, spelt exactly{agr.k ? <>: {agr.sharedRaw.map((t) => `“${t}”`).join(", ")}</> : null}.
               {all ? (
                 <>
                   {" "}
@@ -1800,11 +1967,36 @@ const SaysApparatus: React.FC<{ m: Model; cmp: { pole: PoleReading; agr: Agreeme
                 </>
               ) : null}{" "}
               The study’s signal is the top-10 overlap: AUC 0.84 for telling a sound label (causal P@10 ≥ 0.3) from an unsound one, within layers
-              41–58. {m.focus.from === "inspection" ? "The columns show the first three." : "This sighting stored three a side."}
+              41–58, for base-fitted J++ labels on random neurons. {m.focus.from === "inspection" ? "The columns show the first three." : "This sighting stored three a side."}{" "}
+              The server’s count of it: {sharedLine(m.focusGate) ?? <Missing what={m.focus.from === "recorded" ? "not yet checked ten a side" : "not yet in the server"} />}.
             </>
           ) : (
             <Missing what={awaitWhat(m, m.insp?.pending)} />
           )}
+        </dd>
+        <dt>held back</dt>
+        <dd>
+          {(m.focus.lens || m.focus.eye) && m.focusGate.heldBack ? (
+            <>
+              the {faceWord(m.focusFace)} face’s label, from the main reading: {heldTag(m.focusGate)}
+              {m.focusGate.reasons.includes("below_layer_40") ? " (condition 2)" : " (condition 3)"} (REPORT §3.3; N1). Through the lens{" "}
+              {m.focus.lens ? m.focus.lens.slice(0, 3).map((t) => `“${t.token}”`).join(" · ") : "—"}; to the naked eye{" "}
+              {m.focus.eye ? m.focus.eye.slice(0, 3).map((t) => `“${t.token}”`).join(" · ") : "—"}.{" "}
+            </>
+          ) : (
+            <>the {faceWord(m.focusFace)} face’s label is shown. </>
+          )}
+          {m.other && (m.other.lens || m.other.eye) && m.otherGate.heldBack ? (
+            <>
+              The {faceWord(m.otherFace)} face’s label is held back too ({heldTag(m.otherGate)}): through the lens{" "}
+              {m.other.lens ? m.other.lens.slice(0, 3).map((t) => `“${t.token}”`).join(" · ") : "—"}; to the naked eye{" "}
+              {m.other.eye ? m.other.eye.slice(0, 3).map((t) => `“${t.token}”`).join(" · ") : "—"}.{" "}
+            </>
+          ) : null}
+          The rule: a label is held back below layer 41, and where its two readings share none of their first ten word-pieces, counted by
+          word-piece as the study counted them (fp32; “ Am” and “Am” are different word-pieces); the cut at none of ten is the
+          instrument’s. The gate was measured for base-fitted J++ labels within layers 41–58 only (erratum E47).
+          {m.focusGate.heldBack ? <> {heldRubric(m.focusGate)}</> : null}
         </dd>
         <dt>validity</dt>
         <dd>
@@ -2131,9 +2323,21 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
                         neuron {r.neuron}
                       </a>
                       {r.words?.length ? (
-                        <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED, overflowWrap: "anywhere", paddingBottom: "6px" }}>
-                          writes {r.words.map((t) => wp(t.token)).join(" ")}
-                        </span>
+                        // a reader's words pass the same gate: by its own dst_label_check, else by its layer alone
+                        labelGate(layerIdx(r.idx), r.check).heldBack ? (
+                          <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED, overflowWrap: "anywhere", paddingBottom: "6px" }}>
+                            <HeldBackWords
+                              gate={labelGate(layerIdx(r.idx), r.check)}
+                              words={r.words.map((t) => t.token)}
+                              eye={r.eye?.map((t) => t.token) ?? null}
+                              compact
+                            />
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED, overflowWrap: "anywhere", paddingBottom: "6px" }}>
+                            writes {r.words.map((t) => wp(t.token)).join(" ")}
+                          </span>
+                        )
                       ) : null}
                     </span>
                     <span>{r.idx + 1}</span>
@@ -2418,6 +2622,8 @@ interface NbRow {
   verdict: string;
   vNote: string;
   w: number;
+  /** the label gate, when it holds this row's words back (their glosses then stand only in the apparatus) */
+  held: Gate | null;
 }
 
 const NB_GRID = "84px 80px 112px 150px minmax(0, 1fr) minmax(0, 1fr) 190px";
@@ -2440,9 +2646,30 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
     const me = p.neuron === m.neuron;
     const notes = m.recordedLayer ? NB_NOTES[p.neuron] : undefined;
     const w = f1((Math.abs(m.recordedLayer ? (ACTS[IDS.indexOf(p.neuron)] ?? p.act) : p.act) / loud) * 100);
-    if (notes) return { p, me, ...notes, w };
     const lt = tokFromReading(p.lens);
     const et = tokFromReading(p.eye);
+    // the label gate first: a held-back row keeps its neuron, face and strength, and its words go to the apparatus
+    const gate = labelGate(layerIdx(m.idx), p.check);
+    if ((lt || et) && gate.heldBack) {
+      return {
+        p,
+        me,
+        lens: <HeldBackWords gate={gate} words={lt?.slice(0, 3).map((t) => t.token) ?? null} eye={et?.slice(0, 3).map((t) => t.token) ?? null} compact />,
+        lensNote: notes?.lensNote ?? (lt ? glossNote(lt) : ""),
+        eye: "",
+        eyeNote: notes?.eyeNote ?? (et ? glossNote(et) : ""),
+        verdict: "held back",
+        vNote: heldTag(gate).replace(/^held back · /, ""),
+        w,
+        held: gate,
+      };
+    }
+    const ten = gate.sharedTop10 != null ? `; ${gate.sharedTop10} of their first ten` : "";
+    if (notes) {
+      // the canvas read its verdicts from the three shown; with the server's count, the verdict goes by the first ten
+      const verdict = gate.sharedTop10 != null ? verdictOfTen(gate.sharedTop10) : notes.verdict;
+      return { p, me, ...notes, verdict, vNote: notes.vNote + (ten ? `, among those shown${ten}` : ""), w, held: null };
+    }
     const a = lt && et ? agreement(lt, et) : null;
     return {
       p,
@@ -2451,9 +2678,10 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
       lensNote: lt ? glossNote(lt) : "",
       eye: et ? et.slice(0, 3).map((t) => wp(t.token)).join(" ") : <Missing />,
       eyeNote: et ? glossNote(et) : "",
-      verdict: a ? a.verdict : "",
-      vNote: a ? (a.k === 0 ? "no word-piece shared" : `${andList(a.shared.map(wp))} on both sides`) : "",
+      verdict: gate.sharedTop10 != null ? verdictOfTen(gate.sharedTop10) : a ? a.verdict : "",
+      vNote: a ? (a.k === 0 ? `no word-piece shared among those shown${ten}` : `${andList(a.shared.map(wp))} on both sides${ten}`) : "",
       w,
+      held: null,
     };
   });
   const actText = (p: PoleReading) => {
@@ -2481,7 +2709,10 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
       <Rubric style={{ maxWidth: "760px" }}>
         {m.byWrite
           ? "The five that wrote most into the stream at this word, each read both ways. Doubt the ones whose two readings share nothing."
-          : "The five loudest neurons at this word, each read both ways. Doubt the ones whose two readings share nothing."}
+          : "The five loudest neurons at this word, each read both ways. Doubt the ones whose two readings share nothing."}{" "}
+        {m.idx < 40
+          ? "Below layer 41 their words are held back; the apparatus keeps them."
+          : "A row whose two readings share none of their first ten is held back; the apparatus keeps its words."}
       </Rubric>
       {rows.length ? (
         <div style={{ overflowX: "auto", paddingBottom: "6px" }}>
@@ -2544,12 +2775,18 @@ const Neighbours: React.FC<{ m: Model }> = ({ m }) => {
                   </span>
                 </span>
                 <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <span style={{ fontSize: "20px", lineHeight: 1.3, overflowWrap: "anywhere" }}>{n.lens}</span>
-                  <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED }}>{n.lensNote}</span>
+                  <span style={{ fontSize: n.held ? "16px" : "20px", lineHeight: 1.3, overflowWrap: "anywhere" }}>{n.lens}</span>
+                  {n.held ? (
+                    <IfApparatus>
+                      <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED }}>{[n.lensNote, n.eyeNote].filter(Boolean).join("; ")}</span>
+                    </IfApparatus>
+                  ) : (
+                    <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED }}>{n.lensNote}</span>
+                  )}
                 </span>
                 <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                   <span style={{ fontSize: "20px", lineHeight: 1.3, overflowWrap: "anywhere" }}>{n.eye}</span>
-                  <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED }}>{n.eyeNote}</span>
+                  {n.held ? null : <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED }}>{n.eyeNote}</span>}
                 </span>
                 <span style={{ display: "flex", flexDirection: "column" }}>
                   <span style={{ fontSize: "17px", fontStyle: "italic" }}>{n.verdict}</span>
@@ -2830,7 +3067,19 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
                 <>
                   the {faceWord(workFace)} face
                   {res.signature?.length ? (
-                    <span style={{ color: MUTED }}>, which writes {res.signature.map((t) => wp(t.token)).join(" ")}</span>
+                    // the pole's words pass the label gate: by its pole_label_check, else by its layer alone
+                    labelGate(layerIdx(m.idx), res.signatureCheck).heldBack ? (
+                      <span style={{ color: MUTED }}>
+                        , whose words are held back here{" "}
+                        <HeldBackWords
+                          gate={labelGate(layerIdx(m.idx), res.signatureCheck)}
+                          words={res.signature.map((t) => t.token)}
+                          compact
+                        />
+                      </span>
+                    ) : (
+                      <span style={{ color: MUTED }}>, which writes {res.signature.map((t) => wp(t.token)).join(" ")}</span>
+                    )
                   ) : null}
                 </>
               ) : (
@@ -3002,8 +3251,10 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
   const gs = neuronSquaring === "gram_schmidt";
   const pol = m.focusFace > 0 ? "1.0" : "-1.0";
   const sign = m.focusFace > 0 ? "+" : "-";
-  const firstWord = m.recorded ? "“am”" : m.focus.lens?.length ? wp(m.focus.lens[0].token) : null;
-  const conceptTok = m.recorded ? "jestem" : (m.agr?.shared[0] ?? m.focus.lens?.[0]?.token ?? "").trim().replace(/['\\]/g, "");
+  // a held-back label's words are not offered as the vault's concept either: the statement then names "<word>"
+  const heldWords = !!(m.focus.lens || m.focus.eye) && m.focusGate.heldBack;
+  const firstWord = heldWords ? null : m.recorded ? "“am”" : m.focus.lens?.length ? wp(m.focus.lens[0].token) : null;
+  const conceptTok = heldWords ? "" : m.recorded ? "jestem" : (m.agr?.shared[0] ?? m.focus.lens?.[0]?.token ?? "").trim().replace(/['\\]/g, "");
   const concept = conceptTok || "<word>";
   const vaultQuery = `SELECT * FROM POLES NEAREST '${concept}' WHERE layer = ${m.idx} LIMIT 10`;
   const surveyCode =
@@ -3201,6 +3452,20 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
     jobs: nf.jobs === null ? null : JOBS[nf.jobs],
     pattern: nf.pattern,
     checked: { other_pole: nf.other, long_contexts: nf.long, steered: nf.steered, readers_traced: nf.readers },
+    // the face's label as read, whole, with the server's check and whether the pages hold it back (lib/labels.ts)
+    label: (() => {
+      const isFocus = (face === "pos" ? 1 : -1) === m.focusFace;
+      const r = isFocus ? m.focus : m.other;
+      const g = isFocus ? m.focusGate : m.otherGate;
+      if (!r || (!r.lens && !r.eye)) return null;
+      return {
+        lens: r.lens?.map((t) => t.token) ?? null,
+        eye: r.eye?.map((t) => t.token) ?? null,
+        label_check: labelCheckJson(g.check),
+        held_back: g.heldBack,
+        held_back_why: g.reasons,
+      };
+    })(),
   };
   const top = m.focus.lens?.slice(0, 3).map((t) => t.token) ?? null;
   const faceName = face === "pos" ? "the positive face" : "the negative face";
@@ -3255,14 +3520,20 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
       </p>
       <p style={{ margin: 0, maxWidth: "760px", padding: "10px 0", borderTop: `1px solid ${HAIR_FAINT}`, borderBottom: `1px solid ${HAIR_FAINT}` }}>
         <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", fontSize: "16px", color: MUTED }}>so far ·</span>{" "}
-        {m.focus.from === "recorded" ? (
-          <>Through the lens and to the naked eye, its positive face reads as forms of “to be”</>
-        ) : top ? (
+        {top && m.focusGate.heldBack ? (
+          <>What its {faceWord(m.focusFace)} face writes is held back here, as every label is {m.focusGate.reasons.includes("below_layer_40") ? "below layer 41" : "whose two readings share none of their first ten"}. </>
+        ) : (
           <>
-            Through the lens, its {faceWord(m.focusFace)} face writes {andList(top.map(wp))}
+            {m.focus.from === "recorded" ? (
+              <>Through the lens and to the naked eye, its positive face reads as forms of “to be”</>
+            ) : top ? (
+              <>
+                Through the lens, its {faceWord(m.focusFace)} face writes {andList(top.map(wp))}
+              </>
+            ) : null}
+            {top ? (m.agr ? <>, and the two readings {m.focusGate.sharedTop10 != null ? verdictOfTen(m.focusGate.sharedTop10) : m.agr.verdict}. </> : <>. </>) : <>What its faces write has not been read yet. </>}
           </>
-        ) : null}
-        {top ? (m.agr ? <>, and the two readings {m.agr.verdict}. </> : <>. </>) : <>What its faces write has not been read yet. </>}
+        )}
         What wakes either face is <i>not yet understood</i>: no passages have been gathered for this neuron
         {m.other?.lens ? "." : `, and its ${faceWord(m.otherFace)} face has not been read.`}
       </p>

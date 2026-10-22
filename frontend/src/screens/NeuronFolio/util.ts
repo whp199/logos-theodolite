@@ -1,4 +1,5 @@
 import { bare, gloss, minus } from "../../lib/words";
+import { sharedShown } from "../../lib/labels";
 import { TOKEN_GLOSS } from "./recorded";
 import type { Tok } from "./replies";
 
@@ -35,35 +36,23 @@ export function scoresText(toks: Tok[], digits?: number): string {
 }
 
 export interface Agreement {
-  /** how many of the lens's first n word-pieces also stand in the naked eye's first n */
+  /** how many of the lens's first n word-pieces also stand in the naked eye's first n, spelt exactly */
   k: number;
   verdict: "agree" | "partly agree" | "disagree";
-  /** the shared word-pieces, raw (as the lens gave them), one per spelling */
+  /** the shared word-pieces, raw (as the lens gave them) */
   shared: string[];
   sharedRaw: string[];
 }
 
 /**
- * Whether the lens and the naked eye agree on a face's first n word-pieces. Spellings are compared
- * without their leading space and case ("Am", " am" count as one word), as the canvas reads them.
+ * The word-pieces a face's two readings share among the first n shown (lib/labels.ts sharedShown: exact word-pieces,
+ * so " Am" and "Am" are two), for the ◆ marks and the seal's hint, worded "among the words shown". It is not the label
+ * gate's measure, which counts word-piece ids ten a side (the server's label_check.shared_top10).
  */
 export function agreement(lens: Tok[], eye: Tok[], n = 3): Agreement {
-  const norm = (t: string) => t.trim().toLowerCase();
-  const L = lens.slice(0, n);
-  const E = eye.slice(0, n);
-  const eyeSet = new Set(E.map((t) => norm(t.token)));
-  const lensSet = new Set(L.map((t) => norm(t.token)));
-  const hits = L.filter((t) => eyeSet.has(norm(t.token)));
-  const seen = new Set<string>();
-  const shared: string[] = [];
-  for (const t of hits) {
-    const key = norm(t.token);
-    if (!seen.has(key)) {
-      seen.add(key);
-      shared.push(t.token);
-    }
-  }
-  const same = lensSet.size === eyeSet.size && [...lensSet].every((x) => eyeSet.has(x));
-  const k = hits.length;
+  const L = lens.slice(0, n).map((t) => t.token);
+  const E = eye.slice(0, n).map((t) => t.token);
+  const { k, shared } = sharedShown(L, E);
+  const same = k === new Set(L).size && k === new Set(E).size;
   return { k, verdict: k === 0 ? "disagree" : same ? "agree" : "partly agree", shared, sharedRaw: shared };
 }

@@ -27,7 +27,8 @@ import {
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { certainty, comma, gloss, kindOf, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
-import { layerIdx, trustLine } from "../lib/labels";
+import { heldRubric, heldTag, labelCheckJson, labelGate, layerIdx, sharedLine, sharedShown, trustLine } from "../lib/labels";
+import { HeldBackWords } from "../components/HeldBack";
 import { InstrumentFigure, type Shown } from "./instrument/InstrumentFigure";
 import { Ascent } from "./instrument/Ascent";
 import { Kinship } from "./instrument/Kinship";
@@ -923,20 +924,32 @@ function poleNote(s: Sighting, L: LayerReading) {
   // its rank among the layer's 21,504 is exact
   const p = leadOf(L);
   if (!p) return null;
+  // the label gate decides first (lib/labels.ts): a held-back label's words, and any gloss of them, leave the main
+  // reading for the apparatus; the canvas's recorded notes never override it
+  const gate = labelGate(layerIdx(L.idx), p.check);
   const recorded = s.source === "fixture" ? RECORDED_POLE_NOTES[`${L.idx}:${p.neuron}`] : undefined;
   const lens = p.lens?.slice(0, 3) ?? null;
-  const eye = p.eye ?? null;
+  const eye = p.eye?.slice(0, 3) ?? null;
   let auto = "";
   if (lens && eye) {
-    const shared = lens.map((t) => t.token.trim()).find((t) => eye.slice(0, 5).some((e) => e.token.trim() === t));
-    if (shared) auto = `The lens and the naked eye agree on “${shared}”: a good sign.`;
-    else auto = "The lens and the naked eye share no word-piece here.";
+    // the ◆ count of the words shown, spelt exactly; the gate's own count is ten a side, by id
+    const shown = sharedShown(
+      lens.map((t) => t.token),
+      eye.map((t) => t.token),
+    );
+    const ten = gate.sharedTop10 != null ? `; counted ten a side, by word-piece, they share ${gate.sharedTop10} of their first ten` : "";
+    auto = shown.k
+      ? `Among the words shown, the lens and the naked eye both read ${shown.shared.map((t) => `“${t.trim() || t}”`).join(" and ")}${ten}.`
+      : `Among the words shown, the lens and the naked eye share no word-piece${ten}.`;
   }
   return {
     p,
+    gate,
     words: lens,
-    gloss: recorded?.gloss ?? auto,
-    trust: recorded?.trust ?? trustLine(layerIdx(L.idx)),
+    eye,
+    gloss: recorded ? recorded.gloss(gate) : auto,
+    canvasTrust: recorded?.canvasTrust ?? null,
+    trust: trustLine(layerIdx(L.idx)),
   };
 }
 
@@ -1131,9 +1144,23 @@ const Leaf: React.FC<{ sighting: Sighting; sel: number; stations: number[]; onPi
                 {note.p.face > 0 ? "positive" : "negative"} face · strength {Math.abs(note.p.act).toFixed(1)}
               </span>
             </div>
-            <div style={{ fontSize: 22, lineHeight: 1.35 }}>{note.words.map((t) => wp(t.token)).join("  ")}</div>
-            {note.gloss ? <div style={{ fontSize: 15, fontStyle: "italic", color: "#6B5D4D" }}>{note.gloss}</div> : null}
-            <Rubric style={{ margin: "2px 0 0", fontSize: 15 }}>{note.trust}</Rubric>
+            {note.gate.heldBack ? (
+              // the plate, the reason and the rubric in place of the words, the gloss and the trust line; the apparatus
+              // keeps them (and the leaf's apparatus, below, the canvas's own note)
+              <HeldBackWords
+                gate={note.gate}
+                words={note.words.map((t) => t.token)}
+                eye={note.eye?.map((t) => t.token) ?? null}
+                glosses={note.gloss || null}
+                unchecked={sighting.source === "fixture" ? "not yet checked ten a side: this sighting carries three words a side" : "not yet in the server"}
+              />
+            ) : (
+              <>
+                <div style={{ fontSize: 22, lineHeight: 1.35 }}>{note.words.map((t) => wp(t.token)).join("  ")}</div>
+                {note.gloss ? <div style={{ fontSize: 15, fontStyle: "italic", color: "#6B5D4D" }}>{note.gloss}</div> : null}
+                <Rubric style={{ margin: "2px 0 0", fontSize: 15 }}>{note.trust}</Rubric>
+              </>
+            )}
           </>
         ) : note ? (
           <p style={{ margin: 0, fontSize: 16, color: "#6B5D4D" }}>
@@ -1165,6 +1192,8 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
   const [raw, setRaw] = useState(false);
   const control = useTheodoliteStore((s) => s.control);
   useEffect(() => setRaw(false), [L.idx]);
+  // the leaf's neuron, with its words and the reason, when the label gate holds them back from the leaf
+  const lead = poleNote(sighting, L);
   const words = [...sighting.landmarks.filter((w) => L.ranks[w]), ...Object.keys(L.ranks).filter((w) => !sighting.landmarks.includes(w))].slice(0, 8);
   const notRecorded = [
     L.streamStrength == null ? "‖h‖" : null,
@@ -1200,7 +1229,15 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
     [describeFrame(sighting).exportKey]: L.projFrac,
     tracked_rank: L.ranks,
     rank_from_next: L.rankFromNext,
-    poles: L.poles.map((p) => ({ neuron: p.neuron, act: p.act, lens: p.lens?.map((t) => t.token) ?? null, eye: p.eye?.map((t) => t.token) ?? null })),
+    poles: L.poles.map((p) => ({
+      neuron: p.neuron,
+      act: p.act,
+      lens: p.lens?.map((t) => t.token) ?? null,
+      eye: p.eye?.map((t) => t.token) ?? null,
+      // the server's check (null: not sent, or a recorded label not yet checked ten a side), and the page's verdict
+      label_check: labelCheckJson(p.check),
+      held_back: p.lens || p.eye ? labelGate(layerIdx(L.idx), p.check).heldBack : null,
+    })),
   };
   // the kept control is a condition read where its answer begins: it is compared at word-piece 0 only, and only when it
   // is another question (the store never centres a question on itself)
@@ -1283,8 +1320,27 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
           {sighting.poleRanking === "write" ? `write size, ${rankingWords("write").measure}` : "|a|"}:{" "}
           {L.poles.map((p) => signed(p.act)).join("  ")}. Labels: unembed((σ · w<sub>down</sub>) · J
           <sup>⊤</sup>), against the naked eye’s unembed(σ · w<sub>down</sub>). Output labels held up at layers 41–58, were at chance at
-          11–31, and were not tested at 1–10 or 32–40 (N1; erratum E9).
+          11–31, and were not tested at 1–10 or 32–40 (N1; erratum E9). Labels below layer 41, and labels whose two readings share none
+          of their first ten word-pieces, are held back from the leaf (REPORT §3.3, conditions 2 and 3; the cut at none of ten is the
+          instrument’s); the server marks each label it sends (label_check), and the words stay here.
         </dd>
+        {lead && lead.gate.heldBack ? (
+          <>
+            <dt>held back</dt>
+            <dd>
+              neuron {lead.p.neuron}, {lead.p.face > 0 ? "positive" : "negative"} face: {heldTag(lead.gate)}. Through the lens{" "}
+              {lead.words ? lead.words.map((t) => `“${t.token}”`).join(" · ") : <Missing what="not read" />}; to the naked eye{" "}
+              {lead.eye ? lead.eye.map((t) => `“${t.token}”`).join(" · ") : <Missing what="not read" />}.{" "}
+              {sharedLine(lead.gate) ?? (
+                <Missing
+                  what={sighting.source === "fixture" ? "not yet checked ten a side: this sighting carries three words a side" : "not yet in the server"}
+                />
+              )}
+              {lead.gloss ? <> Its gloss: {lead.gloss}</> : null}
+              {lead.canvasTrust ? <> The canvas’s note: {lead.canvasTrust}</> : null} {heldRubric(lead.gate)}
+            </dd>
+          </>
+        ) : null}
         {ctl ? (
           <>
             <dt>control</dt>

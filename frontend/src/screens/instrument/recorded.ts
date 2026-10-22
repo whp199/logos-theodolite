@@ -1,24 +1,41 @@
+import type { Gate } from "../../lib/labels";
+
 /**
  * The approved canvas's hand-written notes (Main.dc.html) on the loudest neuron at three layers of the
  * study's demonstration sighting (E6_tool_audit_02_sweep_demo.json, prepend_bos=True). They apply only
  * when that recorded sighting is shown (its words come from the recorded labels); a live sighting builds
- * its note from the server's labels. The note on 35:21189 is amended from the canvas: layer 36 lies in the stretch N1 did not
- * sample (layers 32-40), and its words are the lens's reading, not a tested label (REPORT errata E9, E43).
- * Keyed by "repo index:neuron".
+ * its note from the server's labels. Keyed by "repo index:neuron".
+ *
+ * The label gate (lib/labels.ts) comes first: a note never sets a held-back label's words, or a gloss of
+ * them, in the main reading. Layer 36 (35:21189) lies below layer 41, so its gloss and the canvas's trust
+ * line stand only in the leaf's apparatus, under "held back"; the page's trust line is always trustLine.
+ * The canvas's "agree on AM" (55:16649) is kept only where the ten-a-side count finds a word-piece shared;
+ * until the recorded labels are checked ten a side it says only what the words shown share.
  */
-export const RECORDED_POLE_NOTES: Record<string, { gloss: string; trust: string }> = {
+export interface RecordedPoleNote {
+  /** the canvas's gloss of the words, by what the gate found; set beside the words when they are shown, and
+   * kept in the apparatus with them when they are held back */
+  gloss: (g: Gate) => string;
+  /** the canvas's own line on how far to trust the label, kept in the apparatus beside a held-back label */
+  canvasTrust?: string;
+}
+
+export const RECORDED_POLE_NOTES: Record<string, RecordedPoleNote> = {
   "35:21189": {
-    gloss: "English “myself”, Hindi “me”, Chinese “of me”: through the lens, one idea in three tongues.",
-    trust:
+    gloss: () => "English “myself”, Hindi “me”, Chinese “of me”: through the lens, one idea in three tongues.",
+    canvasTrust:
       "A rumour, not a finding: the study did not test labels at layers 32 to 40, where this one sits; they held up at 41 to 58 and were no better than chance at 11 to 31.",
   },
   "55:16649": {
-    gloss: "The lens and the naked eye agree on “AM”: a good sign.",
-    trust: "Layers 41 to 58 are where neuron labels held up under causal tests.",
+    gloss: (g) =>
+      g.sharedTop10 == null
+        ? "Among the words shown, the lens and the naked eye both read “AM”."
+        : g.sharedTop10 >= 1
+          ? `The lens and the naked eye agree on “AM”, and share ${g.sharedTop10} of their first ten word-pieces: a good sign.`
+          : "Among the words shown, the lens and the naked eye both read “AM”, yet counted ten a side, by word-piece, they share none.",
   },
   "59:12584": {
-    gloss: "A neuron for the Spanish and German “es”.",
-    trust: "At the last layer the lens and the naked eye see the same thing.",
+    gloss: () => "A neuron for the Spanish and German “es”.",
   },
 };
 

@@ -25,7 +25,8 @@ import {
 } from "../store/useTheodoliteStore";
 import { NudgePartLine, OneDrawLine, PenaltyLine } from "../lib/cautions";
 import { faceWord, firstWords, pieceWord, wp } from "../lib/words";
-import { layerIdxOfPage, trustLine } from "../lib/labels";
+import { heldRubric, labelGate, layerIdxOfPage, trustLine } from "../lib/labels";
+import { HeldBackWords } from "../components/HeldBack";
 import { endsTurn } from "./instrument/moment";
 import { isBaseFitted, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
 import {
@@ -1001,7 +1002,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
     ? "The neuron’s layer has no recorded stream strength, so the length to send waits for it: "
     : "A chosen layer has no recorded stream strength, so the length to send waits for it: ";
 
-  const lensWords = poleHere?.lens ? poleHere.lens.slice(0, 3).map((t) => wp(t.token)).join(", ") : null;
+  // the label gate (lib/labels.ts): a held-back label's words leave the main reading; the apparatus keeps them
+  const poleGate = poleHere ? labelGate(layerIdxOfPage(pl), poleHere.check) : null;
+  const heldWords = !!poleHere && !!(poleHere.lens || poleHere.eye) && !!poleGate?.heldBack;
+  const lensWords = poleHere?.lens && !heldWords ? poleHere.lens.slice(0, 3).map((t) => wp(t.token)).join(", ") : null;
 
   // what the two requests send of the text and the writing, from the store's own sweepPayload (the rest is the nudge,
   // shown below, and the reading options of the instrument)
@@ -1219,7 +1223,9 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                       return (r === 0 ? "" : (ORDINAL[r] ?? `number ${r + 1}`) + " ") + "loudest";
                     })()}{" "}
                     in layer {pl}.{" "}
-                    {lensWords ? (
+                    {heldWords ? (
+                      <>What its {faceWord(poleHere.face)} face writes is held back here.</>
+                    ) : lensWords ? (
                       <>
                         Through the {readLens.name} lens (
                         {isBaseFitted(readLens) ? "fitted on the base model" : `fitted on ${readLens.fittedOn}`}), its{" "}
@@ -1238,6 +1244,16 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                       </>
                     )}
                   </p>
+                  {heldWords && poleGate ? (
+                    <HeldBackWords
+                      gate={poleGate}
+                      words={poleHere.lens?.slice(0, 3).map((t) => t.token) ?? null}
+                      eye={poleHere.eye?.slice(0, 3).map((t) => t.token) ?? null}
+                      unchecked={readS?.source === "fixture" ? "not yet checked ten a side: this sighting carries three words a side" : "not yet in the server"}
+                      size={17}
+                      style={{ maxWidth: 520 }}
+                    />
+                  ) : null}
                   {lensWords ? <Rubric style={{ margin: 0, maxWidth: 520 }}>{trustLine(layerIdxOfPage(pl))}</Rubric> : null}
                   {(facePos ? 1 : -1) !== poleHere.face ? (
                     <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
@@ -1450,7 +1466,10 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           <dt>trusting a neuron</dt>
           <dd>
             Output labels held up at layers 41–58, were at chance at 11–31 and were not tested at 32–40 (REPORT §3.2; N1); within 41–58 they
-            were likelier sound where the J++ lens and the naked eye agree (AUC 0.84). Neuron 15491 at layer 54: the lens reads “Am”,
+            were likelier sound where the J++ lens and the naked eye agree (AUC 0.84, for base-fitted J++ labels on random neurons). This page
+            holds a neuron’s words back below layer 41, and where its two readings share none of their first ten word-pieces (REPORT §3.3,
+            conditions 2 and 3; the cut at none of ten is the instrument’s); the server marks each label it sends (label_check).
+            {heldWords && poleGate ? <> {heldRubric(poleGate)}</> : null} Neuron 15491 at layer 54: the lens reads “Am”,
             “jestem”, “Somos”, the naked eye “jestem”, “jsem”, “êtes”; one word-piece shared. The study’s own single-neuron test pushed the
             activation, not the stream: s · 60 · max|a| added to mlp_act at the last word-piece, over 36 contexts (N1A).
           </dd>

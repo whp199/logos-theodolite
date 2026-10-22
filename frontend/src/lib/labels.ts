@@ -88,6 +88,21 @@ export function parseLabelCheck(x: unknown): LabelCheck | null {
   };
 }
 
+/** A check back in the server's own shape, for the pages' exports (null stays null: not sent, or not checked). */
+export function labelCheckJson(c: LabelCheck | null): RawLabelCheck | null {
+  if (!c) return null;
+  return {
+    shared_top10: c.sharedTop10,
+    held_back: c.heldBack,
+    reasons: [...c.reasons],
+    band: c.band,
+    sampled_layer: c.sampledLayer,
+    in_measured_band: c.inMeasuredBand,
+    lens_validated: c.lensValidated,
+    edited: c.edited,
+  };
+}
+
 /** Where a layer stands against N1's sample (the server's band_of). */
 export function bandOf(idx: LayerIdx): LabelBand {
   if (idx < SAMPLED_IDX[0]) return "below_sampled";

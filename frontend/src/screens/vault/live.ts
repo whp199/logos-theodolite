@@ -4,6 +4,7 @@
  */
 import type { ActiveEdit, LarqlEntry } from "../../store/useTheodoliteStore";
 import { clampL, clampN, parseLql, type Parsed } from "./lql";
+import { sharedShown } from "../../lib/labels";
 
 export interface TokenLogit {
   token: string;
@@ -18,6 +19,9 @@ export interface NearestRow {
   cosine_similarity: number;
   j_vindex_top_tokens: TokenLogit[];
   naive_lens_top_tokens: TokenLogit[];
+  /** the label gate's check of this row's words (backend/label_gate.py; read with lib/labels.ts parseLabelCheck);
+   * absent from an older server */
+  label_check?: unknown;
 }
 export interface NearestReply {
   command: string;
@@ -192,10 +196,30 @@ export function cleanWords(tokens: string[]): string[] {
   return out;
 }
 
-/** How many of the five word-pieces the lens and the naked eye share (exact word-pieces, as the study counted). */
+/** How many of the five word-pieces shown the lens and the naked eye share, spelt exactly (lib/labels.ts sharedShown):
+ * for the "of the five shown" column and the expert's chip filter only. The label gate counts ten a side, by id
+ * (label_check.shared_top10). */
 export function agreement(lens: string[], eye: string[]): number {
-  const a = new Set(lens.slice(0, 5));
+  return sharedShown(lens.slice(0, 5), eye.slice(0, 5)).k;
+}
+
+/**
+ * How many labels in a raw vault reply the reading pages hold back: every `label_check` with `held_back` true, at any
+ * depth (NEAREST rows, DESCRIBE POLE faces; active_pole repeats one of the two faces and is not counted again).
+ */
+export function heldBackIn(data: unknown): number {
   let n = 0;
-  for (const t of new Set(eye.slice(0, 5))) if (a.has(t)) n++;
+  const walk = (v: unknown, key: string | null) => {
+    if (!v || typeof v !== "object" || key === "active_pole") return;
+    if (Array.isArray(v)) {
+      for (const x of v) walk(x, null);
+      return;
+    }
+    const o = v as Record<string, unknown>;
+    const c = o.label_check;
+    if (c && typeof c === "object" && (c as Record<string, unknown>).held_back === true) n++;
+    for (const [k, x] of Object.entries(o)) if (k !== "label_check" && k !== "label_gate") walk(x, k);
+  };
+  walk(data, null);
   return n;
 }

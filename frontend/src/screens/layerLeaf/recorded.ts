@@ -17,6 +17,8 @@ export const L36_SUBTITLE = "where, through the lens, the word “I” murmurs o
 /**
  * Glosses and notes written for the canvas for the five read poles of layer 36
  * (pole_labels_jpp / pole_labels_naive "35:0" to "35:4"; the labels are of the active face).
+ * Layer 36 lies below layer 41, so the label gate (lib/labels.ts) holds these labels back: the glosses and
+ * notes, like the words, stand only in the apparatus of §iv, under "held back", never in its main reading.
  */
 export const L36_POLES: Record<number, { lensGloss: string; eyeGloss: string; note: string }> = {
   21189: {

@@ -1,5 +1,7 @@
 import React from "react";
-import { Apparatus, Rubric, IfRubrics } from "../../components/kit";
+import { Apparatus, IfApparatus, Missing, Rubric, IfRubrics } from "../../components/kit";
+import { HeldBackWords } from "../../components/HeldBack";
+import { type Gate, RECORDED_CHECKED, heldRubric, labelGate, layerIdx, parseLabelCheck, vaultCheck } from "../../lib/labels";
 import { useApparatus } from "../../reading";
 import { href } from "../../router";
 import { useTheodoliteStore } from "../../store/useTheodoliteStore";
@@ -23,9 +25,13 @@ interface ShownRow {
   cos: number;
   words: string[];
   naked: string[];
+  /** word-pieces shared among the five shown, spelt exactly (the chip filter's count) */
   agree: number;
   tested: number | null;
   d: number | null;
+  /** the label gate (lib/labels.ts): from the server's label_check for a live row, the recorded check for a recorded
+   * one (none until the recorded searches are checked ten a side), else the layer alone */
+  gate: Gate;
 }
 
 const sgn2 = (c: number) => (c < 0 ? "−" : "+") + Math.abs(c).toPrecision(2);
@@ -89,6 +95,8 @@ export const FindPanel: React.FC = () => {
         agree: agreement(lens, eye),
         tested: t ? t[0] : null,
         d: t ? t[1] : null,
+        // live.layer counts from 0, as the server's fields do
+        gate: labelGate(layerIdx(live.layer), parseLabelCheck(r.label_check)),
       };
     });
   } else if (source === "recorded" && rec) {
@@ -101,8 +109,13 @@ export const FindPanel: React.FC = () => {
       agree: r[5],
       tested: r[6],
       d: r[7],
+      // aL counts from 1 (the page's layer); the recorded key and the gate count from 0
+      gate: labelGate(layerIdx(aL! - 1), recKey ? vaultCheck(recKey, r[0], r[1]) : null),
     }));
   }
+  const heldRows = all.filter((r) => r.gate.heldBack);
+  const allHeld = all.length > 0 && heldRows.length === all.length;
+  const anyTen = all.some((r) => r.gate.sharedTop10 != null);
   const top = source === "live" && live ? live.results[0].cosine_similarity : rec ? rec[0][2] : 0;
   const scaleMax = Math.max(0.0175, top * 1.08);
   const chanceL = f1((CHANCE / scaleMax) * 100);
@@ -123,7 +136,8 @@ export const FindPanel: React.FC = () => {
       (source === "live" && entry
         ? " · answered by the running instrument at " + clock(entry.at)
         : " · from the study’s search of 16 October 2026") +
-      (setAside > 0 ? " · " + setAside + " set aside by the agreement gate" : "");
+      (heldRows.length ? " · " + (allHeld ? "the words of every row" : "the words of " + heldRows.length) + " held back" : "") +
+      (setAside > 0 ? " · " + setAside + " set aside by the chips, on the five shown" : "");
   } else {
     meta = aWord ? "nothing recorded for “" + aWord + "” in layer " + (aL === null ? "…" : aL) : "no search yet";
   }
@@ -388,7 +402,7 @@ export const FindPanel: React.FC = () => {
                   <span role="columnheader">face</span>
                   <span role="columnheader">nearness</span>
                   <span role="columnheader">its words, through the J++ lens</span>
-                  <span role="columnheader">naked eye agrees</span>
+                  <span role="columnheader">shared with the naked eye</span>
                   <span role="columnheader">when tested</span>
                 </div>
                 {rows.map((r, i) => (
@@ -442,23 +456,48 @@ export const FindPanel: React.FC = () => {
                       </div>
                     </div>
                     <div role="cell" style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "6px 20px" }}>
-                        {r.words.map((w, j) => (
-                          <span key={j} style={{ display: "inline-flex", flexDirection: "column", gap: 1 }}>
-                            <span style={{ fontSize: 22, lineHeight: 1.25 }}>{show(w)}</span>
-                            <span style={{ fontSize: 13, fontStyle: "italic", color: "var(--muted)", lineHeight: 1.3 }}>{GLOSSES[w] || ""}</span>
-                          </span>
-                        ))}
-                      </div>
-                      {ui.naked ? (
-                        <span style={{ fontSize: 15, color: "var(--muted)" }}>
-                          <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", marginRight: 10 }}>naked eye</span>
-                          {r.naked.map(show).join("  ")}
-                        </span>
-                      ) : null}
+                      {r.gate.heldBack ? (
+                        // the label gate holds the words back (and their glosses with them); the apparatus brings them back
+                        <>
+                          <HeldBackWords gate={r.gate} words={r.words} eye={r.naked} compact style={{ fontSize: 17 }} />
+                          {r.words.some((w) => GLOSSES[w]) ? (
+                            <IfApparatus>
+                              <span style={{ fontSize: 13, fontStyle: "italic", color: "var(--muted)", lineHeight: 1.3 }}>
+                                {r.words
+                                  .filter((w) => GLOSSES[w])
+                                  .map((w) => `${show(w)}: ${GLOSSES[w]}`)
+                                  .join("; ")}
+                              </span>
+                            </IfApparatus>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: "6px 20px" }}>
+                            {r.words.map((w, j) => (
+                              <span key={j} style={{ display: "inline-flex", flexDirection: "column", gap: 1 }}>
+                                <span style={{ fontSize: 22, lineHeight: 1.25 }}>{show(w)}</span>
+                                <span style={{ fontSize: 13, fontStyle: "italic", color: "var(--muted)", lineHeight: 1.3 }}>{GLOSSES[w] || ""}</span>
+                              </span>
+                            ))}
+                          </div>
+                          {ui.naked ? (
+                            <span style={{ fontSize: 15, color: "var(--muted)" }}>
+                              <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", marginRight: 10 }}>naked eye</span>
+                              {r.naked.map(show).join("  ")}
+                            </span>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                     <span role="cell" className="num" style={{ fontSize: 17, lineHeight: 1.3, paddingTop: 2 }}>
-                      {r.agree} of 5
+                      {/* the gate's own count, ten a side by id, where the server sent it; else the five shown, spelt exactly */}
+                      {r.gate.sharedTop10 != null ? `${r.gate.sharedTop10} of 10` : `${r.agree} of 5 shown`}
+                      {r.gate.condition3 === "unvalidated" ? (
+                        <span style={{ display: "block", fontSize: 14, fontStyle: "italic", color: "var(--muted)" }}>
+                          {r.gate.edited ? "edited in the vault" : "under another lens"}
+                        </span>
+                      ) : null}
                     </span>
                     <div role="cell" style={{ display: "flex", flexDirection: "column", lineHeight: 1.3, paddingTop: 2 }}>
                       <span
@@ -482,7 +521,8 @@ export const FindPanel: React.FC = () => {
         ) : (
           <EmptyAnswer head="[THE VAULT’S ANSWER APPEARS HERE AFTER THE SEARCH]">
             This page carries only the twenty-four searches made in the study: “she”, “he”, “her” and “woman” at layers 21, 31, 41,
-            51, 56 and 59. Any other search is answered by the running instrument.
+            51, 56 and 59. At layers 21 and 31 their neurons’ words are held back, as every neuron’s are below layer 41; the
+            neurons, their nearness and the study’s test still stand. Any other search is answered by the running instrument.
           </EmptyAnswer>
         )}
         <IfRubrics>
@@ -505,9 +545,18 @@ export const FindPanel: React.FC = () => {
                 “shed”, “heap” and “helix” came up this way.
               </Rubric>
               <Rubric style={{ maxWidth: "none" }}>
-                Neuron words are most trustworthy at layers 41 to 58, and more so when the lens and the naked eye agree. Of the 102
-                neurons the study tested, 35 told Mary from John.
+                Neuron words are held back below layer 41, and wherever the lens and the naked eye share none of their first ten; the
+                cut at none is the instrument’s, since the study set none. Inside layers 41 to 58, in the study’s sample of random
+                neurons, more shared words was a good sign of a sound label (AUC 0.84, for labels read through the base-fitted J++
+                lens). Of the 102 neurons the study tested, 35 told Mary from John.
               </Rubric>
+              {allHeld && heldRows[0] ? (
+                <Rubric style={{ maxWidth: "none" }}>
+                  {`Every row’s words are held back here. ${heldRubric(heldRows[0].gate)} `}
+                  “Told Mary from John” is a test of what wakes a neuron, how it fires on sentences about women and about men, not of
+                  its words, so it still stands beside a held-back row.
+                </Rubric>
+              ) : null}
             </div>
           ) : null}
         </IfRubrics>
@@ -550,7 +599,29 @@ export const FindPanel: React.FC = () => {
               A projected contribution, not a counterfactual (REPORT §3.3). At layers 31–59 nearness ran 0.0004–0.02, at or below
               chance: from layer 36 the pullback puts 99–100% of its energy in the quietest tenth of the model’s dimensions (E6 §4b).
               Output labels held up at layers 41–58 and were at chance at 11–31; layers 32–40 were not sampled (REPORT §3.2; N1). Within
-              41–58, agreement of the J++ lens and the naked eye predicts a real effect (AUC 0.84).
+              41–58, agreement of the J++ lens and the naked eye predicts a real effect (AUC 0.84, for base-fitted J++ labels on random
+              neurons).
+            </dd>
+            <dt>held back</dt>
+            <dd>
+              The board holds a row’s words, and their glosses, back from its main reading below layer 41 (condition 2) and where the
+              two readings share none of their first ten word-pieces (condition 3; REPORT §3.3), counted by id in fp32 as N1 counted
+              (label_check.shared_top10). The cut at none of ten is the instrument’s; it applies under the base-fitted J++ lens only
+              (erratum E47), and not to a neuron edited in the vault. With the apparatus open the words come back, muted.{" "}
+              {source === "recorded" ? (
+                RECORDED_CHECKED ? (
+                  "The study’s recorded searches were checked ten a side once, from the weights (experiments/results/N1G_recorded_label_checks.json)."
+                ) : (
+                  <>
+                    The study’s recorded searches kept five word-pieces a side, too few for the measure; their ten-a-side count:{" "}
+                    <Missing what="not yet checked ten a side" />. Until then only the layer holds a recorded row back.
+                  </>
+                )
+              ) : source === "live" && !anyTen ? (
+                <>
+                  This reply carries no ten-a-side count: <Missing what="not yet in the server" />. Only the layer holds a row back.
+                </>
+              ) : null}
             </dd>
             <dt>not reachable</dt>
             <dd>
@@ -561,7 +632,7 @@ export const FindPanel: React.FC = () => {
           </dl>
           <div role="group" aria-label="Agreement gate" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 8px", paddingTop: 6 }}>
             <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", color: "var(--muted)", marginRight: 6 }}>
-              agreement gate: keep rows where lens and naked eye share at least
+              a filter on the five shown: keep rows where lens and naked eye share at least
             </span>
             {[0, 2, 3, 4, 5].map((g) => (
               <button
@@ -576,7 +647,8 @@ export const FindPanel: React.FC = () => {
               </button>
             ))}
             <span style={{ color: "var(--muted)" }}>
-              of their five word-pieces (REPORT §3.5, item 5). It applies while the apparatus is open.
+              of the five word-pieces shown, spelt exactly (REPORT §3.5, item 5). It applies while the apparatus is open; it is not the
+              label gate, which counts ten a side.
             </span>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 12px", paddingTop: 4 }}>
@@ -642,10 +714,11 @@ const ReadingKey: React.FC = () => (
       </span>
     </div>
     <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 14, borderBottom: "1px solid var(--hair-faint)" }}>
-      <span style={{ fontSize: 18 }}>naked eye agrees</span>
+      <span style={{ fontSize: 18 }}>shared with the naked eye</span>
       <span style={{ fontSize: 15, color: "var(--muted)" }}>
-        How many of its five words the plain reading, without the lens, also finds. More agreement, more trust, at layers 41 to 58, where
-        the study tested it.
+        How many word-pieces the plain reading, without the lens, shares with the lens: of their first ten, as the study counted, where
+        the running instrument counted them, else of the five shown. More agreement, more trust, at layers 41 to 58, where the study
+        tested it; a row that shares none of ten has its words held back.
       </span>
     </div>
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

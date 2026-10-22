@@ -1,8 +1,11 @@
 /**
  * The circuit scientist's replies, read defensively. Shapes from backend/larql_vault.py
  * (inspect_bipolar_slot) and backend/mcp_scientist.py (trace_downstream_readers, test_motif_hypothesis).
- * Nothing here invents a value: a field the reply lacks becomes null.
+ * Nothing here invents a value: a field the reply lacks becomes null. Each label's `label_check` (backend/label_gate.py)
+ * is read with lib/labels.ts parseLabelCheck; an older server sends none, and the pages then hold labels back by the
+ * layer alone.
  */
+import { parseLabelCheck, type LabelCheck } from "../../lib/labels";
 
 export interface Tok {
   token: string;
@@ -26,6 +29,8 @@ export function toks(v: unknown): Tok[] | null {
 export interface FaceReading {
   lens: Tok[] | null;
   eye: Tok[] | null;
+  /** the server's check of this face's label (ten a side); null = not sent */
+  check: LabelCheck | null;
 }
 
 /** inspect_pole: both faces come back in one reply. */
@@ -45,7 +50,7 @@ export function parseInspection(d: unknown): Inspection | null {
   if (!o) return null;
   const face = (p: unknown): FaceReading => {
     const f = obj(p) ?? {};
-    return { lens: toks(f.j_vindex_tokens), eye: toks(f.naive_tokens) };
+    return { lens: toks(f.j_vindex_tokens), eye: toks(f.naive_tokens), check: parseLabelCheck(f.label_check) };
   };
   return {
     wDownNorm: num(o.w_down_norm),
@@ -72,6 +77,10 @@ export interface Reader {
   /** the score the readers were ranked by (C, or the direct-path gate estimate) */
   score: number;
   words: Tok[] | null;
+  /** the reader's words to the naked eye (dst_naive_tokens); null = not sent (an older server) */
+  eye: Tok[] | null;
+  /** the server's check of the reader's label (dst_label_check); null = not sent */
+  check: LabelCheck | null;
 }
 
 export interface Readers {
@@ -116,6 +125,8 @@ export function parseReaders(d: unknown): Readers | null {
       directAct: num(x.direct_act),
       score: num(x.score) ?? c,
       words: toks(x.dst_j_vindex_tokens),
+      eye: toks(x.dst_naive_tokens),
+      check: parseLabelCheck(x.dst_label_check),
     });
   }
   return {
@@ -149,6 +160,8 @@ export interface Hypothesis {
   pos: HypRow[];
   neg: HypRow[];
   signature: Tok[] | null;
+  /** the server's check of the pole's label (pole_label_check); null = not sent */
+  signatureCheck: LabelCheck | null;
   raw: unknown;
 }
 
@@ -174,6 +187,7 @@ export function parseHypothesis(d: unknown): Hypothesis | null {
     pos: rows(o.pos_prompt_results),
     neg: rows(o.neg_prompt_results),
     signature: toks(o.pole_j_vindex_signature),
+    signatureCheck: parseLabelCheck(o.pole_label_check),
     raw: d,
   };
 }

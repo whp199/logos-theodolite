@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Apparatus, IfRubrics, LensCaution, LensRecord, Missing, Page, Rubric, Wp } from "../components/kit";
+import { Apparatus, IfApparatus, IfRubrics, LensCaution, LensRecord, Missing, Page, Rubric, Wp } from "../components/kit";
 import { ControlSighting } from "../components/ControlSighting";
 import { href, navigate, type Route } from "../router";
 import {
@@ -26,6 +26,8 @@ import {
   type TokenReading,
 } from "../store/useTheodoliteStore";
 import { certainty, comma, firstWords, gloss, kindOf, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
+import { HeldBackWords } from "../components/HeldBack";
+import { type Gate, RECORDED_CHECKED, heldLine, heldRubric, heldTag, labelCheckJson, labelGate, layerIdx, sharedLine, sharedShown } from "../lib/labels";
 import { describeFrame } from "../lib/frame";
 import { lensLabel, useReadingLens } from "../lib/lens";
 import { NotAMatchedPair, OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
@@ -624,9 +626,17 @@ function buildRaw(c: Ctx): string {
   const fixture = !c.live;
   const lensLabels: Record<string, [string, number | null][]> = {};
   const eyeLabels: Record<string, [string, number | null][]> = {};
+  // each label's check as the server sent it (null: not sent, or a recorded label not yet checked ten a side), and
+  // whether the page holds it back (lib/labels.ts); the words are exported whole either way
+  const labelChecks: Record<string, unknown> = {};
+  const heldBack: Record<string, boolean> = {};
   L.poles.forEach((p) => {
     if (p.lens) lensLabels[`${idx}:${p.rank}`] = p.lens.map((t) => [t.token, t.logit]);
     if (p.eye) eyeLabels[`${idx}:${p.rank}`] = p.eye.map((t) => [t.token, t.logit]);
+    if (p.lens || p.eye) {
+      labelChecks[`${idx}:${p.rank}`] = labelCheckJson(p.check);
+      heldBack[`${idx}:${p.rank}`] = labelGate(layerIdx(idx), p.check).heldBack;
+    }
   });
   const lensRank: Record<string, number | null> = {};
   const eyeRank: Record<string, number | null> = {};
@@ -675,6 +685,8 @@ function buildRaw(c: Ctx): string {
         pole_acts: L.poles.map((p) => p.act),
         pole_labels_jpp: lensLabels,
         pole_labels_naive: eyeLabels,
+        pole_label_checks: labelChecks,
+        pole_labels_held_back: heldBack,
         cka_row: row,
         not_recorded: notRecorded,
       }
@@ -718,6 +730,8 @@ function buildRaw(c: Ctx): string {
         pole_acts: L.poles.map((p) => p.act),
         pole_labels_jpp: lensLabels,
         pole_labels_naive: eyeLabels,
+        pole_label_checks: labelChecks,
+        pole_labels_held_back: heldBack,
         cka_row: row,
         not_recorded: notRecorded,
       };
@@ -1551,6 +1565,9 @@ const Loz: React.FC<{ pos: boolean; size?: number }> = ({ pos, size = 13 }) => (
 
 interface PoleView {
   p: PoleReading;
+  /** the label gate (lib/labels.ts): whether this pole's words leave the main reading, and why */
+  gate: Gate;
+  /** the word-pieces both readings show, spelt exactly: for the ◆ underlines only, "among the words shown" */
   shared: Set<string>;
   agreeOn: string[];
   lensGloss: string;
@@ -1561,15 +1578,18 @@ interface PoleView {
 function poleView(c: Ctx, p: PoleReading): PoleView {
   const lens = p.lens?.map((t) => t.token) ?? null;
   const eye = p.eye?.map((t) => t.token) ?? null;
-  const shared = new Set(lens && eye ? lens.filter((t) => eye.includes(t)) : []);
+  const shared = new Set(lens && eye ? sharedShown(lens, eye).shared : []);
   const agreeOn = [...shared].map((t) => wp(t));
+  const gate = labelGate(layerIdx(c.idx), p.check);
   const hand = c.hand ? L36_POLES[p.neuron] : undefined;
-  if (hand) return { p, shared, agreeOn, ...hand };
+  if (hand) return { p, gate, shared, agreeOn, ...hand };
   let note = "";
-  if (shared.size && (c.idx < 40 || c.idx > 57)) {
+  if (c.idx === 59 && lens && eye) {
+    note = "At layer 60 the lens and the naked eye are one reading, so they always agree, and their agreement says nothing.";
+  } else if (shared.size && (c.idx < 40 || c.idx > 57)) {
     note = `Agreement was tested as a sign of trust only at layers 41 to 58; ${c.idx < 40 ? "down" : "up"} here it is a hint, not a warrant.`;
   }
-  return { p, shared, agreeOn, lensGloss: lens ? glossLine(lens) : "", eyeGloss: eye ? glossLine(eye) : "", note };
+  return { p, gate, shared, agreeOn, lensGloss: lens ? glossLine(lens) : "", eyeGloss: eye ? glossLine(eye) : "", note };
 }
 
 const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
@@ -1586,7 +1606,11 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
   const neg = poles.filter((p) => p.face < 0).length;
   const pos = poles.length - neg;
   const labelled = read.filter((v) => v.p.lens && v.p.eye);
-  const agreeing = labelled.filter((v) => v.shared.size > 0).length;
+  // the aside counts by the server's ten a side where every label carries it, else among the words shown
+  const counted = labelled.length > 0 && labelled.every((v) => v.gate.sharedTop10 != null);
+  const agreeing = labelled.filter((v) => (counted ? (v.gate.sharedTop10 ?? 0) > 0 : v.shared.size > 0)).length;
+  const held = read.filter((v) => (v.p.lens || v.p.eye) && v.gate.heldBack);
+  const firstHeld = held[0]?.gate ?? null;
   // bars against the loudest listed pole, whatever order the server ranked them in
   const maxS = maxAct(L) ?? 1;
   const shownWords = labelled.length ? Math.max(...labelled.map((v) => v.p.lens?.length ?? 0)) : 0;
@@ -1610,7 +1634,10 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           ? `${cardinal(neg)} on the negative face, ${cardinal(pos)} on the positive`
           : `${cardinal(pos)} on the positive face, ${cardinal(neg)} on the negative`,
         labelled.length
-          ? `the lens and the naked eye agree on ${agreeing ? cardinal(agreeing) : "none"} of ${cardinal(labelled.length)}`
+          ? (counted
+              ? `${agreeing ? cardinal(agreeing) : "none"} of ${cardinal(labelled.length)} share words in their first ten`
+              : `the lens and the naked eye share words for ${agreeing ? cardinal(agreeing) : "none"} of ${cardinal(labelled.length)}, among the words shown`) +
+            (held.length ? `; ${cardinal(held.length)} held back` : "")
           : "no words read at this layer",
       ].join(" · ")
     : null;
@@ -1647,9 +1674,14 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           <p className="rubric" style={{ flex: "1 1 380px", maxWidth: "none" }}>
             Read these words as rumours, not findings. Labels held up at the layers the study sampled from 41 to 58, and were at chance at
             11 to 31; layers 32 to 40 were not sampled (REPORT §3.2; N1). One free sign of trust is when the lens and the naked eye share a
-            word: within layers 41 to 58, that agreement ranked a trustworthy label above an untrustworthy one 84 times in 100{" "}
-            <span style={{ fontStyle: "normal" }}>(AUC 0.84)</span>. The study compared ten words a side
-            {shownWords && shownWords < 10 ? `; here only ${cardinal(shownWords)} are shown` : ""}.
+            word: within layers 41 to 58, in the study’s sample of random neurons, that agreement ranked a trustworthy label above an
+            untrustworthy one 84 times in 100{" "}
+            <span style={{ fontStyle: "normal" }}>(AUC 0.84, for labels read through the base-fitted J++ lens)</span>.{" "}
+            {labelled.some((v) => v.gate.sharedTop10 != null)
+              ? `The instrument counts the first ten, as the study did${shownWords && shownWords < 10 ? `, and shows ${cardinal(shownWords)}` : ""}.`
+              : `The study compared ten words a side${shownWords && shownWords < 10 ? `; this sighting carries ${cardinal(shownWords)}, so the count of ten waits for a check` : ""}.`}{" "}
+            Below layer 41, and wherever the two readings share none of their first ten, a neuron’s words are held back from this page;
+            the apparatus keeps them, with the reason.
           </p>
         </div>
       </IfRubrics>
@@ -1658,8 +1690,12 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           {read.map((v, i) => {
             const p = v.p;
             const posFace = p.face > 0;
-            const agree = v.shared.size > 0;
+            const g = v.gate;
+            // with the server's count, the seal goes by the first ten; without it, by the words shown
+            const ten = g.sharedTop10;
+            const agree = ten != null ? ten > 0 : v.shared.size > 0;
             const both = !!(p.lens && p.eye);
+            const heldHere = g.heldBack && !!(p.lens || p.eye);
             const words = (list: TokenReading[] | null, glossText: string, title: string) => (
               <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                 <span style={{ ...SMALL_CAPS, letterSpacing: "0.16em", fontSize: 15, color: MUTED }}>{title}</span>
@@ -1725,11 +1761,45 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
                     gap: "16px 40px",
                   }}
                 >
-                  {words(p.lens, v.lensGloss, "through the lens")}
-                  {words(p.eye, v.eyeGloss, "to the naked eye")}
+                  {heldHere ? (
+                    // the label gate holds these words back: one plate for both readings, the words, their glosses and the
+                    // ten-a-side count with the apparatus open (and in full under "held back" in this section's apparatus)
+                    <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                      <span style={{ ...SMALL_CAPS, letterSpacing: "0.16em", fontSize: 15, color: MUTED }}>through the lens and to the naked eye</span>
+                      <HeldBackWords
+                        gate={g}
+                        words={p.lens?.map((t) => t.token) ?? null}
+                        eye={p.eye?.map((t) => t.token) ?? null}
+                        compact
+                        style={{ fontSize: 18 }}
+                      />
+                      {v.lensGloss || v.eyeGloss ? (
+                        <IfApparatus>
+                          <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>
+                            {[v.lensGloss && `lens: ${v.lensGloss}`, v.eyeGloss && `naked eye: ${v.eyeGloss}`].filter(Boolean).join("; ")}
+                          </span>
+                        </IfApparatus>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <>
+                      {words(p.lens, v.lensGloss, "through the lens")}
+                      {words(p.eye, v.eyeGloss, "to the naked eye")}
+                    </>
+                  )}
                 </div>
                 <div style={{ flex: "1 1 230px", minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-                  {both ? (
+                  {heldHere ? (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 30 }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10.4" fill="none" stroke={MUTED} strokeWidth="1" strokeDasharray="2.2 2.8" />
+                        </svg>
+                        <span style={{ ...SMALL_CAPS, letterSpacing: "0.14em", fontSize: 17, color: MUTED }}>[held back]</span>
+                      </div>
+                      <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>{heldLine(g)}</span>
+                    </>
+                  ) : both ? (
                     <>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 30 }}>
                         {agree ? (
@@ -1743,14 +1813,18 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
                             <circle cx="12" cy="12" r="10.4" fill="none" stroke={MUTED} strokeWidth="1" strokeDasharray="2.2 2.8" />
                           </svg>
                         )}
-                        <span style={{ fontSize: 18, color: agree ? "#2B2117" : MUTED }}>{agree ? "they agree" : "they disagree"}</span>
+                        <span style={{ fontSize: 18, color: agree ? "#2B2117" : MUTED }}>
+                          {g.condition3 === "one-reading" ? "one reading" : ten != null ? (agree ? `they share ${ten} of ten` : "they share none of ten") : agree ? "they share a word" : "no word in common"}
+                        </span>
                       </div>
                       <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>
-                        {agree ? `both read ${listAnd(v.agreeOn)}` : "no word in common"}
+                        {v.shared.size ? `both read ${listAnd(v.agreeOn)}, among the words shown` : "no word in common among the words shown"}
+                        {g.condition3 === "unvalidated" ? "; under this lens the count is not a verdict (erratum E47)" : ""}
+                        {g.edited ? "; this neuron is edited in the vault, and its words echo the edit" : ""}
                       </span>
                     </>
                   ) : null}
-                  {v.note ? <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>{v.note}</span> : null}
+                  {v.note && !heldHere ? <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>{v.note}</span> : null}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0 20px", marginTop: 4, fontSize: 17 }}>
                     <a href={href.neuron(no, p.neuron, p.face)} aria-label={`Open neuron ${p.neuron}`} style={LINK44}>
                       open neuron
@@ -1789,6 +1863,7 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
         </p>
       )}
 
+      {firstHeld ? <Rubric style={{ margin: "4px 0 0", maxWidth: 980 }}>{heldRubric(firstHeld)}</Rubric> : null}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "10px 28px", paddingTop: 6 }}>
         {rest.length ? (
           <button
@@ -1902,11 +1977,36 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             had a split-half reliability of 0.00–0.07, and layers 32–40 were not sampled (erratum E43). At layers 41–58 J++ labels predicted
             causal effects (P@10 0.35–0.67, against a null of at most 0.003); J++ gained 0.04–0.12 over the naked eye at layers 41–46, was
             equal or slightly behind at 51–58 (erratum E41), and the Jacobian lens matched or beat it. There, agreement of the two eyes’ top
-            ten scored AUC 0.84 (REPORT §3.2).{" "}
+            ten scored AUC 0.84, for base-fitted J++ labels on random neurons (REPORT §3.2).{" "}
             {N1_LAYERS.includes(no)
               ? `This layer was sampled: N1 took layers ${listAnd(N1_LAYERS.map(String))}.`
-              : `This layer was not sampled: N1 took layers ${listAnd(N1_LAYERS.map(String))}.`}
+              : `This layer was not sampled: N1 took layers ${listAnd(N1_LAYERS.map(String))}.`}{" "}
+            The gate (REPORT §3.3, conditions 2 and 3): this section holds back a label below layer 41, and one whose two readings share
+            none of their first ten word-pieces (label_check.shared_top10, counted by id in fp32, as N1 counted). The cut at none of ten
+            is the instrument’s; the study set none. It applies under the base-fitted J++ lens only (erratum E47), and never at layer 60,
+            where the two readings are one. Without the server’s count{c.live ? "" : RECORDED_CHECKED ? "" : " (this recorded sighting is not yet checked ten a side)"},
+            only the layer holds a label back.
           </dd>
+          {held.length ? (
+            <>
+              <dt>held back</dt>
+              <dd style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {held.map((v) => (
+                  <span key={v.p.neuron}>
+                    neuron {v.p.neuron}, {v.p.face > 0 ? "positive" : "negative"} face, {heldTag(v.gate)}: through the lens{" "}
+                    {v.p.lens ? v.p.lens.map((t) => `“${t.token}”`).join(" · ") : <NotRead />}
+                    {v.lensGloss ? <span style={{ fontStyle: "italic" }}> ({v.lensGloss})</span> : null}; to the naked eye{" "}
+                    {v.p.eye ? v.p.eye.map((t) => `“${t.token}”`).join(" · ") : <NotRead />}
+                    {v.eyeGloss ? <span style={{ fontStyle: "italic" }}> ({v.eyeGloss})</span> : null}.{" "}
+                    {sharedLine(v.gate) ?? (
+                      <Missing what={c.live ? "not yet in the server" : "not yet checked ten a side: this sighting carries three words a side"} />
+                    )}
+                    {v.note ? <span style={{ fontStyle: "italic" }}> {v.note}</span> : null}
+                  </span>
+                ))}
+              </dd>
+            </>
+          ) : null}
           <dt>two poles</dt>
           <dd>
             Gemma-4’s poles are truly two-sided, through the sign of the up-projection: the gate is open in 72–100% of strong events, and the
