@@ -27,7 +27,22 @@ import {
 } from "../store/useTheodoliteStore";
 import { certainty, comma, firstWords, gloss, kindOf, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
 import { HeldBackWords } from "../components/HeldBack";
-import { type Gate, RECORDED_CHECKED, heldLine, heldRubric, heldTag, labelCheckJson, labelGate, layerIdx, sharedLine, sharedShown } from "../lib/labels";
+import {
+  type Gate,
+  GATE_FIGURES,
+  OVERLAP_RECORD,
+  RECORDED_CHECKED,
+  heldLine,
+  heldRubric,
+  heldTag,
+  labelCheckJson,
+  labelGate,
+  layerIdx,
+  overlapAboveBand,
+  overlapLine,
+  sharedLine,
+  sharedShown,
+} from "../lib/labels";
 import { describeFrame } from "../lib/frame";
 import { lensLabel, useReadingLens } from "../lib/lens";
 import { NotAMatchedPair, OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
@@ -1673,10 +1688,13 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
           </p>
           <p className="rubric" style={{ flex: "1 1 380px", maxWidth: "none" }}>
             Read these words as rumours, not findings. Labels held up at the layers the study sampled from 41 to 58, and were at chance at
-            11 to 31; layers 32 to 40 were not sampled (REPORT §3.2; N1). One free sign of trust is when the lens and the naked eye share a
-            word: within layers 41 to 58, in the study’s sample of random neurons, that agreement ranked a trustworthy label above an
-            untrustworthy one 84 times in 100{" "}
-            <span style={{ fontStyle: "normal" }}>(AUC 0.84, for labels read through the base-fitted J++ lens)</span>.{" "}
+            11 to 31; layers 32 to 40 were not sampled (REPORT §3.2; N1). One free sign of trust is how many word-pieces the lens and the
+            naked eye share: within layers 41 to 58, in the study’s sample of random neurons, the more they shared of their first ten, the
+            likelier a sound label{" "}
+            <span style={{ fontStyle: "normal" }}>(the count, used as a score: AUC {GATE_FIGURES.auc}, for labels read through the base-fitted J++ lens)</span>.
+            Sharing just one was a weak sign: such labels were sound {OVERLAP_RECORD[1][1]} times in {OVERLAP_RECORD[1][0]}, against{" "}
+            {GATE_FIGURES.bandSound} in {GATE_FIGURES.band} for the band as a whole, so the gilt mark goes only to counts that did better than
+            that.{" "}
             {labelled.some((v) => v.gate.sharedTop10 != null)
               ? `The instrument counts the first ten, as the study did${shownWords && shownWords < 10 ? `, and shows ${cardinal(shownWords)}` : ""}.`
               : `The study compared ten words a side${shownWords && shownWords < 10 ? `; this sighting carries ${cardinal(shownWords)}, so the count of ten waits for a check` : ""}.`}{" "}
@@ -1691,9 +1709,12 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             const p = v.p;
             const posFace = p.face > 0;
             const g = v.gate;
-            // with the server's count, the seal goes by the first ten; without it, by the words shown
+            // with the server's count, the gilt mark goes by the first ten, and only to a count whose labels were sound more
+            // often than the band's as a whole in N1's sample (not to one of ten); under another lens, or for an edited neuron,
+            // the count is no verdict and earns no mark; without the count, the mark goes by the words shown
             const ten = g.sharedTop10;
-            const agree = ten != null ? ten > 0 : v.shared.size > 0;
+            const agree = ten != null ? g.condition3 !== "unvalidated" && overlapAboveBand(ten) : v.shared.size > 0;
+            const record = overlapLine(g);
             const both = !!(p.lens && p.eye);
             const heldHere = g.heldBack && !!(p.lens || p.eye);
             const words = (list: TokenReading[] | null, glossText: string, title: string) => (
@@ -1814,13 +1835,22 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
                           </svg>
                         )}
                         <span style={{ fontSize: 18, color: agree ? "#2B2117" : MUTED }}>
-                          {g.condition3 === "one-reading" ? "one reading" : ten != null ? (agree ? `they share ${ten} of ten` : "they share none of ten") : agree ? "they share a word" : "no word in common"}
+                          {g.condition3 === "one-reading"
+                            ? "one reading"
+                            : ten != null
+                              ? ten > 0
+                                ? `they share ${ten === 1 ? "only 1" : ten} of ten`
+                                : "they share none of ten"
+                              : agree
+                                ? "they share a word"
+                                : "no word in common"}
                         </span>
                       </div>
                       <span style={{ fontSize: 15, fontStyle: "italic", color: MUTED }}>
                         {v.shared.size ? `both read ${listAnd(v.agreeOn)}, among the words shown` : "no word in common among the words shown"}
-                        {g.condition3 === "unvalidated" ? "; under this lens the count is not a verdict (erratum E47)" : ""}
-                        {g.edited ? "; this neuron is edited in the vault, and its words echo the edit" : ""}
+                        {record ? `; ${record}` : ""}
+                        {g.condition3 === "unvalidated" && !g.edited ? "; under this lens the count is not a verdict (erratum E47)" : ""}
+                        {g.edited ? "; this neuron is edited in the vault, its words echo the edit, and the gate was never measured on edited neurons" : ""}
                       </span>
                     </>
                   ) : null}
@@ -1976,15 +2006,19 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             At layers 11–31 the two eyes’ labels are equal, and at chance; at the layers sampled there (11, 21 and 31) single-neuron effects
             had a split-half reliability of 0.00–0.07, and layers 32–40 were not sampled (erratum E43). At layers 41–58 J++ labels predicted
             causal effects (P@10 0.35–0.67, against a null of at most 0.003); J++ gained 0.04–0.12 over the naked eye at layers 41–46, was
-            equal or slightly behind at 51–58 (erratum E41), and the Jacobian lens matched or beat it. There, agreement of the two eyes’ top
-            ten scored AUC 0.84, for base-fitted J++ labels on random neurons (REPORT §3.2).{" "}
+            equal or slightly behind at 51–58 (erratum E41), and the Jacobian lens matched or beat it. There, the overlap of the two eyes’
+            top ten, used as a graded score, scored AUC 0.84, for base-fitted J++ labels on random neurons (REPORT §3.2).{" "}
             {N1_LAYERS.includes(no)
               ? `This layer was sampled: N1 took layers ${listAnd(N1_LAYERS.map(String))}.`
               : `This layer was not sampled: N1 took layers ${listAnd(N1_LAYERS.map(String))}.`}{" "}
             The gate (REPORT §3.3, conditions 2 and 3): this section holds back a label below layer 41, and one whose two readings share
             none of their first ten word-pieces (label_check.shared_top10, counted by id in fp32, as N1 counted). The cut at none of ten
-            is the instrument’s; the study set none. It applies under the base-fitted J++ lens only (erratum E47), and never at layer 60,
-            where the two readings are one. Without the server’s count{c.live ? "" : RECORDED_CHECKED ? "" : " (this recorded sighting is not yet checked ten a side)"},
+            is the instrument’s; the study set none. Taken as a yes/no sign, it scores AUC {GATE_FIGURES.cutAuc} on N1’s sample: of the{" "}
+            {GATE_FIGURES.band} faces at 41–58 it holds back {GATE_FIGURES.shareNothing}, {GATE_FIGURES.shareNothingSound} of them sound, and
+            keeps {GATE_FIGURES.shareSome}, {GATE_FIGURES.shareSomeSound} of them sound (experiments/results/N1C_gate_cut.json). It applies
+            under the base-fitted J++ lens only (erratum E47), to neurons edited in the vault as well (where it was never measured), and
+            never at layer 60, where the two readings are one; a neuron silenced in the vault writes nothing and is held back. Without the
+            server’s count{c.live ? "" : RECORDED_CHECKED ? "" : " (this recorded sighting is not yet checked ten a side)"},
             only the layer holds a label back.
           </dd>
           {held.length ? (

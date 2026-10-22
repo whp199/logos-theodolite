@@ -50,7 +50,7 @@ export function sentenceInput(size: number, width: string, opts: { italic?: bool
   };
 }
 
-/** A chip of the board (word and layer choices, the agreement gate). */
+/** A chip of the board (word and layer choices, the filter on the five word-pieces shown). */
 export function chipStyle(on: boolean, extra: React.CSSProperties = {}): React.CSSProperties {
   return {
     fontFamily: "inherit",

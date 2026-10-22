@@ -1,4 +1,4 @@
-import type { Gate } from "../../lib/labels";
+import { type Gate, overlapLine } from "../../lib/labels";
 
 /**
  * The approved canvas's hand-written notes (Main.dc.html) on the loudest neuron at three layers of the
@@ -9,8 +9,10 @@ import type { Gate } from "../../lib/labels";
  * The label gate (lib/labels.ts) comes first: a note never sets a held-back label's words, or a gloss of
  * them, in the main reading. Layer 36 (35:21189) lies below layer 41, so its gloss and the canvas's trust
  * line stand only in the leaf's apparatus, under "held back"; the page's trust line is always trustLine.
- * The canvas's "agree on AM" (55:16649) is kept only where the ten-a-side count finds a word-piece shared;
- * until the recorded labels are checked ten a side it says only what the words shown share.
+ * The canvas's "agree on AM" (55:16649) became a plain count: what the words shown share, and, with the
+ * ten-a-side count (the recorded checks, N1G_recorded_label_checks.json), how many of ten are shared and how
+ * often labels sharing that many were sound in the study's sample (lib/labels.ts overlapLine), never "a good
+ * sign" by itself: one of ten was a weaker sign than the layer alone.
  */
 export interface RecordedPoleNote {
   /** the canvas's gloss of the words, by what the gate found; set beside the words when they are shown, and
@@ -31,7 +33,8 @@ export const RECORDED_POLE_NOTES: Record<string, RecordedPoleNote> = {
       g.sharedTop10 == null
         ? "Among the words shown, the lens and the naked eye both read “AM”."
         : g.sharedTop10 >= 1
-          ? `The lens and the naked eye agree on “AM”, and share ${g.sharedTop10} of their first ten word-pieces: a good sign.`
+          ? `The lens and the naked eye both read “AM”, and share ${g.sharedTop10} of their first ten word-pieces` +
+            (overlapLine(g) ? `: ${overlapLine(g)}.` : ".")
           : "Among the words shown, the lens and the naked eye both read “AM”, yet counted ten a side, by word-piece, they share none.",
   },
   "59:12584": {

@@ -34,6 +34,7 @@ import {
   labelCheckJson,
   labelGate,
   layerIdx,
+  overlapLine,
   sharedLine,
   trustLine,
 } from "../lib/labels";
@@ -1623,7 +1624,18 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
         : verdict === "partly agree"
           ? ["partly", "agree"]
           : [verdict];
-  const sealSub = ten != null ? `${ten} IN 10` : held ? (g.reasons.includes("below_layer_40") ? "BELOW 41" : "") : agr ? `${agr.k} IN 3` : "[UNREAD]";
+  const sealSub =
+    ten != null
+      ? `${ten} IN 10`
+      : held
+        ? g.reasons.includes("writes_nothing")
+          ? "SILENCED"
+          : g.reasons.includes("below_layer_40")
+            ? "BELOW 41"
+            : ""
+        : agr
+          ? `${agr.k} IN 3`
+          : "[UNREAD]";
   const unchecked = m.focus.from === "recorded" ? "not yet checked ten a side: this sighting carries three words a side" : "not yet in the server";
   const { lens } = useReadingLens(m.sighting);
 
@@ -1637,7 +1649,8 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
       </div>
       <Rubric style={{ maxWidth: "760px" }}>
         Read across, as in a book with two languages on facing pages. The first column shows this face seen through the lens; the second, the
-        same face seen with the naked eye. A word-piece that stands in both, among the words shown, is marked ◆.
+        same face seen with the naked eye. A word-piece that stands in both, among the words shown, is marked ◆; it must be spelt exactly
+        alike, so a piece that follows a space and one that does not count as different, though they look the same here.
       </Rubric>
       {held ? (
         // the label gate holds this face's words back: the plate, the reason and its rubric; the apparatus keeps the words
@@ -1727,6 +1740,8 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
               // the plate above already says why; here only what was counted
               ten != null ? (
                 `Counted ten a side, by word-piece, they share ${numberWord(ten)}.`
+              ) : g.reasons.includes("writes_nothing") ? (
+                "Silenced in the vault, the neuron writes nothing: its two readings tie on every word-piece, so there is nothing to compare."
               ) : (
                 "Below layer 41 the two readings are not compared on this page; the apparatus keeps them both."
               )
@@ -1734,6 +1749,7 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
               <>
                 {cap(numberWord(ten))} of their first ten word-pieces stand on both sides, counted by word-piece, as the study counted
                 {g.condition3 === "one-reading" ? ": at layer 60 the two readings are one" : ""}.
+                {overlapLine(g) ? ` ${cap(overlapLine(g))}.` : ""}
                 {m.focus.from === "recorded" ? <> Among the three shown, “jestem”; and every word in both columns is a form of one verb, <i>to be</i>.</> : null}
                 {g.condition3 === "unvalidated" ? ` ${sharedLine(g)}.` : ""}
               </>
@@ -1752,9 +1768,11 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
             )}
           </p>
           <p style={{ margin: 0, fontSize: "16px", color: MUTED, maxWidth: "700px" }}>
-            Why it matters: in the study, agreement between the two readings was a free sign that a neuron’s label is real. Take one sound label
-            and one unsound, from its sample of random neurons, and agreement ranked the sound one higher 84 times in 100{" "}
-            <span style={{ fontStyle: "italic" }}>(AUC 0.84, layers 41–58, for labels read through the base-fitted J++ lens)</span>.{" "}
+            Why it matters: in the study, how many word-pieces the two readings shared was a free sign that a neuron’s label is real. Take one
+            sound label and one unsound, from its sample of random neurons, and the count of their first ten shared ranked the sound one higher
+            84 times in 100{" "}
+            <span style={{ fontStyle: "italic" }}>(AUC 0.84, layers 41–58, for labels read through the base-fitted J++ lens)</span>; sharing just
+            one was a weak sign, sound less often than the average label.{" "}
             {ten != null
               ? "The instrument counted the first ten a side, as the study did, and shows three."
               : "The study compared ten words a side; the instrument shows three, so treat this seal as a hint, not a verdict."}{" "}
@@ -1768,9 +1786,10 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
             lens="“Am” “am” “Am”"
             eye="“am” “Am” “am”"
             text={
-              "Third loudest in this layer, fired on its negative face. Both readings give only forms of “am”; among the words shown, two " +
-              "word-pieces in three, “ Am” and “ am”, stand on both sides" +
-              (cmpRecordedGate.sharedTop10 != null ? `, and ${numberWord(cmpRecordedGate.sharedTop10)} of their first ten.` : ".")
+              "Third loudest in this layer, fired on its negative face. Both readings give only forms of “am”. Of the three word-pieces " +
+              "shown, two stand on both sides, “Am” and “am”, each after a space (the lens’s third “Am” and the naked eye’s third “am” " +
+              "have none before them, so they are different word-pieces, though they look the same)" +
+              (cmpRecordedGate.sharedTop10 != null ? `; counted ten a side, they share ${numberWord(cmpRecordedGate.sharedTop10)}.` : ".")
             }
           />
         ) : cmp ? (
@@ -3070,7 +3089,7 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
                     // the pole's words pass the label gate: by its pole_label_check, else by its layer alone
                     labelGate(layerIdx(m.idx), res.signatureCheck).heldBack ? (
                       <span style={{ color: MUTED }}>
-                        , whose words are held back here{" "}
+                        {" "}
                         <HeldBackWords
                           gate={labelGate(layerIdx(m.idx), res.signatureCheck)}
                           words={res.signature.map((t) => t.token)}
@@ -3521,7 +3540,15 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
       <p style={{ margin: 0, maxWidth: "760px", padding: "10px 0", borderTop: `1px solid ${HAIR_FAINT}`, borderBottom: `1px solid ${HAIR_FAINT}` }}>
         <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", fontSize: "16px", color: MUTED }}>so far ·</span>{" "}
         {top && m.focusGate.heldBack ? (
-          <>What its {faceWord(m.focusFace)} face writes is held back here, as every label is {m.focusGate.reasons.includes("below_layer_40") ? "below layer 41" : "whose two readings share none of their first ten"}. </>
+          <>
+            What its {faceWord(m.focusFace)} face writes is held back here
+            {m.focusGate.reasons.includes("writes_nothing")
+              ? ": an edit in the vault has silenced it, so it writes nothing"
+              : m.focusGate.reasons.includes("below_layer_40")
+                ? ", as is every label below layer 41"
+                : ", as is every label whose two readings share none of their first ten"}
+            .{" "}
+          </>
         ) : (
           <>
             {m.focus.from === "recorded" ? (

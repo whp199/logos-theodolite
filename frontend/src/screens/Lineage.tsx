@@ -1,6 +1,6 @@
 import React from "react";
 import { IfApparatus, Missing, Page, ReadingThrough, Rubric, SectionHead } from "../components/kit";
-import { RECORDED_CHECKED } from "../lib/labels";
+import { GATE_FIGURES, OVERLAP_RECORD, RECORDED_CHECKED } from "../lib/labels";
 import type { Route } from "../router";
 import { Cartouche, Stemma } from "./lineage/figures";
 import { Pillars } from "./lineage/Pillars";
@@ -382,18 +382,22 @@ const Keep: React.FC = () => (
       </KeepRow>
       <KeepRow n={2} state="yes" condition="Output labels trusted only from layer 41 upward.">
         Below layer 41 no page sets a neuron’s words in its main reading: <To dest="instrument">the instrument</To>,{" "}
-        <To dest="layer">a layer’s leaf</To>, a <To dest="neuron">neuron’s folio</To>, <To dest="nudge">the nudge</To>
-        , the threads and <To dest="vault">the vault</To> hold them back, say why, and keep them in the apparatus. The
+        <To dest="layer">a layer’s leaf</To>, a <To dest="neuron">neuron’s folio</To>, <To dest="nudge">the nudge</To>{" "}
+        and <To dest="vault">the vault</To> hold them back, say why, and keep them in the apparatus (the threads set out
+        no neuron’s words). The
         server marks each label it sends (label_check), so callers over HTTP and MCP get the same caution; the vault’s
         console shows the server’s replies whole, and says which of their labels the reading pages hold back.
       </KeepRow>
-      <KeepRow n={3} state={RECORDED_CHECKED ? "yes" : "in part"} condition="A label counts only when the lens and the naked eye agree.">
+      <KeepRow n={3} state={RECORDED_CHECKED ? "yes" : "in part"} condition="Labels gated by whether the lens and the naked eye agree.">
         Each label the server sends now carries the study’s own measure: how many word-pieces the lens and the naked
         eye share in their first ten. A label that shares none is held back from the main reading and kept in the
         apparatus; others show their count. The cut at none is the instrument’s, since the study set none. In the
-        study, within layers 41 to 58, this agreement predicted a sound label (AUC 0.84, for base-fitted J++ labels on
-        random neurons), so under any other lens the count is shown but holds nothing back; at layer 59 it is
-        untested, and at layer 60, where no lens stands between, the two readings are one.
+        study, within layers 41 to 58, the count, used as a score, predicted a sound label (AUC 0.84, for base-fitted
+        J++ labels on random neurons), so under any other lens the count is shown but holds nothing back; at layer 59
+        it is untested, and at layer 60, where no lens stands between, the two readings are one. A label that is shown
+        has not passed a test: the cut at none, as a yes/no sign, scores only AUC {GATE_FIGURES.cutAuc} on the
+        study’s sample, and labels sharing just one of ten were sound {OVERLAP_RECORD[1][1]} times in{" "}
+        {OVERLAP_RECORD[1][0]}, less often than the band’s {GATE_FIGURES.bandSound} in {GATE_FIGURES.band}.
         {RECORDED_CHECKED ? null : (
           <>
             {" "}

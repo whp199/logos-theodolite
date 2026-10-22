@@ -25,7 +25,7 @@ import {
 } from "../store/useTheodoliteStore";
 import { NudgePartLine, OneDrawLine, PenaltyLine } from "../lib/cautions";
 import { faceWord, firstWords, pieceWord, wp } from "../lib/words";
-import { heldRubric, labelGate, layerIdxOfPage, trustLine } from "../lib/labels";
+import { gateTrustLine, heldRubric, labelGate, layerIdxOfPage } from "../lib/labels";
 import { HeldBackWords } from "../components/HeldBack";
 import { endsTurn } from "./instrument/moment";
 import { isBaseFitted, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
@@ -1251,10 +1251,11 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                       eye={poleHere.eye?.slice(0, 3).map((t) => t.token) ?? null}
                       unchecked={readS?.source === "fixture" ? "not yet checked ten a side: this sighting carries three words a side" : "not yet in the server"}
                       size={17}
+                      line={false}
                       style={{ maxWidth: 520 }}
                     />
                   ) : null}
-                  {lensWords ? <Rubric style={{ margin: 0, maxWidth: 520 }}>{trustLine(layerIdxOfPage(pl))}</Rubric> : null}
+                  {lensWords && poleGate ? <Rubric style={{ margin: 0, maxWidth: 520 }}>{gateTrustLine(poleGate)}</Rubric> : null}
                   {(facePos ? 1 : -1) !== poleHere.face ? (
                     <p style={{ margin: 0, fontSize: 16, color: C.muted, maxWidth: 520 }}>
                       Pushing with its {faceW} face sends the same push the other way.
@@ -1466,7 +1467,8 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
           <dt>trusting a neuron</dt>
           <dd>
             Output labels held up at layers 41–58, were at chance at 11–31 and were not tested at 32–40 (REPORT §3.2; N1); within 41–58 they
-            were likelier sound where the J++ lens and the naked eye agree (AUC 0.84, for base-fitted J++ labels on random neurons). This page
+            were likelier sound the more word-pieces the J++ lens and the naked eye shared in their first ten (the count used as a graded
+            score: AUC 0.84, for base-fitted J++ labels on random neurons; the instrument’s yes/no cut at none scores 0.64). This page
             holds a neuron’s words back below layer 41, and where its two readings share none of their first ten word-pieces (REPORT §3.3,
             conditions 2 and 3; the cut at none of ten is the instrument’s); the server marks each label it sends (label_check).
             {heldWords && poleGate ? <> {heldRubric(poleGate)}</> : null} Neuron 15491 at layer 54: the lens reads “Am”,

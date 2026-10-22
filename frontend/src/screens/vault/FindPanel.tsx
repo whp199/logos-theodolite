@@ -1,7 +1,18 @@
 import React from "react";
 import { Apparatus, IfApparatus, Missing, Rubric, IfRubrics } from "../../components/kit";
 import { HeldBackWords } from "../../components/HeldBack";
-import { type Gate, RECORDED_CHECKED, heldRubric, labelGate, layerIdx, parseLabelCheck, vaultCheck } from "../../lib/labels";
+import {
+  type Gate,
+  GATE_FIGURES,
+  OVERLAP_RECORD,
+  RECORDED_CHECKED,
+  heldRubric,
+  labelGate,
+  layerIdx,
+  parseLabelCheck,
+  recordedVaultHeld,
+  vaultCheck,
+} from "../../lib/labels";
 import { useApparatus } from "../../reading";
 import { href } from "../../router";
 import { useTheodoliteStore } from "../../store/useTheodoliteStore";
@@ -30,7 +41,7 @@ interface ShownRow {
   tested: number | null;
   d: number | null;
   /** the label gate (lib/labels.ts): from the server's label_check for a live row, the recorded check for a recorded
-   * one (none until the recorded searches are checked ten a side), else the layer alone */
+   * one (checked ten a side once, from the weights: N1G_recorded_label_checks.json), else the layer alone */
   gate: Gate;
 }
 
@@ -492,7 +503,11 @@ export const FindPanel: React.FC = () => {
                     </div>
                     <span role="cell" className="num" style={{ fontSize: 17, lineHeight: 1.3, paddingTop: 2 }}>
                       {/* the gate's own count, ten a side by id, where the server sent it; else the five shown, spelt exactly */}
-                      {r.gate.sharedTop10 != null ? `${r.gate.sharedTop10} of 10` : `${r.agree} of 5 shown`}
+                      {r.gate.reasons.includes("writes_nothing")
+                        ? "writes nothing"
+                        : r.gate.sharedTop10 != null
+                          ? `${r.gate.sharedTop10} of 10`
+                          : `${r.agree} of 5 shown`}
                       {r.gate.condition3 === "unvalidated" ? (
                         <span style={{ display: "block", fontSize: 14, fontStyle: "italic", color: "var(--muted)" }}>
                           {r.gate.edited ? "edited in the vault" : "under another lens"}
@@ -521,8 +536,11 @@ export const FindPanel: React.FC = () => {
         ) : (
           <EmptyAnswer head="[THE VAULT’S ANSWER APPEARS HERE AFTER THE SEARCH]">
             This page carries only the twenty-four searches made in the study: “she”, “he”, “her” and “woman” at layers 21, 31, 41,
-            51, 56 and 59. At layers 21 and 31 their neurons’ words are held back, as every neuron’s are below layer 41; the
-            neurons, their nearness and the study’s test still stand. Any other search is answered by the running instrument.
+            51, 56 and 59. At layers 21 and 31 their neurons’ words are held back, as every neuron’s are below layer 41
+            {RECORDED_CHECKED
+              ? `; at the higher layers, so are the rows whose two readings share none of their first ten (${recordedVaultHeld(40).held} of the ${recordedVaultHeld(40).rows})`
+              : ""}
+            . The neurons, their nearness and the study’s test still stand. Any other search is answered by the running instrument.
           </EmptyAnswer>
         )}
         <IfRubrics>
@@ -547,8 +565,10 @@ export const FindPanel: React.FC = () => {
               <Rubric style={{ maxWidth: "none" }}>
                 Neuron words are held back below layer 41, and wherever the lens and the naked eye share none of their first ten; the
                 cut at none is the instrument’s, since the study set none. Inside layers 41 to 58, in the study’s sample of random
-                neurons, more shared words was a good sign of a sound label (AUC 0.84, for labels read through the base-fitted J++
-                lens). Of the 102 neurons the study tested, 35 told Mary from John.
+                neurons, the more words shared of the first ten, the likelier a sound label (the count, used as a score: AUC{" "}
+                {GATE_FIGURES.auc}, for labels read through the base-fitted J++ lens); sharing just one was a weak sign, sound{" "}
+                {OVERLAP_RECORD[1][1]} times in {OVERLAP_RECORD[1][0]} against {GATE_FIGURES.bandSound} in {GATE_FIGURES.band} for the band.
+                Of the 102 neurons the study tested, 35 told Mary from John.
               </Rubric>
               {allHeld && heldRows[0] ? (
                 <Rubric style={{ maxWidth: "none" }}>
@@ -599,15 +619,18 @@ export const FindPanel: React.FC = () => {
               A projected contribution, not a counterfactual (REPORT §3.3). At layers 31–59 nearness ran 0.0004–0.02, at or below
               chance: from layer 36 the pullback puts 99–100% of its energy in the quietest tenth of the model’s dimensions (E6 §4b).
               Output labels held up at layers 41–58 and were at chance at 11–31; layers 32–40 were not sampled (REPORT §3.2; N1). Within
-              41–58, agreement of the J++ lens and the naked eye predicts a real effect (AUC 0.84, for base-fitted J++ labels on random
-              neurons).
+              41–58, the overlap of the J++ lens’s and the naked eye’s top ten, used as a graded score, predicts a real effect (AUC 0.84,
+              for base-fitted J++ labels on random neurons); the instrument’s yes/no cut at none of ten scores AUC {GATE_FIGURES.cutAuc} on
+              the same sample (experiments/results/N1C_gate_cut.json).
             </dd>
             <dt>held back</dt>
             <dd>
               The board holds a row’s words, and their glosses, back from its main reading below layer 41 (condition 2) and where the
               two readings share none of their first ten word-pieces (condition 3; REPORT §3.3), counted by id in fp32 as N1 counted
               (label_check.shared_top10). The cut at none of ten is the instrument’s; it applies under the base-fitted J++ lens only
-              (erratum E47), and not to a neuron edited in the vault. With the apparatus open the words come back, muted.{" "}
+              (erratum E47), and to a neuron edited in the vault as well, though the gate was never measured on edited neurons. A
+              neuron silenced in the vault (DELETE) writes nothing, has no count, and is held back (label_check reason
+              writes_nothing). With the apparatus open the words come back, muted.{" "}
               {source === "recorded" ? (
                 RECORDED_CHECKED ? (
                   "The study’s recorded searches were checked ten a side once, from the weights (experiments/results/N1G_recorded_label_checks.json)."
@@ -630,7 +653,7 @@ export const FindPanel: React.FC = () => {
               neither the query language nor the server passes them <span className="placeholder">[NOT EXPOSED BY THE SERVER]</span>.
             </dd>
           </dl>
-          <div role="group" aria-label="Agreement gate" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 8px", paddingTop: 6 }}>
+          <div role="group" aria-label="Filter on the five word-pieces shown" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 8px", paddingTop: 6 }}>
             <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", color: "var(--muted)", marginRight: 6 }}>
               a filter on the five shown: keep rows where lens and naked eye share at least
             </span>
@@ -716,9 +739,10 @@ const ReadingKey: React.FC = () => (
     <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingBottom: 14, borderBottom: "1px solid var(--hair-faint)" }}>
       <span style={{ fontSize: 18 }}>shared with the naked eye</span>
       <span style={{ fontSize: 15, color: "var(--muted)" }}>
-        How many word-pieces the plain reading, without the lens, shares with the lens: of their first ten, as the study counted, where
-        the running instrument counted them, else of the five shown. More agreement, more trust, at layers 41 to 58, where the study
-        tested it; a row that shares none of ten has its words held back.
+        How many word-pieces the plain reading, without the lens, shares with the lens: of their first ten, as the study counted (by the
+        running instrument, or, for the study’s recorded searches, by a check made once from the weights), else of the five shown. More
+        agreement, more trust, at layers 41 to 58, where the study tested it, though one of ten was a weak sign; a row that shares none
+        of ten has its words held back.
       </span>
     </div>
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

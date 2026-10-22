@@ -85,9 +85,8 @@ const AT_60: { word: string; gloss?: string; share: string; bar: number }[] = [
 
 /**
  * "neuron and its two faces": the recorded neuron the folio opens on, 15491 at layer 54 (index 53, rank 4 of the
- * demonstration sighting), through the label gate (lib/labels.ts) by its recorded check, null until the recorded
- * labels are checked ten a side. Inside layers 41-58 the gate shows it; were the check to share none, the entry would
- * hold it back like any page.
+ * demonstration sighting), through the label gate (lib/labels.ts) by its recorded check (N1G_01's, from the weights).
+ * Inside layers 41-58 the gate shows it; were the check to share none, the entry would hold it back like any page.
  */
 const EXAMPLE_GATE = labelGate(layerIdx(FOLIO_EXAMPLE.idx), fixtureCheck(FOLIO_EXAMPLE.idx, FOLIO_EXAMPLE.rank));
 const EXAMPLE_SHOWN = sharedShown(

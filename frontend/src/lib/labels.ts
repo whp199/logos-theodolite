@@ -1,17 +1,21 @@
 /**
  * The label gate on the pages: which neuron labels a page leaves out of its main reading, and why. One source for every
- * page, so that the instrument, a layer's leaf, a neuron's folio, the nudge, the threads and the vault hold back the
- * same labels and say the same thing about them.
+ * page, so that the instrument, a layer's leaf, a neuron's folio, the nudge and the vault hold back the same labels and
+ * say the same thing about them (the threads set out no neuron's words).
  *
  * The study's synthesis asks for output labels "only at L≥40, gated by J++/naive agreement" (REPORT §3.3, erratum E47).
  * The server marks each label it sends with `label_check` (backend/label_gate.py) and states the rule in `label_gate`:
  * - condition 2, the layer: below page layer 41 (code 40) a label is held back. At the layers N1 sampled there (pages
  *   11, 21 and 31) labels were no better than chance; pages 1-10 and 32-40 were not sampled (N1_REPORT.md:7, 22-29);
  * - condition 3, agreement: how many word-piece ids the lens's label and the naked eye's share in their first ten
- *   (`shared_top10`, fp32, softcapped, as N1 counted). Within pages 41-58 it ranked a sound label above an unsound one
- *   with AUC 0.84, for base-fitted J++ labels on random neurons (N1_REPORT.md:124-127). A label sharing none of ten is
- *   held back: that cut is the instrument's (the study set none). It applies under the base-fitted lens only (E47), and
- *   never at page 60, where the lens is the identity and the two readings are one.
+ *   (`shared_top10`, fp32, softcapped, as N1 counted). Within pages 41-58 the count, used as a graded score, ranked a
+ *   sound label above an unsound one with AUC 0.84, for base-fitted J++ labels on random neurons (N1_REPORT.md:124-127).
+ *   A label sharing none of ten is held back: that cut is the instrument's (the study set none), and as a yes/no sign it
+ *   scores only AUC 0.64 on N1's sample. It applies under the base-fitted lens only (E47), to edited neurons too, and
+ *   never at page 60, where the lens is the identity and the two readings are one. A count of one is a weak sign (such
+ *   labels were sound less often than the band's average), so the pages quote each count's own record (OVERLAP_RECORD);
+ * - a neuron silenced in the vault (DELETE: a zero write vector) writes nothing; its "words" are ties, so it has no
+ *   count and is held back ("writes_nothing").
  * Nothing is hidden from a scholar: the words stay in the apparatus, with the reason (components/HeldBack.tsx).
  *
  * Layers here are code indices, counted from 0 (`LayerIdx`; page layer = index + 1), as the server's fields count them.
@@ -33,8 +37,8 @@ export const SAMPLED_IDX: readonly number[] = [10, 20, 30, 40, 45, 50, 55, 57]; 
 export const ONE_READING_IDX = 59; // page 60: J++[59] = I
 
 /** Why a label is held back, as the server names it (code layers: "below_layer_40" is below page layer 41). */
-export type HoldReason = "below_layer_40" | "shares_nothing";
-const HOLD_REASONS: readonly HoldReason[] = ["below_layer_40", "shares_nothing"];
+export type HoldReason = "below_layer_40" | "shares_nothing" | "writes_nothing";
+const HOLD_REASONS: readonly HoldReason[] = ["below_layer_40", "shares_nothing", "writes_nothing"];
 
 /** Where a layer stands against N1's sample, as the server names it. */
 export type LabelBand = "below_sampled" | "chance_where_sampled" | "not_sampled" | "band" | "above_band" | "one_reading";
@@ -118,8 +122,10 @@ export function bandOf(idx: LayerIdx): LabelBand {
  * - heldBack, reasons: the server's verdict when it sent a check; condition 2 is applied here as well, so a label below
  *   page 41 is held back whatever the check says;
  * - condition3: "applied" (counted ten a side, through the base-fitted lens, not edited), "unvalidated" (counted, but
- *   under another lens or for an edited neuron: a count, not a verdict; erratum E47), "one-reading" (page 60, where the
- *   two readings are one), "unchecked" (no ten-a-side count: a recording not yet checked, an older server).
+ *   the gate was never measured for it: under another lens the count is not a verdict and holds nothing back (erratum
+ *   E47); for a neuron edited in the vault, through the base-fitted lens, the server's cut still holds back a label that
+ *   shares none, as a precaution), "one-reading" (page 60, where the two readings are one), "unchecked" (no ten-a-side
+ *   count: an older server, or a silenced neuron, which writes nothing).
  */
 export interface Gate {
   idx: LayerIdx;
@@ -158,30 +164,104 @@ export function labelGate(idx: LayerIdx, check: LabelCheck | null): Gate {
 export const RECORDED_CHECKED = RECORDED_LABEL_CHECKS_RUN !== null;
 export const RECORDED_CHECKS_RUN = RECORDED_LABEL_CHECKS_RUN;
 
-/** The recorded check for the demonstration sighting's label at layer `idx`, rank `rank`; null until checked. */
+/** The recorded check for the demonstration sighting's label at layer `idx`, rank `rank` (null for a face never checked). */
 export const fixtureCheck = (idx: number, rank: number): LabelCheck | null => parseLabelCheck(FIXTURE_LABEL_CHECKS[`${idx}:${rank}`]);
 
-/** The recorded check for a row of a recorded vault search ("she@20": word @ code layer); null until checked. */
+/** The recorded check for a row of a recorded vault search ("she@20": word @ code layer); null for one never checked. */
 export const vaultCheck = (search: string, neuron: number, face: number): LabelCheck | null =>
   parseLabelCheck(VAULT_LABEL_CHECKS[search]?.[`${neuron}${face >= 0 ? "+" : "-"}`]);
+
+/** Of the recorded vault searches' rows at code layer `fromIdx` and above, how many there are and how many their
+ * recorded checks hold back (from fixtures/recordedLabelChecks.ts, which N1G_01 wrote from its results file). */
+export function recordedVaultHeld(fromIdx: number): { rows: number; held: number } {
+  let rows = 0;
+  let held = 0;
+  for (const [search, faces] of Object.entries(VAULT_LABEL_CHECKS)) {
+    const l = Number(search.split("@")[1]);
+    if (!(l >= fromIdx)) continue;
+    for (const c of Object.values(faces)) {
+      rows++;
+      if (c?.held_back) held++;
+    }
+  }
+  return { rows, held };
+}
 
 /* ------------------------------------------------------------------------------------------------------ wording */
 
 /** The figures the wording quotes, with their sources (scripts/check_label_gate.py checks them against the files). */
 export const GATE_FIGURES = {
-  // N1C_matrix.json q.static_confidence_predictor.jv_nv_top10_overlap.auc_late_target_p10_ge_0.3 = 0.8432
+  // N1C_matrix.json q.static_confidence_predictor.jv_nv_top10_overlap.auc_late_target_p10_ge_0.3 = 0.8432: the count
+  // used as a graded score (not the yes/no cut)
   auc: "0.84",
   aucIn100: 84,
-  // N1C_gate_cut.json band (a re-analysis of N1's data, experiments/scripts/N1C_05_gate_cut.py): within pages 41-58,
-  // of 240 faces, 31 shared none of ten and 7 of those were sound; 160 of the 209 others were sound (P@10 >= 0.3)
+  // N1C_gate_cut.json band (a re-analysis of N1's data, experiments/scripts/N1C_09_gate_cut.py): within pages 41-58,
+  // of 240 faces, 167 were sound (P@10 >= 0.3); 31 shared none of ten and 7 of those were sound; 160 of the 209 others
+  // were sound; the cut taken as a yes/no sign has AUC 0.64 (auc_cut_p10_ge_0.3 = 0.6434)
+  band: 240,
+  bandSound: 167,
   shareNothing: 31,
   shareNothingSound: 7,
   shareSome: 209,
   shareSomeSound: 160,
+  cutAuc: "0.64",
 } as const;
+
+/** N1C_gate_cut.json band.by_overlap: for each count 0-10 of word-pieces shared in the first ten, [faces, of them
+ * sound], within pages 41-58 (scripts/check_label_gate.py checks it against the file). */
+export const OVERLAP_RECORD: readonly (readonly [number, number])[] = [
+  [31, 7],
+  [40, 16],
+  [36, 25],
+  [33, 25],
+  [23, 21],
+  [17, 14],
+  [13, 13],
+  [6, 5],
+  [16, 16],
+  [17, 17],
+  [8, 8],
+];
+
+/** Whether labels sharing `k` of ten were sound more often than the band's labels as a whole, in N1's sample (pages
+ * 41-58): the gilt agreement mark goes by this, not by k > 0 (one of ten was sound 16 times in 40, below the band's 167
+ * in 240). */
+export function overlapAboveBand(k: number | null): boolean {
+  if (k == null) return false;
+  const r = OVERLAP_RECORD[k];
+  return !!r && r[1] / r[0] > GATE_FIGURES.bandSound / GATE_FIGURES.band;
+}
+
+const COUNT_WORDS = ["none", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+
+/** A count's own record, for a shown label checked through the base-fitted lens within pages 41-58: "in the study's
+ * sample, labels sharing one of ten here were sound only 16 times in 40, against 167 in 240 for layers 41 to 58".
+ * Empty elsewhere (no count, another lens, an edited neuron, or a layer the record was not measured at). */
+export function overlapLine(g: Gate): string {
+  const k = g.sharedTop10;
+  if (k == null || k === 0 || g.condition3 !== "applied" || g.idx < BAND_IDX[0] || g.idx > BAND_IDX[1]) return "";
+  const r = OVERLAP_RECORD[k];
+  if (!r) return "";
+  const F = GATE_FIGURES;
+  const below = r[1] / r[0] < F.bandSound / F.band;
+  return (
+    `in the study’s sample, labels sharing ${COUNT_WORDS[k]} of ten were sound ${below ? "only " : ""}${r[1]} times in ${r[0]}, ` +
+    `against ${F.bandSound} in ${F.band} for layers 41 to 58`
+  );
+}
+
+/** The line on a label's standing at its layer: what the study found there (`trustLine`), or, when the vault has an
+ * edit in force on the neuron, that its words echo the edit and the study's tests say nothing of them. */
+export function gateTrustLine(g: Gate): string {
+  if (g.edited) {
+    return "An edit in the vault is in force on this neuron: its words echo the edit, and the study’s tests of neuron labels say nothing about them.";
+  }
+  return trustLine(g.idx);
+}
 
 /** The short tag a held-back label carries: "held back · below layer 41". */
 export function heldTag(g: Gate): string {
+  if (g.reasons.includes("writes_nothing")) return "held back · silenced in the vault";
   if (g.reasons.includes("below_layer_40")) return "held back · below layer 41";
   if (g.reasons.includes("shares_nothing")) return "held back · the two readings share none of ten";
   return "held back";
@@ -190,6 +270,7 @@ export function heldTag(g: Gate): string {
 /** The italic line in place of the words (empty when the label is shown). */
 export function heldLine(g: Gate): string {
   if (!g.heldBack) return "";
+  if (g.reasons.includes("writes_nothing")) return "Its words are held back: an edit in the vault has silenced it, so it writes nothing.";
   if (g.reasons.includes("below_layer_40")) return "Its words are held back at this layer.";
   if (g.reasons.includes("shares_nothing")) return "Its words are held back: the lens and the naked eye share none of their first ten.";
   return "Its words are held back here.";
@@ -198,11 +279,25 @@ export function heldLine(g: Gate): string {
 /** The rubric beside a held-back label: why, in plain words (empty when the label is shown). */
 export function heldRubric(g: Gate): string {
   if (!g.heldBack) return "";
+  if (g.reasons.includes("writes_nothing")) {
+    return (
+      "This neuron was deleted in the vault: its column is zero, so it writes nothing. Every word-piece then scores the " +
+      "same, and the words read for it are only the lowest-numbered pieces, not anything it says. They are kept in the " +
+      "apparatus, with the reason."
+    );
+  }
   if (g.reasons.includes("below_layer_40")) {
     return (
       "Below layer 41 a neuron’s words are not set out here. At the layers the study tried there, 11, 21 and 31, they " +
       "were no better than chance at saying what the neuron does; layers 1 to 10 and 32 to 40 were not tried. They are " +
       "kept in the apparatus, with the reason."
+    );
+  }
+  if (g.reasons.includes("shares_nothing") && g.edited) {
+    return (
+      "This neuron is edited in the vault, and its words echo the edit. The lens and the naked eye share none of their " +
+      "first ten, and the instrument holds back any label like that, here as a precaution: the study never measured the " +
+      "gate on edited neurons. It is kept in the apparatus."
     );
   }
   if (g.reasons.includes("shares_nothing")) {
@@ -213,8 +308,8 @@ export function heldRubric(g: Gate): string {
         : "";
     return (
       "Within layers 41 to 58, the more words the lens and the naked eye shared, the likelier a sound label: in the " +
-      `study’s sample of random neurons, the overlap ranked a sound label above an unsound one ${F.aucIn100} times in 100 ` +
-      `(AUC ${F.auc}, for labels read through the base-fitted J++ lens). Counted again from the study’s data, ` +
+      `study’s sample of random neurons, the count, used as a score, ranked a sound label above an unsound one ${F.aucIn100} ` +
+      `times in 100 (AUC ${F.auc}, for labels read through the base-fitted J++ lens). Counted again from the study’s data, ` +
       `${F.shareNothingSound} of the ${F.shareNothing} labels whose readings shared none of their first ten were sound, ` +
       `against ${F.shareSomeSound} of the ${F.shareSome} that shared at least one. A label whose two readings share none ` +
       `is held back here; the cut is the instrument’s, since the study set none. It is kept in the apparatus.${beyond}`
@@ -225,16 +320,20 @@ export function heldRubric(g: Gate): string {
 
 /** The ten-a-side count in words, for the apparatus; null when there is no count (the page shows a placeholder). */
 export function sharedLine(g: Gate): string | null {
+  if (g.reasons.includes("writes_nothing")) {
+    return "no count: the neuron was silenced in the vault and writes nothing, so every word-piece ties in both readings";
+  }
   const k = g.sharedTop10;
   if (k == null) return null;
   const counted = `${k} of 10 shared with the naked eye, counted by word-piece, as the study counted`;
   if (g.condition3 === "one-reading") return `${counted}: at layer 60 the two readings are one, so they share all ten`;
   if (g.condition3 === "unvalidated") {
     return g.edited
-      ? `${counted}; this neuron is edited in the vault, its words echo the edit, and the gate was never measured on such neurons`
+      ? `${counted}; this neuron is edited in the vault and its words echo the edit: the gate was never measured on edited neurons, though the instrument’s cut still holds such a label back where its readings share none`
       : `${counted}; under this lens the count is not a verdict, since the gate was validated for the base-fitted J++ lens only (erratum E47)`;
   }
-  return counted;
+  const rec = overlapLine(g);
+  return rec ? `${counted}; ${rec}` : counted;
 }
 
 /**

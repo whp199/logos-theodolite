@@ -45,8 +45,8 @@ export interface PoleReading {
   writeSize: number | null;
   /** the label gate's check of these words (the server's label_check: the word-pieces both readings share in their
    * first ten, and whether the pages hold the label back; lib/labels.ts); null = not sent (an older server, a pole
-   * whose words were not read) or, for the recorded sighting, not yet checked ten a side
-   * (experiments/scripts/N1G_01_recorded_label_checks.py) */
+   * whose words were not read) or, for the recorded sighting, a face its recorded checks do not cover (they cover every
+   * labelled face: experiments/scripts/N1G_01_recorded_label_checks.py) */
   check: LabelCheck | null;
 }
 

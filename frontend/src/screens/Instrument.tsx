@@ -27,7 +27,7 @@ import {
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { certainty, comma, gloss, kindOf, minus, ms, pct, pieceWord, signed, wp } from "../lib/words";
-import { heldRubric, heldTag, labelCheckJson, labelGate, layerIdx, sharedLine, sharedShown, trustLine } from "../lib/labels";
+import { gateTrustLine, heldRubric, heldTag, labelCheckJson, labelGate, layerIdx, overlapLine, sharedLine, sharedShown } from "../lib/labels";
 import { HeldBackWords } from "../components/HeldBack";
 import { InstrumentFigure, type Shown } from "./instrument/InstrumentFigure";
 import { Ascent } from "./instrument/Ascent";
@@ -937,7 +937,11 @@ function poleNote(s: Sighting, L: LayerReading) {
       lens.map((t) => t.token),
       eye.map((t) => t.token),
     );
-    const ten = gate.sharedTop10 != null ? `; counted ten a side, by word-piece, they share ${gate.sharedTop10} of their first ten` : "";
+    const rec = overlapLine(gate);
+    const ten =
+      gate.sharedTop10 != null
+        ? `; counted ten a side, by word-piece, they share ${gate.sharedTop10} of their first ten${rec ? ` (${rec})` : ""}`
+        : "";
     auto = shown.k
       ? `Among the words shown, the lens and the naked eye both read ${shown.shared.map((t) => `“${t.trim() || t}”`).join(" and ")}${ten}.`
       : `Among the words shown, the lens and the naked eye share no word-piece${ten}.`;
@@ -949,7 +953,8 @@ function poleNote(s: Sighting, L: LayerReading) {
     eye,
     gloss: recorded ? recorded.gloss(gate) : auto,
     canvasTrust: recorded?.canvasTrust ?? null,
-    trust: trustLine(layerIdx(L.idx)),
+    // what the study found at this layer, or, with an edit in force on the neuron, that its words echo the edit
+    trust: gateTrustLine(gate),
   };
 }
 
@@ -1324,7 +1329,7 @@ const LayerApparatus: React.FC<{ sighting: Sighting; L: LayerReading }> = ({ sig
           of their first ten word-pieces, are held back from the leaf (REPORT §3.3, conditions 2 and 3; the cut at none of ten is the
           instrument’s); the server marks each label it sends (label_check), and the words stay here.
         </dd>
-        {lead && lead.gate.heldBack ? (
+        {lead && (lead.p.lens || lead.p.eye) && lead.gate.heldBack ? (
           <>
             <dt>held back</dt>
             <dd>

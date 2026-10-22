@@ -203,9 +203,10 @@ pages from any other host than this machine).
   41–46, where J++ was a little ahead. At the sampled layers 11–31 no single neuron had a stable effect to label; layers
   32–40 were not sampled. Input-side labels are near-useless. Labels read through a lens refitted on the instruct model
   are untested. The pages now hold such labels back from their main reading below layer 41, and wherever the lens and
-  the naked eye share none of their first ten word-pieces (the study's agreement gate, REPORT §3.3, AUC 0.84 within
-  layers 41–58 for base-fitted J++ labels on random neurons; the cut at none of ten is the instrument's, since the study
-  set none); the apparatus keeps them, and the server marks each label it sends.
+  the naked eye share none of their first ten word-pieces (the study's agreement gate, REPORT §3.3: the overlap, used
+  as a graded score, had AUC 0.84 within layers 41–58 for base-fitted J++ labels on random neurons; the cut at none of
+  ten is the instrument's, since the study set none, and as a yes/no sign it scores AUC 0.64 on the same sample); the
+  apparatus keeps them, and the server marks each label it sends.
 - **The shipped J++ lens, and the Jacobian lens it was checked against, were fitted on the base model.** Most of the
   study’s lens readings went through J++, and the instrument still reads through it. A lens refitted on the instruct
   model predicts the next word better at the five late layers where its full matrix is usable, 41, 46, 51, 56 and 59
@@ -264,7 +265,10 @@ REPORT §3.4). Where each fault stands now:
   study set no threshold): re-counted from N1's own data
   ([`N1C_gate_cut.json`](experiments/results/N1C_gate_cut.json), a re-analysis), 7 of the 31 labels within layers
   41–58 that shared none of ten were sound (causal P@10 at least 0.3), against 160 of the 209 that shared at least
-  one. Every label the server sends carries `label_check` = {`shared_top10`, `held_back`, `reasons`, `band`,
+  one (the cut's AUC as a yes/no sign is 0.64); labels sharing exactly one were sound only 16 times in 40, below the
+  band's 167 in 240, so the pages quote each count's own record and set the gilt mark only where it beat the band. A
+  neuron silenced in the vault (DELETE) writes nothing; it has no count and is held back (reason `writes_nothing`).
+  Every label the server sends carries `label_check` = {`shared_top10`, `held_back`, `reasons`, `band`,
   `sampled_layer`, `in_measured_band`, `lens_validated`, `edited`}, and its replies carry a `label_gate` card just before `lens`; the word lists themselves
   are sent as before, and layers in these fields count from 0. The agreement cut applies only through the base-fitted
   J++ lens, the one it was validated for (erratum E47). Labels at layer 59 are untested; at layer 60 the lens is the

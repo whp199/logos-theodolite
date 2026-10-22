@@ -50,7 +50,14 @@ Runs inside a single process/network namespace to verify:
    On the pages, the leaf of layer 36 (the default) holds its neuron's words back: on the recorded sighting, the
    instrument's leaf and the layer's leaf show none of layer 36's words or glosses with the apparatus closed and show
    them with it open; on a live sighting the instrument's leaf says so; and the folio of neuron 15491 at layer 54
-   gives the server's ten-a-side count on its seal ("k IN 10") and its words, as the server's check decides.
+   gives the server's ten-a-side count on its seal ("k IN 10") and its words, as the server's check decides. The
+   sweep's own counts and the traced readers' are read again, independently, through inspect_pole (every labelled
+   face in layers 40-57 of the plain sweep; every reader returned, with its naked-eye words). Condition 3 on the pages:
+   on the recorded sighting, layer 54's leaf leaves out the words of its faces that share none of ten
+   (N1G_recorded_label_checks.json) with the apparatus closed and shows them with it open, and shows the others with
+   their count; the vault's recorded search for "she" at layer 59 holds back the rows its recorded checks hold back;
+   and on the live sighting, layer 55's leaf gives each labelled row the count inspect_pole reads for that neuron and
+   face ("they share k of ten"), or holds it back where that check does.
 """
 
 from __future__ import annotations
@@ -330,7 +337,7 @@ def assert_label_check(c: Any, layer: int, lens_id: str | None, what: str, edite
     k = c["shared_top10"]
     assert k is None or (isinstance(k, int) and 0 <= k <= 10), f"{what}: shared_top10 {k!r}"
     lens_ids, eye_ids = (list(range(10)), list(range(10 - k, 20 - k))) if k is not None else (None, None)
-    want = label_check(layer, lens_ids, eye_ids, lens_id, edited=edited)
+    want = label_check(layer, lens_ids, eye_ids, lens_id, edited=edited, silenced="writes_nothing" in c["reasons"])
     assert c == want, f"{what}: label_check {c} is not the rule's {want}"
     return c
 
@@ -375,6 +382,18 @@ def study_cache() -> Path | None:
 # print them (wp: between curly quotes, the leading space dropped).
 L36_RECORDED_WORDS = ["“myself”", "“मुझ”", "“的我”", "“líng”", "“JPY”", "“ücret”", "“青少年”", "“年龄”", "“использовать”",
                       "“creator”", "“自身的”", "“自身”", "“আমাকে”", "“sayesinde”", "“੦”", "“précision”", "“scept”", "“creato”"]
+# Layer 54 (index 53) of the recorded sighting: its labelled faces, their words (lens and naked eye), and the recorded
+# check of each (N1G_recorded_label_checks.json), for condition 3 on the pages; and the vault's recorded search for
+# "she" at layer 59 (index 58): how many of its first five rows (the board's default) its recorded checks hold back
+_FIXTURE = json.loads((ROOT_DIR / "frontend" / "src" / "fixtures" / "e6-demo-sighting.json").read_text())
+_N1G = json.loads((ROOT_DIR / "experiments" / "results" / "N1G_recorded_label_checks.json").read_text())
+L54_FACES = {
+    k: {"words": [t for t, _ in _FIXTURE["poleLabels"]["lens"][k]] + [t for t, _ in _FIXTURE["poleLabels"]["eye"][k]],
+        "check": _N1G["fixture"]["faces"][k]["label_check"]}
+    for k in sorted(_FIXTURE["poleLabels"]["lens"]) if k.startswith("53:")
+}
+SHE59_HELD = sum(r["label_check"]["held_back"] for r in _N1G["vault"]["searches"]["she@58"]["rows"][:5])
+
 L36_RECORDED_GLOSSES = ["one idea in three tongues", "Hindi “me”", "Chinese “one’s own”", "Chinese “teenagers”",
                         "Turkish “thanks to”", "No word in common, yet both eyes speak of the self", "Italian “created”"]
 
@@ -621,6 +640,18 @@ async def main() -> int:
             assert_label_check(r["dst_label_check"], r["dst_layer"], lens["id"], f"reader L{r['dst_layer']}:N{r['dst_neuron_idx']}")
         print(f"  • the readers traced carry their naked-eye words and label checks "
               f"({sum(r['dst_label_check']['held_back'] for r in top_readers)} of {len(top_readers)} held back)")
+        # the readers' checks are computed on their own path (mcp_scientist.py, through an id map after the sort): each
+        # must be what inspect_pole reads for that neuron and face, and its naked-eye words inspect_pole's first four
+        for r in top_readers:
+            face = "north_pole" if r["dst_polarity"] == "+" else "south_pole"
+            again = inspect_pole(layer=r["dst_layer"], neuron_idx=r["dst_neuron_idx"],
+                                 polarity=1.0 if r["dst_polarity"] == "+" else -1.0)[face]
+            what = f"reader L{r['dst_layer']}:N{r['dst_neuron_idx']}{r['dst_polarity']}"
+            assert again["label_check"] == r["dst_label_check"], (
+                f"{what}: {r['dst_label_check']} != inspect_pole's {again['label_check']}")
+            assert [t["token"] for t in again["naive_tokens"][:4]] == [t["token"] for t in r["dst_naive_tokens"]], (
+                f"{what}: naked-eye words {r['dst_naive_tokens']} are not inspect_pole's {again['naive_tokens'][:4]}")
+        print(f"  • the readers' checks and naked-eye words equal inspect_pole's own reading, all {len(top_readers)}")
 
         # Tool 3: test_motif_hypothesis on Layer 53 Neuron 16383 (Spider/Arachnid South-Pole neuron)
         hyp_res = await test_motif_hypothesis(
@@ -729,6 +760,23 @@ async def main() -> int:
             assert n_checked > 0 and all(e["label_check"] and e["label_check"]["held_back"]
                                          for e in json_msg["poles_labels"]["35"]), "layer 35's labels are not held back"
             print(f"  • the sweep's labels: {n_checked} checked, {n_held} held back; the rule just before the lens")
+            # the sweep computes its counts on its own path (engine_runtime.py, from the pole vectors it ranked): each
+            # labelled face in the band must be what inspect_pole reads for that neuron and face, read afresh
+            n_cross, differ = 0, []
+            for l_str, entries in json_msg["poles_labels"].items():
+                if not BAND[0] <= int(l_str) <= BAND[1]:
+                    continue
+                for e in entries:
+                    if not e["label_check"]:
+                        continue
+                    face = "north_pole" if e["polarity"] == "+" else "south_pole"
+                    again = inspect_pole(layer=int(l_str), neuron_idx=e["neuron_idx"],
+                                         polarity=1.0 if e["polarity"] == "+" else -1.0)[face]["label_check"]
+                    n_cross += 1
+                    if again != e["label_check"]:
+                        differ.append((l_str, e["rank"], e["neuron_idx"], e["polarity"], e["label_check"], again))
+            assert n_cross > 0 and not differ, f"the sweep's counts differ from inspect_pole's: {differ}"
+            print(f"  • the sweep's counts: all {n_cross} in-band labels equal inspect_pole's own reading")
 
             # the first write-ranked sweep since the server started computes each layer's write-column norms once
             # (engine_runtime.py write_col_norms, cached). It differs from the plain sweep just taken only in
@@ -1105,6 +1153,41 @@ async def main() -> int:
                 assert folio_ui == {"word": True, "held": False}, f"the folio of 15491 at layer 54: {folio_ui}"
             print(f"  • Neuron folio 54/15491: seal “{seal}”, its words "
                   f"{'held back' if folio_check['held_back'] else 'shown (' + folio_word + ' first)'}, as the server's check says")
+            # Condition 3 on a live page: the leaf of layer 55 (index 54, inside the band, always labelled) lists its
+            # neurons as the interface's own sighting ranked them; each labelled row must give the count inspect_pole
+            # reads for that neuron and face (a label's check does not depend on the prompt), or be held back where
+            # that check holds it back
+            await go("#/layer/55")
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            await wait_for("document.querySelectorAll('a[aria-label^=\"Open neuron \"]').length > 0", "layer 55's leaf, live")
+            await asyncio.sleep(0.5)
+            leaf_rows = await cdp.eval_js(
+                """(() => Array.from(document.querySelectorAll('a[aria-label^="Open neuron "]')).map((a) => {
+                    const li = a.closest("li"); const t = li ? li.innerText : "";
+                    const m = t.match(/they share (only 1|none|\\d+) of ten/);
+                    return { neuron: Number(a.getAttribute("aria-label").replace("Open neuron ", "")),
+                             positive: t.includes("positive face"), held: t.includes("[held back]"),
+                             count: m ? m[1] : null, why: t.includes("share none of their first ten") };
+                }))()"""
+            )
+            n_rows = 0
+            for row in leaf_rows:
+                if row["count"] is None and not row["held"]:
+                    continue  # not labelled in this sighting
+                face = "north_pole" if row["positive"] else "south_pole"
+                c = inspect_pole(layer=54, neuron_idx=row["neuron"], polarity=1.0 if row["positive"] else -1.0)[face]["label_check"]
+                k = c["shared_top10"]
+                what = f"layer 55's leaf, live, neuron {row['neuron']} ({face})"
+                if c["held_back"]:
+                    assert row["held"] and row["count"] is None, f"{what}: held back by the server ({c}), but {row}"
+                    if "shares_nothing" in c["reasons"]:
+                        assert row["why"], f"{what}: held back for sharing nothing, but the row does not say so: {row}"
+                else:
+                    want = "none" if k == 0 else "only 1" if k == 1 else str(k)
+                    assert not row["held"] and row["count"] == want, f"{what}: the server counts {k} ({c}), the page {row}"
+                n_rows += 1
+            assert n_rows > 0, f"layer 55's leaf, live, has no labelled row: {leaf_rows}"
+            print(f"  • Layer 55's leaf, live: {n_rows} labelled rows, each with inspect_pole's count, or held back as it says")
             await go("#/instrument")
 
             # How to read these pages: rubrics (red italic guidance) and apparatus (double-gilt-ruled blocks)
@@ -1439,6 +1522,66 @@ async def main() -> int:
                     missing = [w for w in want_open[0] if w not in opened["words"]] + [g for g in want_open[1] if g not in opened["glosses"]]
                     assert not missing, f"{route}, recorded, apparatus open, lacks {missing}"
                     print(f"  • {route}, recorded sighting: layer 36's words and glosses held back, and in the apparatus")
+                # Condition 3 on the recorded sighting: at layer 54, inside the band, a face whose readings share none of
+                # ten (by its recorded check) has its words left out of the main reading and kept in the apparatus; the
+                # others show their words and their count
+                shown_w = {wp(t) for f in L54_FACES.values() if not f["check"]["held_back"] for t in f["words"]}
+                held_w = sorted({wp(t) for f in L54_FACES.values() if f["check"]["held_back"] for t in f["words"]}
+                                - shown_w - {"“”", "“␣”"})
+                assert held_w and shown_w, f"the recorded layer 54 has no held-back and shown faces to check: {L54_FACES}"
+                l54_js = (
+                    "(() => { const t = document.body ? document.body.innerText : '';"
+                    f" return {{ held: {json.dumps(held_w)}.filter((w) => t.includes(w)),"
+                    f" shown: {json.dumps(sorted(shown_w))}.filter((w) => t.includes(w)),"
+                    " why: t.includes('Its words are held back: the lens and the naked eye share none of their first ten.'),"
+                    " text: t }; })()"
+                )
+                await rec.eval_js("(() => { location.hash = '#/layer/54'; })()")
+                for _ in range(60):
+                    if await rec.eval_js("document.querySelectorAll('a[aria-label^=\"Open neuron \"]').length > 0"):
+                        break
+                    await asyncio.sleep(0.5)
+                await rec.eval_js(f"{SET_READING_JS}('apparatus', false)")
+                await asyncio.sleep(0.4)
+                closed = await rec.eval_js(l54_js)
+                await rec.eval_js(f"{SET_READING_JS}('apparatus', true)")
+                await asyncio.sleep(0.4)
+                opened = await rec.eval_js(l54_js)
+                assert closed["why"] and not closed["held"], (
+                    f"#/layer/54, recorded, apparatus closed, shows words its recorded checks hold back: {closed['held']}")
+                assert closed["shown"], "#/layer/54, recorded, apparatus closed, shows none of the shown faces' words"
+                for k, f in L54_FACES.items():
+                    n = f["check"]["shared_top10"]
+                    if not f["check"]["held_back"]:
+                        said = f"they share {'only 1' if n == 1 else n} of ten"
+                        assert said in closed["text"], f"#/layer/54, recorded: face {k}'s count {said!r} is not on the page"
+                missing = [w for w in held_w if w not in opened["held"]]
+                assert not missing, f"#/layer/54, recorded, apparatus open, lacks the held-back words {missing}"
+                print(f"  • #/layer/54, recorded sighting: {len(held_w)} held-back word-pieces left out (share none of ten) "
+                      "and kept in the apparatus; the others shown with their count")
+                # the vault's recorded search for "she" at layer 59 holds back the rows its recorded checks hold back
+                await rec.eval_js(f"{SET_READING_JS}('apparatus', false)")
+                await rec.eval_js("(() => { location.hash = '#/vault'; })()")
+                for _ in range(60):
+                    if await rec.eval_js("!!document.querySelector('button[aria-label=\"Layer 59\"]')"):
+                        break
+                    await asyncio.sleep(0.5)
+                await rec.eval_js(
+                    "(() => { const b = Array.from(document.querySelectorAll('button'))"
+                    ".find((x) => x.textContent.trim() === '“she”'); if (b) b.click(); })()"
+                )
+                await asyncio.sleep(0.4)
+                await rec.eval_js("(() => { document.querySelector('button[aria-label=\"Layer 59\"]').click(); })()")
+                await asyncio.sleep(0.6)
+                meta = await rec.eval_js(
+                    "(() => { const t = document.querySelector('[role=\"table\"]'); return t ? t.getAttribute('aria-label') : null; })()"
+                )
+                want_meta = ("the words of every row held back" if SHE59_HELD == 5 else
+                             f"the words of {SHE59_HELD} held back" if SHE59_HELD else None)
+                assert meta and "nearest “she” in layer 59" in meta and (
+                    (want_meta in meta) if want_meta else "held back" not in meta), (
+                    f"#/vault, recorded “she” at layer 59: {meta!r} (want {want_meta!r})")
+                print(f"  • #/vault, recorded “she” at layer 59: {SHE59_HELD} of its first five rows held back, as its checks say")
                 await rec.eval_js(f"{SET_READING_JS}('apparatus', false)")
                 assert not rec.console_errors and not rec.page_exceptions, (
                     f"the recorded sighting's pages logged errors: {rec.console_errors} {rec.page_exceptions}")

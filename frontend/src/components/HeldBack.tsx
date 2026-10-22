@@ -12,6 +12,7 @@ import { wp } from "../lib/words";
  * It replaces only the words and their glosses: the page keeps the neuron's number, its face, its strength and its
  * links (open the neuron, nudge with it, survey from it) around it. It draws nothing when the gate shows the label.
  * `compact` is for a cell of a table: the plate carries its tag, and the line and the rubric are left to the page.
+ * `line={false}` leaves out the italic line, for a page whose own sentence already says the words are held back.
  * `unchecked` names what stands in for a missing count, e.g. "not checked ten a side: this sighting carries three
  * words a side" (a bracketed placeholder; never a count made from the words shown).
  */
@@ -27,8 +28,10 @@ export const HeldBackWords: React.FC<{
   compact?: boolean;
   /** the size of the page's own word line, for the plate */
   size?: number;
+  /** set the italic line saying why (false where the page's own sentence says it) */
+  line?: boolean;
   style?: React.CSSProperties;
-}> = ({ gate, words, eye, glosses, unchecked = "not checked ten a side", compact = false, size = 22, style }) => {
+}> = ({ gate, words, eye, glosses, unchecked = "not checked ten a side", compact = false, size = 22, line = true, style }) => {
   if (!gate.heldBack) return null;
   const tag = heldTag(gate);
   const count = sharedLine(gate);
@@ -63,7 +66,8 @@ export const HeldBackWords: React.FC<{
   }
 
   return (
-    <div className="stack" style={{ gap: 4, ...style }} aria-label={`${tag}: ${heldLine(gate)}`}>
+    // a note, so that its name is allowed (as kit.tsx's Apparatus names its note); the visible text says the same
+    <div className="stack" role="note" style={{ gap: 4, ...style }} aria-label={`${tag}: ${heldLine(gate)}`}>
       <IfApparatus
         else={
           <span className="sc" style={{ fontSize: Math.round(size * 0.8), letterSpacing: "0.16em", color: "var(--muted)" }}>
@@ -79,7 +83,7 @@ export const HeldBackWords: React.FC<{
         <span className="kicker">{tag}</span>
         <span style={{ fontSize: 15, color: "var(--muted)" }}>{count ?? <Missing what={unchecked} />}</span>
       </IfApparatus>
-      <div style={{ fontSize: 15, fontStyle: "italic", color: "var(--muted)" }}>{heldLine(gate)}</div>
+      {line ? <div style={{ fontSize: 15, fontStyle: "italic", color: "var(--muted)" }}>{heldLine(gate)}</div> : null}
       <Rubric style={{ margin: "2px 0 0", fontSize: 15 }}>{heldRubric(gate)}</Rubric>
     </div>
   );
