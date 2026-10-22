@@ -307,7 +307,8 @@ REPORT §3.4). Where each fault stands now:
   12; its figures in
   [`E3_background_mu_check.json`](experiments/results/E3_background_mu_check.json)). E3’s own per-layer lens
   figures for the average state do not all reproduce today (+2.35 against its +2.3 at layers 41–50, by the study’s own
-  code as by the server; more at some other layers), though its naked-eye ones do; the cause is not established.
+  code as by the server; more at some other layers), though its naked-eye ones agree to within 0.03 at every layer;
+  the cause is not established.
 - **The vault (LARQL).** `backend/larql_vault.py` calls the `larql`/`vindex` binaries only for `--version`; every vault
   query runs in Python. Its edit, named after MEMIT in the code and its statements (".patch MEMIT"), writes one neuron’s
   down-projection column (rank one, no covariance solve; DELETE sets it to zero): it is not MEMIT, and the pages call it

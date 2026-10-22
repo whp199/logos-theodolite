@@ -611,8 +611,8 @@ export const ContrastSection: React.FC<{
             about −2.8 on the noun pairs where the model speaks of itself (erratum E34). The average state read on its own
             scores +2.3 there in E3’s record (μ alone, normalised by its own size: not the lean any reading carries). This
             server, like the study’s own code today, reads +2.35 for it; E3’s per-layer lens figures for μ differ from today’s
-            by more at some layers, while by the naked eye they reproduce, and why E3’s run read otherwise is not established,
-            so only band means are quoted here (by layer: experiments/results/E3_background_mu_check.json). By the naked eye
+            by more at some layers, while by the naked eye they agree to within 0.03 at every layer, and why E3’s run read
+            otherwise is not established, so only band means are quoted here (by layer: experiments/results/E3_background_mu_check.json). By the naked eye
             the average state scores −4.3 at layers 1–20 and −0.9 at 41–50; on neutral prose the naked eye’s raw score is −3.8,
             −6.5 and −3.6 at layers 1–10, 11–20 and 21–30, its average-state share −3.4, −4.8 and −1.3, and centred −4.8 and
             −5.7 at 11–20 and 21–30 (E3 (c), E3_lens_validation_c_background.json).
