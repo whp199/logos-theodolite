@@ -352,7 +352,8 @@ reads a missing one as the checkpoint’s own setting (temperature 1, top-k 64, 
 sweep, so no vault edit lands between two word-pieces of one answer. The circuit tools
 (`inspect_pole`, `trace_downstream_readers`, `test_motif_hypothesis`, `query_larql_vault`, and `causal_spot_check`, a
 neuron's label tested by the study's N1A protocol at k = 10) are served over HTTP and as FastMCP tools from
-`backend/mcp_scientist.py`; the WebSocket also takes `trace_readers`, `larql` and `causal_check` (ARCHITECTURE §4.5).
+`backend/mcp_scientist.py`; the WebSocket also takes `inspect_pole`, `trace_readers`, `larql` and `causal_check`, besides
+`sweep` and `cancel_sweep` (ARCHITECTURE §4.5).
 Every neuron label they and the sweep send carries `label_check`, and the replies carry the rule as `label_gate` (§iv).
 To check a build end to end, server, tools and pages together: `.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.
 

@@ -180,7 +180,10 @@ export const Cautions: React.FC = () => (
                   only the layer holds a label back: <Missing what="the recorded labels not yet checked ten a side" />.
                 </>
               )}{" "}
-              Not done: activation contexts stored per pole, and a causal spot-check of each label.
+              And condition 4 in part: a neuron’s folio puts one label at a time to the test when asked (
+              <LexLink to="test">a test of a label</LexLink>, the MCP tool <M>causal_spot_check</M>), and says only how many
+              of the label’s ten words are among the hundred whose odds rose most. Not done: activation contexts stored
+              per pole, and a causal spot-check of every label.
             </>,
           ],
         ]}

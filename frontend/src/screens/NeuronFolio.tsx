@@ -17,6 +17,8 @@ import {
   chosenPhrase,
   editIdsOf,
   isGlobalIdx,
+  isTextEnd,
+  isTurnEnd,
   loudnessRank,
   maxAct,
   ordinal as nth,
@@ -2115,10 +2117,10 @@ function causalStaleWhy(stored: Pending<unknown>, contexts: CausalContexts, s: S
         : `This test was taken at a word-piece${piece} of a live sighting, not of the one shown, so it is set aside here.`;
     }
   }
-  // the edits as this page knew them when it sent the test, against those it knows now: an edit made or undone since sets
-  // the test aside (the reply's own vault_edits, which may hold an edit this page never heard of, the scientist's over
-  // MCP, are reported with the result)
-  const editsThen = stored.edits ?? (reply ? reply.vaultEdits : null);
+  // the edits the test was read under, against those in force now: once the reply is in, its own vault_edits (which may
+  // hold an edit this page never heard of, the scientist's over MCP; the store then asks the vault for its ledger again,
+  // so the page's record of the edits in force catches up); while it is pending, the edits as this page knew them
+  const editsThen = reply?.vaultEditsSent ? reply.vaultEdits : (stored.edits ?? null);
   if (editsThen && !sameIds(editsThen, editsNow)) {
     return "This test read the model under other vault edits than those in force now, so it is set aside. Test again to read the model as it is now.";
   }
@@ -2131,13 +2133,41 @@ const countWord = (n: number) => (n === 0 ? "none" : numberWord(n));
 /** A ratio of two KLs: whole numbers with thousands marked from 1,000, else two figures. */
 const ratioWord = (x: number) => (x >= 1000 ? comma(x) : sig(x, 2));
 
-/** A face's words with their odds before and after (the one text), or alone (means over the study's texts). */
+/**
+ * A face's words with their odds before and after (the one text), or alone (means over the study's texts). Where the two
+ * odds read the same in words (both under one in a million, say: the ranking by change of log-probability favours rare
+ * word-pieces that grow by a large factor), the measured factor is given instead, so a word that rose never reads as
+ * unmoved.
+ */
 function moversText(ws: CausalWord[], given: boolean, n = 3): string {
-  return andList(ws.slice(0, n).map((w) => (given ? `${wp(w.token)} (${probWord(w.baseLogprob)} → ${probWord(w.steeredLogprob)})` : wp(w.token))));
+  return andList(
+    ws.slice(0, n).map((w) => {
+      if (!given) return wp(w.token);
+      const before = probWord(w.baseLogprob);
+      const after = probWord(w.steeredLogprob);
+      return before === after
+        ? `${wp(w.token)} (${timesWord(w.dlogprob)} times as likely, still ${before})`
+        : `${wp(w.token)} (${before} → ${after})`;
+    }),
+  );
+}
+
+/** The word-piece a test at one word-piece followed: the one the model wrote there, or the one the reader gave. */
+type FollowedPiece = { id: number; token: string; source: "written" | "given" | "recorded"; endMark: boolean };
+
+/** "The word the model chose here, ‘a’," / "The word-piece given here, ‘a’," / "The mark that ends its turn, …,". */
+function followedLead(c: FollowedPiece): string {
+  if (c.source === "given") return `The word-piece given here, ${wp(c.token)},`;
+  if (c.endMark) {
+    if (isTurnEnd(c.id, c.token)) return `The mark that ends its turn, ${wp(c.token)}, which the model wrote here,`;
+    if (isTextEnd(c.id, c.token)) return `The mark that ends the text, ${wp(c.token)}, which the model wrote here,`;
+    return `The control mark the model wrote here, ${wp(c.token)}, where writing stops,`;
+  }
+  return `The word the model chose here, ${wp(c.token)},`;
 }
 
 /** What a test found, in plain words, for the main reading. */
-const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: { id: number; token: string } | null }> = ({ m, r, chosen }) => {
+const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: FollowedPiece | null }> = ({ m, r, chosen }) => {
   const given = r.contexts === "given";
   const opened = r.polarity;
   const faces = (opened > 0 ? [[1, r.pos], [-1, r.neg]] : [[-1, r.neg], [1, r.pos]]) as [1 | -1, CausalFace | null][];
@@ -2149,15 +2179,25 @@ const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: { id: number; t
   const nEye = inTop(first?.eye ?? null);
   const labelK = first?.labelK ?? 10;
   const causalK = first?.causalK ?? 100;
+  const hundred = causalK === 100 ? "hundred" : String(causalK);
   const tracked = chosen && first ? (first.tracked.find((w) => w.tokenId === chosen.id) ?? null) : null;
   const tooStrong =
-    r.write === "activation"
+    r.write === "activation" && !silenced
       ? faces.filter(([, f]) => f && f.linear.linearity != null && f.linear.linearity < LINEARITY_TAIL)
       : [];
-  const noisy = faces.filter(([, f]) => f && f.klOverFloor != null && f.klOverFloor <= NOISE_RATIO_MAX);
+  const noisy = silenced ? [] : faces.filter(([, f]) => f && f.klOverFloor != null && f.klOverFloor <= NOISE_RATIO_MAX);
   const band = bandOf(layerIdx(m.idx));
+  const oneReading = band === "one_reading";
   const rho = first?.splitHalfRho ?? null;
-  const k10 = r.k === 10;
+  // the study's bar and its k = 10 figures were measured with the activation write, sized on the study's own 36 texts:
+  // only a test made so is "this size" or "six times" smaller than they were
+  const studySized = r.scaleRef === "study" && r.write === "activation";
+  const sizeHow = [r.scaleRef === "this_text" ? "sized on this text" : "", r.write === "frozen_norm" ? "written after the norm" : ""]
+    .filter(Boolean)
+    .join(", ");
+  // the bar was measured for base-fitted J++ labels of unedited neurons: under another lens, or with an edit on this
+  // neuron in force, the count is not set beside it (as A2's overlapLine and gateTrustLine hold the study's record back)
+  const lensValidated = first?.check ? first.check.lensValidated : true;
   const asDefault = r.k === CAUSAL_DEFAULTS.k && r.write === CAUSAL_DEFAULTS.write && r.scaleRef === CAUSAL_DEFAULTS.scaleRef;
   const late = STUDY_K10_LATE_P10.map((v) => v.toFixed(2)).join("–");
   const bandLine =
@@ -2167,49 +2207,69 @@ const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: { id: number; t
         ? `At the layers the study sampled in this stretch (11, 21 and 31) no effect held from one text to the next${m.layerNo === 11 ? ", and the effects sat at rounding noise" : ""}.`
         : band === "not_sampled"
           ? "The study did not sample this stretch, layers 32 to 40."
-          : band === "above_band" || band === "one_reading"
+          : band === "above_band"
             ? "This layer is above every layer the study tested; its highest was 58."
-            : "";
+            : oneReading
+              ? "At layer 60 the lens and the naked eye are one reading, so they always agree, and their agreement says nothing; the study did not test neuron labels at this layer."
+              : "";
   const scopeLine = given
     ? "What moves here speaks for this text only."
     : rho != null
       ? `The two halves of the texts agree at ρ = ${sig(rho, 2)} (the apparatus sets out the split).`
       : "";
+  const barLine = !lensValidated
+    ? `The study’s bar for this count (three of ten words among the hundred, over its 36 texts) was measured for base-fitted J++ labels of unedited neurons; this label was read ${gate.edited ? "with an edit in force on this very neuron" : "through a lens other than the base-fitted J++ one"}, so the count is not compared with it.`
+    : `In the study, over 36 texts, a label with three of its ten words among the hundred counted as sound; that bar was set on tests ${
+        studySized && r.k === 10
+          ? "six times this size"
+          : studySized && r.k === 60
+            ? "of this size"
+            : `at k = 60, sized on the study’s texts with the activation write (this one was k = ${sig(r.k)}${sizeHow ? `, ${sizeHow}` : ""})`
+      }, and ${studySized && r.k === 10 ? "at this size" : "at k = 10"} the share of a lens label’s ten words among the hundred ran ${late} at layers 41 to 56 (N1V code audit).`;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-      <h3 className="h-sub">
+      <h4 className="h-sub">
         {given ? `at this word-piece${r.readToken != null ? `, ${pieceWord(r.readToken)}` : ""}` : `on the study’s ${r.nContexts ?? 36} texts`}
-      </h3>
+      </h4>
       {!asDefault ? (
         <p className="status-line" style={{ margin: 0 }}>
           Taken at {sig(r.k)} times the neuron’s strongest firing on {r.scaleRef === "this_text" ? "this text" : "the study’s 36 texts"}
           {r.write === "frozen_norm" ? ", written after the layer’s norm (the frozen-norm write)" : ""}, as the apparatus set it.
         </p>
       ) : null}
-      {faces.map(([face, f]) =>
-        f ? (
-          <p key={face} style={{ margin: 0, fontSize: "18px", maxWidth: "820px" }}>
-            Turned up on its {faceWord(face)} face, the odds of {moversText(f.rises, given)} rose most
-            {given ? "" : " on average over the texts"}, and of {moversText(f.falls, given)} fell most.{" "}
-            {f.klOverFloor != null
-              ? f.klOverFloor > NOISE_RATIO_MAX
-                ? `Overall the model moved beyond rounding noise: ${ratioWord(f.klOverFloor)} times as much as under the same test ${smallerWord(r.k, r.kFloor)} smaller.`
-                : `Overall the model moved no more than rounding noise: ${ratioWord(f.klOverFloor)} times as much as under the same test ${smallerWord(r.k, r.kFloor)} smaller.`
-              : r.kFloor != null
-                ? `The same test ${smallerWord(r.k, r.kFloor)} smaller moved nothing measurable, so the level of rounding noise could not be read.`
-                : ""}
-          </p>
-        ) : null,
+      {silenced ? (
+        <p style={{ margin: 0, fontSize: "18px", maxWidth: "820px" }}>
+          Silenced in the vault, the neuron writes nothing, so turning it up moved nothing it could write: the words the
+          apparatus lists as rising and falling are only ties or rounding noise, and the neuron has no label to test.
+        </p>
+      ) : (
+        faces.map(([face, f]) =>
+          f ? (
+            <p key={face} style={{ margin: 0, fontSize: "18px", maxWidth: "820px" }}>
+              Turned up on its {faceWord(face)} face, the odds of {moversText(f.rises, given)} rose most
+              {given ? "" : " on average over the texts"}, and of {moversText(f.falls, given)} fell most.{" "}
+              {f.klOverFloor != null
+                ? f.klOverFloor > NOISE_RATIO_MAX
+                  ? `Overall the model moved beyond rounding noise: ${ratioWord(f.klOverFloor)} times as much as under the same test ${smallerWord(r.k, r.kFloor)} smaller.`
+                  : `Overall the model moved no more than rounding noise: ${ratioWord(f.klOverFloor)} times as much as under the same test ${smallerWord(r.k, r.kFloor)} smaller.`
+                : r.kFloor != null
+                  ? `The same test ${smallerWord(r.k, r.kFloor)} smaller moved nothing measurable, so the level of rounding noise could not be read.`
+                  : ""}
+            </p>
+          ) : null,
+        )
       )}
-      <p style={{ margin: 0, fontSize: "18px", maxWidth: "820px" }}>
-        {silenced
-          ? "Silenced in the vault, the neuron writes nothing, so it has no label to test."
-          : nLens != null && nEye != null
-            ? `${cap(countWord(nLens))} of the lens’s ${numberWord(labelK)} words and ${countWord(nEye)} of the naked eye’s are among the ${causalK === 100 ? "hundred" : String(causalK)} words whose odds this test raised most, on its ${faceWord(opened)} face.`
+      {!silenced ? (
+        <p style={{ margin: 0, fontSize: "18px", maxWidth: "820px" }}>
+          {nLens != null && nEye != null
+            ? oneReading
+              ? `${cap(countWord(nLens))} of the label’s ${numberWord(labelK)} words ${nLens === 1 ? "is" : "are"} among the ${hundred} words whose odds this test raised most, on its ${faceWord(opened)} face; at this layer the lens and the naked eye give one label.`
+              : `${cap(countWord(nLens))} of the lens’s ${numberWord(labelK)} words and ${countWord(nEye)} of the naked eye’s are among the ${hundred} words whose odds this test raised most, on its ${faceWord(opened)} face.`
             : null}
-        {!silenced && gate.heldBack ? ` The label itself is held back from this page (${heldTag(gate).replace(/^held back · /, "")}); the apparatus keeps its words.` : null}
-        {tracked && chosen ? ` The word the model chose here, ${wp(chosen.token)}, became ${timesWord(tracked.dlogprob)} times as likely.` : null}
-      </p>
+          {gate.heldBack ? ` The label itself is held back from this page (${heldTag(gate).replace(/^held back · /, "")}); the apparatus keeps its words.` : null}
+          {tracked && chosen ? ` ${followedLead(chosen)} became ${timesWord(tracked.dlogprob)} times as likely.` : null}
+        </p>
+      ) : null}
       {tooStrong.length ? (
         <p className="error-line" style={{ margin: 0 }}>
           This test was too strong to read straight: on its {andList(tooStrong.map(([face]) => faceWord(face)))} face
@@ -2243,12 +2303,12 @@ const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: { id: number; t
           {scopeLine}
         </Rubric>
       ) : null}
-      <Rubric style={{ maxWidth: "820px" }}>
-        In the study, over 36 texts, a label with three of its ten words among the hundred counted as sound; that bar was set on tests{" "}
-        {k10 ? "six times this size" : r.k === 60 ? "of this size" : `at k = 60 (this one was k = ${sig(r.k)})`}, and {k10 ? "at this size" : "at k = 10"} the share of a
-        lens label’s ten words among the hundred ran {late} at layers 41 to 56 (N1V code audit).
-        {given ? " One word-piece is a smaller test than 36 texts; only the test on the study’s 36 texts compares with its figures." : ""}
-      </Rubric>
+      {!silenced ? (
+        <Rubric style={{ maxWidth: "820px" }}>
+          {barLine}
+          {given ? " One word-piece is a smaller test than 36 texts; only the test on the study’s 36 texts compares with its figures." : ""}
+        </Rubric>
+      ) : null}
     </div>
   );
 };
@@ -2279,12 +2339,16 @@ const CausalCheckBlock: React.FC<{ m: Model; ask: CausalAsk }> = ({ m, ask }) =>
   const send = (contexts: CausalContexts) =>
     causalCheck(m.idx, m.neuron, m.focusFace, { contexts, k: ask.k, write: ask.write, scaleRef: ask.scaleRef });
   const readAt = m.readAt ? `${m.readAt}${m.inReply}` : "";
+  const noteId = `causal-note-${m.idx}-${m.neuron}`;
   const rows = (["given", "study"] as const).map((contexts) => {
     const entry = contexts === "given" ? givenEntry : studyEntry;
     const why = entry && (entry.data || entry.sent) ? causalStaleWhy(entry, contexts, s, editsNow) : null;
     const r = entry?.data && !why ? parseCausalCheck(entry.data) : null;
     const chosenId = Array.isArray(entry?.sent?.track_ids) ? (entry!.sent!.track_ids as number[])[0] : undefined;
-    const chosen = contexts === "given" && s?.chosen && s.chosen.id === chosenId ? { id: s.chosen.id, token: s.chosen.token } : null;
+    const chosen: FollowedPiece | null =
+      contexts === "given" && s?.chosen && s.chosen.id === chosenId
+        ? { id: s.chosen.id, token: s.chosen.token, source: s.chosen.source, endMark: s.chosen.endMark }
+        : null;
     return { contexts, entry, why, r, chosen };
   });
 
@@ -2303,33 +2367,59 @@ const CausalCheckBlock: React.FC<{ m: Model; ask: CausalAsk }> = ({ m, ask }) =>
         {askIsDefault(ask)
           ? "The test turns the neuron up by ten times the strongest it fired on the study’s 36 texts, the gentle size the study’s second look advised."
           : `The apparatus has set the next test to ${sig(ask.k)} times the strongest the neuron fired on ${ask.scaleRef === "this_text" ? "the text read (a test on the study’s texts is still sized on them)" : "the study’s 36 texts"}${ask.write === "frozen_norm" ? ", written after the layer’s norm" : ""}; the study’s second look advised ten times, on its 36 texts.`}{" "}
-        A label passes when its words are among those whose odds rose most; the study also asks that it sit at layer 41 or above and that the
-        lens and the naked eye agree.
+        The test counts how many of the label’s ten words are among the hundred whose odds rose most; the study counted a label as sound at
+        three of ten, over its 36 texts, and also asks that it sit at layer 41 or above and that the lens and the naked eye agree.
       </Rubric>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 20px", alignItems: "center" }}>
-        <button className="btn-primary" type="button" disabled={!canGiven || !!givenEntry?.pending} onClick={() => send("given")}>
+        <button
+          className="btn-primary"
+          type="button"
+          disabled={!canGiven || !!givenEntry?.pending}
+          aria-describedby={!canGiven ? noteId : undefined}
+          onClick={() => send("given")}
+        >
           {givenEntry?.pending ? "testing…" : "test it at this word-piece"}
         </button>
-        <button className="btn-ghost" type="button" disabled={!canStudy || !!studyEntry?.pending} onClick={() => send("study")}>
+        <button
+          className="btn-ghost"
+          type="button"
+          disabled={!canStudy || !!studyEntry?.pending}
+          aria-describedby={!canStudy ? noteId : undefined}
+          onClick={() => send("study")}
+        >
           {studyEntry?.pending ? "testing on the 36 texts…" : "test it on the study’s 36 texts"}
         </button>
-        {!open ? (
-          <Missing what="the instrument answers when the server is running" />
-        ) : health === null ? (
-          <Missing what="cannot tell yet whether the server offers it" />
-        ) : !card ? null : !fits ? (
-          <span className="error-line">
-            The size set in the apparatus is out of range: k must be more than {card.k_floor} and at most {card.k_max}.
-          </span>
-        ) : !live ? (
-          <span style={{ fontSize: "16px", color: MUTED }}>
-            <Missing what="needs a live sighting" /> for the first; the second needs none
-          </span>
-        ) : null}
+        <span id={noteId}>
+          {!open ? (
+            <Missing what="the instrument answers when the server is running" />
+          ) : health === null ? (
+            <Missing what="cannot tell yet whether the server offers it" />
+          ) : !card ? null : !fits ? (
+            <span className="error-line">
+              The size set in the apparatus is out of range: k must be more than {card.k_floor} and at most {card.k_max}.
+            </span>
+          ) : !live ? (
+            <span style={{ fontSize: "16px", color: MUTED }}>
+              <Missing what="needs a live sighting" /> for the first; the second needs none
+            </span>
+          ) : null}
+        </span>
       </div>
       {open && health !== null && !card ? (
         <NotYet style={{ margin: 0 }}> This server does not offer the test; a newer one does (its health names causal_check).</NotYet>
       ) : null}
+      {/* a test takes seconds (the study's texts, longer): say when it is under way and when it has come back */}
+      <p className="visually-hidden" role="status">
+        {rows
+          .flatMap(({ contexts, entry, why, r }) => {
+            const which = contexts === "given" ? "The test at this word-piece" : "The test on the study’s texts";
+            if (entry?.pending) return [`${which}: testing…`];
+            if (why) return [];
+            if (entry?.error) return [`${which} did not come back.`];
+            return r ? [`${which} came back; its result follows.`] : [];
+          })
+          .join(" ")}
+      </p>
       {rows.map(({ contexts, entry, why, r, chosen }) => (
         <React.Fragment key={contexts}>
           {why ? (
@@ -2460,7 +2550,12 @@ const CausalDetail: React.FC<{ m: Model; r: CausalCheck; why: string | null; sen
       </span>
       <span>
         <b>run</b>: {r.forwards ?? "?"} forward{r.forwards === 1 ? "" : "s"}
-        {r.slotsPerForward != null ? `, ${r.slotsPerForward} pushed row${r.slotsPerForward === 1 ? "" : "s"} a forward` : ""}; untouched rows
+        {r.slotsPerForward && r.slotsPerForward.length
+          ? r.slotsPerForward.length === 1
+            ? `, ${r.slotsPerForward[0]} pushed row${r.slotsPerForward[0] === 1 ? "" : "s"} in it`
+            : `, pushed rows a forward: ${r.slotsPerForward.join(", ")} (split over separate forwards, which the server does only after running out of memory; each forward kept its own untouched row)`
+          : ""}
+        ; untouched rows
         identical across forwards: {r.baseRowsIdentical == null ? "?" : r.baseRowsIdentical ? "yes" : "no"}; vault edits in force:{" "}
         {r.vaultEdits.length ? r.vaultEdits.map((p) => `#${p}`).join(", ") : "none"}; read without any nudge
         {r.steered === false ? " (steered: false)" : ""}
@@ -2474,7 +2569,7 @@ const CausalDetail: React.FC<{ m: Model; r: CausalCheck; why: string | null; sen
             className="btn-ghost"
             type="button"
             onClick={() =>
-              downloadJson(`causal-check-L${m.layerNo}-n${m.neuron}-${r.contexts}.json`, { request: sent ?? null, reply: r.raw })
+              downloadJson(`causal-check-layer${m.layerNo}-neuron${m.neuron}-${r.contexts}.json`, { request: sent ?? null, reply: r.raw })
             }
           >
             download the test
@@ -2585,7 +2680,15 @@ const CausalApparatus: React.FC<{ m: Model; ask: CausalAsk; setAsk: (a: Partial<
       <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: "6px", minWidth: 0 }}>
         <span>
           {ids
-            ? `The test at this word-piece sends this sighting’s exact word-pieces, ${ids.length} ids up to the one read here, and pushes the last of them; no template is applied and nothing is tokenized again. It follows the word the model chose here.`
+            ? `The test at this word-piece sends this sighting’s exact word-pieces, ${ids.length} ids up to the one read here, and pushes the last of them; no template is applied and nothing is tokenized again. ${
+                s?.chosen?.source === "given"
+                  ? "It follows the word-piece given here."
+                  : s?.chosen?.endMark
+                    ? "It follows the mark the model wrote here, where writing stopped."
+                    : s?.chosen
+                      ? "It follows the word the model chose here."
+                      : "It follows no word-piece: none was chosen here."
+              }`
             : "The test at a word-piece needs a live sighting’s exact ids; the recorded sighting keeps none."}{" "}
           The answer comes back as {"{"}"type": "causal_check", "data": …{"}"}; a refusal, in plain words, as a recoverable error naming the
           contexts (ARCHITECTURE §4.5).

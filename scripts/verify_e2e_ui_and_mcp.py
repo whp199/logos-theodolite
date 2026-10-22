@@ -399,6 +399,14 @@ def assert_causal_reply(r: Any, sent: Dict[str, Any], lens: Dict[str, Any], mode
         assert (f["split_half_rho"] is None) == (contexts == "given"), f"{what} face {face}: split-half {f['split_half_rho']}"
         assert f["kl_mean"] > r["floor"][face]["kl_mean"], (
             f"{what} face {face}: KL {f['kl_mean']} not above the floor's {r['floor'][face]['kl_mean']}")
+        # the figure behind the folio's "beyond / no more than rounding noise": this face's mean KL over its own floor's
+        fl_kl = r["floor"][face]["kl_mean"]
+        if fl_kl > 0:
+            want = f["kl_mean"] / fl_kl
+            assert f["kl_over_floor"] is not None and abs(f["kl_over_floor"] - want) <= 1e-3 * want, (
+                f"{what} face {face}: kl_over_floor {f['kl_over_floor']}, want {want}")
+        else:
+            assert f["kl_over_floor"] is None, f"{what} face {face}: kl_over_floor {f['kl_over_floor']} over a floor of 0"
         assert f["linear"]["linearity"] is not None and f["linear"]["linearity"] > 0, f"{what}: {f['linear']}"
         lo = f["label_overlap"]
         assert lo["label_k"] == 10 and lo["causal_k"] == 100, what

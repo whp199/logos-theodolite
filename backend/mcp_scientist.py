@@ -545,8 +545,8 @@ async def causal_spot_check(
         raise ValueError("floor and chat are true or false.")
     if not _number(k) or not 0 < float(k) <= cc.K_MAX:
         raise ValueError(
-            f"k is {k!r}: the push is k times the neuron's strongest firing, and k must be more than 0 and at most "
-            f"{cc.K_MAX:g} (the study pushed at 10, 60 and 180)."
+            f"k is {k!r}: the test turns the neuron up by k times its strongest firing, and k must be more than 0 and "
+            f"at most {cc.K_MAX:g} (the study tested at 3, 10, 60 and 180)."
         )
     k = float(k)
     if floor and k <= cc.K_FLOOR:
@@ -619,8 +619,8 @@ async def causal_spot_check(
         if not max_abs > 0.0:
             where = "the study's 36 texts" if scale_ref == "study" else "this text"
             raise ValueError(
-                f"Neuron {i} of layer {l} never fired on {where} (its strongest firing is 0), so there is nothing to "
-                "size the push by."
+                f"Neuron {i} of layer {l + 1} (as the pages count; index {l}) never fired on {where} (its strongest "
+                "firing is 0), so there is nothing to size the test by."
             )
         deltas = [k * max_abs, -k * max_abs]
         if floor:

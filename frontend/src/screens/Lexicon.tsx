@@ -1228,7 +1228,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             column scaled by the post-feed-forward norm weight, the sign naming the pole; <M>EDGES NEAREST</M> runs the
             same query; <M>DESCRIBE POLE</M> decodes both poles by lens and naked eye. Also as the MCP tools{" "}
             <M>query_larql_vault</M>, <M>inspect_pole</M>, <M>trace_downstream_readers</M>,{" "}
-            <M>test_motif_hypothesis</M>, and <M>causal_spot_check</M> for <LexLink to="test">a test</LexLink>. Named after LARQL / VINDEX3 (chrishayuk) [10]; a projected contribution, not a
+            <M>test_motif_hypothesis</M>, and <M>causal_spot_check</M> for <LexLink to="test">a test of a label</LexLink>. Named after LARQL / VINDEX3 (chrishayuk) [10]; a projected contribution, not a
             counterfactual (REPORT §3.3). Proposed: activation contexts stored per pole (REPORT §3.4, bug 7).
           </EntryApparatus>
         </Entry>
@@ -1236,20 +1236,24 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         <Entry
           id="test"
           aliases={ALIASES.test}
-          head="a test"
+          head="a test of a label"
           tech="causal spot-check · the study’s N1A, gently, at k = 10"
         >
           <Body>
             Put a neuron’s label to the test. The instrument turns the neuron up at one word-piece, once on each face,
-            keeps an untouched copy of the same reading beside it, and lists the words whose odds rose and fell most. A
-            label passes when its words are among those whose odds rose most. The test reads the model’s own odds, not
-            the lens, and nothing of it stays: the model answers as before.
+            keeps an untouched copy of the same reading beside it, and lists the words whose odds rose and fell most.
+            Then it counts how many of the label’s ten words are among the hundred whose odds rose most. The test reads
+            the model’s own odds, not the lens, and nothing of it stays: the model answers as before. It is not the
+            folio’s guess put to the test, which reads how strongly the neuron fires on sentences you write and turns
+            nothing up.
           </Body>
           <Note>
-            The study tested 384 faces this way, each on 36 texts of its own: at layers 41–58 a label’s words were among
-            those that rose far more often than chance, and at layers 11–31 no more often. A neuron’s folio can test at
-            the word-piece of your sighting, or on the study’s 36 texts; only the second compares with the study’s
-            figures.
+            The study tested 384 faces on the same 36 texts, turned up six times as hard as the folio’s gentle test: at
+            layers 41–58 a label’s words were among those that rose far more often than chance, and at layers 21 and 31
+            no more often; at layer 11 the effect was too small to measure (N1V code audit, F2). It counted a label as
+            sound when three of its ten words were among the hundred. A later look at the gentle size, on six layers,
+            found the same split. A neuron’s folio can test at the word-piece of your sighting, or on the study’s 36
+            texts; only the second compares with the study’s figures.
           </Note>
           <Rubric>
             Read a test’s count as what that one test showed, not as a verdict on the label: one word-piece speaks for
@@ -1257,7 +1261,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             does when turned up, not what it does when it fires on its own.
           </Rubric>
           <Onward to={href.neuron(FOLIO_EXAMPLE.layerNo, FOLIO_EXAMPLE.neuron)}>put a label to the test on a neuron’s folio →</Onward>
-          <EntryApparatus title="a test" label="Apparatus for a test">
+          <EntryApparatus title="a test of a label" label="Apparatus for a test of a label">
             a<sub>i</sub> ← a<sub>i</sub> ± k · max|a<sub>i</sub>| at the read position p only (a pre-hook on down_proj),
             k = 10 by default (erratum E47), max|a| over the study’s 36 texts (12 chats, 12 passages of prose, 12 of
             code; every word-piece after the start mark); or the frozen-norm write, the same first-order change added

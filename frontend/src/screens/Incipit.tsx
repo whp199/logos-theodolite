@@ -1118,7 +1118,9 @@ const BeforeYouSetOut: React.FC = () => {
             layer 41, gated by that agreement (§3.5; bug 7). Now done for the layer and the agreement: the server marks every label
             it sends (<span className="mono">label_check</span>, the word-pieces both readings share in their first ten, and{" "}
             <span className="mono">label_gate</span>, the rule), and the pages hold a label back below layer 41, and where the two
-            share none of ten (the cut is the instrument’s), keeping it in the apparatus; stored activation contexts are not built.{" "}
+            share none of ten (the cut is the instrument’s), keeping it in the apparatus. The causal spot-check is done in part: a
+            neuron’s folio puts one label at a time to the test when asked (<span className="mono">causal_spot_check</span>), and
+            nothing tests every label. Stored activation contexts are not built.{" "}
             <a href={href.vault()}>the vault</a>
           </dd>
           <dt>bearing</dt>

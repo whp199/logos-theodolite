@@ -654,6 +654,33 @@ def check_tool(rt: TheodoliteRuntime, vault: LarqlVaultEngine) -> Dict[str, Any]
               "the clean model's max|a| was not reused after ROLLBACK")
         check(r4["faces"]["+"]["rises"] == r["faces"]["+"]["rises"], "the same check twice differs")
 
+        # a silenced neuron (a DELETE in force leaves its column zero, larql_vault.py): turning it up writes nothing, so
+        # nothing moves beyond the untouched row, its labels have no P@10, and there is no floor ratio (the folio then
+        # gives no words that "rose most" in its main reading)
+        down = cc.language_model(rt.hf_model).layers[L].mlp.down_proj
+        col = down.weight[:, I].clone()
+        with torch.no_grad():
+            down.weight[:, I] = 0
+        vault.active_patches.append(PatchOperationRecord(
+            patch_id=42, op_type="DELETE", layer_idx=L, neuron_idx=I, polarity=1.0, target_concept="", strength=1.0,
+            statement="DELETE (stand-in)", timestamp=time.time(), orig_norm=1.0, new_norm=0.0))
+        try:
+            rd = tool(layer=L, neuron_idx=I, token_ids=ids)
+        finally:
+            with torch.no_grad():
+                down.weight[:, I] = col
+            vault.active_patches.clear()
+        check(rd["vault_edits"] == [42], f"the DELETE is not in force: {rd['vault_edits']}")
+        for face in ("+", "-"):
+            fd = rd["faces"][face]
+            lo = fd["label_overlap"]
+            check("writes_nothing" in lo["label_check"]["reasons"] and lo["label_check"]["held_back"] is True
+                  and lo["lens"]["p10"] is None and lo["naked_eye"]["p10"] is None,
+                  f"silenced face {face}: label {lo['label_check']} p10 {lo['lens']['p10']} {lo['naked_eye']['p10']}")
+            moved = [abs(w["dlogprob"]) for w in fd["rises"] + fd["falls"] + fd["tracked"]]
+            check(max(moved) <= 1e-6 and abs(fd["kl_mean"]) <= 1e-9 and fd["kl_over_floor"] is None,
+                  f"silenced face {face}: moved {max(moved)}, KL {fd['kl_mean']}, over floor {fd['kl_over_floor']}")
+
         # by prompt, study mode, this text
         rp = tool(layer=L, neuron_idx=I, prompt="The cat sat on the", chat=True, polarity=-1)
         check(rp["token_ids_given"] is False and rp["prompt"].startswith("<bos>") and rp["polarity"] == "-"
@@ -663,6 +690,15 @@ def check_tool(rt: TheodoliteRuntime, vault: LarqlVaultEngine) -> Dict[str, Any]
               and len(rs["act_here_by_context"]) == 36 and rs["act_here"] is None and rs["prompt"] is None
               and rs["base_top"] is None and rs["study_texts"] == cc.STUDY_TEXTS_SOURCE and rs["polarity"] == "+",
               "study mode's echo")
+        # the figure behind the folio's "beyond / no more than rounding noise": on the study's texts the stand-in's floor
+        # KL is above 0, so the ratio is there, each face over its own floor's mean KL
+        for face in ("+", "-"):
+            fs, fl = rs["faces"][face], rs["floor"][face]
+            want = _ratio(fs["kl_mean"], fl["kl_mean"])
+            got = fs["kl_over_floor"]
+            check(want is not None and got is not None and abs(got - want) <= 1e-3 * abs(want)
+                  and abs(got - float(torch.tensor(fs["kl_by_context"]).mean()) / fl["kl_mean"]) <= 2e-3 * abs(got),
+                  f"study face {face}: kl_over_floor {got}, want {want} (KL {fs['kl_mean']}, floor {fl['kl_mean']})")
         f = rs["faces"]["+"]
         check(isinstance(f["split_half_rho"], float) and len(f["kl_by_context"]) == 36
               and len(f["linear"]["by_context"]["linearity"]) == 36 and f["linear"]["linearity_q10"] <= f["linear"]["linearity"],

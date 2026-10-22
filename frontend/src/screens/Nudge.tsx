@@ -2039,8 +2039,9 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
               <span className="mono-wrap">
                 {"{"}"action": "sweep", "payload": {"{"}"prompt": {q(question)}, "steering": {"{"}…{"}"} {"}"} {"}"}
               </span>{" "}
-              (<span className="mono">server.py:574–577</span>). None of the four MCP tools (inspect_pole, trace_downstream_readers,
-              test_motif_hypothesis, query_larql_vault) takes a nudge.
+              (<span className="mono">server.py:574–577</span>). None of the five MCP tools (inspect_pole, trace_downstream_readers,
+              test_motif_hypothesis, causal_spot_check, query_larql_vault) takes a nudge; causal_spot_check reads with none
+              (steered: false).
             </dd>
             <dt>how it writes</dt>
             <dd className="num">

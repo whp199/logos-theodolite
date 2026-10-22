@@ -1055,8 +1055,8 @@ export const chosenOf = (s: Sighting | null | undefined): ChosenPiece | null => 
 /** The checkpoint's mark that ends the model's turn (106), and its mark that ends the text (1). */
 const TURN_END = { id: 106, token: "<turn|>" } as const;
 const TEXT_END = { id: 1, token: "<eos>" } as const;
-const isTurnEnd = (id: number | null | undefined, token?: string | null) => id === TURN_END.id || token === TURN_END.token;
-const isTextEnd = (id: number | null | undefined, token?: string | null) => id === TEXT_END.id || token === TEXT_END.token;
+export const isTurnEnd = (id: number | null | undefined, token?: string | null) => id === TURN_END.id || token === TURN_END.token;
+export const isTextEnd = (id: number | null | undefined, token?: string | null) => id === TEXT_END.id || token === TEXT_END.token;
 
 /**
  * A stop mark (a piece with endMark), in plain words, by its id or its text. Writing stops at any of the checkpoint's

@@ -989,6 +989,7 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
           set((s) => ({
             causalChecks: { ...s.causalChecks, [key]: { ...s.causalChecks[key], pending: false, data: d, error: null } },
           }));
+          resyncEditsIfBehind(d);
           break;
         }
         case "downstream_readers": {
@@ -1205,7 +1206,10 @@ export const useTheodoliteStore = create<TheodoliteState>((set, get) => ({
       return;
     }
     postJson("/api/scientist/causal_check", body)
-      .then((data) => set((x) => ({ causalChecks: { ...x.causalChecks, [key]: { ...x.causalChecks[key], pending: false, data, error: null } } })))
+      .then((data) => {
+        set((x) => ({ causalChecks: { ...x.causalChecks, [key]: { ...x.causalChecks[key], pending: false, data, error: null } } }));
+        resyncEditsIfBehind(data);
+      })
       .catch((e) =>
         set((x) => ({
           causalChecks: { ...x.causalChecks, [key]: { ...x.causalChecks[key], pending: false, data: null, error: String(e?.message ?? e) } },
@@ -1345,9 +1349,32 @@ function recordLarql(e: LarqlEntry, silent = false) {
   } else if (d && d.status === "rolled_back") activeEdits = [];
   useTheodoliteStore.setState({
     larqlLog: silent ? st.larqlLog : [e, ...st.larqlLog].slice(0, 50),
-    larqlPending: e.via === "ws" ? wsQueries.some((q) => !q.silent) : false,
+    // a silent resync over HTTP leaves a statement of the reader's own still pending as it was
+    larqlPending: e.via === "ws" ? wsQueries.some((q) => !q.silent) : silent ? st.larqlPending : false,
     activeEdits,
   });
+}
+
+/**
+ * A causal check names the vault edits it was read under (`vault_edits`, the server's edits in force). When they differ
+ * from this page's ledger (an edit made over MCP since the last sighting, say), the ledger is behind or ahead of the
+ * server: ask the vault for it again, silently, as the socket does when it opens, so the folio judges a test against the
+ * edits truly in force.
+ */
+function resyncEditsIfBehind(d: unknown) {
+  const sent = d && typeof d === "object" ? (d as Record<string, unknown>).vault_edits : undefined;
+  if (!Array.isArray(sent)) return;
+  const now = editIdsOf(useTheodoliteStore.getState().activeEdits);
+  const a = [...sent].map(Number).sort((p, q) => p - q);
+  if (a.length === now.length && [...now].sort((p, q) => p - q).every((v, i) => v === a[i])) return;
+  if (wsOpen()) {
+    wsQueries.push({ query: "DESCRIBE", silent: true });
+    ws!.send(JSON.stringify({ action: "larql", query: "DESCRIBE" }));
+    return;
+  }
+  postJson("/api/larql", { query: "DESCRIBE" })
+    .then((data) => recordLarql({ id: ++larqlId, query: "DESCRIBE", ok: true, data, error: null, at: Date.now(), via: "http", failure: null }, true))
+    .catch(() => undefined); // the ledger stays as it was; the folio then sets the test aside, which errs the safe way
 }
 
 /** The vault keeps one overlay per neuron (a new edit replaces the old) but a record per statement: keep the last. */

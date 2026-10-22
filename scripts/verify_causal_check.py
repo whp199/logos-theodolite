@@ -16,8 +16,10 @@ B. N1V's linear-regime re-test (study mode, k = 10, the 24 N1 neurons, both face
    0.550 at k = 60 (within 0.03 and 0.06; experiments/results/N1V_audit_01_postnorm.json.full.json diag["20"]).
 C. The premise, bit for bit on this path: a zero push is torch.equal to the base row and its KL exactly 0, in given
    mode (a short text, and 2048 word-pieces) and in study mode (180 right-padded rows); given mode's base row agrees
-   with the model's own next-word choice; the two writes at k = 10 share at least 7 of n5313's ten top rises on a
-   she/he text; the floor's KL is below the push's.
+   with the model's own next-word choice; given mode over its frozen prefix cache agrees with a whole-text read of
+   every row, on the short text and at 2048 pieces (past the 1024 window): the untouched rows within KL 0.05, c by
+   Spearman at least 0.9, at least 7 of ten top rises shared, the push's KL within 10%; the two writes at k = 10
+   share at least 7 of n5313's ten top rises on a she/he text; the floor's KL is below the push's.
 D. 2048 word-pieces in given mode through the server's WebSocket (in process): it completes, reports its forwards,
    the socket answers the next action, and torch's peak stays at or below the 2048 sweep's own (25.5 GiB, the comment
    above MAX_SWEEP_POSITIONS) plus 0.5 GiB.
@@ -60,6 +62,11 @@ from backend.larql_vault import LarqlVaultEngine  # noqa: E402
 RESULTS = ROOT_DIR / "experiments" / "results"
 SWEEP_2048_PEAK_GIB = 25.5  # torch's own peak of the worst sweep at 2048 (engine_runtime, above MAX_SWEEP_POSITIONS)
 PEAK_MARGIN_GIB = 0.5
+# given mode over the frozen prefix cache against a whole-text read of every row: the untouched rows may differ by batch
+# shape alone (rows of different batch shapes differed by KL up to 0.014, backend/causal_check.py's header), so a few
+# times that; a prefix read wrongly (a trimmed window, a wrong mask) moves the base row by far more
+PREFIX_BASE_KL_MAX = 0.05
+PREFIX_C_RHO_MIN = 0.9
 
 failures: List[str] = []
 passed = 0
@@ -190,6 +197,34 @@ def part_c(rt: TheodoliteRuntime) -> None:
             klz = float(cc.kl(r.steered[0], r.base).abs().max())
             check(same and klz == 0.0, f"{label} ({write}): zero push == base bit for bit, KL {klz}")
             torch.cuda.empty_cache()
+    # given mode reads through the frozen prefix cache (causal_check._frozen_prefix): against an ordinary read of the
+    # whole text for every row, on the short text and past the 1024 window (2048 pieces), the untouched rows agree to
+    # within batch-shape noise and the push moves the same words (one push, so two rows, as the 2048 sweep holds)
+    summary["C_prefix"] = {}
+    for label in ("given, short", "given, 2048"):
+        ids = cases[label]["token_ids"]
+        try:
+            rk = cc.run_check(lm, l, i, [10 * 6.53], "activation", w_down, wp, eps, rt.lm_head_weight, token_ids=ids)
+            torch.cuda.empty_cache()
+            rw = cc.run_check(lm, l, i, [10 * 6.53], "activation", w_down, wp, eps, rt.lm_head_weight, token_ids=ids,
+                              kv_cache=False)
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            check(False, f"{label}: the whole-text read for the prefix comparison ran out of memory")
+            continue
+        base_kl = float(cc.kl(rk.base, rw.base).abs().max())
+        ck, cw = (rk.steered[0] - rk.base)[0], (rw.steered[0] - rw.base)[0]
+        rho = cc.spearman(ck, cw)
+        shared10 = len(set(cc.top_ids(ck, 10)) & set(cc.top_ids(cw, 10)))
+        kl_k, kl_w = float(cc.kl(rk.steered[0], rk.base)[0]), float(cc.kl(rw.steered[0], rw.base)[0])
+        summary["C_prefix"][label] = {"base_kl": base_kl, "c_spearman": rho, "top10_shared": shared10,
+                                      "push_kl_cached": kl_k, "push_kl_whole": kl_w}
+        check(base_kl <= PREFIX_BASE_KL_MAX, f"{label}: prefix-cache base row vs whole text, KL {base_kl:.2e}")
+        check(rho >= PREFIX_C_RHO_MIN and shared10 >= 7,
+              f"{label}: prefix-cache c vs whole text, Spearman {rho:.4f}, {shared10} of ten top rises shared")
+        check(abs(kl_k - kl_w) <= 0.1 * max(kl_w, 1e-9), f"{label}: the push's KL {kl_k:.4g} cached vs {kl_w:.4g} whole")
+        del rk, rw
+        torch.cuda.empty_cache()
     # the base row's top word-piece is the model's own choice (its bf16 logits, one forward of the whole text)
     r = tool(layer=l, neuron_idx=i, token_ids=short)
     with torch.no_grad():

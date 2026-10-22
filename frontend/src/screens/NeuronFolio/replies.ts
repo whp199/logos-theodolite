@@ -288,9 +288,13 @@ export interface CausalCheck {
   floor: { pos: CausalFloor | null; neg: CausalFloor | null } | null;
   baseTop: { tokenId: number; token: string; logprob: number | null }[] | null;
   forwards: number | null;
-  slotsPerForward: number | null;
+  /** how many pushed rows each forward held, in order ([4] for one forward; more, split, after running out of memory);
+   * null when not sent */
+  slotsPerForward: number[] | null;
   baseRowsIdentical: boolean | null;
   vaultEdits: number[];
+  /** the reply named the vault edits it was read under (vault_edits was a list) */
+  vaultEditsSent: boolean;
   timing: { scaleMs: number | null; checkMs: number | null; totalMs: number | null } | null;
   raw: unknown;
 }
@@ -398,9 +402,10 @@ export function parseCausalCheck(d: unknown): CausalCheck | null {
         })
       : null,
     forwards: num(o.forwards),
-    slotsPerForward: num(o.slots_per_forward),
+    slotsPerForward: Array.isArray(o.slots_per_forward) ? nums(o.slots_per_forward) : null,
     baseRowsIdentical: typeof o.base_rows_identical === "boolean" ? o.base_rows_identical : null,
     vaultEdits: nums(o.vault_edits),
+    vaultEditsSent: Array.isArray(o.vault_edits),
     timing: t ? { scaleMs: num(t.scale_ms), checkMs: num(t.check_ms), totalMs: num(t.total_ms) } : null,
     raw: d,
   };

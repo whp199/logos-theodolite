@@ -20,12 +20,13 @@ export interface IndexItem {
  * stays as a cross-reference, and its anchor stays `thinking`, so older links still land on it. Since the canvas: how it
  * writes (with "sampler" as a cross-reference), the seed, a sighting of each word-piece, and the word it chose and its
  * likeliest; and write size, now that the instrument lists each layer's neurons by it. Since the folio puts a label to
- * the test: a test, with the specialist's "causal spot-check" as a cross-reference.
+ * the test: a test of a label, with the specialist's "causal spot-check" as a cross-reference (named so, and not "a
+ * test", since the folio's section v puts a guess to the test too, a different thing).
  */
 export const INDEX: IndexItem[] = [
   { label: "apparatus", id: "apparatus", section: "iii" },
   { label: "bearing and elevation", id: "bearing", section: "iii" },
-  { label: "causal spot-check", see: "a test", id: "test", section: "iv" },
+  { label: "causal spot-check", see: "a test of a label", id: "test", section: "iv" },
   { label: "double-negative regime", id: "double-negative", section: "ii" },
   { label: "edit, an", id: "edit", section: "iv" },
   { label: "gathering", id: "gathering", section: "ii" },
@@ -49,7 +50,7 @@ export const INDEX: IndexItem[] = [
   { label: "sighting of each word-piece, a", id: "each-word-piece", section: "iii" },
   { label: "stream strength", id: "stream", section: "ii" },
   { label: "strength", id: "strength", section: "ii" },
-  { label: "test, a", id: "test", section: "iv" },
+  { label: "test of a label, a", id: "test", section: "iv" },
   { label: "threads", id: "threads", section: "ii" },
   { label: "through the lens", id: "thinking", section: "iii" },
   { label: "vault, the", id: "vault", section: "iv" },
