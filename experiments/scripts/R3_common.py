@@ -194,9 +194,10 @@ MIN_DEV_PAIRS = 20                                    # fewer dev pairs in all: 
 # Every GPU job runs with the server stopped and caps its own memory at JOB_CAP_GB (torch's per-process fraction),
 # so that a configuration that would need more fails as an out-of-memory error inside the job, never by starving
 # another process. The budget is what the user approves for the whole fit; R3_00's projection stops the run for an
-# amendment when it is over, or while no budget is approved. [NOT YET APPROVED]: the design recommends 24 GPU-hours.
+# amendment when it is over, or while no budget is approved. Approved by the user on 22 October 2026: 8 GPU-hours
+# (the design had recommended 24; R3_PREREG.md D30, §10.2, A15).
 JOB_CAP_GB = 24.0
-APPROVED_GPU_HOURS: Optional[float] = None
+APPROVED_GPU_HOURS: Optional[float] = 8.0
 B1_BOUND_HOURS = 75.0                                 # 64 x 5376 x ~0.79 s (R1_05_total_0.json): rows one at a time
 PILOT_MAX_MINUTES = 30.0
 PILOT_N_PROMPTS = 2                                   # WikiText fit prompts 0 and 1; no evaluation prompt is read

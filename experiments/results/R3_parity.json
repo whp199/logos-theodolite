@@ -1,6 +1,6 @@
 {
  "schema": "R3_parity/1",
- "written_at": "2026-10-21T23:42:11",
+ "written_at": "2026-10-22T18:11:59",
  "jpp_lens_commit": "d7efc0de372e20589e899188c0cfe8434acc63ec",
  "tolerance": "max |R3 - jpp| <= 1e-05 * max(1, max |jpp|)",
  "spec": {

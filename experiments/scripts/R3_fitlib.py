@@ -672,7 +672,14 @@ def fit_weights(dec: Decoder, experts: Dict[int, Tensor], residuals: Residuals, 
     """Per layer, jpp_lens's ExpertWeightingFitter (imported) on the fitting items: returns its ExpertWeighting.
     `experts` is {layer: [E, F, N]} (fp16 as stored, cast per layer to fp32 by the fitter)."""
     jf = _jpp().fitter
-    cfg = types.SimpleNamespace(d_model=dec.d_model, hf_model_name=dec.name, checkpoint_name="R3 experts")
+    # jpp_lens's identity check compares the loaded model's config.name_or_path with the experts' hf_model_name.
+    # R3 loads the 31B from its pinned local snapshot (C.MODEL_DIR), so name_or_path is that directory while
+    # dec.name is C.MODEL_ID (D35): that one pairing is accepted, as the snapshot's own name; any other differs.
+    hf_name = dec.name
+    loaded = getattr(getattr(dec._hf_model, "config", None), "name_or_path", "") or None
+    if loaded is not None and loaded != hf_name and hf_name == C.MODEL_ID and Path(loaded) == C.MODEL_DIR:
+        hf_name = loaded
+    cfg = types.SimpleNamespace(d_model=dec.d_model, hf_model_name=hf_name, checkpoint_name="R3 experts")
     ej = types.SimpleNamespace(experts_L_dict_EFN=dict(experts), config=cfg)
     fitter = jf.ExpertWeightingFitter(dec, ej, residuals, excluded_token_ids=list(excluded))
     return fitter.fit(sorted(layers), item_names=list(fitting_names),

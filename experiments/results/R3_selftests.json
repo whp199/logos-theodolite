@@ -3,23 +3,14 @@
  "scripts": {
   "R3_lrp.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_lrp.py --selftest",
-   "at": "2026-10-22T00:41:46",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T11:21:14",
+   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 2.0,
+   "seconds": 1.9,
    "ok": true,
-   "n_checks": 22,
+   "n_checks": 33,
    "n_failed": 0,
    "checks": [
     {
@@ -52,6 +43,38 @@
     },
     {
      "ok": true,
+     "check": "the fused bf16 kernel is fp32 rounded once: F.gelu in fp32, cast to bf16, equals F.gelu in bf16 on all 65,280 finite bf16 inputs"
+    },
+    {
+     "ok": true,
+     "check": "bf16, every finite input: the rule's forward equals F.gelu at 65,276 of 65,280 (largest |diff| 1.54e-07; where they differ both values are below 1e-6 in magnitude, max 1.54e-07); jpp_lens's bf16 product: 64,278 of 65,280 (largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 0.3^2): the rule's forward differs from F.gelu at 0 (0.0000%, largest |diff| 0.00e+00, every one where both values are below 1e-6); jpp_lens's bf16 product at 293,023 (29.30%, largest |diff| 7.81e-03)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 1^2): the rule's forward differs from F.gelu at 1 (0.0001%, largest |diff| 1.54e-07, every one where both values are below 1e-6); jpp_lens's bf16 product at 393,850 (39.38%, largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 3^2): the rule's forward differs from F.gelu at 3,943 (0.3943%, largest |diff| 1.54e-07, every one where both values are below 1e-6); jpp_lens's bf16 product at 418,746 (41.87%, largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "bf16, 1,000,000 inputs N(0, 10^2): the rule's forward differs from F.gelu at 4,455 (0.4455%, largest |diff| 1.54e-07, every one where both values are below 1e-6); jpp_lens's bf16 product at 182,838 (18.28%, largest |diff| 1.56e-02)"
+    },
+    {
+     "ok": true,
+     "check": "identity rule, bf16: the gradient is exactly the detached gate times the incoming gradient (the gate and product in fp32, one rounding to bf16; jpp_lens's is the same rule with gate and product in bf16, and the two differ by one bf16 rounding at 87,811 of 200,000)"
+    },
+    {
+     "ok": true,
+     "check": "identity rule, fp32: value and gradient bit-identical to jpp_lens's arithmetic (z * gate(z).detach()), the gradient exactly g * gate(z)"
+    },
+    {
+     "ok": true,
      "check": "half rule: value bit-exact, gradient exactly 0.5"
     },
     {
@@ -65,6 +88,10 @@
     {
      "ok": true,
      "check": "the rules change the rows (R-lens rows differ from plain gradients)"
+    },
+    {
+     "ok": true,
+     "check": "on blocks offloaded by accelerate (weights on the meta device between calls), the rules run inside the hook: the rows are bit-identical to the unoffloaded model's, and the hooked forward is restored on exit"
     },
     {
      "ok": true,
@@ -109,6 +136,14 @@
     {
      "ok": true,
      "check": "on the multimodal wrapper too, jpp_lens's patcher patches the same modules"
+    },
+    {
+     "ok": true,
+     "check": "jpp_lens's _gelu_tanh_with_detached_gate is bit for bit the bf16 product above on every finite bf16 input, and R3's rule in fp32"
+    },
+    {
+     "ok": true,
+     "check": "bf16 tiny Gemma 4, forward under the rules against the stock forward (160 positions): R3's rules max |logit diff| 0.00e+00 (bit-identical), top-1 changed at 0; jpp_lens's patcher 2.66e-02, top-1 changed at 5"
     }
    ],
    "env": {
@@ -120,21 +155,13 @@
   },
   "R3_fitlib.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_fitlib.py --selftest",
-   "at": "2026-10-22T00:41:56",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T18:11:12",
+   "head": "f6266a9fe31abefd90d89d6fa2a9e407213a6a49",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
     "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_fitlib.py"
    ],
-   "seconds": 8.4,
+   "seconds": 7.2,
    "ok": true,
    "n_checks": 17,
    "n_failed": 0,
@@ -217,23 +244,14 @@
   },
   "R3_06_analyze.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_06_analyze.py --selftest",
-   "at": "2026-10-22T00:43:24",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T12:37:50",
+   "head": "bf3d1dd20f54aea02feeabf8d6992f0bc0643982",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_06_analyze.py"
    ],
-   "seconds": 42.3,
+   "seconds": 148.7,
    "ok": true,
-   "n_checks": 37,
+   "n_checks": 71,
    "n_failed": 0,
    "checks": [
     {
@@ -383,6 +401,142 @@
     {
      "ok": true,
      "check": "the report renders; reference rows give a raw p, outside Holm"
+    },
+    {
+     "ok": true,
+     "check": "H5 on the synthetic file: every band read, as built ({'30-39': 'helps', '40-49': 'hurts', '50': 'not shown', '51-54': 'helps', '55': 'helps', '56-57': 'helps', '58': 'not shown'})"
+    },
+    {
+     "ok": true,
+     "check": "H5's point estimates are the built differences over the 316 valid prompts (30-39 160/316, 56-57 48/316, 51-54 12/316, 50 0, 40-49 -44/316; 40-49 chat-begun -0.8, chat-no-answer +0.1)"
+    },
+    {
+     "ok": true,
+     "check": "H5's intervals come from the rule's own 2000 paired resamples: the 95% one equals the rule's summarize(), the Bonferroni one is the 0.357th/99.643th percentiles of the same sums and contains the 95% one"
+    },
+    {
+     "ok": true,
+     "check": "H5 reads the Bonferroni interval, not the 95% one: 4 extra hits in one condition at 58 give a 95% lower end 0.0032 > 0 but a Bonferroni one 0.0000 -> 'not shown'"
+    },
+    {
+     "ok": true,
+     "check": "H5 refuted when no band reads 'helps'; all seven bands are still read"
+    },
+    {
+     "ok": true,
+     "check": "a band with a readout missing stays in H5's table and reads 'not shown'"
+    },
+    {
+     "ok": true,
+     "check": "J++'s recall@10 is reported beside H5 for both lenses, with the note that it decides nothing"
+    },
+    {
+     "ok": true,
+     "check": "H5's table renders in the report; a reading not run is said"
+    },
+    {
+     "ok": true,
+     "check": "H2's yardsticks are Q0's rows R1 IT vs J++ ([0.2679, 0.2883, 0.2868]) and J++ vs JLens ([0.7666, 0.6846, 0.6574]), which round to \u00a71.2's 0.27/0.29/0.29 and 0.77/0.68/0.66"
+    },
+    {
+     "ok": true,
+     "check": "H2's quantifiers: an upper end at the low yardstick refutes 'the recipe sets the lens', a lower end at the high one refutes 'the checkpoint ... dominates' (at or below / at or above); just inside reads 'both'"
+    },
+    {
+     "ok": true,
+     "check": "H2's q10 cosines are the built ones: band means over layers, then the 98 token pairs only (jpp-it {'L30-39': 0.9020096708317192, 'L40-49': 0.10200966488646002, 'L50-58': 0.5020096666620973}, built {'L30-39': 0.9020096654309857, 'L40-49': 0.10200966543098564, 'L50-58': 0.5020096654309857})"
+    },
+    {
+     "ok": true,
+     "check": "the loud cosine (built at -1) is apart from the q10 one; each interval holds its mean"
+    },
+    {
+     "ok": true,
+     "check": "H2's reading for jpp-it and rl-it from the built cosines: {'jpp-it': {'L30-39': \"'the checkpoint, with the recipe version and the items, dominates' refuted\", 'L40-49': \"'the recipe sets the lens' refuted\", 'L50-58': 'both'}, 'rl-it': {'L30-39': 'both', 'L40-49': 'both', 'L50-58': \"'the checkpoint, with the recipe version, dominates' refuted\"}}"
+    },
+    {
+     "ok": true,
+     "check": "the split-half ceilings (A against B) are read; a lens without pullbacks is marked missing"
+    },
+    {
+     "ok": true,
+     "check": "H2 end to end through the real loader: pullbacks set to Q0's J++ / Miru / JLens give Q0's own q10 rows (Miru vs J++, J++ vs JLens, R1 IT vs J++) to 1e-4 ({'L30-39': (0.3383, 0.7666, 0.2679, 0.7666), 'L40-49': (0.3075, 0.6846, 0.2883, 0.6846), 'L50-58': (0.2837, 0.6574, 0.2868, 0.6574)})"
+    },
+    {
+     "ok": true,
+     "check": "a missing lens file or recall file is said, and that reading is not run (self-test inputs only)"
+    },
+    {
+     "ok": true,
+     "check": "H3's share in y is the built one (0.960748 = 0.960748)"
+    },
+    {
+     "ok": true,
+     "check": "the coordinates matter: raw 0.981 and fnw on the input side 0.992 both differ from the y share 0.961, so a wrong side or no fnw would fail the check above"
+    },
+    {
+     "ok": true,
+     "check": "the share inside base J++'s top-100 output subspace is the built one (0.3, 0.7; J++'s own = its share)"
+    },
+    {
+     "ok": true,
+     "check": "with identical halves the debiased share equals the plain one"
+    },
+    {
+     "ok": true,
+     "check": "the debiased share is sum_i u_i^T (A~ B~^T) u_i / <A~, B~>_F, checked term by term"
+    },
+    {
+     "ok": true,
+     "check": "noisy halves: with U the signal's own directions the cross product gives 0.957 (the signal's share 0.961); with U from the whole lens, as registered, the plain share 0.861 is pulled down and the debiased one 1.046 overshoots the signal's share in those directions (0.879): the registered estimator is biased upward by U's selection (reported, not changed)"
+    },
+    {
+     "ok": true,
+     "check": "H3's quantifiers: plain above Miru supports; debiased at or below Miru refutes; otherwise not separated; both at once is reported unordered"
+    },
+    {
+     "ok": true,
+     "check": "H3 end to end: verdicts at the judged layers only, every layer reported ({'jpp-it': {'30': 'supported', '35': 'refuted'}, 'rl-it': {'30': 'refuted', '35': 'refuted'}})"
+    },
+    {
+     "ok": true,
+     "check": "H3's registered constants: R1 \u00a73.2's seven layers, top 100, the five lenses of \u00a78.2"
+    },
+    {
+     "ok": true,
+     "check": "H3's code on the real files reproduces R1 \u00a73.2 (R1_15_spectrum.json): base J++ in y and raw, JLens in y, top 100, at the seven layers (max |diff| 0.0005 <= 0.003; {30: [0.7748, 0.7925, 0.8798], 35: [0.7602, 0.7798, 0.8866], 40: [0.8131, 0.8295, 0.8613], 45: [0.8887, 0.8966, 0.9145], 50: [0.9024, 0.9067, 0.9062], 55: [0.909, 0.9157, 0.8969], 58: [0.9674, 0.9683, 0.9597]})"
+    },
+    {
+     "ok": true,
+     "check": "a runs log whose last event is 'finished' with the input's sha256 is accepted (an earlier failed run, or H4's failed check inside the run, does not refuse it)"
+    },
+    {
+     "ok": true,
+     "check": "a runs log whose last event is 'failed' is refused ([\"the last run of R3_05 did not finish (its last event in /tmp/tmpxwel5i1s/runs.jsonl is 'failed': OutOfMemoryError: in recall); \u00a79: it is rerun from the start, its partial data not analysed\"])"
+    },
+    {
+     "ok": true,
+     "check": "a run started and never logged as finished (killed, or still running) is refused"
+    },
+    {
+     "ok": true,
+     "check": "an input that is not the last finished run's output (sha256) is refused"
+    },
+    {
+     "ok": true,
+     "check": "no runs log: refused"
+    },
+    {
+     "ok": true,
+     "check": "a finished run with the pullbacks or a lens file missing is refused (['/tmp/tmpxwel5i1s/pb.pt does not exist', '/tmp/tmpxwel5i1s/rl-it-B does not exist'])"
+    },
+    {
+     "ok": true,
+     "check": "the secondary readings refuse a missing input outside the self-test (no 'not run' for R3's own reading)"
+    },
+    {
+     "ok": true,
+     "check": "main() refuses an R3_05 run whose last logged event is 'failed' and writes no analysis"
     }
    ],
    "env": {
@@ -394,21 +548,12 @@
   },
   "R3_gpu.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_gpu.py --selftest",
-   "at": "2026-10-22T00:41:59",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T11:21:26",
+   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 2.0,
+   "seconds": 1.9,
    "ok": true,
    "n_checks": 16,
    "n_failed": 0,
@@ -621,23 +766,15 @@
   },
   "R3_04_weights.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_04_weights.py --selftest",
-   "at": "2026-10-22T00:42:20",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T18:11:18",
+   "head": "f6266a9fe31abefd90d89d6fa2a9e407213a6a49",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
     "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_fitlib.py"
    ],
-   "seconds": 6.1,
+   "seconds": 4.8,
    "ok": true,
-   "n_checks": 10,
+   "n_checks": 11,
    "n_failed": 0,
    "checks": [
     {
@@ -655,6 +792,10 @@
     {
      "ok": true,
      "check": "weights fitted one layer at a time (each layer's experts loaded alone) equal all layers at once"
+    },
+    {
+     "ok": true,
+     "check": "the weight fit accepts the 31B as loaded (name_or_path the pinned snapshot directory, the decoder named C.MODEL_ID) and refuses any other snapshot (D35)"
     },
     {
      "ok": true,
@@ -678,7 +819,7 @@
     },
     {
      "ok": true,
-     "check": "--check-only: the six pinned item files (551 items, names unique); waiting for: [\"R3_00's pilot: no R3_00_pilot.json yet (the pilot has not run)\", 'no experiments/results/R3_03_merged/merged.json yet (R3_03 --merge)']"
+     "check": "--check-only: the six pinned item files (551 items, names unique); waiting for: []"
     }
    ],
    "env": {
@@ -755,21 +896,12 @@
   },
   "R3_00_pilot.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R3_00_pilot.py --selftest",
-   "at": "2026-10-22T00:42:33",
-   "head": "cf2c53306f0e35354f500ea9c882560da694b168",
+   "at": "2026-10-22T11:21:30",
+   "head": "8996fb5c8e6a1d9b427e0c4168d9e13f38cda2f4",
    "scripts_uncommitted_then": [
-    "experiments/scripts/R3_00_pilot.py",
-    "experiments/scripts/R3_02_router.py",
-    "experiments/scripts/R3_04_weights.py",
-    "experiments/scripts/R3_05_eval.py",
-    "experiments/scripts/R3_06_analyze.py",
-    "experiments/scripts/R3_Q0_pullbacks.py",
-    "experiments/scripts/R3_Q1_jlens.py",
-    "experiments/scripts/R3_common.py",
-    "experiments/scripts/R3_gpu.py",
-    "experiments/scripts/R3_power.py"
+    "experiments/scripts/R3_lrp.py"
    ],
-   "seconds": 4.0,
+   "seconds": 3.2,
    "ok": true,
    "n_checks": 11,
    "n_failed": 0,
@@ -792,7 +924,7 @@
     },
     {
      "ok": true,
-     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 16, 's_per_prompt': 0.04}"
+     "check": "(c) the timing table runs every configuration (CPU seconds here; memory only on the GPU); the choice: {'mode': 'vmap', 'rows_per_pass': 8, 's_per_prompt': 0.03}"
     },
     {
      "ok": true,
@@ -816,7 +948,7 @@
     },
     {
      "ok": true,
-     "check": "--check-only: the pilot's prompts, the 12B's device map and both module trees; waiting for: ['no GPU budget approved yet (R3_common.APPROVED_GPU_HOURS): the pilot would write stop', 'the 12B dry run has not run (R3_00_dry_run.json)']"
+     "check": "--check-only: the pilot's prompts, the 12B's device map and both module trees; waiting for: ['no GPU budget approved yet (R3_common.APPROVED_GPU_HOURS): the pilot would write stop']"
     }
    ],
    "env": {

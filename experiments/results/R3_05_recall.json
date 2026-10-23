@@ -1,0 +1,537 @@
+{
+ "layers": [
+  30,
+  38,
+  45,
+  52
+ ],
+ "k": 10,
+ "macros": {
+  "primary": {
+   "evals": [
+    "multihop",
+    "multilingual",
+    "typo",
+    "association"
+   ],
+   "n_items": 225,
+   "lenses": {
+    "jpp": {
+     "30": {
+      "macro": 0.22442713379859924,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0854,
+       "multihop": 0.0833,
+       "multilingual": 0.0407,
+       "typo": 0.6883
+      }
+     },
+     "38": {
+      "macro": 0.10869885981082916,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0976,
+       "multihop": 0.1667,
+       "multilingual": 0.0407,
+       "typo": 0.1299
+      }
+     },
+     "45": {
+      "macro": 0.38402748107910156,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0732,
+       "multihop": 0.4583,
+       "multilingual": 0.2384,
+       "typo": 0.7662
+      }
+     },
+     "52": {
+      "macro": 0.405992716550827,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.4167,
+       "multilingual": 0.2616,
+       "typo": 0.9091
+      }
+     }
+    },
+    "naive": {
+     "30": {
+      "macro": 0.012449263595044613,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0122,
+       "multihop": 0.0,
+       "multilingual": 0.0116,
+       "typo": 0.026
+      }
+     },
+     "38": {
+      "macro": 0.05911481752991676,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0833,
+       "multilingual": 0.0233,
+       "typo": 0.1299
+      }
+     },
+     "45": {
+      "macro": 0.3704139292240143,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0488,
+       "multihop": 0.5,
+       "multilingual": 0.2965,
+       "typo": 0.6364
+      }
+     },
+     "52": {
+      "macro": 0.36171433329582214,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0122,
+       "multihop": 0.3333,
+       "multilingual": 0.2442,
+       "typo": 0.8571
+      }
+     }
+    },
+    "jpp-it": {
+     "30": {
+      "macro": 0.19950543344020844,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0058,
+       "typo": 0.7922
+      }
+     },
+     "38": {
+      "macro": 0.23589614033699036,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0417,
+       "multilingual": 0.0058,
+       "typo": 0.8961
+      }
+     },
+     "45": {
+      "macro": 0.35846197605133057,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0488,
+       "multihop": 0.2917,
+       "multilingual": 0.1453,
+       "typo": 0.9481
+      }
+     },
+     "52": {
+      "macro": 0.393446147441864,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.3333,
+       "multilingual": 0.2558,
+       "typo": 0.9481
+      }
+     }
+    },
+    "rl-it": {
+     "30": {
+      "macro": 0.14755737781524658,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0058,
+       "typo": 0.5844
+      }
+     },
+     "38": {
+      "macro": 0.13020676374435425,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0417,
+       "multilingual": 0.0116,
+       "typo": 0.4675
+      }
+     },
+     "45": {
+      "macro": 0.2919347882270813,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.25,
+       "multilingual": 0.1279,
+       "typo": 0.7532
+      }
+     },
+     "52": {
+      "macro": 0.3809968829154968,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0244,
+       "multihop": 0.3333,
+       "multilingual": 0.2442,
+       "typo": 0.9221
+      }
+     }
+    },
+    "miru": {
+     "30": {
+      "macro": 0.0,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0,
+       "typo": 0.0
+      }
+     },
+     "38": {
+      "macro": 0.003246753243729472,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0,
+       "typo": 0.013
+      }
+     },
+     "45": {
+      "macro": 0.0362902507185936,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0122,
+       "multihop": 0.0,
+       "multilingual": 0.0291,
+       "typo": 0.1039
+      }
+     },
+     "52": {
+      "macro": 0.3521158695220947,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0244,
+       "multihop": 0.3333,
+       "multilingual": 0.2326,
+       "typo": 0.8182
+      }
+     }
+    },
+    "jpp-it-full-macro": {
+     "30": {
+      "macro": 0.19950543344020844,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0058,
+       "typo": 0.7922
+      }
+     },
+     "38": {
+      "macro": 0.23589614033699036,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0417,
+       "multilingual": 0.0058,
+       "typo": 0.8961
+      }
+     },
+     "45": {
+      "macro": 0.35846197605133057,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0488,
+       "multihop": 0.2917,
+       "multilingual": 0.1453,
+       "typo": 0.9481
+      }
+     },
+     "52": {
+      "macro": 0.393446147441864,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.3333,
+       "multilingual": 0.2558,
+       "typo": 0.9481
+      }
+     }
+    }
+   }
+  },
+  "full": {
+   "evals": [
+    "multihop",
+    "multilingual",
+    "typo",
+    "association"
+   ],
+   "n_items": 225,
+   "lenses": {
+    "jpp": {
+     "30": {
+      "macro": 0.22442713379859924,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0854,
+       "multihop": 0.0833,
+       "multilingual": 0.0407,
+       "typo": 0.6883
+      }
+     },
+     "38": {
+      "macro": 0.10869885981082916,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0976,
+       "multihop": 0.1667,
+       "multilingual": 0.0407,
+       "typo": 0.1299
+      }
+     },
+     "45": {
+      "macro": 0.38402748107910156,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0732,
+       "multihop": 0.4583,
+       "multilingual": 0.2384,
+       "typo": 0.7662
+      }
+     },
+     "52": {
+      "macro": 0.405992716550827,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.4167,
+       "multilingual": 0.2616,
+       "typo": 0.9091
+      }
+     }
+    },
+    "naive": {
+     "30": {
+      "macro": 0.012449263595044613,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0122,
+       "multihop": 0.0,
+       "multilingual": 0.0116,
+       "typo": 0.026
+      }
+     },
+     "38": {
+      "macro": 0.05911481752991676,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0833,
+       "multilingual": 0.0233,
+       "typo": 0.1299
+      }
+     },
+     "45": {
+      "macro": 0.3704139292240143,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0488,
+       "multihop": 0.5,
+       "multilingual": 0.2965,
+       "typo": 0.6364
+      }
+     },
+     "52": {
+      "macro": 0.36171433329582214,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0122,
+       "multihop": 0.3333,
+       "multilingual": 0.2442,
+       "typo": 0.8571
+      }
+     }
+    },
+    "jpp-it": {
+     "30": {
+      "macro": 0.19950543344020844,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0058,
+       "typo": 0.7922
+      }
+     },
+     "38": {
+      "macro": 0.23589614033699036,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0417,
+       "multilingual": 0.0058,
+       "typo": 0.8961
+      }
+     },
+     "45": {
+      "macro": 0.35846197605133057,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0488,
+       "multihop": 0.2917,
+       "multilingual": 0.1453,
+       "typo": 0.9481
+      }
+     },
+     "52": {
+      "macro": 0.393446147441864,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.3333,
+       "multilingual": 0.2558,
+       "typo": 0.9481
+      }
+     }
+    },
+    "rl-it": {
+     "30": {
+      "macro": 0.14755737781524658,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0058,
+       "typo": 0.5844
+      }
+     },
+     "38": {
+      "macro": 0.13020676374435425,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0417,
+       "multilingual": 0.0116,
+       "typo": 0.4675
+      }
+     },
+     "45": {
+      "macro": 0.2919347882270813,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.25,
+       "multilingual": 0.1279,
+       "typo": 0.7532
+      }
+     },
+     "52": {
+      "macro": 0.3809968829154968,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0244,
+       "multihop": 0.3333,
+       "multilingual": 0.2442,
+       "typo": 0.9221
+      }
+     }
+    },
+    "miru": {
+     "30": {
+      "macro": 0.0,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0,
+       "typo": 0.0
+      }
+     },
+     "38": {
+      "macro": 0.003246753243729472,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0,
+       "typo": 0.013
+      }
+     },
+     "45": {
+      "macro": 0.0362902507185936,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0122,
+       "multihop": 0.0,
+       "multilingual": 0.0291,
+       "typo": 0.1039
+      }
+     },
+     "52": {
+      "macro": 0.3521158695220947,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0244,
+       "multihop": 0.3333,
+       "multilingual": 0.2326,
+       "typo": 0.8182
+      }
+     }
+    },
+    "jpp-it-full-macro": {
+     "30": {
+      "macro": 0.19950543344020844,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0,
+       "multilingual": 0.0058,
+       "typo": 0.7922
+      }
+     },
+     "38": {
+      "macro": 0.23589614033699036,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0,
+       "multihop": 0.0417,
+       "multilingual": 0.0058,
+       "typo": 0.8961
+      }
+     },
+     "45": {
+      "macro": 0.35846197605133057,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0488,
+       "multihop": 0.2917,
+       "multilingual": 0.1453,
+       "typo": 0.9481
+      }
+     },
+     "52": {
+      "macro": 0.393446147441864,
+      "n_pairs": 355,
+      "per_eval": {
+       "association": 0.0366,
+       "multihop": 0.3333,
+       "multilingual": 0.2558,
+       "typo": 0.9481
+      }
+     }
+    }
+   }
+  }
+ }
+}
