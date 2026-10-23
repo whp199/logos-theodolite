@@ -2,11 +2,12 @@
 
 *What is still open in Logos Theodolite, gathered from the places that already name it: the README’s fault table, the
 study’s report and its errata, the pages’ own “not yet” marks, and the records of R1’s instruct refit, R2’s test of
-what to serve and R3’s registration. Nothing here has a date or an owner. Layers are counted 1–60, as on the pages; the
-study’s reports count from 0, so their L50 is layer 51 here.*
+what to serve and R3’s test of J++’s recipe. Nothing here has a date or an owner. Layers are counted 1–60, as on the
+pages; the study’s reports count from 0, so their L50 is layer 51 here.*
 
 <sub>Gathered on 21 October 2026, at `3cbc4b5`; gathered again on 22 October 2026, at `75ed78a`, after the first round of
-mends (the interface’s defaults, the label gate, the causal test and the smaller pieces) and R3’s registration.</sub>
+mends (the interface’s defaults, the label gate, the causal test and the smaller pieces) and R3’s registration; section
+i brought up to date at `c15b2d3`, with R3’s result.</sub>
 
 <br>
 
@@ -36,33 +37,45 @@ carry a `lens` object; the reading itself is unchanged.
   minimum-size rule (+0.046 over the naked eye, where 0.05 was required). Two of the pre-registered sensitivity checks,
   one without the prompts about the model itself and one without the prompts that share a topic with R1’s fit prompts,
   would serve R1’s lens at layer 56; the registered decision stands.
-- **Not yet tested.** R1’s lens is a plain same-position Jacobian, not the J++ recipe: J++’s published R-Lens rules,
-  cluster weighting and token filter were never tested on the instruct checkpoint (R3, below, registers that test, with
-  no data yet), and fine-tuning and quantisation cannot be told apart (E50). Whether an instruct lens gives better
-  neuron labels is untested (E45).
+- **R3 served nothing either.** J++’s published recipe, as the code at jpp_lens `d7efc0de` runs it, was fitted on
+  the 4-bit instruct checkpoint and judged by R2’s rules on 320 new prompts
+  ([`R3_PREREG.md`](experiments/results/R3_PREREG.md),
+  [`R3_06_report_section.md`](experiments/results/R3_06_report_section.md)). Neither refit, the full recipe or its
+  pooled R-lens, passes at any of the seven bands from layer 31 to 59, so R3 recommends nothing to serve. The nearest
+  miss is the pooled R-lens at layer 56: +0.066 over base J++, but only +0.031 [−0.009, +0.072] over the naked eye,
+  short of the 0.05 minimum. At layers 57–59 both refits read worse than base J++ and the naked eye. That refutes H1
+  for this recipe on J++’s 64 WikiText prompts: it does not show that no instruct lens could pass, and a refit on chat
+  text or on more prompts is untested. Its secondary readings decide nothing:
+  - J++’s weighted experts were not shown to beat the pooled R-lens at any band, and read worse at layers 57–58 (H5);
+  - the recipe concentrated a lens no more than Miru’s plain instruct J-lens does (H3);
+  - a plain J-lens fitted here on the 4-bit QAT checkpoint agrees with Miru’s bf16 instruct lens more closely than
+    Miru agrees with the base JLens (H6, “smaller” in every band). Both comparisons also change the code and the
+    prompts, and the first carries the QAT checkpoint’s further training too; Q1 ran on J++’s 64 prompts because
+    Miru’s 425 could not be rebuilt. So H6 lays nothing on fine-tuning or quantisation alone (E50 still stands).
+
+  To pass its own gate, R3 had to compute J++’s identity rule in fp32: in bf16 the rule as registered changed the
+  model’s top word-piece at 90 of 2,048 positions (D33), and jpp_lens’s own patcher changes the same 90 (the context
+  check, D36). Every change made after the first GPU output is filed as a deviation (D30, D31,
+  D33–D36). The run used 5.54 of the 8 GPU-hours the user approved. Whether an instruct lens gives better neuron
+  labels is still untested (E45).
+- **A lead: R1’s lens on R3’s prompts.** R1’s lens, read for reference outside the decision and its Holm family, passed
+  all five rules at layers 56 and 59 on R3’s 320 prompts: +0.071 [+0.035, +0.109] and +0.058 [+0.024, +0.091] over the
+  naked eye. It was not a candidate, so this is not a recommendation. On R2’s 220 prompts the same lens still fails: at
+  layer 59 by the minimum-size rule (+0.046), at layer 56 by rules 1 and 5. Serving it would need a test of its own,
+  registered before it sees fresh prompts, under the rules below.
 - **Rules for any lens served later**, from the errata:
   - confirm condition contrasts at layers 31–50 with an instruct reading (E49);
   - show pronoun readings at layers 51–59 only where J++ and the instruct reading agree (E49, E50);
   - keep the caution at layers 11–30 for every averaged lens: none tested was reliable there (E50);
   - re-validate the label gate of ii for the new lens: its AUC of 0.84 was measured for base-fitted J++ labels only
     (E47).
-- **Being tried (R3).** J++’s published recipe as the code at jpp_lens `d7efc0de` runs it (newer code than the shipped
-  Gemma J++ came from, whose router and weighting are not recorded), fitted on the instruct checkpoint with the
-  deviations recorded in [`R3_PREREG.md`](experiments/results/R3_PREREG.md) §2, is registered with R2’s rules on 320 new
-  prompts. A plain J-lens fitted here on the 4-bit model, on J++’s 64 WikiText prompts because Miru’s own could not be
-  rebuilt, will be set beside Miru’s unquantised instruct lens; that comparison also changes the code and the prompts.
-  Result: [NOT YET RUN]. Before its fit: the dry run on the local Gemma 4 12B, without which the pilot will not start;
-  then the pilot (at most 30 minutes), which writes “stop” until a GPU budget is approved (none is yet, D30; the design
-  recommends 24 GPU-hours, R3_PREREG §10.2), and only a pilot that says “proceed” against the approved budget lets the
-  fit and the evaluation run (a pilot judged before a budget exists must be run again); and the code of its H2, H3 and
-  H5 tables, which must be committed before any lens file is written (D31). Rebuilding Miru’s own 425 prompts would need
-  Miru Tracer’s selection code, which this round was not cleared to fetch. R3’s jobs refuse a `backend/` that differs
-  from the registered runtime, `d5405ee` (R3_PREREG §0), so they run from the branch `it-jpp-refit`, not from a `main`
-  that carries this round’s mends. Its line cites to the README (D26 and A9, `README.md:407–408`) are to `d5405ee`’s
-  README; on this tree that passage is the licence paragraph of README §vii.
 
-R3 serves nothing itself: a lens that passes is a recommendation to later serving work on a branch from `main`
-(R3_PREREG §7.2), so the serving work on `it-second-reading` stays there as R2’s record.
+R3 serves nothing itself: a pass would only have been a recommendation to later serving work on a branch from `main`
+(R3_PREREG §7.2). With no lens passed by R2 or R3, the serving work on `it-second-reading` stays there as R2’s record.
+R3’s jobs refuse a `backend/` that differs from their registered runtime, `d5405ee` (R3_PREREG §0), so any rerun goes
+from the branch `it-jpp-refit`, not from a `main` that carries this round’s mends. R3’s line cites to the README (D26
+and A9, `README.md:407–408`) are to `d5405ee`’s README; on this tree that passage is the licence paragraph of README
+§vii.
 
 <br>
 
