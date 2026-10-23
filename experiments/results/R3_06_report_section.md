@@ -44,10 +44,12 @@ The text after the second rule was written by hand from `R3_06_analysis.json`, `
 and `R3_Q1_jlens.json`. `R3_Q1_jlens.py --analyze-only` was rerun on the CPU (§10.1 step 4) and left
 `R3_Q1_jlens.json` byte for byte unchanged (git holds it as committed at `7bcd908`).
 
-**Rounding.** The script's tables print three decimals from values it has already rounded to four. So a few figures
-between the rules differ in the last digit from the unrounded values (`*_raw` in `R3_06_analysis.json`):
+**Rounding.** The script's tables print three decimals from values it has already rounded to four. So a number of
+figures between the rules differ in the last digit from the unrounded values (`*_raw` in `R3_06_analysis.json`), and
+where the text after the second rule gives such a figure it can differ from the table in that digit. For example:
 - J++ at code 58 shows 0.650, from 0.65053;
-- rl-it − naked eye at 55 shows +0.030, from +0.03051, where the script's own reasons give +0.031.
+- rl-it − naked eye at 55 shows +0.030, from +0.03051, where the script's own reasons give +0.031;
+- rl-it − J++ at 51-54 shows +0.040, from +0.03949, where the script's own reasons give +0.039.
 
 The text after the second rule rounds once:
 - to three decimals, where `R3_06_analysis.json` or `R3_05_recall.json` holds the unrounded value;
@@ -322,10 +324,14 @@ The table gives the share of a lens's energy in its own top 100 output direction
 **What H3 shows.** The recipe, as R3 runs it, does not concentrate a lens's energy beyond what Miru's plain instruct
 J-lens shows. At the seven judged layers, all the instruct J-lenses, these two and Miru, hold 90-96% of their energy
 in their top 100 directions.
-- **Against JLens:** both refits' shares are above JLens's at code 30-55 (JLens 0.861-0.914). At code 58 JLens's
-  0.960 is above both refits (0.944 and 0.946) and level with Miru's (0.960).
-- **Against base J++:** both refits' shares are above base J++'s at code 30-55, by a wide margin at 30-40 (J++
+- **Against JLens:** both refits' shares are above JLens's at the six judged layers from code 30 to 55 (JLens
+  0.861-0.914). At code 58 JLens's 0.960 is above both refits (0.944 and 0.946) and level with Miru's (0.960).
+- **Against base J++:** both refits' shares are above base J++'s at the six judged layers from code 30 to 55, by a
+  wide margin at 30-40 (J++
   0.760-0.813). At code 58 base J++'s 0.967 is above both.
+- **At the layers reported but not judged** the order is not the same everywhere: jpp-it is below JLens at 42 and 43,
+  and base J++ is above one or both refits at 43, 48, 49, 51, 52 and 53 (`R3_06_analysis.json`, H3 per layer). H3 is
+  judged at the seven layers only, so no reading changes.
 
 **Base J++'s subspace.** At the seven judged layers, 13-25% of the refits' energy lies inside base J++'s top-100
 subspace. Miru's share there is 15-21% and JLens's 40-61%. In this sense, too, they do not point where base J++
@@ -503,9 +509,9 @@ on R2's prompts under R3's design.
 
 ### Deviations
 
-D1-D29 and D32 were fixed before any R3 GPU job had written output (§2.2). Five changes came after the first 12B dry
-run (10:25, `R3_gpu_runs.jsonl`), which §0 counts as data: D34, D33, D31, D30 and D35. §0 asks for the result under
-the code as registered beside each one:
+D1-D29 and D32 were fixed before any R3 GPU job had written output (§2.2). Six changes came after the first 12B dry
+run (10:25, `R3_gpu_runs.jsonl`), which §0 counts as data: D34, D33, D36, D31, D30 and D35. §0 asks for the result
+under the code as registered beside each one:
 
 - **D34, the rules' patch on offloaded modules (A13).** The first 12B dry run (10:25, HEAD `ffdf10d`) failed under the
   registered code. The offloaded norms read meta weights, so the shards and the rules-on parity stopped. Its output is
@@ -518,6 +524,11 @@ the code as registered beside each one:
   - *Under the code as registered:* the pilot says "stop", and no router, fit, weight, evaluation or Q1 job runs.
   - Context, not a gate: jpp_lens's own patcher changes the same 90 positions (`R3_00_jpp_identity.json`). Under D33
     none change.
+- **D36, the jpp_lens context check (A14).** `R3_00_jpp_identity.py` was added at `7088609` (11:31), after the dry
+  runs and the first pilots had written output, and ran once on the 31B (56.2 s, `R3_gpu_runs.jsonl`). It gates
+  nothing and no reading uses its output.
+  - *Under the code as registered:* the script does not exist, `R3_00_jpp_identity.json` is absent, and every gate,
+    decision and reading is as it is here.
 - **D31, the code of H2, H3 and H5, and R3_06's partial-run check.** D31's row as registered (`ffdf10d`) gave these
   readings in words only. Their code was committed at `bf3d1dd` (12:20) and the §9 check at `74fc70c` (12:38). Both
   came after the dry runs and the pilots had written output, and before the router, any shard or any lens file.
@@ -534,10 +545,11 @@ the code as registered beside each one:
   - Against the approved budget the pilot (12:41-12:42, HEAD `6554d6c`, committed at `c99148d`) wrote "proceed":
     5.77 of 8.0 GPU-hours.
 - **D35, the model's name in the weight fit's identity check.** The first `R3_04_weights.py --run` (17:58-18:06,
-  HEAD `f6266a9`, 450 s, failed in `R3_gpu_runs.jsonl`) did the following before it failed:
-  - graded the items;
-  - saved the residuals of 288 scoreable items;
-  - passed both of D16's stops.
+  HEAD `f6266a9`, 450 s, failed in `R3_gpu_runs.jsonl`) did the following before it failed, as its console log
+  shows (`R3_04_weights_failed_D35.log`; the runs log keeps only the error and the seconds):
+  - graded 496 items in 221.7 s;
+  - passed both of D16's stops, which `R3_04_weights.py` checks before it records any residual;
+  - recorded the residuals of 288 items at 29 layers in 215.4 s (the rerun rewrote `R3_04_residuals.pt`).
 
   It then failed at the first layer's weight fit, on jpp_lens's `check_model_matches_config`, and wrote no lens file.
   - *Under the code as registered:* no jpp-it, rl-it or half-lens file exists. R3_05, H1 and every secondary reading
@@ -554,7 +566,7 @@ the code as registered beside each one:
 R3 used **5.54 of the 8 approved GPU-hours**, counting every finished or failed run since the first dry run:
 
 - **`R3_gpu_runs.jsonl`:** 18,963 s. This includes the 450 s of the failed weight run.
-  - the dry runs and pilots: 642 s;
+  - the dry runs, the pilots and the jpp_lens context check (56 s, D36): 642 s;
   - the router: 2,688 s;
   - the shards: 14,184 s;
   - the weights: 1,083 s;
@@ -580,7 +592,7 @@ free; only the desktop compositor holds memory.
   test that link.
 - **Power.** The 283 valid prompts are fewer than the 292 planned. With them, a true gain near 0.05 would most
   likely fail rule 4 (§7.3). That matters little here: the only bands where a candidate's pooled gain over the naked
-  eye was above 0 are 51-54 and 55. The largest of those gains is rl-it's +0.031 at 55 (unrounded +0.0305).
+  eye was above 0 are 51-54 and 55. The largest of those gains is rl-it's +0.031 at 55 (+0.03051 unrounded).
 - **R1's reference pass** is outside the registered family. It rests on a different prompt set from R2's, where the
   same lens failed rule 5 by 0.004. It is a finding to register, not to act on.
 - **H2 and H3.** Each compares lenses that differ in more than one thing: checkpoint, code version, items, prompts.

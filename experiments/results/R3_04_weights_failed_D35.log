@@ -1,0 +1,26 @@
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 18547.26it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 33841.01it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<09:13,  3.63it/s]Loading weights:   0%|          | 3/2009 [00:00<07:39,  4.36it/s]Loading weights:   3%|▎         | 61/2009 [00:00<00:17, 112.07it/s]Loading weights:   6%|▌         | 113/2009 [00:00<00:09, 197.71it/s]Loading weights:   8%|▊         | 161/2009 [00:01<00:07, 259.88it/s]Loading weights:  11%|█         | 216/2009 [00:01<00:05, 329.70it/s]Loading weights:  14%|█▎        | 275/2009 [00:01<00:04, 396.89it/s]Loading weights:  16%|█▋        | 331/2009 [00:01<00:03, 436.81it/s]Loading weights:  19%|█▉        | 387/2009 [00:01<00:03, 470.78it/s]Loading weights:  22%|██▏       | 449/2009 [00:01<00:03, 512.02it/s]Loading weights:  25%|██▌       | 505/2009 [00:01<00:02, 519.49it/s]Loading weights:  28%|██▊       | 563/2009 [00:01<00:02, 533.48it/s]Loading weights:  31%|███       | 621/2009 [00:01<00:02, 546.94it/s]Loading weights:  34%|███▎      | 678/2009 [00:01<00:02, 551.16it/s]Loading weights:  37%|███▋      | 742/2009 [00:02<00:02, 574.11it/s]Loading weights:  40%|███▉      | 801/2009 [00:02<00:02, 571.36it/s]Loading weights:  43%|████▎     | 859/2009 [00:02<00:02, 559.17it/s]Loading weights:  46%|████▌     | 916/2009 [00:02<00:01, 549.08it/s]Loading weights:  49%|████▊     | 976/2009 [00:02<00:01, 555.02it/s]Loading weights:  51%|█████▏    | 1032/2009 [00:02<00:01, 555.71it/s]Loading weights:  55%|█████▍    | 1096/2009 [00:02<00:01, 571.61it/s]Loading weights:  58%|█████▊    | 1156/2009 [00:02<00:01, 574.90it/s]Loading weights:  61%|██████    | 1217/2009 [00:02<00:01, 581.47it/s]Loading weights:  64%|██████▎   | 1276/2009 [00:02<00:01, 578.24it/s]Loading weights:  66%|██████▋   | 1334/2009 [00:03<00:01, 568.13it/s]Loading weights:  70%|██████▉   | 1398/2009 [00:03<00:01, 584.85it/s]Loading weights:  73%|███████▎  | 1465/2009 [00:03<00:00, 605.96it/s]Loading weights:  76%|███████▌  | 1526/2009 [00:03<00:00, 560.71it/s]Loading weights:  79%|███████▉  | 1591/2009 [00:03<00:00, 579.79it/s]Loading weights:  82%|████████▏ | 1650/2009 [00:03<00:00, 580.09it/s]Loading weights:  87%|████████▋ | 1744/2009 [00:03<00:00, 682.25it/s]Loading weights:  92%|█████████▏| 1853/2009 [00:03<00:00, 796.09it/s]Loading weights:  98%|█████████▊| 1967/2009 [00:03<00:00, 894.67it/s]Loading weights: 100%|██████████| 2009/2009 [00:03<00:00, 508.87it/s]
+[  229.0s] graded 496 items in 221.7s
+[  449.3s] residuals of 288 items at 29 layers in 215.4s
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/scripts/R3_04_weights.py", line 394, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/scripts/R3_04_weights.py", line 388, in main
+    return run(a)
+           ^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/scripts/R3_04_weights.py", line 358, in run
+    rec = fit_all(dec, raw, C.MERGED_DIR, C.FIT_LAYERS, C.LENS_FILES, RESIDUALS_PT, provenance_for(merged))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/scripts/R3_04_weights.py", line 162, in fit_all
+    lw = FL.fit_weights(dec, {l: ex}, res, excluded, [l], [it.name for it in prim],
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/scripts/R3_fitlib.py", line 677, in fit_weights
+    fitter = jf.ExpertWeightingFitter(dec, ej, residuals, excluded_token_ids=list(excluded))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/R3_cache/jpp_lens/src/workspace_lens/fitting/condense_experts/fitter.py", line 298, in __init__
+    check_model_matches_config(model, expert_jacobians.config)
+  File "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/R3_cache/jpp_lens/src/workspace_lens/utils.py", line 212, in check_model_matches_config
+    raise ValueError(
+ValueError: model is '/home/eric/.cache/huggingface/hub/models--google--gemma-4-31B-it-qat-w4a16-ct/snapshots/52f3f65bc7a02d555763bc923bd1d9094898219d' but 'R3 experts' was fitted on 'google/gemma-4-31B-it-qat-w4a16-ct'
