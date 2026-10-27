@@ -1,7 +1,7 @@
 /**
  * Everything the atlas knows of the open neuron (after the explorer's Details tab): its census statistics, both faces'
  * words under the label gate, its steer lens, its activation range, its strongest weight links each way and the heads
- * linked to it, and the reader's note in the field notes.
+ * linked to it, and the reader's note (kept on the server: backend/field_notes.py).
  */
 import React, { useEffect, useRef, useState } from "react";
 import { HeldBackWords } from "../../components/HeldBack";
@@ -400,7 +400,7 @@ const NoteField: React.FC = () => {
         }}
       />
       <p className="muted atlas-small" style={{ margin: 0 }}>
-        {state ?? (entry ? `${entry.by === "scientist" ? "the scientist" : "you"}, ${new Date(entry.at).toLocaleString()}` : "kept in the field notes when you leave the box")}
+        {state ?? (entry ? `${entry.by === "scientist" ? "the scientist" : "you"}, ${new Date(entry.at).toLocaleString()}` : "kept on the server, beside the neuron, when you leave the box")}
       </p>
       <IfApparatus>{notes ? <p className="muted atlas-small mono-wrap">{notes.file}</p> : null}</IfApparatus>
     </section>

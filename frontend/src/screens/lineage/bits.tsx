@@ -16,7 +16,8 @@ export type Dest =
   | "nudge"
   | "vault"
   | "lexicon"
-  | "lexicon-lens";
+  | "lexicon-lens"
+  | "atlas";
 
 /** The neuron the canvas's neuron folio shows: neuron 15491 at layer 54 (index 53), one of the recorded poles. */
 const FOLIO_NEURON = { layerNo: 54, neuron: 15491 } as const;
@@ -42,6 +43,8 @@ function useDestHref(to: Dest): string {
       return href.lexicon();
     case "lexicon-lens":
       return href.lexicon("lens");
+    case "atlas":
+      return href.atlas();
   }
 }
 

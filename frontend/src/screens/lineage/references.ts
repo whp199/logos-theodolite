@@ -7,7 +7,7 @@
  * Sections D to F ([29]–[41]: statistics, data and software) are not listed on the page; they are in REFERENCES.md.
  * Section G ([42]–[44], added 2026-10-18 with its links checked that day) holds the sampling methods the instrument applies
  * when it draws an answer by chance. Section H ([45]–[46], added 2026-10-21 from local files, its links not opened) holds
- * R3's sources; it is not listed on the page.
+ * R3's sources, and section I ([47]–[48], added 2026-10-27) the atlas's; neither is listed on the page.
  */
 
 export interface Reference {
@@ -325,5 +325,5 @@ export const refsG: Reference[] = [
 /** Numbers of the REFERENCES.md entries in sections D to F, named on the page but listed only in that file. */
 export const REFS_D_TO_F = Array.from({ length: 13 }, (_, i) => 29 + i);
 
-/** Total entries in REFERENCES.md (A to H). */
-export const REFERENCE_COUNT = 46;
+/** Total entries in REFERENCES.md (A to I). */
+export const REFERENCE_COUNT = 48;

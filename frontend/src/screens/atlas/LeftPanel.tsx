@@ -16,7 +16,7 @@ import {
   useAtlas,
 } from "./state";
 
-/** The open neuron's name and note, kept in the field notes (backend/field_notes.py), saved as they are typed. */
+/** The open neuron's name, kept on the server (backend/field_notes.py) and saved as it is typed. */
 const NameField: React.FC<{ layer: number; n: number }> = ({ layer, n }) => {
   const notes = useAtlas((s) => s.notes);
   const entry = notes?.neurons[noteKey(layer, n)];

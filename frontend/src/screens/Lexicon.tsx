@@ -1235,7 +1235,8 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             A push lasts for that answer only. Unlike a <LexLink to="nudge">nudge</LexLink>, it moves along what one neuron
-            writes. Around 0.5 to 0.8 of the stream the answers bend and stay readable; by 3 they come apart.
+            writes. On Qwen3.5-4B the explorer’s authors found answers bent but readable at 0.5 to 0.8 of the stream and
+            coming apart by 3; on Gemma-4-31B that is not yet measured.
           </Note>
           <EntryApparatus title="a push">
             “add”: h ← h + σ · d · p50<sub>ℓ</sub> · unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M>{" "}
@@ -1245,18 +1246,21 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </EntryApparatus>
         </Entry>
 
-        <Entry id="field-notes" head="field notes" tech="neuron names and notes">
+        <Entry id="names" head="names and notes" tech="the atlas’s field book · field_notes.json">
           <Body>
-            The names and notes kept beside neurons, by you or by the scientist. A named neuron shows in red on the map,
-            on every layer. Name a neuron in the atlas’s left panel; leave a note in its details.
+            A name and a note kept beside a neuron on the server, by you or by the scientist, for everyone who uses the
+            atlas there. A named neuron shows in red on the map, on every layer. Name a neuron in the atlas’s left panel;
+            leave a note in its details.
           </Body>
           <Note>
             A name is a guess written down. The scientist marks its own with how sure it is: nothing when its firing, its
-            pushes and its words agree, (?) to (???) as they part.
+            pushes and its words agree, (?) to (???) as they part. A neuron folio’s own name and field notes are another
+            thing: this browser keeps them for you alone.
           </Note>
-          <EntryApparatus title="field notes">
-            One JSON file, written whole each time: <M>$THEODOLITE_FIELD_NOTES</M>, else <M>field_notes.json</M> in the
-            atlas folder; each entry keeps who wrote it and when. <M>GET/POST /api/atlas/notes</M>.
+          <EntryApparatus title="names and notes">
+            One JSON file outside every checkout, written whole each time: <M>$THEODOLITE_FIELD_NOTES</M>, else{" "}
+            <M>~/.local/share/theodolite/field_notes.json</M>; each entry, a neuron’s or a head’s, keeps who wrote it and
+            when. <M>GET/POST /api/atlas/notes</M>.
           </EntryApparatus>
         </Entry>
 

@@ -382,9 +382,10 @@ const Keep: React.FC = () => (
       </KeepRow>
       <KeepRow n={2} state="yes" condition="Output labels trusted only from layer 41 upward.">
         Below layer 41 no page sets a neuron’s words in its main reading: <To dest="instrument">the instrument</To>,{" "}
-        <To dest="layer">a layer’s leaf</To>, a <To dest="neuron">neuron’s folio</To>, <To dest="nudge">the nudge</To>{" "}
-        and <To dest="vault">the vault</To> hold them back, say why, and keep them in the apparatus (the threads set out
-        no neuron’s words). The
+        <To dest="layer">a layer’s leaf</To>, a <To dest="neuron">neuron’s folio</To>, <To dest="nudge">the nudge</To>
+        , <To dest="vault">the vault</To> and <To dest="atlas">the atlas</To> hold them back, say why, and keep them in
+        the apparatus (the threads set out no neuron’s words; the atlas sets beside them its steer lens, a measured
+        effect and not a label). The
         server marks each label it sends (label_check), so callers over HTTP and MCP get the same caution; the vault’s
         console shows the server’s replies whole, and says which of their labels the reading pages hold back.
       </KeepRow>
@@ -416,7 +417,9 @@ const Keep: React.FC = () => (
         fell most. The folio counts how many of the label’s ten words are among the hundred whose odds rose most, as
         the study did for 384 faces (N1), and says no more than that count: one word-piece is a smaller test than 36
         texts, and only the test on the 36 texts compares with the study’s figures. It runs one label at a time, when
-        you ask; nothing yet tests every label on its own.
+        you ask; nothing yet tests every label on its own. <To dest="atlas">The atlas</To>’s steer lens measures, for
+        every neuron, the next word-pieces a small push raises and lowers, which you can set beside its label; the two
+        are not compared for you.
       </KeepRow>
     </div>
   </section>
@@ -505,33 +508,33 @@ const Practices: React.FC = () => (
         here={
           <>
             In part. Write whole sentences into a neuron’s guess test, and tick “read it in long contexts” in its field
-            notes only once you have. Stored passages for each face, which the study recommends (§3.5):{" "}
-            <NotInInstrument />
+            notes only once you have; in the atlas, “reads you” shades a whole text of yours by how hard a neuron fires.
+            Stored passages for each face, which the study recommends (§3.5): <NotInInstrument />
           </>
         }
-        links={[["neuron", "its field notes →"]]}
+        links={[
+          ["neuron", "its field notes →"],
+          ["atlas", "the atlas →"],
+        ]}
       />
       <Practice
         numeral="iv"
         asks="Steer it, and make narrow predictions that could prove you wrong."
-        here="Nudge one neuron and see what the model writes. On a neuron’s folio, put a guess to the test: sentences that should wake it against sentences that should not."
+        here="Nudge one neuron and see what the model writes, or push it in the atlas and read three answers at once: pushed up, left alone, pushed down; its census keeps answers pushed at several doses. On a neuron’s folio, put a guess to the test: sentences that should wake it against sentences that should not."
         links={[
           ["nudge", "nudge →"],
+          ["atlas", "push it in the atlas →"],
           ["neuron", "put a guess to the test →"],
         ]}
       />
       <Practice
         numeral="v"
         asks="Look upstream at what builds a neuron, and downstream at what reads it."
-        here={
-          <>
-            Downstream: the threads on the rings, and who listens to it on a neuron’s folio. Upstream:{" "}
-            <NotInInstrument />
-          </>
-        }
+        here="Downstream: the threads on the rings, and who listens to it on a neuron’s folio. Both ways, in the atlas: what drives a neuron and what it writes into, through the weights alone, and its web hop by hop, with the heads that read it and feed it."
         links={[
           ["instrument", "threads →"],
           ["neuron", "who listens →"],
+          ["atlas", "its web in the atlas →"],
         ]}
       />
       <Practice
@@ -540,12 +543,15 @@ const Practices: React.FC = () => (
         here={
           <>
             A neuron’s field notes let you mark either face “not yet understood”, and its folio holds back a label
-            whose two readings share none of their first ten, saying why and keeping it in the apparatus. The notes
-            last for this visit only; keeping them with the vault:{" "}
-            <NotInInstrument />
+            whose two readings share none of their first ten, saying why and keeping it in the apparatus. The folio’s
+            notes stay in this browser; the atlas keeps a name and a note for each neuron on the server, for everyone
+            who uses it. Keeping them with the vault: <NotInInstrument />
           </>
         }
-        links={[["neuron", "field notes →"]]}
+        links={[
+          ["neuron", "field notes →"],
+          ["atlas", "names in the atlas →"],
+        ]}
       />
       <Practice
         numeral="vii"
@@ -573,13 +579,17 @@ const Practices: React.FC = () => (
       <dd>
         <M>trace_downstream_readers(layer, neuron_idx, prompt, max_layer_hop=6, top_k=10)</M>: C = ⟨σ<sub>i</sub> w
         <sub>down</sub>, w<sub>gate</sub>⟩ · |a| over the next six layers. A weak guide (ρ ≈ 0.41); the direct-path
-        estimate in V7’s notes reaches 0.87 (§3.4 bug 4). No upstream counterpart exists in <M>backend/</M>.
+        estimate in V7’s notes reaches 0.87 (§3.4 bug 4). Both ways, from the weights alone: the atlas’s{" "}
+        <M>neuron_wiring</M> (a writer’s w<sub>post</sub> ⊙ w<sub>down</sub> read by a later neuron’s gate and up rows
+        through its norm, |g · u| z-scored per pair of layers; <M>backend/atlas_ops.py</M>) and its cone through the
+        wiring index (<M>backend/atlas_index.py</M>).
       </dd>
       <dt>steer</dt>
       <dd>
         <M>SteeringLaserRequest</M> takes <M>pole_layer</M>, <M>pole_neuron</M>, <M>pole_polarity</M>; defaults{" "}
         <M>layers=[29, 35, 41, 47, 53]</M>, <M>scale=650.0</M> (server.py:104–105), the collapse regime of bug 1, still
-        in the code.
+        in the code. The atlas’s push adds a share of the stream’s median length along one neuron’s own write direction
+        at its layer (<M>POST /api/atlas/push</M>; <M>backend/atlas_ops.resolve</M>).
       </dd>
       <dt>the essay</dt>
       <dd>
@@ -726,8 +736,9 @@ const Sources: React.FC<{ anchor: string | undefined }> = ({ anchor }) => (
       </h2>
       <p style={{ margin: 0, fontSize: 16, maxWidth: 900 }}>
         Numbered as in <M>REFERENCES.md</M>, sections A to C and G. Sections D to F (statistics, data and software,
-        [29]–[41]) are listed there, and so is section H ([45]–[46], written from local files, their links not opened),
-        on which no reading on these pages relies.
+        [29]–[41]) are listed there, and so are section H ([45]–[46], written from local files, their links not opened),
+        on which no reading on these pages relies, and section I ([47]–[48]: the neuron explorer the atlas follows, and
+        UMAP, which lays out the atlas’s sheets when it is installed).
         {/* anchors for links to [29]–[41], which are listed only in REFERENCES.md: they land on this line */}
         {REFS_D_TO_F.map((n) => (
           <span key={n} id={refId(n)} style={{ scrollMarginTop: 16 }} />

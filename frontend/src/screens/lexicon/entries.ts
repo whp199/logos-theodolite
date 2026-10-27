@@ -31,7 +31,6 @@ export const INDEX: IndexItem[] = [
   { label: "census, the", id: "census", section: "iii" },
   { label: "double-negative regime", id: "double-negative", section: "ii" },
   { label: "edit, an", id: "edit", section: "iv" },
-  { label: "field notes", id: "field-notes", section: "iii" },
   { label: "gathering", id: "gathering", section: "ii" },
   { label: "global and local attention", id: "global", section: "ii" },
   { label: "how it writes", id: "how-it-writes", section: "iii" },
@@ -41,6 +40,7 @@ export const INDEX: IndexItem[] = [
   { label: "layer", id: "layer", section: "ii" },
   { label: "lens and the naked eye, the", id: "lens", section: "iii" },
   { label: "matched control", id: "matched-control", section: "iv" },
+  { label: "names and notes", id: "names", section: "iii" },
   { label: "neuron and its two faces", id: "neuron", section: "ii" },
   { label: "nudge", id: "nudge", section: "iv" },
   { label: "pole", see: "neuron", id: "neuron", section: "ii" },
@@ -84,7 +84,7 @@ export const ALIASES: Record<string, string[]> = {
  * Every anchor on the page, for reference:
  * entries   layer word-piece stream gathering remembering global neuron double-negative strength write threads
  *           lens j-space thinking chosen landmarks bearing kinship how-it-writes seed each-word-piece rubric apparatus
- *           sighting matched-control vault test nudge edit atlas census web steer-lens push field-notes scientist
+ *           sighting matched-control vault test nudge edit atlas census web steer-lens push names scientist
  * cautions  labels single late quiet frame thread-score nudge-defaults template think split bos
  * aliases   naked-eye faces pole stream-strength elevation through-the-lens write-size causal-check spot-check
  */
