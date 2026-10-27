@@ -231,6 +231,7 @@ class Atlas:
         s = self.index.get("act_scale")
         if s is not None:
             return {"p50": [float(x) for x in s["resid_q"][:, 1]], "pos": s["pos"], "neg": s["neg"],
+                    "mlp_rms": [float(x) for x in s["mlp_rms_q"][:, 1]], "mid_rms": [float(x) for x in s["mid_rms_q"][:, 1]],
                     "regimes": {k: s[k] for k in ("pp", "nn", "pn", "np")},
                     "source": {"kind": "index", "corpus": s["meta"].get("corpus"), "tokens": int(s["tokens"]),
                                "built_at": s["meta"].get("built_at")}}
@@ -239,11 +240,16 @@ class Atlas:
             ids = study_ids(self.rt)
             ex = ao.activation_extremes(self.lm, ids)
             self._scales = {k2: v for k2, v in self._scales.items() if not k2}  # keep the clean model's
-            self._scales[key] = {"p50": ao.stream_p50(ex), "pos": ex.pos.numpy(), "neg": ex.neg.numpy(),
+            self._scales[key] = {"p50": ao.stream_p50(ex), "pos": ex.pos.numpy(), "neg": ex.neg.numpy(), **ao.norm_scales(ex),
                                  "regimes": {k: getattr(ex, k).numpy() for k in ("pp", "nn", "pn", "np")},
                                  "source": {"kind": "study_texts", "corpus": "the study's 36 texts (provisional)",
                                             "tokens": ex.tokens, "edits_in_force": list(key)}}
         return self._scales[key]
+
+    def link_scale(self) -> torch.Tensor:
+        """`atlas_ops.link_scale` for the model as it now stands (the scales above; call under the GPU lock)."""
+        sc = self.scales()
+        return ao.link_scale(self.w.scalars, sc["mlp_rms"], sc["mid_rms"])
 
     def act_range(self, layer: int, n: int, sc: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         sc = sc or self._scales_if_ready()
@@ -748,12 +754,13 @@ async def neuron_steer_lens(layer: int, n: int) -> Dict[str, Any]:
     return await on_gpu(_steer_lens_live, a, layer, n)
 
 
-def _decorate(a: Atlas, rows: List[Dict[str, Any]], notes: Dict[str, Any], edited: set) -> List[Dict[str, Any]]:
-    """Each linked neuron with the face the link drives, that face's words (with their check), its census words and
-    its name."""
+def _decorate(a: Atlas, rows: List[Dict[str, Any]], notes: Dict[str, Any], edited: set, side: str) -> List[Dict[str, Any]]:
+    """Each linked neuron read on the face the link model gives it (atlas_ops.LINK_MODEL): a reader ("down") on the
+    face the link pushes it toward, a writer ("up") on the face that opens the open neuron's gate; that face's words
+    (with their check), its census words and its name."""
     out = []
     for c in rows:
-        face = "+" if c["sign"] > 0 else "-"
+        face = ("+" if c["sign"] > 0 else "-") if side == "down" else ("+" if c["gate"] > 0 else "-")
         out.append({**c, "face": face, "words": a.face(c["layer"], c["n"], face, 5, edited),
                     "census": census_words(c["layer"], a.rt.model_id).get(c["n"], []),
                     "name": (notes.get(fn.note_key(c["layer"], c["n"])) or {}).get("name", "")})
@@ -767,16 +774,17 @@ def _wiring(a: Atlas, layer: int, n: int, k: int) -> Dict[str, Any]:
     key = (a.edit_key(), layer, n, k)
     hit = a.cache["wiring"].get(key)
     if hit is None:
-        hit = a.cache["wiring"].put(key, ao.neuron_wiring(a.w, layer, n, k=k))
+        hit = a.cache["wiring"].put(key, ao.neuron_wiring(a.w, layer, n, a.link_scale(), k=k))
     return {"source": "live", **hit}
 
 
 @router.get("/neuron/wiring")
 async def neuron_wiring(layer: int, n: int, k: int = 24) -> Dict[str, Any]:
-    """The neuron's strongest weight links each way (atlas_ops.neuron_wiring): readers in later layers ("down") and
-    writers in earlier ones ("up"), each with z, sign, the face the link drives (`face`: "+" when sign is +1), that
-    face's words with their check, and its name. From the wiring index when built and the neuron is not edited, else
-    read live from the weights (`source`)."""
+    """The neuron's strongest weight links each way (atlas_ops.neuron_wiring), by strength across layers: readers in
+    later layers ("down") and writers in earlier ones ("up"), each with w, z, sign, gate, the face it is read on
+    (`face`, `_decorate`), that face's words with their check, and its name. From the wiring index when built and the
+    neuron is not edited, else read live from the weights (`source`). A neuron that writes nothing (silenced in the
+    vault) has no readers."""
     a = atlas()
     _check_neuron(a, layer, n)
     k = max(1, min(int(k), 64))
@@ -786,9 +794,9 @@ async def neuron_wiring(layer: int, n: int, k: int = 24) -> Dict[str, Any]:
         res = await on_gpu(_wiring, a, layer, n, k)
     notes = (await fn.all_notes())["neurons"]
     edited = a.edited()
-    down, up = await asyncio.to_thread(lambda: (_decorate(a, res["down"], notes, edited), _decorate(a, res["up"], notes, edited)))
+    down, up = await asyncio.to_thread(lambda: (_decorate(a, res["down"], notes, edited, "down"), _decorate(a, res["up"], notes, edited, "up")))
     return {"layer": layer, "n": n, "source": res["source"], "down": down, "up": up,
-            "note": "weight-only direct-path links; leads to check, not circuits"}
+            "note": "weight-only direct-path links, read " + ao.LINK_MODEL + " Leads to check, not circuits."}
 
 
 def _roles(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
@@ -1510,8 +1518,11 @@ async def neuron(layer: int, n: int) -> Dict[str, Any]:
 
 @router.get("/cone")
 async def cone(layer: int, n: int, k: int = 2, limit: int = 120) -> Dict[str, Any]:
-    """The neuron's cone as a list of neurons (the scientist's `cone`): each reached neuron with its hop, best z, sign
-    and words. Multi-hop paths are weight-only guesses: leads to check, not circuits."""
+    """The neuron's cone as a list of neurons (the scientist's `cone`), followed by the link model
+    (atlas_ops.LINK_MODEL, AtlasIndex.walk): downstream from the neuron firing on its + face (`when: "+"`) and on its -
+    face (`when: "-"`), upstream to the writers that push it toward either face (`drives`); each reached neuron with its
+    hop, the strength of the link that reached it (w, over the strongest of its node's links), z, the face it is read on
+    and that face's words. Multi-hop paths are weight-only guesses: leads to check, not circuits."""
     a = atlas()
     _check_neuron(a, layer, n)
     notes = (await fn.all_notes())["neurons"]
@@ -1520,27 +1531,21 @@ async def cone(layer: int, n: int, k: int = 2, limit: int = 120) -> Dict[str, An
     def work() -> Dict[str, Any]:
         if a.index.get("wiring") is None:
             return {"ready": False, "note": "the wiring index is not built: the cone needs every neuron's links (scripts/atlas_build.py wiring)"}
-        links = a.index.cone(layer, n, max(1, int(k)))
-        # each neuron reached once, at its nearest hop, on the face the chain of signs drives (as the web summary
-        # reads it): downstream, the face the neuron's firing pushes; upstream, the face that pushes the neuron up
-        sign = {(layer, n): 1}
-        best: Dict[Tuple[int, int], Tuple[float, int]] = {}
-        for sl, sn, dl, dn, z, hop in links:
-            near, far = ((sl, sn), (dl, dn)) if hop > 0 else ((dl, dn), (sl, sn))
-            if far in sign or near not in sign:
-                continue
-            sign[far] = sign[near] * (1 if z > 0 else -1)
-            best[far] = (abs(z), hop)
+        reached: List[Tuple[Tuple[int, int], Dict[str, Any]]] = []
+        for f in ("+", "-"):
+            reached += [(t, {**r, "when": f}) for t, r in a.index.walk(layer, n, "down", f, None, max(1, int(k))).items()]
+        reached += list(a.index.walk(layer, n, "up", None, None, max(1, int(k))).items())
         per_hop: Dict[int, int] = {}
-        for _, (_, hop) in best.items():
-            per_hop[hop] = per_hop.get(hop, 0) + 1
-        nodes = sorted(best.items(), key=lambda kv: (abs(kv[1][1]), -kv[1][0]))[: max(1, min(int(limit), 1000))]
-        return {"ready": True, "links": len(links), "neurons": len(best), "per_hop": {str(h): c for h, c in sorted(per_hop.items())},
-                "note": ("weight-only direct-path links chained; paths past hop 1 are leads, not circuits. hop > 0 reads the "
-                         "neuron, hop < 0 feeds it; face is the side the chain of link signs drives"),
-                "nodes": [{"layer": l, "n": m, "hop": hop, "z": round(z, 1), "face": "+" if sign[(l, m)] > 0 else "-",
-                           "words": a.face(l, m, "+" if sign[(l, m)] > 0 else "-", 5, edited),
-                           "census": census_words(l, a.rt.model_id).get(m, []),
-                           "name": (notes.get(fn.note_key(l, m)) or {}).get("name") or None} for (l, m), (z, hop) in nodes]}
+        for _, r in reached:
+            per_hop[r["hop"]] = per_hop.get(r["hop"], 0) + 1
+        nodes = sorted(reached, key=lambda kv: (abs(kv[1]["hop"]), -kv[1]["w"]))[: max(1, min(int(limit), 1000))]
+        return {"ready": True, "neurons": len(reached), "per_hop": {str(h): c for h, c in sorted(per_hop.items())},
+                "note": ("weight-only direct-path links chained, read from rest (" + ao.LINK_MODEL + ") Paths past hop 1 are "
+                         "leads, not circuits. hop > 0 reads the neuron (when: the face it fires on), hop < 0 feeds it "
+                         "(drives: the face it pushes the neuron toward); face is the face each is read on"),
+                "nodes": [{"layer": l, "n": m, "hop": r["hop"], "w": r["w"], "z": r["z"], "face": r["face"],
+                           **({"when": r["when"]} if "when" in r else {}), **({"drives": r["drives"]} if "drives" in r else {}),
+                           "words": a.face(l, m, r["face"], 5, edited), "census": census_words(l, a.rt.model_id).get(m, []),
+                           "name": (notes.get(fn.note_key(l, m)) or {}).get("name") or None} for (l, m), r in nodes]}
 
     return await asyncio.to_thread(work)

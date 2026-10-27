@@ -131,26 +131,42 @@ const NeuronWeb: React.FC = () => {
           <div className="kicker">
             its web · {webTotal ?? w.links} links · pooled from the {w.src === "steer" ? "steer lens" : "lens, labels the gate lets through"}
           </div>
-          <div className="atlas-lab">fed by · {w.up?.neurons} upstream</div>
-          <Chips list={w.up?.fed_by} onPick={search} />
-          <div className="atlas-lab">held back by</div>
-          <Chips list={w.up?.held_by} onPick={search} />
-          <div className="atlas-lab">pushes toward · {w.down?.neurons} downstream</div>
-          <Chips list={w.down?.toward} onPick={search} />
-          <div className="atlas-lab">pushes away from</div>
-          <Chips list={w.down?.away} onPick={search} />
+          {(
+            [
+              ["up", "+", "what drives it up", "upstream"],
+              ["up", "-", "what drives it down", "upstream"],
+              ["down", "+", "when it fires up, it drives", "downstream"],
+              ["down", "-", "when it fires down, it drives", "downstream"],
+            ] as const
+          ).map(([side, sg, label, where]) => {
+            const b = w[side]?.[sg];
+            return (
+              <React.Fragment key={`${side}${sg}`}>
+                <div className="atlas-lab">
+                  {label} · {b?.neurons ?? 0} {where}
+                </div>
+                <Chips list={b?.words} onPick={search} empty={b?.neurons ? "nothing above chance" : "no link reaches this way"} />
+              </React.Fragment>
+            );
+          })}
           {w.gated && (w.gated.down || w.gated.up) ? (
             <div className="muted atlas-small">
               {w.gated.up + w.gated.down} faces left out: the label gate holds their words back
             </div>
           ) : null}
           <Rubric style={{ fontSize: 14, margin: "4px 0 0" }}>
-            Weight-only links chained hop by hop: leads to check with a push or a read, not circuits found.{" "}
+            Weight-only links read from rest: a writer moves a reader when it fires on the face that opens the reader's gate, and pushes it
+            toward one face; the strongest as they arrive, counting how Gemma scales the stream at every layer. Words pooled over many
+            neurons, where the label gate was only tested on one at a time: leads to check with a push or a read, not circuits found.{" "}
             <a href={href.lexicon("web")}>What the web is.</a>
           </Rubric>
         </div>
       ) : w && mine(w) && !w.ready ? (
-        <p className="muted atlas-small">The wiring index is not built, so its web cannot be drawn (scripts/atlas_build.py wiring).</p>
+        <p className="muted atlas-small">
+          {w.missing === "wiring"
+            ? "The wiring index is not built, so its web cannot be drawn (scripts/atlas_build.py wiring)."
+            : "Its web is drawn, but neither the steer-lens index nor the lens index is built, so there are no words to pool over it (scripts/atlas_build.py lens)."}
+        </p>
       ) : null}
       {mine(nh) && nh ? (
         <div className="atlas-wsum">

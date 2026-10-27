@@ -502,7 +502,9 @@ export class AtlasMap {
     const shown = this.hoverCon ? this.hoverCon.list : this.connections;
     const zmax = Math.max(1, ...shown.map((k) => k.z));
     const linkCol = (k: Linked) => (k.role ? ROLE[k.role] : (k as Link).sign > 0 ? INKS.up : (k as Link).sign < 0 ? INKS.down : INKS.v);
-    for (const k of shown) add(k.layer, k.n, toward(linkCol(k), 0.45 + 0.55 * (k.z / zmax)));
+    // a neuron's link by its strength as it reaches the other end (w, over the strongest); a head's by its z
+    const strength = (k: Linked) => (!k.role && typeof (k as Link).w === "number" ? Math.sqrt((k as Link).w as number) : k.z / zmax);
+    for (const k of shown) add(k.layer, k.n, toward(linkCol(k), 0.45 + 0.55 * strength(k)));
     if (this.hovered) add(this.hovered.layer, this.hovered.n, toward(INKS.ink, 0.6));
     if (this.selected) add(this.selected.layer, this.selected.n, INKS.ink);
     if (this.headSrc && !this.selected) {
@@ -519,7 +521,7 @@ export class AtlasMap {
         const far = k.layer * this.N + k.n;
         const on = !this.webEdges || !this.webEdges.length || this.hoverCon || (k.side === "up" ? this.webFed.has(far) : this.webFeeds.has(far));
         const b = this.neuronPos(k.layer, k.n);
-        const cl = toward(linkCol(k), 0.6 * (0.25 + 0.75 * (k.z / zmax)) * (on ? 1 : 0.25));
+        const cl = toward(linkCol(k), 0.6 * (0.25 + 0.75 * strength(k)) * (on ? 1 : 0.25));
         lp.push(a.x, a.y, a.z, b.x, b.y, b.z);
         lc.push(cl.r, cl.g, cl.b, cl.r, cl.g, cl.b);
       }

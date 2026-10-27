@@ -68,11 +68,15 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   live for one neuron.
 - **Wiring** (`writes_into`, `reads_from`): direct-path weight links, Gemma's norms folded in. `writes_into` are
   neurons in later layers whose gate and up rows both read this neuron's write direction; `reads_from` are neurons in
-  earlier layers whose write directions both rows read. `z` is |gate . v| * |up . v| z-scored against every neuron of
-  that other layer: how unusual the link is for that pair of layers, not its absolute strength. `sign` is the sign of
-  the reader's activation the writer's direction gives it; `face` is the reader's face the link drives. Each linked
-  neuron comes with that face's words, its census words and its name, so you can read a neighbourhood without more
-  calls.
+  earlier layers whose write directions both rows read. The 24 each way are the strongest as the link reaches the
+  reader: `w` is its strength over the neuron's strongest, counting Gemma's layer scalars (the stream is scaled at the
+  end of every layer, so an early writer reaches a late reader faint) and the norms at their usual scale. `z` is the
+  link's |gate . v| * |up . v| z-scored against every neuron of that other layer: how unusual it is for that pair of
+  layers. Signs are read from rest: `gate` is the writer's face that opens the reader's gate (fired the other way it
+  barely moves the reader); `sign` is the reader's face it then pushes toward; `face` is the face each linked neuron is
+  shown on (a reader's `sign` face, a writer's `gate` face). In use the reader's other inputs decide where it sits, so
+  a sign is a lead. Each linked neuron comes with that face's words, its census words and its name, so you can read a
+  neighbourhood without more calls.
 - **Activation range** (`activation`: act_max, act_min, over_tokens, source): the largest and most negative activation
   over a corpus (the stats index), or, until that is built, over the study's 36 texts (marked provisional). Raw values.
 - **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed by fixed doses on four
@@ -84,9 +88,11 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   on its own. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model (`card` in
   `rollouts`), so a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when
   you work without.
-- **Web summary** (`web_summary`): the words of the neuron's cone, pooled: `fed_by` / `held_by` its input side (what
-  excites it and what holds it back), `toward` / `away` its downstream effect. Pooled from the steer lens when built,
-  else from lens labels the gate lets through (`left_out_by_the_gate` counts the rest).
+- **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest and pooled: `downstream`
+  `when_plus` / `when_minus`, what the neurons it drives write when it fires on its + / - face; `upstream`
+  `drives_plus` / `drives_minus`, what the neurons that push it toward its + / - face write. Pooled from the steer lens
+  when built, else from lens labels the gate lets through (`left_out_by_the_gate` counts the rest); the gate was
+  validated for single neurons' labels, not for words pooled over many, so a pool is a lead.
 - **Cone** (`cone`): the wiring chained hop by hop. **Multi-hop paths are guesses from weights**: each link ignores how
   often the writer fires, attention, and every layer between; the guesswork compounds per hop, and the cone is pruned,
   so a missing link is not a missing connection. Treat paths past the first hop as leads to check, never as circuits.

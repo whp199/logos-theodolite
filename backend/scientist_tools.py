@@ -133,22 +133,26 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "neuron", "description": "Everything kept for one neuron: its name and note; both faces' words through the J++ lens and by "
      "the naked eye, each with the label gate's verdict; its steer lens (the next word-piece's measured change when pushed "
      "±0.8, with KL); its activation range; its census rank if any; its 24 strongest direct-path weight links each way "
-     "(writes_into, reads_from), each linked neuron with the face the link drives, that face's words, census words and name.",
+     "(writes_into, reads_from) by strength across layers (w), each read from rest: a reader on the face the link pushes it "
+     "toward (sign), a writer on the face that opens the reader's gate (gate), with that face's words, census words and name.",
      "inputSchema": {"type": "object", "properties": LN, "required": ["layer", "n"]}},
     {"name": "rollouts", "description": "The census of a neuron: what the model wrote when it was pushed, per question and dose, beside the "
      "unpushed answers, with its distinctive words, their mass, its empirical p against random-direction controls and the "
      "layer's false-discovery q. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model "
      "(`card.doses_from`): a low rank may only mean the dose was wrong for this layer. Empty when the layer has no census.",
      "inputSchema": {"type": "object", "properties": {**LN, "max_chars": {"type": "integer", "default": 500}}, "required": ["layer", "n"]}},
-    {"name": "cone", "description": "The neuron's cone: its weight links chained forward (what reads it, hop > 0) and backward (what feeds "
-     "it, hop < 0), the first hop all of them, later hops each node's top k. Each neuron reached with its hop, z, the face the "
-     "chain of signs drives and its words. Multi-hop paths are weight-only guesses: leads to check, not circuits. Needs the wiring index.",
+    {"name": "cone", "description": "The neuron's cone: its weight links chained forward (what reads it, hop > 0, from it firing on its + "
+     "face and on its - face: `when`) and backward (what feeds it, hop < 0: `drives`, the face of the neuron it pushes toward), "
+     "the first hop all of them, later hops each node's top k, read from rest (a writer moves its reader when it fires on the "
+     "face that opens the reader's gate). Each neuron reached with its hop, w (the link's strength over its node's strongest), "
+     "z, the face it is read on and its words. Multi-hop paths are weight-only guesses: leads to check, not circuits. Needs the wiring index.",
      "inputSchema": {"type": "object", "properties": {**LN, "k": {"type": "integer", "default": 2}, "limit": {"type": "integer", "default": 120}},
                      "required": ["layer", "n"]}},
     {"name": "web_summary", "description": "The words of the neuron's web, the summary the person sees beside the map: the steer lens (or, "
-     "without it, the gate-passing lens labels) pooled over its cone, each neuron on the face the chain drives, ranked by lift "
-     "over its layer's base rate. toward / away: what its readers push the model toward and away from when it fires; fed_by / "
-     "held_by: what its writers say when they excite / inhibit it. Needs the wiring index.",
+     "without it, the gate-passing lens labels) pooled over its cone read from rest, ranked by lift over its layer's base rate. "
+     "downstream when_plus / when_minus: what the neurons it drives write when it fires on its + / - face; upstream "
+     "drives_plus / drives_minus: what the neurons that push it toward its + / - face write. Weight-only, from rest, and "
+     "pooled over many neurons (the label gate was validated for single neurons' labels): leads to test. Needs the wiring index.",
      "inputSchema": {"type": "object", "properties": {**LN, "first": {"type": "integer", "default": 5}, "k": {"type": "integer", "default": 2}},
                      "required": ["layer", "n"]}},
     {"name": "search_lens", "description": "Neurons one of whose faces carries a word-piece holding the query (ignoring case) among its first "
@@ -283,7 +287,8 @@ def _need(a: Dict[str, Any], *keys: str) -> None:
 
 
 def _slim_link(c: Dict[str, Any]) -> Dict[str, Any]:
-    out = {"neuron": cite(c["layer"], c["n"]), "z": c["z"], "sign": c["sign"], "face": c.get("face"), **face_words(c.get("words"), 5)}
+    out = {"neuron": cite(c["layer"], c["n"]), "w": c.get("w"), "z": c["z"], "sign": c["sign"], "gate": c.get("gate"), "face": c.get("face"),
+           **face_words(c.get("words"), 5)}
     if c.get("census"):
         out["census"] = c["census"]
     if c.get("name"):
@@ -349,18 +354,24 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         r = await api.get("/api/atlas/cone", layer=a["layer"], n=a["n"], k=a.get("k", 2), limit=a.get("limit", 120))
         if not r.get("ready"):
             return r
-        nodes = [{"neuron": cite(x["layer"], x["n"]), "hop": x["hop"], "z": x["z"], "face": x["face"], **face_words(x.get("words"), 5),
+        nodes = [{"neuron": cite(x["layer"], x["n"]), "hop": x["hop"], "w": x["w"], "z": x["z"], "face": x["face"],
+                  **{k_: x[k_] for k_ in ("when", "drives") if k_ in x}, **face_words(x.get("words"), 5),
                   **({"census": x["census"]} if x.get("census") else {}), **({"name": x["name"]} if x.get("name") else {})} for x in r["nodes"]]
-        return {"links": r["links"], "neurons": r["neurons"], "per_hop": r["per_hop"], "note": r["note"], "nodes": nodes}
+        return {"neurons": r["neurons"], "per_hop": r["per_hop"], "note": r["note"], "nodes": nodes}
     if name == "web_summary":
         _need(a, "layer", "n")
         r = await api.get("/api/atlas/web/summary", layer=a["layer"], n=a["n"], first=a.get("first", 5), k=a.get("k", 2), top=20)
         if not r.get("ready"):
-            return {"ready": False, "note": "the wiring index is not built: the web needs every neuron's links"}
+            missing = {"wiring": "the wiring index is not built: the web needs every neuron's links",
+                       "lens": "neither the steer-lens index nor the lens index is built: there are no words to pool"}
+            return {"ready": False, "note": missing.get(r.get("missing"), "not ready")}
         slim = lambda lst: [f"{t['tok']} ({t['n']})" for t in lst]  # noqa: E731
+        d, u = r["down"], r["up"]
         return {"pooled": r["src"], "links": r["links"], "left_out_by_the_gate": r.get("gated"),
-                "downstream_neurons": r["down"]["neurons"], "toward": slim(r["down"]["toward"]), "away": slim(r["down"]["away"]),
-                "upstream_neurons": r["up"]["neurons"], "fed_by": slim(r["up"]["fed_by"]), "held_by": slim(r["up"]["held_by"])}
+                "downstream": {"when_plus": {"neurons": d["+"]["neurons"], "words": slim(d["+"]["words"])},
+                               "when_minus": {"neurons": d["-"]["neurons"], "words": slim(d["-"]["words"])}},
+                "upstream": {"drives_plus": {"neurons": u["+"]["neurons"], "words": slim(u["+"]["words"])},
+                             "drives_minus": {"neurons": u["-"]["neurons"], "words": slim(u["-"]["words"])}}}
     if name == "search_lens":
         _need(a, "query")
         r = await api.get("/api/atlas/search", q=a["query"], limit=a.get("limit", 40))

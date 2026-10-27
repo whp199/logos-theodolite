@@ -71,9 +71,9 @@ study found about Gemma-4-31B. It uses the vocabulary above (faces, steer lens, 
   effect to label, and layers 32-40 were not sampled. Input-side words (`gate_trigger`) were near useless.
 - **Single neurons at page layers 21-31.** The study's push of 60 times a neuron's scale overdrove them (errata E43,
   E46): read the atlas's own doses (the add push, up to about 3) there, and expect weak, distributed effects.
-- **Web summary.** A word-piece on both `fed_by` and `held_by` often reflects pooling; shared topical words can mean a
-  distinction inside a topic (below). With the steer-lens index missing it pools only gate-passing lens labels, which
-  below page layer 41 is none.
+- **Web summary.** A word-piece under both `drives_plus` and `drives_minus` often reflects pooling; shared topical
+  words can mean a distinction inside a topic (below). With the steer-lens index missing it pools only gate-passing
+  lens labels, which below page layer 41 is none.
 - **Weight links (`writes_into`, `reads_from`, cone).** Leads to check, never circuits. Verify a claimed path with
   `activations` under ablation: a real, causal link can still change nothing in the output.
 - **Activation range.** Raw values. Scores many times `act_max` mark a detector at its centre.

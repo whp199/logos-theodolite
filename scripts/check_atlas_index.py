@@ -114,7 +114,24 @@ def main() -> int:
             check(idx.face_ids(l, n, face, "eye", 10) == want_eye, f"lens: L{l} N{n} {face} by the naked eye")
             check(idx.face_check(l, n, face) == r[key]["label_check"], f"lens: L{l} N{n} {face} label check {idx.face_check(l, n, face)} != {r[key]['label_check']}")
     check(idx.face_ids(L - 1, 5, "+", "lens") == idx.face_ids(L - 1, 5, "+", "eye"), "lens: the last layer's two readings differ")
-    section("the lens index is the vault's ranking and label check, face by face", before)
+    # a build of some layers: an unread layer has no words (not empty ones the gate would pass), and the next build of
+    # other layers adds to the file rather than wiping the first
+    part = out / "partial"
+    pidx = AtlasIndex(part)
+    ab.build_lens(rt, part, chunk=48, layers=[1], log=quiet)
+    check(pidx.face_ids(1, 7, "+", "lens") == idx.face_ids(1, 7, "+", "lens") and pidx.face_ids(4, 7, "+", "lens") is None
+          and pidx.face_check(4, 7, "+") is None and not pidx.label_passes(4, 7, "+"), "lens: a layer not yet read has no words and no check")
+    w4 = idx.face_ids(4, 7, "+", "lens", 12)
+    hit_rows, _ = pidx.search(np.array(w4[:3], np.int32), limit=100000)
+    check(not any(r_["layer"] == 4 and r_["src"] in ("lens", "eye") for r_ in hit_rows), "lens: search finds nothing in a layer not yet read")
+    ab.build_lens(rt, part, chunk=48, layers=[4], log=quiet)
+    check(pidx.face_ids(1, 7, "+", "lens") == idx.face_ids(1, 7, "+", "lens") and pidx.face_ids(4, 7, "+", "lens") == idx.face_ids(4, 7, "+", "lens")
+          and pidx.get("lens")["built"].tolist() == [i_ in (1, 4) for i_ in range(L)], "lens: a second partial build adds its layers")
+    old = dict(np.load(out / "lens.npz"))
+    del old["built"]
+    np.savez(part / "lens.npz", **old)
+    check(pidx.get("lens") is None and "which layers" in pidx.status()["lens"]["refused"], "lens: a file without its layer marks is refused")
+    section("the lens index is the vault's ranking and label check, face by face; a partial build adds layers", before)
 
     before = len(failures)
     texts = [rt.compose_prompt(t, chat=True) for t in ("Who are you?", "Tell me about Orange.")] + list(ao.HEAD_TEXTS)
@@ -125,22 +142,30 @@ def main() -> int:
     ex = ao.activation_extremes(lm, wins)
     check(np.allclose(s["pos"], ex.pos.numpy()) and np.allclose(s["neg"], ex.neg.numpy()), "stats: extremes differ")
     check(np.allclose(s["resid_q"][:, 1], ao.stream_p50(ex), rtol=1e-5), "stats: the stream's median differs")
+    ns = ao.norm_scales(ex)
+    check(np.allclose(s["mlp_rms_q"][:, 1], ns["mlp_rms"], rtol=1e-5) and np.allclose(s["mid_rms_q"][:, 1], ns["mid_rms"], rtol=1e-5),
+          "stats: the feed-forward norms' scales are activation_extremes'")
     check(int(s["tokens"]) == ex.tokens and s["meta"].get("corpus") == "check", "stats: provenance")
-    section("the activation extremes and the stream's quantiles are activation_extremes'", before)
+    section("the activation extremes, the stream's quantiles and the norms' scales are activation_extremes'", before)
 
     before = len(failures)
-    ab.build_wiring(rt, out, k=10, chunk=40, log=quiet)
+    f = ao.link_scale(w.scalars, [float(x) for x in s["mlp_rms_q"][:, 1]], [float(x) for x in s["mid_rms_q"][:, 1]])
+    ab.build_wiring(rt, out, f, scale_source="check", k=10, chunk=40, log=quiet)
     for (l, n) in ((0, 3), (2, 60), (L - 1, 9), (3, N - 1)):
-        live = ao.neuron_wiring(w, l, n, k=10)
+        live = ao.neuron_wiring(w, l, n, f, k=10)
         got = idx.links(l, n, 10)
         for side in ("down", "up"):
-            a = [(c["layer"], c["n"], c["sign"]) for c in live[side]]
-            b = [(c["layer"], c["n"], c["sign"]) for c in got[side]]
-            check(set(a) == set(b), f"wiring: L{l} N{n} {side}: {sorted(set(a) ^ set(b))[:4]}")
-            zl = {(c["layer"], c["n"]): c["z"] for c in live[side]}
-            check(all(abs(c["z"] - zl.get((c["layer"], c["n"]), 1e9)) < 0.05 for c in got[side]), f"wiring: L{l} N{n} {side} z")
+            a = [(c["layer"], c["n"], c["sign"], c["gate"]) for c in live[side]]
+            b = [(c["layer"], c["n"], c["sign"], c["gate"]) for c in got[side]]
+            check(a == b, f"wiring: L{l} N{n} {side}, the same links in the same order with sign and gate: {sorted(set(a) ^ set(b))[:4]}")
+            zl = {(c["layer"], c["n"]): (c["z"], c["w"]) for c in live[side]}
+            check(all(abs(c["z"] - zl.get((c["layer"], c["n"]), (1e9, 0))[0]) < 0.05 for c in got[side]), f"wiring: L{l} N{n} {side} z")
+            check(all(abs(c["w"] - zl.get((c["layer"], c["n"]), (0, 1e9))[1]) <= 2e-2 * c["w"] + 1e-30 for c in got[side]),
+                  f"wiring: L{l} N{n} {side} w (log10 in float16)")
     check(idx.links(0, 3, 10)["up"] == [] and idx.links(L - 1, 9, 10)["down"] == [], "wiring: the first and last layers' empty sides")
-    section("the wiring index is neuron_wiring's, link by link", before)
+    check(idx.get("wiring")["meta"].get("scale_source") == "check" and "from rest" in idx.get("wiring")["meta"].get("link_model", ""),
+          "wiring: the scales' source and the link model recorded")
+    section("the wiring index is neuron_wiring's, link by link, in order of strength across layers", before)
 
     before = len(failures)
     p50 = [float(x) for x in s["resid_q"][:, 1]]
@@ -176,19 +201,38 @@ def main() -> int:
     check(all(r[2] > r[0] for r in cone if r[5] > 0) and all(r[2] > r[0] for r in cone if r[5] < 0), "cone: links go up the layers")
     check(all((r[0], r[1]) == (2, 60) for r in cone if r[5] == 1) and all((r[2], r[3]) == (2, 60) for r in cone if r[5] == -1),
           "cone: the first hop is the neuron's own links")
+    # the link model: downstream, a link is followed only when the face its writer was reached on opens the reader's gate
+    ci = idx.get("wiring")
+    gate_of = {(side, a_, b_, (int(ci[f"{side}_layer"][a_, b_, i_]), int(ci[f"{side}_n"][a_, b_, i_]))): (int(ci[f"{side}_gate"][a_, b_, i_]), int(ci[f"{side}_sign"][a_, b_, i_]))
+               for side in ("down", "up") for a_ in range(L) for b_ in range(N) for i_ in range(int(ci["K"])) if float(ci[f"{side}_z"][a_, b_, i_]) > -1e4}
+    for face in ("+", "-"):
+        wk = idx.walk(2, 60, "down", face, first=4)
+        hop1 = [t for t, r in wk.items() if r["hop"] == 1]
+        check(all(gate_of[("down", 2, 60, t)][0] == (1 if face == "+" else -1) and wk[t]["face"] == ("+" if gate_of[("down", 2, 60, t)][1] > 0 else "-")
+                  for t in hop1), f"walk down from the {face} face: only links whose gate that face opens, readers on the face pushed")
+    up = idx.walk(4, 30, "up", None, first=6)
+    check(all(r["drives"] == ("+" if gate_of[("up", 4, 30, t)][1] > 0 else "-") and r["face"] == ("+" if gate_of[("up", 4, 30, t)][0] > 0 else "-")
+              for t, r in up.items() if r["hop"] == -1), "walk up: writers on the face that opens the gate, sorted by the face they drive")
     ws = idx.web_summary(2, 60, vocab, first=4)
-    check(ws["src"] == "steer" and ws["ready"], "web summary: the steer lens is pooled when built")
+    check(ws["src"] == "steer" and ws["ready"] and set(ws["down"]) == {"+", "-"} and set(ws["up"]) == {"+", "-"},
+          "web summary: the steer lens is pooled when built, by face each way")
     (out / "steer_lens.npz").rename(out / "steer_lens.off")
     ws = idx.web_summary(2, 60, vocab, first=4)
-    check(ws["src"] == "lens" and ws["gated"]["down"] + ws["gated"]["up"] > 0 and not ws["down"]["toward"] and not ws["up"]["fed_by"],
-          f"web summary without the steer lens: {ws['gated']} {ws['down']['toward'][:2]}")
+    check(ws["src"] == "lens" and ws["gated"]["down"] + ws["gated"]["up"] > 0 and not ws["down"]["+"]["words"] and not ws["up"]["+"]["words"],
+          f"web summary without the steer lens: {ws['gated']} {ws['down']['+']['words'][:2]}")
     (out / "steer_lens.off").rename(out / "steer_lens.npz")
+    (out / "wiring.npz").rename(out / "wiring.off")
+    check(idx.web_summary(2, 60, vocab)["missing"] == "wiring", "web summary: says the wiring index is what is missing")
+    (out / "wiring.off").rename(out / "wiring.npz")
     g = np.random.default_rng(0)
     score = g.normal(size=(L, N)).astype(np.float32)
     rows, n_active = idx.active_paths(score, top=40, min_score=1.0)
     active = {(int(i // N), int(i % N)) for i in np.argsort(-np.abs(score).ravel())[:40] if abs(score.ravel()[i]) >= 1.0}
     check(n_active == len(active) and all((int(r[0]), int(r[1])) in active and (int(r[2]), int(r[3])) in active for r in rows),
           "active paths: a link to a neuron that did not fire")
+    check(all(gate_of[("down", int(r[0]), int(r[1]), (int(r[2]), int(r[3])))][0] == (1 if score[int(r[0]), int(r[1])] > 0 else -1)
+              and (int(r[4]) > 0) == (gate_of[("down", int(r[0]), int(r[1]), (int(r[2]), int(r[3])))][1] > 0) for r in rows),
+          "active paths: only writers that fired on the face opening the gate, signed by the face pushed")
     acts = np.array([[[2.0, -1.0], [0.5, -3.0]]], np.float32)  # [1, T=2, N=2]
     sc = scale_scores(acts, np.array([[4.0, 0.0]]), np.array([[-1.0, -2.0]]))
     check(sc[0, 0].tolist() == [0.0, 0.0] and np.allclose(sc[0, 1], [0.125, -1.5]), f"scores: {sc.tolist()}")
@@ -212,7 +256,13 @@ def main() -> int:
     wide = AtlasIndex(out, model=rt.model_id, shape=(L, N + 1))
     check(wide.get("wiring") is None and "shaped for" in wide.status()["wiring"]["refused"], "an index of another shape refused")
     check(other.face_ids(1, 2, "+", "lens") is None and other.cone(1, 2) == [] and other.links(1, 2) is None, "a refused index reads as not built")
-    section("an index built for another model, or of another shape, is not read", before)
+    oldw = dict(np.load(out / "wiring.npz"))
+    for side in ("down", "up"):
+        del oldw[f"{side}_lw"], oldw[f"{side}_gate"]
+    np.savez(part / "wiring.npz", **oldw)
+    check(pidx.get("wiring") is None and "weighed across layers" in pidx.status()["wiring"]["refused"],
+          "a wiring index built before links were weighed across layers is refused")
+    section("an index built for another model, of another shape, or by an older build, is not read", before)
 
     shutil.rmtree(out, ignore_errors=True)
     print(f"\n{passed} checks passed, {len(failures)} failed")

@@ -530,7 +530,7 @@ const Practices: React.FC = () => (
       <Practice
         numeral="v"
         asks="Look upstream at what builds a neuron, and downstream at what reads it."
-        here="Downstream: the threads on the rings, and who listens to it on a neuron’s folio. Both ways, in the atlas: what drives a neuron and what it writes into, through the weights alone, and its web hop by hop, with the heads that read it and feed it."
+        here="Downstream: the threads on the rings, and who listens to it on a neuron’s folio. Both ways, in the atlas, as leads rather than findings: what could drive a neuron and what it could write into, through the weights alone, read from rest and weighed by how strongly each link arrives once Gemma has scaled the stream at every layer between; its web hop by hop; the heads that read it and feed it. What actually drives it on a text is the attention drive, one word-piece at a time."
         links={[
           ["instrument", "threads →"],
           ["neuron", "who listens →"],

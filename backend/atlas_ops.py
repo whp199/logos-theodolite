@@ -653,7 +653,10 @@ class Extremes:
     activation, `neg` its most negative, and the four sign regimes of GeGLU, gelu_tanh(g) * u: `pp` (g > 0, u > 0) and
     `nn` (g < 0, u < 0, the double negative) for the positive side, `pn` (g > 0, u < 0) and `np` (g < 0, u > 0) for the
     negative; all [L, N] float32, 0 where never reached. `tokens` counts the word-pieces read; `resid_norms[l]` the length
-    of the stream leaving layer l at each of them."""
+    of the stream leaving layer l at each of them; `mlp_rms[l]` the rms of layer l's feed-forward output before its
+    post-feed-forward norm, and `mid_rms[l]` the rms of the stream entering that block (the pre-feed-forward norm's
+    input), at each of them, each as its norm divides by it (sqrt(mean square + eps)): the two norms' usual scales, which
+    weigh the wiring across layers (`link_scale`)."""
 
     pos: torch.Tensor
     neg: torch.Tensor
@@ -663,6 +666,8 @@ class Extremes:
     np: torch.Tensor
     tokens: int = 0
     resid_norms: List[List[float]] = field(default_factory=list)
+    mlp_rms: List[List[float]] = field(default_factory=list)
+    mid_rms: List[List[float]] = field(default_factory=list)
 
 
 @torch.no_grad()
@@ -671,7 +676,8 @@ def activation_extremes(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, ke
     with outsized activations, as the reference's neuron_stats leaves it out)."""
     L, N = len(lm.layers), ffn_width(lm, 0)
     z = lambda: torch.zeros(L, N, dtype=torch.float32)  # noqa: E731
-    ex = Extremes(pos=z(), neg=z(), pp=z(), nn=z(), pn=z(), np=z(), resid_norms=[[] for _ in range(L)])
+    ex = Extremes(pos=z(), neg=z(), pp=z(), nn=z(), pn=z(), np=z(), resid_norms=[[] for _ in range(L)],
+                  mlp_rms=[[] for _ in range(L)], mid_rms=[[] for _ in range(L)])
     dev = model_device(lm)
     gate: Dict[int, torch.Tensor] = {}
     up: Dict[int, torch.Tensor] = {}
@@ -703,7 +709,16 @@ def activation_extremes(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, ke
                     h = out[0] if isinstance(out, tuple) else out
                     ex.resid_norms[l].extend(h[0, 1:].float().norm(dim=-1).cpu().tolist())
 
+                # each as the norm divides by it: sqrt(mean square + eps)
+                def mlp_out(_m: nn.Module, _a: Tuple[Any, ...], out: Any, l: int = l, eps: float = float(layer.post_feedforward_layernorm.eps)) -> None:
+                    ex.mlp_rms[l].extend((out[0, 1:].float().pow(2).mean(-1) + eps).sqrt().cpu().tolist())
+
+                def mid_in(_m: nn.Module, args: Tuple[Any, ...], l: int = l, eps: float = float(layer.pre_feedforward_layernorm.eps)) -> None:
+                    ex.mid_rms[l].extend((args[0][0, 1:].float().pow(2).mean(-1) + eps).sqrt().cpu().tolist())
+
                 hooks.append(layer.register_forward_hook(post))
+                hooks.append(layer.mlp.register_forward_hook(mlp_out))
+                hooks.append(layer.pre_feedforward_layernorm.register_forward_pre_hook(mid_in))
         for ids in texts_ids:
             x = torch.tensor([[int(t) for t in ids]], dtype=torch.long, device=dev)
             lm(input_ids=x, use_cache=False)
@@ -719,6 +734,13 @@ def activation_extremes(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, ke
 def stream_p50(ex: Extremes) -> List[float]:
     """The median length of the stream leaving each layer over the word-pieces `ex` read (the add push's unit)."""
     return [float(np.median(v)) if v else float("nan") for v in ex.resid_norms]
+
+
+def norm_scales(ex: Extremes) -> Dict[str, List[float]]:
+    """The two norms' usual scales per layer over the word-pieces `ex` read (medians): `mlp_rms`, the feed-forward
+    output's rms before the post-feed-forward norm; `mid_rms`, the stream's rms entering the block."""
+    med = lambda vs: [float(np.median(v)) if v else float("nan") for v in vs]  # noqa: E731
+    return {"mlp_rms": med(ex.mlp_rms), "mid_rms": med(ex.mid_rms)}
 
 
 @torch.no_grad()
@@ -1086,16 +1108,46 @@ def attention_drive(cap: HeadCapture, weights: Weights, shapes: Sequence[AttnSha
 # ------------------------------------------------------------------------------------------------- wiring by weights
 
 
+def link_scale(scalars: torch.Tensor, mlp_rms: Sequence[float], mid_rms: Sequence[float]) -> torch.Tensor:
+    """[L, L] float64: f[i, j] for i < j (0 elsewhere), what one unit of a writer's activation at layer i becomes in the
+    input of layer j's feed-forward block beyond the weights' own product: the writer's share of its block's output is
+    divided by that output's rms at the post-feed-forward norm, carried through the layer scalars s_i ... s_(j-1)
+    (Gemma 4 scales the whole stream at the end of every layer), and divided again by the stream's rms at layer j's
+    pre-feed-forward norm, each norm taken at its usual scale (`norm_scales`). A link's strength across layers is
+    |P| f[i, j]^2 (P is bilinear in the write)."""
+    s = [float(x) for x in scalars.reshape(-1).tolist()]
+    L = len(s)
+    f = torch.zeros(L, L, dtype=torch.float64)
+    for i in range(L):
+        carried = 1.0
+        for j in range(i + 1, L):
+            carried *= s[j - 1]
+            f[i, j] = carried / (float(mlp_rms[i]) * float(mid_rms[j]))
+    return f
+
+
+# how the atlas reads a link's sign, said wherever links are shown or pooled
+LINK_MODEL = ("from rest, by the weights: a writer opens its reader's gate when it fires on its `gate` face (the sign "
+              "of the gate's change), and the reader is then pushed toward its `sign` face; fired the other way, the "
+              "writer barely moves it (GeGLU's gate stays near shut). In use, the reader's other inputs set where it "
+              "sits, and the effect can differ.")
+
+
 @torch.no_grad()
-def neuron_wiring(weights: Weights, layer: int, neuron: int, k: int = 24) -> Dict[str, List[Dict[str, Any]]]:
+def neuron_wiring(weights: Weights, layer: int, neuron: int, scale: torch.Tensor, k: int = 24) -> Dict[str, List[Dict[str, Any]]]:
     """Direct-path links between one neuron and the neurons of every other layer, from the weights alone, as the
-    reference's `connections` reads them, with Gemma 4's norms in place: a writer A at layer i writes
+    reference's `connections` reads them, with Gemma 4's norms and layer scalars in place: a writer A at layer i writes
     v_A = w_post_i (.) W_down_i[:, A] (its direction through the post-feed-forward norm); a reader B at layer j reads
     it through the pre-feed-forward norm, g = W_gate_j[B] . (w_pre_j (.) v_A) and u = W_up_j[B] . (w_pre_j (.) v_A).
-    P = g u (both of the reader's projections must read the writer for it to move the reader); |P| z-scored within the
-    layer pair (so the norms' rms, the layer scalars between them and any single scale shared by the pair drop out);
-    sign = sign(P), the sign of the reader's activation the writer's direction gives it, either way the writer fires.
-    `down`: readers in later layers; `up`: writers in earlier layers. Each the k strongest by z, {layer, n, z, sign}."""
+    P = g u (both of the reader's projections must read the writer for it to move the reader).
+    - `z`: |P| z-scored within the layer pair, how unusual the link is among that pair;
+    - `w`: its strength |P| f[i, j]^2 (`link_scale`: the norms at their usual scale and the layer scalars between the
+      two layers) over the strongest of the neuron's links on that side, the measure the k links are chosen and
+      ordered by, across every layer;
+    - `sign` = sign(P), the reader's face the writer pushes it toward from rest; `gate` = sign(g), the writer's face
+      that opens the reader's gate (LINK_MODEL).
+    A layer the neuron writes nothing into, or reads nothing from (a silenced neuron), gives no links.
+    `down`: readers in later layers; `up`: writers in earlier layers. Each {layer, n, z, w, sign, gate}."""
     l, n = int(layer), int(neuron)
     dev = weights.device
     v = (weights.down_cols(l, [n])[0] * weights.norm(l, "post_feedforward").to(dev)).float()  # [D]
@@ -1120,14 +1172,21 @@ def neuron_wiring(weights: Weights, layer: int, neuron: int, k: int = 24) -> Dic
             side = "up"
         prod = g * u
         mag = prod.abs()
+        if not float(mag.max()) > 0:
+            continue
         z = (mag - mag.mean()) / (mag.std() + 1e-12)
+        f = float(scale[l, j] if j > l else scale[j, l])
         top = torch.topk(z, k=min(int(k), z.numel()))
         out[side] += [
-            {"layer": j, "n": int(i), "z": round(float(zz), 2), "sign": 1 if float(prod[int(i)]) > 0 else -1}
-            for zz, i in zip(top.values.tolist(), top.indices.tolist())
+            {"layer": j, "n": int(i), "z": round(float(zz), 2), "eff": float(mag[int(i)]) * f * f,
+             "sign": 1 if float(prod[int(i)]) > 0 else -1, "gate": 1 if float(g[int(i)]) > 0 else -1}
+            for zz, i in zip(top.values.tolist(), top.indices.tolist()) if float(mag[int(i)]) > 0
         ]
     for side in out:
-        out[side] = sorted(out[side], key=lambda c: -c["z"])[: int(k)]
+        keep = sorted(out[side], key=lambda c: -c["eff"])[: int(k)]
+        top_eff = keep[0]["eff"] if keep else 1.0
+        out[side] = [{"layer": c["layer"], "n": c["n"], "z": c["z"], "w": float(f"{c['eff'] / top_eff:.4g}") if top_eff > 0 else 0.0,
+                      "sign": c["sign"], "gate": c["gate"]} for c in keep]
     return out
 
 

@@ -1200,20 +1200,27 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         <Entry id="web" head="the web" tech="wiring · connection cone · weight-only links">
           <Body>
             The open neuron’s strongest links through the weights, followed hop by hop: back through the earlier neurons
-            whose writes it reads, forward through the later ones that read its write. Gilt links raise the neuron they
-            reach, blue ones lower it. The words of the neurons in its web are pooled to say what feeds it, what holds
-            it back, and what it pushes toward and away from.
+            whose writes it reads, forward through the later ones that read its write. Each link is read from rest: a
+            writer moves a reader when it fires on the face that opens the reader’s gate, and pushes the reader toward
+            one face, gilt its + face, blue its − face. The words of the neurons in its web are pooled to say what drives
+            it up and down, and what it drives when it fires up and when it fires down.
           </Body>
           <Note>
-            A link through the weights says what could pass, not what does on a given text. Past the first hop every path
-            is a guess: test it with a push or a read.
+            A link through the weights says what could pass, not what does on a given text, where the reader’s other
+            inputs decide where it sits. Gemma scales the whole stream at the end of every layer, so a writer far back
+            reaches a late reader faint: links are ranked by how strongly they arrive. Past the first hop every path is
+            a guess, and pooled words go beyond what the label gate was tested on: test it with a push or a read.
           </Note>
           <EntryApparatus title="the web">
             A writer A at layer i writes v<sub>A</sub> = w<sub>post,i</sub> ⊙ W<sub>down,i</sub>[:, A]; a reader B at
             layer j &gt; i reads it as g = W<sub>gate,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>) and u = W
-            <sub>up,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>); P = g·u, z-scored within the layer pair, its sign
-            the reader’s activation the writer gives it. The web takes the neuron’s top links, then each node’s top two
-            with z ≥ 15 (<M>wiring.npz</M>). Direct-path only, as the reference’s <M>connections</M>.
+            <sub>up,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>); P = g·u. Its strength as it arrives is |P| f², f =
+            s<sub>i</sub>⋯s<sub>j−1</sub> / (rms of block i’s output · rms of the stream entering block j), the layer
+            scalars and the two norms at their usual scale; z is |P| z-scored within the layer pair. From rest the writer
+            opens the reader’s gate on face sign(g) and pushes it toward face sign(P); gelu keeps the gate near shut the
+            other way. The web takes the neuron’s strongest links, then each node’s top two with z ≥ 15, following a link
+            only when the face it was reached on opens the next gate (<M>wiring.npz</M>). Direct-path only, as the
+            reference’s <M>connections</M>, whose signs and ranking this mends for Gemma.
           </EntryApparatus>
         </Entry>
 

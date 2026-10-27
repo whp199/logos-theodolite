@@ -50,13 +50,28 @@ def build_lens(rt: Any, out_dir: Path, *, chunk: int = 512, k: int = LENS_K, lay
     """Every neuron's first k word-pieces, both faces, through the J++ lens and by the naked eye, ranked as the vault
     ranks them (`inspect_bipolar_slot`: the write column times the post-feed-forward norm's weight, through J_l, the
     unembedding with its softcap, then `label_top_ids`). The negative face's logits are the positive face's negated,
-    exactly (the norm and the softcap are odd), so each column is read once per reading."""
+    exactly (the norm and the softcap are odd), so each column is read once per reading. Given `layers`, only those
+    are read, into the file already there when it was built for this model, lens and shape (`built` marks the layers
+    read so far; an unread layer has no words, rather than empty ones the gate would pass)."""
     lm = language_model(rt.hf_model)
     w = ao.Weights(lm, rt)
     L, N = w.n_layers, w.d_ff
     fnw, W_U = rt.final_norm_weight, rt.lm_head_weight
-    arrays = {key: np.zeros((L, N, k), np.int32) for key in ("lens_pos", "lens_neg", "eye_pos", "eye_neg")}
+    keys = ("lens_pos", "lens_neg", "eye_pos", "eye_neg")
+    arrays = {key: np.zeros((L, N, k), np.int32) for key in keys}
     silenced = np.zeros((L, N), bool)
+    built = np.zeros(L, bool)
+    path = Path(out_dir) / FILES["lens"]
+    lens_id = ((rt.lens_card() if hasattr(rt, "lens_card") else None) or {}).get("id")
+    if layers is not None and path.exists():
+        with np.load(path, allow_pickle=False) as z:
+            old = {key: z[key] for key in z.files}
+        m = json.loads(str(old.get("meta", "{}")))
+        if ("built" in old and m.get("model") == getattr(rt, "model_id", None) and m.get("lens_id") == lens_id
+                and old["lens_pos"].shape == (L, N, k)):
+            arrays = {key: old[key] for key in keys}
+            silenced, built = old["silenced"], old["built"].astype(bool)
+            log(f"lens: adding to the file there ({int(built.sum())} of {L} layers read)")
     todo = list(range(L)) if layers is None else [int(l) for l in layers]
     t0 = time.time()
     for l in todo:
@@ -71,9 +86,10 @@ def build_lens(rt: Any, out_dir: Path, *, chunk: int = 512, k: int = LENS_K, lay
                 arrays[f"{reading}_pos"][l, s : s + cols.shape[0]] = np.array(label_top_ids(vecs, fnw, W_U, logits, k=k))
                 arrays[f"{reading}_neg"][l, s : s + cols.shape[0]] = np.array(label_top_ids(-vecs, fnw, W_U, -logits, k=k))
                 del logits
+        built[l] = True
         log(f"lens: layer {l} done ({time.time() - t0:.0f} s)")
-    path = Path(out_dir) / FILES["lens"]
-    save_npz(path, **arrays, silenced=silenced, K=np.array(k), meta=_meta(rt, layers=todo))
+    save_npz(path, **arrays, silenced=silenced, built=built, K=np.array(k),
+             meta=_meta(rt, layers=[int(x) for x in np.nonzero(built)[0]]))
     return path
 
 
@@ -104,17 +120,18 @@ def windows(rt: Any, texts: Sequence[str], seq: int, max_tokens: int) -> List[Li
 @torch.no_grad()
 def build_stats(rt: Any, out_dir: Path, texts_ids: Sequence[Sequence[int]], corpus: str, *, log: Log = print) -> Path:
     """Every neuron's activation extremes over the texts (`atlas_ops.activation_extremes`: its largest and most negative
-    activation and the four sign regimes, the start mark left out) and the stream's length leaving each layer (10th,
-    50th, 90th percentile), the unit of the add push."""
+    activation and the four sign regimes, the start mark left out), the stream's length leaving each layer (10th,
+    50th, 90th percentile), the unit of the add push, and the two feed-forward norms' usual scales (the same
+    percentiles of the block output's rms and of the stream's rms entering the block), which weigh the wiring."""
     lm = language_model(rt.hf_model)
     t0 = time.time()
     ex = ao.activation_extremes(lm, texts_ids)
-    q = np.array([np.quantile(np.array(v, np.float32), [0.1, 0.5, 0.9]) if v else [np.nan] * 3 for v in ex.resid_norms], np.float32)
+    qs = lambda vs: np.array([np.quantile(np.array(v, np.float32), [0.1, 0.5, 0.9]) if v else [np.nan] * 3 for v in vs], np.float32)  # noqa: E731
     log(f"stats: {ex.tokens} word-pieces in {len(texts_ids)} windows ({time.time() - t0:.0f} s)")
     path = Path(out_dir) / FILES["act_scale"]
     save_npz(path, pos=ex.pos.numpy(), neg=ex.neg.numpy(), pp=ex.pp.numpy(), nn=ex.nn.numpy(), pn=ex.pn.numpy(),
-             np=ex.np.numpy(), tokens=np.array(ex.tokens), resid_q=q, meta=_meta(rt, corpus=corpus, tokens=ex.tokens,
-                                                                                    windows=len(texts_ids)))
+             np=ex.np.numpy(), tokens=np.array(ex.tokens), resid_q=qs(ex.resid_norms), mlp_rms_q=qs(ex.mlp_rms),
+             mid_rms_q=qs(ex.mid_rms), meta=_meta(rt, corpus=corpus, tokens=ex.tokens, windows=len(texts_ids)))
     return path
 
 
@@ -122,81 +139,99 @@ def build_stats(rt: Any, out_dir: Path, texts_ids: Sequence[Sequence[int]], corp
 
 
 @torch.no_grad()
-def build_wiring(rt: Any, out_dir: Path, *, k: int = WIRING_K, chunk: int = 4096, log: Log = print) -> Path:
+def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: str = "", k: int = WIRING_K, chunk: int = 4096,
+                 log: Log = print) -> Path:
     """Every neuron's k strongest weight links each way (`atlas_ops.neuron_wiring` for all of them at once, as the
     reference's build_connections reads one product per pair of layers): for layers i < j,
     P[B, A] = (W_gate_j[B] . v_A)(W_up_j[B] . v_A), v_A = w_pre_j (.) w_post_i (.) W_down_i[:, A]. A's links into layer
     j are column A of P, |P| z-scored over B; B's links from layer i are row B, |P| z-scored over A (kept as a running
-    top k of |P| with the row's sums, which ranks the row as its z does, then turned into z). Columns go `chunk` at a
-    time, so no [N, N] product is held whole."""
+    top k of |P| with the row's sums, which ranks the row as its z does, then turned into z). Across layer pairs the k
+    links are chosen and ordered by |P| f[i, j]^2 (`atlas_ops.link_scale`, `scale`: the norms at their usual scale and the
+    layer scalars between), kept as log10 of that over the neuron's strongest (`lw`), with each link's gate sign. Columns
+    go `chunk` at a time, so no [N, N] product is held whole."""
     lm = language_model(rt.hf_model)
     w = ao.Weights(lm, rt)
     L, N, dev = w.n_layers, w.d_ff, w.device
     K = int(k)
-    bz = {s: torch.full((L, N, K), float("-inf"), device=dev) for s in ("down", "up")}
+    lf = torch.log(scale.to(dev).clamp(min=1e-300)).float()  # log f[i, j]
+    ninf = float("-inf")
+    be = {s: torch.full((L, N, K), ninf, device=dev) for s in ("down", "up")}  # log strength: the merge key
+    bz = {s: torch.full((L, N, K), ninf, device=dev) for s in ("down", "up")}
     bl = {s: torch.zeros((L, N, K), dtype=torch.int16, device=dev) for s in ("down", "up")}
     bn = {s: torch.zeros((L, N, K), dtype=torch.int32, device=dev) for s in ("down", "up")}
     bs = {s: torch.zeros((L, N, K), dtype=torch.int8, device=dev) for s in ("down", "up")}
+    bg = {s: torch.zeros((L, N, K), dtype=torch.int8, device=dev) for s in ("down", "up")}
 
-    def merge(side: str, layer: int, rows: slice, z: torch.Tensor, idx: torch.Tensor, other: int, sign: torch.Tensor) -> None:
-        cz = torch.cat([bz[side][layer, rows], z], 1)
-        cl = torch.cat([bl[side][layer, rows], torch.full_like(idx, other, dtype=torch.int16)], 1)
-        cn = torch.cat([bn[side][layer, rows], idx.to(torch.int32)], 1)
-        cs = torch.cat([bs[side][layer, rows], sign], 1)
-        top = cz.topk(K, dim=1)
-        bz[side][layer, rows] = top.values
-        bl[side][layer, rows] = cl.gather(1, top.indices)
-        bn[side][layer, rows] = cn.gather(1, top.indices)
-        bs[side][layer, rows] = cs.gather(1, top.indices)
+    def merge(side: str, layer: int, rows: slice, le: torch.Tensor, z: torch.Tensor, idx: torch.Tensor, other: int, sign: torch.Tensor,
+              gate: torch.Tensor) -> None:
+        ce = torch.cat([be[side][layer, rows], le], 1)
+        top = ce.topk(K, dim=1)
+        be[side][layer, rows] = top.values
+        for store, new in ((bz, z), (bl, torch.full_like(idx, other, dtype=torch.int16)), (bn, idx.to(torch.int32)), (bs, sign), (bg, gate)):
+            store[side][layer, rows] = torch.cat([store[side][layer, rows], new], 1).gather(1, top.indices)
 
+    sgn = lambda x: torch.where(x > 0, 1, -1).to(torch.int8)  # noqa: E731
     t0 = time.time()
     for j in range(1, L):
         Gj, Uj = w.w_gate(j), w.w_up(j)
         w_pre_j = w.norm(j, "pre_feedforward").to(dev)
         for i in range(j):
             Wd = w.w_down(i)
-            scale = (w.norm(i, "post_feedforward").to(dev) * w_pre_j)[:, None]
+            two_lf = 2.0 * float(lf[i, j])
+            norms = (w.norm(i, "post_feedforward").to(dev) * w_pre_j)[:, None]
             r_sum = torch.zeros(N, dtype=torch.float64, device=dev)
             r_sq = torch.zeros(N, dtype=torch.float64, device=dev)
-            r_top = torch.full((N, K), float("-inf"), device=dev)
+            r_top = torch.full((N, K), ninf, device=dev)
             r_idx = torch.zeros((N, K), dtype=torch.long, device=dev)
             r_sgn = torch.zeros((N, K), dtype=torch.int8, device=dev)
+            r_gate = torch.zeros((N, K), dtype=torch.int8, device=dev)
             for a0 in range(0, N, int(chunk)):
-                V = (Wd[:, a0 : a0 + chunk].float() * scale).to(Gj.dtype)  # [D, c]
-                P = (Gj @ V).float() * (Uj @ V.to(Uj.dtype)).float()  # [N_j, c]
+                V = (Wd[:, a0 : a0 + chunk].float() * norms).to(Gj.dtype)  # [D, c]
+                G = (Gj @ V).float()
+                P = G * (Uj @ V.to(Uj.dtype)).float()  # [N_j, c]
                 M = P.abs()
                 c = M.shape[1]
                 # downstream of each A in this chunk: its column over every B of layer j
                 zc = (M - M.mean(0, keepdim=True)) / (M.std(0, keepdim=True) + 1e-12)
                 kk = min(K, zc.shape[0])
                 top = zc.topk(kk, dim=0)
-                sg = torch.where(P.gather(0, top.indices) > 0, 1, -1).to(torch.int8)
-                merge("down", i, slice(a0, a0 + c), top.values.T, top.indices.T, j, sg.T)
+                le = torch.log(M.gather(0, top.indices)) + two_lf  # -inf where the column writes nothing there
+                merge("down", i, slice(a0, a0 + c), le.T, top.values.T, top.indices.T, j, sgn(P.gather(0, top.indices)).T,
+                      sgn(G.gather(0, top.indices)).T)
                 # upstream of each B: its row over every A of layer i, gathered across chunks
                 r_sum += M.sum(1, dtype=torch.float64)
                 r_sq += (M.double() ** 2).sum(1)
                 kk = min(K, c)
                 tv = M.topk(kk, dim=1)
                 cand = torch.cat([r_top, tv.values], 1)
-                cidx = torch.cat([r_idx, tv.indices + a0], 1)
-                csg = torch.cat([r_sgn, torch.where(P.gather(1, tv.indices) > 0, 1, -1).to(torch.int8)], 1)
                 keep = cand.topk(K, dim=1)
-                r_top, r_idx, r_sgn = keep.values, cidx.gather(1, keep.indices), csg.gather(1, keep.indices)
-                del V, P, M, zc
+                r_idx = torch.cat([r_idx, tv.indices + a0], 1).gather(1, keep.indices)
+                r_sgn = torch.cat([r_sgn, sgn(P.gather(1, tv.indices))], 1).gather(1, keep.indices)
+                r_gate = torch.cat([r_gate, sgn(G.gather(1, tv.indices))], 1).gather(1, keep.indices)
+                r_top = keep.values
+                del V, G, P, M, zc
             mean = r_sum / N
             std = ((r_sq - N * mean * mean) / max(N - 1, 1)).clamp(min=0).sqrt()
             z = ((r_top.double() - mean[:, None]) / (std[:, None] + 1e-12)).float()
-            z = torch.where(torch.isfinite(r_top), z, torch.full_like(z, float("-inf")))
-            merge("up", j, slice(0, N), z, r_idx, i, r_sgn)
+            z = torch.where(torch.isfinite(r_top), z, torch.full_like(z, ninf))
+            merge("up", j, slice(0, N), torch.log(r_top) + two_lf, z, r_idx, i, r_sgn, r_gate)
         log(f"wiring: layer {j} read against every layer before it ({time.time() - t0:.0f} s)")
     arrays: Dict[str, np.ndarray] = {}
     for side in ("down", "up"):
-        arrays[f"{side}_z"] = bz[side].clamp(min=-60000).cpu().numpy().astype(np.float16)
+        le = be[side]
+        empty = ~torch.isfinite(le)
+        # log10 of each link's strength over the neuron's strongest on that side (slot 0: the topk keeps them in order)
+        lw = torch.where(empty, torch.full_like(le, ninf), (le - le[..., :1]) / float(np.log(10.0)))
+        arrays[f"{side}_z"] = torch.where(empty, torch.full_like(le, -60000.0), bz[side].clamp(min=-60000)).cpu().numpy().astype(np.float16)
+        arrays[f"{side}_lw"] = lw.cpu().numpy().astype(np.float16)
         arrays[f"{side}_layer"] = bl[side].cpu().numpy().astype(np.int8)
         arrays[f"{side}_n"] = bn[side].cpu().numpy().astype(np.int16 if N <= 32767 else np.int32)
         arrays[f"{side}_sign"] = bs[side].cpu().numpy()
+        arrays[f"{side}_gate"] = bg[side].cpu().numpy()
     path = Path(out_dir) / FILES["wiring"]
-    save_npz(path, compressed=True, **arrays, K=np.array(K), meta=_meta(rt))
+    save_npz(path, compressed=True, **arrays, K=np.array(K),
+             meta=_meta(rt, weighed="across layers: |P| f^2, the norms at their usual scale and the layer scalars between",
+                        scale_source=scale_source, link_model=ao.LINK_MODEL))
     return path
 
 

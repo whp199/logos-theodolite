@@ -203,6 +203,13 @@ browser against it, but nothing yet on Gemma-4-31B itself.
   layer with 256): the pages say so, each neuron carries a p and the layer a false-discovery q, and with 256 controls no
   single neuron reaches q ≤ 0.05 unless some 1,700 of the layer beat every control. Singling neurons out needs far more
   controls, or a census read as leads to test.
+- **The wiring, mended before any build** (the same review). Links were z-scored within each pair of layers and then
+  ranked across pairs, which drops Gemma's layer scalars (0.03–0.99, so a writer twenty layers back can arrive 10⁵
+  times fainter than the top link and still rank second); they are now ranked by |P| f², with the scalars and the
+  norms' usual scales, and the stats index keeps those scales. Their signs mixed two models (a sign said to hold
+  whichever way the writer fires, then multiplied along paths and split into "fed by" and "held back by"); every
+  consumer now reads them one way, from rest through GeGLU's gate. That model is still a simplification: a sign at the
+  reader's usual operating point (from the stats pass's gate and up values) would say what a link does in use.
 - **Single neurons at layers 21–31.** The study's 60-fold push overdrove them (errata E43, E46); whether the census's
   doses move them at all there is to be seen.
 - **Stored passages for each face** (Cammarata's practice iii, the study's §3.5): the stats index keeps each neuron's

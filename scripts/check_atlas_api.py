@@ -195,18 +195,21 @@ def main() -> int:
     check(s == {"ready": False, "results": [], "tokens": 0, "total": 0}, f"/search unbuilt: {s}")
     r = c.get("/api/atlas/web", params={"layer": 2, "n": 5})
     check(r.status_code == 200 and r.content == b"" and r.headers["X-Web-Total"] == "0", "/web unbuilt: empty")
-    check(c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5}).json() == {"src": None, "ready": False}, "/web/summary unbuilt")
+    check(c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5}).json() == {"src": None, "ready": False, "missing": "wiring"},
+          "/web/summary unbuilt: says the wiring index is missing")
     check(c.get("/api/atlas/layout").json() == {"available": False}, "/layout unbuilt")
     check(c.get("/api/atlas/cone", params={"layer": 2, "n": 5}).json()["ready"] is False, "/cone unbuilt")
     wr = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()
-    live = ao.neuron_wiring(w, 2, 5, k=24)
+    sc36 = ao.norm_scales(ao.activation_extremes(lm, _study_ids(rt)))
+    live = ao.neuron_wiring(w, 2, 5, ao.link_scale(w.scalars, sc36["mlp_rms"], sc36["mid_rms"]), k=24)
     check(wr["source"] == "live", f"/neuron/wiring unbuilt: source {wr['source']}")
     for side in ("down", "up"):
-        got = [(x["layer"], x["n"], x["sign"]) for x in wr[side]]
-        want = [(x["layer"], x["n"], x["sign"]) for x in live[side]]
-        check(got == want, f"/neuron/wiring {side}: the links of atlas_ops.neuron_wiring")
-        check(all(x["face"] == ("+" if x["sign"] > 0 else "-") and x["words"]["lens"] is None and x["name"] == "" for x in wr[side]),
-              f"/neuron/wiring {side}: each link's face, no index words, no name")
+        got = [(x["layer"], x["n"], x["sign"], x["gate"], x["w"]) for x in wr[side]]
+        want = [(x["layer"], x["n"], x["sign"], x["gate"], x["w"]) for x in live[side]]
+        check(got == want, f"/neuron/wiring {side}: the links of atlas_ops.neuron_wiring, weighed with the 36 texts' scales")
+        key = "sign" if side == "down" else "gate"
+        check(all(x["face"] == ("+" if x[key] > 0 else "-") and x["words"]["lens"] is None and x["name"] == "" for x in wr[side]),
+              f"/neuron/wiring {side}: a reader on the face pushed, a writer on the face that opens the gate; no index words, no name")
     check(len(wr["down"]) == 24 and len(wr["up"]) == 24, "/neuron/wiring: 24 each way")
     r = c.get("/api/atlas/neuron/wiring", params={"layer": 0, "n": 5})
     check(r.status_code == 200 and r.json()["up"] == [], "/neuron/wiring layer 0: nothing writes into it")
@@ -222,7 +225,8 @@ def main() -> int:
           "/neuron/lens: each face's label check")
     check(nl["faces"]["+"]["check"]["held_back"] and "below_layer_40" in nl["faces"]["+"]["check"]["reasons"],
           "/neuron/lens: the stand-in's layers are all held back by the gate")
-    check(nl["steer"] is None and nl["act_range"] is None and nl["edited"] is False, "/neuron/lens: no steer lens or range read yet")
+    check(nl["steer"] is None and nl["edited"] is False and (nl["act_range"] or {}).get("source") == "the study's 36 texts (provisional)",
+          "/neuron/lens: no steer lens yet; the range over the 36 texts, read when the live wiring needed the norms' scales")
     check(list(nl)[-2:] == ["label_gate", "lens"], "/neuron/lens ends with the label gate and the lens")
 
     sl = c.post("/api/atlas/neuron/steer_lens", params={"layer": 2, "n": 5}).json()
@@ -437,9 +441,11 @@ def main() -> int:
     ab.build_lens(rt, out, chunk=48, log=quiet)
     wins = ab.windows(rt, CORPUS, 24, 400)
     ab.build_stats(rt, out, wins, "check", log=quiet)
-    ab.build_wiring(rt, out, log=quiet)
     idx = AtlasIndex(out)
     stats = idx.get("act_scale")
+    f_idx = ao.link_scale(w.scalars, [float(x) for x in stats["mlp_rms_q"][:, 1]], [float(x) for x in stats["mid_rms_q"][:, 1]])
+    ab.build_wiring(rt, out, f_idx, log=quiet)
+    live = ao.neuron_wiring(w, 2, 5, f_idx, k=24)
     ab.build_steer_lens(rt, out, [float(x) for x in stats["resid_q"][:, 1]], batch=16, log=quiet)
     ab.build_layout(rt, out, method="pca", log=quiet)
     arch = c.get("/api/atlas/arch").json()
@@ -470,20 +476,24 @@ def main() -> int:
     check(all(tuple(int(x) for x in a_[:4]) == r_[:4] and int(a_[4]) == int(round(r_[4] * 10)) and int(a_[5]) == r_[5] for a_, r_ in zip(arr, want_web)),
           "/web: the index's cone, z x 10 signed")
     ws = c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5}).json()
-    check(ws["ready"] and ws["src"] == "steer" and "toward" in ws["down"] and "fed_by" in ws["up"], "/web/summary: pooled from the steer lens")
+    check(ws["ready"] and ws["src"] == "steer" and set(ws["down"]) == {"+", "-"} and set(ws["up"]) == {"+", "-"}, "/web/summary: pooled from the steer lens, by face")
     ws = c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5, "src": "lens"}).json()
-    check(ws["src"] == "lens" and ws["down"]["toward"] == [] and ws["gated"]["down"] == ws["down"]["neurons"] * 2,
+    check(ws["src"] == "lens" and ws["down"]["+"]["words"] == [] and ws["gated"]["down"] == ws["down"]["+"]["neurons"] + ws["down"]["-"]["neurons"],
           "/web/summary from the lens: every face held back on the stand-in, none pooled")
     check(c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5, "src": "x"}).status_code == 400, "/web/summary: a bad src refused")
     lay = c.get("/api/atlas/layout").json()
     cell = np.frombuffer(base64.b64decode(lay["cell"]), "<i2").reshape(lay["shape"])
     check(lay["available"] and lay["method"] == "pca" and np.array_equal(cell, idx.get("layout")["cell"].astype(np.int16)), "/layout: the index's cells")
     cn = c.get("/api/atlas/cone", params={"layer": 2, "n": 5}).json()
-    first = {(x["layer"], x["n"]): x for x in cn["nodes"] if abs(x["hop"]) == 1}
     links24 = idx.links(2, 5, 24)
-    check(cn["ready"] and all(first[(x["layer"], x["n"])]["face"] == ("+" if x["sign"] > 0 else "-") for x in links24["down"] if (x["layer"], x["n"]) in first),
-          "/cone: a first hop's face is its link's sign")
-    check(sum(cn["per_hop"].values()) == cn["neurons"] and all(x["hop"] != 0 for x in cn["nodes"]), "/cone: every neuron reached once")
+    by = {(s_, x["layer"], x["n"]): x for s_ in ("down", "up") for x in links24[s_]}
+    h1 = [x for x in cn["nodes"] if abs(x["hop"]) == 1]
+    check(cn["ready"] and h1 and all(
+        (x["face"] == ("+" if by[("down", x["layer"], x["n"])]["sign"] > 0 else "-") and x["when"] == ("+" if by[("down", x["layer"], x["n"])]["gate"] > 0 else "-"))
+        if x["hop"] == 1 else
+        (x["face"] == ("+" if by[("up", x["layer"], x["n"])]["gate"] > 0 else "-") and x["drives"] == ("+" if by[("up", x["layer"], x["n"])]["sign"] > 0 else "-"))
+        for x in h1), "/cone: a reader on the face its link pushes, when the neuron fires on the gate's face; a writer on its gate's face")
+    check(sum(cn["per_hop"].values()) == cn["neurons"] and all(x["hop"] != 0 for x in cn["nodes"]), "/cone: every neuron reached once a way")
     c.post("/api/atlas/run", json={"text": text})
     r = c.get("/api/atlas/run/paths", params={"pos": 4, "top": 60, "min": 0})
     pa = np.frombuffer(r.content, np.int16).reshape(-1, 6)
@@ -513,7 +523,7 @@ def main() -> int:
                                                      target_concept="", strength=0.0, statement="DELETE LAYER 2 SLOT 5",
                                                      timestamp=time.time(), orig_norm=1.0, new_norm=0.0))
     wr = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()
-    check(wr["source"] == "live" and all(x["z"] == 0 for x in wr["down"]), "/neuron/wiring: an edited neuron read live (its write is gone)")
+    check(wr["source"] == "live" and wr["down"] == [] and len(wr["up"]) == 24, "/neuron/wiring: an edited neuron read live: it writes nothing, so no readers")
     hv = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()
     check("stale" in hv["faces"]["+"] and hv["faces"]["+"]["check"]["edited"] and not hv["faces"]["+"]["check"]["lens_validated"],
           "/hover: an edited neuron's index words are marked stale")

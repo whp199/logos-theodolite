@@ -218,13 +218,19 @@ const Range: React.FC = () => {
   );
 };
 
-const LinkRows: React.FC<{ list: Link[]; title: string }> = ({ list, title }) => (
+/** A link's strength as it reaches the other end, over the neuron's strongest. */
+const fmtW = (w: number | undefined) => (w == null ? "" : w >= 0.01 ? `${Math.round(w * 100)}%` : "<1%");
+
+const LinkRows: React.FC<{ list: Link[]; title: string; side: "down" | "up" }> = ({ list, title, side }) => (
   <div>
     <div className="atlas-lab">{title}</div>
     <table className="atlas-dtable atlas-links">
       <tbody>
         {list.slice(0, 14).map((c) => {
-          const face = c.sign > 0 ? "+" : "-";
+          // a reader is shown on the face the link pushes it toward, a writer on the face that opens the gate
+          const face = c.face ?? (c.sign > 0 ? "+" : "-");
+          const pushed = c.sign > 0 ? "+" : "−";
+          const gate = c.gate == null ? null : c.gate > 0 ? "+" : "−";
           return (
             <tr
               key={`${c.layer}/${c.n}`}
@@ -232,12 +238,27 @@ const LinkRows: React.FC<{ list: Link[]; title: string }> = ({ list, title }) =>
               onMouseEnter={() => theMap()?.hover(c.layer, c.n)}
               onMouseLeave={() => theMap()?.hover(null)}
             >
-              <td className={`atlas-pole ${face === "+" ? "up" : "down"}`}>{face === "+" ? "↑" : "↓"}</td>
+              <td
+                className={`atlas-pole ${c.sign > 0 ? "up" : "down"}`}
+                title={side === "down" ? `pushes that neuron toward its ${pushed} face` : `pushes this neuron toward its ${pushed} face`}
+              >
+                {c.sign > 0 ? "↑" : "↓"}
+              </td>
               <td>
                 <FaceLine layer={c.layer} face={face} w={c.words} k={4} />
-                {c.name || c.census?.length ? <div className="muted atlas-small">{c.name || c.census?.join(" ")}</div> : null}
+                {side === "down" && gate ? <div className="muted atlas-small">when this one fires {gate}</div> : null}
+                {c.name ? (
+                  <div className="muted atlas-small">{c.name}</div>
+                ) : c.census?.length ? (
+                  <div className="muted atlas-small">
+                    <span className="atlas-src">census</span>
+                    {c.census.join(" ")}
+                  </div>
+                ) : null}
               </td>
-              <td className="num muted">{c.z.toFixed(0)}</td>
+              <td className="num muted" title={`z ${c.z.toFixed(1)} within its pair of layers`}>
+                {c.w != null ? fmtW(c.w) : c.z.toFixed(0)}
+              </td>
               <td className="atlas-id-small">{cite(c.layer, c.n)}</td>
             </tr>
           );
@@ -259,12 +280,16 @@ const Wiring: React.FC = () => {
       {w && w.layer === f.layer && w.n === f.n ? (
         <>
           <div className="atlas-two">
-            <LinkRows list={w.down} title="writes into (later layers)" />
-            <LinkRows list={w.up} title="driven by (earlier layers)" />
+            <LinkRows list={w.down} title="writes into (later layers)" side="down" />
+            <LinkRows list={w.up} title="read from (earlier layers)" side="up" />
           </div>
+          {!w.down.length && w.source === "live" ? <p className="muted atlas-small">It writes nothing (silenced in the vault), so it reaches no reader.</p> : null}
           <Rubric style={{ fontSize: 15 }}>
-            Links through the weights alone (the direct path through the stream, with the norms in between taken at their usual scale): an arrow up
-            means the link drives that neuron's + face, down its − face. Leads to test with a push, not a circuit found.
+            Links through the weights alone, the direct path through the stream, read from rest: a writer moves a reader when it fires on the face
+            that opens the reader's gate (a writer is shown on that face; fired the other way it barely moves the reader), and pushes the reader
+            toward one face (↑ its + face, ↓ its − face). Ranked by how strong each is as it arrives, counting how Gemma scales the whole stream at
+            the end of every layer and the norms at their usual scale; the number is that strength over the strongest. In use a reader's other
+            inputs decide where it sits. Leads to test with a push, not a circuit found.
           </Rubric>
           <IfApparatus>
             <p className="muted atlas-small">{w.source === "index" ? "from the wiring index" : "read from the weights just now"} · {w.note}</p>

@@ -120,7 +120,7 @@ neuron's words below layer 41, and keeps them in the apparatus (§iv).
 heads drawn as lines before its sheet, the neurons that write alike side by side. Open a neuron and the atlas shows its
 words (through the lens, held back by the label gate below layer 41 as on every page, and beside them its *steer lens*:
 which next word-pieces a small push on it actually raises), its **web** of weight links hop by hop with the words of what
-feeds it, holds it back and what it pushes toward and away from, the heads that read it and feed it, its **census**
+could drive it up and down and what it could drive when it fires each way, the heads that read it and feed it, its **census**
 answers (the model answering fixed questions with this neuron pushed at several doses, ranked against pushes along
 random directions), and a **push**: ask anything and read three answers at once, the neuron pushed up, left alone and
 pushed down. Run a text to see which neurons fire hardest on each word-piece, search every neuron’s words, lay a layer’s
@@ -135,7 +135,7 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | neuron-explorer (Qwen3.5-4B) | the atlas (Gemma-4-31B-it) |
 |---|---|
 | a 3D map of every MLP neuron, attention and MLP per layer; hover a neuron for its lenses, open it, view a layer’s sheet face-on; a `writes` layout | the same for 60 × 21,504 neurons in one draw call, with the q / k / v / o heads on each layer’s slab, lit by role for an open neuron and by their write on a run text; the `writes` layout (UMAP where installed, else PCA) |
-| the open neuron’s connection web, upstream and downstream, with its words pooled | the same (`fed by`, `held back by`, `pushes toward`, `away from`), its links weighed through Gemma 4’s pre- and post-feed-forward norms |
+| the open neuron’s connection web, upstream and downstream, with its words pooled | the same, its links weighed through Gemma 4’s pre- and post-feed-forward norms and its layer scalars and ranked by how strongly they arrive, their signs read one consistent way (from rest, through GeGLU’s gate: what drives it up or down, what it drives when it fires up or down) where the reference’s mix two |
 | the list: units ranked by word-cluster mass against random-direction controls | the census ranking: the same statistic and the same `main_rel` questions and doses (not yet calibrated on Gemma, and said so), its controls shaped through Gemma’s post-feed-forward norm so the next layer hears them as loudly as a neuron, each rank with a p and the layer’s false-discovery q beside how many would beat every control by chance; taken on the instrument’s own runtime, resumable, batched by question |
 | `lens` search over the steer and logit lenses | search over the lens, the naked eye and the steer lens, every lens label under the label gate |
 | `fires`: run your text, filter neurons by activation over their usual range, token paths | “run a text”: the same filters (layers, sign, score, words), the links among what fires at a word-piece, the heads lit by their write |

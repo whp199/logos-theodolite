@@ -23,7 +23,11 @@ model nor the lens, and hides the GPU. It checks, against brute force:
 8. `attention_drive`: the activation it linearises is the one the model computes, and its parts (every head, every
    feed-forward block, the embedding, each carried through the layer scalars) add up to the linearised total; each top
    head's split over source pieces adds up to its contribution;
-9. `neuron_wiring` equals the weight products computed one by one, with the norms where Gemma 4 has them, and a link
+9. the norms' scales are what the post- and pre-feed-forward norms divide by; a writer's unit of activation reaches a
+   block several layers on carried by exactly the layer scalars between (measured with only the direct path open);
+   `neuron_wiring` equals the weight products computed one by one, with the norms where Gemma 4 has them, z, its
+   strength across layers |P| f^2 over the strongest (w, the order of the links), sign(P) and the gate sign(g); a
+   neuron that writes nothing has no readers; and a link
    reads the same product from both ends; `HeadSpaces`' shares equal projections on explicit orthonormal bases, and
    `neuron_head_roles` and `head_wiring` rank as those projections do;
 10. `steer_lens`' base rows are the unpushed forwards and its rises are those of separate pushed forwards.
@@ -41,7 +45,7 @@ if __name__ == "__main__":
     os.environ["HF_HUB_OFFLINE"] = "1"
 
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 for p in (ROOT_DIR, ROOT_DIR / "scripts"):
@@ -376,30 +380,116 @@ def cap_act(lm: Any, ids: List[int], l: int, n: int) -> torch.Tensor:
     return s.calls[0][0, :, n]
 
 
-def check_wiring(lm: Any, w: ao.Weights) -> None:
+def wiring_scale(lm: Any, w: ao.Weights, tok: Any) -> torch.Tensor:
+    texts = [ids_of(tok, t) for t in ("Orange is warm.", "def f(x):\n    return x", "The river ran past the mill.")]
+    sc = ao.norm_scales(ao.activation_extremes(lm, texts))
+    return ao.link_scale(w.scalars, sc["mlp_rms"], sc["mid_rms"])
+
+
+def check_wiring(hf: Any, lm: Any, w: ao.Weights, tok: Any) -> torch.Tensor:
+    import copy
+
     before = len(failures)
     L = len(lm.layers)
+    # the norms' scales are what each norm divides by, as the forward sees it
+    texts = [ids_of(tok, t) for t in ("Orange is warm.", "def f(x):\n    return x")]
+    ex = ao.activation_extremes(lm, texts)
+    for l in (0, 3):
+        with Seen(lm.layers[l].mlp, "post") as s_m, Seen(lm.layers[l].pre_feedforward_layernorm, "pre") as s_p:
+            for t in texts:
+                lm(input_ids=torch.tensor([t]), use_cache=False)
+        eps_m, eps_p = float(lm.layers[l].post_feedforward_layernorm.eps), float(lm.layers[l].pre_feedforward_layernorm.eps)
+        m_ = torch.cat([c_[0, 1:] for c_ in s_m.calls]).pow(2).mean(-1).add(eps_m).sqrt()
+        p_ = torch.cat([c_[0, 1:] for c_ in s_p.calls]).pow(2).mean(-1).add(eps_p).sqrt()
+        check(torch.allclose(torch.tensor(ex.mlp_rms[l]), m_, rtol=1e-5) and torch.allclose(torch.tensor(ex.mid_rms[l]), p_, rtol=1e-5),
+              f"norm scales at layer {l}: what the post- and pre-feed-forward norms divide by")
+    sc = ao.norm_scales(ex)
+    f = ao.link_scale(w.scalars, sc["mlp_rms"], sc["mid_rms"])
+    s = w.scalars.double()
+    check(abs(float(f[1, 4]) - float(s[1] * s[2] * s[3]) / (sc["mlp_rms"][1] * sc["mid_rms"][4])) < 1e-12 * max(1.0, abs(float(f[1, 4])))
+          and float(f[4, 1]) == 0.0 and float(f[2, 2]) == 0.0, "link_scale: s_i...s_(j-1) over the two norms' scales, only for i < j")
 
-    def brute(i: int, a: int, j: int, b: int) -> float:
-        v = lm.layers[i].mlp.down_proj.weight[:, a] * lm.layers[i].post_feedforward_layernorm.weight
-        x = v * lm.layers[j].pre_feedforward_layernorm.weight
-        return float((lm.layers[j].mlp.gate_proj.weight[b] @ x) * (lm.layers[j].mlp.up_proj.weight[b] @ x))
+    # what a writer's unit of activation adds to the stream entering a later block, with only the direct path open
+    # (every head and every block between them silenced): carried through exactly the layer scalars s_i ... s_(j-1)
+    i, j, A, p, delta = 1, 4, 7, 3, 1e-3
+    m2 = copy.deepcopy(hf)
+    lm2 = language_model(m2)
+    with torch.no_grad():
+        for ll, layer in enumerate(lm2.layers):
+            layer.self_attn.o_proj.weight.zero_()
+            if i < ll < j:
+                layer.mlp.down_proj.weight.zero_()
+    ids = torch.tensor([ids_of(tok, "Orange is a warm colour.")])
+
+    def run(push: float) -> Tuple[torch.Tensor, torch.Tensor]:
+        got: Dict[str, torch.Tensor] = {}
+
+        def pre(_m: Any, args: Tuple[Any, ...]) -> Tuple[Any, ...]:
+            x = args[0].clone()
+            x[0, p, A] += push
+            return (x,)
+
+        hs = [lm2.layers[i].mlp.down_proj.register_forward_pre_hook(pre),
+              lm2.layers[i].mlp.register_forward_hook(lambda _m, _a, o: got.__setitem__("m", o[0, p].detach().clone())),
+              lm2.layers[j].pre_feedforward_layernorm.register_forward_pre_hook(lambda _m, a: got.__setitem__("mid", a[0][0, p].detach().clone()))]
+        try:
+            lm2(input_ids=ids, use_cache=False)
+        finally:
+            for h in hs:
+                h.remove()
+        return got["m"], got["mid"]
+
+    m0, mid0 = run(0.0)
+    _, mid1 = run(delta)
+    col = lm2.layers[i].mlp.down_proj.weight[:, A].double()
+    m0 = m0.double()
+    D = m0.shape[0]
+    r = float((m0.pow(2).mean() + float(lm2.layers[i].post_feedforward_layernorm.eps)).sqrt())
+    w_post = lm2.layers[i].post_feedforward_layernorm.weight.double()
+    write = w_post * (col - m0 * (m0 @ col) / (D * r * r)) / r  # the post-feed-forward norm's first-order change, per unit
+    pred = float(torch.prod(s[i:j])) * write * delta
+    got_d = (mid1 - mid0).double()
+    check(float((got_d - pred).norm() / pred.norm()) < 5e-3,
+          f"a writer reaches a block {j - i} layers on carried by s_{i}...s_{j - 1}: {float((got_d - pred).norm() / pred.norm()):.2e} off")
+
+    def brute(i_: int, a: int, j_: int, b: int) -> Tuple[float, float]:
+        v = lm.layers[i_].mlp.down_proj.weight[:, a] * lm.layers[i_].post_feedforward_layernorm.weight
+        x = v * lm.layers[j_].pre_feedforward_layernorm.weight
+        g = float(lm.layers[j_].mlp.gate_proj.weight[b] @ x)
+        return g * float(lm.layers[j_].mlp.up_proj.weight[b] @ x), g
 
     for (l, n) in ((1, 12), (4, 100)):
-        res = ao.neuron_wiring(w, l, n, k=10)
-        for c in res["down"][:5]:
-            P = brute(l, n, c["layer"], c["n"])
-            col = torch.tensor([abs(brute(l, n, c["layer"], b)) for b in range(w.d_ff)])
-            z = (abs(P) - col.mean()) / col.std()
-            check(abs(float(z) - c["z"]) < 0.02 and (1 if P > 0 else -1) == c["sign"], f"wiring down L{l}N{n} -> {c}")
-        for c in res["up"][:5]:
-            P = brute(c["layer"], c["n"], l, n)
-            row = torch.tensor([abs(brute(c["layer"], a, l, n)) for a in range(w.d_ff)])
-            z = (abs(P) - row.mean()) / row.std()
-            check(abs(float(z) - c["z"]) < 0.02 and (1 if P > 0 else -1) == c["sign"], f"wiring up L{l}N{n} <- {c}")
+        res = ao.neuron_wiring(w, l, n, f, k=10)
+        effs = {}
+        for side in ("down", "up"):
+            for c in res[side][:6]:
+                P, g = brute(l, n, c["layer"], c["n"]) if side == "down" else brute(c["layer"], c["n"], l, n)
+                pair = (torch.tensor([abs(brute(l, n, c["layer"], b)[0]) for b in range(w.d_ff)]) if side == "down"
+                        else torch.tensor([abs(brute(c["layer"], a, l, n)[0]) for a in range(w.d_ff)]))
+                z = (abs(P) - pair.mean()) / pair.std()
+                fij = float(f[l, c["layer"]] if side == "down" else f[c["layer"], l])
+                effs[(side, c["layer"], c["n"])] = abs(P) * fij * fij
+                check(abs(float(z) - c["z"]) < 0.02 and (1 if P > 0 else -1) == c["sign"] and (1 if g > 0 else -1) == c["gate"],
+                      f"wiring {side} L{l}N{n} ~ {c}: z, sign(P), the gate sign(g)")
+        for side in ("down", "up"):
+            top = max(e for (s_, _, _), e in effs.items() if s_ == side)
+            check(all(abs(c["w"] - effs[(side, c["layer"], c["n"])] / top) <= 1e-3 * max(c["w"], 1e-9) + 1e-12 for c in res[side][:6])
+                  and res[side][0]["w"] == 1.0, f"wiring {side} L{l}N{n}: w = |P| f^2 over the strongest")
+            check(res[side] == sorted(res[side], key=lambda c: -c["w"]), f"wiring {side} L{l}N{n}: ordered by strength across layers")
         check(all(c["layer"] > l for c in res["down"]) and all(c["layer"] < l for c in res["up"]), "wiring: sides")
-        check(res["down"] == sorted(res["down"], key=lambda c: -c["z"]), "wiring: not sorted by z")
-    section("wiring equals the weight products one by one (Gemma's norms in place), z and sign", before)
+    # across layers the strength, not z, decides: a link with a smaller z can outrank one with a larger
+    res = ao.neuron_wiring(w, 1, 12, f, k=24)
+    zs = [c["z"] for c in res["down"]]
+    check(zs != sorted(zs, reverse=True) or len({c["layer"] for c in res["down"]}) == 1, "wiring: the strength orders the links, not z alone")
+    # a neuron that writes nothing reaches no reader
+    saved = lm.layers[2].mlp.down_proj.weight.data[:, 5].clone()
+    lm.layers[2].mlp.down_proj.weight.data[:, 5] = 0.0
+    try:
+        check(ao.neuron_wiring(w, 2, 5, f, k=10)["down"] == [], "a neuron that writes nothing has no readers")
+    finally:
+        lm.layers[2].mlp.down_proj.weight.data[:, 5] = saved
+    section("wiring: the norms' scales, the carried layer scalars, the products one by one, z, w, sign and gate", before)
+    return f
 
     before = len(failures)
     shapes = [ao.attn_shape(lm, l) for l in range(L)]
@@ -473,12 +563,12 @@ def main() -> int:
     check_writing(lm, W_U, w, tok, stop)
     check_reading(lm, W_U, w, tok)
     check_heads(hf, tok, w)
-    check_wiring(lm, w)
+    f = check_wiring(hf, lm, w, tok)
     check_steer_lens(lm, W_U, w, tok)
     # the runtime's own weight accessors give the same wiring as the plain modules
     before = len(failures)
     wr = ao.Weights(lm, rt)
-    check(ao.neuron_wiring(wr, 2, 31, k=8) == ao.neuron_wiring(w, 2, 31, k=8), "wiring through the runtime differs")
+    check(ao.neuron_wiring(wr, 2, 31, f, k=8) == ao.neuron_wiring(w, 2, 31, f, k=8), "wiring through the runtime differs")
     section("the runtime's weight accessors give the same wiring", before)
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

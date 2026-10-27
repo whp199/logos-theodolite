@@ -546,9 +546,9 @@ stand-in's never; `GET /arch` names a refused one).
 
 | file | contents | built |
 |---|---|---|
-| `lens.npz` | `lens_pos`, `lens_neg`, `eye_pos`, `eye_neg` [L, N, 12] int32: each face's first twelve word-pieces through the lens and by the naked eye (the first ten are its label's, ranked as `label_top_ids`); `silenced` [L, N] | `all`, minutes |
-| `act_scale.npz` | `pos`, `neg` and the GeGLU sign regimes `pp`, `nn`, `pn`, `np` [L, N] float32: each neuron's extremes over a corpus, start marks left out; `resid_q` [L, 3]: the stream's length leaving each layer (10th, 50th, 90th percentile) | `stats` (in `all`), over `--text`, `--jsonl` or `--hf` corpora, else the study's 36 texts |
-| `wiring.npz` | `{down,up}_{layer, n, z, sign}` [L, N, 24]: each neuron's 24 strongest direct-path links each way (below) | `all`, minutes |
+| `lens.npz` | `lens_pos`, `lens_neg`, `eye_pos`, `eye_neg` [L, N, 12] int32: each face's first twelve word-pieces through the lens and by the naked eye (the first ten are its label's, ranked as `label_top_ids`); `silenced` [L, N]; `built` [L], the layers read so far (`--layers` adds to the file; an unread layer shows no words) | `all`, minutes |
+| `act_scale.npz` | `pos`, `neg` and the GeGLU sign regimes `pp`, `nn`, `pn`, `np` [L, N] float32: each neuron's extremes over a corpus, start marks left out; `resid_q` [L, 3]: the stream's length leaving each layer (10th, 50th, 90th percentile); `mlp_rms_q`, `mid_rms_q` [L, 3]: the same of the feed-forward block's output rms and of the stream's rms entering it, the norms' usual scales the wiring is weighed by | `stats` (in `all`, before wiring), over `--text`, `--jsonl` or `--hf` corpora, else the study's 36 texts |
+| `wiring.npz` | `{down,up}_{layer, n, z, lw, sign, gate}` [L, N, 24]: each neuron's 24 strongest direct-path links each way, by strength across layers (below) | `all`, minutes |
 | `steer_lens.npz` | `up`, `down` [L, N, 12] word-piece ids, `up_kl`, `down_kl` [L, N]: the steer lens (below) | `steer`, hours, by ranges of layers, resumable |
 | `layout_writes.npz` | `cell` [L, N] int16: each neuron's cell on its layer's square grid, neurons writing alike side by side (unit write directions, PCA to 50, UMAP where installed, else the first two principal directions, snapped to the grid) | `all` |
 | `head_profiles.json`, `vocab.json` | where each head looks over eight reference texts; every word-piece decoded alone | by the server, on first need |
@@ -563,9 +563,18 @@ pushes and 64 head scales go into one reading. The three voices sign each push +
 
 **The links.** A writer A at layer i writes v<sub>A</sub> = w<sub>post,i</sub> ⊙ W<sub>down,i</sub>[:, A]; a reader B at layer
 j > i reads g = W<sub>gate,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>) and u = W<sub>up,j</sub>[B] · (w<sub>pre,j</sub> ⊙
-v<sub>A</sub>); P = g · u, z-scored within each pair of layers, `sign` = sign(P) (the reader's activation the writer gives
-it, either way the writer fires). Weight-only: leads to test, not circuits. The cone follows each neuron's top `first`
-links, then each node's top `k` (2) with z ≥ `zmin` (15), out to the last layer and back to the first.
+v<sub>A</sub>); P = g · u. Gemma 4 multiplies the whole stream by `layer_scalar` (0.03 to 0.99 on the 31B) at the end of
+every layer, and its norms divide by the rms of what they read, so a link's strength as it arrives is |P| f[i, j]², f[i, j]
+= s<sub>i</sub>⋯s<sub>j−1</sub> / (rms of block i's output · rms of the stream entering block j), each rms the median over
+the stats corpus (else the study's 36 texts; `atlas_ops.link_scale`). The 24 links each way are chosen and ordered by that
+strength across every layer (`w`: over the neuron's strongest; the index keeps log10 as `lw`); `z` is |P| z-scored within
+the pair of layers, how unusual the link is there. Signs are read from rest (`atlas_ops.LINK_MODEL`): `gate` = sign(g), the
+writer's face that opens the reader's gate (gelu keeps it near shut the other way), `sign` = sign(P), the reader's face it
+then pushes toward; a writer is shown on its `gate` face, a reader on its `sign` face, and the active paths of a run keep a
+link only when its writer fired on its `gate` face. A neuron that writes nothing has no readers. Weight-only: leads to
+test, not circuits. The cone follows each neuron's `first` strongest links, then each node's top `k` (2) with z ≥ `zmin`
+(15), out to the last layer and back to the first; the web summary and `/cone` follow a link only when the face its writer
+was reached on opens the next gate.
 
 **The steer lens.** ±0.8 · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
 you?", "Write whatever you like.") and two plain openings, one forward with an unpushed row each; per sign, the mean change
@@ -582,7 +591,7 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `GET /hover?layer&n` | the tooltip, from the indexes alone (no GPU) |
 | `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`), with each face's check |
 | `GET /web?layer&n&first&k&zmin&cap&hops` | the cone for the map: int16 rows of six (src layer, src n, dst layer, dst n, round(10 z) · sign, hop; hop > 0 downstream); `X-Web-Total` |
-| `GET /web/summary?layer&n&…&src` | the cone's words pooled per side, each neuron on the face the chain of signs drives: `fed_by`, `held_by`, `toward`, `away`, weighted by link z (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out) |
+| `GET /web/summary?layer&n&…&src` | the cone's words, followed from rest and pooled: `down["+"]` / `down["-"]`, what the neurons it drives write when it fires on its + / − face; `up["+"]` / `up["-"]`, what the neurons that push it toward its + / − face write; weighted by the reaching link's strength (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out); not ready, with `missing`, without the wiring index or without any words to pool |
 | `GET /layout` | `cell` [L, N] int16 as base64 |
 | `POST /push` | the three voices (server-sent events): `{prompt, history: [{user, replies: [3]}], layer, n, dose (0.8), mode ("add"), neurons, system, max_new (160, ≤ 512)}`; events `{row, t}` per piece of text, then `{row: null, done: true}` or `{row: null, error}` |
 | `POST /steer` | the three voices as whole texts |

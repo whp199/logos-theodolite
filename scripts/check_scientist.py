@@ -842,15 +842,18 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     out = a_.index.root
     out.mkdir(parents=True, exist_ok=True)
     ab.build_lens(a_.rt, out, chunk=48, log=quiet)
-    ab.build_wiring(a_.rt, out, log=quiet)
     ab.build_stats(a_.rt, out, ab.windows(a_.rt, CORPUS, 24, 300), "check", log=quiet)
     stats = a_.index.get("act_scale")
+    ab.build_wiring(a_.rt, out, a_.link_scale(), log=quiet)
     ab.build_steer_lens(a_.rt, out, [float(x) for x in stats["resid_q"][:, 1]], batch=16, log=quiet)
     cn = await st.call("cone", {"layer": 3, "n": 5}, api)
     raw = hc.get("/api/atlas/cone", params={"layer": 2, "n": 5}).json()
     check(cn["neurons"] == raw["neurons"] and [x["neuron"] for x in cn["nodes"]] == [st.cite(x["layer"], x["n"]) for x in raw["nodes"]], "cone in the pages' count")
     ws = await st.call("web_summary", {"layer": 3, "n": 5}, api)
-    check(ws["pooled"] == "steer" and isinstance(ws["toward"], list), "web_summary pooled from the steer lens")
+    check(ws["pooled"] == "steer" and isinstance(ws["downstream"]["when_plus"]["words"], list) and set(ws["upstream"]) == {"drives_plus", "drives_minus"},
+          "web_summary pooled from the steer lens, by face each way")
+    check(all(("when" in x) == (x["hop"] > 0) and ("drives" in x) == (x["hop"] < 0) and "w" in x for x in cn["nodes"]),
+          "cone: a reader with the face the neuron fires on, a writer with the face it drives, each with its strength")
     word = a_.words(a_.index.face_ids(4, 7, "+", "lens", 1))[0].strip()
     sr = await st.call("search_lens", {"query": word, "limit": 2000}, api)
     check(sr["word_pieces_matched"] > 0 and any(x["neuron"] == "L5 N7" and x["face"] == "+" for x in sr["results"]), f"search_lens finds L5 N7 by {word!r}")

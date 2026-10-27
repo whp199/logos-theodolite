@@ -16,10 +16,14 @@ server and the lab daemon do.
 What each costs on Gemma-4-31B (60 layers x 21,504 neurons, d_model 5,376, vocabulary 262,144), from the arithmetic
 and not measured here (this was written without the GPU; time a pilot with --layers before a full run):
 - lens: per layer, two products of the 21,504 write columns with the unembedding (2 x 30 TFLOP) and a re-scored
-  shortlist of 64 per face; minutes for all 60 layers. About 250 MB.
-- stats: one forward per window of the corpus (--seq 512): a 200,000-piece corpus is about 400 forwards.
+  shortlist of 64 per face; minutes for all 60 layers. About 250 MB. With --layers it adds those layers to the file
+  there (built for this model and lens), and an unread layer shows no words.
+- stats: one forward per window of the corpus (--seq 512): a 200,000-piece corpus is about 400 forwards. It also keeps
+  the feed-forward norms' usual scales, which the wiring needs (`all` builds stats before wiring).
 - wiring: for every pair of layers i < j (1,770 pairs), two [21,504 x 5,376] x [5,376 x 21,504] products (10 TFLOP)
-  and a top 24 each way; on the order of 20 PFLOP in all, minutes to tens of minutes. About 250 MB compressed.
+  and a top 24 each way, weighed across layers by Gemma's layer scalars and the norms' scales (from the stats index,
+  else read over the study's 36 texts first); on the order of 20 PFLOP in all, minutes to tens of minutes. About
+  250 MB compressed.
 - layout: a principal-component projection and (with umap-learn installed) a UMAP of 21,504 points per layer, on the
   CPU; about a minute a layer with UMAP.
 - steer: for every neuron, both signs and four contexts, a forward of every layer after its own: about 2 x 4 x 21,504
@@ -142,6 +146,20 @@ def main() -> int:
     L = len(lm.layers)
     layers = parse_layers(a.layers, L) if a.layers else None
     steps = ["lens", "stats", "wiring", "layout"] if a.what == "all" else [a.what]
+    def scales() -> dict:
+        """The push's unit (p50) and the feed-forward norms' scales, from the stats index when built, else read over the
+        study's 36 texts."""
+        stats = AtlasIndex(out).get("act_scale")
+        if stats is not None:
+            return {"p50": [float(x) for x in stats["resid_q"][:, 1]], "mlp_rms": [float(x) for x in stats["mlp_rms_q"][:, 1]],
+                    "mid_rms": [float(x) for x in stats["mid_rms_q"][:, 1]], "source": f"the stats index ({stats['meta'].get('corpus')})"}
+        from backend.causal_check import STUDY_TEXTS
+
+        ids = [rt.tokenize_prompt(rt.compose_prompt(t[1], chat=True, assistant_prefix=t[2]) if t[0] == "chat" else t[1])
+               for t in STUDY_TEXTS]
+        ex = ao.activation_extremes(lm, ids)
+        return {"p50": ao.stream_p50(ex), **ao.norm_scales(ex), "source": "the study's 36 texts (no stats index yet)"}
+
     for step in steps:
         if step == "lens":
             print("->", ab.build_lens(rt, out, chunk=a.chunk or 512, layers=layers))
@@ -150,22 +168,16 @@ def main() -> int:
             wins = ab.windows(rt, texts, a.seq, a.tokens)
             print("->", ab.build_stats(rt, out, wins, name))
         elif step == "wiring":
-            print("->", ab.build_wiring(rt, out, chunk=a.chunk or 4096))
+            sc = scales()
+            print(f"wiring: links weighed across layers with the norms' scales from {sc['source']}")
+            f = ao.link_scale(ao.Weights(lm, rt).scalars, sc["mlp_rms"], sc["mid_rms"])
+            print("->", ab.build_wiring(rt, out, f, scale_source=sc["source"], chunk=a.chunk or 4096))
         elif step == "layout":
             print("->", ab.build_layout(rt, out, method=a.layout_method))
         elif step == "steer":
-            stats = AtlasIndex(out).get("act_scale")
-            if stats is not None:
-                p50 = [float(x) for x in stats["resid_q"][:, 1]]
-                print(f"steer: the push's unit is the stream's median length from {stats['meta'].get('corpus')}")
-            else:
-                from backend.causal_check import STUDY_TEXTS
-
-                ids = [rt.tokenize_prompt(rt.compose_prompt(t[1], chat=True, assistant_prefix=t[2]) if t[0] == "chat" else t[1])
-                       for t in STUDY_TEXTS]
-                p50 = ao.stream_p50(ao.activation_extremes(lm, ids))
-                print("steer: no stats index yet; the push's unit is the stream's median length over the study's 36 texts")
-            print("->", ab.build_steer_lens(rt, out, p50, layers=layers, batch=a.batch))
+            sc = scales()
+            print(f"steer: the push's unit is the stream's median length from {sc['source']}")
+            print("->", ab.build_steer_lens(rt, out, sc["p50"], layers=layers, batch=a.batch))
     return 0
 
 

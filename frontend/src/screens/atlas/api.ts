@@ -139,11 +139,16 @@ export interface FaceWords {
   steer: string[] | null;
   stale?: string;
 }
+/** A weight link, read from rest (backend/atlas_ops.py LINK_MODEL): `gate` is the writer's face that opens the reader's
+ * gate, `sign` the reader's face it then pushes toward; `w` its strength as it reaches the reader (Gemma's layer
+ * scalars and the norms counted) over the neuron's strongest; `z` how unusual it is within its pair of layers. */
 export interface Link {
   layer: number;
   n: number;
   z: number;
+  w?: number;
   sign: number;
+  gate?: number;
   face?: "+" | "-";
   words?: FaceWords;
   census?: string[];
@@ -212,12 +217,15 @@ export interface PooledWord {
   n: number;
   w: number;
 }
+/** The web's words, the cone followed from rest: `down["+"]`, what the neurons it drives write when it fires on its +
+ * face; `up["+"]`, what the neurons that push it toward its + face write (and so for "-"). */
 export interface WebSummary {
   src: "steer" | "lens" | null;
   ready: boolean;
+  missing?: "wiring" | "lens" | "steer_lens";
   links?: number;
-  down?: { neurons: number; toward: PooledWord[]; away: PooledWord[] };
-  up?: { neurons: number; fed_by: PooledWord[]; held_by: PooledWord[] };
+  down?: Record<"+" | "-", { neurons: number; words: PooledWord[] }>;
+  up?: Record<"+" | "-", { neurons: number; words: PooledWord[] }>;
   gated?: { down: number; up: number };
 }
 export interface SearchRow {
