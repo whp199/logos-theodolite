@@ -681,7 +681,10 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
     c["rpc"] = {"next": 0, "pending": {}}
     c["pump"] = asyncio.create_task(_pump_codex(c, proc))
     await _rpc(c, "initialize", {"clientInfo": {"name": "logos-theodolite", "version": "1"}})
-    mcp = {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)], "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": c["session"]}}}
+    # in its sandbox Codex asks before every MCP tool call, and this chat never asks (approvalPolicy "never"): the
+    # atlas's own tools are approved, as full access approved them
+    mcp = {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)], "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": c["session"]},
+                     "default_tools_approval_mode": "approve"}}
     sandbox = "danger-full-access" if reach() == "home" else "workspace-write"  # module docstring: reach
     opts = {"cwd": str(work_dir()), "approvalPolicy": "never", "sandbox": sandbox, "config": {"mcp_servers": mcp},
             "developerInstructions": system_prompt("codex", self_url)}

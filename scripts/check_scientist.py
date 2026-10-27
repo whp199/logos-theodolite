@@ -595,6 +595,8 @@ def run_checks() -> int:
     rpcs = [x for x in clog() if x["kind"] == "rpc"]
     ts = next(x for x in rpcs if x["method"] == "thread/start")["params"]
     check(ts["sandbox"] == "workspace-write" and "writes only in" in ts["developerInstructions"], "codex by default: its shell sandboxed to its work folder")
+    check(ts["config"]["mcp_servers"]["atlas"].get("default_tools_approval_mode") == "approve",
+          "codex: the atlas's tools approved (in its sandbox Codex otherwise asks before each, and the chat never asks)")
     check(ts["approvalPolicy"] == "never" and ts["config"]["mcp_servers"]["atlas"]["env"] == {"THEODOLITE_URL": srv.url, "THEODOLITE_CHAT": chat2}
           and "You are running as Codex" in ts["developerInstructions"] and ts["cwd"] == str(sc.work_dir()), "the thread: no approvals, the atlas's MCP server, its instructions")
     home = Path(next(x for x in clog() if x["kind"] == "start")["codex_home"])

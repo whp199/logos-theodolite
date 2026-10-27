@@ -880,15 +880,26 @@ async def search(q: str, limit: int = 300) -> Dict[str, Any]:
         match = match_ids(a.vocab(), q)
         if not len(match):
             return {"ready": True, "results": [], "held": [], "held_back": 0, "tokens": 0, "total": 0}
-        rows, total = a.index.search(match, max(1, min(int(limit), 2000)))
-        res, held = [], []
+        lim = max(1, min(int(limit), 2000))
+        rows, total = a.index.search(match, 10**9)
+        # the limit applies to each list after the gate has split them, so held-back faces do not crowd out the rest
+        res, held, n_held = [], [], 0
         for r in rows:
-            row = {**r, "words": a.face(r["layer"], r["n"], r["sign"], 6, edited),
-                   "census": census_words(r["layer"], a.rt.model_id).get(r["n"]),
-                   "name": (notes.get(fn.note_key(r["layer"], r["n"])) or {}).get("name", "")}
-            chk = row["words"].get("check")
-            (held if r["src"] != "steer" and (chk is None or chk.get("held_back")) else res).append(row)
-        return {"ready": True, "results": res, "held": held, "held_back": len(held), "tokens": int(len(match)), "total": total}
+            if r["src"] != "steer":
+                chk = a.index.face_check(r["layer"], r["n"], r["sign"], edited=(r["layer"], r["n"]) in edited)
+                if chk is None or chk.get("held_back"):
+                    n_held += 1
+                    if len(held) >= lim:
+                        continue
+                    held.append(r)
+                    continue
+            if len(res) < lim:
+                res.append(r)
+        dec = lambda r: {**r, "words": a.face(r["layer"], r["n"], r["sign"], 6, edited),  # noqa: E731
+                         "census": census_words(r["layer"], a.rt.model_id).get(r["n"]),
+                         "name": (notes.get(fn.note_key(r["layer"], r["n"])) or {}).get("name", "")}
+        return {"ready": True, "results": [dec(r) for r in res], "held": [dec(r) for r in held], "held_back": n_held,
+                "tokens": int(len(match)), "total": total}
 
     return await asyncio.to_thread(work)
 
