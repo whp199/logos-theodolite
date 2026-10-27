@@ -30,7 +30,7 @@ if __name__ == "__main__":
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 for p in (ROOT_DIR, ROOT_DIR / "scripts"):

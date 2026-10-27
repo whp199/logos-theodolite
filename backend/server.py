@@ -40,6 +40,7 @@ from fastapi.staticfiles import StaticFiles
 from interp_engine.steer_specs import AddSpec, LayerSteeringSpec, NormScaledAddSpec, SteeringSpec
 from pydantic import BaseModel, Field, StrictInt, ValidationError
 
+from backend import atlas as atlas_routes
 from backend import causal_check as cc
 from backend.engine_runtime import (
     DEFAULT_TRACKED_CONCEPTS,
@@ -1388,6 +1389,9 @@ async def api_health() -> Dict[str, Any]:
             "max_words": 12,
             "study_mean_problem": study_mean_problem(),
         },
+        # the atlas (backend/atlas.py, the page at #/atlas): that its routes exist on this server, which of its
+        # indexes are on disk (by file, none loaded) and where the field notes are kept
+        "atlas": atlas_routes.health_card(),
         # the rule the label_check on every neuron label follows (backend/label_gate.py)
         "label_gate": LABEL_GATE_CARD,
         "lens": runtime.lens_card(),
@@ -1601,9 +1605,11 @@ async def ws_theodolite(websocket: WebSocket) -> None:
         receiver.cancel()
 
 
-# Saved questions and system prompts (backend/saved_prompts.py): declared before the static mount below, which would
-# otherwise answer every path under "/".
+# Saved questions and system prompts (backend/saved_prompts.py) and the atlas (backend/atlas.py, under the one GPU
+# lock): declared before the static mount below, which would otherwise answer every path under "/".
 app.include_router(saved_prompts_router)
+atlas_routes.bind(get_app_state, _GPU_LOCK)
+app.include_router(atlas_routes.router)
 
 _DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if _DIST_DIR.exists():

@@ -333,13 +333,14 @@ def build_layout(rt: Any, out_dir: Path, *, pca: int = 50, neighbors: int = 30, 
     L, N = w.n_layers, w.d_ff
     side = grid_side(N)
     cells = np.zeros((L, N), np.int16 if side * side <= 32767 else np.int32)
-    use_umap = method in ("auto", "umap")
-    try:
-        import umap  # noqa: F401
-    except ImportError:
-        if method == "umap":
-            raise
-        use_umap = False
+    umap_mod = None
+    if method in ("auto", "umap"):
+        try:
+            import umap as umap_mod
+        except ImportError:
+            if method == "umap":
+                raise
+    use_umap = umap_mod is not None
     t0 = time.time()
     for l in range(L):
         X = (w.w_down(l).float().T * w.norm(l, "post_feedforward").to(w.device)).cpu()  # [N, D]
@@ -349,9 +350,7 @@ def build_layout(rt: Any, out_dir: Path, *, pca: int = 50, neighbors: int = 30, 
         U, S, _ = torch.pca_lowrank(X, q=q, center=False)
         Z = (U[:, :q] * S[:q]).numpy()
         if use_umap:
-            import umap
-
-            xy = umap.UMAP(n_neighbors=int(neighbors), min_dist=0.05, metric="cosine", random_state=0).fit_transform(Z)
+            xy = umap_mod.UMAP(n_neighbors=int(neighbors), min_dist=0.05, metric="cosine", random_state=0).fit_transform(Z)
         else:
             xy = Z[:, :2]
         cells[l] = snap_to_grid(np.asarray(xy, np.float64), side)

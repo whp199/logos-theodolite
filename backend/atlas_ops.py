@@ -42,7 +42,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from backend.causal_check import language_model, logits_fp32, model_device
+from backend.causal_check import logits_fp32, model_device
 
 PUSH_MODES = ("add", "mul", "act")
 # The three voices of the push chat: pushed up, as it is, pushed down (the reference's rows 0, 1, 2).
@@ -550,6 +550,79 @@ def next_logprobs(
     h = out.last_hidden_state[:, -1]
     lsm = F.log_softmax(logits_fp32(h, W_U), dim=-1).cpu()
     return lsm[0], (lsm[1] if R == 2 else None)
+
+
+@torch.no_grad()
+def read_neurons(lm: nn.Module, ids: Sequence[int], neurons: Sequence[Tuple[int, int]]) -> Dict[Tuple[int, int], List[float]]:
+    """Several neurons' activations at every word-piece of `ids`, in one forward, keeping only theirs (no interventions):
+    {(layer, neuron): [T]}."""
+    dev = model_device(lm)
+    x = torch.tensor([[int(t) for t in ids]], dtype=torch.long, device=dev)
+    by_layer: Dict[int, List[int]] = {}
+    for l, n in neurons:
+        by_layer.setdefault(int(l), []).append(int(n))
+    got: Dict[Tuple[int, int], List[float]] = {}
+    hooks = []
+    try:
+        for l, ns in by_layer.items():
+
+            def pre(_m: nn.Module, args: Tuple[Any, ...], l: int = l, ns: List[int] = ns) -> None:
+                a = args[0][0][:, ns].detach().float().cpu()  # [T, k]
+                for j, n in enumerate(ns):
+                    got[(l, n)] = a[:, j].tolist()
+
+            hooks.append(lm.layers[l].mlp.down_proj.register_forward_pre_hook(pre))
+        lm(input_ids=x, use_cache=False)
+    finally:
+        for h in hooks:
+            h.remove()
+    return got
+
+
+@torch.no_grad()
+def activation_peaks(lm: nn.Module, ids: Sequence[int]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Each neuron's largest and most negative activation over `ids` past the start mark, and the word-piece where each
+    is reached: (max, argmax, min, argmin), each [L, N] on the CPU (float32; the argmaxes index `ids`). One forward,
+    reduced on the device as it goes, so no [L, T, N] tensor is kept (the reference's `all_activations`)."""
+    dev = model_device(lm)
+    x = torch.tensor([[int(t) for t in ids]], dtype=torch.long, device=dev)
+    off = 1 if len(ids) > 1 else 0
+    got: Dict[int, Tuple[torch.Tensor, ...]] = {}
+    hooks = []
+    try:
+        for l, layer in enumerate(lm.layers):
+
+            def pre(_m: nn.Module, args: Tuple[Any, ...], l: int = l) -> None:
+                a = args[0][0, off:].float()
+                mx, amx = a.max(0)
+                mn, amn = a.min(0)
+                got[l] = (mx.cpu(), (amx + off).cpu(), mn.cpu(), (amn + off).cpu())
+
+            hooks.append(layer.mlp.down_proj.register_forward_pre_hook(pre))
+        lm(input_ids=x, use_cache=False)
+    finally:
+        for h in hooks:
+            h.remove()
+    L = len(lm.layers)
+    return tuple(torch.stack([got[l][i] for l in range(L)]) for i in range(4))  # type: ignore[return-value]
+
+
+@torch.no_grad()
+def activations_at(lm: nn.Module, ids: Sequence[int], pos: int) -> torch.Tensor:
+    """Every neuron's activation at word-piece `pos` of `ids`: [L, N] float32 on the CPU, from one forward."""
+    dev = model_device(lm)
+    x = torch.tensor([[int(t) for t in ids]], dtype=torch.long, device=dev)
+    got: Dict[int, torch.Tensor] = {}
+    hooks = []
+    try:
+        for l, layer in enumerate(lm.layers):
+            hooks.append(layer.mlp.down_proj.register_forward_pre_hook(
+                lambda _m, args, l=l: got.__setitem__(l, args[0][0, int(pos)].float().cpu())))
+        lm(input_ids=x, use_cache=False)
+    finally:
+        for h in hooks:
+            h.remove()
+    return torch.stack([got[l] for l in range(len(lm.layers))])
 
 
 @torch.no_grad()

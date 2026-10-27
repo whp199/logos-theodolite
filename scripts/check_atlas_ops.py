@@ -41,7 +41,7 @@ if __name__ == "__main__":
     os.environ["HF_HUB_OFFLINE"] = "1"
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, List, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 for p in (ROOT_DIR, ROOT_DIR / "scripts"):
