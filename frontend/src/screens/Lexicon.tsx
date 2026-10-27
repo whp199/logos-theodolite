@@ -331,7 +331,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           i · the index
         </h2>
         <span style={{ fontSize: 15, color: "var(--muted)" }}>
-          thirty words and four cross-references, in alphabetical order
+          thirty-seven words and four cross-references, in alphabetical order
         </span>
       </div>
       <Rubric style={{ maxWidth: 760 }}>
@@ -1144,6 +1144,139 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             the reference numbers of REFERENCES.md, the study’s caveat with its section of <M>experiments/REPORT.md</M>,
             and the controls for experts. A value the repository does not record is shown as <Missing />, never
             estimated. The sources are gathered in <a href={href.lineage()}>the lineage</a>.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="atlas" head="the atlas" tech="neuron explorer · every feed-forward neuron at once">
+          <Body>
+            Every neuron of every layer on one map: sixty sheets of 21,504 dots, each layer’s attention heads drawn as
+            lines just before its sheet. Open a neuron to read its words, follow its <LexLink to="web">web</LexLink>, read
+            its <LexLink to="census">census</LexLink> answers and <LexLink to="push">push</LexLink> it; run a text to see
+            what fires on each word-piece; or ask <LexLink to="scientist">the scientist</LexLink>.
+          </Body>
+          <Note>
+            Built after lyramakesmusic’s neuron-explorer, made for Qwen3.5-4B in the wake of Cammarata’s neuron poles.
+            Its labels go through the same gate as every other page’s: below layer 41 a neuron’s words through the lens
+            are held back.
+          </Note>
+          <Onward to={href.atlas()}>open the atlas →</Onward>
+          <EntryApparatus title="the atlas">
+            One draw call for all 1,290,240 neurons (three.js points); picking meets each sheet as a plane, never the dots.
+            Its indexes are built once on the GPU by <M>scripts/atlas_build.py</M> (lens words, activation ranges,
+            wiring, layout; the <LexLink to="steer-lens">steer lens</LexLink> on its own) into <M>atlas_data/index</M>;
+            the routes are <M>/api/atlas/*</M> (ARCHITECTURE §4.7). Layers count from 0 in the API, from 1 on the page.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="census" head="the census" tech="steering sweep · ranked against random directions">
+          <Body>
+            Every neuron of a layer pushed in turn, along its own write direction, on four fixed questions at a few
+            doses, and the words its pushes bring out counted. The same is done along random directions, as controls. A
+            neuron whose pushes bring out words that no random push does ranks high; one indistinguishable from the
+            controls ranks low.
+          </Body>
+          <Note>
+            A census runs a layer at a time on the GPU and is kept; the map colours a layer’s neurons by it, from pale to
+            dark gilt above the strongest control.
+          </Note>
+          <EntryApparatus title="the census">
+            Questions: who are you, a snake game in Python, the colour orange (at −0.7, +0.5 and +0.8 of the stream’s
+            median length leaving the layer) and “write whatever you like” at +3.0; greedy answers. A word (three
+            letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5) against the average unit, over
+            pushes of at most 1.6 of the stream, every word of the unpushed answers left out; mass = the summed positive z
+            of its top five words, the sort key; controls are isotropic unit vectors of the stream from a seed, pushed
+            exactly as a neuron is. <M>scripts/census_run.py</M>, <M>backend/census.py</M>; the reference’s
+            <M> sweep/rank.py</M>.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="web" head="the web" tech="wiring · connection cone · weight-only links">
+          <Body>
+            The open neuron’s strongest links through the weights, followed hop by hop: back through the earlier neurons
+            whose writes it reads, forward through the later ones that read its write. Gilt links raise the neuron they
+            reach, blue ones lower it. The words of the neurons in its web are pooled to say what feeds it, what holds
+            it back, and what it pushes toward and away from.
+          </Body>
+          <Note>
+            A link through the weights says what could pass, not what does on a given text. Past the first hop every path
+            is a guess: test it with a push or a read.
+          </Note>
+          <EntryApparatus title="the web">
+            A writer A at layer i writes v<sub>A</sub> = w<sub>post,i</sub> ⊙ W<sub>down,i</sub>[:, A]; a reader B at
+            layer j &gt; i reads it as g = W<sub>gate,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>) and u = W
+            <sub>up,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>); P = g·u, z-scored within the layer pair, its sign
+            the reader’s activation the writer gives it. The web takes the neuron’s top links, then each node’s top two
+            with z ≥ 15 (<M>wiring.npz</M>). Direct-path only, as the reference’s <M>connections</M>.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="steer-lens" head="the steer lens" tech="steering lens · the next word-piece’s change of log-probability">
+          <Body>
+            What a neuron does to the next word, measured rather than read: push it a little at every word-piece of four
+            short texts and see which word-pieces become likelier next, each way. It reads the model’s own output, not a
+            lens fitted on another model, so the label gate does not hold it back.
+          </Body>
+          <Note>
+            Where the steer lens and the lens disagree, trust the steer lens: it is what the neuron, pushed, does.
+          </Note>
+          <EntryApparatus title="the steer lens">
+            ±0.8 · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M> of its layer,
+            at every position but the start mark, of two chat turns (“Who are you?”, “Write whatever you like.”) and two
+            plain openings; the mean Δ log p of the next word-piece (fp32, softcapped at 30), its twelve largest rises
+            each way, and KL(pushed ‖ base). <M>steer_lens.npz</M>, or read live for one neuron.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="push" head="a push" tech="steering · three voices · one neuron’s write direction">
+          <Body>
+            Ask the model something and it answers three times at once: with the open neuron pushed up, left alone, and
+            pushed down, each answer keeping its own earlier replies. “add” pushes along the neuron’s own write direction
+            by a share of the stream’s usual length; “×” multiplies what the neuron writes.
+          </Body>
+          <Note>
+            A push lasts for that answer only. Unlike a <LexLink to="nudge">nudge</LexLink>, it moves along what one neuron
+            writes. Around 0.5 to 0.8 of the stream the answers bend and stay readable; by 3 they come apart.
+          </Note>
+          <EntryApparatus title="a push">
+            “add”: h ← h + σ · d · p50<sub>ℓ</sub> · unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M>{" "}
+            of layer ℓ, σ = +1, 0, −1 for the three voices, start mark spared; “×”: a<sub>n</sub> ← d · a<sub>n</sub>, a
+            <sub>n</sub>, −d · a<sub>n</sub>. Greedy, one batch of three; p50 is the stream’s median length leaving the
+            layer, over the stats index’s text. <M>POST /api/atlas/push</M> (events).
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="field-notes" head="field notes" tech="neuron names and notes">
+          <Body>
+            The names and notes kept beside neurons, by you or by the scientist. A named neuron shows in red on the map,
+            on every layer. Name a neuron in the atlas’s left panel; leave a note in its details.
+          </Body>
+          <Note>
+            A name is a guess written down. The scientist marks its own with how sure it is: nothing when its firing, its
+            pushes and its words agree, (?) to (???) as they part.
+          </Note>
+          <EntryApparatus title="field notes">
+            One JSON file, written whole each time: <M>$THEODOLITE_FIELD_NOTES</M>, else <M>field_notes.json</M> in the
+            atlas folder; each entry keeps who wrote it and when. <M>GET/POST /api/atlas/notes</M>.
+          </EntryApparatus>
+        </Entry>
+
+        <Entry id="scientist" head="the scientist" tech="an agent with the atlas’s tools">
+          <Body>
+            A language model in the atlas’s side panel, with the atlas’s own tools: ask it about a neuron and it reads the
+            neuron’s words, web and census, runs pushes and texts, names what it finds and shows you on the map. Press
+            “explain” for a short report on the open neuron or head.
+          </Body>
+          <Note>
+            It runs on Claude Code or Codex where they are installed beside the server, or on any service that speaks
+            OpenAI’s chat completions: LM Studio or Ollama on this machine, OpenRouter, or one you name. What it says is
+            a lead to check: it cites the neurons it read, so open them.
+          </Note>
+          <EntryApparatus title="the scientist">
+            29 tools (<M>backend/scientist_tools.py</M>), served to Claude Code and Codex over MCP (
+            <M>backend/scientist_mcp.py</M>) and to an OpenAI-compatible endpoint as functions, the tool loop then run by
+            the server; its instructions are <M>backend/scientist_prompt.md</M> and <M>scientist_methodology.md</M>.
+            Endpoints come from the environment or <M>endpoints.json</M>, their keys only from environment variables.
+            The tools count layers as the pages do. <M>/api/atlas/scientist/*</M> (ARCHITECTURE §4.8).
           </EntryApparatus>
         </Entry>
       </EntryGrid>

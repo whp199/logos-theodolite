@@ -8,6 +8,7 @@ const Incipit = lazy(() => import("./screens/Incipit").then((m) => ({ default: m
 const Instrument = lazy(() => import("./screens/Instrument").then((m) => ({ default: m.Instrument })));
 const LayerLeaf = lazy(() => import("./screens/LayerLeaf").then((m) => ({ default: m.LayerLeaf })));
 const NeuronFolio = lazy(() => import("./screens/NeuronFolio").then((m) => ({ default: m.NeuronFolio })));
+const Atlas = lazy(() => import("./screens/Atlas").then((m) => ({ default: m.Atlas })));
 const Landmarks = lazy(() => import("./screens/Landmarks").then((m) => ({ default: m.Landmarks })));
 const Nudge = lazy(() => import("./screens/Nudge").then((m) => ({ default: m.Nudge })));
 const Vault = lazy(() => import("./screens/Vault").then((m) => ({ default: m.Vault })));
@@ -19,6 +20,7 @@ const TITLES: Record<Route["name"], string> = {
   instrument: "The Instrument — Logos Theodolite",
   layer: "A layer’s leaf — Logos Theodolite",
   neuron: "A neuron’s folio — Logos Theodolite",
+  atlas: "The atlas — Logos Theodolite",
   landmarks: "Landmarks — Logos Theodolite",
   nudge: "Nudge — Logos Theodolite",
   vault: "The Vault — Logos Theodolite",
@@ -44,6 +46,8 @@ function screenFor(route: Route) {
       return <LayerLeaf route={route} />;
     case "neuron":
       return <NeuronFolio route={route} />;
+    case "atlas":
+      return <Atlas route={route} />;
     case "landmarks":
       return <Landmarks route={route} />;
     case "nudge":

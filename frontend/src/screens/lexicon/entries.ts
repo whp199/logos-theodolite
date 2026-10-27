@@ -25,10 +25,13 @@ export interface IndexItem {
  */
 export const INDEX: IndexItem[] = [
   { label: "apparatus", id: "apparatus", section: "iii" },
+  { label: "atlas, the", id: "atlas", section: "iii" },
   { label: "bearing and elevation", id: "bearing", section: "iii" },
   { label: "causal spot-check", see: "a test of a label", id: "test", section: "iv" },
+  { label: "census, the", id: "census", section: "iii" },
   { label: "double-negative regime", id: "double-negative", section: "ii" },
   { label: "edit, an", id: "edit", section: "iv" },
+  { label: "field notes", id: "field-notes", section: "iii" },
   { label: "gathering", id: "gathering", section: "ii" },
   { label: "global and local attention", id: "global", section: "ii" },
   { label: "how it writes", id: "how-it-writes", section: "iii" },
@@ -41,19 +44,23 @@ export const INDEX: IndexItem[] = [
   { label: "neuron and its two faces", id: "neuron", section: "ii" },
   { label: "nudge", id: "nudge", section: "iv" },
   { label: "pole", see: "neuron", id: "neuron", section: "ii" },
+  { label: "push, a", id: "push", section: "iii" },
   { label: "quiet carry channel", id: "quiet", section: "v" },
   { label: "remembering", id: "remembering", section: "ii" },
   { label: "rubric", id: "rubric", section: "iii" },
   { label: "sampler", see: "how it writes", id: "how-it-writes", section: "iii" },
+  { label: "scientist, the", id: "scientist", section: "iii" },
   { label: "seed, the", id: "seed", section: "iii" },
   { label: "sighting", id: "sighting", section: "iv" },
   { label: "sighting of each word-piece, a", id: "each-word-piece", section: "iii" },
+  { label: "steer lens, the", id: "steer-lens", section: "iii" },
   { label: "stream strength", id: "stream", section: "ii" },
   { label: "strength", id: "strength", section: "ii" },
   { label: "test of a label, a", id: "test", section: "iv" },
   { label: "threads", id: "threads", section: "ii" },
   { label: "through the lens", id: "thinking", section: "iii" },
   { label: "vault, the", id: "vault", section: "iv" },
+  { label: "web, the", id: "web", section: "iii" },
   { label: "what it was thinking", see: "through the lens", id: "thinking", section: "iii" },
   { label: "word it chose and its likeliest, the", id: "chosen", section: "iii" },
   { label: "word-piece", id: "word-piece", section: "ii" },
@@ -77,7 +84,7 @@ export const ALIASES: Record<string, string[]> = {
  * Every anchor on the page, for reference:
  * entries   layer word-piece stream gathering remembering global neuron double-negative strength write threads
  *           lens j-space thinking chosen landmarks bearing kinship how-it-writes seed each-word-piece rubric apparatus
- *           sighting matched-control vault test nudge edit
+ *           sighting matched-control vault test nudge edit atlas census web steer-lens push field-notes scientist
  * cautions  labels single late quiet frame thread-score nudge-defaults template think split bos
  * aliases   naked-eye faces pole stream-strength elevation through-the-lens write-size causal-check spot-check
  */

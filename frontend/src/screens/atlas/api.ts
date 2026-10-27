@@ -1,0 +1,404 @@
+/**
+ * The atlas's routes as the page reads them (backend/atlas.py, backend/scientist_chat.py; ARCHITECTURE.md §4.7-4.8).
+ * Layers count from 0 in every field here, as the server sends them; the page shows layer + 1 (`pageLayer`).
+ */
+
+export class AtlasError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+async function detailOf(r: Response): Promise<string> {
+  const text = await r.text();
+  try {
+    const d = JSON.parse(text)?.detail;
+    if (typeof d === "string") return d;
+    if (d) return JSON.stringify(d);
+  } catch {
+    // not JSON: say what came back
+  }
+  return text.slice(0, 200) || `HTTP ${r.status}`;
+}
+
+const qs = (q?: Record<string, unknown>) => {
+  if (!q) return "";
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
+  const s = p.toString();
+  return s ? `?${s}` : "";
+};
+
+export async function get<T>(path: string, q?: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+  let r: Response;
+  try {
+    r = await fetch(`${path}${qs(q)}`, { signal });
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw e;
+    throw new AtlasError("The server is not answering.", 0);
+  }
+  if (!r.ok) throw new AtlasError(await detailOf(r), r.status);
+  return (await r.json()) as T;
+}
+
+export async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  let r: Response;
+  try {
+    r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}), signal });
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") throw e;
+    throw new AtlasError("The server is not answering.", 0);
+  }
+  if (!r.ok) throw new AtlasError(await detailOf(r), r.status);
+  return (await r.json()) as T;
+}
+
+/** A binary reply (the web's int16 rows) with its headers. */
+export async function getBinary(path: string, q?: Record<string, unknown>): Promise<{ data: ArrayBuffer; headers: Headers }> {
+  const r = await fetch(`${path}${qs(q)}`);
+  if (!r.ok) throw new AtlasError(await detailOf(r), r.status);
+  return { data: await r.arrayBuffer(), headers: r.headers };
+}
+
+/** Lines of a streamed reply as they come: server-sent events ("data: {...}") or NDJSON. */
+export async function* streamLines(r: Response, sse: boolean): AsyncGenerator<unknown> {
+  const reader = r.body!.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  const sep = sse ? "\n\n" : "\n";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf(sep)) >= 0) {
+      const chunk = buf.slice(0, i);
+      buf = buf.slice(i + sep.length);
+      if (sse) {
+        for (const line of chunk.split("\n")) if (line.startsWith("data: ")) yield JSON.parse(line.slice(6));
+      } else if (chunk.trim()) yield JSON.parse(chunk);
+    }
+  }
+}
+
+export const pageLayer = (l: number) => l + 1;
+export const cite = (l: number, n: number) => `L${l + 1} N${n}`;
+export const citeHead = (l: number, h: number) => `L${l + 1} h${h}`;
+
+/* ------------------------------------------------------------------------------------------------------ replies */
+
+export interface LayerShape {
+  kind: "sliding" | "full";
+  n_heads: number;
+  n_kv: number;
+  head_dim: number;
+  values_from_keys: boolean;
+  window: number | null;
+}
+export interface IndexStatus {
+  built: boolean;
+  file?: string;
+  refused?: string;
+  built_at?: string;
+  corpus?: string;
+  method?: string;
+  [k: string]: unknown;
+}
+export interface ScaleSource {
+  kind: "index" | "study_texts";
+  corpus: string;
+  tokens: number;
+}
+export interface Arch {
+  model: string;
+  stand_in: boolean;
+  n_layers: number;
+  d_model: number;
+  d_ff: number;
+  vocab_size: number;
+  layers: LayerShape[];
+  layer_scalars: number[];
+  indexes: Record<string, IndexStatus | string>;
+  census: Record<string, string>;
+  push: { modes: string[]; units: Record<string, string>; scale_source: ScaleSource | null };
+  limits: { text: number; run: number; heads: number; push_new: number };
+  label_gate: Record<string, unknown>;
+  lens: Record<string, unknown> | null;
+}
+
+/** One face's words from the indexes: through the lens and by the naked eye (with the gate's check), the steer lens. */
+export interface FaceWords {
+  lens: string[] | null;
+  eye: string[] | null;
+  check: unknown;
+  steer: string[] | null;
+  stale?: string;
+}
+export interface Link {
+  layer: number;
+  n: number;
+  z: number;
+  sign: number;
+  face?: "+" | "-";
+  words?: FaceWords;
+  census?: string[];
+  name?: string;
+}
+export interface Wiring {
+  layer: number;
+  n: number;
+  source: "index" | "live";
+  down: Link[];
+  up: Link[];
+  note: string;
+}
+export interface Hover {
+  layer: number;
+  n: number;
+  faces: Record<"+" | "-", FaceWords>;
+  links: { down: Link[]; up: Link[] } | null;
+  name: string;
+  ready: boolean;
+}
+export interface ActRange {
+  act_max: number;
+  act_min: number;
+  over_tokens: number;
+  source: string;
+  regimes?: Record<"pp" | "nn" | "pn" | "np", number>;
+}
+export interface SteerLens {
+  source: "index" | "live";
+  up: string[];
+  down: string[];
+  kl_up: number;
+  kl_down: number;
+  dose: number;
+}
+export interface LensFace {
+  lens: string[];
+  eye: string[];
+  check: unknown;
+}
+export interface NeuronLens {
+  layer: number;
+  n: number;
+  faces: Record<"+" | "-", LensFace>;
+  gate_trigger: string[];
+  steer: SteerLens | null;
+  act_range: ActRange | null;
+  edited: boolean;
+  lens: Record<string, unknown> | null;
+}
+export interface HeadRole {
+  layer: number;
+  head: number;
+  heads: number[];
+  z: number;
+}
+export interface NeuronHeads {
+  layer: number;
+  n: number;
+  roles: Record<"q" | "k" | "v" | "o", HeadRole[]>;
+  z_by_layer: Record<string, (number | null)[]>;
+}
+export interface PooledWord {
+  tok: string;
+  n: number;
+  w: number;
+}
+export interface WebSummary {
+  src: "steer" | "lens" | null;
+  ready: boolean;
+  links?: number;
+  down?: { neurons: number; toward: PooledWord[]; away: PooledWord[] };
+  up?: { neurons: number; fed_by: PooledWord[]; held_by: PooledWord[] };
+  gated?: { down: number; up: number };
+}
+export interface SearchRow {
+  layer: number;
+  n: number;
+  sign: "+" | "-";
+  rank: number;
+  matched: number;
+  src: "lens" | "eye" | "steer";
+  words: FaceWords;
+  census?: string[] | null;
+  name: string;
+}
+export interface SearchReply {
+  ready: boolean;
+  results: SearchRow[];
+  tokens: number;
+  total: number;
+}
+export interface CensusUnitRow {
+  kind: "neuron" | "random";
+  n: number;
+  z: number;
+  null_pct: number | null;
+  words: string[];
+  name: string;
+}
+export interface Rollout {
+  prompt: string;
+  dose: number;
+  rel_push: number;
+  text: string;
+  finish: "stop" | "length";
+  n_gen: number;
+}
+export interface CensusStats {
+  words: [string, number, number][];
+  z: number;
+  mass: number;
+  null_pct: number | null;
+  per_prompt: Record<string, string[]>;
+  dose: Record<string, { rel_push: number; distinct4: number; capped: number; logprob: number }>;
+  shift?: number | null;
+  shift_up?: [string, number][];
+  shift_down?: [string, number][];
+}
+export interface CensusUnit {
+  layer: number;
+  n: number;
+  kind: string;
+  name: string;
+  run?: string;
+  prompts?: Record<string, string>;
+  design?: string;
+  rollouts?: Rollout[];
+  baselines?: Rollout[];
+  stats?: CensusStats | null;
+  rank?: number | null;
+  n_ranked?: number;
+}
+export interface Spread {
+  x?: number[];
+  y?: number[];
+  row?: number[];
+  kind?: string[];
+  neuron?: number[];
+  prompt?: string[];
+  dose?: number[];
+  embedder?: string;
+  layout?: string;
+}
+export interface RunReply {
+  ready: boolean;
+  tokens: string[];
+  pos: number[];
+  scale_source: ScaleSource;
+  n_pieces: number;
+}
+export interface RunRow {
+  layer: number;
+  n: number;
+  face: "+" | "-";
+  score: number;
+  act: number;
+  token: string;
+  pos: number;
+  words: FaceWords;
+}
+export interface RunView {
+  results: RunRow[];
+  total: number;
+  map?: string;
+  shape?: [number, number];
+}
+export interface HeadLinkNeuron {
+  layer: number;
+  n: number;
+  z: number;
+  words?: FaceWords;
+}
+export interface HeadInfo {
+  layer: number;
+  head: number;
+  kind: "sliding" | "full";
+  kv_head: number;
+  values_from_keys: boolean;
+  q: HeadLinkNeuron[];
+  k: HeadLinkNeuron[];
+  v: HeadLinkNeuron[];
+  o: HeadLinkNeuron[];
+  q_pooled: { src: string | null; tokens: PooledWord[]; gated: number };
+  k_pooled: { src: string | null; tokens: PooledWord[]; gated: number };
+  v_pooled: { src: string | null; tokens: PooledWord[]; gated: number };
+  o_pooled: { src: string | null; tokens: PooledWord[]; gated: number };
+}
+export interface HeadProfile {
+  dist: number[];
+  dist_names: string[];
+  src: [string, number][];
+  pairs: { w: number; text: string; q: number; k: number; qt: string; kt: string }[];
+}
+export interface Note {
+  name: string;
+  note: string;
+  by: "reader" | "scientist";
+  at: string;
+}
+export interface Notes {
+  version: number;
+  neurons: Record<string, Note>;
+  heads: Record<string, Note>;
+  file: string;
+  warning: string | null;
+}
+export interface ReadsReply {
+  units: { text: string; act: number; pieces: number[]; pos: number }[];
+  act_range: ActRange | null;
+}
+
+/* -------------------------------------------------------------------------------------------------- the scientist */
+
+export interface EndpointCard {
+  name: string;
+  label: string;
+  base_url: string;
+  this_machine: boolean;
+  key: string;
+  model: string | null;
+  stream: boolean;
+}
+export interface Backends {
+  claude: { available: boolean; model: string | null };
+  codex: { available: boolean };
+  openai: EndpointCard[];
+  warning: string | null;
+}
+export interface ChatEvent {
+  t: "state" | "sent" | "text" | "thinking" | "tool" | "tool_result" | "ui" | "error" | "done" | "ping" | "user";
+  [k: string]: unknown;
+}
+export interface PastChat {
+  chat: string;
+  agent: "claude" | "codex" | "openai";
+  t: number;
+  title: string | null;
+  turns: number;
+  profile?: string;
+  model?: string;
+}
+
+export const noteKey = (layer: number, n: number) => `${layer}:${n}`;
+
+/** A base64 run of little-endian int16 or float16 values. */
+export function b64ToU16(b64: string): Uint16Array {
+  const bin = atob(b64);
+  const out = new Uint16Array(bin.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8);
+  return out;
+}
+
+export function halfToFloat(h: number): number {
+  const s = h & 0x8000 ? -1 : 1;
+  const e = (h >> 10) & 0x1f;
+  const m = h & 0x3ff;
+  return e === 0 ? s * m * 2 ** -24 : e === 31 ? (m ? NaN : s * Infinity) : s * (1 + m / 1024) * 2 ** (e - 15);
+}

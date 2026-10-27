@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
  *   #/instrument               the instrument
  *   #/layer/36                 a layer's leaf (layers counted 1-60)
  *   #/neuron/54/15491/pos      a neuron's folio (layer 1-60, neuron index, face pos|neg)
+ *   #/atlas                    the atlas (every neuron at once); #/atlas/54/15491 opens a neuron, #/atlas/54/h3 a head
  *   #/landmarks #/nudge #/vault #/lexicon #/lineage
  *   #/lexicon/lens             a lexicon entry, scrolled into view
  */
@@ -16,6 +17,7 @@ export type Route =
   | { name: "instrument" }
   | { name: "layer"; layerNo: number }
   | { name: "neuron"; layerNo: number; neuron: number; face: 1 | -1 }
+  | { name: "atlas"; layerNo?: number; neuron?: number; head?: number }
   | { name: "landmarks" }
   | { name: "nudge" }
   | { name: "vault" }
@@ -46,6 +48,14 @@ export function parseHash(hash: string): Route {
         neuron: int(b, 0, 21503, 15491),
         face: c === "neg" || c === "negative" || c === "-" ? -1 : 1,
       };
+    case "atlas": {
+      // the atlas checks the numbers against the model the server has loaded (a stand-in has fewer layers)
+      const layerNo = a !== undefined && /^\d+$/.test(a) ? parseInt(a, 10) : undefined;
+      if (layerNo === undefined || layerNo < 1) return { name: "atlas" };
+      const h = b?.match(/^h(\d+)$/i);
+      if (h) return { name: "atlas", layerNo, head: parseInt(h[1], 10) };
+      return b !== undefined && /^\d+$/.test(b) ? { name: "atlas", layerNo, neuron: parseInt(b, 10) } : { name: "atlas" };
+    }
     case "landmarks":
     case "nudge":
     case "vault":
@@ -65,6 +75,7 @@ export const href = {
   layer: (layerNo: number) => `#/layer/${layerNo}`,
   neuron: (layerNo: number, neuron: number, face: 1 | -1 = 1) =>
     `#/neuron/${layerNo}/${neuron}/${face < 0 ? "neg" : "pos"}`,
+  atlas: (layerNo?: number, neuron?: number) => (layerNo != null && neuron != null ? `#/atlas/${layerNo}/${neuron}` : "#/atlas"),
   landmarks: () => "#/landmarks",
   nudge: () => "#/nudge",
   vault: () => "#/vault",

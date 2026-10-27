@@ -58,6 +58,7 @@ const Diamond: React.FC<{ fill: string }> = ({ fill }) => (
 
 const NAV: { key: string; label: string; to: string; match: Route["name"][] }[] = [
   { key: "instrument", label: "instrument", to: href.instrument(), match: ["instrument", "layer", "neuron"] },
+  { key: "atlas", label: "atlas", to: href.atlas(), match: ["atlas"] },
   { key: "landmarks", label: "landmarks", to: href.landmarks(), match: ["landmarks"] },
   { key: "nudge", label: "nudge", to: href.nudge(), match: ["nudge"] },
   { key: "vault", label: "vault", to: href.vault(), match: ["vault"] },
