@@ -23,14 +23,18 @@ doses, chosen on Qwen3.5-4B and not yet calibrated on this model; calib_rel, a l
 full main_rel run. The meta also records how loudly the next layer reads the controls against the neurons (read_gain;
 a fair null is near 1, and the run warns when it is not).
 
-What it costs, as arithmetic (not measured: this was written without the GPU; time a pilot with --neurons random:8):
-answers = (neurons + controls) x 10 + 4 for main_rel; forwards = answers / batch x (max_new + 1). A whole layer is
-(21,504 + 256) x 10 + 4 = 217,604 answers: at --batch 64 and --max-new 256 about 875,000 forwards of the 31B, each
-reading every weight once, so days a layer on one GPU; the reference's depth curve used 384 neurons and 64 controls a
-layer (4,484 answers, about 18,000 forwards at --batch 64). On disk a whole layer is about 5 to 6 GB (each answer keeps
-its five likeliest pieces at every step, some 25 kB an answer at 256 pieces); ranking it reads one answer at a time and
-keeps only each answer's word ids, well under a gigabyte by the same arithmetic. Run one GPU process at a time: this
-loads the model, as the server and the lab daemon do.
+What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
+whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
+answers / batch x (max_new + 1) x 0.71 s and the batch should be as large as the card holds. Memory: the model and lens
+take 21.2 GiB; each row costs about 0.8 MB per word-piece of context on top (a batch of 32 at --max-new 64 peaked 3.1
+GiB above the model), so at --max-new 256 a batch of 32 needs some 7 GiB more and may not fit beside a desktop: lower
+--batch or --max-new. A calib_rel run of 8 neurons and 8 controls (580 answers) at --batch 32 --max-new 64 took about 16
+minutes. answers = (neurons + controls) x 10 + 4 for main_rel: a whole layer is (21,504 + 256) x 10 + 4 = 217,604
+answers, about 3.6 days at --batch 32 --max-new 64 and about two weeks at --max-new 256; the reference's depth curve
+used 384 neurons and 64 controls a layer (4,484 answers, about 2 hours at --batch 32 --max-new 64). On disk a whole
+layer is about 5 to 6 GB (each answer keeps its five likeliest pieces at every step, some 25 kB an answer at 256
+pieces); ranking it reads one answer at a time and keeps only each answer's word ids, well under a gigabyte. Run one GPU
+process at a time: this loads the model, as the server and the lab daemon do.
 """
 
 from __future__ import annotations
