@@ -94,8 +94,10 @@ Third-party works used
   - Apache-2.0: FastMCP; Hugging Face transformers, accelerate, huggingface_hub,
     safetensors and tokenizers; compressed-tensors
   - BSD-style / Apache-2.0: PyTorch
-  - MIT: mcp, FastAPI, pydantic
-  - BSD-3-Clause: Starlette, Uvicorn, NumPy
+  - MIT: mcp, FastAPI, pydantic, AnyIO
+  - BSD-3-Clause: Starlette, Uvicorn, NumPy, HTTPX
+  - optional, read by the atlas only where installed: umap-learn
+    (BSD-3-Clause); sentence-transformers and datasets (Apache-2.0)
 * Frontend dependencies (MIT / ISC), installed via npm and not bundled: React,
   three.js, @react-three/fiber, @react-three/drei, three-stdlib, zustand,
   lucide-react, Vite.
@@ -111,6 +113,33 @@ Exception: CC BY-SA 4.0
   close paraphrases / adaptations of the lead sections of the corresponding
   English Wikipedia articles (https://en.wikipedia.org). That text is licensed
   under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
+
+Exception: no licence granted (neuron-explorer)
+-----------------------------------------------
+* The atlas (#/atlas) follows the design of lyramakesmusic's neuron-explorer,
+  a steering-first neuron explorer for Qwen3.5-4B
+  (https://github.com/lyramakesmusic/neuron-explorer, read at commit
+  e566e83e3f9fe00f85438231a788f90e83e2af43; REFERENCES.md [47]). That
+  repository carries no licence file. Parts of the following files adapt its
+  code or its prompts, rewritten for Gemma 4 and this instrument but in places
+  close to the original:
+  - backend/scientist_prompt.md and backend/scientist_methodology.md, from
+    explorer/agent_prompt.md and explorer/agent_methodology.md (the report
+    formats and much of the method);
+  - backend/scientist_chat.py (the Claude Code and Codex sessions, rewinding,
+    attachments), backend/atlas.py and backend/atlas_index.py (the routes, the
+    cone, the search, the run of a text), from explorer/server.py;
+  - backend/scientist_tools.py and backend/scientist_mcp.py, from
+    explorer/agent_mcp.py;
+  - backend/atlas_ops.py and backend/atlas_build.py, from explorer/runtime.py
+    and explorer/build_layout.py and build_connections.py;
+  - backend/census.py, scripts/census_run.py and scripts/census_tools.py, from
+    sweep/steer_sweep.py, sweep/rank.py, sweep/depth_report.py and
+    sweep/merge_runs.py;
+  - frontend/src/screens/atlas/ (map.ts above all), from explorer/static/.
+  No permission from its author is recorded in this repository. Until there is
+  one, treat those adaptations as not covered by this repository's Apache
+  License, and ask before reusing them.
 
 Activation-example corpus (N1B)
 -------------------------------

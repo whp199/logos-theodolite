@@ -35,7 +35,8 @@ The repository holds two things.
 - **The instrument** (`backend/`, `frontend/`). A FastAPI server and a React interface that read Gemma-4-31B-it (QAT W4A16)
   through the J++ lens, fitted on the base model, and the plain logit lens: the path of a word through the layers, what
   each layer gathers from the words before and recalls from memory, the neurons that fire, the threads between them, a
-  survey frame of three landmark words, a nudge on the model's stream, and a vault of neurons you can search and edit.
+  survey frame of three landmark words, a nudge on the model's stream, a vault of neurons you can search and edit, and
+  an atlas of all 1,290,240 neurons at once, with a census of what each one does when pushed and a scientist to ask.
   The tensor contracts are in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - **The study** (`experiments/`). Is Gemma 4 "female-coded"? Seven experiments, eight adversarial verifiers, a
   neuron-label validation study and a lens refit on the instruct model: 314 GPU jobs through a shared lab daemon.
@@ -115,6 +116,42 @@ neuron's words below layer 41, and keeps them in the apparatus (§iv).
   </tr>
 </table>
 
+**The atlas.** Every neuron of every layer on one map (`#/atlas`): sixty sheets of 21,504 dots, each layer’s attention
+heads drawn as lines before its sheet, the neurons that write alike side by side. Open a neuron and the atlas shows its
+words (through the lens, held back by the label gate below layer 41 as on every page, and beside them its *steer lens*:
+which next word-pieces a small push on it actually raises), its **web** of weight links hop by hop with the words of what
+feeds it, holds it back and what it pushes toward and away from, the heads that read it and feed it, its **census**
+answers (the model answering fixed questions with this neuron pushed at several doses, ranked against pushes along
+random directions), and a **push**: ask anything and read three answers at once, the neuron pushed up, left alone and
+pushed down. Run a text to see which neurons fire hardest on each word-piece, search every neuron’s words, lay a layer’s
+census answers out by what they say, and keep a name and a note beside a neuron. A **scientist** in the side panel reads
+the atlas with the same tools, runs pushes and texts, names what it finds and points at it on the map; it runs on Claude
+Code or Codex where they are installed, or on any OpenAI-compatible endpoint: LM Studio or Ollama on this machine,
+OpenRouter, or one you name.
+
+The atlas follows [lyramakesmusic’s neuron-explorer](https://github.com/lyramakesmusic/neuron-explorer) [47], made for
+Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its functionality for Gemma-4-31B-it:
+
+| neuron-explorer (Qwen3.5-4B) | the atlas (Gemma-4-31B-it) |
+|---|---|
+| a 3D map of every MLP neuron, attention and MLP per layer; hover a neuron for its lenses, open it, view a layer’s sheet face-on; a `writes` layout | the same for 60 × 21,504 neurons in one draw call, with the q / k / v / o heads on each layer’s slab, lit by role for an open neuron and by their write on a run text; the `writes` layout (UMAP where installed, else PCA) |
+| the open neuron’s connection web, upstream and downstream, with its words pooled | the same (`fed by`, `held back by`, `pushes toward`, `away from`), its links weighed through Gemma 4’s pre- and post-feed-forward norms |
+| the list: units ranked by word-cluster mass against random-direction controls | the census ranking: the same statistic and the same `main_rel` questions and doses, taken on the instrument’s own runtime, resumable, batched by question |
+| `lens` search over the steer and logit lenses | search over the lens, the naked eye and the steer lens, every lens label under the label gate |
+| `fires`: run your text, filter neurons by activation over their usual range, token paths | “run a text”: the same filters (layers, sign, score, words), the links among what fires at a word-piece, the heads lit by their write |
+| steered rollouts per prompt and dose | the census tab |
+| a three-column multi-turn steered chat (−, 0, +), add or ×, “reads you” | the push tab, the same |
+| lens, connections, a name | the details: both faces under the gate, the steer lens, the activation range with GeGLU’s four sign regimes, wiring and head tables; a name and a note kept on the server |
+| embeddings: UMAP of a layer’s rollouts by neuron, prompt, dose or kind | the spread, the same colourings |
+| attention heads with q / k / v / o roles; head tools | the same, with each head’s profile over eight texts, its pattern on a text and the heads driving a neuron at a word-piece |
+| a Claude chat (the `claude` CLI with the explorer as an MCP server), Codex as an option, past chats, attachments, edit and reroll, “explain” | the same with 29 tools, plus any OpenAI-compatible endpoint (the server runs the tool loop); the tools count layers as the pages do |
+| the sweep’s tools: neuron stats, steer lens, rank, depth report, word shift, merge | `scripts/atlas_build.py` and `scripts/census_run.py` on the GPU, `scripts/census_tools.py` (rank with the word shift, merge, depth, spread) |
+| — | a CPU stand-in of Gemma 4 for every check and for trying the page without the weights (`scripts/atlas_stand_in.py`) |
+
+The sweep’s HF-against-vLLM check and its steered prefill captures are not carried over: the atlas runs on the
+instrument’s one runtime. Parts of the atlas adapt neuron-explorer’s code and prompts, and that repository carries no
+licence: see [`NOTICE`](NOTICE).
+
 **The instrument’s words, and what they name**
 
 | In the instrument | In the literature |
@@ -129,6 +166,12 @@ neuron's words below layer 41, and keeps them in the apparatus (§iv).
 | **the nudge** | additive activation steering on the residual stream |
 | **the vault** | a LARQL/VINDEX-style catalogue of neurons, queried in Python |
 | **how it writes** | decoding: greedy (its likeliest word-piece) by default, or sampled with a presence penalty, temperature, top-k and top-p |
+| **the atlas** | a neuron explorer: every feed-forward neuron on one map (after neuron-explorer [47]) |
+| **a push** · **the three voices** | steering along one neuron’s write direction, `w_post ⊙ W_down[:, n]`, by a share of the stream’s median length leaving its layer · the same answer written pushed up, unpushed and pushed down |
+| **the census** | a steering sweep of every neuron of a layer on fixed prompts, ranked by word-cluster mass against random-direction controls |
+| **the steer lens** | the mean change in the next token’s log-probability under a ±0.8 push (Δ log p, with its KL) |
+| **the web** | the neuron’s connection cone: direct-path weight links chained hop by hop |
+| **the scientist** | an LLM agent with the atlas’s tools (MCP, or OpenAI-style function calling) |
 
 **A sighting of each word-piece.** The model first writes its answer, then the instrument reads the whole text once more and
 follows a word-piece up through the sixty layers. By default it follows each word-piece the model wrote, at most 64: the
@@ -394,6 +437,39 @@ neuron's label tested by the study's N1A protocol at k = 10) are served over HTT
 Every neuron label they and the sweep send carries `label_check`, and the replies carry the rule as `label_gate` (§iv).
 To check a build end to end, server, tools and pages together: `.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.
 
+**Map every neuron (the atlas)**
+
+The atlas reads what it shows of every neuron from indexes built once on the GPU, and each layer’s census from runs taken
+there; until they exist its pages say which are missing and read what they can live. With the server stopped (one GPU
+process at a time):
+
+```bash
+.venv/bin/python scripts/atlas_build.py all                          # words, activation ranges, wiring, layout (minutes)
+.venv/bin/python scripts/atlas_build.py stats --hf <dataset> --tokens 2000000   # optional: ranges over a corpus of your choosing
+.venv/bin/python scripts/atlas_build.py steer --layers 40-59         # the steer lens, a range of layers at a time (hours)
+.venv/bin/python scripts/census_run.py --layer 53 --neurons all --random-controls 256   # a layer's census, ranked (layers from 0)
+.venv/bin/python scripts/census_tools.py spread 53                   # its answers laid out by what they say (CPU)
+```
+
+They go to `$THEODOLITE_ATLAS_DIR` (else `atlas_data/`, which git ignores). The costs in each script’s help are worked
+out from the arithmetic, not measured: time a pilot with `--layers` or `--neurons 0-255` first. Names and notes are kept in
+`$THEODOLITE_FIELD_NOTES`, else `~/.local/share/theodolite/field_notes.json`. To try the page without the GPU or the
+weights, `.venv/bin/python scripts/atlas_stand_in.py --serve 8765` serves the whole instrument on a tiny random Gemma 4
+(build its indexes with `atlas_build.py all --stand-in`); what it shows is random, and the page says so.
+
+The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model) or
+Codex (`codex`) where the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
+or `$THEODOLITE_LMSTUDIO_URL`), Ollama (`http://127.0.0.1:11434/v1`, or `$THEODOLITE_OLLAMA_URL`), OpenRouter (its key in
+`$OPENROUTER_API_KEY`), or any other (`$THEODOLITE_OPENAI_BASE_URL`, `$THEODOLITE_OPENAI_API_KEY`,
+`$THEODOLITE_OPENAI_MODEL`, or `endpoints.json` in the scientist’s folder, ARCHITECTURE §4.8). Pick the backend, and for an
+endpoint its model, in the scientist’s tab; a key is read from the environment and never reaches a page. Choose a model
+that takes tool calls.
+
+> [!WARNING]
+> Under Claude Code or Codex the scientist has a shell and file tools in your home folder, pre-approved: it runs commands
+> and edits files there without asking. Run it only where you would let it. Over an endpoint it has the atlas’s tools
+> only, but your messages and what the tools read are sent to that endpoint (OpenRouter is a third-party service).
+
 **Reproduce the study**
 
 Run everything from the repository root: the scripts use repo-relative paths.
@@ -421,9 +497,9 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 
 | Path | What is there |
 |---|---|
-| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py`, `causal_check.py` (a label's causal test, N1A's protocol) |
-| `frontend/` | Vite and React: nine pages (welcome, instrument, layer leaf, neuron folio, landmarks, nudge, vault, lexicon, lineage), the rubrics and apparatus switches, and the study’s recorded sighting for when no server answers |
-| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first) |
+| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py`, `causal_check.py` (a label's causal test, N1A's protocol); the atlas: `atlas.py` (its routes), `atlas_ops.py` (pushes, reads, wiring, heads, the steer lens), `atlas_index.py` and `atlas_build.py` (its indexes), `census.py`, `field_notes.py`, `scientist_chat.py`, `scientist_tools.py` and `scientist_mcp.py` (the scientist), `scientist_prompt.md` and `scientist_methodology.md` (its instructions) |
+| `frontend/` | Vite and React: ten pages (welcome, instrument, layer leaf, neuron folio, atlas, landmarks, nudge, vault, lexicon, lineage), the rubrics and apparatus switches, and the study’s recorded sighting for when no server answers |
+| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first); the atlas: `atlas_build.py`, `census_run.py` and `census_tools.py`, `atlas_stand_in.py` (its CPU stand-in), and `check_atlas_ops.py`, `check_atlas_index.py`, `check_atlas_api.py`, `check_census.py` and `check_scientist.py` (its checks, on the CPU) |
 | `experiments/REPORT.md` | The main write-up |
 | `ROADMAP.md` | What is still open, gathered from this README’s fault table, the report’s errata, the pages and the records of R1, R2 and R3 |
 | `experiments/lab/` | `labd.py` (the GPU daemon holding the model and lenses), `labclient.py` (submit jobs), `labkit.py` (lens readouts, gender scores, the corrected decomposition, interventions, exact same-position VJPs through the 4-bit model) |
@@ -477,8 +553,9 @@ This instrument is its maker’s synthesis of four recent pieces of research, jo
 - the **LARQL / VINDEX** naming of a neuron vault, after Hayuk (chrishayuk) [10];
 
 over older foundations: the logit lens [8], the residual-stream view of Elhage et al. [14], linear CKA [13], activation
-steering [21, 22], Löwdin’s symmetric orthogonalisation [33], and interp-engine [36], which runs the model. Bracketed numbers
-refer to [`REFERENCES.md`](REFERENCES.md), the full list, web-checked except section H (whose links were not opened); the interface tells the same story on its Lineage page.
+steering [21, 22], Löwdin’s symmetric orthogonalisation [33], and interp-engine [36], which runs the model. The atlas
+follows lyramakesmusic’s neuron-explorer [47]. Bracketed numbers
+refer to [`REFERENCES.md`](REFERENCES.md), the full list, web-checked except sections H and I (see there); the interface tells the same story on its Lineage page.
 
 **Provenance and AI assistance.** The experiments, analyses and reports in `experiments/` were designed, run and written by
 Claude Code agents (Anthropic), directed by the repository owner: parallel experiment agents, independent adversarial

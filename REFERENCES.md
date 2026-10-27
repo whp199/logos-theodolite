@@ -1,6 +1,6 @@
 # References
 
-This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18; section H's were not opened (see there).
+This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18; section H's were not opened (see there), and section I's are as it says.
 
 ## A. Model, lenses and lens methods
 
@@ -163,3 +163,14 @@ These entries were written on 2026-10-21 from the local files named in them. The
     - File used: `miru/google/gemma-4-31B-it.safetensors` at revision `134a973cf473ad12a885d3880f3b2e01ef495cd6`, 3,410,446,944 bytes, sha256 `cedd4b62f49a7f79e07c1bb107ad1d48d39dc7ad2790611de7e9480b4543386a`.
     - Its header's fit metadata (format `miru-tracer/jacobian-lens` 1): model `google/gemma-4-31B-it` at commit `842da379…`, computed in bfloat16; estimator `summed_current_and_future_targets_v1`, 32 output dimensions per pass, target layer 59, 128 word-pieces, the first 16 skipped, a mean over positions and a uniform mean over prompts; source layers 0–58; 425 prompts processed, where its convergence rule stopped it (threshold 0.002, at least 160 prompts), of 1,000 selected from WikiText-103 [7] (`wikitext-103-raw-v1`, train, revision `b08601e0…`, concatenated and rechunked, headings excluded, 200–2,000 characters), with a hash of the selected sequence and of the processed prefix. No LRP rule is recorded.
     - *Use:* the community instruct J-lens R2 tested and did not serve (`experiments/results/R2_03_report_section.md`). In R3 it is a reference lens only, and the bf16 instruct lens on both sides of H6's two bounded comparisons, which do not separate fine-tuning from quantisation (R3_PREREG §1, H6). It is downloaded to the local cache and not redistributed.
+
+## I. The atlas
+
+These entries were written on 2026-10-27. The repository of [47] was read from a clone made that day; the link of [48] was not opened.
+
+47. **lyramakesmusic. *neuron-explorer*: a steering-first neuron explorer for Qwen3.5-4B. GitHub; no licence file.** https://github.com/lyramakesmusic/neuron-explorer
+    - Read at commit `e566e83e3f9fe00f85438231a788f90e83e2af43` (26 October 2026).
+    - *Use:* the design the atlas follows (`#/atlas`; `backend/atlas*.py`, `backend/census.py`, `backend/field_notes.py`, `backend/scientist_*.py`, `frontend/src/screens/atlas/`): every neuron on one map with each layer's attention heads, the "writes" layout, the connection web and cone, the census (its sweep's `main_rel` design, and `sweep/rank.py`'s word-cluster mass against random-direction controls), the steer lens, the three-voice steered chat and "reads you", the run of a text with its token paths, the spread of a layer's answers, names, and the scientist chat with its tools and report formats. Several of those files adapt parts of its code and prompts, and it carries no licence: see `NOTICE`. Its notes take the methodology from Cammarata [9].
+
+48. **McInnes, L., Healy, J., Melville, J. *UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction.* arXiv:1802.03426, 2018.** https://arxiv.org/abs/1802.03426
+    - *Use:* the atlas's sheet layout (`backend/atlas_build.build_layout`) and the census spread (`backend/census.layout_2d`) are laid out by UMAP through `umap-learn` where it is installed (an optional dependency), else by their first two principal directions.

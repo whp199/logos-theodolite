@@ -23,7 +23,7 @@ study found about Gemma-4-31B. It uses the vocabulary above (faces, steer lens, 
    `toward` / `away` and the strongest `writes_into` (downstream), and each face's gate verdict. Form a guess from the
    input/output pair.
 2. **Steer on an open prompt** ("Tell me about your weekend.", "Write a short poem about the ocean.") at dose 0.6-0.8,
-   then 1.5-2. Steering finds the axis faster than test sentences, above all for neurons that seldom fire. Read both
+   then 1.5-2 (doses found on Qwen3.5-4B; see Doses). Steering finds the axis faster than test sentences, above all for neurons that seldom fire. Read both
    rows: a meaningful negative face writes something recognisable; a meaningless one loops or breaks.
 3. **Find where it fires hard.** `compare` matched sets: target texts, near misses that share the vocabulary but not
    the situation, and distant controls. Push the target until something exceeds the neuron's `act_max`. If nothing
@@ -110,8 +110,10 @@ Seen in Qwen3.5-4B by the explorer's authors; whether they hold in Gemma-4-31B i
 
 ## Doses
 
-- 0.5-0.8 shows the direction while keeping text coherent; 1.5-2 often collapses into loops. Last-layer word writers
-  can loop at any dose.
+- In Qwen3.5-4B the explorer's authors found that 0.5-0.8 shows the direction while keeping text coherent and 1.5-2
+  often collapses into loops; last-layer word writers looped at any dose. On Gemma-4-31B take this as a starting point
+  and watch the answers (and, in `rollouts`, each dose's distinct 4-grams and share cut off): the census's `calib_rel`
+  design measures where effects begin and text breaks on this model.
 - Pushes add up across neurons; when stacking, scale each down.
 
 ## Writing it up

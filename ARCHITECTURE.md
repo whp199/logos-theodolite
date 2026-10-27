@@ -3,7 +3,7 @@
 **Target Model:** `google/gemma-4-31b-it` (`google/gemma-4-31B-it-qat-w4a16-ct` / 4-bit W4A16 within a single-GPU 32GB RTX 5090 VRAM envelope)  
 **Coordinate Lenses:** `neuronpedia/jacobian-lens` (`gemma-4-31B_jpp_lens.pt` & `gemma-4-31B_jacobian_lens.pt`)  
 **Execution Engine:** `decoderesearch/interp-engine` (LARQL / VINDEX3 naming is borrowed from `chrishayuk/larql`; the vault queries are implemented in Python in `backend/larql_vault.py`, and the `larql`/`vindex` binaries are optional — only their `--version` is reported)  
-**References:** Gemma 4 [1], Jacobian lens [2,3], J++ [4], Neuronpedia lens files [6], logit lens [8], neuron poles [9], linear CKA [13]; see `REFERENCES.md`  
+**References:** Gemma 4 [1], Jacobian lens [2,3], J++ [4], Neuronpedia lens files [6], logit lens [8], neuron poles [9], linear CKA [13], neuron-explorer [47]; see `REFERENCES.md`  
 **Study & lab:** see `README.md` and `experiments/REPORT.md` (the `experiments/` tree is not shown in the layout below)
 
 ---
@@ -22,8 +22,28 @@ theodolite2/
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
-│   └── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
+│   ├── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
+│   ├── atlas.py                     # the atlas's routes, /api/atlas/* (§4.7)
+│   ├── atlas_ops.py                 # live neuron operations: pushes, three voices, reads, odds, heads, wiring, steer lens
+│   ├── atlas_index.py               # the atlas's indexes on disk, and the queries over them (cone, search, links)
+│   ├── atlas_build.py               # building those indexes on the GPU (lens, stats, wiring, steer lens, layout)
+│   ├── census.py                    # the census: every neuron of a layer pushed on fixed questions, ranked vs controls
+│   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat
+│   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex or an OpenAI-compatible endpoint (§4.8)
+│   ├── scientist_tools.py           # the scientist's 29 tools, in the pages' count of layers (stdlib only)
+│   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code and Codex
+│   ├── scientist_prompt.md          # the scientist's instructions (with scientist_methodology.md)
+│   └── scientist_methodology.md
 ├── scripts/
+│   ├── atlas_build.py               # builds the atlas's indexes (GPU): lens, stats, wiring, layout, steer
+│   ├── atlas_stand_in.py            # a tiny random Gemma 4 for the atlas's checks, and the server on it (--serve)
+│   ├── census_run.py                # takes a layer's census (GPU), resumable
+│   ├── census_tools.py              # rank, merge, depth and spread over finished census runs (CPU)
+│   ├── check_atlas_ops.py           # the atlas's live operations against brute force on the stand-in (CPU only)
+│   ├── check_atlas_index.py         # every index built on the stand-in against the same quantity read live (CPU only)
+│   ├── check_atlas_api.py           # every atlas route against the operation it serves, the GPU lock, refusals (CPU only)
+│   ├── check_census.py              # the census's statistics, resume, stop, merge and spread (CPU only)
+│   ├── check_scientist.py           # the scientist's tools, MCP server and three backends against fakes (CPU only)
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
 │   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)
@@ -42,7 +62,7 @@ theodolite2/
         ├── App.tsx                    # hash routes -> pages (each page its own chunk)
         ├── index.css                  # the visual system: vellum, ink, rubric red, gilt, lapis; EB Garamond
         ├── reading.ts                 # "rubrics" / "apparatus" reading toggles, remembered per viewer
-        ├── router.ts                  # #/instrument, #/layer/36, #/neuron/54/15491/pos, #/landmarks, ...
+        ├── router.ts                  # #/instrument, #/layer/36, #/neuron/54/15491/pos, #/atlas/54/15491, ...
         ├── lib/words.ts               # plain-word helpers (word-pieces, glosses, certainty)
         ├── lib/labels.ts              # the label gate on the pages (labelGate, trustLine, held-back wording)
         ├── components/HeldBack.tsx    # a held-back label's plate, reason and rubric; its words in the apparatus
@@ -52,10 +72,11 @@ theodolite2/
         │   ├── useTheodoliteStore.ts  # Zustand state, WebSocket + HTTP wiring, nudge defaults
         │   └── sighting.ts            # one normalised "sighting" from a live frame pair or the fixture
         ├── components/kit.tsx         # page frame, nav, reading toggles, <Rubric>, <Apparatus>, <Missing>, <NotYet>
-        └── screens/                   # Incipit, Instrument, LayerLeaf, NeuronFolio, Landmarks, Nudge, Vault,
+        └── screens/                   # Incipit, Instrument, LayerLeaf, NeuronFolio, Atlas, Landmarks, Nudge, Vault,
                                        # Lexicon, Lineage (+ a folder of parts for each: landmarks/ContrastSection.tsx
                                        # is section vii, one word against another; vault/EditPanel.tsx the edit
-                                       # and its voice)
+                                       # and its voice; atlas/map.ts the atlas's three.js map, atlas/state.ts its
+                                       # store, atlas/scientist.ts its chat)
 ```
 
 ---
@@ -499,3 +520,145 @@ keeps each voice heard in `editVoices`, keyed `${patch_id}:${timestamp}` (patch 
 DESCRIBE keeps only those of records the vault still holds, ROLLBACK forgets them all, and a sighting's cut-down
 `larql_status` is merged with the full records already held, so the ledger keeps each edit's time, norms and voice.
 scripts/check_interface_defaults.py checks what the bundled store sends and keeps.
+
+### 4.7 The atlas (`backend/atlas.py`, `/api/atlas/*`)
+
+The page `#/atlas` (`frontend/src/screens/Atlas.tsx`) shows all 60 × 21,504 feed-forward neurons at once and reads them
+through these routes; the design follows lyramakesmusic/neuron-explorer, built for Qwen3.5-4B (REFERENCES.md [47]; see
+`NOTICE`). The rules every route keeps:
+
+- **Who may ask.** Every route answers only pages served from this machine (`local_pages_only`: Host, Origin and
+  Sec-Fetch-Site checked; 403 otherwise), since these routes run the model and, through the scientist (§4.8), a shell.
+- **The GPU.** A route that runs the model takes the server's `_GPU_LOCK` and works in a worker thread
+  (`on_gpu`), so `/api/health` and the sockets keep answering; a push chat holds the lock while it writes and stops at
+  its next word-piece when its page goes away (the wait for the writer is shielded from the request's cancellation).
+- **Counting.** Layers count from 0 in every field (page layer = layer + 1).
+- **Labels.** Every word list read through the J++ lens or by the naked eye goes with its `check` (`label_check`,
+  §4.5's gate); a pooled summary pools only the labels the gate lets through. The steer lens is a measured effect on
+  the model's own odds and is not gated.
+- **Refusals** are plain words (400); a route that needs an index that is not built says so (`ready: false`), or
+  falls back to a live reading and names it (`source: "live"`).
+
+**Indexes** (`backend/atlas_index.py`; built by `scripts/atlas_build.py`, `backend/atlas_build.py`), in
+`$THEODOLITE_ATLAS_DIR/index`, else `atlas_data/index` (git-ignored). Each file keeps its provenance in `meta` (model, lens
+id, built_at, what it was read over), and the server reads a file only for the model and shape it was built on (a
+stand-in's never; `GET /arch` names a refused one).
+
+| file | contents | built |
+|---|---|---|
+| `lens.npz` | `lens_pos`, `lens_neg`, `eye_pos`, `eye_neg` [L, N, 12] int32: each face's first twelve word-pieces through the lens and by the naked eye (the first ten are its label's, ranked as `label_top_ids`); `silenced` [L, N] | `all`, minutes |
+| `act_scale.npz` | `pos`, `neg` and the GeGLU sign regimes `pp`, `nn`, `pn`, `np` [L, N] float32: each neuron's extremes over a corpus, start marks left out; `resid_q` [L, 3]: the stream's length leaving each layer (10th, 50th, 90th percentile) | `stats` (in `all`), over `--text`, `--jsonl` or `--hf` corpora, else the study's 36 texts |
+| `wiring.npz` | `{down,up}_{layer, n, z, sign}` [L, N, 24]: each neuron's 24 strongest direct-path links each way (below) | `all`, minutes |
+| `steer_lens.npz` | `up`, `down` [L, N, 12] word-piece ids, `up_kl`, `down_kl` [L, N]: the steer lens (below) | `steer`, hours, by ranges of layers, resumable |
+| `layout_writes.npz` | `cell` [L, N] int16: each neuron's cell on its layer's square grid, neurons writing alike side by side (unit write directions, PCA to 50, UMAP where installed, else the first two principal directions, snapped to the grid) | `all` |
+| `head_profiles.json`, `vocab.json` | where each head looks over eight reference texts; every word-piece decoded alone | by the server, on first need |
+
+**The push's unit.** A push of dose d adds d · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) to the
+stream leaving layer ℓ (`resid_post`), at every position but the start mark; p50<sub>ℓ</sub> is the stream's median length
+leaving the layer, from `act_scale.npz` when built, else read over the study's 36 texts once per set of vault edits in
+force (`scale_source`). A push item is `{layer, n, mode, dose}` (`mode`: `"add"` as above, `"mul"` the activation × d, `"act"`
+d × the neuron's usual extreme added to its activation), or `{layer, all: true, mode: "mul", dose}` for a whole
+feed-forward block; a head is scaled by `{layer, head, dose}` (`head: "all"` for every head of the layer). At most 32
+pushes and 64 head scales go into one reading. The three voices sign each push +1, 0, −1 (for `"mul"`: × d, × 1, × −d).
+
+**The links.** A writer A at layer i writes v<sub>A</sub> = w<sub>post,i</sub> ⊙ W<sub>down,i</sub>[:, A]; a reader B at layer
+j > i reads g = W<sub>gate,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>) and u = W<sub>up,j</sub>[B] · (w<sub>pre,j</sub> ⊙
+v<sub>A</sub>); P = g · u, z-scored within each pair of layers, `sign` = sign(P) (the reader's activation the writer gives
+it, either way the writer fires). Weight-only: leads to test, not circuits. The cone follows each neuron's top `first`
+links, then each node's top `k` (2) with z ≥ `zmin` (15), out to the last layer and back to the first.
+
+**The steer lens.** ±0.8 · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
+you?", "Write whatever you like.") and two plain openings, one forward with an unpushed row each; per sign, the mean change
+of the next word-piece's log-probability (fp32, softcapped at 30), its twelve largest rises, and KL(pushed ‖ base).
+
+| route | what it answers |
+|---|---|
+| `GET /arch` | the model's shape (layers, their attention kind, heads, window, `values_from_keys`), which index files are built or refused, which layers have a census, the push's modes and units, the limits, `label_gate` and `lens` cards |
+| `GET /neuron/lens?layer&n` | both faces through the lens and by the naked eye with their checks, read live (vault edits included); the steer lens (index, or as read live); `act_range` {act_max, act_min, over_tokens, source, regimes} |
+| `POST /neuron/steer_lens?layer&n` | the steer lens of one neuron, read live (GPU) |
+| `GET /neuron/wiring?layer&n&k=24` | its strongest links each way, `down` (readers) and `up` (writers), each with `face`, that face's words and check, its census words and name; from the index, else live (`source`) |
+| `GET /neuron/heads?layer&n` | the heads it meets by role (q, k, v: later heads reading its write; o: heads whose write it reads), z per head; `z_by_layer` |
+| `GET /neuron?layer&n`, `GET /cone?layer&n` | all of the above for the scientist; its cone as a list of neurons with hop, z, face and words |
+| `GET /hover?layer&n` | the tooltip, from the indexes alone (no GPU) |
+| `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`), with each face's check |
+| `GET /web?layer&n&first&k&zmin&cap&hops` | the cone for the map: int16 rows of six (src layer, src n, dst layer, dst n, round(10 z) · sign, hop; hop > 0 downstream); `X-Web-Total` |
+| `GET /web/summary?layer&n&…&src` | the cone's words pooled per side, each neuron on the face the chain of signs drives: `fed_by`, `held_by`, `toward`, `away`, weighted by link z (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out) |
+| `GET /layout` | `cell` [L, N] int16 as base64 |
+| `POST /push` | the three voices (server-sent events): `{prompt, history: [{user, replies: [3]}], layer, n, dose (0.8), mode ("add"), neurons, system, max_new (160, ≤ 512)}`; events `{row, t}` per piece of text, then `{row: null, done: true}` or `{row: null, error}` |
+| `POST /steer` | the three voices as whole texts |
+| `POST /reads` | one neuron's activation at every display unit of a text (`{layer, n, text, chat, neurons, heads}`; at most 2,048 positions), with `act_range` |
+| `POST /logprobs` | the next word-piece's log-probabilities (fp32, softcapped), with pushes or head scales: both rows, their KL and the pieces that gained and lost most |
+| `POST /compare` | up to 300 neurons over up to 24 texts, one forward a text: per neuron and text its largest and smallest activation with their units, and its peak score against its usual range |
+| `POST /fires` | the neurons that fire hardest on a text against their usual range |
+| `POST /run`, `GET /run/view?pos&sign&lo&hi&min&q&limit`, `GET /run/heads?pos`, `GET /run/paths?pos&top&min`, `GET /head/row?layer&head&pos` | a text run once (at most 256 positions) and every activation kept: the neurons passing the filters at a word-piece or over all of them (score = activation over the neuron's usual extreme on that side), each head's write there, the links among the strongest (int16 rows as `/web`), one head's attention by unit |
+| `GET /head?layer&head`, `GET /head/profile?layer&head`, `POST /head/pattern`, `POST /attention`, `POST /attn_drive` | a head's q / k / v / o neurons from the weights with their words pooled; where it looks over eight texts; its attention on a text; which heads and blocks drive a neuron at one unit |
+| `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers and its statistics; one answer; the layout of the run's answers |
+| `GET /notes`, `POST /notes` | names and notes (`backend/field_notes.py`): `{kind: "neuron" \| "head", layer, index, name?, note?, by}`; an omitted field is kept, both empty forgets the entry |
+
+**The census** (`backend/census.py`; `scripts/census_run.py` on the GPU, `scripts/census_tools.py` on the CPU). For one
+layer, every neuron (or a range) and some random directions of the stream (isotropic unit vectors from a seed) are pushed
+as above on the design's questions and doses (`main_rel`: "Who are you?", a snake game in Python and the colour orange at
+−0.7, +0.5 and +0.8, and "Write whatever you like." at +3.0, plus one unpushed answer each), greedy, batched by question.
+Answers go to `$THEODOLITE_CENSUS_DIR`, else `<atlas folder>/census/runs`, `L<layer>-<design>.jsonl`, a whole batch or
+none, so a stopped run resumes (a run with other settings is refused), with its `.meta.json`. Ranking
+(`compute_units`, after the explorer's `sweep/rank.py`): a word (three letters or more) counts once per answer, over
+pushes of at most 1.6 of the stream, leaving out every word of the unpushed answers; each unit's words scored against
+the average unit, z = (count − mean) / √(mean + 0.5); `mass` the summed positive z of its top five words, the sort key;
+`null_pct` the share of controls below it; per dose, the push's length over the stream's, distinct 4-grams, the share
+cut off, the mean log-probability. `census_tools.py` ranks (`.units.jsonl`, with the word-shift score), merges shards,
+writes the depth report and lays a run's answers out (`.spread.json`: words by tf-idf, or `st:<model>` through
+sentence-transformers; UMAP where installed, else PCA).
+
+`/api/health` carries an `atlas` card (routes, the index folder, which index files exist, the census layers, the
+notes' file) just before `label_gate` and `lens`. scripts/check_atlas_ops.py, check_atlas_index.py, check_atlas_api.py
+and check_census.py check all of this on the CPU stand-in (`scripts/atlas_stand_in.py`).
+
+### 4.8 The scientist (`backend/scientist_chat.py`, `/api/atlas/scientist/*`)
+
+A language model beside the atlas, with the atlas's tools. A chat keeps the backend it began with:
+
+- `claude`: Claude Code (`claude -p`, stream-json both ways), one process per chat, kept open so a message sent while
+  it works reaches it between tool calls; its session file is resumed turn by turn. Its tools are the atlas's (the
+  stdio MCP server `backend/scientist_mcp.py`) and Read, Glob, Grep, Write, Edit and Bash, pre-approved, with the home
+  folder added: **it runs commands and edits files there without asking**. `$THEODOLITE_CLAUDE_MODEL` picks the
+  model.
+- `codex`: Codex (`codex app-server`, JSON-RPC) with the same MCP tools and its own shell, in a Codex home of its own
+  (`approvalPolicy: "never"`, `sandbox: "danger-full-access"`: the same caution).
+- `openai`: any OpenAI-compatible Chat Completions endpoint that takes tool calls (LM Studio, Ollama, OpenRouter, vLLM,
+  llama.cpp's server). The server runs the loop: it streams the reply, runs each tool call through the atlas's routes in
+  this process (`InProcessApi`, an ASGI client), sends the results back (each cut to 16,000 characters) and goes on until
+  the model answers without a call, at most 40 rounds a turn. Such a model has the atlas's tools only, no shell and no
+  files; the person's messages and the tools' replies are sent to that endpoint.
+
+Endpoints are profiles: `lmstudio` (http://127.0.0.1:1234/v1, `$THEODOLITE_LMSTUDIO_URL`), `ollama`
+(http://127.0.0.1:11434/v1, `$THEODOLITE_OLLAMA_URL`), `openrouter` (https://openrouter.ai/api/v1, its key in
+`$OPENROUTER_API_KEY`), `custom` (`$THEODOLITE_OPENAI_BASE_URL`, `$THEODOLITE_OPENAI_API_KEY`,
+`$THEODOLITE_OPENAI_MODEL`), and those of `<scientist folder>/endpoints.json` (`{name: {label, base_url, key_env, model,
+stream, headers, params}}`). A profile names the environment variable its key is in, never the key (a file entry holding
+one is refused); a page picks a profile by name and never sees a key.
+
+The scientist folder is `$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scientist`: `work/` (the chat's working folder),
+`uploads/`, `logs/` (the codex and openai chats' events and messages), `chats.json`, and the system prompt, built from
+`backend/scientist_prompt.md`, `backend/scientist_methodology.md` and the person's own `prompt.local.md` there (for
+`openai`, without the shell's section).
+
+| route | |
+|---|---|
+| `GET /backends` | whether `claude` and `codex` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}` |
+| `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
+| `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
+| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `ping` |
+| `POST /interrupt` | `{chat}`: stops the reply; the chat (and Claude Code's or Codex's background commands) goes on |
+| `POST /ui` | from the tools: a screen action (`select`, `head`, `tab`, `camera`, `highlight`, `annotate`, `text`, `search`, `rename`), passed to the chat's page as a `ui` event, layers from 0 |
+| `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events |
+| `POST /rewind` | `{chat, text}`: cut the chat back to before its last message (a Claude Code session is backed up first), for "edit" and "ask again" |
+| `POST /upload` | `{name, type, data (base64)}` (at most 25 MB) → `{id}`, for `attachments` |
+| `GET /prompt?agent` | the system prompt as built |
+
+The tools (`backend/scientist_tools.py`, 29, standard library only) take and give layers in the pages' count (L54 N15491)
+and call the atlas's routes: reading the atlas (`overview`, `neuron`, `rollouts`, `cone`, `web_summary`, `search_lens`,
+`top_units`), names and notes (`set_name`, `write_note`, `names`), live readings (`steer`, `activations`, `compare`,
+`logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), and the
+person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highlight_neurons`, `annotate_neurons`,
+`show_text`, `show_search`). scripts/check_scientist.py checks the tools, the MCP server and all three backends against
+fakes, over real connections.

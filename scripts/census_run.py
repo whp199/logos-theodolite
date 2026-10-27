@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Take a census of one layer (backend/census.py) on the GPU: every neuron asked (or a subset), pushed on the census's
 questions, one greedy answer per (question, dose), beside unpushed answers and random-direction controls of the same
-push size; every answer kept as one JSON line, then the run ranked (scripts/census_rank.py).
+push size; every answer kept as one JSON line, then the run ranked (scripts/census_tools.py rank).
 
     .venv/bin/python scripts/census_run.py --layer 45 --neurons random:384 --random-controls 64 --run L45-r384
     .venv/bin/python scripts/census_run.py --layer 45 --neurons all
@@ -56,7 +56,7 @@ def main(argv=None) -> int:
     ap.add_argument("--batch", type=int, default=32, help="answers written together")
     ap.add_argument("--run", default="", help="the run's name (default L<layer>-<design>)")
     ap.add_argument("--out-dir", default="", help="the census folder (default: the atlas's)")
-    ap.add_argument("--no-rank", action="store_true", help="leave the ranking to the server or census_rank.py")
+    ap.add_argument("--no-rank", action="store_true", help="leave the ranking to the server or census_tools.py rank")
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in (scripts/atlas_stand_in.py), for a dry run")
     a = ap.parse_args(argv)
 

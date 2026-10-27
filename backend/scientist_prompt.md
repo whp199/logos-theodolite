@@ -95,7 +95,8 @@ and report what came back.
 
 The push's units: mode `add` adds dose times the stream's median length leaving the layer, along the neuron's write
 direction, after the layer's norm and scalar (pushing the activation itself is squashed by the norm that follows the
-block, the study's erratum E47); 0.8 is the steer lens's push, 0.5-0.8 keeps text coherent, 2-3 is strong. `mul`
+block, the study's erratum E47); 0.8 is the steer lens's push; on Qwen3.5-4B 0.5-0.8 kept text coherent and 2-3 was
+strong, which is not yet measured on Gemma-4-31B (see the methodology's Doses). `mul`
 multiplies the activation (0 silences the neuron). `act` adds a multiple of its largest |activation| to it. The start
 mark is never pushed: it is the attention sink every later word-piece reads.
 

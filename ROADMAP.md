@@ -176,3 +176,34 @@ Still open here:
   built and before the label gate; their captions say so. They want retaking from a live sighting.
 - **References.** Section H of `REFERENCES.md` ([45] and [46], R3’s sources) was written from local files; its links
   were not opened.
+
+<br>
+
+## vi · the atlas
+
+The atlas (`#/atlas`; README §ii, ARCHITECTURE §4.7–4.8) was built on 27 October 2026 without a GPU: every piece of it
+was checked on a tiny random Gemma 4 on the CPU (`scripts/atlas_stand_in.py`; `check_atlas_ops.py`,
+`check_atlas_index.py`, `check_atlas_api.py`, `check_census.py`, `check_scientist.py`) and the page driven in a headless
+browser against it, but nothing yet on Gemma-4-31B itself.
+
+- **Build its indexes and take its censuses on the model.** None exists yet. The costs in `scripts/atlas_build.py` and
+  `scripts/census_run.py` are worked out from the arithmetic, not measured: time a pilot first (`--layers`,
+  `--neurons random:8`). Until the stats index is built the push's unit and the activation ranges come from the study's
+  36 texts, and the pages mark them provisional.
+- **The census's doses come from Qwen3.5-4B.** `main_rel` (−0.7, +0.5, +0.8 and +3 of the stream's median length) is
+  neuron-explorer's design, where its log found answers readable near 0.5–0.8 and wrecked by 3. Run `calib_rel` on a few
+  layers of Gemma-4-31B first, and change the design if its window lies elsewhere; the scientist's methodology quotes
+  the same Qwen doses as a starting point.
+- **Single neurons at layers 21–31.** The study's 60-fold push overdrove them (errata E43, E46); whether the census's
+  doses move them at all there is to be seen.
+- **Stored passages for each face** (Cammarata's practice iii, the study's §3.5): the stats index keeps each neuron's
+  extremes, not the text around them. A corpus pass that keeps the top passages per face would ground the labels in
+  what wakes a neuron.
+- **Two kinds of names.** A neuron's folio keeps its name and field notes in the browser; the atlas keeps names and notes
+  on the server, shared. They do not yet see each other.
+- **The scientist's reach.** Under Claude Code or Codex it has a pre-approved shell and file tools in the home folder,
+  as neuron-explorer's does; a narrower setting (no shell, or a sandboxed folder) is not offered yet.
+- **neuron-explorer's licence.** Parts of the atlas adapt neuron-explorer's code and prompts, and that repository carries
+  no licence (`NOTICE`). Ask its author for one, or rewrite those parts.
+- **Not carried over:** the explorer's HF-against-vLLM steering check (the atlas runs on one runtime) and its steered
+  prefill captures.
