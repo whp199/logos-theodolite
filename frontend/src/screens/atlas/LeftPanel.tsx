@@ -3,7 +3,7 @@ import { LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
 import { cite, citeHead, noteKey, type RunRow, type SearchRow } from "./api";
-import { Chips, ErrorLine, FaceLine } from "./parts";
+import { censusChance, Chips, ErrorLine, FaceLine } from "./parts";
 import {
   closeFocus,
   goToNeuron,
@@ -86,6 +86,9 @@ const FocusHead: React.FC = () => {
         <div className="muted atlas-small">
           census #{unit?.rank ?? "—"} of {unit?.n_ranked} · mass {(s.mass ?? s.z).toFixed(1)}
           {s.null_pct != null ? ` · above ${(s.null_pct * 100).toFixed(0)}% of controls` : ""}
+          {s.null_pct === 1 && unit?.card?.null.above_all_by_chance != null
+            ? ` · a lead: about ${unit.card.null.above_all_by_chance.toFixed(0)} of the layer would beat them all by chance`
+            : ""}
         </div>
       ) : null}
       {f.kind === "neuron" ? <NameField layer={f.layer} n={f.n} /> : null}
@@ -259,16 +262,18 @@ const CensusRows: React.FC = () => {
   const [q, setQ] = useState("");
   const [controls, setControls] = useState(false);
   if (!arch?.census[String(layer)]) {
+    const refused = arch?.census_refused?.[String(layer)];
     return (
       <p className="muted atlas-small" style={{ padding: "6px 0" }}>
         Layer {layer + 1} has no census yet: no neuron of it has been pushed on the census's questions (scripts/census_run.py --layer {layer},
-        counting layers from 0).
+        counting layers from 0).{refused ? ` A run of it is not read: ${refused}.` : ""}
       </p>
     );
   }
   if (!units) return <p className="muted atlas-small">reading the census…</p>;
   const rnd = units.filter((u) => u.kind === "random").map((u) => u.z);
   const floor = rnd.length ? Math.max(...rnd) : -Infinity;
+  const chance = censusChance(units);
   const ql = q.trim().toLowerCase();
   const shown = units.filter(
     (u) => (controls || u.kind === "neuron") && (!ql || u.words.some((w) => w.includes(ql)) || u.name.toLowerCase().includes(ql) || String(u.n) === ql),
@@ -284,6 +289,9 @@ const CensusRows: React.FC = () => {
       <ol className="atlas-rows">
         <li className="atlas-rows-head">
           layer {layer + 1}'s census · ranked by the mass of its words against random directions
+          {chance
+            ? ` · ${chance.above} above every control, about ${chance.chance.toFixed(0)} of them by chance alone · doses not yet calibrated on this model`
+            : " · no random controls, so nothing here is set against chance"}
         </li>
         {shown.slice(0, 600).map((u) => (
           <li

@@ -864,9 +864,13 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
         for d in (0.5, 0.8):
             rows.append({**rows[0], "kind": "neuron", "neuron": n_, "dose": d, "rel_push": d, "text": f"{w_} and {w_} again " * 30})
     run.write_text("".join(json.dumps(x) + "\n" for x in rows))
-    cz.meta_path_of(run).write_text(json.dumps({"layer": 3, "design_name": "main_rel", "prompts": cz.PROMPTS}))
+    cz.meta_path_of(run).write_text(json.dumps({"layer": 3, "design_name": "main_rel", "prompts": cz.PROMPTS, "version": cz.CENSUS_VERSION,
+                                                "doses_from": cz.DOSES_FROM["main_rel"]}))
     tu = await st.call("top_units", {"layer": 4}, api)
-    check([x["neuron"] for x in tu] in (["L4 N7", "L4 N9"], ["L4 N9", "L4 N7"]), f"top_units of page layer 4: {tu}")
+    check([x["neuron"] for x in tu["ranked"]] in (["L4 N7", "L4 N9"], ["L4 N9", "L4 N7"]), f"top_units of page layer 4: {tu}")
+    check(tu["doses_from"] == cz.DOSES_FROM["main_rel"] and tu["null"]["controls"] == 0 and tu["null"]["above_all_by_chance"] is None,
+          "top_units: where the doses come from, and that a run without controls sets nothing against chance")
+    check((await st.call("top_units", {"layer": 2}, api)) == {"ranked": [], "note": "this layer has no census"}, "top_units: a layer without one")
     ro = await st.call("rollouts", {"layer": 4, "n": 7, "max_chars": 50}, api)
     check(ro["layer"] == 4 and len(ro["rollouts"]) == 2 and all(len(x["text"]) <= 50 for x in ro["rollouts"]), "rollouts cut to max_chars, page layer 4")
     ov = await st.call("overview", {}, api)

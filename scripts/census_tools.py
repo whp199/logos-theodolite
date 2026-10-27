@@ -91,7 +91,9 @@ def main(argv=None) -> int:
                 above = sum(u["mass"] > null.max() for u in neurons)
                 print(f"{len(neurons)} neurons, {len(null)} random controls; the controls' mass p50/p95/max = "
                       f"{np.percentile(null, 50):.2f} / {np.percentile(null, 95):.2f} / {null.max():.2f}")
-                print(f"neurons above every control: {above} ({above / max(len(neurons), 1):.1%})")
+                print(f"neurons above every control: {above} ({above / max(len(neurons), 1):.1%}); about "
+                      f"{cz.chance_above_all(len(neurons), len(null))} would be by chance alone; "
+                      f"{sum(1 for u in neurons if u.get('q') is not None and u['q'] <= 0.05)} with a false-discovery q <= 0.05")
             else:
                 print(f"{len(neurons)} neurons, no random controls (null_pct is None)")
             for i, u in enumerate(recs[: a.show]):
@@ -104,7 +106,8 @@ def main(argv=None) -> int:
                     print(f"neuron {n}: not in this run")
                     continue
                 ws = ", ".join(f"{w}({c})" for w, c, _ in rec["words"][:6])
-                print(f"neuron {n}: rank {rank}/{len(neurons)} among neurons, mass {rec['mass']:.1f}, null_pct {rec['null_pct']}, {ws}")
+                print(f"neuron {n}: rank {rank}/{len(neurons)} among neurons, mass {rec['mass']:.1f}, null_pct {rec['null_pct']}, "
+                      f"p {rec.get('p')}, q {rec.get('q')}, {ws}")
             print(f"-> {out}")
         elif a.what == "merge":
             n_in, n_out = cz.merge_runs([Path(x) for x in a.inputs], Path(a.out))

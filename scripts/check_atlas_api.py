@@ -591,7 +591,12 @@ def main() -> int:
         for p_ in ("who", "snake", "orange"):
             rows_c.append(row("random", n_, p_, 0.5, f"Some words number {n_} here, plainly."))
     run.write_text("".join(json.dumps(x) + "\n" for x in rows_c), encoding="utf-8")
-    cz.meta_path_of(run).write_text(json.dumps({"layer": 3, "design_name": "main_rel", "prompts": cz.PROMPTS}), encoding="utf-8")
+    cz.meta_path_of(run).write_text(json.dumps({"layer": 3, "design_name": "main_rel", "prompts": cz.PROMPTS, "version": cz.CENSUS_VERSION,
+                                                "doses_from": cz.DOSES_FROM["main_rel"], "p50_source": "the study's 36 texts (no stats index yet)"}),
+                                    encoding="utf-8")
+    old = cdir / "L2_main_rel.jsonl"
+    old.write_text(run.read_text(encoding="utf-8").replace('"layer": 3', '"layer": 2'), encoding="utf-8")
+    cz.meta_path_of(old).write_text(json.dumps({"layer": 2, "design_name": "main_rel", "prompts": cz.PROMPTS}), encoding="utf-8")
     units = c.get("/api/atlas/census/units", params={"layer": 3}).json()
     check(cz.units_path_of(run).exists() and len(units) == 6, f"/census/units: six units ranked, written beside the run ({len(units)})")
     top_neuron = [u for u in units if u["kind"] == "neuron"][0]
@@ -601,6 +606,16 @@ def main() -> int:
     check(len(un["rollouts"]) == 9 and len(un["baselines"]) == 3 and un["rank"] in (1, 2) and un["n_ranked"] == 2 and un["design"] == "main_rel",
           "/census/unit: its nine answers, the three unpushed, its rank")
     check(un["prompts"] == cz.PROMPTS and "ocean" in [w_ for w_, _, _ in un["stats"]["words"]], "/census/unit: the questions and its words")
+    card = un.get("card") or {}
+    check(card.get("doses_from") == cz.DOSES_FROM["main_rel"] and "36 texts" in (card.get("p50_source") or "")
+          and card.get("null") == {"neurons": 2, "controls": 4, "above_all": 2, "above_all_by_chance": 0.4, "q05": 0}
+          and un["stats"]["p"] == 0.2 and un["stats"]["q"] == 0.2,
+          f"/census/unit: the card says where the doses and the unit come from and what the null can single out ({card}, p {un['stats'].get('p')})")
+    check(c.get("/api/atlas/census/card", params={"layer": 3}).json() == card and c.get("/api/atlas/census/card", params={"layer": 1}).json() == {},
+          "/census/card: the same card, and none for a layer without a census")
+    arch_c = c.get("/api/atlas/arch").json()
+    check("2" not in arch_c["census"] and "isotropic" in arch_c.get("census_refused", {}).get("2", ""),
+          "/arch: a run taken with the old isotropic controls is not read, and says why")
     ro = c.get("/api/atlas/census/rollout", params={"layer": 3, "i": 3}).json()
     check(ro["text"] == rows_c[3]["text"] and ro["neuron"] == 7, "/census/rollout: one answer")
     check(c.get("/api/atlas/census/rollout", params={"layer": 3, "i": 999}).status_code == 404, "/census/rollout: no such answer")

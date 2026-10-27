@@ -10,7 +10,7 @@ import { HeldBackWords } from "../../components/HeldBack";
 import { IfApparatus } from "../../components/kit";
 import { labelGate, layerIdx, parseLabelCheck } from "../../lib/labels";
 import { wp } from "../../lib/words";
-import type { FaceWords, LensFace, PooledWord } from "./api";
+import type { CensusCard, FaceWords, LensFace, PooledWord } from "./api";
 
 export const words = (list: readonly string[] | null | undefined, k = 6) => (list ?? []).slice(0, k).map((t) => wp(t)).join("  ");
 
@@ -89,3 +89,25 @@ export const ErrorLine: React.FC<{ error: string | null | undefined }> = ({ erro
   ) : null;
 
 export const fmtDose = (d: number) => (d > 0 ? "+" : d < 0 ? "−" : "") + Math.abs(d);
+
+/** How many of a census's neurons beat every control, and how many would by chance alone: N / (C + 1). */
+export function censusChance(units: { kind: string; z: number }[] | undefined) {
+  const us = units ?? [];
+  const ctl = us.filter((u) => u.kind === "random").map((u) => u.z);
+  const neu = us.filter((u) => u.kind === "neuron");
+  if (!ctl.length) return null;
+  const floor = Math.max(...ctl);
+  return { above: neu.filter((u) => u.z > floor).length, chance: neu.length / (ctl.length + 1), neurons: neu.length, controls: ctl.length };
+}
+
+/** Where a census's doses and push unit come from, said wherever its answers or numbers are shown. */
+export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: React.CSSProperties }> = ({ card, style }) =>
+  card ? (
+    <p className="atlas-small atlas-prov" style={style}>
+      <span className="red">Doses not yet calibrated on this model:</span> {card.doses_from ?? "the run does not say where its doses come from"}.
+      {card.p50_source ? ` The push’s unit, the stream’s median length, read over ${card.p50_source}.` : ""}
+      {card.null.above_all_by_chance != null
+        ? ` ${card.null.above_all} of its ${card.null.neurons} neurons beat every one of its ${card.null.controls} controls; about ${card.null.above_all_by_chance.toFixed(0)} would by chance alone.`
+        : " It has no random controls, so nothing in it is set against chance."}
+    </p>
+  ) : null;

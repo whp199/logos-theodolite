@@ -123,6 +123,8 @@ export interface Arch {
   layer_scalars: number[];
   indexes: Record<string, IndexStatus | string>;
   census: Record<string, string>;
+  /** layers whose only census is not read, and why (a run taken before the controls were shaped as neurons' writes) */
+  census_refused?: Record<string, string>;
   push: { modes: string[]; units: Record<string, string>; scale_source: ScaleSource | null };
   limits: { text: number; run: number; heads: number; push_new: number };
   label_gate: Record<string, unknown>;
@@ -240,8 +242,18 @@ export interface CensusUnitRow {
   n: number;
   z: number;
   null_pct: number | null;
+  q?: number | null;
   words: string[];
   name: string;
+}
+/** What every census reply says of its run (backend/atlas.py census_card). */
+export interface CensusCard {
+  run: string;
+  design: string | null;
+  doses_from: string | null;
+  p50_source: string | null;
+  read_gain: { neurons: number; controls: number; ratio: number | null } | null;
+  null: { neurons: number; controls: number; above_all: number; above_all_by_chance: number | null; q05: number };
 }
 export interface Rollout {
   prompt: string;
@@ -256,6 +268,8 @@ export interface CensusStats {
   z: number;
   mass: number;
   null_pct: number | null;
+  p?: number | null;
+  q?: number | null;
   per_prompt: Record<string, string[]>;
   dose: Record<string, { rel_push: number; distinct4: number; capped: number; logprob: number }>;
   shift?: number | null;
@@ -270,6 +284,7 @@ export interface CensusUnit {
   run?: string;
   prompts?: Record<string, string>;
   design?: string;
+  card?: CensusCard;
   rollouts?: Rollout[];
   baselines?: Rollout[];
   stats?: CensusStats | null;

@@ -136,7 +136,9 @@ TOOLS: List[Dict[str, Any]] = [
      "(writes_into, reads_from), each linked neuron with the face the link drives, that face's words, census words and name.",
      "inputSchema": {"type": "object", "properties": LN, "required": ["layer", "n"]}},
     {"name": "rollouts", "description": "The census of a neuron: what the model wrote when it was pushed, per question and dose, beside the "
-     "unpushed answers, with its distinctive words and their mass against random-direction controls. Empty when the layer has no census.",
+     "unpushed answers, with its distinctive words, their mass, its empirical p against random-direction controls and the "
+     "layer's false-discovery q. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model "
+     "(`card.doses_from`): a low rank may only mean the dose was wrong for this layer. Empty when the layer has no census.",
      "inputSchema": {"type": "object", "properties": {**LN, "max_chars": {"type": "integer", "default": 500}}, "required": ["layer", "n"]}},
     {"name": "cone", "description": "The neuron's cone: its weight links chained forward (what reads it, hop > 0) and backward (what feeds "
      "it, hop < 0), the first hop all of them, later hops each node's top k. Each neuron reached with its hop, z, the face the "
@@ -153,7 +155,9 @@ TOOLS: List[Dict[str, Any]] = [
      "twelve, through the lens, by the naked eye or in its steer lens; best matches first, each with its words and the gate's verdict.",
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer", "default": 40}}, "required": ["query"]}},
     {"name": "top_units", "description": "A layer's neurons ranked by their census words' mass against random-direction controls, with their "
-     "words and names. Empty when the layer has no census.",
+     "words and names, and how many would land above every control by chance alone (N / (C + 1): with 256 controls about 84 "
+     "of a whole layer). A rank is a lead to test, not a finding; the doses are not yet calibrated on this model. Empty when "
+     "the layer has no census.",
      "inputSchema": {"type": "object", "properties": {"layer": LN["layer"], "limit": {"type": "integer", "default": 30}}, "required": ["layer"]}},
     {"name": "set_name", "description": "Name a neuron in the atlas (shown in its panel, in lists and on the map), or clear its name with an "
      "empty string. Only when the person asks, or after they agree to a name you suggested.",
@@ -369,9 +373,13 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
     if name == "top_units":
         _need(a, "layer")
         us = [u for u in await api.get("/api/atlas/census/units", layer=a["layer"]) if u["kind"] == "neuron"]
+        if not us:
+            return {"ranked": [], "note": "this layer has no census"}
+        card = await api.get("/api/atlas/census/card", layer=a["layer"])
         us.sort(key=lambda u: -u["z"])
-        return [{"neuron": cite(a["layer"], u["n"]), "mass": u["z"], "null_pct": u["null_pct"], "words": u["words"],
-                 **({"name": u["name"]} if u.get("name") else {})} for u in us[: int(a.get("limit", 30))]]
+        return {"null": card.get("null"), "doses_from": card.get("doses_from"), "push_unit_from": card.get("p50_source"),
+                "ranked": [{"neuron": cite(a["layer"], u["n"]), "mass": u["z"], "null_pct": u["null_pct"], "q": u.get("q"), "words": u["words"],
+                            **({"name": u["name"]} if u.get("name") else {})} for u in us[: int(a.get("limit", 30))]]}
     if name in ("set_name", "write_note"):
         _need(a, "layer", "n")
         body: Dict[str, Any] = {"kind": "neuron", "layer": a["layer"], "index": a["n"], "by": "scientist"}

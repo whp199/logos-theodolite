@@ -10,7 +10,7 @@ import { heldTag } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { href } from "../../router";
 import { cite, get, noteKey, post, type HeadInfo, type Link, type SteerLens } from "./api";
-import { ErrorLine, FaceLine, gateOf, words } from "./parts";
+import { CensusProvenance, ErrorLine, FaceLine, gateOf, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, theMap, useAtlas } from "./state";
 
 const CensusStats: React.FC = () => {
@@ -21,6 +21,7 @@ const CensusStats: React.FC = () => {
   return (
     <section className="atlas-sec">
       <div className="kicker">the census · words its pushes brought out, against random directions</div>
+      <CensusProvenance card={unit.card} style={{ margin: "0 0 4px" }} />
       <div className="atlas-crumbs">
         {s.words.map(([w, c, z]) => (
           <span key={w} className="atlas-tok" title={`${c} answers · z ${z.toFixed(1)} · ${(s.per_prompt[w] ?? []).join(" ")}`}>
@@ -61,7 +62,12 @@ const CensusStats: React.FC = () => {
         <p className="muted atlas-small">
           mass {(s.mass ?? s.z).toFixed(2)} · z {s.z.toFixed(2)}
           {s.null_pct != null ? ` · above ${(s.null_pct * 100).toFixed(0)}% of the random directions` : ""}
+          {s.p != null ? ` · p ${s.p} against them` : ""}
+          {s.q != null ? ` · q ${s.q} over the layer (false discovery)` : ""}
           {s.shift != null ? ` · shift ${s.shift.toFixed(3)}` : ""} · push = the push's length over the stream's
+          {unit.card?.read_gain?.ratio != null
+            ? ` · the next layer reads the controls ${unit.card.read_gain.ratio}× as loudly as the neurons (a fair null is near 1)`
+            : ""}
         </p>
       </IfApparatus>
     </section>

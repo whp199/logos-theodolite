@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Take a census of one layer (backend/census.py) on the GPU: every neuron asked (or a subset), pushed on the census's
 questions, one greedy answer per (question, dose), beside unpushed answers and random-direction controls of the same
-push size; every answer kept as one JSON line, then the run ranked (scripts/census_tools.py rank).
+push size, shaped as the layer's neurons' writes are (unit(w_post * r)); every answer kept as one JSON line, then the run
+ranked (scripts/census_tools.py rank).
 
     .venv/bin/python scripts/census_run.py --layer 45 --neurons random:384 --random-controls 64 --run L45-r384
     .venv/bin/python scripts/census_run.py --layer 45 --neurons all
@@ -16,16 +17,20 @@ run of each layer (`main_rel` before others, then the largest) as soon as it has
 
 The push is the atlas's "add": dose x p50 along the neuron's write direction at the stream leaving the layer, p50 the
 median length of that stream (from the stats index when built, else read here over the study's 36 texts; the run's
-meta records which). Designs: main_rel, {who, snake, orange} x {-0.7, +0.5, +0.8} and {free} x {+3}; calib_rel, a
-ladder ±{0.1, 0.25, 0.5, 1, 2, 4} on {who, orange, free}, for finding where effects begin and text breaks on this
-model before a full run.
+meta records which). Designs: main_rel, {who, snake, orange} x {-0.7, +0.5, +0.8} and {free} x {+3}, neuron-explorer's
+doses, chosen on Qwen3.5-4B and not yet calibrated on this model; calib_rel, a ladder ±{0.1, 0.25, 0.5, 1, 2, 4} on
+{who, orange, free}, for finding where effects begin and text breaks on this model: take it on a few layers before a
+full main_rel run. The meta also records how loudly the next layer reads the controls against the neurons (read_gain;
+a fair null is near 1, and the run warns when it is not).
 
 What it costs, as arithmetic (not measured: this was written without the GPU; time a pilot with --neurons random:8):
 answers = (neurons + controls) x 10 + 4 for main_rel; forwards = answers / batch x (max_new + 1). A whole layer is
 (21,504 + 256) x 10 + 4 = 217,604 answers: at --batch 64 and --max-new 256 about 875,000 forwards of the 31B, each
 reading every weight once, so days a layer on one GPU; the reference's depth curve used 384 neurons and 64 controls a
-layer (4,484 answers, about 18,000 forwards at --batch 64). Run one GPU process at a time: this loads the model, as the
-server and the lab daemon do.
+layer (4,484 answers, about 18,000 forwards at --batch 64). On disk a whole layer is about 5 to 6 GB (each answer keeps
+its five likeliest pieces at every step, some 25 kB an answer at 256 pieces); ranking it reads one answer at a time and
+keeps only each answer's word ids, well under a gigabyte by the same arithmetic. Run one GPU process at a time: this
+loads the model, as the server and the lab daemon do.
 """
 
 from __future__ import annotations

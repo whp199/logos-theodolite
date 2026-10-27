@@ -76,8 +76,14 @@ neurons have one main job, some have two related jobs, and a few are not yet und
 - **Activation range** (`activation`: act_max, act_min, over_tokens, source): the largest and most negative activation
   over a corpus (the stats index), or, until that is built, over the study's 36 texts (marked provisional). Raw values.
 - **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed by fixed doses on four
-  questions, beside unpushed answers, with its distinctive words and their mass against random-direction controls of
-  the same push size (`null_pct`: the share of controls it beats). Only layers that have one; say when you work without.
+  questions, beside unpushed answers, with its distinctive words and their mass against random-direction controls. A
+  control is shaped as a neuron's write is (a random direction through the layer's post-feed-forward norm), so the next
+  layer reads it about as loudly. `null_pct` is the share of controls it beats, `p` its empirical p against them, `q`
+  the layer's false-discovery q. With C controls no p falls below 1 / (C + 1), and about N / (C + 1) of N neurons beat
+  every control by chance alone (about 84 of a whole layer with 256 controls): a rank is a lead to test, never a finding
+  on its own. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model (`card` in
+  `rollouts`), so a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when
+  you work without.
 - **Web summary** (`web_summary`): the words of the neuron's cone, pooled: `fed_by` / `held_by` its input side (what
   excites it and what holds it back), `toward` / `away` its downstream effect. Pooled from the steer lens when built,
   else from lens labels the gate lets through (`left_out_by_the_gate` counts the rest).

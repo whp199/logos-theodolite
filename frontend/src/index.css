@@ -1361,6 +1361,14 @@ pre.raw {
 .atlas-lens {
   color: var(--muted);
 }
+/* which reading a word list comes from (steer, lens, census), in small capitals before it */
+.atlas-src {
+  font-variant-caps: all-small-caps;
+  letter-spacing: 0.08em;
+  font-size: 13px;
+  color: var(--rubric);
+  margin-right: 4px;
+}
 .atlas-stale {
   font-size: 13px;
   color: var(--rubric);

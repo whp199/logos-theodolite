@@ -3,17 +3,22 @@
 Gemma 4 of scripts/atlas_stand_in.py:
 1. the ranking, on answers whose numbers are worked out by hand: words (three letters or more, any script, once per
    answer), distinct 4-grams, each unit's words over the average unit (Poisson z), its mass, the controls' null
-   (null_pct), answers pushed past max_rel left out; the word-shift score against the controls, a control left out of
-   its own null;
+   (null_pct, p, the Benjamini-Hochberg q, the chance count N / (C + 1)), answers pushed past max_rel left out; the
+   word-shift score against the controls, a control left out of its own null; the slim rows a whole layer is ranked
+   from give the same ranking; a half-written last line is left out; the controls' directions, unit(w_post * r);
 2. a run taken on the stand-in: every answer is the greedy answer written alone under the same push (a neuron along its
-   write direction, a control along its drawn direction, dose x p50; a baseline unpushed), with its push recorded;
+   write direction, a control along its drawn direction, dose x p50; a baseline unpushed), with its push recorded, and
+   the meta records the controls' shape, the doses' source and how loudly the next layer reads controls and neurons;
 3. continuing: a run cut short and rerun ends with the same answers; a rerun with nothing to do writes nothing; more
    neurons added write only theirs; a run taken with other settings is refused in plain words; a run stopped between
    steps keeps only whole batches and finishes as the uninterrupted one;
-4. finding a layer's run: main_rel first, calibration runs and runs of another model left out;
+4. finding a layer's run: main_rel first, calibration runs, runs of another model and runs taken with the old
+   isotropic controls left out (the last with the reason);
 5. merge, the depth report (subsampled to a common pool) and the spread (the words embedder, laid out in the unit square);
 6. the command lines: census_run.py --stand-in into the stand-in's own folder, then census_tools.py rank, depth and
-   spread on it.
+   spread on it;
+7. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
+   next layer reads the census's controls about as loudly as the layer's neurons, and an isotropic control far louder.
 
 Run: .venv/bin/python -I scripts/check_census.py   (exits 0 when every check holds)
 """
@@ -73,6 +78,36 @@ def row(kind: str, n: int, text: str, dose: float = 0.5, prompt: str = "who", id
             "top_ids": [], "top_lps": []}
 
 
+def real_read_gain(layers: tuple = (45, 57), sample: int = 256) -> Any:
+    """{layer: (shaped ratio, isotropic ratio)}: how loudly the next layer's input norm reads the census's controls
+    against the layer's neurons, on the 31B's own norms and dequantised down columns read from the local checkpoint
+    (CPU, a few tensors); None when the checkpoint is not cached here."""
+    import glob
+
+    from backend.engine_runtime import dequantize_w4a16_cols
+
+    hits = glob.glob(os.path.expanduser("~/.cache/huggingface/hub/models--google--gemma-4-31B-it-qat-w4a16-ct/snapshots/*/model.safetensors"))
+    if not hits:
+        return None
+    from safetensors import safe_open
+
+    P = "model.language_model.layers."
+    out = {}
+    with safe_open(hits[0], "pt") as f:
+        for l in layers:
+            w_post = f.get_tensor(P + f"{l}.post_feedforward_layernorm.weight").float()
+            w_in = f.get_tensor(P + f"{l + 1}.input_layernorm.weight").float().numpy()
+            idx = torch.from_numpy(np.random.default_rng(l).choice(21504, sample, replace=False))
+            U = dequantize_w4a16_cols(f.get_tensor(P + f"{l}.mlp.down_proj.weight_packed"), f.get_tensor(P + f"{l}.mlp.down_proj.weight_scale"), idx).float()
+            U = (U * w_post).numpy()
+            U /= np.linalg.norm(U, axis=1, keepdims=True)
+            iso = np.random.default_rng(0).standard_normal((sample, U.shape[1]))
+            iso /= np.linalg.norm(iso, axis=1, keepdims=True)
+            fair = cz.read_gain(U, cz.control_dirs(0, sample, w_post.numpy()), w_in)["ratio"]
+            out[l] = (fair, cz.read_gain(U, iso, w_in)["ratio"])
+    return out
+
+
 def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="census-check-"))
     try:
@@ -126,10 +161,39 @@ def run_checks(tmp: Path) -> int:
     u = cz.unit_order(list(range(6)), 2)
     check(u == [("neuron", 0), ("neuron", 1), ("random", 0), ("neuron", 2), ("neuron", 3), ("random", 1), ("neuron", 4), ("neuron", 5)],
           f"unit_order spreads the controls: {u}")
-    cd = cz.control_dirs(3, 4, 64)
-    check(cd.shape == (4, 64) and np.allclose(np.linalg.norm(cd, axis=1), 1.0) and np.array_equal(cd, cz.control_dirs(3, 4, 64)),
-          "control_dirs: unit, reproducible from the seed")
-    section("the ranking and the shift, worked by hand", before)
+    shape = np.linspace(0.5, 2.0, 64)
+    shape[:5] = 0.0
+    cd = cz.control_dirs(3, 4, shape)
+    raw = np.random.default_rng(3).standard_normal((4, 64)) * shape
+    check(cd.shape == (4, 64) and np.allclose(np.linalg.norm(cd, axis=1), 1.0) and np.array_equal(cd, cz.control_dirs(3, 4, shape))
+          and np.allclose(cd, raw / np.linalg.norm(raw, axis=1, keepdims=True), atol=1e-6) and not cd[:, :5].any(),
+          "control_dirs: unit(w_post * r), reproducible from the seed, nothing where w_post is zero")
+    # p and q, by hand: controls' masses and each neuron's p = (1 + controls at least as strong) / (C + 1)
+    masses = {k_: u["mass"] for k_, u in recs2.items()}
+    C = 2
+    ctl_m = [masses[("random", 0)], masses[("random", 1)]]
+    ps = {k_: (1 + sum(c >= m for c in ctl_m)) / (C + 1) for k_, m in masses.items() if k_[0] == "neuron"}
+    check(all(recs2[k_]["p"] == round(p_, 5) for k_, p_ in ps.items()), f"p: {[(k_, recs2[k_]['p'], p_) for k_, p_ in ps.items()]}")
+    order = sorted(ps, key=ps.get)
+    bh = {order[i]: min(ps[order[j]] * len(order) / (j + 1) for j in range(i, len(order))) for i in range(len(order))}
+    check(all(recs2[k_]["q"] == round(min(1.0, q_), 5) for k_, q_ in bh.items()), "q: Benjamini-Hochberg over the neurons")
+    check(recs2[("random", 0)]["p"] == round((1 + (ctl_m[1] >= ctl_m[0])) / 2, 5) and recs2[("random", 0)]["q"] is None,
+          "a control's p against the other controls; no q for a control")
+    check(cz.chance_above_all(21504, 256) == 83.7 and cz.chance_above_all(5, 0) is None, "the chance count: N / (C + 1)")
+    slim = cz.SlimRows(rows2)
+    check(cz.compute_units(slim) == cz.compute_units(rows2) and cz.shift_scores(slim) == cz.shift_scores(rows2)
+          and "text" not in slim[0] and "token_ids" not in slim[0], "the slim rows rank exactly as the whole ones, holding no text")
+    tail = tmp / "tail.jsonl"
+    tail.write_text(json.dumps(rows[0]) + "\n" + json.dumps(rows[1]) + "\n" + json.dumps(rows[2])[:20])
+    check(len(list(cz.read_rows(tail, tolerate_tail=True))) == 2 and len(cz.read_slim(tail)) == 2, "a half-written last line is left out")
+    try:
+        list(cz.read_rows(tail))
+        check(False, "a half-written last line raises unless tolerated")
+    except ValueError:
+        pass
+    check(cz.drop_partial_tail(tail) and tail.read_text().endswith("\n") and len(list(cz.read_rows(tail))) == 2 and not cz.drop_partial_tail(tail),
+          "drop_partial_tail cuts it off, once")
+    section("the ranking, p and q, and the shift, worked by hand", before)
 
     # ---------------------------------------------------------------------------------- 2. a run on the stand-in
     before = len(failures)
@@ -149,7 +213,7 @@ def run_checks(tmp: Path) -> int:
     check(res == {"written": 54, "skipped": 0, "stopped": False} and len(got) == 54, f"take_census: {res}, {len(got)} rows")
     check(len({cz.row_key(r) for r in got}) == 54, "every answer once")
     prompt_ids = {k: rt.tokenize_prompt(rt.compose_prompt(v, chat=True)) for k, v in cz.PROMPTS.items()}
-    ctrl = cz.control_dirs(3, 2, D)
+    ctrl = cz.control_dirs(3, 2, w.norm(3, "post_feedforward").numpy())
     stop = rt.end_of_turn_ids()
 
     def alone(r: Dict[str, Any]) -> Dict[str, Any]:
@@ -188,6 +252,13 @@ def run_checks(tmp: Path) -> int:
     check(meta["layer"] == 3 and meta["design_name"] == "main_rel" and meta["p50"] == p50 and meta["prompt_ids"] == prompt_ids
           and meta["stop_ids"] == stop and meta["model"] == rt.model_id and meta["stand_in"] is True and meta["random_controls"] == 2,
           f"the run's meta: {sorted(meta)}")
+    g = meta.get("read_gain") or {}
+    check(meta.get("version") == cz.CENSUS_VERSION and "w_post" in meta.get("controls", "") and meta.get("doses_from") == cz.DOSES_FROM["main_rel"]
+          and g.get("ratio") is not None and 0.5 <= g["ratio"] <= 2.0, f"the meta records the controls, the doses' source and the read gain: {g}")
+    D_ = w.d_model
+    iso = np.random.default_rng(3).standard_normal((2, D_))
+    iso /= np.linalg.norm(iso, axis=1, keepdims=True)
+    check(not np.allclose(ctrl, iso.astype(np.float32), atol=1e-3), "the controls are not the old isotropic draw")
     section("a run on the stand-in: every answer as written alone, pushes recorded", before)
 
     # ------------------------------------------------------------------------------------------------- 3. continuing
@@ -237,10 +308,10 @@ def run_checks(tmp: Path) -> int:
     runs_dir = tmp / "find"
     runs_dir.mkdir()
 
-    def fake(name: str, layer: int, design: str, n_rows: int, model: Any = None) -> Path:
+    def fake(name: str, layer: int, design: str, n_rows: int, model: Any = None, version: int = cz.CENSUS_VERSION) -> Path:
         pth = runs_dir / f"{name}.jsonl"
         pth.write_text("".join(json.dumps(row("neuron", i, "word")) + "\n" for i in range(n_rows)))
-        m = {"layer": layer, "design_name": design}
+        m = {"layer": layer, "design_name": design, "version": version}
         if model:
             m["model"] = model
         cz.meta_path_of(pth).write_text(json.dumps(m))
@@ -257,6 +328,10 @@ def run_checks(tmp: Path) -> int:
     check(runs[2] == runs_dir / "L2-main-bigger.jsonl", "among main_rel runs, the largest")
     check(3 in runs and 3 not in cz.layer_runs(runs_dir, model=rt.model_id), "a run of another model left out for this one")
     check(cz.layer_runs(runs_dir, model=rt.model_id)[2] in (big_main, runs_dir / "L2-main-bigger.jsonl"), "runs without a model are kept")
+    fake("L4-old", 4, "main_rel", 9, version=1)
+    refused: Dict[int, str] = {}
+    check(4 not in cz.layer_runs(runs_dir, refused=refused) and "isotropic" in refused.get(4, ""),
+          f"a run taken with the old isotropic controls is not read, and says why: {refused}")
     section("finding a layer's run", before)
 
     # ------------------------------------------------------------------------------- 5. merge, depth report, spread
@@ -337,6 +412,18 @@ def run_checks(tmp: Path) -> int:
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "rank", "17"], env=env, capture_output=True, text=True, timeout=300)
     check(r.returncode != 0 and "No census of layer 17" in r.stderr, "census_tools.py: a layer without a census said so")
     section("the command lines, into the stand-in's own folder", before)
+
+    # ------------------------------------------------------------- 7. the null on the real checkpoint's own weights
+    before = len(failures)
+    real = real_read_gain()
+    if real is None:
+        print("  --    the null on the 31B's weights: the checkpoint is not in the Hugging Face cache, skipped")
+    else:
+        for l, (fair, iso) in real.items():
+            check(0.5 <= fair <= 2.0, f"page {l + 1}: the next layer reads the census's controls {fair:.2f}x as loudly as the neurons")
+            check(iso > 20.0, f"page {l + 1}: an isotropic control is read {iso:.0f}x as loudly (the fault the shaped controls mend)")
+        section("the null on the 31B's own weights: shaped controls as loud as neurons, isotropic ones ~100x louder ("
+                + ", ".join(f"page {l + 1}: {f:.2f}x vs {i:.0f}x" for l, (f, i) in real.items()) + ")", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

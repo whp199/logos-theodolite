@@ -48,7 +48,11 @@ const busyFocus = () => !!useAtlas.getState().focus;
 
 function neuronBody(layer: number, n: number) {
   const s = useAtlas.getState();
-  const u = s.units[layer]?.find((x) => x.kind === "neuron" && x.n === n);
+  const us = s.units[layer];
+  const u = us?.find((x) => x.kind === "neuron" && x.n === n);
+  // census words describe a neuron only when its pushes beat every random control's (the map's gilt)
+  const ctl = (us ?? []).filter((x) => x.kind === "random").map((x) => x.z);
+  const censusShown = !!u && ctl.length > 0 && u.z > Math.max(...ctl);
   const h = hoverCache.get(`${layer}/${n}`) as Hover | undefined;
   const nh = hoverCache.get(`nh/${layer}/${n}`) as NeuronHeads | undefined;
   const name = h?.name || u?.name;
@@ -58,7 +62,11 @@ function neuronBody(layer: number, n: number) {
   return (
     <>
       {name ? <div className="atlas-tname">{name}</div> : null}
-      {u ? <div className="atlas-twords">{u.words.join("  ")}</div> : null}
+      {u && censusShown ? (
+        <div className="atlas-twords">
+          <span className="atlas-src">census</span> {u.words.join("  ")}
+        </div>
+      ) : null}
       {h ? (
         <>
           <div className="atlas-tl">

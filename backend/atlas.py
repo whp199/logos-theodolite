@@ -488,6 +488,8 @@ async def arch() -> Dict[str, Any]:
     a = atlas()
     sc = await asyncio.to_thread(a._scales_if_ready)
     status = await asyncio.to_thread(a.index.status)
+    refused: Dict[int, str] = {}
+    await asyncio.to_thread(cz.layer_runs, None, a.rt.model_id, refused)
     return {
         "model": getattr(a.rt, "model_id", None),
         "stand_in": bool(getattr(a.rt, "atlas_stand_in", False)),
@@ -500,6 +502,7 @@ async def arch() -> Dict[str, Any]:
         "layer_scalars": [round(float(x), 5) for x in a.w.scalars.tolist()],
         "indexes": status,
         "census": {str(l): p.name for l, p in sorted(cz.layer_runs(model=a.rt.model_id).items())},
+        "census_refused": {str(l): why for l, why in sorted(refused.items())},
         "push": {"modes": list(ao.PUSH_MODES), "spare_bos": True, "units": {
             "add": "a share of the stream's median length leaving the layer, along the neuron's write direction",
             "mul": "a factor on the neuron's own activation (0 silences it)",
@@ -541,7 +544,7 @@ async def post_note(body: NoteRequest) -> Dict[str, Any]:
 # -- the census
 
 
-_census_cache: Dict[int, Dict[str, Any]] = {}
+_census_cache: LRU = LRU(2)
 _census_lock = threading.Lock()
 _runs_cache: Dict[Any, Tuple[float, Dict[int, Any]]] = {}
 _census_words: Dict[int, Tuple[Any, Dict[int, List[str]]]] = {}
@@ -562,7 +565,9 @@ def census_runs(model: Optional[str]) -> Dict[int, Any]:
 
 def census_words(layer: int, model: Optional[str]) -> Dict[int, List[str]]:
     """{neuron: its first four census words} for a layer whose census is ranked, from the ranking file alone (the
-    reference's `ranked_words`): what the atlas shows beside a linked neuron."""
+    reference's `ranked_words`): what the atlas shows beside a linked neuron, as a description, so only for neurons
+    whose words came out stronger than every random control's (the map's gilt; about N / (C + 1) of them by chance
+    alone). The rest keep their census words in the census list and their details."""
     path = census_runs(model).get(int(layer))
     if path is None:
         return {}
@@ -574,14 +579,16 @@ def census_words(layer: int, model: Optional[str]) -> Dict[int, List[str]]:
     hit = _census_words.get(int(layer))
     if hit and hit[0] == key:
         return hit[1]
-    words = {int(u["neuron"]): [w for w, _, _ in u["words"][:4]] for u in cz.read_rows(up) if u["kind"] == "neuron"}
+    words = {int(u["neuron"]): [w for w, _, _ in u["words"][:4]] for u in cz.read_rows(up)
+             if u["kind"] == "neuron" and u.get("null_pct") == 1.0}
     _census_words[int(layer)] = (key, words)
     return words
 
 
 def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
     """A layer's census run (of the model read here), its rows slimmed to what the page shows and its ranking (made
-    beside it once, when missing or older than the run)."""
+    beside it once, when missing or older than the run). The last two layers opened are kept (a whole layer's answers
+    take a few hundred megabytes even slimmed)."""
     path = cz.layer_runs(model=model).get(int(layer))
     if path is None:
         return None
@@ -589,6 +596,7 @@ def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
     key = (str(path), path.stat().st_mtime, units_path.stat().st_mtime if units_path.exists() else 0.0)
     hit = _census_cache.get(int(layer))
     if hit and hit["key"] == key:
+        _census_cache.move_to_end(int(layer))
         return hit
     with _census_lock:
         if not (units_path.exists() and units_path.stat().st_mtime >= path.stat().st_mtime):
@@ -596,14 +604,27 @@ def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
             key = (str(path), path.stat().st_mtime, units_path.stat().st_mtime)
         units = list(cz.read_rows(units_path))
         slim = ("kind", "neuron", "prompt", "dose", "rel_push", "text", "finish", "n_gen")
-        rows = [{k: r.get(k) for k in slim} for r in cz.read_rows(path)]
+        rows = [{k: r.get(k) for k in slim} for r in cz.read_rows(path, tolerate_tail=True)]
         by_unit: Dict[Tuple[str, int], List[int]] = {}
         for i, r in enumerate(rows):
             by_unit.setdefault((r["kind"], int(r["neuron"])), []).append(i)
         meta = json.loads(cz.meta_path_of(path).read_text(encoding="utf-8"))
-        d = {"key": key, "path": path, "rows": rows, "units": units, "by_unit": by_unit, "meta": meta}
-        _census_cache[int(layer)] = d
+        n_neu = sum(1 for u in units if u["kind"] == "neuron")
+        n_ctl = sum(1 for u in units if u["kind"] == "random")
+        null = {"neurons": n_neu, "controls": n_ctl, "above_all": sum(1 for u in units if u["kind"] == "neuron" and u.get("null_pct") == 1.0),
+                "above_all_by_chance": cz.chance_above_all(n_neu, n_ctl),
+                "q05": sum(1 for u in units if u.get("q") is not None and u["q"] <= 0.05)}
+        d = {"key": key, "path": path, "rows": rows, "units": units, "by_unit": by_unit, "meta": meta, "null": null}
+        _census_cache.put(int(layer), d)
         return d
+
+
+def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
+    """What every census reply says of its run: where its doses and its push unit come from, how loudly the next layer
+    reads its controls against its neurons, and what its null can and cannot single out."""
+    m = d["meta"]
+    return {"run": d["path"].name, "design": m.get("design_name"), "doses_from": m.get("doses_from") or cz.DOSES_FROM.get(m.get("design_name")),
+            "p50_source": m.get("p50_source"), "read_gain": m.get("read_gain"), "null": d["null"]}
 
 
 @router.get("/census/units")
@@ -612,9 +633,16 @@ async def census_units(layer: int) -> List[Dict[str, Any]]:
     if d is None:
         return []
     notes = (await fn.all_notes())["neurons"]
-    return [{"kind": u["kind"], "n": u["neuron"], "z": u.get("mass", u["z"]), "null_pct": u["null_pct"],
+    return [{"kind": u["kind"], "n": u["neuron"], "z": u.get("mass", u["z"]), "null_pct": u["null_pct"], "q": u.get("q"),
              "words": [w for w, _, _ in u["words"][:5]], "name": (notes.get(fn.note_key(layer, u["neuron"])) or {}).get("name", "") if u["kind"] == "neuron" else ""}
             for u in d["units"]]
+
+
+@router.get("/census/card")
+async def census_card_route(layer: int) -> Dict[str, Any]:
+    """The layer's census card (`census_card`); {} when the layer has none."""
+    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
+    return census_card(d) if d is not None else {}
 
 
 @router.get("/census/unit")
@@ -630,6 +658,7 @@ async def census_unit(layer: int, n: int, kind: str = "neuron") -> Dict[str, Any
     neurons = [u for u in d["units"] if u["kind"] == "neuron"]
     out.update({
         "run": d["path"].name, "prompts": d["meta"].get("prompts", cz.PROMPTS), "design": d["meta"].get("design_name"),
+        "card": census_card(d),
         "rollouts": [{k: r[k] for k in keep} for r in rows],
         "baselines": [{k: r[k] for k in keep} for r in d["rows"] if r["kind"] == "baseline"],
         "stats": rec, "rank": next((i + 1 for i, u in enumerate(neurons) if u["neuron"] == n), None) if rec else None,

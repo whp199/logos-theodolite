@@ -193,7 +193,16 @@ browser against it, but nothing yet on Gemma-4-31B itself.
 - **The census's doses come from Qwen3.5-4B.** `main_rel` (−0.7, +0.5, +0.8 and +3 of the stream's median length) is
   neuron-explorer's design, where its log found answers readable near 0.5–0.8 and wrecked by 3. Run `calib_rel` on a few
   layers of Gemma-4-31B first, and change the design if its window lies elsewhere; the scientist's methodology quotes
-  the same Qwen doses as a starting point.
+  the same Qwen doses as a starting point. Every page and tool that shows a census now says the doses are uncalibrated.
+  One nominal dose is also a different push at each layer (by the stream's own read gain, about sixteen-fold across the
+  31B's layers), so the depth curve compares unlike doses until the dose is set per layer.
+- **The census's null, mended before any run** (review of 27 October 2026). Its controls were isotropic directions, which
+  the next layer reads about a hundred times louder than any neuron's write at pages 36–59; they are now drawn as
+  unit(w_post ⊙ r), matched to within 1.2× (`check_census.py` measures it on the checkpoint's own weights), and older
+  runs are not read. Even so, with C controls about N / (C + 1) neurons beat every control by chance alone (84 of a whole
+  layer with 256): the pages say so, each neuron carries a p and the layer a false-discovery q, and with 256 controls no
+  single neuron reaches q ≤ 0.05 unless some 1,700 of the layer beat every control. Singling neurons out needs far more
+  controls, or a census read as leads to test.
 - **Single neurons at layers 21–31.** The study's 60-fold push overdrove them (errata E43, E46); whether the census's
   doses move them at all there is to be seen.
 - **Stored passages for each face** (Cammarata's practice iii, the study's §3.5): the stats index keeps each neuron's

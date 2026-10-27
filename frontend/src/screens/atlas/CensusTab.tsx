@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Rubric } from "../../components/kit";
 import { href } from "../../router";
 import type { CensusUnit, Rollout } from "./api";
-import { fmtDose } from "./parts";
+import { CensusProvenance, fmtDose } from "./parts";
 import { useAtlas } from "./state";
 
 /**
@@ -94,6 +94,7 @@ const Grid: React.FC<{ unit: CensusUnit; open: Set<string>; toggle: (k: string) 
         own write direction by the dose shown (a share of the stream's usual length, its push measured beside it). Click an answer to read
         all of it. <a href={href.lexicon("census")}>What the census is.</a>
       </Rubric>
+      <CensusProvenance card={unit.card} style={{ margin: "0 0 8px" }} />
       <div className="atlas-grid" style={{ gridTemplateColumns: `56px repeat(${1 + doses.length}, minmax(0, 1fr))` }}>
         {out}
       </div>

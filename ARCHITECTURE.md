@@ -592,22 +592,33 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `POST /fires` | the neurons that fire hardest on a text against their usual range |
 | `POST /run`, `GET /run/view?pos&sign&lo&hi&min&q&limit`, `GET /run/heads?pos`, `GET /run/paths?pos&top&min`, `GET /head/row?layer&head&pos` | a text run once (at most 256 positions) and every activation kept: the neurons passing the filters at a word-piece or over all of them (score = activation over the neuron's usual extreme on that side), each head's write there, the links among the strongest (int16 rows as `/web`), one head's attention by unit |
 | `GET /head?layer&head`, `GET /head/profile?layer&head`, `POST /head/pattern`, `POST /attention`, `POST /attn_drive` | a head's q / k / v / o neurons from the weights with their words pooled; where it looks over eight texts; its attention on a text; which heads and blocks drive a neuron at one unit |
-| `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers and its statistics; one answer; the layout of the run's answers |
+| `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/card?layer`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers, its statistics and the run's card; the card alone (where the doses and the push unit come from, how loudly the next layer reads controls against neurons, how many neurons beat every control and how many would by chance); one answer; the layout of the run's answers |
 | `GET /notes`, `POST /notes` | names and notes (`backend/field_notes.py`): `{kind: "neuron" \| "head", layer, index, name?, note?, by}`; an omitted field is kept, both empty forgets the entry |
 
 **The census** (`backend/census.py`; `scripts/census_run.py` on the GPU, `scripts/census_tools.py` on the CPU). For one
-layer, every neuron (or a range) and some random directions of the stream (isotropic unit vectors from a seed) are pushed
-as above on the design's questions and doses (`main_rel`: "Who are you?", a snake game in Python and the colour orange at
-−0.7, +0.5 and +0.8, and "Write whatever you like." at +3.0, plus one unpushed answer each), greedy, batched by question.
-Answers go to `$THEODOLITE_CENSUS_DIR`, else `<atlas folder>/census/runs`, `L<layer>-<design>.jsonl`, a whole batch or
-none, so a stopped run resumes (a run with other settings is refused), with its `.meta.json`. Ranking
-(`compute_units`, after the explorer's `sweep/rank.py`): a word (three letters or more) counts once per answer, over
-pushes of at most 1.6 of the stream, leaving out every word of the unpushed answers; each unit's words scored against
-the average unit, z = (count − mean) / √(mean + 0.5); `mass` the summed positive z of its top five words, the sort key;
-`null_pct` the share of controls below it; per dose, the push's length over the stream's, distinct 4-grams, the share
-cut off, the mean log-probability. `census_tools.py` ranks (`.units.jsonl`, with the word-shift score), merges shards,
-writes the depth report and lays a run's answers out (`.spread.json`: words by tf-idf, or `st:<model>` through
-sentence-transformers; UMAP where installed, else PCA).
+layer, every neuron (or a range) and some random directions are pushed as above on the design's questions and doses
+(`main_rel`: "Who are you?", a snake game in Python and the colour orange at −0.7, +0.5 and +0.8, and "Write whatever you
+like." at +3.0, plus one unpushed answer each), greedy, batched by question. A control is unit(w_post ⊙ r), r isotropic
+from a seed: the reference's random down column carried through the post-feed-forward norm every neuron's write passes,
+so the next layer reads controls about as loudly as neurons (on the 31B's own weights, 1.02× at page 46 and 1.18× at
+page 58, where a plain isotropic direction is read 103× and 236× as loudly; `check_census.py` measures it when the
+checkpoint is cached). The run's meta records that ratio (`read_gain`) and where the doses come from (`doses_from`:
+neuron-explorer's, chosen on Qwen3.5-4B, not yet calibrated here); runs taken with isotropic controls (meta `version`
+below 2) are not read, and `/arch` says why (`census_refused`). Answers go to `$THEODOLITE_CENSUS_DIR`, else `<atlas
+folder>/census/runs`, `L<layer>-<design>.jsonl`, a whole batch or none, so a stopped run resumes (a run with other
+settings is refused; a half-written last line is cut off first), with its `.meta.json`. Ranking (`compute_units`, after
+the explorer's `sweep/rank.py`, reading a run one line at a time and keeping only each answer's word ids): a word (three
+letters or more) counts once per answer, over pushes of at most 1.6 of the stream, leaving out every word of the
+unpushed answers; each unit's words scored against the average unit, z = (count − mean) / √(mean + 0.5); `mass` the
+summed positive z of its top five words, the sort key; `null_pct` the share of controls below it; `p` = (1 + controls at
+least as strong) / (C + 1), and `q` the Benjamini–Hochberg false-discovery q over the run's neurons (about N / (C + 1)
+neurons beat every control by chance alone, 84 of a whole layer with 256 controls, and every page that ranks says so);
+per dose, the push's length over the stream's, distinct 4-grams, the share cut off, the mean log-probability. A
+neuron's census words describe it beside links, search hits and the map's tooltip only when it beat every control.
+`census_tools.py` ranks (`.units.jsonl`, with the word-shift score), merges shards, writes the depth report (each entry
+says that one nominal dose is a different push at each layer) and lays a run's answers out (`.spread.json`: words by
+tf-idf, or `st:<model>` through sentence-transformers; UMAP where installed, else PCA). The server keeps the last two
+layers' answers it opened.
 
 `/api/health` carries an `atlas` card (routes, the index folder, which index files exist, the census layers, the
 notes' file) just before `label_gate` and `lens`. scripts/check_atlas_ops.py, check_atlas_index.py, check_atlas_api.py

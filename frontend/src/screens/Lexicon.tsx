@@ -1171,22 +1171,29 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
         <Entry id="census" head="the census" tech="steering sweep · ranked against random directions">
           <Body>
             Every neuron of a layer pushed in turn, along its own write direction, on four fixed questions at a few
-            doses, and the words its pushes bring out counted. The same is done along random directions, as controls. A
-            neuron whose pushes bring out words that no random push does ranks high; one indistinguishable from the
-            controls ranks low.
+            doses, and the words its pushes bring out counted. The same is done along random directions, as controls,
+            shaped the way the layer shapes every neuron’s write so the next layer hears them as loudly. A neuron whose
+            pushes bring out words that the random pushes do not ranks high; one indistinguishable from the controls
+            ranks low.
           </Body>
           <Note>
-            A census runs a layer at a time on the GPU and is kept; the map colours a layer’s neurons by it, from pale to
-            dark gilt above the strongest control.
+            A rank is a lead, not a finding: with 256 controls about one neuron in 257 lands above all of them by chance
+            alone, some 84 of a layer’s 21,504. The doses are neuron-explorer’s, chosen on Qwen3.5-4B and not yet
+            calibrated on this model, so a low rank can mean only that the dose was wrong for the layer. A census runs a
+            layer at a time on the GPU and is kept; the map colours a layer’s neurons by it, from pale to dark gilt above
+            the strongest control.
           </Note>
           <EntryApparatus title="the census">
             Questions: who are you, a snake game in Python, the colour orange (at −0.7, +0.5 and +0.8 of the stream’s
             median length leaving the layer) and “write whatever you like” at +3.0; greedy answers. A word (three
             letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5) against the average unit, over
             pushes of at most 1.6 of the stream, every word of the unpushed answers left out; mass = the summed positive z
-            of its top five words, the sort key; controls are isotropic unit vectors of the stream from a seed, pushed
-            exactly as a neuron is. <M>scripts/census_run.py</M>, <M>backend/census.py</M>; the reference’s
-            <M> sweep/rank.py</M>.
+            of its top five words, the sort key; p = (1 + controls with at least its mass) / (C + 1), and q its
+            Benjamini–Hochberg false-discovery q over the layer. A control is unit(w<sub>post</sub> ⊙ r), r isotropic from
+            a seed, pushed exactly as a neuron is: the reference rotates a down column to a random direction, and on Gemma
+            that column passes w<sub>post</sub>, near zero on the ~180 dimensions the next layer reads loudest (a plain
+            isotropic direction reaches it about a hundred times louder). <M>scripts/census_run.py</M>,{" "}
+            <M>backend/census.py</M>; the reference’s <M> sweep/rank.py</M>.
           </EntryApparatus>
         </Entry>
 
