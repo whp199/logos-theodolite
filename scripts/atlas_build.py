@@ -3,6 +3,8 @@
 
     .venv/bin/python scripts/atlas_build.py lens                  # every neuron's words, both faces, both readings
     .venv/bin/python scripts/atlas_build.py stats --text corpus.txt --tokens 200000
+    .venv/bin/python scripts/atlas_build.py stats --hf HuggingFaceFW/fineweb-edu:sample-10BT \
+        --hf HuggingFaceH4/ultrachat_200k::train_sft --tokens 2000000   # the reference's mix, a document of each in turn
     .venv/bin/python scripts/atlas_build.py wiring                # every neuron's 24 strongest weight links each way
     .venv/bin/python scripts/atlas_build.py layout                # each layer's sheet, neighbours writing alike
     .venv/bin/python scripts/atlas_build.py steer --layers 40-59  # the steer lens, a range of layers at a time
@@ -76,23 +78,34 @@ def corpus_texts(a: argparse.Namespace, rt: Any) -> tuple:
                 if line.strip():
                     texts.append(str(json.loads(line)["text"]))
         names.append(Path(f).name)
-    for spec in a.hf or []:
+    if a.hf:
         from datasets import load_dataset  # optional: only for --hf
 
-        name, _, cfg = spec.partition(":")
-        ds = load_dataset(name, cfg or None, split="train", streaming=True).shuffle(seed=0)
-        n_chars = 0
         bos = rt.tokenizer.bos_token or ""
-        for d in ds:
-            if "messages" in d:
-                chat = rt.tokenizer.apply_chat_template(d["messages"], tokenize=False)
-                texts.append(chat[len(bos):] if bos and chat.startswith(bos) else chat)  # each window has its own
-            else:
-                texts.append(str(d["text"]))
-            n_chars += len(texts[-1])
-            if n_chars > a.tokens * 6:
-                break
-        names.append(spec)
+
+        def docs(spec: str):
+            """name[:config[:split]] streamed and shuffled (split "train" unless named): chats through the chat
+            template, thinking off, without their start mark (each window has its own); anything else its text."""
+            name, cfg, split = (spec.split(":") + ["", ""])[:3]
+            for d in load_dataset(name, cfg or None, split=split or "train", streaming=True).shuffle(seed=0):
+                if "messages" in d:
+                    chat = rt.tokenizer.apply_chat_template(d["messages"], tokenize=False, enable_thinking=False)
+                    yield chat[len(bos):] if bos and chat.startswith(bos) else chat
+                else:
+                    yield str(d["text"])
+
+        # one document from each source in turn, as the reference mixes web text and chats (sweep/neuron_stats.py)
+        streams = [docs(s) for s in a.hf]
+        n_chars = 0
+        while streams and n_chars <= a.tokens * 6:
+            for s in list(streams):
+                try:
+                    texts.append(next(s))
+                except StopIteration:
+                    streams.remove(s)
+                    continue
+                n_chars += len(texts[-1])
+        names += a.hf
     if not texts:
         from backend.causal_check import STUDY_TEXTS
 
@@ -111,13 +124,15 @@ def main() -> int:
     ap.add_argument("--layers", default="", help='for lens and steer: "40-59" or "3,7,11"')
     ap.add_argument("--text", action="append", help="stats: a plain-text corpus file (documents split on blank lines)")
     ap.add_argument("--jsonl", action="append", help="stats: a JSONL corpus file with a text field per line")
-    ap.add_argument("--hf", action="append", help="stats: a dataset name[:config], streamed (needs the datasets package)")
+    ap.add_argument("--hf", action="append", help="stats: a dataset name[:config[:split]], streamed (needs the datasets package); "
+                    "several are read a document from each in turn")
     ap.add_argument("--tokens", type=int, default=200_000, help="stats: word-pieces to read")
     ap.add_argument("--seq", type=int, default=512, help="stats: window length")
     ap.add_argument("--chunk", type=int, default=0, help="lens: columns per product; wiring: columns per product")
     ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward")
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
     a = ap.parse_args()
+    sys.stdout.reconfigure(line_buffering=True)  # each step's progress as it comes, into a log file too
 
     if a.stand_in:
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
