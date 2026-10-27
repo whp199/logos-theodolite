@@ -648,6 +648,35 @@ def stream_p50(ex: Extremes) -> List[float]:
     return [float(np.median(v)) if v else float("nan") for v in ex.resid_norms]
 
 
+@torch.no_grad()
+def forward_from_layer(
+    lm: nn.Module, start: int, hidden: torch.Tensor, attention_mask: Optional[torch.Tensor], position_ids: torch.Tensor
+) -> torch.Tensor:
+    """The text model's forward from layer `start` on: `hidden` [B, T, D] is the stream entering that layer (leaving
+    `start` - 1), and layers start.. and the final norm run as `Gemma4TextModel.forward` runs them without a cache (its
+    masks for both kinds of layer, its rotary embeddings per kind, the shared key-value states). Returns the final-normed
+    states [B, T, D]. For a model with per-layer inputs or layers sharing keys and values (not Gemma-4-31B) it refuses:
+    those need the earlier layers. Hooks on the layers run as in a whole forward."""
+    from collections import UserDict
+
+    from transformers.masking_utils import create_causal_mask, create_sliding_window_causal_mask
+
+    cfg = lm.config
+    if getattr(cfg, "hidden_size_per_layer_input", 0) or getattr(cfg, "num_kv_shared_layers", 0):
+        raise ValueError("forward_from_layer needs a model without per-layer inputs or shared key-value layers.")
+    kw = {"config": cfg, "inputs_embeds": hidden, "attention_mask": attention_mask, "past_key_values": None,
+          "position_ids": position_ids}
+    masks = {"full_attention": create_causal_mask(**kw), "sliding_attention": create_sliding_window_causal_mask(**kw)}
+    pe = {t: lm.rotary_emb(hidden, position_ids, t) for t in set(cfg.layer_types)}
+    shared: Any = UserDict()
+    h = hidden
+    for i in range(int(start), int(cfg.num_hidden_layers)):
+        t = cfg.layer_types[i]
+        h = lm.layers[i](h, None, shared_kv_states=shared, position_embeddings=pe[t], attention_mask=masks[t],
+                         position_ids=position_ids, past_key_values=None)
+    return lm.norm(h)
+
+
 # ------------------------------------------------------------------------------------------------- display units
 
 
@@ -826,6 +855,84 @@ def gelu_tanh_grad(x: float) -> float:
 def layer_patterns(cap: HeadCapture, shape: AttnShape) -> torch.Tensor:
     """`head_pattern` for every head of the layer: [H, T, T]."""
     return torch.stack([head_pattern(cap, shape, h) for h in range(shape.n_heads)])
+
+
+# The reference's eight texts for where each head looks (explorer/server.py HEAD_TEXTS): a pronoun story, code, an
+# objection, a recipe, Chinese, dialogue, a schedule and science.
+HEAD_TEXTS: Tuple[str, ...] = (
+    "Alice called Bob because she wanted to borrow his car. He said yes, and she drove it to the lake.",
+    "def merge(a, b):\n    out = []\n    while a and b:\n        out.append(a.pop(0) if a[0] < b[0] else b.pop(0))\n    return out + a + b",
+    "The committee, however, rejected the proposal; members said it was expensive, rushed, and unclear about who would pay.",
+    "Ingredients: 2 cups flour, 1 tsp salt, 3 eggs, and a pinch of sugar. Mix the flour and salt, then add the eggs.",
+    "我昨天去了北京，但是天气很冷，所以我们在酒店里待了一整天。",
+    "\"Where are you going?\" asked the old man. \"To the market,\" said Mara, \"to sell the goat my brother raised.\"",
+    "- Monday: 9:00 standup, 14:30 review with Sam\n- Tuesday: dentist at 11\n- Friday: release 2.4.1, then retro",
+    "The mitochondria produce ATP through oxidative phosphorylation, which requires oxygen; without it, cells fall back on glycolysis.",
+)
+
+
+@torch.no_grad()
+def head_profiles(lm: nn.Module, weights: Weights, tokenizer: Any, texts_ids: Sequence[Sequence[int]]) -> Dict[str, Any]:
+    """Where every head looks over the texts, by display unit, for reads from the fourth unit on (the reference's
+    `_head_profiles`): `dist`, the mean share of weight on the unit itself, the one before, two to five back, further
+    back, and the first unit (the start mark, the attention sink); `src`, by unit text met at least twice, the weight it
+    receives against what a uniform read would give it (the ten it draws most beyond chance, as [text, ratio]); `pairs`,
+    the strongest single reads more than one unit back and past the first unit, [weight, text index, reading unit, unit
+    read]. Gemma 4's attention is a softmax, so no weight is negative (the reference's share of negative weight, for its
+    linear-attention heads, has nothing to measure here). Keys "layer/head"."""
+    shapes = [attn_shape(lm, l) for l in range(len(lm.layers))]
+    acc: Dict[str, Dict[str, Any]] = {}
+    tokens: List[List[str]] = []
+    for t, ids in enumerate(texts_ids):
+        cap = capture_heads(lm, ids, weights)
+        units = token_units(tokenizer, ids)
+        toks = [s for s, _ in units]
+        tokens.append(toks)
+        U = len(units)
+        if U < 5:
+            continue
+        last = [idx[-1] for _, idx in units]
+        qi = np.arange(3, U)
+        j = np.arange(U)
+        back = qi[:, None] - j[None]
+        for l, sh in enumerate(shapes):
+            A = layer_patterns(cap, sh).numpy()  # [H, T, T]
+            A = np.stack([A[:, :, idx].sum(-1) for _, idx in units], -1)[:, last]  # [H, U, U]
+            tot = np.abs(A).sum(-1, keepdims=True).clip(1e-12)
+            R = (A / tot)[:, 3:]  # [H, U - 3, U]
+            dist = np.stack([(R * (back == 0)).sum(-1), (R * (back == 1)).sum(-1),
+                             (R * ((back >= 2) & (back <= 5) & (j[None] > 0))).sum(-1),
+                             (R * ((back > 5) & (j[None] > 0))).sum(-1), R[..., 0]], -1).sum(1)  # [H, 5]
+            mask = (back >= 1) & (j[None] > 0)
+            recv = (R * mask).sum(1)  # [H, U]
+            expv = (mask / (qi[:, None] + 1)).sum(0)  # [U]
+            for h in range(sh.n_heads):
+                a = acc.setdefault(f"{l}/{h}", {"dist": np.zeros(5), "n": 0, "src": {}, "pairs": []})
+                a["dist"] += dist[h]
+                a["n"] += len(qi)
+                for uu in range(1, U - 1):
+                    key = toks[uu].strip() or toks[uu]
+                    s = a["src"].setdefault(key, [0.0, 0.0, 0])
+                    s[0] += float(recv[h, uu])
+                    s[1] += float(expv[uu])
+                    s[2] += 1
+                far = np.where((back > 1) & (j[None] > 0), R[h], 0)
+                for r, c in zip(*np.unravel_index(np.argsort(-np.abs(far), None)[:6], far.shape)):
+                    a["pairs"].append([round(float(far[r, c]), 3), t, int(qi[r]), int(c)])
+    heads: Dict[str, Any] = {}
+    for key, a in acc.items():
+        src = sorted(((s, r / e, r - e) for s, (r, e, n) in a["src"].items() if n >= 2 and r > e), key=lambda x: -x[2])[:10]
+        seen, pairs = set(), []
+        for w_, t, qu, ku in sorted(a["pairs"], key=lambda p: -abs(p[0])):
+            if (t, qu, ku) in seen:
+                continue
+            seen.add((t, qu, ku))
+            pairs.append([w_, t, qu, ku])
+            if len(pairs) == 8:
+                break
+        heads[key] = {"dist": [round(float(x) / max(a["n"], 1), 3) for x in a["dist"]],
+                      "src": [[s, round(float(ratio), 1)] for s, ratio, _ in src], "pairs": pairs}
+    return {"tokens": tokens, "heads": heads}
 
 
 @torch.no_grad()

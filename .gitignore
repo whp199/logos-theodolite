@@ -67,3 +67,6 @@ experiments/results/E6_tool_audit_06_steering.log
 # exported from E3's gitignored caches by scripts/export_E3_background_mu.py; its sha256 is pinned in
 # backend/engine_runtime.py and its provenance is E3_background_mu.json beside it (a .json, not ignored)
 !experiments/results/E3_background_mu.npy
+
+# the atlas's indexes and census runs (scripts/atlas_build.py, scripts/census_run.py): regenerable, hundreds of MB
+atlas_data/
