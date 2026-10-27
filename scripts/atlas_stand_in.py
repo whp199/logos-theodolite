@@ -12,10 +12,14 @@ layer scalar given some spread), at the stand-in vocabulary's size. `stand_in_ru
 whose own methods are unchanged, with a random bf16 "lens" at each layer (the identity at the last) and the shipped
 lens's provenance, so the lens card and the label gate behave as on the real server.
 
+    .venv/bin/python -I scripts/atlas_build.py all --stand-in      # its indexes, into atlas_data/stand-in/index
+    .venv/bin/python -I scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
     .venv/bin/python -I scripts/atlas_stand_in.py --serve 8765     # the instrument's server on the stand-in
 
 serves the whole instrument (frontend/dist when built) on the stand-in: what the pages show is random, and the server
-says so (`/api/atlas/arch` -> "stand_in": true). Nothing here downloads anything.
+says so (`/api/atlas/arch` -> "stand_in": true). Whatever a stand-in run builds (indexes, census runs, field notes) goes
+under the atlas folder's own `stand-in/` (`use_stand_in_atlas`), never among the model's, and the server reads an
+index or a census run only for the model it was taken on. Nothing here downloads anything.
 """
 
 from __future__ import annotations
@@ -137,6 +141,25 @@ def stand_in_hf(tokenizer: Any, dtype: torch.dtype = torch.float32, attn: str = 
     return hf
 
 
+STAND_IN_MODEL_ID = "stand-in (scripts/atlas_stand_in.py: 6 layers, random weights)"
+
+
+def use_stand_in_atlas() -> Path:
+    """Point this process's atlas folder at `<atlas folder>/stand-in` (indexes, census runs and field notes all under
+    it), so nothing a stand-in run builds or writes lands among the model's. Returns the folder."""
+    from backend.atlas_index import ATLAS_DIR_ENV, atlas_dir
+    from backend.census import CENSUS_DIR_ENV
+    from backend.field_notes import FIELD_NOTES_ENV
+
+    root = atlas_dir()
+    if root.name != "stand-in":
+        root = root / "stand-in"
+    os.environ[ATLAS_DIR_ENV] = str(root)
+    os.environ[CENSUS_DIR_ENV] = str(root / "census" / "runs")
+    os.environ[FIELD_NOTES_ENV] = str(root / "field_notes.json")
+    return root
+
+
 def stand_in_runtime(hf: Any, tokenizer: Any) -> Any:
     """A TheodoliteRuntime holding the stand-in, its own methods unchanged (as check_causal_check.py builds one)."""
     from interp_engine import EagerModel
@@ -145,6 +168,7 @@ def stand_in_runtime(hf: Any, tokenizer: Any) -> Any:
     from backend.engine_runtime import JPP_FITTED_MODEL, TheodoliteRuntime
 
     rt = TheodoliteRuntime(device="cpu", load_jlens=False)
+    rt.model_id = STAND_IN_MODEL_ID  # what every index and census run built on it records, and the server compares
     rt.eager_model = EagerModel("stand-in", device="cpu", dtype=hf.dtype, hf_model=hf, tokenizer=tokenizer)
     rt.hf_model = hf
     rt.tokenizer = tokenizer
@@ -204,6 +228,8 @@ def main(argv: Optional[list] = None) -> int:
         return 0
     import uvicorn
 
+    root = use_stand_in_atlas()
+    print(f"the stand-in's atlas folder: {root}")
     rt, vault = stand_in()
     app = bind_server(rt, vault)
     uvicorn.run(app, host="127.0.0.1", port=int(a.serve), log_level="info")

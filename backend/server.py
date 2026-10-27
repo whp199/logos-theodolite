@@ -1391,7 +1391,7 @@ async def api_health() -> Dict[str, Any]:
         },
         # the atlas (backend/atlas.py, the page at #/atlas): that its routes exist on this server, which of its
         # indexes are on disk (by file, none loaded) and where the field notes are kept
-        "atlas": atlas_routes.health_card(),
+        "atlas": atlas_routes.health_card(runtime),
         # the rule the label_check on every neuron label follows (backend/label_gate.py)
         "label_gate": LABEL_GATE_CARD,
         "lens": runtime.lens_card(),

@@ -26,7 +26,8 @@ and not measured here (this was written without the GPU; time a pilot with --lay
   rows of ~25 pieces through 30 layers on average, per layer: on the order of 10^17 FLOP a layer, so hours for all 60.
   Each layer is written as its own file under steer_lens.d/ and a stopped run resumes; steer_lens.npz is merged when
   all 60 are there.
-`--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run.
+`--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
+own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 """
 
 from __future__ import annotations
@@ -127,8 +128,9 @@ def main() -> int:
 
     torch.set_grad_enabled(False)
     if a.stand_in:
-        from atlas_stand_in import stand_in
+        from atlas_stand_in import stand_in, use_stand_in_atlas
 
+        use_stand_in_atlas()
         rt, _vault = stand_in()
     else:
         from backend.engine_runtime import TheodoliteRuntime

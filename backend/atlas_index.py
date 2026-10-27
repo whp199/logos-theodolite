@@ -50,6 +50,8 @@ FILES = {
     "steer_lens": "steer_lens.npz",
     "layout": "layout_writes.npz",
 }
+# the array of each file whose first two axes are [layers, neurons]
+SHAPE_KEY = {"lens": "lens_pos", "act_scale": "pos", "wiring": "down_z", "steer_lens": "up", "layout": "cell"}
 
 
 def atlas_dir() -> Path:
@@ -79,12 +81,18 @@ def meta_of(z: Any) -> Dict[str, Any]:
 
 
 class AtlasIndex:
-    """The index files of one folder, each loaded on first need and loaded again when it changes on disk (by mtime)."""
+    """The index files of one folder, each loaded on first need and loaded again when it changes on disk (by mtime).
 
-    def __init__(self, root: Optional[Path] = None) -> None:
+    Given the model read here (`model`, its runtime's model_id; `shape`, its (layers, neurons)), a file built for
+    another model or of another shape is not used: it reads as not built, and `status()` says why (`refused`). A
+    stand-in's indexes (scripts/atlas_stand_in.py) are never read for the model, nor the model's for a stand-in."""
+
+    def __init__(self, root: Optional[Path] = None, model: Optional[str] = None, shape: Optional[Tuple[int, int]] = None) -> None:
         self.root = Path(root) if root is not None else index_dir()
+        self.model = model
+        self.shape = tuple(int(x) for x in shape) if shape is not None else None
         self._lock = threading.Lock()
-        self._cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+        self._cache: Dict[str, Tuple[float, Optional[Dict[str, Any]], Optional[str]]] = {}
         self._base: Dict[str, Tuple[Tuple[float, int], np.ndarray]] = {}
 
     def path(self, name: str) -> Path:
@@ -103,8 +111,24 @@ class AtlasIndex:
             with np.load(p, allow_pickle=False) as z:
                 data = {k: z[k] for k in z.files}
             data["meta"] = meta_of(data)
-            self._cache[name] = (mt, data)
-            return data
+            why = self._refusal(name, data)
+            self._cache[name] = (mt, None if why else data, why)
+            return None if why else data
+
+    def _refusal(self, name: str, data: Dict[str, Any]) -> Optional[str]:
+        """Why a file does not belong to the model read here, in plain words; None when it does."""
+        meta = data["meta"]
+        if self.model is not None and meta.get("model") is not None and meta.get("model") != self.model:
+            return f"built for {meta.get('model')}, not {self.model}: rebuild it (scripts/atlas_build.py)"
+        arr = data.get(SHAPE_KEY.get(name, ""))
+        if self.shape is not None and arr is not None and tuple(arr.shape[:2]) != self.shape:
+            return (f"shaped for {arr.shape[0]} layers x {arr.shape[1]} neurons, not {self.shape[0]} x {self.shape[1]}: "
+                    "rebuild it (scripts/atlas_build.py)")
+        return None
+
+    def refused(self, name: str) -> Optional[str]:
+        hit = self._cache.get(name)
+        return hit[2] if hit else None
 
     def status(self) -> Dict[str, Any]:
         """Which indexes exist here, and their provenance."""
@@ -114,7 +138,10 @@ class AtlasIndex:
             if not p.exists():
                 out[name] = {"built": False}
                 continue
-            d = self.get(name) or {}
+            d = self.get(name)
+            if d is None:
+                out[name] = {"built": False, "file": str(p), "refused": self.refused(name)}
+                continue
             out[name] = {"built": True, "file": str(p), "bytes": p.stat().st_size, **d.get("meta", {})}
         return out
 

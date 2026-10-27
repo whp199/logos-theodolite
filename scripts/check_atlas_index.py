@@ -203,6 +203,17 @@ def main() -> int:
     check(all(qu - ku > 1 and ku > 0 for h in heads.values() for _, _, qu, ku in h["pairs"]), "profiles: a pair one unit back")
     section("head profiles: shares add up to one per read, pairs reach further back", before)
 
+    before = len(failures)
+    mine = AtlasIndex(out, model=rt.model_id, shape=(L, N))
+    check(all(mine.get(k_) is not None for k_ in ("lens", "act_scale", "wiring", "steer_lens", "layout")), "the model's own indexes are read")
+    other = AtlasIndex(out, model="google/gemma-4-31B-it", shape=(L, N))
+    st = other.status()
+    check(other.get("lens") is None and not st["lens"]["built"] and "built for" in st["lens"]["refused"], f"another model's index refused: {st['lens']}")
+    wide = AtlasIndex(out, model=rt.model_id, shape=(L, N + 1))
+    check(wide.get("wiring") is None and "shaped for" in wide.status()["wiring"]["refused"], "an index of another shape refused")
+    check(other.face_ids(1, 2, "+", "lens") is None and other.cone(1, 2) == [] and other.links(1, 2) is None, "a refused index reads as not built")
+    section("an index built for another model, or of another shape, is not read", before)
+
     shutil.rmtree(out, ignore_errors=True)
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

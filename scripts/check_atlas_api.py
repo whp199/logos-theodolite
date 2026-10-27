@@ -460,7 +460,7 @@ def main() -> int:
     s = c.get("/api/atlas/search", params={"q": word, "limit": 2000}).json()
     hit = [x for x in s["results"] if (x["layer"], x["n"], x["sign"]) == (*probe, "+")]
     check(s["ready"] and s["tokens"] > 0 and hit and hit[0]["rank"] == 0, f"/search {word!r}: finds {probe} + at rank 0")
-    check(all(x["words"]["check"] is not None and "in_census" in x and "name" in x for x in s["results"]), "/search: each face's words and check")
+    check(all(x["words"]["check"] is not None and "census" in x and "name" in x for x in s["results"]), "/search: each face's words and check")
     raw = c.get("/api/atlas/web", params={"layer": 2, "n": 5})
     arr = np.frombuffer(raw.content, np.int16).reshape(-1, 6)
     want_web = idx.cone(2, 5, 2, 15.0, 20000, 5, None)
@@ -601,6 +601,11 @@ def main() -> int:
     check(c.get("/api/atlas/arch").json()["census"] == {"3": run.name} and c.get("/api/health").json()["atlas"]["census_layers"] == [3],
           "/arch and /api/health name the layer with a census")
     check(c.get("/api/atlas/neuron", params={"layer": 3, "n": 7}).json()["census"]["n_rollouts"] == 9, "/neuron: its census")
+    atlas_routes._runs_cache.clear()
+    cw = atlas_routes.census_words(3, rt.model_id)
+    check(set(cw) == {7, 9} and "ocean" in cw[7] and "banana" in cw[9], f"census words of a ranked layer: {cw}")
+    into3 = [x for x in c.get("/api/atlas/neuron/wiring", params={"layer": 1, "n": 4, "k": 64}).json()["down"] if x["layer"] == 3]
+    check(all(x["census"] == cw.get(x["n"], []) for x in into3), "/neuron/wiring: a linked neuron's census words")
     section("the census routes", before)
 
     # ----------------------------------------------------------------------------------------------- 10. the GPU lock

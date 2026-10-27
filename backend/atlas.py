@@ -92,13 +92,14 @@ def bind(get_state: Callable[[], Tuple[Any, Any]], gpu_lock: asyncio.Lock) -> No
     _get_state, _gpu_lock = get_state, gpu_lock
 
 
-def health_card() -> Dict[str, Any]:
+def health_card(rt: Any) -> Dict[str, Any]:
     """What /api/health says of the atlas: that its routes exist here, which indexes are on disk (by file: none is
-    loaded for it), which layers have a census, and where the field notes are kept."""
+    loaded for it; GET /arch says whether each fits this model), which layers have a census of this model, and where
+    the field notes are kept."""
     root = AtlasIndex().root
     return {"version": ATLAS_VERSION, "routes": router.prefix, "index_folder": str(root),
             "indexes": {name: (root / f).exists() for name, f in FILES.items()},
-            "census_layers": sorted(cz.layer_runs()), "field_notes": str(fn.field_notes_path())}
+            "census_layers": sorted(cz.layer_runs(model=getattr(rt, "model_id", None))), "field_notes": str(fn.field_notes_path())}
 
 
 def atlas() -> "Atlas":
@@ -159,7 +160,7 @@ class Atlas:
         self.L, self.N, self.D = self.w.n_layers, self.w.d_ff, self.w.d_model
         self.shapes = [ao.attn_shape(self.lm, l) for l in range(self.L)]
         self.spaces = ao.HeadSpaces(self.w, self.shapes)
-        self.index = AtlasIndex()
+        self.index = AtlasIndex(model=getattr(rt, "model_id", None), shape=(self.L, self.N))
         self.W_U = rt.lm_head_weight
         self._vocab: Optional[List[str]] = None
         self._vocab_lock = threading.Lock()
@@ -492,7 +493,7 @@ async def arch() -> Dict[str, Any]:
                     "values_from_keys": s.values_from_keys, "window": s.window} for s in a.shapes],
         "layer_scalars": [round(float(x), 5) for x in a.w.scalars.tolist()],
         "indexes": status,
-        "census": {str(l): p.name for l, p in sorted(cz.layer_runs().items())},
+        "census": {str(l): p.name for l, p in sorted(cz.layer_runs(model=a.rt.model_id).items())},
         "push": {"modes": list(ao.PUSH_MODES), "spare_bos": True, "units": {
             "add": "a share of the stream's median length leaving the layer, along the neuron's write direction",
             "mul": "a factor on the neuron's own activation (0 silences it)",
@@ -536,12 +537,46 @@ async def post_note(body: NoteRequest) -> Dict[str, Any]:
 
 _census_cache: Dict[int, Dict[str, Any]] = {}
 _census_lock = threading.Lock()
+_runs_cache: Dict[Any, Tuple[float, Dict[int, Any]]] = {}
+_census_words: Dict[int, Tuple[Any, Dict[int, List[str]]]] = {}
 
 
-def census_layer(layer: int) -> Optional[Dict[str, Any]]:
-    """A layer's census run, its rows slimmed to what the page shows and its ranking (made beside it once, when missing
-    or older than the run)."""
-    path = cz.layer_runs().get(int(layer))
+def census_runs(model: Optional[str]) -> Dict[int, Any]:
+    """`census.layer_runs` for the model read here, looked up again at most every five seconds (every wiring row asks)."""
+    import time
+
+    key = (str(cz.census_dir()), model)
+    hit = _runs_cache.get(key)
+    if hit and time.monotonic() - hit[0] < 5.0:
+        return hit[1]
+    runs = cz.layer_runs(model=model)
+    _runs_cache[key] = (time.monotonic(), runs)
+    return runs
+
+
+def census_words(layer: int, model: Optional[str]) -> Dict[int, List[str]]:
+    """{neuron: its first four census words} for a layer whose census is ranked, from the ranking file alone (the
+    reference's `ranked_words`): what the atlas shows beside a linked neuron."""
+    path = census_runs(model).get(int(layer))
+    if path is None:
+        return {}
+    up = cz.units_path_of(path)
+    try:
+        key = (str(up), up.stat().st_mtime)
+    except FileNotFoundError:
+        return {}
+    hit = _census_words.get(int(layer))
+    if hit and hit[0] == key:
+        return hit[1]
+    words = {int(u["neuron"]): [w for w, _, _ in u["words"][:4]] for u in cz.read_rows(up) if u["kind"] == "neuron"}
+    _census_words[int(layer)] = (key, words)
+    return words
+
+
+def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
+    """A layer's census run (of the model read here), its rows slimmed to what the page shows and its ranking (made
+    beside it once, when missing or older than the run)."""
+    path = cz.layer_runs(model=model).get(int(layer))
     if path is None:
         return None
     units_path = cz.units_path_of(path)
@@ -567,7 +602,7 @@ def census_layer(layer: int) -> Optional[Dict[str, Any]]:
 
 @router.get("/census/units")
 async def census_units(layer: int) -> List[Dict[str, Any]]:
-    d = await asyncio.to_thread(census_layer, layer)
+    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
     if d is None:
         return []
     notes = (await fn.all_notes())["neurons"]
@@ -578,7 +613,7 @@ async def census_units(layer: int) -> List[Dict[str, Any]]:
 
 @router.get("/census/unit")
 async def census_unit(layer: int, n: int, kind: str = "neuron") -> Dict[str, Any]:
-    d = await asyncio.to_thread(census_layer, layer)
+    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
     notes = (await fn.all_notes())["neurons"]
     out: Dict[str, Any] = {"layer": layer, "n": n, "kind": kind, "name": (notes.get(fn.note_key(layer, n)) or {}).get("name", "")}
     if d is None:
@@ -599,7 +634,7 @@ async def census_unit(layer: int, n: int, kind: str = "neuron") -> Dict[str, Any
 
 @router.get("/census/rollout")
 async def census_rollout(layer: int, i: int) -> Dict[str, Any]:
-    d = await asyncio.to_thread(census_layer, layer)
+    d = await asyncio.to_thread(census_layer, layer, atlas().rt.model_id)
     if d is None or not 0 <= i < len(d["rows"]):
         raise HTTPException(status_code=404, detail="There is no such answer in this layer's census.")
     r = d["rows"][i]
@@ -608,7 +643,7 @@ async def census_rollout(layer: int, i: int) -> Dict[str, Any]:
 
 @router.get("/census/spread")
 async def census_spread(layer: int) -> Any:
-    path = cz.layer_runs().get(int(layer))
+    path = cz.layer_runs(model=atlas().rt.model_id).get(int(layer))
     if path is None:
         return {}
     sp = cz.spread_path_of(path)
@@ -679,10 +714,13 @@ async def neuron_steer_lens(layer: int, n: int) -> Dict[str, Any]:
 
 
 def _decorate(a: Atlas, rows: List[Dict[str, Any]], notes: Dict[str, Any], edited: set) -> List[Dict[str, Any]]:
+    """Each linked neuron with the face the link drives, that face's words (with their check), its census words and
+    its name."""
     out = []
     for c in rows:
         face = "+" if c["sign"] > 0 else "-"
         out.append({**c, "face": face, "words": a.face(c["layer"], c["n"], face, 5, edited),
+                    "census": census_words(c["layer"], a.rt.model_id).get(c["n"], []),
                     "name": (notes.get(fn.note_key(c["layer"], c["n"])) or {}).get("name", "")})
     return out
 
@@ -771,11 +809,8 @@ async def search(q: str, limit: int = 300) -> Dict[str, Any]:
         if not len(match):
             return {"ready": True, "results": [], "tokens": 0, "total": 0}
         rows, total = a.index.search(match, max(1, min(int(limit), 2000)))
-        census: Dict[int, set] = {}
-        for l in {r["layer"] for r in rows}:
-            d = _census_cache.get(l)
-            census[l] = {u["neuron"] for u in d["units"] if u["kind"] == "neuron"} if d else set()
-        res = [{**r, "words": a.face(r["layer"], r["n"], r["sign"], 6, edited), "in_census": r["n"] in census[r["layer"]],
+        res = [{**r, "words": a.face(r["layer"], r["n"], r["sign"], 6, edited),
+                "census": census_words(r["layer"], a.rt.model_id).get(r["n"]),
                 "name": (notes.get(fn.note_key(r["layer"], r["n"])) or {}).get("name", "")} for r in rows]
         return {"ready": True, "results": res, "tokens": int(len(match)), "total": total}
 
@@ -1470,6 +1505,7 @@ async def cone(layer: int, n: int, k: int = 2, limit: int = 120) -> Dict[str, An
                          "neuron, hop < 0 feeds it; face is the side the chain of link signs drives"),
                 "nodes": [{"layer": l, "n": m, "hop": hop, "z": round(z, 1), "face": "+" if sign[(l, m)] > 0 else "-",
                            "words": a.face(l, m, "+" if sign[(l, m)] > 0 else "-", 5, edited),
+                           "census": census_words(l, a.rt.model_id).get(m, []),
                            "name": (notes.get(fn.note_key(l, m)) or {}).get("name") or None} for (l, m), (z, hop) in nodes]}
 
     return await asyncio.to_thread(work)
