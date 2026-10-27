@@ -231,6 +231,7 @@ class Atlas:
         s = self.index.get("act_scale")
         if s is not None:
             return {"p50": [float(x) for x in s["resid_q"][:, 1]], "pos": s["pos"], "neg": s["neg"],
+                    "regimes": {k: s[k] for k in ("pp", "nn", "pn", "np")},
                     "source": {"kind": "index", "corpus": s["meta"].get("corpus"), "tokens": int(s["tokens"]),
                                "built_at": s["meta"].get("built_at")}}
         key = self.edit_key()
@@ -239,6 +240,7 @@ class Atlas:
             ex = ao.activation_extremes(self.lm, ids)
             self._scales = {k2: v for k2, v in self._scales.items() if not k2}  # keep the clean model's
             self._scales[key] = {"p50": ao.stream_p50(ex), "pos": ex.pos.numpy(), "neg": ex.neg.numpy(),
+                                 "regimes": {k: getattr(ex, k).numpy() for k in ("pp", "nn", "pn", "np")},
                                  "source": {"kind": "study_texts", "corpus": "the study's 36 texts (provisional)",
                                             "tokens": ex.tokens, "edits_in_force": list(key)}}
         return self._scales[key]
@@ -247,8 +249,12 @@ class Atlas:
         sc = sc or self._scales_if_ready()
         if sc is None:
             return None
-        return {"act_max": round(float(sc["pos"][layer, n]), 4), "act_min": round(float(sc["neg"][layer, n]), 4),
-                "over_tokens": sc["source"]["tokens"], "source": sc["source"]["corpus"]}
+        out = {"act_max": round(float(sc["pos"][layer, n]), 4), "act_min": round(float(sc["neg"][layer, n]), 4),
+               "over_tokens": sc["source"]["tokens"], "source": sc["source"]["corpus"]}
+        if sc.get("regimes") is not None:
+            # each GeGLU sign regime's extreme: (+gate, +up), (-gate, -up) on the positive side; (+, -), (-, +) negative
+            out["regimes"] = {k: round(float(v[layer, n]), 4) for k, v in sc["regimes"].items()}
+        return out
 
     def _scales_if_ready(self) -> Optional[Dict[str, Any]]:
         s = self.index.get("act_scale")

@@ -143,40 +143,48 @@ def take_warning() -> Optional[str]:
 BROKEN = "holds a broken character (half of an emoji, say), which cannot be kept"
 
 
-def check_note(kind: Any, name: Any, note: Any, by: Any) -> Tuple[str, str, str, str]:
+def check_note(kind: Any, name: Any, note: Any, by: Any) -> Tuple[str, Optional[str], Optional[str], str]:
     """(kind, name, note, by) cleaned, or a ValueError saying in plain words what is wrong. The name is trimmed and
-    must be one line; the note is kept as written."""
+    must be one line; the note is kept as written. A name or note left out (None) is kept as it is (`write_note`)."""
     if kind not in KINDS:
         raise ValueError('kind must be "neuron" or "head".')
-    name = "" if name is None else str(name).strip()
-    note = "" if note is None else str(note)
+    name = None if name is None else str(name).strip()
+    note = None if note is None else str(note)
     by = "reader" if by is None else str(by)
-    if len(name) > MAX_NAME:
-        raise ValueError(f"A name can hold at most {MAX_NAME} characters.")
-    if _has_control(name):
-        raise ValueError("A name cannot hold control characters (a new line or tab, say).")
-    if len(note) > MAX_NOTE:
-        raise ValueError(f"A note can hold at most {MAX_NOTE} characters.")
-    if _has_broken(name):
-        raise ValueError(f"The name {BROKEN}.")
-    if _has_broken(note):
-        raise ValueError(f"The note {BROKEN}.")
+    if name is None and note is None:
+        raise ValueError("Give a name, a note, or both (empty strings clear them).")
+    if name is not None:
+        if len(name) > MAX_NAME:
+            raise ValueError(f"A name can hold at most {MAX_NAME} characters.")
+        if _has_control(name):
+            raise ValueError("A name cannot hold control characters (a new line or tab, say).")
+        if _has_broken(name):
+            raise ValueError(f"The name {BROKEN}.")
+    if note is not None:
+        if len(note) > MAX_NOTE:
+            raise ValueError(f"A note can hold at most {MAX_NOTE} characters.")
+        if _has_broken(note):
+            raise ValueError(f"The note {BROKEN}.")
     if by not in WRITERS:
         raise ValueError(f'by must be one of {", ".join(WRITERS)}.')
     return kind, name, note, by
 
 
 async def write_note(
-    kind: str, layer: int, index: int, name: str, note: str, by: str, path: Optional[Path] = None
+    kind: str, layer: int, index: int, name: Optional[str], note: Optional[str], by: str, path: Optional[Path] = None
 ) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
-    """Keep (or, with an empty name and note, forget) one entry; returns (the entry or None, all the notes). The
-    arguments are those `check_note` returns; the layer and index are checked by the caller against the model."""
+    """Keep one entry, its name or note left out (None) kept as it was; an entry whose name and note are both empty is
+    forgotten. Returns (the entry or None, all the notes). The arguments are those `check_note` returns; the layer and
+    index are checked by the caller against the model."""
     path = path or field_notes_path()
     key = note_key(layer, index)
     table = KINDS[kind]
     async with _LOCK:
         data = read_notes(path)
         entries: Dict[str, Any] = data[table]
+        old = entries.get(key) or {}
+        name = old.get("name", "") if name is None else name
+        note = old.get("note", "") if note is None else note
         if not name and not note:
             entries.pop(key, None)
             entry = None

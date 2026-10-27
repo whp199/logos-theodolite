@@ -235,7 +235,9 @@ def main() -> int:
     nl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()
     check(nl["steer"] == sl, "/neuron/lens: the steer lens read live is kept")
     check(nl["act_range"] == {"act_max": round(float(ex.pos[2, 5]), 4), "act_min": round(float(ex.neg[2, 5]), 4),
-                              "over_tokens": ex.tokens, "source": "the study's 36 texts (provisional)"}, f"/neuron/lens act_range {nl['act_range']}")
+                              "over_tokens": ex.tokens, "source": "the study's 36 texts (provisional)",
+                              "regimes": {k: round(float(getattr(ex, k)[2, 5]), 4) for k in ("pp", "nn", "pn", "np")}},
+          f"/neuron/lens act_range {nl['act_range']}")
 
     # the push chat
     prompt = "Who are you?"
@@ -548,6 +550,14 @@ def main() -> int:
                       ({"kind": "neuron", "index": 0, "name": "a"}, "names its layer and its index")]:
         r = c.post("/api/atlas/notes", json=bad)
         check(r.status_code == 400 and says in r.json()["detail"], f"/notes refused {bad}: {r.status_code} {r.text[:120]}")
+    r = c.post("/api/atlas/notes", json={"kind": "neuron", "layer": 2, "index": 5, "name": "bob's car", "by": "scientist"})
+    check(r.json()["entry"]["note"] == "fires on Bob\nand his car" and r.json()["entry"]["by"] == "scientist", "/notes: a new name keeps the note")
+    r = c.post("/api/atlas/notes", json={"kind": "neuron", "layer": 2, "index": 5, "note": "only Bob"})
+    check(r.json()["entry"]["name"] == "bob's car" and r.json()["entry"]["note"] == "only Bob", "/notes: a new note keeps the name")
+    r = c.post("/api/atlas/notes", json={"kind": "neuron", "layer": 2, "index": 5})
+    check(r.status_code == 400 and "Give a name, a note" in r.json()["detail"], "/notes: neither a name nor a note refused")
+    r = c.post("/api/atlas/notes", json={"kind": "neuron", "layer": 2, "index": 5, "name": ""})
+    check(r.json()["entry"] == {**r.json()["entry"], "name": "", "note": "only Bob"}, "/notes: an empty name clears the name only")
     r = c.post("/api/atlas/notes", json={"kind": "neuron", "layer": 2, "index": 5, "name": "", "note": ""})
     check(r.json()["entry"] is None and "2:5" not in c.get("/api/atlas/notes").json()["neurons"], "/notes: an empty name and note forget it")
     notes_file.write_text("{not json", encoding="utf-8")
