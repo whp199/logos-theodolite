@@ -222,8 +222,14 @@ browser against it, but nothing yet on Gemma-4-31B itself.
   what wakes a neuron.
 - **Two kinds of names.** A neuron's folio keeps its name and field notes in the browser; the atlas keeps names and notes
   on the server, shared. They do not yet see each other.
-- **The scientist's reach.** Under Claude Code or Codex it has a pre-approved shell and file tools in the home folder,
-  as neuron-explorer's does; a narrower setting (no shell, or a sandboxed folder) is not offered yet.
+- **The scientist's reach.** Since the review of 27 October 2026 it reads, writes and edits files only in its work
+  folder under Claude Code, with no shell, and runs Codex's shell in its workspace-write sandbox;
+  `THEODOLITE_SCIENTIST_REACH=home` gives neuron-explorer's shell over the home folder, and the page asks first. Still
+  open: the folder rules are checked against a fake `claude`, not yet the real CLI (`Read(//<work>/**)` and the rest
+  should be tried once with a login); Codex in its sandbox can still read files outside its folder; an endpoint's
+  model can still write names and notes that a later chat reads (they are marked as stored text, but no page asks the
+  person first); and another account on this machine can reach the server's loopback port (the guard checks the peer
+  is this machine, not which user it is).
 - **neuron-explorer's licence.** Parts of the atlas adapt neuron-explorer's code and prompts, and that repository carries
   no licence (`NOTICE`). Ask its author for one, or rewrite those parts.
 - **Not carried over:** the explorer's HF-against-vLLM steering check (the atlas runs on one runtime) and its steered
