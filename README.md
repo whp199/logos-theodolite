@@ -467,9 +467,13 @@ endpoint its model, in the scientist’s tab; a key is read from the environment
 that takes tool calls.
 
 > [!WARNING]
-> Under Claude Code or Codex the scientist has a shell and file tools in your home folder, pre-approved: it runs commands
-> and edits files there without asking. Run it only where you would let it. Over an endpoint it has the atlas’s tools
-> only, but your messages and what the tools read are sent to that endpoint (OpenRouter is a third-party service).
+> By default, under Claude Code the scientist reads, writes and edits files only in its own work folder and has no
+> shell; under Codex its shell runs in a sandbox that writes only there and has no network, though it can read files
+> elsewhere. `THEODOLITE_SCIENTIST_REACH=home` gives it neuron-explorer’s own reach: a shell and file tools over your
+> home folder, pre-approved, so it runs commands and edits files there without asking, and what it reads (the model’s
+> answers, names and notes, attachments) can steer it; the page asks once before the first such chat. Over an endpoint
+> it has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint (OpenRouter is a
+> third-party service).
 
 **Reproduce the study**
 

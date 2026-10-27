@@ -128,12 +128,13 @@ Seen in Qwen3.5-4B by the explorer's authors; whether they hold in Gemma-4-31B i
 
 ## Reference neurons in Gemma-4-31B
 
-None established in this atlas yet. When a neuron's explanation survives its breaking test, add it here, one line:
-`L54 N15491+`: what it does, the evidence's strongest number.
+None established in this atlas yet. The person adds them here, after review. When a neuron's explanation survives its
+breaking test, propose it at the end of your report, one line: `L54 N15491+`: what it does, the evidence's strongest
+number.
 
 ## Reference heads in Gemma-4-31B
 
-None established yet; add them as above.
+None established yet; propose them as above.
 
 ## Practical notes
 

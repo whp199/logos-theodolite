@@ -5,10 +5,19 @@ After the explorer's chat (lyramakesmusic/neuron-explorer, explorer/server.py, "
 three backends; a chat keeps the one it starts with:
 - "claude": Claude Code (`claude -p`, stream-json in and out), one process per chat kept open, so a message sent while
   it works reaches it between tool calls and an interrupt stops the reply without ending the process. Its tools are
-  the atlas's (backend/scientist_mcp.py, over MCP) and its own file tools and shell. The conversation is Claude Code's
-  own session (`~/.claude/projects/.../<chat>.jsonl`), resumed turn by turn.
-- "codex": Codex (`codex app-server`, JSON-RPC), the same MCP tools and Codex's own shell, in a Codex home of its own
-  (the person's login, model and effort, nothing else).
+  the atlas's (backend/scientist_mcp.py, over MCP) and its own file tools, within its reach (`reach`). The conversation
+  is Claude Code's own session (`~/.claude/projects/.../<chat>.jsonl`), resumed turn by turn.
+- "codex": Codex (`codex app-server`, JSON-RPC), the same MCP tools and Codex's own shell, within its reach, in a
+  Codex home of its own (the person's login, model and effort, nothing else).
+
+Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code to reading, writing and editing files in
+its work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (writes only in the work folder,
+no network). "home" is the explorer's own setting, taken only when the person sets it: Claude Code's Read, Glob, Grep,
+Write, Edit and Bash pre-approved over the home folder, Codex with full access and never asking. Either way the
+person's own Claude Code settings are not loaded, the endpoints' keys are not passed to either process, and the page
+says what the chosen backend can do (`REACH_WORDS`), asking once before the first chat when it is "home". What a
+scientist reads (model output, census answers, names and notes, attachments) can carry instructions; with a shell
+over the home folder nothing stands between them and it.
 - "openai": any OpenAI-compatible Chat Completions endpoint (LM Studio, Ollama, OpenRouter, vLLM, llama.cpp's server)
   that supports tool calling. The endpoint runs no tools, so the server runs the loop: it streams the model's reply,
   runs each tool call through the atlas's own routes in this process, sends the results back, and goes on until the
@@ -62,6 +71,16 @@ MCP_SCRIPT = ROOT_DIR / "backend" / "scientist_mcp.py"
 SCIENTIST_DIR_ENV = "THEODOLITE_SCIENTIST_DIR"
 AGENTS = ("claude", "codex", "openai")
 FILE_TOOLS = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
+REACH_ENV = "THEODOLITE_SCIENTIST_REACH"
+# what each backend can do beyond the atlas's tools, said on the page
+REACH_WORDS = {
+    "folder": {"claude": "reads, writes and edits files only in its own work folder, and has no shell",
+               "codex": "runs commands in a sandbox that writes only in its own work folder and has no network; it can read files elsewhere",
+               "openai": "has the atlas's tools and nothing else: no shell, no files"},
+    "home": {"claude": "has a shell, and reads, changes and runs anything in your home folder without asking",
+             "codex": "has a shell with full access to this machine, and never asks before it acts",
+             "openai": "has the atlas's tools and nothing else: no shell, no files"},
+}
 MCP_PREFIX = "mcp__atlas__"
 CHAT_IDLE = 30 * 60  # seconds without listeners or turns before a chat's input is closed (it exits once its work is done)
 MAX_ROUNDS = 40  # tool rounds in one openai turn
@@ -107,9 +126,22 @@ def _bin(name: str) -> str:
     return os.environ.get(f"THEODOLITE_{name.upper()}_BIN", name)
 
 
+def reach() -> str:
+    """How far a Claude Code or Codex scientist reaches beyond the atlas's tools (module docstring): "folder" unless the
+    person sets $THEODOLITE_SCIENTIST_REACH=home."""
+    return "home" if os.environ.get(REACH_ENV, "").strip().lower() == "home" else "folder"
+
+
+def child_env(**extra: str) -> Dict[str, str]:
+    """The environment a Claude Code or Codex process starts with: this one's, less every endpoint's key."""
+    keys = {p.get("key_env") for p in profiles().values()} | {"THEODOLITE_OPENAI_API_KEY", "OPENROUTER_API_KEY"}
+    return {**{k: v for k, v in os.environ.items() if k not in keys}, **extra}
+
+
 # ------------------------------------------------------------------------------------------------------- the prompt
 
 SHELL_START, SHELL_END = "<!-- shell -->", "<!-- /shell -->"
+FOLDER_START, FOLDER_END = "<!-- folder -->", "<!-- /folder -->"
 CODEX_NOTE = """
 
 ## This session
@@ -118,6 +150,12 @@ You are running as Codex. Your shell and file editing are Codex's own: where the
 Write, Edit or Bash, use your shell and apply_patch. Start anything that runs longer than about a minute detached
 (`nohup {PYTHON} script.py > script.log 2>&1 &`), say where the log is, and end your reply; read the log in a later
 turn."""
+CODEX_FOLDER_NOTE = """
+
+## This session
+
+You are running as Codex, your shell in a sandbox: it writes only in `{WORK}` and has no network, so a script cannot
+reach the instrument's API; use the atlas's tools for every reading."""
 OPENAI_NOTE = """
 
 ## This session
@@ -134,12 +172,18 @@ def system_prompt(agent: str, self_url: str) -> str:
     local = scientist_dir() / "prompt.local.md"
     if local.exists():
         text += "\n\n" + local.read_text(encoding="utf-8").rstrip()
+    cut = lambda t, a, b: re.sub(re.escape(a) + r".*?" + re.escape(b), "", t, flags=re.S)  # noqa: E731
+    keep = lambda t, a, b: t.replace(a, "").replace(b, "")  # noqa: E731
     if agent == "openai":
-        text = re.sub(re.escape(SHELL_START) + r".*?" + re.escape(SHELL_END), "", text, flags=re.S) + OPENAI_NOTE
-    else:
-        text = text.replace(SHELL_START, "").replace(SHELL_END, "")
+        text = cut(cut(text, SHELL_START, SHELL_END), FOLDER_START, FOLDER_END) + OPENAI_NOTE
+    elif reach() == "home":
+        text = keep(cut(text, FOLDER_START, FOLDER_END), SHELL_START, SHELL_END)
         if agent == "codex":
             text += CODEX_NOTE
+    else:
+        text = keep(cut(text, SHELL_START, SHELL_END), FOLDER_START, FOLDER_END)
+        if agent == "codex":
+            text += CODEX_FOLDER_NOTE
     return (text.replace("{ROOT}", str(ROOT_DIR)).replace("{API}", self_url).replace("{WORK}", str(work_dir()))
             .replace("{PYTHON}", sys.executable).strip() + "\n")
 
@@ -374,12 +418,17 @@ def _session_file(sid: str) -> Optional[str]:
 def _claude_cmd(cid: str, self_url: str) -> List[str]:
     mcp = {"mcpServers": {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)],
                                     "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": cid}}}}
+    if reach() == "home":
+        # file tools and a shell over the home folder, pre-approved, so it can run scripts against this server
+        tools = ["--tools", *FILE_TOOLS, "--allowedTools", "mcp__atlas", *FILE_TOOLS, "--add-dir", os.path.expanduser("~")]
+    else:
+        # files only in its work folder (an absolute path in a rule begins with //), no shell
+        w = str(work_dir()).rstrip("/")
+        tools = ["--tools", "Read", "Write", "Edit", "--allowedTools", "mcp__atlas", *[f"{t}(/{w}/**)" for t in ("Read", "Write", "Edit")],
+                 "--disallowedTools", "Bash"]
     cmd = [_bin("claude"), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
            "--include-partial-messages", "--system-prompt-file", str(prompt_file("claude", self_url)),
-           "--mcp-config", json.dumps(mcp), "--strict-mcp-config",
-           # file tools and a shell, so it can run scripts against this server
-           "--tools", *FILE_TOOLS, "--allowedTools", "mcp__atlas", *FILE_TOOLS,
-           "--add-dir", os.path.expanduser("~"), "--setting-sources", "project"]
+           "--mcp-config", json.dumps(mcp), "--strict-mcp-config", *tools, "--setting-sources", "project"]
     if os.environ.get("THEODOLITE_CLAUDE_MODEL"):
         cmd += ["--model", os.environ["THEODOLITE_CLAUDE_MODEL"]]
     return cmd + (["--resume", cid] if _session_file(cid) else ["--session-id", cid])
@@ -477,7 +526,7 @@ async def _ensure_claude(c: Dict[str, Any], self_url: str) -> Any:
     if not shutil.which(_bin("claude")):
         raise RuntimeError("Claude Code (the `claude` command) is not installed where the server runs.")
     # its own process group, so ending a chat also ends what it started (the MCP server, its scripts)
-    proc = c["proc"] = await asyncio.create_subprocess_exec(*_claude_cmd(c["session"], self_url), cwd=str(work_dir()),
+    proc = c["proc"] = await asyncio.create_subprocess_exec(*_claude_cmd(c["session"], self_url), cwd=str(work_dir()), env=child_env(),
                                                             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                                                             stderr=asyncio.subprocess.PIPE, limit=1 << 24, start_new_session=True)
     c["pump"] = asyncio.create_task(_pump_claude(c, proc))
@@ -625,7 +674,7 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
         return proc
     if not shutil.which(_bin("codex")):
         raise RuntimeError("Codex (the `codex` command) is not installed where the server runs.")
-    env = {**os.environ, "CODEX_HOME": _codex_home()}
+    env = child_env(CODEX_HOME=_codex_home())
     proc = c["proc"] = await asyncio.create_subprocess_exec(_bin("codex"), "app-server", cwd=str(work_dir()), env=env,
                                                             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                                                             stderr=asyncio.subprocess.DEVNULL, limit=1 << 24, start_new_session=True)
@@ -633,7 +682,8 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
     c["pump"] = asyncio.create_task(_pump_codex(c, proc))
     await _rpc(c, "initialize", {"clientInfo": {"name": "logos-theodolite", "version": "1"}})
     mcp = {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)], "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": c["session"]}}}
-    opts = {"cwd": str(work_dir()), "approvalPolicy": "never", "sandbox": "danger-full-access", "config": {"mcp_servers": mcp},
+    sandbox = "danger-full-access" if reach() == "home" else "workspace-write"  # module docstring: reach
+    opts = {"cwd": str(work_dir()), "approvalPolicy": "never", "sandbox": sandbox, "config": {"mcp_servers": mcp},
             "developerInstructions": system_prompt("codex", self_url)}
     thread = _meta().get(c["session"], {}).get("thread")
     r = await _rpc(c, "thread/resume", {"threadId": thread, **opts}) if thread else await _rpc(c, "thread/start", opts)
@@ -929,6 +979,7 @@ async def backends() -> Dict[str, Any]:
     return {"claude": {"available": bool(shutil.which(_bin("claude"))), "model": os.environ.get("THEODOLITE_CLAUDE_MODEL")},
             "codex": {"available": bool(shutil.which(_bin("codex")))},
             "openai": [profile_card(k, v) for k, v in ps.items()], "warning": _profile_warning,
+            "reach": {"mode": reach(), "env": REACH_ENV, **REACH_WORDS[reach()]},
             "prompt": {"files": [str(p) for p in PROMPT_FILES], "local": str(scientist_dir() / "prompt.local.md")}}
 
 
@@ -1153,7 +1204,12 @@ async def history(chat: str) -> Dict[str, Any]:
                 except ValueError:
                     continue
                 if e.get("t") in ("user", "text", "tool", "tool_result", "error"):
-                    ev.append(e)
+                    # the log keeps each streamed fragment; a reply is their run joined, as the live page shows it (a
+                    # fragment boundary can fall inside a number or a citation)
+                    if e["t"] == "text" and ev and ev[-1].get("t") == "text":
+                        ev[-1] = {**ev[-1], "text": ev[-1].get("text", "") + e.get("text", "")}
+                    else:
+                        ev.append(dict(e))
         return {"chat": cid, "agent": agent, "events": ev, **({"profile": m.get("profile"), "model": m.get("model")} if agent == "openai" else {})}
     path = _session_file(cid)
     if not path:

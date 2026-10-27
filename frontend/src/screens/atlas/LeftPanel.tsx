@@ -3,7 +3,7 @@ import { IfApparatus, LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
 import { cite, citeHead, noteKey, type RunRow, type SearchRow } from "./api";
-import { censusChance, Chips, ErrorLine, FaceLine } from "./parts";
+import { censusChance, Chips, ErrorLine, FaceLine, NameMark } from "./parts";
 import {
   closeFocus,
   goToNeuron,
@@ -63,7 +63,7 @@ const NameField: React.FC<{ layer: number; n: number }> = ({ layer, n }) => {
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />
-      {entry?.by === "scientist" ? <span className="muted atlas-small">named by the scientist</span> : null}
+      {entry?.name && (entry.name_by ?? entry.by) === "scientist" ? <span className="muted atlas-small">named by the scientist: a guess, not a finding</span> : null}
       {saved ? <span className="muted atlas-small">{saved}</span> : null}
     </div>
   );
@@ -283,7 +283,7 @@ const SearchRowItem: React.FC<{ x: SearchRow }> = ({ x }) => (
       {x.rank + 1}
     </span>
     <span className="atlas-w">
-      {x.name ? <b>{x.name} </b> : null}
+      {x.name ? <NameMark layer={x.layer} n={x.n} name={x.name} /> : null}
       <FaceLine layer={x.layer} face={x.sign} w={x.words} k={5} />
     </span>
   </li>
@@ -342,7 +342,7 @@ const CensusRows: React.FC = () => {
             </span>
             <span className="atlas-z">{u.z.toFixed(1)}</span>
             <span className="atlas-w">
-              {u.name ? <b>{u.name} </b> : null}
+              {u.name ? <NameMark layer={layer} n={u.n} name={u.name} /> : null}
               {u.words.join(" ")}
             </span>
           </li>

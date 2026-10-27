@@ -10,7 +10,7 @@ import { heldTag } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { href } from "../../router";
 import { cite, get, noteKey, post, type HeadInfo, type Link, type SteerLens } from "./api";
-import { CensusProvenance, ErrorLine, FaceLine, gateOf, overCeiling, words } from "./parts";
+import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, theMap, useAtlas } from "./state";
 
 const CensusStats: React.FC = () => {
@@ -258,7 +258,9 @@ const LinkRows: React.FC<{ list: Link[]; title: string; side: "down" | "up" }> =
                 <FaceLine layer={c.layer} face={face} w={c.words} k={4} />
                 {side === "down" && gate ? <div className="muted atlas-small">when this one fires {gate}</div> : null}
                 {c.name ? (
-                  <div className="muted atlas-small">{c.name}</div>
+                  <div className="muted atlas-small">
+                    <NameMark layer={c.layer} n={c.n} name={c.name} />
+                  </div>
                 ) : c.census?.length ? (
                   <div className="muted atlas-small">
                     <span className="atlas-src">census</span>
@@ -442,7 +444,10 @@ const NoteField: React.FC = () => {
         }}
       />
       <p className="muted atlas-small" style={{ margin: 0 }}>
-        {state ?? (entry ? `${entry.by === "scientist" ? "the scientist" : "you"}, ${new Date(entry.at).toLocaleString()}` : "kept on the server, beside the neuron, when you leave the box")}
+        {state ??
+          (entry && entry.note
+            ? `${(entry.note_by ?? entry.by) === "scientist" ? "the scientist" : "you"}, ${new Date(entry.at).toLocaleString()}`
+            : "kept on the server, beside the neuron, when you leave the box")}
       </p>
       <IfApparatus>{notes ? <p className="muted atlas-small mono-wrap">{notes.file}</p> : null}</IfApparatus>
     </section>

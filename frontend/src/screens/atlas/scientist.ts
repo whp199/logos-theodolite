@@ -443,9 +443,10 @@ export function askWeb() {
   );
 }
 
-/** "use name": the name the report gave, kept in the field notes as the reader's. */
+/** "use name": the name the report gave, kept in the field notes as the scientist's (its guess, which the reader takes
+ * up; typing over it makes it the reader's own). */
 export async function takeName(p: Extract<Part, { t: "usename" }>, b: number) {
-  await saveNote(p.layer, p.n, { name: p.name });
+  await saveNote(p.layer, p.n, { name: p.name }, "scientist");
   editParts(b, (parts) => parts.filter((x) => x !== p));
   save();
 }

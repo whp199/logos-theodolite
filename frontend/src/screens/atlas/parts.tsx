@@ -9,7 +9,8 @@ import React from "react";
 import { HeldBackWords } from "../../components/HeldBack";
 import { labelGate, layerIdx, parseLabelCheck } from "../../lib/labels";
 import { wp } from "../../lib/words";
-import type { CensusCard, FaceWords, LensFace, PooledWord } from "./api";
+import { noteKey, type CensusCard, type FaceWords, type LensFace, type PooledWord } from "./api";
+import { useAtlas } from "./state";
 
 export const words = (list: readonly string[] | null | undefined, k = 6) => (list ?? []).slice(0, k).map((t) => wp(t)).join("  ");
 
@@ -115,3 +116,20 @@ export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: 
         : " It has no random controls, so nothing in it is set against chance."}
     </p>
   ) : null;
+
+/** A neuron's name as lists show it, marked when the scientist wrote it (field notes' `name_by`): a guess, not a finding. */
+export const NameMark: React.FC<{ layer: number; n: number; name: string }> = ({ layer, n, name }) => {
+  const e = useAtlas((s) => s.notes?.neurons[noteKey(layer, n)]);
+  const sci = !!e && (e.name_by ?? e.by) === "scientist";
+  return (
+    <b>
+      {name}
+      {sci ? (
+        <span className="atlas-src" title="named by the scientist: a guess, not a finding">
+          {" "}
+          scientist
+        </span>
+      ) : null}{" "}
+    </b>
+  );
+};

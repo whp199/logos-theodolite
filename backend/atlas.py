@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import ipaddress
 import json
 import logging
 import threading
@@ -66,7 +67,18 @@ def local_pages_only(request: Request) -> None:
     scientist chat, a shell, so beside the saved prompts' rule (the Host must name this machine, and so must the
     Origin when there is one: `saved_prompts.same_machine`) a request a browser marks as sent from another site is
     refused even without an Origin (a page's <img> or <script> sends none), unless it is a plain navigation (a link
-    opened from elsewhere reads nothing back), as the reference's `local_only` does."""
+    opened from elsewhere reads nothing back), as the reference's `local_only` does. The peer itself must be this machine
+    too, whatever the headers say, should the server ever listen beyond loopback. A process of another account on this
+    machine still passes: what the scientist's processes may do is bounded by their reach (backend/scientist_chat.py)."""
+    peer = request.client.host if request.client else None
+    try:
+        ip = ipaddress.ip_address(peer) if peer else None
+    except ValueError:
+        ip = None  # not an address (an in-process test client names itself)
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    if ip is not None and not ip.is_loopback:
+        raise HTTPException(status_code=403, detail="The atlas answers only the instrument's own pages, served from this machine.")
     host_header = request.headers.get("host")
     origin = request.headers.get("origin")
     site = request.headers.get("sec-fetch-site")
@@ -777,7 +789,8 @@ def _decorate(a: Atlas, rows: List[Dict[str, Any]], notes: Dict[str, Any], edite
         face = ("+" if c["sign"] > 0 else "-") if side == "down" else ("+" if c["gate"] > 0 else "-")
         out.append({**c, "face": face, "words": a.face(c["layer"], c["n"], face, 5, edited),
                     "census": census_words(c["layer"], a.rt.model_id).get(c["n"], []),
-                    "name": (notes.get(fn.note_key(c["layer"], c["n"])) or {}).get("name", "")})
+                    "name": (notes.get(fn.note_key(c["layer"], c["n"])) or {}).get("name", ""),
+                    "name_by": (notes.get(fn.note_key(c["layer"], c["n"])) or {}).get("name_by")})
     return out
 
 

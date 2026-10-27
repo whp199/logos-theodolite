@@ -2065,3 +2065,10 @@ textarea.atlas-note-box {
   padding-top: 4px;
   font-size: 13px;
 }
+
+/* the scientist's question before a chat with a shell over the home folder */
+.atlas-ack {
+  border: 1px solid var(--rubric);
+  padding: 8px 10px;
+  margin: 6px 0;
+}

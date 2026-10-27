@@ -565,8 +565,8 @@ export function setLeftTab(t: LeftTab) {
 
 /* ---------------------------------------------------------------------------------------------- names, notes */
 
-export async function saveNote(layer: number, n: number, body: { name?: string; note?: string }) {
-  const r = await post<{ entry: unknown; warning: string | null }>("/api/atlas/notes", { kind: "neuron", layer, index: n, by: "reader", ...body });
+export async function saveNote(layer: number, n: number, body: { name?: string; note?: string }, by: "reader" | "scientist" = "reader") {
+  const r = await post<{ entry: unknown; warning: string | null }>("/api/atlas/notes", { kind: "neuron", layer, index: n, by, ...body });
   await loadNotes();
   return r;
 }

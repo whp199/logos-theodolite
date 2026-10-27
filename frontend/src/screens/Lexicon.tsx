@@ -1292,8 +1292,11 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             It runs on Claude Code or Codex where they are installed beside the server, or on any service that speaks
-            OpenAI’s chat completions: LM Studio or Ollama on this machine, OpenRouter, or one you name. What it says is
-            a lead to check: it cites the neurons it read, so open them.
+            OpenAI’s chat completions: LM Studio or Ollama on this machine, OpenRouter, or one you name. Under Claude Code
+            it reads and writes files only in its own work folder and has no shell, unless the server is started to give
+            it a shell over your home folder, which it then uses without asking; the page says which, and asks first.
+            What it says is a lead to check: it cites the neurons it read, so open them, and a name it gives is marked as
+            its own guess.
           </Note>
           <EntryApparatus title="the scientist">
             29 tools (<M>backend/scientist_tools.py</M>), served to Claude Code and Codex over MCP (

@@ -374,7 +374,10 @@ export interface HeadProfile {
 export interface Note {
   name: string;
   note: string;
+  /** who wrote it last; `name_by` and `note_by` who wrote its name and its note */
   by: "reader" | "scientist";
+  name_by?: "reader" | "scientist";
+  note_by?: "reader" | "scientist";
   at: string;
 }
 export interface Notes {
@@ -405,6 +408,8 @@ export interface Backends {
   codex: { available: boolean };
   openai: EndpointCard[];
   warning: string | null;
+  /** what each backend can do beyond the atlas's tools: "folder" (the default) or "home" (a shell over the home folder) */
+  reach?: { mode: "folder" | "home"; env: string; claude: string; codex: string; openai: string };
 }
 export interface ChatEvent {
   t: "state" | "sent" | "text" | "thinking" | "tool" | "tool_result" | "ui" | "error" | "done" | "ping" | "user";

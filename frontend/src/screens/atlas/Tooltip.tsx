@@ -6,7 +6,7 @@ import React, { useLayoutEffect, useRef } from "react";
 import { create } from "zustand";
 import { get, type HeadInfo, type Hover, type NeuronHeads } from "./api";
 import type { Pick } from "./map";
-import { FaceLine } from "./parts";
+import { FaceLine, NameMark } from "./parts";
 import { headRoleLinks, hoverCache, remember, roleHeads, theMap, useAtlas } from "./state";
 
 interface Tip {
@@ -61,7 +61,11 @@ function neuronBody(layer: number, n: number) {
   const from = top.filter((k) => k.role !== "o").slice(0, 4);
   return (
     <>
-      {name ? <div className="atlas-tname">{name}</div> : null}
+      {name ? (
+        <div className="atlas-tname">
+          <NameMark layer={layer} n={n} name={name} />
+        </div>
+      ) : null}
       {u && censusShown ? (
         <div className="atlas-twords">
           <span className="atlas-src">census</span> {u.words.join("  ")}

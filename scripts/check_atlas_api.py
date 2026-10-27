@@ -185,6 +185,20 @@ def main() -> int:
         check(r.status_code == want, f"{method} {path} with {hdrs}: {r.status_code}, wanted {want}")
         if want == 403:
             check("this machine" in r.json().get("detail", ""), f"{method} {path}: the refusal says why")
+    # the peer itself, whatever its headers say: a client on another machine naming this one in Host is refused
+    from fastapi import HTTPException
+    from starlette.requests import Request as _Req
+
+    def peer(addr: str) -> int:
+        scope = {"type": "http", "method": "GET", "path": "/api/atlas/arch", "headers": [(b"host", b"127.0.0.1:8765")], "client": (addr, 5000)}
+        try:
+            atlas_routes.local_pages_only(_Req(scope))
+            return 200
+        except HTTPException as exc:
+            return exc.status_code
+
+    check([peer(a_) for a_ in ("192.168.1.20", "10.0.0.2", "127.0.0.1", "::1", "::ffff:127.0.0.1")] == [403, 403, 200, 200, 200],
+          "who may ask: a peer that is not this machine is refused even with a local Host")
     section("who may ask: other machines and cross-site requests refused, a plain link let through", before)
 
     # --------------------------------------------------------------------------------- 3. before any index is built

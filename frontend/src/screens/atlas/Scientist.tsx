@@ -287,6 +287,8 @@ const Past: React.FC = () => {
 };
 
 /** Which backend a new chat runs on: Claude Code or Codex where installed, or an OpenAI-compatible endpoint and model. */
+const ACK_KEY = "theodolite.atlas.scientist.home-shell";
+
 const BackendPick: React.FC = () => {
   const b = useScientist((s) => s.backends);
   const pick = useScientist((s) => s.pick);
@@ -374,6 +376,18 @@ export const Scientist: React.FC = () => {
   const pastError = useScientist((s) => s.pastError);
   const warning = useScientist((s) => s.backends?.warning ?? null);
   const backendsError = useScientist((s) => s.backendsError);
+  const reach = useScientist((s) => s.backends?.reach);
+  const agent = useScientist((s) => (s.chat && s.chatPick ? s.chatPick : s.pick).agent);
+  const [acked, setAcked] = useState(() => {
+    try {
+      return localStorage.getItem(ACK_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  // a shell over the home folder is asked about once, in this browser, before the first chat runs on it
+  const homeShell = reach?.mode === "home" && (agent === "claude" || agent === "codex");
+  const needsAck = homeShell && !acked;
   const [drop, setDrop] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
@@ -420,7 +434,32 @@ export const Scientist: React.FC = () => {
       </div>
       <ErrorLine error={warning ?? backendsError ?? pastError} />
       {past !== null ? <Past /> : <Thread />}
-      {f && !busy ? (
+      {needsAck && reach ? (
+        <div className="atlas-ack" role="alert">
+          <p className="atlas-small red" style={{ margin: 0 }}>
+            On this server {agent === "codex" ? "Codex" : "Claude Code"} {reach[agent as "claude" | "codex"]}. What it reads (the model’s answers,
+            census answers, names and notes, attachments) can carry instructions, and nothing stands between them and that shell.
+          </p>
+          <p className="muted atlas-small" style={{ margin: "4px 0" }}>
+            Without {reach.env}=home on the server it would only read and write files in its own work folder; an endpoint has no shell at all.
+          </p>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              try {
+                localStorage.setItem(ACK_KEY, "1");
+              } catch {
+                // asked again next time
+              }
+              setAcked(true);
+            }}
+          >
+            I understand: let it run here
+          </button>
+        </div>
+      ) : null}
+      {f && !busy && !needsAck ? (
         <div className="atlas-actions">
           <button type="button" className="btn-ghost plain" onClick={() => void explainFocus()}>
             explain {at}
@@ -446,6 +485,7 @@ export const Scientist: React.FC = () => {
       ) : null}
       <form
         className="atlas-sform"
+        hidden={needsAck}
         onSubmit={(e) => {
           e.preventDefault();
           if (busy && !input.trim()) void stop();
@@ -491,8 +531,13 @@ export const Scientist: React.FC = () => {
         </button>
       </form>
       <Rubric style={{ fontSize: 14, margin: "4px 0 0" }}>
-        The scientist reads the atlas with the same tools the page uses and can move this screen. What it says is a lead to check: it cites the neurons
-        it read, so open them. <a href={href.lexicon("scientist")}>What the scientist is.</a>
+        The scientist reads the atlas with the same tools the page uses and can move this screen
+        {reach ? (
+          <>
+            ; beyond them, here it <span className={homeShell ? "red" : undefined}>{reach[agent]}</span>
+          </>
+        ) : null}
+        . What it says is a lead to check: it cites the neurons it read, so open them. <a href={href.lexicon("scientist")}>What the scientist is.</a>
       </Rubric>
     </div>
   );

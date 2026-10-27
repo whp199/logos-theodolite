@@ -644,11 +644,16 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
 
 - `claude`: Claude Code (`claude -p`, stream-json both ways), one process per chat, kept open so a message sent while
   it works reaches it between tool calls; its session file is resumed turn by turn. Its tools are the atlas's (the
-  stdio MCP server `backend/scientist_mcp.py`) and Read, Glob, Grep, Write, Edit and Bash, pre-approved, with the home
-  folder added: **it runs commands and edits files there without asking**. `$THEODOLITE_CLAUDE_MODEL` picks the
-  model.
-- `codex`: Codex (`codex app-server`, JSON-RPC) with the same MCP tools and its own shell, in a Codex home of its own
-  (`approvalPolicy: "never"`, `sandbox: "danger-full-access"`: the same caution).
+  stdio MCP server `backend/scientist_mcp.py`) and, by its reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the
+  default, Read, Write and Edit scoped to its work folder (`Read(//<work>/**)` and so on), no Bash, no other folder;
+  "home", set by the person, Read, Glob, Grep, Write, Edit and Bash pre-approved with the home folder added: **it runs
+  commands and edits files there without asking**. The person's own Claude Code settings are not loaded
+  (`--setting-sources project`). `$THEODOLITE_CLAUDE_MODEL` picks the model.
+- `codex`: Codex (`codex app-server`, JSON-RPC) with the same MCP tools and its own shell, in a Codex home of its own,
+  `approvalPolicy: "never"`; `sandbox: "workspace-write"` by default (writes only in its work folder, no network; it
+  can read elsewhere), `"danger-full-access"` under "home" (the same caution).
+- Neither process gets the endpoints' keys (`child_env`), and `/backends` says what each backend can do here
+  (`reach`); under "home" the page asks once, per browser, before the first Claude Code or Codex chat.
 - `openai`: any OpenAI-compatible Chat Completions endpoint that takes tool calls (LM Studio, Ollama, OpenRouter, vLLM,
   llama.cpp's server). The server runs the loop: it streams the reply, runs each tool call through the atlas's routes in
   this process (`InProcessApi`, an ASGI client), sends the results back (each cut to 16,000 characters) and goes on until

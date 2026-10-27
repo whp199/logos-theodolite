@@ -296,6 +296,7 @@ def _slim_link(c: Dict[str, Any]) -> Dict[str, Any]:
         out["census"] = c["census"]
     if c.get("name"):
         out["name"] = c["name"]
+        out["name_by"] = c.get("name_by")
     return out
 
 
@@ -338,6 +339,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             faces[s] = {"lens": f["lens"], "eye": f["eye"], "label": label(f["check"]), "shared_top10": (f["check"] or {}).get("shared_top10")}
         return {
             "neuron": cite(a["layer"], a["n"]), "name": r.get("name") or None, "note": entry.get("note") or None,
+            "name_by": entry.get("name_by") if r.get("name") else None, "note_by": entry.get("note_by") if entry.get("note") else None,
             "edited_in_vault": r.get("edited"), "faces": faces, "gate_trigger": r.get("gate_trigger"),
             "steer": r.get("steer"), "steer_stale": r.get("steer_stale"), "activation": r.get("act_range"), "ceiling": r.get("ceiling"),
             "census": r.get("census"), "wiring": r.get("wiring_source"),
@@ -413,7 +415,9 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         notes = await api.get("/api/atlas/notes")
         out_n = {cite(*map(int, k.split(":"))): e["name"] for k, e in notes.get("neurons", {}).items() if e.get("name")}
         out_h = {cite_head(*map(int, k.split(":"))): e["name"] for k, e in notes.get("heads", {}).items() if e.get("name")}
-        return {"neurons": out_n, "heads": out_h}
+        by_sci = [cite(*map(int, k.split(":"))) for k, e in notes.get("neurons", {}).items() if e.get("name") and e.get("name_by") == "scientist"]
+        by_sci += [cite_head(*map(int, k.split(":"))) for k, e in notes.get("heads", {}).items() if e.get("name") and e.get("name_by") == "scientist"]
+        return {"neurons": out_n, "heads": out_h, "named_by_a_scientist": by_sci}
     if name == "steer":
         _need(a, "prompt")
         if not a.get("neurons"):

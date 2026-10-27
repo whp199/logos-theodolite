@@ -490,8 +490,33 @@ def run_checks() -> int:
           "a strict MCP config, the atlas's tools allowed, a new session named for the chat")
     check(mcp_cfg["command"] == PY and mcp_cfg["args"] == ["-I", str(ROOT_DIR / "backend" / "scientist_mcp.py")]
           and mcp_cfg["env"] == {"THEODOLITE_URL": srv.url, "THEODOLITE_CHAT": chat}, f"the MCP server named, this server and this chat: {mcp_cfg}")
-    check(starts[0]["cwd"] == str(sc.work_dir()) and "Gemma-4-31B" in starts[0]["prompt"] and "## Files and scripts" in starts[0]["prompt"]
-          and srv.url in starts[0]["prompt"] and "<!-- shell -->" not in starts[0]["prompt"], "its folder, and the prompt with the shell section and this server")
+    check(starts[0]["cwd"] == str(sc.work_dir()) and "Gemma-4-31B" in starts[0]["prompt"] and "## Files\n" in starts[0]["prompt"]
+          and "## Files and scripts" not in starts[0]["prompt"] and srv.url in starts[0]["prompt"] and "<!-- folder -->" not in starts[0]["prompt"],
+          "its folder, and the prompt with the work-folder section (no shell) and this server")
+    w_ = str(sc.work_dir()).rstrip("/")
+    tools_ = argv[argv.index("--tools") + 1 : argv.index("--allowedTools")]
+    check(tools_ == ["Read", "Write", "Edit"] and "--add-dir" not in argv and argv[argv.index("--disallowedTools") + 1] == "Bash"
+          and all(f"{t}(/{w_}/**)" in argv for t in ("Read", "Write", "Edit")) and "--setting-sources" in argv,
+          "by default its files only in its work folder, no shell, no other folder added, the person's settings not loaded")
+    old_reach = os.environ.get(sc.REACH_ENV)
+    os.environ[sc.REACH_ENV] = "home"
+    try:
+        home_cmd = sc._claude_cmd(str(uuid.uuid4()), srv.url)
+        check("Bash" in home_cmd[home_cmd.index("--tools") + 1 : home_cmd.index("--allowedTools")] and home_cmd[home_cmd.index("--add-dir") + 1] == os.path.expanduser("~")
+              and "## Files and scripts" in sc.system_prompt("claude", srv.url) and "<!-- shell -->" not in sc.system_prompt("claude", srv.url),
+              "under THEODOLITE_SCIENTIST_REACH=home: Bash and the home folder, and the shell section")
+        check(hc.get("/api/atlas/scientist/backends").json()["reach"]["mode"] == "home", "/backends says the reach is home")
+    finally:
+        if old_reach is None:
+            os.environ.pop(sc.REACH_ENV, None)
+        else:
+            os.environ[sc.REACH_ENV] = old_reach
+    bk = hc.get("/api/atlas/scientist/backends").json()["reach"]
+    check(bk["mode"] == "folder" and "no shell" in bk["claude"] and "sandbox" in bk["codex"], f"/backends says what each backend can do: {bk}")
+    os.environ["OPENROUTER_API_KEY"] = "sk-or-test"
+    env_ = sc.child_env()
+    check("OPENROUTER_API_KEY" not in env_ and "THEODOLITE_OPENAI_API_KEY" not in env_ and "PATH" in env_, "the endpoints' keys are not passed to Claude Code or Codex")
+    os.environ.pop("OPENROUTER_API_KEY", None)
     tools_seen = next(x for x in flog() if x["kind"] == "tools")["names"]
     check(tools_seen == names, "the MCP server it started lists the scientist's tools")
     user = next(x for x in flog() if x["kind"] == "user")
@@ -569,6 +594,7 @@ def run_checks() -> int:
     check(tool["name"] == "neuron" and tool["input"] == {"layer": 3, "n": 5} and "L3 N5" in res["output"] and not res["error"], "its tool and result")
     rpcs = [x for x in clog() if x["kind"] == "rpc"]
     ts = next(x for x in rpcs if x["method"] == "thread/start")["params"]
+    check(ts["sandbox"] == "workspace-write" and "writes only in" in ts["developerInstructions"], "codex by default: its shell sandboxed to its work folder")
     check(ts["approvalPolicy"] == "never" and ts["config"]["mcp_servers"]["atlas"]["env"] == {"THEODOLITE_URL": srv.url, "THEODOLITE_CHAT": chat2}
           and "You are running as Codex" in ts["developerInstructions"] and ts["cwd"] == str(sc.work_dir()), "the thread: no approvals, the atlas's MCP server, its instructions")
     home = Path(next(x for x in clog() if x["kind"] == "start")["codex_home"])
@@ -702,6 +728,8 @@ def run_checks() -> int:
     # history, chats, rewind
     hist = hc.get("/api/atlas/scientist/history", params={"chat": chat3}).json()
     check(hist["agent"] == "openai" and hist["profile"] == "custom" and hist["events"][0] == {"t": "user", "text": "Explain it."}, "history of an openai chat")
+    check(not any(a_["t"] == b_["t"] == "text" for a_, b_ in zip(hist["events"], hist["events"][1:])),
+          "history: a reply's streamed fragments joined, as the live page shows them (a split cannot fall inside a citation)")
     row = next(x for x in hc.get("/api/atlas/scientist/chats").json() if x["chat"] == chat3)
     check(row["agent"] == "openai" and row["model"] == "fake-model" and row["turns"] == 5, f"past chats: {row}")
     n_before = len(json.loads((sc.logs_dir() / f"{chat3}.messages.json").read_text()))
@@ -799,9 +827,14 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     r = await st.call("write_note", {"layer": 3, "n": 5, "note": "steers toward Bob at +2"}, api)
     check(r["name"] == "bob watcher (??)" and r["note"] == "steers toward Bob at +2", "write_note keeps the name")
     nm = await st.call("names", {}, api)
-    check(nm["neurons"] == {"L3 N5": "bob watcher (??)"}, f"names in the pages' count: {nm}")
+    check(nm["neurons"] == {"L3 N5": "bob watcher (??)"} and nm["named_by_a_scientist"] == ["L3 N5"], f"names in the pages' count: {nm}")
     notes = json.loads(Path(os.environ["THEODOLITE_FIELD_NOTES"]).read_text())
-    check(notes["neurons"]["2:5"]["by"] == "scientist", "kept under the API's key, by the scientist")
+    check(notes["neurons"]["2:5"]["by"] == "scientist" and notes["neurons"]["2:5"]["name_by"] == "scientist", "kept under the API's key, by the scientist")
+    # each field keeps its author: the person's note under the scientist's name leaves the name the scientist's
+    await api.post("/api/atlas/notes", {"kind": "neuron", "layer": 2, "index": 5, "note": "the person checks it", "by": "reader"})
+    nr = await st.call("neuron", {"layer": 3, "n": 5}, api)
+    check(nr["name"] == "bob watcher (??)" and nr["name_by"] == "scientist" and nr["note_by"] == "reader",
+          f"a note by the person leaves the name the scientist's, and the tools say whose each is ({nr['name_by']}, {nr['note_by']})")
     # the screen: actions reach the chat's page in the API's count
     cid = str(uuid.uuid4())
     c = sc._chat(cid, "claude")

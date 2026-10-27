@@ -7,11 +7,12 @@ this server answers. One JSON file holds them, outside every checkout so each on
 `$THEODOLITE_FIELD_NOTES`, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/field_notes.json`. Its shape:
 
     {"version": 1,
-     "neurons": {"<layer>:<neuron>": {"name", "note", "by", "at"}},
-     "heads":   {"<layer>:<head>":   {"name", "note", "by", "at"}}}
+     "neurons": {"<layer>:<neuron>": {"name", "note", "by", "name_by", "note_by", "at"}},
+     "heads":   {"<layer>:<head>":   {"name", "note", "by", "name_by", "note_by", "at"}}}
 
 Layers count from 0 in the keys and in every field, as every field the server sends does (page layer = layer + 1).
-`by` is who wrote the entry last ("reader" | "scientist"), `at` when, ISO-8601 UTC. The routes are the atlas's
+`by` is who wrote the entry last ("reader" | "scientist"), `name_by` and `note_by` who wrote its name and its note (a
+note added to a scientist's name leaves the name the scientist's), `at` when, ISO-8601 UTC. The routes are the atlas's
 (`GET` and `POST /api/atlas/notes`, backend/atlas.py, which answer only pages and scripts on this machine).
 
 Writes take this module's own lock (never the GPU's: notes are written while the model works) and replace the file
@@ -79,7 +80,9 @@ def _valid_entry(e: Any) -> bool:
     if not isinstance(e, dict):
         return False
     fields = (e.get("name"), e.get("note"), e.get("by"), e.get("at"))
-    return all(isinstance(t, str) and not _has_broken(t) for t in fields) and e.get("by") in WRITERS
+    # who wrote the name and who wrote the note, kept apart (an entry from before has only `by`, its last writer)
+    authors = [e.get(f, e.get("by")) for f in ("name_by", "note_by")]
+    return all(isinstance(t, str) and not _has_broken(t) for t in fields) and e.get("by") in WRITERS and all(a in WRITERS for a in authors)
 
 
 def _move_aside(path: Path, why: str) -> None:
@@ -129,7 +132,8 @@ def read_notes(path: Optional[Path] = None) -> Dict[str, Any]:
         if not all(_valid_key(k) and _valid_entry(e) for k, e in entries.items()):
             _move_aside(path, f"a malformed entry in its {key}")
             return _empty()
-        out[key] = {k: {f: e[f] for f in ("name", "note", "by", "at")} for k, e in entries.items()}
+        out[key] = {k: {**{f: e[f] for f in ("name", "note", "by", "at")}, "name_by": e.get("name_by", e["by"]),
+                        "note_by": e.get("note_by", e["by"])} for k, e in entries.items()}
     return out
 
 
@@ -183,6 +187,9 @@ async def write_note(
         data = read_notes(path)
         entries: Dict[str, Any] = data[table]
         old = entries.get(key) or {}
+        # each field keeps its own author: a note added to a name keeps the name's (a scientist's guess stays its own)
+        name_by = by if name is not None else old.get("name_by", old.get("by", by))
+        note_by = by if note is not None else old.get("note_by", old.get("by", by))
         name = old.get("name", "") if name is None else name
         note = old.get("note", "") if note is None else note
         if not name and not note:
@@ -191,7 +198,7 @@ async def write_note(
         else:
             if key not in entries and len(entries) >= MAX_ENTRIES:
                 raise ValueError(f"The notes on {table} are full ({MAX_ENTRIES}); forget one to keep another.")
-            entry = {"name": name, "note": note, "by": by, "at": _utc_now()}
+            entry = {"name": name, "note": note, "by": by, "name_by": name_by, "note_by": note_by, "at": _utc_now()}
             entries[key] = entry
         _write_atomic(path, data)
         _CACHE.pop(str(path), None)
