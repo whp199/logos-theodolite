@@ -22,6 +22,7 @@ import {
   type Notes,
   type RunReply,
   type RunView,
+  type ScaleSource,
   type SearchReply,
   type Spread,
   type WebSummary,
@@ -35,6 +36,8 @@ export type LeftTab = "web" | "run";
 
 export interface RunState {
   text: string | null;
+  /** where the scores' usual extremes come from (the stats index, or the study's 36 texts: provisional) */
+  scaleSource: ScaleSource | null;
   tokens: string[];
   pos: number[];
   pin: number;
@@ -85,7 +88,7 @@ export interface AtlasState {
   scientistMarks: boolean;
 }
 
-const RUN0: RunState = { text: null, tokens: [], pos: [], pin: -1, hover: null, sign: "both", lo: 1, hi: 60, min: 1, q: "", view: null, busy: false, error: null };
+const RUN0: RunState = { text: null, scaleSource: null, tokens: [], pos: [], pin: -1, hover: null, sign: "both", lo: 1, hi: 60, min: 1, q: "", view: null, busy: false, error: null };
 
 export const useAtlas = create<AtlasState>(() => ({
   arch: null,
@@ -453,7 +456,7 @@ export async function runText(text: string, g = ++qGen) {
     try {
       const r = await post<RunReply>("/api/atlas/run", { text });
       if (g !== qGen) return;
-      set({ run: { ...st().run, text, tokens: r.tokens, pos: r.pos, pin: -1, hover: null, busy: false, error: null } });
+      set({ run: { ...st().run, text, scaleSource: r.scale_source ?? null, tokens: r.tokens, pos: r.pos, pin: -1, hover: null, busy: false, error: null } });
     } catch (e) {
       if (g === qGen) set({ run: { ...st().run, busy: false, error: message(e) } });
       return;

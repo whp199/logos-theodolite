@@ -187,7 +187,24 @@ def check_pushes(lm: Any, w: ao.Weights, tok: Any) -> None:
         check(False, "a head past the last was not refused")
     except ValueError:
         pass
-    section("each push lands where it says (add after the norm and scalar, mul, act, a block, a head; the start mark spared)", before)
+    # the norm after a block (or after attention) undoes any uniform scale of all of it: only silencing is taken
+    for bad, what in (([ao.Push(L, None, "mul", 2.0)], []), ([], [ao.HeadScale(L, None, 0.5)])):
+        try:
+            ao.check_pushes(lm, bad, what)
+            check(False, f"a uniform scale the norm undoes was not refused: {bad or what}")
+        except ValueError as exc:
+            check("only be silenced" in str(exc), f"refusal: {exc}")
+    ao.check_pushes(lm, [ao.Push(L, None, "mul", 0.0)], [ao.HeadScale(L, None, 0.0), ao.HeadScale(L, 1, 2.0)])
+    # the most a neuron can write by itself: firing alone and hard, the post-feed-forward norm caps its write
+    for ll, nn_ in ((1, 3), (4, 77)):
+        col = lm.layers[ll].mlp.down_proj.weight[:, nn_]
+        capped = lm.layers[ll].post_feedforward_layernorm((1e4 * col)[None, None])[0, 0] * float(w.scalars[ll])
+        check(abs(float(capped.norm()) - float(w.write_ceiling(ll, [nn_])[0])) < 1e-3 * float(capped.norm()),
+              f"write_ceiling L{ll} N{nn_}: what the norm lets one neuron write")
+        check(float(lm.layers[ll].post_feedforward_layernorm((0.5 * col)[None, None])[0, 0].norm() * float(w.scalars[ll]))
+              <= float(w.write_ceiling(ll, [nn_])[0]) + 1e-6, f"write_ceiling L{ll} N{nn_}: a softer firing writes less")
+    section("each push lands where it says (add after the norm and scalar, mul, act, a block, a head; the start mark spared); "
+            "what the norms undo is refused; the most a neuron can write", before)
 
     before = len(failures)
     iv = ao.resolve(w, [ao.Push(L, n, "add", 0.8), ao.Push(L, 5, "mul", 3.0), ao.Push(L, 7, "act", 1.0)], [ao.HeadScale(L, 0, 0.5)],

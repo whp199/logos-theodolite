@@ -26,7 +26,8 @@ is drawn as unit(w_post (.) r), r isotropic, which matches the neurons' read siz
 (`control_dirs`; each run records the two read sizes, `read_gain`).
 
 The doses are neuron-explorer's, chosen on Qwen3.5-4B (`DOSES_FROM`); on Gemma-4-31B they are not yet calibrated, and a
-dose of 0.8 there is already longer than the most a single neuron can write at most layers (`atlas_ops.write_ceiling`).
+dose of 0.8 there is already longer than the most a single neuron can write at most layers
+(`atlas_ops.Weights.write_ceiling`).
 Every page and tool that shows a census says so. With 256 controls and 21,504 neurons about 84 neurons land above every
 control by chance alone (N / (C + 1)), so a rank is a lead, not a finding: each unit carries an empirical p against the
 controls and a layer-wide false-discovery q (`compute_units`).

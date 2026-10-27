@@ -10,7 +10,7 @@ import { heldTag } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { href } from "../../router";
 import { cite, get, noteKey, post, type HeadInfo, type Link, type SteerLens } from "./api";
-import { CensusProvenance, ErrorLine, FaceLine, gateOf, words } from "./parts";
+import { CensusProvenance, ErrorLine, FaceLine, gateOf, overCeiling, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, theMap, useAtlas } from "./state";
 
 const CensusStats: React.FC = () => {
@@ -134,6 +134,8 @@ const Steer: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   if (!f || f.kind !== "neuron" || !lens || lens.layer !== f.layer || lens.n !== f.n) return null;
   const st = lens.steer;
+  const dose = st ? st.dose : 0.8;
+  const over = overCeiling(dose, lens.ceiling);
   const read = async () => {
     setBusy(true);
     setError(null);
@@ -175,7 +177,9 @@ const Steer: React.FC = () => {
         </div>
       ) : (
         <p className="atlas-small">
-          <span className="muted">Not in the steer-lens index. </span>
+          <span className={lens.steer_stale ? "red" : "muted"}>
+            {lens.steer_stale ? "Its steer lens in the index was read before its vault edit. " : "Not in the steer-lens index. "}
+          </span>
           <button type="button" className="btn-link" disabled={busy} onClick={() => void read()}>
             {busy ? "reading…" : "read it now (runs the model)"}
           </button>
@@ -183,8 +187,14 @@ const Steer: React.FC = () => {
       )}
       <ErrorLine error={error} />
       <Rubric style={{ fontSize: 15 }}>
-        A measured effect, not a label: the neuron is pushed by {st ? st.dose : 0.8} of the stream's usual length at every word-piece of four short texts,
-        and these are the word-pieces whose odds rose most next. It is not held back by the label gate.{" "}
+        A measured effect, not a label: the neuron is pushed by {dose} of the stream's usual length at every word-piece of four short texts, and
+        these are the word-pieces whose odds rose most next. It is not held back by the label gate.{" "}
+        {over != null ? (
+          <>
+            That push is {over < 1 ? "smaller than" : `${over.toFixed(1)} times`} the most this neuron can ever write by itself
+            {over >= 1 ? ", so it says what a push this large does, not what the neuron does when it fires" : ""}.{" "}
+          </>
+        ) : null}
         <a href={href.lexicon("steer-lens")}>What the steer lens is.</a>
       </Rubric>
       <IfApparatus>
@@ -382,8 +392,9 @@ const Heads: React.FC = () => {
         {table(feeding, "heads feeding it (o)")}
       </div>
       <Rubric style={{ fontSize: 15 }}>
-        Later heads whose query, key or value reads what it writes, and earlier heads whose output it reads, by the weights. Each head shows what it
-        writes, and below, faint, what it carries.
+        Later heads whose query, key or value reads what it writes, and earlier heads whose output it reads, by the weights. Each head shows the
+        pooled words of the later neurons that read its output, and below, faint, of the earlier neurons whose writes its value carries: their +
+        faces, from the steer lens or from labels the gate shows, pooled where the gate was only ever tested one neuron at a time.
       </Rubric>
     </section>
   );

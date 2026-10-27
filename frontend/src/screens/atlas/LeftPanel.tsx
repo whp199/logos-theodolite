@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { LensCaution, Rubric } from "../../components/kit";
+import { IfApparatus, LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
 import { cite, citeHead, noteKey, type RunRow, type SearchRow } from "./api";
@@ -131,6 +131,7 @@ const NeuronWeb: React.FC = () => {
           <div className="kicker">
             its web · {webTotal ?? w.links} links · pooled from the {w.src === "steer" ? "steer lens" : "lens, labels the gate lets through"}
           </div>
+          {w.stale ? <div className="atlas-small red">Read before its vault edit: these are its links as they were.</div> : null}
           {(
             [
               ["up", "+", "what drives it up", "upstream"],
@@ -217,6 +218,11 @@ const HeadWeb: React.FC = () => {
         </div>
       ))}
       <Chips list={h[`${r}_pooled`]?.tokens?.slice(0, 12)} onPick={(t) => setQuery(t, "lens")} empty="no words pooled" />
+      {h[`${r}_pooled`]?.tokens?.length ? (
+        <div className="muted atlas-small">
+          pooled from these neurons’ + faces ({h[`${r}_pooled`]?.src === "steer" ? "the steer lens" : "labels the gate shows"}), a lead
+        </div>
+      ) : null}
     </div>
   );
   return (
@@ -249,25 +255,38 @@ const HeadWeb: React.FC = () => {
   );
 };
 
-const SearchRows: React.FC<{ rows: SearchRow[]; total: number; tokens: number }> = ({ rows, total, tokens }) => (
+const SearchRows: React.FC<{ rows: SearchRow[]; held?: SearchRow[]; total: number; tokens: number }> = ({ rows, held, total, tokens }) => (
   <ol className="atlas-rows">
     <li className="atlas-rows-head">
       {total} faces · {tokens} word-pieces matched
+      {held?.length ? ` · the words of ${held.length} held back by the label gate (in the apparatus)` : ""}
     </li>
     {rows.map((x) => (
-      <li key={`${x.layer}/${x.n}/${x.sign}`} onClick={() => goToNeuron(x.layer, x.n)} onMouseEnter={() => theMap()?.hover(x.layer, x.n)} onMouseLeave={() => theMap()?.hover(null)}>
-        <span className="atlas-id-small">{cite(x.layer, x.n)}</span>
-        <span className={`atlas-sg ${x.sign === "+" ? "up" : "down"}`}>
-          {x.sign === "+" ? "+" : "−"}
-          {x.rank + 1}
-        </span>
-        <span className="atlas-w">
-          {x.name ? <b>{x.name} </b> : null}
-          <FaceLine layer={x.layer} face={x.sign} w={x.words} k={5} />
-        </span>
-      </li>
+      <SearchRowItem key={`${x.layer}/${x.n}/${x.sign}/${x.src}`} x={x} />
     ))}
+    {held?.length ? (
+      <IfApparatus>
+        <li className="atlas-rows-head">held back by the label gate: their words matched, but the gate leaves them out of the main reading and the map</li>
+        {held.map((x) => (
+          <SearchRowItem key={`h${x.layer}/${x.n}/${x.sign}/${x.src}`} x={x} />
+        ))}
+      </IfApparatus>
+    ) : null}
   </ol>
+);
+
+const SearchRowItem: React.FC<{ x: SearchRow }> = ({ x }) => (
+  <li onClick={() => goToNeuron(x.layer, x.n)} onMouseEnter={() => theMap()?.hover(x.layer, x.n)} onMouseLeave={() => theMap()?.hover(null)}>
+    <span className="atlas-id-small">{cite(x.layer, x.n)}</span>
+    <span className={`atlas-sg ${x.sign === "+" ? "up" : "down"}`}>
+      {x.sign === "+" ? "+" : "−"}
+      {x.rank + 1}
+    </span>
+    <span className="atlas-w">
+      {x.name ? <b>{x.name} </b> : null}
+      <FaceLine layer={x.layer} face={x.sign} w={x.words} k={5} />
+    </span>
+  </li>
 );
 
 const CensusRows: React.FC = () => {
@@ -333,9 +352,14 @@ const CensusRows: React.FC = () => {
   );
 };
 
-const RunRows: React.FC<{ rows: RunRow[]; total: number }> = ({ rows, total }) => (
+const RunRows: React.FC<{ rows: RunRow[]; total: number; provisional: boolean }> = ({ rows, total, provisional }) => (
   <ol className="atlas-rows">
-    <li className="atlas-rows-head">{total} neurons pass · score = activation over its usual extreme on that side</li>
+    <li className="atlas-rows-head">
+      {total} neurons pass · score = activation over its usual extreme on that side
+      {provisional
+        ? " · usual extremes read over the study’s 36 texts, provisional until the stats index is built: a neuron those texts never woke scores high on little"
+        : ""}
+    </li>
     {rows.map((x) => (
       <li key={`${x.layer}/${x.n}`} onClick={() => goToNeuron(x.layer, x.n)} onMouseEnter={() => theMap()?.hover(x.layer, x.n)} onMouseLeave={() => theMap()?.hover(null)}>
         <span className="atlas-id-small">{cite(x.layer, x.n)}</span>
@@ -410,7 +434,7 @@ const RunTab: React.FC = () => {
           <input className="input-line" placeholder="its words hold…" value={run.q} onChange={(e) => upd({ q: e.target.value })} style={{ width: 130 }} />
         </div>
       ) : null}
-      {run.view ? <RunRows rows={run.view.results} total={run.view.total} /> : null}
+      {run.view ? <RunRows rows={run.view.results} total={run.view.total} provisional={run.scaleSource?.kind === "study_texts"} /> : null}
     </div>
   );
 };
@@ -442,7 +466,7 @@ export const LeftPanel: React.FC = () => {
           <ErrorLine error={searchError} />
           {search && qMode === "lens" ? (
             search.ready ? (
-              <SearchRows rows={search.results} total={search.total} tokens={search.tokens} />
+              <SearchRows rows={search.results} held={search.held} total={search.total} tokens={search.tokens} />
             ) : (
               <p className="muted atlas-small">Neither the lens index nor the steer-lens index is built, so nothing can be searched yet.</p>
             )

@@ -557,9 +557,14 @@ stand-in's never; `GET /arch` names a refused one).
 stream leaving layer ℓ (`resid_post`), at every position but the start mark; p50<sub>ℓ</sub> is the stream's median length
 leaving the layer, from `act_scale.npz` when built, else read over the study's 36 texts once per set of vault edits in
 force (`scale_source`). A push item is `{layer, n, mode, dose}` (`mode`: `"add"` as above, `"mul"` the activation × d, `"act"`
-d × the neuron's usual extreme added to its activation), or `{layer, all: true, mode: "mul", dose}` for a whole
-feed-forward block; a head is scaled by `{layer, head, dose}` (`head: "all"` for every head of the layer). At most 32
-pushes and 64 head scales go into one reading. The three voices sign each push +1, 0, −1 (for `"mul"`: × d, × 1, × −d).
+d × the neuron's usual extreme added to its activation), or `{layer, all: true, mode: "mul", dose: 0}` to silence a whole
+feed-forward block; a head is scaled by `{layer, head, dose}` (`head: "all"` silences every head of the layer). A whole
+block or every head can only be silenced: the norm after them undoes any other uniform scale (`check_pushes` refuses
+it). At most 32 pushes and 64 head scales go into one reading. The three voices sign each push +1, 0, −1 (for `"mul"`:
+× d, × 1, × −d). The most a single neuron can write to the stream leaving its layer is s<sub>ℓ</sub> · √D ·
+‖w<sub>post</sub> ⊙ unit(W<sub>down</sub>[:, n])‖, however hard it fires (the norm caps it; `Weights.write_ceiling`);
+`/neuron/lens` gives it, and as a share of p50 (`ceiling.rel`), and the steer lens, the push tab and the census tab say
+how many times that most a dose is. On the 31B the steer lens's 0.8 is 1 to 10 times it at most layers.
 
 **The links.** A writer A at layer i writes v<sub>A</sub> = w<sub>post,i</sub> ⊙ W<sub>down,i</sub>[:, A]; a reader B at layer
 j > i reads g = W<sub>gate,j</sub>[B] · (w<sub>pre,j</sub> ⊙ v<sub>A</sub>) and u = W<sub>up,j</sub>[B] · (w<sub>pre,j</sub> ⊙
@@ -583,13 +588,13 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | route | what it answers |
 |---|---|
 | `GET /arch` | the model's shape (layers, their attention kind, heads, window, `values_from_keys`), which index files are built or refused, which layers have a census, the push's modes and units, the limits, `label_gate` and `lens` cards |
-| `GET /neuron/lens?layer&n` | both faces through the lens and by the naked eye with their checks, read live (vault edits included); the steer lens (index, or as read live); `act_range` {act_max, act_min, over_tokens, source, regimes} |
+| `GET /neuron/lens?layer&n` | both faces through the lens and by the naked eye with their checks, read live (vault edits included); the steer lens (index, or as read live; for a neuron edited in the vault only as read live since the edit, `steer_stale` saying why the index's is not shown); `act_range` {act_max, act_min, over_tokens, source, regimes}; `ceiling` {write, p50, rel, source}, the most it can write by itself |
 | `POST /neuron/steer_lens?layer&n` | the steer lens of one neuron, read live (GPU) |
 | `GET /neuron/wiring?layer&n&k=24` | its strongest links each way, `down` (readers) and `up` (writers), each with `face`, that face's words and check, its census words and name; from the index, else live (`source`) |
 | `GET /neuron/heads?layer&n` | the heads it meets by role (q, k, v: later heads reading its write; o: heads whose write it reads), z per head; `z_by_layer` |
 | `GET /neuron?layer&n`, `GET /cone?layer&n` | all of the above for the scientist; its cone as a list of neurons with hop, z, face and words |
 | `GET /hover?layer&n` | the tooltip, from the indexes alone (no GPU) |
-| `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`), with each face's check |
+| `GET /search?q&limit` | neurons whose face holds `q` among its first twelve word-pieces through the lens, by the naked eye or in the steer lens (`src`), with each face's check: matches the label gate holds back go to `held` (`held_back` counts them), for the apparatus, never the main list or the map; `/run/view`'s word filter likewise matches only labels the gate shows, and the steer lens |
 | `GET /web?layer&n&first&k&zmin&cap&hops` | the cone for the map: int16 rows of six (src layer, src n, dst layer, dst n, round(10 z) · sign, hop; hop > 0 downstream); `X-Web-Total` |
 | `GET /web/summary?layer&n&…&src` | the cone's words, followed from rest and pooled: `down["+"]` / `down["-"]`, what the neurons it drives write when it fires on its + / − face; `up["+"]` / `up["-"]`, what the neurons that push it toward its + / − face write; weighted by the reaching link's strength (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out); not ready, with `missing`, without the wiring index or without any words to pool |
 | `GET /layout` | `cell` [L, N] int16 as base64 |

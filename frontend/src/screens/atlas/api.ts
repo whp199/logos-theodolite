@@ -196,8 +196,13 @@ export interface NeuronLens {
   faces: Record<"+" | "-", LensFace>;
   gate_trigger: string[];
   steer: SteerLens | null;
+  /** set when the steer-lens index was read before the vault edit in force on this neuron (it is not shown) */
+  steer_stale?: string;
   act_range: ActRange | null;
   edited: boolean;
+  /** the most the neuron can ever write to the stream leaving its layer; `rel` is that over the push's unit, so an add
+   * push of dose d is d / rel times it */
+  ceiling?: { write: number; p50: number | null; rel: number | null; source: string | null } | null;
   lens: Record<string, unknown> | null;
 }
 export interface HeadRole {
@@ -223,6 +228,8 @@ export interface WebSummary {
   src: "steer" | "lens" | null;
   ready: boolean;
   missing?: "wiring" | "lens" | "steer_lens";
+  /** set when the neuron is edited in the vault: the index's links predate the edit */
+  stale?: string;
   links?: number;
   down?: Record<"+" | "-", { neurons: number; words: PooledWord[] }>;
   up?: Record<"+" | "-", { neurons: number; words: PooledWord[] }>;
@@ -241,7 +248,11 @@ export interface SearchRow {
 }
 export interface SearchReply {
   ready: boolean;
+  /** matches through the steer lens, or through labels the gate shows */
   results: SearchRow[];
+  /** matches through labels the gate holds back: for the apparatus, never the map */
+  held?: SearchRow[];
+  held_back?: number;
   tokens: number;
   total: number;
 }

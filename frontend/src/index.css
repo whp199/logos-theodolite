@@ -2054,3 +2054,14 @@ textarea.atlas-note-box {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* the atlas's foot: the site footer, slim, under the map */
+.atlas-foot {
+  flex: 0 0 auto;
+  padding: 0 24px 4px;
+}
+.atlas-foot .site-footer {
+  margin-top: 0;
+  padding-top: 4px;
+  font-size: 13px;
+}

@@ -9,8 +9,8 @@
  *   #/atlas/54/h3        with head 3 of layer 54 open
  */
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Rubric, SiteHeader } from "../components/kit";
-import type { Route } from "../router";
+import { ReadingThrough, Rubric, SiteFooter, SiteHeader } from "../components/kit";
+import { href, type Route } from "../router";
 import { LeftPanel } from "./atlas/LeftPanel";
 import { AtlasMap } from "./atlas/map";
 import { RightPanel } from "./atlas/RightPanel";
@@ -352,6 +352,12 @@ export const Atlas: React.FC<{ route: AtlasRoute }> = ({ route }) => {
           </>
         )}
       </main>
+      <div className="atlas-foot">
+        <SiteFooter folio="the atlas">
+          <ReadingThrough /> · its words held back below layer 41, and where the naked eye shares none of their first ten · the steer
+          lens and the census are pushes, not labels · <a href={href.lineage()}>the lineage of these ideas</a>
+        </SiteFooter>
+      </div>
       <Tooltip />
     </div>
   );

@@ -192,7 +192,7 @@ def main() -> int:
     hv = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()
     check(hv["ready"] is False and hv["faces"]["+"]["lens"] is None and hv["links"] is None, f"/hover unbuilt: {hv}")
     s = c.get("/api/atlas/search", params={"q": "the"}).json()
-    check(s == {"ready": False, "results": [], "tokens": 0, "total": 0}, f"/search unbuilt: {s}")
+    check(s == {"ready": False, "results": [], "held": [], "held_back": 0, "tokens": 0, "total": 0}, f"/search unbuilt: {s}")
     r = c.get("/api/atlas/web", params={"layer": 2, "n": 5})
     check(r.status_code == 200 and r.content == b"" and r.headers["X-Web-Total"] == "0", "/web unbuilt: empty")
     check(c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5}).json() == {"src": None, "ready": False, "missing": "wiring"},
@@ -452,6 +452,10 @@ def main() -> int:
     check(all(v_["built"] for k_, v_ in arch["indexes"].items() if k_ != "folder"), "/arch: every index built")
     check(arch["push"]["scale_source"]["kind"] == "index" and arch["push"]["scale_source"]["corpus"] == "check", "/arch: the scales from the stats index")
     check(all(c.get("/api/health").json()["atlas"]["indexes"].values()), "/api/health: every index on disk")
+    cl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()["ceiling"]
+    want_c = float(w.write_ceiling(2, [5])[0])
+    check(abs(cl["write"] - want_c) < 1e-4 and abs(cl["p50"] - float(stats["resid_q"][2, 1])) < 1e-4 and abs(cl["rel"] - want_c / float(stats["resid_q"][2, 1])) < 1e-4
+          and cl["source"] == "check", f"/neuron/lens: the most the neuron can write, as a share of the stream ({cl})")
     hv = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()
     check(hv["ready"] and hv["faces"]["+"]["lens"] == [vocab[i] for i in idx.face_ids(2, 5, "+", "lens", 6)]
           and hv["faces"]["-"]["eye"] == [vocab[i] for i in idx.face_ids(2, 5, "-", "eye", 6)], "/hover: the index's words")
@@ -466,9 +470,13 @@ def main() -> int:
     probe = next((l, n) for l in range(3, L) for n in range(N) if len(vocab[int(lens["lens_pos"][l, n, 0])].strip()) >= 3)
     word = vocab[int(lens["lens_pos"][probe[0], probe[1], 0])].strip()
     s = c.get("/api/atlas/search", params={"q": word, "limit": 2000}).json()
-    hit = [x for x in s["results"] if (x["layer"], x["n"], x["sign"]) == (*probe, "+")]
+    hit = [x for x in s["held"] if (x["layer"], x["n"], x["sign"]) == (*probe, "+")]
     check(s["ready"] and s["tokens"] > 0 and hit and hit[0]["rank"] == 0, f"/search {word!r}: finds {probe} + at rank 0")
-    check(all(x["words"]["check"] is not None and "census" in x and "name" in x for x in s["results"]), "/search: each face's words and check")
+    check(all(x["words"]["check"] is not None and "census" in x and "name" in x for x in s["results"] + s["held"]), "/search: each face's words and check")
+    # every lens label on the stand-in's six layers is held back: matched through the lens or the naked eye, a face goes
+    # to the apparatus, never the main reading or the map; steer-lens matches stay
+    check(s["held_back"] == len(s["held"]) > 0 and all(x["src"] in ("lens", "eye") and x["words"]["check"]["held_back"] for x in s["held"])
+          and all(x["src"] == "steer" for x in s["results"]), "/search: faces the gate holds back kept apart, steer-lens matches in the main reading")
     raw = c.get("/api/atlas/web", params={"layer": 2, "n": 5})
     arr = np.frombuffer(raw.content, np.int16).reshape(-1, 6)
     want_web = idx.cone(2, 5, 2, 15.0, 20000, 5, None)
@@ -531,6 +539,12 @@ def main() -> int:
     check(roles_after != roles_before and all(x["z"] == 0 for x in roles_after["roles"]["q"]), "/neuron/heads: not the cache from before the edit")
     nl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()
     check(nl["edited"] and "writes_nothing" in nl["faces"]["+"]["check"]["reasons"], "/neuron/lens: read as it now is")
+    check(nl["steer"] is None and "before the vault edit" in nl.get("steer_stale", "") and nl["ceiling"]["write"] == 0.0,
+          "/neuron/lens: the index's steer lens, read before the edit, is not shown as its own; a silenced neuron can write nothing")
+    check("stale" in c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5}).json() and "stale" in c.get("/api/atlas/cone", params={"layer": 2, "n": 5}).json()
+          and c.get("/api/atlas/web", params={"layer": 2, "n": 5}).headers.get("X-Web-Stale") == "1"
+          and "links_stale" in c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json(),
+          "/web, /web/summary, /cone and /hover: an edited neuron's web and links marked as read before the edit")
     down._memit_col_overlays = {}
     vault.active_patches.clear()
     check(c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()["source"] == "index", "/neuron/wiring: back to the index once the edit is gone")

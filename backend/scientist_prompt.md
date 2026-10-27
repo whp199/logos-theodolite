@@ -54,8 +54,11 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   the census, `logprobs` and `steer`. A neuron edited in the vault (`edited_in_vault`) is read through its edit, and
   the index's words for it are marked `stale`.
 - **The steer lens** is measured, not read through a lens: the next word-piece's mean change in log-probability when
-  the neuron is pushed by ±0.8 of the stream's median length, over four contexts, with its KL. It is the most
-  trustworthy of the three word lists, at every layer; the gate does not cover it.
+  the neuron is pushed by ±0.8 of the stream's median length, over four contexts, with its KL; the gate does not cover
+  it. That push is not small: at most layers it is longer than anything the neuron can write by itself (`neuron`'s
+  `ceiling.rel` is that most, as a share of the stream; 0.8 / rel is how many times over the push is). So the steer
+  lens says what a push that large along the neuron's direction does, not what the neuron does when it fires. Weigh
+  it beside the lens and the neuron's firing, and confirm with a push near its own ceiling.
 - **Lens-derived directions break the model.** About 180 dimensions of Gemma 4's stream are read, through its norms,
   with up to 1700 times the gain of the others; a push along a direction built from a lens tends to wreck the text.
   The atlas pushes a neuron along its own write direction instead.
@@ -108,9 +111,12 @@ and report what came back.
 The push's units: mode `add` adds dose times the stream's median length leaving the layer, along the neuron's write
 direction, after the layer's norm and scalar (pushing the activation itself is squashed by the norm that follows the
 block, the study's erratum E47); 0.8 is the steer lens's push; on Qwen3.5-4B 0.5-0.8 kept text coherent and 2-3 was
-strong, which is not yet measured on Gemma-4-31B (see the methodology's Doses). `mul`
-multiplies the activation (0 silences the neuron). `act` adds a multiple of its largest |activation| to it. The start
-mark is never pushed: it is the attention sink every later word-piece reads.
+strong, which is not yet measured on Gemma-4-31B (see the methodology's Doses). On this model the norm caps what a
+single neuron can write, and `ceiling.rel` (in `neuron`) is that cap as a share of the stream: a push above it is
+larger than the neuron itself can ever write, so read its effect as the direction's, not the neuron's. `mul`
+multiplies the activation (0 silences the neuron; a whole block or every head of a layer can only be silenced, since
+the norm after them undoes any other uniform scale). `act` adds a multiple of its largest |activation| to it. The
+start mark is never pushed: it is the attention sink every later word-piece reads.
 
 ## Attention heads
 

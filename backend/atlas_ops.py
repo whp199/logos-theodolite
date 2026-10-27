@@ -190,6 +190,17 @@ class Weights:
         v = self.down_cols(layer, neurons) * self.norm(layer, "post_feedforward").to(self.device)
         return v / v.norm(dim=-1, keepdim=True).clamp(min=1e-30)
 
+    def write_ceiling(self, layer: int, neurons: Sequence[int]) -> torch.Tensor:
+        """[K] float32: the most a single neuron can ever write to the stream leaving its layer. However hard it fires
+        alone, the post-feed-forward norm turns a * W_down[:, n] into w_post (.) unit(W_down[:, n]) * sqrt(D), and the
+        layer's scalar scales that: s_l * sqrt(D) * ||w_post (.) unit(W_down[:, n])|| (0 for a neuron that writes
+        nothing). An add push of dose d is d * p50 / this times that most; on the 31B, the steer lens's 0.8 is already
+        1 to 10 times it at most layers."""
+        cols = self.down_cols(layer, neurons)
+        unit = cols / cols.norm(dim=-1, keepdim=True).clamp(min=1e-30)
+        w_post = self.norm(layer, "post_feedforward").to(unit.device)
+        return (float(self.scalars[int(layer)]) * math.sqrt(self.d_model) * (unit * w_post).norm(dim=-1)).float()
+
     def attn_weight(self, layer: int, which: str) -> torch.Tensor:
         """q | k | v | o projection weight of the layer's attention, dense [out, in] (v is k on a layer whose values are
         its keys)."""
@@ -234,6 +245,9 @@ def check_pushes(lm: nn.Module, pushes: Sequence[Push], heads: Sequence[HeadScal
         if p.neuron is None:
             if p.mode != "mul":
                 raise ValueError('A whole layer\'s feed-forward block takes only mode "mul" (dose 0 silences it).')
+            if float(p.dose) != 0.0:
+                raise ValueError("A whole feed-forward block can only be silenced (dose 0): the norm after the block undoes any "
+                                 f"other uniform scale, so x{p.dose:g} would change nothing but, below 0, its sign.")
         elif not 0 <= int(p.neuron) < ffn_width(lm, p.layer):
             raise ValueError(f"Neuron {p.neuron} does not exist: layer {p.layer} has {ffn_width(lm, p.layer)} (0 to {ffn_width(lm, p.layer) - 1}).")
     for h in heads:
@@ -244,6 +258,10 @@ def check_pushes(lm: nn.Module, pushes: Sequence[Push], heads: Sequence[HeadScal
             raise ValueError(f"Layer {h.layer} has {n} attention heads (0 to {n - 1}), not head {h.head}.")
         if not math.isfinite(float(h.scale)):
             raise ValueError("A head's scale must be a finite number.")
+        if h.head is None and float(h.scale) != 0.0:
+            raise ValueError("Every head of a layer can only be silenced together (dose 0): the norm after attention undoes "
+                             f"any other uniform scale, so x{h.scale:g} would change nothing but, below 0, its sign. Scale "
+                             "heads one by one instead.")
 
 
 @dataclass

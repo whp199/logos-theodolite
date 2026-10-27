@@ -418,7 +418,7 @@ const Keep: React.FC = () => (
         the study did for 384 faces (N1), and says no more than that count: one word-piece is a smaller test than 36
         texts, and only the test on the 36 texts compares with the study’s figures. It runs one label at a time, when
         you ask; nothing yet tests every label on its own. <To dest="atlas">The atlas</To>’s steer lens measures, for
-        every neuron, the next word-pieces a small push raises and lowers, which you can set beside its label; the two
+        every neuron, the next word-pieces a push along it raises and lowers, which you can set beside its label; the two
         are not compared for you.
       </KeepRow>
     </div>

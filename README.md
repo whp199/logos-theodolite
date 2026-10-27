@@ -119,7 +119,8 @@ neuron's words below layer 41, and keeps them in the apparatus (§iv).
 **The atlas.** Every neuron of every layer on one map (`#/atlas`): sixty sheets of 21,504 dots, each layer’s attention
 heads drawn as lines before its sheet, the neurons that write alike side by side. Open a neuron and the atlas shows its
 words (through the lens, held back by the label gate below layer 41 as on every page, and beside them its *steer lens*:
-which next word-pieces a small push on it actually raises), its **web** of weight links hop by hop with the words of what
+which next word-pieces a push along its write direction actually raises, a push larger than the neuron itself can write at
+most layers), its **web** of weight links hop by hop with the words of what
 could drive it up and down and what it could drive when it fires each way, the heads that read it and feed it, its **census**
 answers (the model answering fixed questions with this neuron pushed at several doses, ranked against pushes along
 random directions), and a **push**: ask anything and read three answers at once, the neuron pushed up, left alone and

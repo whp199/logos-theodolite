@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Rubric } from "../../components/kit";
 import { href } from "../../router";
 import type { CensusUnit, Rollout } from "./api";
-import { CensusProvenance, fmtDose } from "./parts";
+import { CensusProvenance, fmtDose, overCeiling } from "./parts";
 import { useAtlas } from "./state";
 
 /**
@@ -24,6 +24,22 @@ export const CensusTab: React.FC = () => {
     );
   }
   return <Grid unit={unit} open={open} toggle={(k) => setOpen((s) => new Set(s.has(k) ? [...s].filter((x) => x !== k) : [...s, k]))} />;
+};
+
+/** The census's doses against the most this neuron can ever write by itself (NeuronLens.ceiling). */
+const CeilingNote: React.FC = () => {
+  const f = useAtlas((s) => s.focus);
+  const lens = useAtlas((s) => s.lens);
+  const c = f && lens && lens.layer === f.layer && lens.n === f.n ? lens.ceiling : null;
+  const o5 = overCeiling(0.5, c);
+  const o8 = overCeiling(0.8, c);
+  if (o5 == null || o8 == null) return null;
+  return (
+    <p className="muted atlas-small" style={{ margin: "0 0 8px" }}>
+      For this neuron a push of 0.5 is {o5.toFixed(1)}× and 0.8 is {o8.toFixed(1)}× the most it can ever write by itself: where that is above
+      1, the answers say what a push this large does, not what the neuron does when it fires.
+    </p>
+  );
 };
 
 const Grid: React.FC<{ unit: CensusUnit; open: Set<string>; toggle: (k: string) => void }> = ({ unit, open, toggle }) => {
@@ -95,6 +111,7 @@ const Grid: React.FC<{ unit: CensusUnit; open: Set<string>; toggle: (k: string) 
         all of it. <a href={href.lexicon("census")}>What the census is.</a>
       </Rubric>
       <CensusProvenance card={unit.card} style={{ margin: "0 0 8px" }} />
+      <CeilingNote />
       <div className="atlas-grid" style={{ gridTemplateColumns: `56px repeat(${1 + doses.length}, minmax(0, 1fr))` }}>
         {out}
       </div>

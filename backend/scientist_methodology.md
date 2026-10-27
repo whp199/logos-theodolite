@@ -65,12 +65,15 @@ study found about Gemma-4-31B. It uses the vocabulary above (faces, steer lens, 
   or doubling it barely moves the next word-piece. Check `mul 0` and `mul 2` with `logprobs` before reading meaning
   into its words.
 - **The lens and the naked eye.** Weight them only where the gate shows the label (page layers 41-60, the two readings
-  sharing some of their first ten). Specific repeated word-pieces are reliable; mixed fragments are noise. In the
+  sharing some of their first ten), and most where the gate was validated, page layers 41-58: at 59 and 60 it shows
+  labels it was never tested on. Specific repeated word-pieces are reliable; mixed fragments are noise. In the
   study, output labels predicted the neurons' real effects only at the sampled layers 41-58, the naked eye about as
   well as J++ except at 41-46, where J++ was a little ahead; at the sampled layers 11-31 no single neuron had a stable
   effect to label, and layers 32-40 were not sampled. Input-side words (`gate_trigger`) were near useless.
 - **Single neurons at page layers 21-31.** The study's push of 60 times a neuron's scale overdrove them (errata E43,
-  E46): read the atlas's own doses (the add push, up to about 3) there, and expect weak, distributed effects.
+  E46), and the atlas's add push is larger still there: 0.8 of the stream is several times the 60x push and several
+  times the most the neuron can write by itself (`ceiling`). Start from a dose near `ceiling.rel`, and expect weak,
+  distributed effects.
 - **Web summary.** A word-piece under both `drives_plus` and `drives_minus` often reflects pooling; shared topical
   words can mean a distinction inside a topic (below). With the steer-lens index missing it pools only gate-passing
   lens labels, which below page layer 41 is none.

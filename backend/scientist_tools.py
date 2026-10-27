@@ -118,9 +118,11 @@ LN = {"layer": {"type": "integer", "description": "page layer, from 1"}, "n": {"
 HEAD = {"layer": {"type": "integer", "description": "page layer, from 1"}, "head": {"type": "integer", "description": "head, from 0 (`overview` gives each kind of layer's count)"}}
 PUSHES = {"type": "array", "description": "neurons pushed (or layers' whole blocks scaled) during the same pass",
           "items": {"type": "object", "properties": {
-              **LN, "all": {"type": "boolean", "description": "the layer's whole feed-forward block (mode mul)"},
+              **LN, "all": {"type": "boolean", "description": "the layer's whole feed-forward block, silenced (mode mul, dose 0 "
+                                                     "only: the norm after the block undoes any other uniform scale)"},
               "dose": {"type": "number"}, "mode": {"type": "string", "enum": ["add", "mul", "act"]}}, "required": ["layer"]}}
-HEADS = {"type": "array", "description": "attention heads scaled during the same pass (dose 0 silences one; head 'all' every head of the layer)",
+HEADS = {"type": "array", "description": "attention heads scaled during the same pass (dose 0 silences one; head 'all' silences every head "
+         "of the layer, dose 0 only: the norm after attention undoes any other uniform scale of them all)",
          "items": {"type": "object", "properties": {"layer": {"type": "integer"}, "head": {"type": ["integer", "string"]},
                                                      "dose": {"type": "number", "default": 0}}, "required": ["layer", "head"]}}
 AT = {"type": "integer", "description": "a display unit by its index in the returned tokens (negative from the end); overrides token"}
@@ -174,7 +176,8 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "steer", "description": "Live: the model answers a chat prompt three ways in one batch, pushed up, as it is, and pushed down "
      "(greedy). One neuron (layer, n) or several (neurons: [{layer, n, dose?, mode?}], all at once, each the other way in the down "
      "row). mode add: dose is a share of the stream's median length leaving the layer, along the neuron's write direction (0.8 is "
-     "the steer lens's push; 2 to 3 is strong); mul: a factor on its activation (0 silences it); act: a multiple of its largest "
+     "the steer lens's push, already more than most neurons can write by themselves on this model: `neuron`'s ceiling.rel is "
+     "that most; 2 to 3 is strong); mul: a factor on its activation (0 silences it); act: a multiple of its largest "
      "|activation|, added to it.",
      "inputSchema": {"type": "object", "properties": {**LN, "prompt": {"type": "string"}, "neurons": PUSHES,
                                                        "dose": {"type": "number", "default": 0.8},
@@ -336,7 +339,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         return {
             "neuron": cite(a["layer"], a["n"]), "name": r.get("name") or None, "note": entry.get("note") or None,
             "edited_in_vault": r.get("edited"), "faces": faces, "gate_trigger": r.get("gate_trigger"),
-            "steer": r.get("steer"), "activation": r.get("act_range"),
+            "steer": r.get("steer"), "steer_stale": r.get("steer_stale"), "activation": r.get("act_range"), "ceiling": r.get("ceiling"),
             "census": r.get("census"), "wiring": r.get("wiring_source"),
             "writes_into": [_slim_link(c) for c in r["writes_into"]], "reads_from": [_slim_link(c) for c in r["reads_from"]],
             "lens": (r.get("lens") or {}).get("name"),
@@ -377,7 +380,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         r = await api.get("/api/atlas/search", q=a["query"], limit=a.get("limit", 40))
         if not r.get("ready"):
             return {"ready": False, "note": "neither the lens index nor the steer-lens index is built"}
-        return {"word_pieces_matched": r["tokens"], "total": r["total"],
+        return {"word_pieces_matched": r["tokens"], "total": r["total"], "held_back_by_the_gate": r.get("held_back", 0),
                 "results": [{"neuron": cite(x["layer"], x["n"]), "face": x["sign"], "matched_in": x["src"], "rank": x["rank"],
                              **face_words(x["words"], 6), **({"census": x["census"]} if x.get("census") else {}),
                              **({"name": x["name"]} if x.get("name") else {})} for x in r["results"]]}

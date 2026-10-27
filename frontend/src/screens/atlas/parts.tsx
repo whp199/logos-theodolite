@@ -7,7 +7,6 @@
  */
 import React from "react";
 import { HeldBackWords } from "../../components/HeldBack";
-import { IfApparatus } from "../../components/kit";
 import { labelGate, layerIdx, parseLabelCheck } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import type { CensusCard, FaceWords, LensFace, PooledWord } from "./api";
@@ -18,7 +17,8 @@ export function gateOf(layer: number, check: unknown) {
   return labelGate(layerIdx(layer), parseLabelCheck(check));
 }
 
-/** One face's words: the steer lens's when there are any, then the lens's under the gate. */
+/** One face's words, each list named in small capitals: the steer lens's when there are any (a measured push, not a
+ * label), then the lens's under the gate. Words read before a vault edit in force say so in the main reading. */
 export const FaceLine: React.FC<{
   layer: number;
   face: "+" | "-";
@@ -34,8 +34,14 @@ export const FaceLine: React.FC<{
   return (
     <span className="atlas-face">
       <span className={`atlas-sgn ${face === "+" ? "up" : "down"}`}>{face === "+" ? "+" : "−"}</span>
+      {"stale" in w && w.stale ? (
+        <span className="atlas-stale" title={w.stale}>
+          [read before its edit]
+        </span>
+      ) : null}
       {showSteer && steer && steer.length ? (
         <span className="atlas-steer" title="the steer lens: the next word-piece’s measured rise when the neuron is pushed">
+          <span className="atlas-src">steer</span>
           {words(steer, k)}
         </span>
       ) : null}
@@ -43,21 +49,19 @@ export const FaceLine: React.FC<{
         gate.heldBack ? (
           <HeldBackWords gate={gate} words={lens} eye={w.eye} compact={compact} size={15} line={!compact} />
         ) : (
-          <span className="atlas-lens" title="through the J++ lens (fitted on the base model)">
+          <span className="atlas-lens" title="through the J++ lens, fitted on the base model and read here on the instruct model">
+            <span className="atlas-src">lens</span>
             {words(lens, k)}
           </span>
         )
       ) : null}
-      {"stale" in w && w.stale ? (
-        <IfApparatus>
-          <span className="atlas-stale" title={w.stale}>
-            [read before its edit]
-          </span>
-        </IfApparatus>
-      ) : null}
     </span>
   );
 };
+
+/** How many times the most the neuron can write by itself an add push of `dose` is (NeuronLens.ceiling), or null. */
+export const overCeiling = (dose: number, c: { rel: number | null } | null | undefined) =>
+  c && c.rel ? Math.abs(dose) / c.rel : null;
 
 export const Chips: React.FC<{ list: PooledWord[] | undefined; onPick?: (tok: string) => void; empty?: string }> = ({ list, onPick, empty = "nothing above chance" }) =>
   list && list.length ? (

@@ -9,7 +9,7 @@ import { create } from "zustand";
 import { Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { AtlasError, post, streamLines, type ReadsReply } from "./api";
-import { ErrorLine, FaceLine } from "./parts";
+import { ErrorLine, FaceLine, overCeiling } from "./parts";
 import { useAtlas } from "./state";
 
 const ADD_STEPS = [...Array.from({ length: 30 }, (_, i) => +((i + 1) * 0.05).toFixed(2)), 1.75, 2, 2.5, 3, 4, 5];
@@ -156,7 +156,12 @@ const Words: React.FC = () => {
   const census = unit && unit.layer === f.layer && unit.n === f.n ? unit.stats?.words.map((w) => w[0]) : null;
   return (
     <div className="atlas-plens">
-      {census?.length ? <div className="atlas-cwords">{census.slice(0, 12).join("  ")}</div> : null}
+      {census?.length ? (
+        <div className="atlas-cwords">
+          <span className="atlas-src">census</span>
+          {census.slice(0, 12).join("  ")}
+        </div>
+      ) : null}
       <div>
         <FaceLine layer={f.layer} face="+" w={{ ...lens.faces["+"], steer: lens.steer?.up ?? null }} k={10} />
       </div>
@@ -199,6 +204,21 @@ const Thread: React.FC = () => {
   );
 };
 
+/** What an add push of this dose is worth: the most the neuron can ever write by itself, and where the push's unit comes from. */
+const DoseNote: React.FC<{ dose: number }> = ({ dose }) => {
+  const f = useAtlas((s) => s.focus);
+  const lens = useAtlas((s) => s.lens);
+  const c = f && lens && lens.layer === f.layer && lens.n === f.n ? lens.ceiling : null;
+  const over = overCeiling(dose, c);
+  if (over == null || !c) return null;
+  return (
+    <p className="muted atlas-small" style={{ margin: "2px 0 0" }}>
+      {dose} of the stream’s usual length is {over < 1 ? "less than" : `${over.toFixed(1)}×`} the most this neuron can ever write by itself
+      {c.source && c.source.includes("provisional") ? ` (the usual length read over ${c.source})` : ""}.
+    </p>
+  );
+};
+
 const Reads: React.FC = () => {
   const reads = usePush((s) => s.reads);
   const err = usePush((s) => s.readsError);
@@ -221,7 +241,7 @@ const Reads: React.FC = () => {
       </div>
       <p className="muted atlas-small">
         strongest here {m.toFixed(2)}
-        {range ? ` · its usual extremes +${range.act_max.toFixed(2)} / ${range.act_min.toFixed(2)} over ${range.over_tokens} word-pieces` : ""}
+        {range ? ` · its usual extremes +${range.act_max.toFixed(2)} / ${range.act_min.toFixed(2)} over ${range.over_tokens} word-pieces of ${range.source}` : ""}
       </p>
     </div>
   );
@@ -320,6 +340,7 @@ export const PushTab: React.FC = () => {
             </button>
           ) : null}
         </div>
+        {dir === "writes" && mode === "add" ? <DoseNote dose={dose.add} /> : null}
         <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
           <input className="input-line" value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} aria-label={placeholder} />
           <button type="submit" className="btn-ghost">

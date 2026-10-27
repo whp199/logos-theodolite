@@ -709,17 +709,31 @@ def _lens_reply(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
         "steer": None,
         "act_range": a.act_range(layer, n, sc) if sc else None,
         "edited": (layer, n) in a.edited(),
+        "ceiling": ceiling(a, layer, n, sc),
     }
     st = a.index.get("steer_lens")
-    if st is not None:
+    if st is not None and not out["edited"]:
         out["steer"] = {"source": "index", "up": a.words(st["up"][layer, n], 12), "down": a.words(st["down"][layer, n], 12),
                         "kl_up": round(float(st["up_kl"][layer, n]), 3), "kl_down": round(float(st["down_kl"][layer, n]), 3),
                         "dose": float(st["dose"])}
     else:
-        live = a.cache["steer"].get((a.edit_key(), layer, n))
-        if live is not None:
-            out["steer"] = live
+        out["steer"] = a.cache["steer"].get((a.edit_key(), layer, n))
+        if st is not None and out["steer"] is None:
+            # the index's was read before the vault edit in force on this neuron: none until it is read again
+            out["steer_stale"] = "the steer-lens index was read before the vault edit in force on this neuron: read it again now"
     return out
+
+
+STALE_WEB = "the wiring index was read before the vault edit in force on this neuron: its links and web are as they were"
+
+
+def ceiling(a: Atlas, layer: int, n: int, sc: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """The most the neuron can ever write to the stream leaving its layer (`Weights.write_ceiling`), and, with the push's
+    unit known, as a share of the stream's median length (`rel`): an add push of dose d is d / rel times it."""
+    c = float(a.w.write_ceiling(layer, [n])[0])
+    p50 = float(sc["p50"][layer]) if sc else None
+    return {"write": round(c, 5), "p50": round(p50, 5) if p50 else None, "rel": round(c / p50, 5) if p50 else None,
+            "source": sc["source"]["corpus"] if sc else None}
 
 
 @router.get("/neuron/lens")
@@ -830,6 +844,7 @@ async def hover(layer: int, n: int) -> Dict[str, Any]:
     def work() -> Dict[str, Any]:
         return {"layer": layer, "n": n, "faces": {s: a.face(layer, n, s, 6, edited) for s in ("+", "-")},
                 "links": a.index.links(layer, n, 16), "name": (notes.get(fn.note_key(layer, n)) or {}).get("name", ""),
+                **({"links_stale": STALE_WEB} if (layer, n) in edited else {}),
                 "ready": a.index.get("lens") is not None}
 
     return await asyncio.to_thread(work)
@@ -839,23 +854,28 @@ async def hover(layer: int, n: int) -> Dict[str, Any]:
 async def search(q: str, limit: int = 300) -> Dict[str, Any]:
     """Neurons one of whose faces carries a word-piece holding `q` (ignoring case) among its first twelve, through the
     lens, by the naked eye, or in its steer lens (backend/atlas_index.AtlasIndex.search). Each row names the reading it
-    matched in (`src`), the face's words, and the label check of the face (a match through the lens or the naked eye
-    is a label like any other: the pages hold back what the gate marks)."""
+    matched in (`src`), the face's words, and the label check of the face. A match through the lens or the naked eye
+    is a label like any other, so a face the gate holds back goes to `held` (for the apparatus), not `results` (the
+    main reading and the map's marks); `held_back` counts them."""
     a = atlas()
     notes = (await fn.all_notes())["neurons"]
     edited = a.edited()
 
     def work() -> Dict[str, Any]:
         if a.index.get("lens") is None and a.index.get("steer_lens") is None:
-            return {"ready": False, "results": [], "tokens": 0, "total": 0}
+            return {"ready": False, "results": [], "held": [], "held_back": 0, "tokens": 0, "total": 0}
         match = match_ids(a.vocab(), q)
         if not len(match):
-            return {"ready": True, "results": [], "tokens": 0, "total": 0}
+            return {"ready": True, "results": [], "held": [], "held_back": 0, "tokens": 0, "total": 0}
         rows, total = a.index.search(match, max(1, min(int(limit), 2000)))
-        res = [{**r, "words": a.face(r["layer"], r["n"], r["sign"], 6, edited),
-                "census": census_words(r["layer"], a.rt.model_id).get(r["n"]),
-                "name": (notes.get(fn.note_key(r["layer"], r["n"])) or {}).get("name", "")} for r in rows]
-        return {"ready": True, "results": res, "tokens": int(len(match)), "total": total}
+        res, held = [], []
+        for r in rows:
+            row = {**r, "words": a.face(r["layer"], r["n"], r["sign"], 6, edited),
+                   "census": census_words(r["layer"], a.rt.model_id).get(r["n"]),
+                   "name": (notes.get(fn.note_key(r["layer"], r["n"])) or {}).get("name", "")}
+            chk = row["words"].get("check")
+            (held if r["src"] != "steer" and (chk is None or chk.get("held_back")) else res).append(row)
+        return {"ready": True, "results": res, "held": held, "held_back": len(held), "tokens": int(len(match)), "total": total}
 
     return await asyncio.to_thread(work)
 
@@ -870,7 +890,10 @@ async def web(layer: int, n: int, first: int = 5, k: int = 2, zmin: float = 15.0
     rows = await asyncio.to_thread(a.index.cone, layer, n, max(1, int(k)), float(zmin), max(1, min(int(cap), 40000)),
                                    max(1, int(first)), int(hops) or None)
     arr = np.array([(*r[:4], int(round(r[4] * 10)), r[5]) for r in rows], np.int16).reshape(-1, 6)
-    return Response(arr.tobytes(), media_type="application/octet-stream", headers={"X-Web-Total": str(len(arr))})
+    headers = {"X-Web-Total": str(len(arr))}
+    if (layer, n) in a.edited():
+        headers["X-Web-Stale"] = "1"  # the wiring index was read before the vault edit in force on this neuron
+    return Response(arr.tobytes(), media_type="application/octet-stream", headers=headers)
 
 
 @router.get("/web/summary")
@@ -880,8 +903,11 @@ async def web_summary(layer: int, n: int, first: int = 5, k: int = 2, top: int =
     if src not in ("auto", "steer", "lens"):
         raise HTTPException(status_code=400, detail='src is "auto", "steer" or "lens".')
     vocab = await asyncio.to_thread(a.vocab)
-    return await asyncio.to_thread(a.index.web_summary, layer, n, vocab, max(1, int(first)), max(1, int(k)),
-                                   max(1, min(int(top), 64)), int(hops) or None, src)
+    res = await asyncio.to_thread(a.index.web_summary, layer, n, vocab, max(1, int(first)), max(1, int(k)),
+                                  max(1, min(int(top), 64)), int(hops) or None, src)
+    if (layer, n) in a.edited() and res.get("ready"):
+        res["stale"] = STALE_WEB
+    return res
 
 
 @router.get("/layout")
@@ -1220,12 +1246,19 @@ async def run_view(pos: int = -1, sign: str = "both", lo: int = 0, hi: int = 999
         lay = np.arange(a.L)[:, None]
         keep &= (lay >= lo) & (lay <= hi)
         if q.strip():
+            match = match_ids(a.vocab(), q)
+            hit = np.zeros_like(keep)
             lens = a.index.get("lens")
             if lens is not None:
-                match = match_ids(a.vocab(), q)
-                hit = np.where(best[..., None] >= 0, np.isin(lens["lens_pos"][:, :, :6], match) | np.isin(lens["eye_pos"][:, :, :6], match),
-                               np.isin(lens["lens_neg"][:, :, :6], match) | np.isin(lens["eye_neg"][:, :, :6], match)).any(-1)
-                keep &= hit
+                lh = keep & np.where(best[..., None] >= 0, np.isin(lens["lens_pos"][:, :, :6], match) | np.isin(lens["eye_pos"][:, :, :6], match),
+                                     np.isin(lens["lens_neg"][:, :, :6], match) | np.isin(lens["eye_neg"][:, :, :6], match)).any(-1)
+                # a label the gate holds back is not the neuron's words in the main reading, so it does not match
+                for l, n in zip(*np.nonzero(lh)):
+                    hit[l, n] = a.index.label_passes(int(l), int(n), "+" if best[l, n] >= 0 else "-")
+            st = a.index.get("steer_lens")
+            if st is not None:
+                hit |= np.where(best[..., None] >= 0, np.isin(st["up"][:, :, :6], match), np.isin(st["down"][:, :, :6], match)).any(-1)
+            keep &= hit
         view[~keep] = 0
         ls, ns = np.nonzero(keep)
         order = np.argsort(-np.abs(best[ls, ns]))[: max(1, min(int(limit), 2000))]
@@ -1509,7 +1542,8 @@ async def neuron(layer: int, n: int) -> Dict[str, Any]:
     con = await neuron_wiring(layer, n, 24)
     u = await census_unit(layer, n)
     return {"layer": layer, "n": n, "name": u.get("name", ""), "faces": lens["faces"], "gate_trigger": lens["gate_trigger"],
-            "steer": lens["steer"], "act_range": lens["act_range"], "edited": lens["edited"],
+            "steer": lens["steer"], "act_range": lens["act_range"], "edited": lens["edited"], "ceiling": lens.get("ceiling"),
+            **({"steer_stale": lens["steer_stale"]} if lens.get("steer_stale") else {}),
             "census": {"rank": u.get("rank"), "n_ranked": u.get("n_ranked"), "stats": u.get("stats"),
                        "n_rollouts": len(u.get("rollouts", []))} if "run" in u else None,
             "writes_into": con["down"], "reads_from": con["up"], "wiring_source": con["source"],
@@ -1540,6 +1574,7 @@ async def cone(layer: int, n: int, k: int = 2, limit: int = 120) -> Dict[str, An
             per_hop[r["hop"]] = per_hop.get(r["hop"], 0) + 1
         nodes = sorted(reached, key=lambda kv: (abs(kv[1]["hop"]), -kv[1]["w"]))[: max(1, min(int(limit), 1000))]
         return {"ready": True, "neurons": len(reached), "per_hop": {str(h): c for h, c in sorted(per_hop.items())},
+                **({"stale": STALE_WEB} if (layer, n) in edited else {}),
                 "note": ("weight-only direct-path links chained, read from rest (" + ao.LINK_MODEL + ") Paths past hop 1 are "
                          "leads, not circuits. hop > 0 reads the neuron (when: the face it fires on), hop < 0 feeds it "
                          "(drives: the face it pushes the neuron toward); face is the face each is read on"),

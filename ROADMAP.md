@@ -210,6 +210,11 @@ browser against it, but nothing yet on Gemma-4-31B itself.
   whichever way the writer fires, then multiplied along paths and split into "fed by" and "held back by"); every
   consumer now reads them one way, from rest through GeGLU's gate. That model is still a simplification: a sign at the
   reader's usual operating point (from the stats pass's gate and up values) would say what a link does in use.
+- **The push's size.** On the 31B the norm after each block caps what a single neuron can write, and the steer lens's
+  and the census's 0.8 of the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). The pages now
+  say so per neuron, and no longer call it a small push or tell readers to trust the steer lens over the lens. Before
+  the steer lens and the census are built on the model, choose their dose against the ceiling (a share of each
+  neuron's own most, or of k · max|a| through a frozen norm, erratum E47), with `calib_rel` on a few layers.
 - **Single neurons at layers 21–31.** The study's 60-fold push overdrove them (errata E43, E46); whether the census's
   doses move them at all there is to be seen.
 - **Stored passages for each face** (Cammarata's practice iii, the study's §3.5): the stats index keeps each neuron's

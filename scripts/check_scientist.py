@@ -856,7 +856,11 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
           "cone: a reader with the face the neuron fires on, a writer with the face it drives, each with its strength")
     word = a_.words(a_.index.face_ids(4, 7, "+", "lens", 1))[0].strip()
     sr = await st.call("search_lens", {"query": word, "limit": 2000}, api)
-    check(sr["word_pieces_matched"] > 0 and any(x["neuron"] == "L5 N7" and x["face"] == "+" for x in sr["results"]), f"search_lens finds L5 N7 by {word!r}")
+    check(sr["word_pieces_matched"] > 0 and sr["held_back_by_the_gate"] > 0 and not any(x["matched_in"] in ("lens", "eye") for x in sr["results"]),
+          f"search_lens by a lens word {word!r}: on the stand-in every lens label is held back, so it only counts them")
+    sword = next(w_.strip() for w_ in a_.words(a_.index.get("steer_lens")["up"][4, 7, :6], 6) if len(w_.strip()) >= 2)
+    sr = await st.call("search_lens", {"query": sword, "limit": 2000}, api)
+    check(any(x["neuron"] == "L5 N7" and x["face"] == "+" and x["matched_in"] == "steer" for x in sr["results"]), f"search_lens finds L5 N7 by its steer lens's {sword!r}")
     # a census of API layer 3 is page layer 4's
     cdir = cz.census_dir()
     cdir.mkdir(parents=True, exist_ok=True)

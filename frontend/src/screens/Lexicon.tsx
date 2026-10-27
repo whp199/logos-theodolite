@@ -1226,12 +1226,16 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
 
         <Entry id="steer-lens" head="the steer lens" tech="steering lens · the next word-piece’s change of log-probability">
           <Body>
-            What a neuron does to the next word, measured rather than read: push it a little at every word-piece of four
-            short texts and see which word-pieces become likelier next, each way. It reads the model’s own output, not a
-            lens fitted on another model, so the label gate does not hold it back.
+            What pushing a neuron does to the next word, measured rather than read: push the stream along what the
+            neuron writes, at every word-piece of four short texts, and see which word-pieces become likelier next, each
+            way. It reads the model’s own output, not a lens fitted on another model, so the label gate does not hold it
+            back.
           </Body>
           <Note>
-            Where the steer lens and the lens disagree, trust the steer lens: it is what the neuron, pushed, does.
+            The push is not small. At most layers of this model it is longer than anything the neuron can write by
+            itself, however hard it fires (the details say by how much for each neuron), so the steer lens says what a
+            push that large along the neuron’s direction does, not what the neuron does when it fires. Where it and the
+            lens disagree, neither wins: test with a smaller push and with what the neuron reads.
           </Note>
           <EntryApparatus title="the steer lens">
             ±0.8 · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M> of its layer,
@@ -1256,7 +1260,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             “add”: h ← h + σ · d · p50<sub>ℓ</sub> · unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M>{" "}
             of layer ℓ, σ = +1, 0, −1 for the three voices, start mark spared; “×”: a<sub>n</sub> ← d · a<sub>n</sub>, a
             <sub>n</sub>, −d · a<sub>n</sub>. Greedy, one batch of three; p50 is the stream’s median length leaving the
-            layer, over the stats index’s text. <M>POST /api/atlas/push</M> (events).
+            layer, over the stats index’s text, or over the study’s 36 texts (provisional) until that index is built. The
+            most a neuron can write by itself is s<sub>ℓ</sub> · √D · ‖w<sub>post</sub> ⊙ unit(W<sub>down</sub>[:, n])‖
+            (the norm caps it), and the push tab says what a dose is against it. <M>POST /api/atlas/push</M> (events).
           </EntryApparatus>
         </Entry>
 
