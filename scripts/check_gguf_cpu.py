@@ -6,8 +6,9 @@ tiny GGUF files, as scripts/check_gguf.py writes them:
    TheodoliteRuntime as each built it before (the lab daemon's with both lenses, the standalone scientist's without the
    Jacobian lens); on a GGUF on the CPU, the standalone scientist (backend/mcp_scientist.py) and the lab daemon
    (experiments/lab/labd.py) load a GGUFRuntime, whose /health and /exec replies (and the exec log) name its model id
-   and weights card (`weights_card`: a GGUF's file provenance, the checkpoint's repo id and the snapshot a cache laid
-   out as the hub's holds, the stand-in's); none of them, nor the two verify scripts, builds the pinned runtime itself;
+   and weights card (`weights_card`: a GGUF's file provenance; the checkpoint's repo id, the snapshot a cache laid
+   out as the hub's holds and its weight files by the blobs they link to, so another commit of the same files is the
+   same weights; the stand-in's); none of them, nor the two verify scripts, builds the pinned runtime itself;
 2. labkit's GGUF twin of its W4A16 autograd function: `same_pos_vjp` (the lens fits' true Jacobian products) through
    packed and resident Q4_0 layers equals the dense stand-in's carrying the same numbers, bit for bit in float32 and
    in bf16, with no weight kept for backward (the layers' own forward gives the same gradients, keeping weights), and
@@ -69,12 +70,14 @@ from backend import gguf_model as gm
 from backend import gguf_weights as gw
 from backend import runtime_factory as rf
 from backend.causal_check import language_model
+from backend.cpu_memory import CPU_MEMORY_ENV
 from backend.gguf_runtime import GGUFRuntime
 
 failures: List[str] = []
 passed = 0
 BASE = "http://127.0.0.1:8765"  # the guards refuse TestClient's own "testserver" Host
-ENV_KEYS = (rf.GGUF_ENV, rf.DEVICE_ENV, rf.LINEARS_ENV, rf.CONFIG_ENV, rf.DTYPE_ENV, rf.LENS_ENV, "CUDA_VISIBLE_DEVICES")
+ENV_KEYS = (rf.GGUF_ENV, rf.DEVICE_ENV, rf.LINEARS_ENV, rf.CONFIG_ENV, rf.DTYPE_ENV, rf.LENS_ENV, rf.CHECKPOINT_LINEARS_ENV,
+            CPU_MEMORY_ENV, "CUDA_VISIBLE_DEVICES")
 
 
 def check(ok: bool, what: str) -> None:
@@ -202,19 +205,45 @@ def run_checks(tmp: Path) -> int:
         labd.STATE.clear()
         labd.TOKEN["value"] = None
 
-    # the weights card of each kind of runtime
-    import huggingface_hub.constants as hubc
+    # the weights card of each kind of runtime; the checkpoint's in a cache laid out as the hub lays one out (each
+    # snapshot's files links to blobs named for their content), under a folder itself named "snapshots"
+    import hashlib
 
-    snap = "0123456789abcdef0123456789abcdef01234567"
-    repo_dir = tmp / "hub" / "models--google--gemma-4-31B-it-qat-w4a16-ct"
-    (repo_dir / "snapshots" / snap).mkdir(parents=True)
-    (repo_dir / "snapshots" / snap / "config.json").write_text("{}")
+    import huggingface_hub.constants as hubc
+    from backend.atlas_index import weights_differ
+
+    hub = tmp / "snapshots" / "hub"
+    repo_dir = hub / "models--google--gemma-4-31B-it-qat-w4a16-ct"
+    (repo_dir / "blobs").mkdir(parents=True)
     (repo_dir / "refs").mkdir()
-    (repo_dir / "refs" / "main").write_text(snap)
+    blobs = {"config.json": "c0" * 20, "model-00001-of-00002.safetensors": "a1" * 32, "model-00002-of-00002.safetensors": "b2" * 32,
+             "README.md": "d3" * 20, "other.safetensors": "e4" * 32}
+    for b in blobs.values():
+        (repo_dir / "blobs" / b).write_text(b)
+
+    def snapshot(commit: str, names: List[str], linked: bool = True) -> None:
+        (repo_dir / "snapshots" / commit).mkdir(parents=True)
+        for name in names:
+            blob = blobs["other.safetensors" if name.endswith("!") else name]
+            f = repo_dir / "snapshots" / commit / name.rstrip("!")
+            if linked:
+                f.symlink_to(Path("..") / ".." / "blobs" / blob)
+            else:
+                f.write_text(blob)
+        (repo_dir / "refs" / "main").write_text(commit)
+
+    shards = ["config.json", "model-00001-of-00002.safetensors", "model-00002-of-00002.safetensors"]
+    files_id = hashlib.sha256("\n".join(f"{n} {blobs[n]}" for n in shards).encode()).hexdigest()
     hub_cache = hubc.HF_HUB_CACHE
+    cards: Dict[str, Any] = {}
     try:
-        hubc.HF_HUB_CACHE = str(tmp / "hub")
-        card_ct = rf.weights_card(er.TheodoliteRuntime(load_jlens=False))
+        hubc.HF_HUB_CACHE = str(hub)
+        for commit, names, linked in (("0123456789abcdef0123456789abcdef01234567", shards, True),
+                                      ("1111111111111111111111111111111111111111", shards + ["README.md"], True),  # the card edited
+                                      ("2222222222222222222222222222222222222222", shards[:2] + ["model-00002-of-00002.safetensors!"], True),
+                                      ("3333333333333333333333333333333333333333", shards, False)):  # copied, not linked
+            snapshot(commit, names, linked)
+            cards[commit[0]] = rf.weights_card(er.TheodoliteRuntime(load_jlens=False))
         cpu_ct = rf.CheckpointRuntime(device="cpu", load_jlens=False)
         cpu_ct.model_id += rf.reading_class(cpu_ct.device)
         card_cpu = rf.weights_card(cpu_ct)
@@ -222,12 +251,26 @@ def run_checks(tmp: Path) -> int:
         card_none = rf.weights_card(er.TheodoliteRuntime(load_jlens=False))
     finally:
         hubc.HF_HUB_CACHE = hub_cache
+    card_ct = cards["0"]
     check(card_ct["format"] == "compressed-tensors W4A16" and card_ct["repo"] == er.DEFAULT_W4A16_MODEL_ID
-          and card_ct["snapshot"] == snap and card_ct["id"] == snap[:16] and card_ct["device"] == "cuda:0",
-          f"the checkpoint's card: its repo id and the snapshot the cache's main ref names ({card_ct['id']})")
+          and card_ct["snapshot"] == "0123456789abcdef0123456789abcdef01234567" and card_ct["files_sha256"] == files_id
+          and card_ct["id"] == files_id[:16] and card_ct["device"] == "cuda:0",
+          f"the checkpoint's card: its repo id, the snapshot the cache's main ref names (under a folder named snapshots) and "
+          f"its weight files, by the blobs they link to ({card_ct['id']})")
+    check(cards["1"]["snapshot"].startswith("1111") and cards["1"]["files_sha256"] == files_id and weights_differ(card_ct, cards["1"]) is None,
+          "another commit of the same weight files (the model card edited): the same files id, so the same weights")
+    said = weights_differ(card_ct, cards["2"]) or ""
+    check(cards["2"]["files_sha256"] not in (None, files_id) and said.startswith(
+              f"{er.DEFAULT_W4A16_MODEL_ID} (weight files {files_id[:16]}, snapshot 0123456789ab), not {er.DEFAULT_W4A16_MODEL_ID} "
+              f"(weight files {cards['2']['id']}, snapshot 222222222222)"),
+          f"a shard linked to another blob: other weights, in plain words ({said[:100]})")
+    check(cards["3"]["snapshot"].startswith("3333") and cards["3"]["files_sha256"] is None and cards["3"]["id"] is None
+          and weights_differ(card_ct, cards["3"]) is None,
+          "a snapshot whose files are not links: no files id, so the model id alone is compared")
     check(card_cpu["repo"] == er.DEFAULT_W4A16_MODEL_ID and card_cpu["device"] == "cpu" and card_cpu["runtime"] == "CheckpointRuntime",
           "on the CPU: the repo id without the reading class, the device the CPU")
-    check(card_none["snapshot"] is None and card_none["id"] is None, "a checkpoint not cached here: no snapshot, no id")
+    check(card_none["snapshot"] is None and card_none["id"] is None and card_none["files_sha256"] is None,
+          "a checkpoint not cached here: no snapshot, no id")
     st_rt, _ = asi.stand_in()
     check(rf.weights_card(st_rt) == {"format": "stand-in", "model": asi.STAND_IN_MODEL_ID, "runtime": "TheodoliteRuntime"},
           "the stand-in's card says it is the stand-in")

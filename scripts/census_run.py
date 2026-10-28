@@ -243,7 +243,10 @@ def main(argv=None) -> int:
         from backend.mcp_scientist import _study_ids
 
         p50s = ao.stream_p50(ao.activation_extremes(lm, _study_ids(rt)))
-        source = "the study's 36 texts (no stats index yet)"
+        refused = index.refused("act_scale")  # there, but built for another model id, shape or weights
+        if refused:
+            print(f"the stats index is not read: {refused}", flush=True)
+        source = f"the study's 36 texts ({'the stats index refused: ' + refused if refused else 'no stats index yet'})"
 
     out_dir = Path(a.out_dir) if a.out_dir else cz.census_dir()
     out_dir.mkdir(parents=True, exist_ok=True)

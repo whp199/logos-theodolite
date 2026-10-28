@@ -4,8 +4,8 @@ accessors on the real model, so W4A16 dequantized on the fly and any vault edit 
 none) and writes its file atomically with its provenance under `meta`. scripts/check_atlas_index.py runs every one on the
 CPU stand-in and compares what it wrote with the same quantity read live, one neuron at a time. Every file's meta names
 the weights it was built from (`weights`, `runtime_factory.weights_card`: a GGUF's fingerprint and tensor types, or
-the checkpoint's repo id and snapshot), beside the model id, and the server reads it only for the same
-(`atlas_index.weights_differ`).
+the checkpoint's repo id and the weight files its snapshot links to), beside the model id, and the server reads it
+only for the same (`atlas_index.weights_differ`).
 
 What each costs on Gemma-4-31B is estimated in scripts/atlas_build.py's help from the arithmetic, not measured: the
 lens index and the wiring index are dense matrix products over every layer (minutes), the activation extremes one

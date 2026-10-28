@@ -103,18 +103,21 @@ def _weights_name(card: Dict[str, Any]) -> str:
         return f"the GGUF {card.get('file')} (fingerprint {card.get('id')})"
     if card.get("format") == "stand-in":
         return "the stand-in"
-    snap = card.get("snapshot")
-    return f"{card.get('repo') or card.get('format')}" + (f" at snapshot {str(snap)[:12]}" if snap else "")
+    snap, files = card.get("snapshot"), card.get("files_sha256")
+    said = ([f"weight files {str(files)[:16]}"] if files else []) + ([f"snapshot {str(snap)[:12]}"] if snap else [])
+    return f"{card.get('repo') or card.get('format')}" + (f" ({', '.join(said)})" if said else "")
 
 
 def weights_differ(built: Optional[Dict[str, Any]], here: Optional[Dict[str, Any]]) -> Optional[str]:
     """How the weights an index was built from (`built`: its meta's "weights", `runtime_factory.weights_card` of the
     runtime that built it) differ from the runtime's here (`here`), in plain words; None when they are the same as far
     as the two cards tell, or when either is unknown (an index built before its meta named its weights, or a
-    checkpoint whose snapshot the cache did not name), so that the model id alone is compared, as before. A GGUF is
-    compared by its fingerprint and the sha256 of its header (`gguf_model.provenance`), the checkpoint by its repo id
-    and snapshot; how a GGUF's layers are held (packed, resident, dense) is not compared: the three give the same
-    forward bit for bit (scripts/check_gguf.py), and a way of computing that does not is in the model id."""
+    checkpoint whose weight files the cache did not name), so that the model id alone is compared, as before. A GGUF
+    is compared by its fingerprint and the sha256 of its header (`gguf_model.provenance`), the checkpoint by its repo
+    id and its weight files (`files_sha256`: `runtime_factory.checkpoint_files_id`), not by the snapshot that holds
+    them, which another commit of the same files (a model card edited) changes; how a GGUF's layers are held (packed,
+    resident, dense) is not compared: the three give the same forward bit for bit (scripts/check_gguf.py), and a way
+    of computing that does not is in the model id."""
     if not built or not here:
         return None
     a, b = built.get("format"), here.get("format")
@@ -125,8 +128,8 @@ def weights_differ(built: Optional[Dict[str, Any]], here: Optional[Dict[str, Any
         return None if same else f"{_weights_name(built)}, not {_weights_name(here)}"
     if a == "stand-in":
         return None
-    if built.get("repo") != here.get("repo") or (built.get("snapshot") and here.get("snapshot")
-                                                 and built.get("snapshot") != here.get("snapshot")):
+    if built.get("repo") != here.get("repo") or (built.get("files_sha256") and here.get("files_sha256")
+                                                 and built.get("files_sha256") != here.get("files_sha256")):
         return f"{_weights_name(built)}, not {_weights_name(here)}"
     return None
 
@@ -153,7 +156,7 @@ class AtlasIndex:
 
     Given the model read here (`model`, its runtime's model_id; `shape`, its (layers, neurons); `weights`, its weights
     card, `runtime_factory.weights_card`), a file built for another model, of another shape or from other weights
-    (`weights_differ`: another GGUF behind the same model id, another snapshot of the checkpoint) is not used: it reads
+    (`weights_differ`: another GGUF behind the same model id, other weight files of the checkpoint) is not used: it reads
     as not built, and `status()` says why (`refused`). A stand-in's indexes (scripts/atlas_stand_in.py) are never read
     for the model, nor the model's for a stand-in."""
 

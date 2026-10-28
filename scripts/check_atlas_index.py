@@ -27,9 +27,10 @@ with the same quantity read live, one neuron at a time:
 9. head profiles: each head's shares of weight add up to one per read, and its pairs read more than one unit back;
 10. provenance: every index's meta names the weights it was built from (runtime_factory.weights_card), and an index
    built for another model, of another shape, by an older build or from other weights (another GGUF behind the same
-   model id, another snapshot of the checkpoint: atlas_index.weights_differ) is not read, in plain words; one built
-   before metas named their weights is read on the model id alone; a steer lens layer or a passages part from other
-   weights is refused, not resumed into.
+   model id, other weight files of the checkpoint, not another snapshot of the same: atlas_index.weights_differ) is
+   not read, in plain words; one built before metas named their weights is read on the model id alone; a steer lens
+   layer or a passages part from other weights is refused, not resumed into; census_run.py says a stats index refused
+   for its weights is there and why, in the push unit's source too.
 
 Run: .venv/bin/python -I scripts/check_atlas_index.py   (exits 0 when every check holds)
 """
@@ -512,16 +513,19 @@ def main() -> int:
     np.savez(out / "older" / "lens.npz", **old_lens)
     check(AtlasIndex(out / "older", model=rt.model_id, shape=(L, N), weights=OTHER_GGUF).get("lens") is not None,
           "an index built before metas named their weights: read on the model id alone, as before")
-    ct = lambda snap: {"format": "compressed-tensors W4A16", "repo": "google/gemma-4-31B-it-qat-w4a16-ct", "snapshot": snap}
-    check(weights_differ(ct("a" * 40), ct("b" * 40)) == ("google/gemma-4-31B-it-qat-w4a16-ct at snapshot aaaaaaaaaaaa, "
-                                                          "not google/gemma-4-31B-it-qat-w4a16-ct at snapshot bbbbbbbbbbbb")
-          and weights_differ(ct("a" * 40), ct("a" * 40)) is None and weights_differ(ct("a" * 40), ct(None)) is None
-          and weights_differ(None, ct("a" * 40)) is None and weights_differ(OTHER_GGUF, {**OTHER_GGUF, "linears": "resident"}) is None
+    ct = lambda files, snap="a" * 40: {"format": "compressed-tensors W4A16", "repo": "google/gemma-4-31B-it-qat-w4a16-ct",  # noqa: E731
+                                       "snapshot": snap, "files_sha256": files}
+    check(weights_differ(ct("e" * 64), ct("f" * 64, "b" * 40)) == (
+              "google/gemma-4-31B-it-qat-w4a16-ct (weight files eeeeeeeeeeeeeeee, snapshot aaaaaaaaaaaa), "
+              "not google/gemma-4-31B-it-qat-w4a16-ct (weight files ffffffffffffffff, snapshot bbbbbbbbbbbb)")
+          and weights_differ(ct("e" * 64), ct("e" * 64, "b" * 40)) is None and weights_differ(ct("e" * 64), ct(None)) is None
+          and weights_differ(None, ct("e" * 64)) is None and weights_differ(OTHER_GGUF, {**OTHER_GGUF, "linears": "resident"}) is None
           and weights_differ(OTHER_GGUF, {**OTHER_GGUF, "id": "1" * 16}) is not None
           and weights_differ(OTHER_GGUF, {**OTHER_GGUF, "sha256_header": "cd" * 32}) is not None
-          and weights_differ(OTHER_GGUF, ct("a" * 40)) is not None,
-          "weights_differ: another snapshot or fingerprint differs; an unknown snapshot or a card missing compares the model "
-          "id alone; how a GGUF's layers are held does not count")
+          and weights_differ(OTHER_GGUF, ct("e" * 64)) is not None,
+          "weights_differ: other weight files of the checkpoint or another fingerprint differ, another snapshot of the same "
+          "files does not; unknown files or a card missing compares the model id alone; how a GGUF's layers are held does "
+          "not count")
     here = ab._weights_here
     ab._weights_here = lambda _rt: OTHER_GGUF
     try:
@@ -530,6 +534,48 @@ def main() -> int:
         ab._weights_here = here
     check("L0.npz was built from other weights (the stand-in, not the GGUF other.gguf" in said and "another folder (--out)" in said,
           f"steer: a run on other weights refused before it builds a layer, not resumed into the stand-in's ({said})")
+    # census_run.py's push unit: a stats index there but refused for its weights is said so, not taken for none
+    import contextlib
+    import io
+
+    import census_run
+    from backend import census as cz
+
+    stats_theirs = dict(np.load(out / "act_scale.npz"))
+    m_s = json.loads(str(stats_theirs["meta"]))
+    m_s["weights"] = OTHER_GGUF
+    stats_theirs["meta"] = np.array(json.dumps(m_s))
+    (out / "theirs" / "stand-in" / "index").mkdir(parents=True)
+    np.savez(out / "theirs" / "stand-in" / "index" / "act_scale.npz", **stats_theirs)
+    seen: dict = {}
+
+    def grab(*_a, **kw):  # the census itself is not taken: only what it would be given
+        seen.update(kw)
+        raise ValueError("stopped before the census")
+
+    env_keys = ("THEODOLITE_ATLAS_DIR", "THEODOLITE_CENSUS_DIR", "THEODOLITE_FIELD_NOTES")
+    env_before, take = {k_: os.environ.get(k_) for k_ in env_keys}, cz.take_census
+    os.environ["THEODOLITE_ATLAS_DIR"] = str(out / "theirs")
+    cz.take_census = grab
+    printed = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(printed):
+            census_run.main(["--stand-in", "--layer", "2", "--neurons", "0-1", "--random-controls", "1", "--max-new", "4", "--no-rank"])
+        said = "no exit"
+    except SystemExit as exc:
+        said = str(exc)
+    finally:
+        cz.take_census = take
+        for k_, v_ in env_before.items():
+            if v_ is None:
+                os.environ.pop(k_, None)
+            else:
+                os.environ[k_] = v_
+    want = "built from other weights (the GGUF other.gguf (fingerprint 00ff00ff00ff00ff), not the stand-in)"
+    check(said == "stopped before the census" and f"the stats index is not read: {want}" in printed.getvalue()
+          and seen.get("p50_source", "").startswith(f"the study's 36 texts (the stats index refused: {want}"),
+          f"census_run.py: a stats index refused for its weights is said so, and the push unit's source names it "
+          f"({seen.get('p50_source', '')[:110]})")
     section("provenance: each index names its weights; one from other weights refused, in plain words, and not resumed", before)
 
     shutil.rmtree(out, ignore_errors=True)

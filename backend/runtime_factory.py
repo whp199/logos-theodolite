@@ -9,6 +9,7 @@ daemon (experiments/lab/labd.py) and the GPU checks scripts/verify_optics.py and
                                                         int4mm (the CPU only) multiplies its Q4_0 layers by torch's
                                                         int4 CPU kernel, not the reference's bits (backend/int4_cpu.py)
     THEODOLITE_CHECKPOINT_LINEARS=packed | int4mm       the W4A16 checkpoint's on the CPU: int4mm as for a GGUF
+                                                        (int4mm beside THEODOLITE_GGUF is refused)
     THEODOLITE_GGUF_CONFIG=<config.json>                build a GGUF's model from this config, checked against all the
                                                         file states (it stands in for any key the file leaves out)
     THEODOLITE_DTYPE=bfloat16 | float32                 a GGUF model's dtype (default bfloat16, as the instrument runs)
@@ -32,12 +33,14 @@ on a GPU, as the instrument has always run, adds nothing. The int4mm linears add
 (`gguf:<file>#<fingerprint>@cpu/bfloat16+int4mm`): their sums are the kernel's, so their readings are their own class.
 
 `weights_card(rt)` says what a runtime's readings are taken from, for any runtime: a GGUF's own card (its file's
-provenance and how its model was built), the checkpoint's repo id and the snapshot of it this machine's Hugging Face
-cache holds, or the stand-in's; GET /api/health and the lab daemon's /health send it.
+provenance and how its model was built), the checkpoint's repo id, the snapshot of it this machine's Hugging Face cache
+holds and the weight files that snapshot links to (`checkpoint_files_id`), or the stand-in's; GET /api/health and the
+lab daemon's /health send it.
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 import re
@@ -57,6 +60,8 @@ LENS_ENV = "THEODOLITE_GGUF_LENS"
 CHECKPOINT_LINEARS_ENV = "THEODOLITE_CHECKPOINT_LINEARS"
 DEFAULT_DEVICE = "cuda:0"
 _DTYPES = ("bfloat16", "float32")
+# what the checkpoint's model is built from, in its snapshot: the files its weights card is keyed on
+WEIGHT_FILES = ("config.json", "*.safetensors")
 
 
 def runtime_device() -> str:
@@ -126,6 +131,11 @@ def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
     if path:
         import torch
 
+        ct_set = os.environ.get(CHECKPOINT_LINEARS_ENV, "").strip().lower()
+        if ct_set and ct_set != "packed":
+            raise ValueError(f"{CHECKPOINT_LINEARS_ENV}={ct_set} is the W4A16 checkpoint's, and {GGUF_ENV} is set: a GGUF's "
+                             f"linears are {LINEARS_ENV} ({LINEARS_ENV}={ct_set}).")
+
         from backend.gguf_runtime import GGUFRuntime
 
         dtype_name = os.environ.get(DTYPE_ENV, "").strip().lower() or "bfloat16"
@@ -161,27 +171,45 @@ def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
     return TheodoliteRuntime(device=device, load_jlens=load_jlens)
 
 
-def checkpoint_snapshot(repo_id: str) -> Optional[str]:
-    """The snapshot (commit) of `repo_id` that this machine's Hugging Face cache holds under its `main` ref, which the
-    pinned load reads first (`local_files_only`); None when the repo is not cached here, or `repo_id` is a folder."""
+def checkpoint_snapshot(repo_id: str) -> Optional[Path]:
+    """The snapshot folder of `repo_id` that this machine's Hugging Face cache holds under its `main` ref, which the
+    pinned load reads first (`local_files_only`): the folder its config.json sits in, named for its commit; None when
+    the repo is not cached here, or `repo_id` is a folder."""
     try:
         from huggingface_hub import try_to_load_from_cache
 
         found = try_to_load_from_cache(repo_id, "config.json")
     except Exception:  # an id the hub cannot parse (a folder's path), or no hub library
         return None
-    if not isinstance(found, str):
+    return Path(found).parent if isinstance(found, str) else None
+
+
+def checkpoint_files_id(snapshot: Path) -> Optional[str]:
+    """The checkpoint's weight files, whatever commit holds them: the sha256 of the names of `WEIGHT_FILES` in a
+    snapshot folder and of the blobs the hub's cache links each to (a large file's blob is named by the sha256 of its
+    content, a small one's by its git blob id), so another commit of the same files (a model card edited) gives the same
+    id and a changed weight or config another. None when there is no .safetensors file, or a file is not such a link (a
+    cache laid out without links, or a copied folder): the snapshot is then all the card can name."""
+    names = sorted({f.name for pattern in WEIGHT_FILES for f in Path(snapshot).glob(pattern)})
+    if not any(n.endswith(".safetensors") for n in names):
         return None
-    parts = Path(found).parts
-    return parts[parts.index("snapshots") + 1] if "snapshots" in parts[:-1] else None
+    lines = []
+    for name in names:
+        f = Path(snapshot) / name
+        blob = f.resolve()
+        if not f.is_symlink() or blob.parent.name != "blobs":
+            return None
+        lines.append(f"{name} {blob.name}")
+    return hashlib.sha256("\n".join(lines).encode()).hexdigest()
 
 
 def weights_card(rt: Any) -> Dict[str, Any]:
     """What `rt`'s readings are taken from, as GET /api/health and the lab daemon send it: a GGUF runtime's own card
     (`GGUFRuntime.weights_card`: the file's provenance, how the model was built, where its tokenizer came from); for
     the stand-in of scripts/atlas_stand_in.py, that; else the W4A16 checkpoint's repo id (the model id before any
-    `reading_class`) and the snapshot of it the cache holds (`checkpoint_snapshot`; None when it holds none, so `id`
-    is None too), with where and in what the readings are taken."""
+    `reading_class`), the snapshot of it the cache holds (`checkpoint_snapshot`, information only) and its weight files
+    (`files_sha256`, `checkpoint_files_id`, and `id` its first 16; None when the cache holds no snapshot or does not
+    link its files), with where and in what the readings are taken."""
     card = getattr(rt, "weights_card", None)
     if card:
         return dict(card)
@@ -190,8 +218,9 @@ def weights_card(rt: Any) -> Dict[str, Any]:
         return {"format": "stand-in", "model": model_id, "runtime": type(rt).__name__}
     repo = model_id.split("@", 1)[0]
     snapshot = checkpoint_snapshot(repo)
-    card = {"format": "compressed-tensors W4A16", "repo": repo, "snapshot": snapshot,
-            "id": snapshot[:16] if snapshot else None, "linears": getattr(rt, "linears", None) or "packed",
+    files = checkpoint_files_id(snapshot) if snapshot is not None else None
+    card = {"format": "compressed-tensors W4A16", "repo": repo, "snapshot": snapshot.name if snapshot is not None else None,
+            "files_sha256": files, "id": files[:16] if files else None, "linears": getattr(rt, "linears", None) or "packed",
             "dtype": "bfloat16", "device": str(getattr(rt, "device", "")), "runtime": type(rt).__name__}
     if getattr(rt, "layers_as", None):
         card["layers_as"] = dict(rt.layers_as)

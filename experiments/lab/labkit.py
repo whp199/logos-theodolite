@@ -51,7 +51,7 @@ class Lab:
         self._hooks: List = []
         self.gender = self._build_gender_ids()
         # what the experiments read: the model id (a GGUF's file and fingerprint, where and in what off the GPU) and the
-        # weights card (the checkpoint's repo and snapshot, or the GGUF's provenance)
+        # weights card (the checkpoint's repo, snapshot and weight files, or the GGUF's provenance)
         from backend.runtime_factory import weights_card
 
         self.model_id = rt.model_id

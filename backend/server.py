@@ -1409,7 +1409,8 @@ async def api_health() -> Dict[str, Any]:
         # the model's sliding attention window in word-pieces (text_config.sliding_window), as every sighting sends it
         "sliding_window": runtime.sliding_window,
         # where the model runs, and what its weights are (runtime_factory.weights_card: a GGUF's file provenance, the
-        # W4A16 checkpoint's repo id and the snapshot the cache holds), as every index built on it records them
+        # W4A16 checkpoint's repo id, the snapshot the cache holds and its weight files), as every index built on it
+        # records them
         "device": str(runtime.device),
         "weights": weights_card(runtime),
         "larql_cli": vault.cli_versions(),

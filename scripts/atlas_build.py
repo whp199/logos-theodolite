@@ -205,7 +205,11 @@ def main() -> int:
         ids = [rt.tokenize_prompt(rt.compose_prompt(t[1], chat=True, assistant_prefix=t[2]) if t[0] == "chat" else t[1])
                for t in STUDY_TEXTS]
         ex = ao.activation_extremes(lm, ids)
-        return {"p50": ao.stream_p50(ex), **ao.norm_scales(ex), "source": "the study's 36 texts (no stats index yet)"}
+        refused = here.refused("act_scale")  # there, but built for another model id, shape or weights
+        if refused:
+            print(f"the stats index is not read: {refused}", flush=True)
+        return {"p50": ao.stream_p50(ex), **ao.norm_scales(ex),
+                "source": f"the study's 36 texts ({'the stats index refused: ' + refused if refused else 'no stats index yet'})"}
 
     for step in steps:
         if step == "lens":
