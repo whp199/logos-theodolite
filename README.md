@@ -410,7 +410,9 @@ THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=resident TH
 
 On the CPU, packed 4-bit weights take about 20 GB of RAM and unpack at every forward (minutes a forward on a small
 machine); resident bf16 (`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a word-piece in seconds; the
-J++ lens adds 3.4 GB. Those speeds are inferred from one 4-core machine: time a pilot first.
+J++ lens adds 3.4 GB. Those speeds are inferred from one 4-core machine: time a pilot first. A reading taken on the CPU
+(or in float32) is recorded under its own model id (`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's
+`gguf:<file>#<fingerprint>@cpu/bfloat16`), so no census run or index taken on the GPU is continued or read there.
 
 **Take a first sighting**
 
