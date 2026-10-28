@@ -1532,6 +1532,123 @@ def neuron_wiring(weights: Weights, layer: int, neuron: int, scale: torch.Tensor
     return out
 
 
+# ------------------------------------------------------------------------------------------------- the wiring measured
+
+
+def null_readers(linked: Sequence[Tuple[int, int]], width: int, rng: np.random.Generator) -> List[Tuple[int, int]]:
+    """As many readers as `linked` (a writer's indexed readers), one at the layer of each, drawn at random from that
+    layer's `width` neurons among those the writer is not linked to, none twice: the null its measured links are set
+    against (`pushed_reads`)."""
+    taken = {(int(l), int(n)) for l, n in linked}
+    out: List[Tuple[int, int]] = []
+    for l, _ in linked:
+        if sum(1 for t in taken if t[0] == int(l)) >= int(width):
+            raise ValueError(f"Layer {l} has no neuron left that the writer is not linked to.")
+        while True:
+            t = (int(l), int(rng.integers(int(width))))
+            if t not in taken:
+                break
+        taken.add(t)
+        out.append(t)
+    return out
+
+
+def pair_products(weights: Weights, writer_layer: int, writers: Sequence[int], readers: Sequence[Sequence[Tuple[int, int]]]) -> Tuple[np.ndarray, np.ndarray]:
+    """g and u of every (writer, reader) pair asked, as `neuron_wiring` reads a link (g = W_gate_j[B] . (w_pre_j (.)
+    w_post_i (.) W_down_i[:, A]), u the same through W_up), whether or not the index keeps it: [W, R] float32, NaN past
+    a writer's own readers."""
+    i = int(writer_layer)
+    dev = weights.device
+    v = weights.down_cols(i, list(writers)) * weights.norm(i, "post_feedforward").to(dev)[None]  # [W, D]
+    R = max((len(r) for r in readers), default=0)
+    g = np.full((len(writers), R), np.nan, np.float32)
+    u = np.full((len(writers), R), np.nan, np.float32)
+    by_layer: Dict[int, List[Tuple[int, int, int]]] = {}
+    for a, rs in enumerate(readers):
+        for r, (j, b) in enumerate(rs):
+            by_layer.setdefault(int(j), []).append((a, r, int(b)))
+    for j, items in by_layer.items():
+        w_pre = weights.norm(j, "pre_feedforward").to(dev)
+        cols = sorted({b for _, _, b in items})
+        at = {b: c for c, b in enumerate(cols)}
+        G = (weights.gate_rows(j, cols) * w_pre[None]) @ v.T  # [C, W]
+        U = (weights.up_rows(j, cols) * w_pre[None]) @ v.T
+        G, U = G.cpu().numpy(), U.cpu().numpy()
+        for a, r, b in items:
+            g[a, r], u[a, r] = G[at[b], a], U[at[b], a]
+    return g, u
+
+
+@torch.no_grad()
+def pushed_reads(lm: nn.Module, weights: Weights, prompts_ids: Sequence[Sequence[int]], writers: Sequence[Tuple[int, int]],
+                 readers: Sequence[Sequence[Tuple[int, int]]], lengths: Sequence[float], *, bos_id: Optional[int],
+                 batch: int = 64, done: Optional[Callable[[int], None]] = None) -> np.ndarray:
+    """Each writer pushed along its own write direction by +d and by -d (`lengths[w]`, the add push's length in the
+    stream leaving its layer, at every word-piece but the start mark), and its readers' activations read under it: for
+    each question of `prompts_ids`, prefills of up to `batch` rows, an unpushed row first, then +d and -d for each
+    writer in turn (one question's rows have one length, so nothing is padded, and every forward holds its own
+    unpushed row: rows of one forward are bit-identical, where different batch shapes were not, N1A). Each reader
+    (layer, n) of `readers[w]` is read at the last word-piece and as its mean over every word-piece past the start mark.
+    Returns [W, R, Q, 3, 2] float32: (unpushed, +d, -d) by (last, mean), R the most readers of any writer, NaN past a
+    writer's own; `done(forwards)` is told after each forward."""
+    dev = model_device(lm)
+    W, Q = len(writers), len(prompts_ids)
+    R = max((len(r) for r in readers), default=0)
+    out = np.full((W, R, Q, 3, 2), np.nan, np.float32)
+    dirs = torch.zeros((W, weights.d_model), dtype=torch.float32, device=dev)
+    for l in sorted({int(l) for l, _ in writers}):
+        idx = [a for a, (ll, _) in enumerate(writers) if int(ll) == l]
+        dirs[idx] = weights.write_dirs(l, [int(writers[a][1]) for a in idx])
+    per = max(1, (int(batch) - 1) // 2)
+    forwards = 0
+    for q, ids in enumerate(prompts_ids):
+        T = len(ids)
+        for s in range(0, W, per):
+            chunk = list(range(s, min(s + per, W)))
+            B = 1 + 2 * len(chunk)
+            x = torch.tensor([[int(t) for t in ids]] * B, dtype=torch.long, device=dev)
+            keep = _Keep()
+            keep.mask = keep_mask(x, None, bos_id, True)
+            iv = Interventions(rows=B)
+            for k, a in enumerate(chunk):
+                l = int(writers[a][0])
+                if l not in iv.adds:
+                    iv.adds[l] = torch.zeros((B, weights.d_model), dtype=torch.float32, device=dev)
+                iv.adds[l][1 + 2 * k] = float(lengths[a]) * dirs[a]
+                iv.adds[l][2 + 2 * k] = -float(lengths[a]) * dirs[a]
+            cols: Dict[int, List[int]] = {}
+            for a in chunk:
+                for j, b in readers[a]:
+                    cols.setdefault(int(j), []).append(int(b))
+            cols = {j: sorted(set(bs)) for j, bs in cols.items()}
+            col_of = {(j, b): c for j, bs in cols.items() for c, b in enumerate(bs)}
+            got: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+            hooks = []
+            try:
+                for j, bs in cols.items():
+
+                    def read(_m: nn.Module, args: Tuple[Any, ...], j: int = j, bs: List[int] = bs) -> None:
+                        v = args[0][:, :, bs].float()  # [B, T, c]
+                        got[j] = (v[:, -1].cpu().numpy(), (v[:, 1:].mean(1) if T > 1 else v[:, 0]).cpu().numpy())
+
+                    hooks.append(lm.layers[j].mlp.down_proj.register_forward_pre_hook(read, prepend=True))
+                with installed(lm, iv, keep):
+                    lm(input_ids=x, use_cache=False)
+            finally:
+                for h in hooks:
+                    h.remove()
+            forwards += 1
+            for k, a in enumerate(chunk):
+                for r, (j, b) in enumerate(readers[a]):
+                    c = col_of[(int(j), int(b))]
+                    for site in (0, 1):
+                        v = got[int(j)][site][:, c]
+                        out[a, r, q, :, site] = (v[0], v[1 + 2 * k], v[2 + 2 * k])
+            if done is not None:
+                done(forwards)
+    return out
+
+
 class HeadSpaces:
     """Each attention head's read spaces (its query, key and value rows, after the input norm's weight) and write space
     (its output columns, after the post-attention norm's weight), read through Gram matrices, so a vector's share of a

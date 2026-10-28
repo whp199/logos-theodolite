@@ -28,7 +28,8 @@ import numpy as np
 import torch
 
 from backend import atlas_ops as ao
-from backend.atlas_index import FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, WIRING_K, save_npz, weights_differ
+from backend.atlas_index import (EMPTY_Z, FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, WIRING_CHECK_DIR, WIRING_K, AtlasIndex, save_npz,
+                                  weights_differ)
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right
 from backend.label_gate import label_top_ids, writes_nothing
 from backend.theodolite_math import unembed_gemma4
@@ -362,6 +363,238 @@ def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: s
     save_npz(path, compressed=True, **arrays, K=np.array(K),
              meta=_meta(rt, weighed="across layers: |P| f^2, the norms at their usual scale and the layer scalars between",
                         scale_source=scale_source, link_model=ao.LINK_MODEL, link_model_use=ao.LINK_MODEL_USE))
+    return path
+
+
+# ---------------------------------------------------------------------------------------------- the wiring measured
+
+# what a prefill costs on one RTX 5090 with the reference unpacker, from two measured rates (inferred for this pass):
+# the census's decode step, 0.71 s whatever the batch, which every forward pays to unpack the 4-bit weights; and the
+# stats pass's 1.75 ms a word-piece in windows of 512, of which that step is 1.39 ms, leaving 0.36 ms a word-piece
+STEP_5090_S = 0.71
+PIECE_5090_S = 0.36e-3
+
+
+def _ranks(v: np.ndarray) -> np.ndarray:
+    """Ranks from 0, ties given their mean rank."""
+    order = np.argsort(v, kind="stable")
+    r = np.empty(len(v), np.float64)
+    r[order] = np.arange(len(v))
+    _, inv, counts = np.unique(v, return_inverse=True, return_counts=True)
+    return (np.bincount(inv, weights=r) / counts)[inv]
+
+
+def spearman(x: np.ndarray, y: np.ndarray) -> Optional[float]:
+    """Spearman's rho of two samples (ties at their mean rank); None for fewer than three pairs or a constant side."""
+    x, y = np.asarray(x, np.float64), np.asarray(y, np.float64)
+    ok = np.isfinite(x) & np.isfinite(y)
+    x, y = x[ok], y[ok]
+    if len(x) < 3:
+        return None
+    rx, ry = _ranks(x), _ranks(y)
+    sx, sy = rx.std(), ry.std()
+    return None if sx == 0 or sy == 0 else float(((rx - rx.mean()) * (ry - ry.mean())).mean() / (sx * sy))
+
+
+def wiring_check_summary(sh: Dict[str, np.ndarray]) -> Dict[str, Any]:
+    """One layer of the measured check, summed up (`build_wiring_check`), at each read site ("last": the last word-piece;
+    "mean": the mean over the prompt), for the linked readers and for the null, over every (link, question):
+    - `sign_plus`: the share whose change under +d has the sign from rest (`sign`: the index's for a linked reader, the
+      weights' own for the null's); `sign_gate`: the same under the push on the writer's `gate` face (+d where gate is
+      +, -d where it is -), the push the reading from rest is about;
+    - `use_plus`, `use_gate` (at the last word-piece only, with the passages index): the same against the sign in use
+      at the reader's operating point on the face it sat on unpushed (LINK_MODEL_USE);
+    - `same_way`: the share where +d and -d move the reader the same way, which the reading from rest allows (its
+      change is even in the writer) and the reading in use does not (to first order it is odd);
+    - `rho`: Spearman's rho of the change under the gate-face push (its size, the mean over the questions) against the
+      link's strength |P| f^2; `moved`: the median size of that change;
+    - `moved_over_null`: the linked readers' `moved` over the null's.
+    A share is None where there is nothing to count."""
+    share = lambda m: round(float(m.mean()), 3) if m.size else None  # noqa: E731
+    reads = sh["reads"]  # [W, R, Q, 3, 2]
+    valid = sh["readers"][..., 0] >= 0
+    groups = {"linked": sh["linked"] & valid, "null": ~sh["linked"] & valid}
+    d_plus = reads[:, :, :, 1] - reads[:, :, :, 0]  # [W, R, Q, 2]
+    d_minus = reads[:, :, :, 2] - reads[:, :, :, 0]
+    gate = sh["gate"][:, :, None, None].astype(np.int64)
+    d_gate = np.where(gate > 0, d_plus, d_minus)
+    sign = np.broadcast_to(sh["sign"][:, :, None].astype(np.int64), d_plus.shape[:3])
+    sg = lambda x: np.where(x > 0, 1, np.where(x < 0, -1, 0))  # noqa: E731
+    # the reader's own face, unpushed, at the last word-piece: where the sign in use is read
+    face = np.where(reads[:, :, :, 0, 0] > 0, 0, 1)  # 0 its + face, 1 its - face
+    op = sh["op"]  # [W, R, 2 faces, (alpha, beta)]
+    al = np.take_along_axis(np.broadcast_to(op[:, :, None, :, 0], face.shape + (2,)), face[..., None], -1)[..., 0]
+    be = np.take_along_axis(np.broadcast_to(op[:, :, None, :, 1], face.shape + (2,)), face[..., None], -1)[..., 0]
+    kappa = sg(al * sh["g"][:, :, None] + be * sh["u"][:, :, None])  # where the writer's rise pushes it there
+    has_op = np.isfinite(al) & np.isfinite(be)
+    out: Dict[str, Any] = {}
+    for si, site in enumerate(("last", "mean")):
+        res: Dict[str, Any] = {}
+        for name, m in groups.items():
+            dp, dm, dg = d_plus[..., si][m], d_minus[..., si][m], d_gate[..., si][m]  # [n, Q]
+            s_ = sign[m]
+            r: Dict[str, Any] = {"pairs": int(dp.size), "sign_plus": share(sg(dp) == s_), "sign_gate": share(sg(dg) == s_),
+                                 "same_way": share((sg(dp) == sg(dm)) & (dp != 0))}
+            if site == "last":
+                k_, h_ = kappa[m], has_op[m]
+                r["use_plus"] = share((sg(dp) == k_)[h_]) if h_.any() else None
+                r["use_gate"] = share((sg(dg) == sh["gate"][m][:, None] * k_)[h_]) if h_.any() else None
+            rho = spearman(np.abs(dg).mean(-1), sh["strength"][m]) if dp.size else None
+            r["rho"] = round(rho, 3) if rho is not None else None
+            r["moved"] = float(np.median(np.abs(dg))) if dg.size else None
+            res[name] = r
+        mv, mn = res["linked"]["moved"], res["null"]["moved"]
+        res["moved_over_null"] = round(mv / mn, 2) if mv is not None and mn else None
+        out[site] = res
+    return out
+
+
+@torch.no_grad()
+def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: Optional[Sequence[int]] = None,
+                       writers: str = "random:512", dose: float = 0.25, seed: int = 0, batch: int = 64,
+                       scale_source: str = "", log: Log = print) -> Path:
+    """The wiring measured (neuron-explorer's steered prefill captures, adapted: one prefill under a push at every
+    prompt word-piece rebuilds what a reader reads). For each layer, the `writers` (`census.parse_neurons`: "random:K",
+    drawn from the seed and the layer, a range or a list; a neuron that writes nothing is left out, and the last layer,
+    which no later layer reads) are pushed along their write directions by +d and -d at every word-piece but the start
+    mark, d = `dose` times each one's write ceiling (`Weights.write_ceiling`, the most it can write by itself), so every
+    writer is pushed by the same small share of what it could write firing alone, never by more than it can write; on
+    each of the census's four questions, prefills of up to `batch` rows, each with its own unpushed row
+    (`atlas_ops.pushed_reads`). Read: each writer's readers in the wiring index (its `down` links) at the last
+    word-piece and as their mean over the prompt, and as many readers at the same layers it is not linked to
+    (`atlas_ops.null_readers`, seeded by the seed and the layer), the null; each pair's g and u from the weights
+    (`pair_products`: the null's `sign` and `gate` are their own), its strength |P| f^2 (`scale`), and each reader's
+    operating points from the passages index when built (the sign in use).
+
+    A layer is written as `wiring_check.d/L{l}.npz` as it is measured (a stopped run resumes at the next; a run with
+    other settings is refused), and every layer measured so far merged into `wiring_check.npz` (arrays `L{l}_*`,
+    `layers`), whose meta holds the provenance, each layer's `wiring_check_summary` (also in the log and /arch), how
+    often the two signs disagree over the whole index (`AtlasIndex.sign_disagreement`), and each layer's cost: its
+    forwards and rows, the seconds it took here, and the minutes inferred on the 5090 (prefill only)."""
+    from backend import census as cz
+
+    lm = language_model(rt.hf_model)
+    w = ao.Weights(lm, rt)
+    L, N = w.n_layers, w.d_ff
+    index = AtlasIndex(Path(out_dir), model=getattr(rt, "model_id", None), shape=(L, N))
+    wiring = index.get("wiring")
+    if wiring is None:
+        why = index.refused("wiring")
+        raise ValueError("wiring_check reads each writer's readers from the wiring index: " + (f"it is not read ({why})" if why else
+                         "build it first (scripts/atlas_build.py wiring)"))
+    P = index.get("passages")
+    prompts = {k: rt.tokenize_prompt(rt.compose_prompt(v, chat=True)) for k, v in cz.PROMPTS.items()}
+    Q = len(prompts)
+    folder = Path(out_dir) / WIRING_CHECK_DIR
+    plan = {"model": getattr(rt, "model_id", None), "writers": str(writers), "dose": float(dose), "seed": int(seed),
+            "batch": int(batch), "questions": dict(cz.PROMPTS), "wiring_built_at": wiring["meta"].get("built_at")}
+    plan_path = folder / "plan.json"
+    if plan_path.exists():
+        old = json.loads(plan_path.read_text(encoding="utf-8"))
+        differ = [key for key in plan if old.get(key) != plan[key]]
+        if differ:
+            raise ValueError(f"The layers in {folder} were measured with other settings ({', '.join(differ)}): measure with the "
+                             "same ones to add layers, or remove that folder to start again.")
+    else:
+        folder.mkdir(parents=True, exist_ok=True)
+        plan_path.write_text(json.dumps(plan, indent=1), encoding="utf-8")
+    K = int(wiring["K"])
+    f = scale.double().cpu().numpy()
+    todo = list(range(L)) if layers is None else [int(l) for l in layers]
+    for l in todo:
+        shard = folder / f"L{l}.npz"
+        if shard.exists():
+            continue
+        if l >= L - 1:
+            log(f"wiring_check: layer {l} writes into no later layer: nothing to measure")
+            continue
+        t0 = time.time()
+        cand = cz.parse_neurons(writers, N, int(seed) + l)
+        ceil = w.write_ceiling(l, cand).cpu().numpy() if cand else np.zeros(0, np.float32)
+        ws, linked = [], []
+        for A, c in zip(cand, ceil):
+            rows = [(int(wiring["down_layer"][l, A, i]), int(wiring["down_n"][l, A, i]), int(wiring["down_sign"][l, A, i]),
+                     int(wiring["down_gate"][l, A, i])) for i in range(K) if float(wiring["down_z"][l, A, i]) > EMPTY_Z]
+            if c > 0 and rows:
+                ws.append(int(A))
+                linked.append(rows)
+        if not ws:
+            log(f"wiring_check: layer {l}: none of the writers asked writes anything a later layer reads")
+            continue
+        rng = np.random.default_rng([int(seed), int(l)])
+        null = [ao.null_readers([(j, b) for j, b, _, _ in rows], N, rng) for rows in linked]
+        readers = [[(j, b) for j, b, _, _ in rows] + nl for rows, nl in zip(linked, null)]
+        W, R = len(ws), max(len(r) for r in readers)
+        ceilings = np.array([float(ceil[cand.index(A)]) for A in ws], np.float32)
+        lengths = float(dose) * ceilings
+        per = max(1, (int(batch) - 1) // 2)
+        chunks = [min(per, W - s) for s in range(0, W, per)]
+        n_fwd = Q * len(chunks)
+        reads = ao.pushed_reads(lm, w, list(prompts.values()), [(l, A) for A in ws], readers, lengths, bos_id=rt.tokenizer.bos_token_id,
+                                batch=batch, done=lambda k: log(f"wiring_check: layer {l}, {k} of {n_fwd} prefills") if k % 25 == 0 else None)
+        g, u = ao.pair_products(w, l, ws, readers)
+        arr = {"writers": np.array(ws, np.int32), "ceilings": ceilings, "lengths": lengths.astype(np.float32),
+               "readers": np.full((W, R, 2), -1, np.int32), "linked": np.zeros((W, R), bool), "g": g, "u": u,
+               "sign": np.zeros((W, R), np.int8), "gate": np.zeros((W, R), np.int8), "strength": np.full((W, R), np.nan, np.float32),
+               "op": np.full((W, R, 2, 2), np.nan, np.float32), "reads": reads}
+        for a, rs in enumerate(readers):
+            for r, (j, b) in enumerate(rs):
+                arr["readers"][a, r] = (j, b)
+                is_l = r < len(linked[a])
+                arr["linked"][a, r] = is_l
+                # a linked reader's signs as the index keeps them; the null's from the weights, as the index would
+                arr["sign"][a, r] = linked[a][r][2] if is_l else (1 if g[a, r] * u[a, r] > 0 else -1)
+                arr["gate"][a, r] = linked[a][r][3] if is_l else (1 if g[a, r] > 0 else -1)
+                arr["strength"][a, r] = abs(float(g[a, r]) * float(u[a, r])) * float(f[l, j]) ** 2
+                if P is not None:
+                    op = index.op_point(j, b)
+                    for fi, face in enumerate(("+", "-")):
+                        if op[face] is not None:
+                            arr["op"][a, r, fi] = op[face]
+        T = [len(p) for p in prompts.values()]
+        cost = {"forwards": n_fwd, "rows": max(chunks) * 2 + 1, "word_pieces": T, "seconds": round(time.time() - t0, 1),
+                "minutes_5090": round(sum(STEP_5090_S + PIECE_5090_S * (2 * c + 1) * t for t in T for c in chunks) / 60, 2)}
+        summ = wiring_check_summary(arr)
+        save_npz(shard, **arr, summary=np.array(json.dumps({"summary": summ, "cost": cost})))
+        lt = summ["last"]
+        say = lambda x: "-" if x is None else f"{x:.2f}"  # noqa: E731
+        log(f"wiring_check: layer {l}: {W} writers, {int(arr['linked'].sum())} links, d = {dose:g} x each one's ceiling; at the last "
+            f"word-piece the sign from rest held under +d at {say(lt['linked']['sign_plus'])} (null {say(lt['null']['sign_plus'])}), on the "
+            f"gate face at {say(lt['linked']['sign_gate'])} (null {say(lt['null']['sign_gate'])}), the sign in use at "
+            f"{say(lt['linked']['use_gate'])}; rho {say(lt['linked']['rho'])} (null {say(lt['null']['rho'])}); +d and -d the same way at "
+            f"{say(lt['linked']['same_way'])}; linked readers moved {say(lt['moved_over_null'])} x the null's; {n_fwd} prefills in "
+            f"{cost['seconds']:.0f} s here, about {cost['minutes_5090']:.1f} min on the 5090 (inferred)")
+    return merge_wiring_check(rt, Path(out_dir), plan, index, scale_source=scale_source, log=log)
+
+
+def merge_wiring_check(rt: Any, out_dir: Path, plan: Dict[str, Any], index: AtlasIndex, *, scale_source: str = "",
+                       log: Log = print) -> Path:
+    """Every layer measured so far (`wiring_check.d/L{l}.npz`) into `wiring_check.npz`: arrays `L{l}_*`, `layers`, and
+    the meta (`build_wiring_check`)."""
+    folder = out_dir / WIRING_CHECK_DIR
+    arrays: Dict[str, np.ndarray] = {}
+    summary: Dict[str, Any] = {}
+    cost: Dict[str, Any] = {}
+    done = sorted(int(p.stem[1:]) for p in folder.glob("L*.npz"))
+    for l in done:
+        with np.load(folder / f"L{l}.npz") as z:
+            for key in z.files:
+                if key == "summary":
+                    s = json.loads(str(z[key]))
+                    summary[str(l)], cost[str(l)] = s["summary"], s["cost"]
+                else:
+                    arrays[f"L{l}_{key}"] = z[key]
+    P = index.get("passages")
+    dis = index.sign_disagreement()
+    path = out_dir / FILES["wiring_check"]
+    save_npz(path, compressed=True, **arrays, layers=np.array(done, np.int32),
+             meta=_meta(rt, **{k: v for k, v in plan.items() if k != "model"}, dose_unit="each writer's write ceiling",
+                        readers="the wiring index's down links of each writer, then as many it is not linked to at "
+                        "the same layers (the null)", reads="(unpushed, +d, -d) x (the last word-piece, the mean over the "
+                        "prompt past the start mark)", passages_built_at=P["meta"].get("built_at") if P is not None else None,
+                        scale_source=scale_source, layers=done, summary=summary, cost=cost,
+                        sign_disagreement={k: v for k, v in dis.items() if k != "by_layer"} if dis else None))
+    log(f"wiring_check: {len(done)} layers measured so far -> {path}")
     return path
 
 

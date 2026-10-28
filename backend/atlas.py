@@ -546,12 +546,30 @@ def _find_unit(units: List[Tuple[str, List[int]]], token: Optional[str]) -> Opti
 # ------------------------------------------------------------------------------------------------------------ routes
 
 
+def links_card(a: Atlas) -> Dict[str, Any]:
+    """How the atlas reads a link's sign (atlas_ops.LINK_MODEL from rest, LINK_MODEL_USE in use), whether links can be
+    read in use here (`why` not), and what the measured check found (`measured`, from wiring_check.npz, built by
+    scripts/atlas_build.py wiring_check; None until then): per layer at the last word-piece and over the prompt, the
+    shares whose measured change had each sign, Spearman's rho against |P| f^2, the null's, and each layer's cost."""
+    why = a.index.use_refused()
+    wc = a.index.get("wiring_check")
+    measured = None
+    if wc is not None:
+        m = wc["meta"]
+        measured = {k: m.get(k) for k in ("built_at", "writers", "dose", "dose_unit", "seed", "questions", "sign_disagreement")}
+        measured["layers"] = {l: {**s, "cost": (m.get("cost") or {}).get(l)} for l, s in (m.get("summary") or {}).items()}
+    return {"models": {"rest": ao.LINK_MODEL, "use": ao.LINK_MODEL_USE}, "use": {"ready": why is None, **({"why": why} if why else {})},
+            "measured": measured}
+
+
 @router.get("/arch")
 async def arch() -> Dict[str, Any]:
-    """The model's shape, which indexes are built, which layers have a census, and the cards every reply follows."""
+    """The model's shape, which indexes are built, which layers have a census, how links are read and what their
+    measured check found (`links`), and the cards every reply follows."""
     a = atlas()
     sc = await asyncio.to_thread(a._scales_if_ready)
     status = await asyncio.to_thread(a.index.status)
+    links = await asyncio.to_thread(links_card, a)
     refused: Dict[int, str] = {}
     await asyncio.to_thread(cz.layer_runs, None, a.rt.model_id, refused)
     return {
@@ -578,6 +596,7 @@ async def arch() -> Dict[str, Any]:
                         f"rows each in one batch, several only while their rows hold at most {MAX_STEER_ROW_PIECES:,} "
                         "word-pieces in all (prompt and answer); the push chat writes one", "not_offered": sorted(sr.NOT_OFFERED)}},
         "limits": {"text": MAX_TEXT_POSITIONS, "run": MAX_RUN_POSITIONS, "heads": MAX_HEAD_POSITIONS, "push_new": MAX_PUSH_NEW},
+        "links": links,
         "label_gate": LABEL_GATE_CARD,
         "lens": a.rt.lens_card(),
     }

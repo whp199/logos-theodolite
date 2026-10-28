@@ -43,7 +43,11 @@ model nor the lens, and hides the GPU. It checks, against brute force:
     f (alpha g + beta u) eps to first order, alpha and beta from that position's own gate and up values, so with that
     sign; the writer's own activation pushed by +-eps and carried by the direct path alone, the norms free, moves it by
     the full first-order change (the norms' own response included), whose sign is the link model's at most events
-    (printed, not asserted); the median-based sign agrees with each event's own at most events (printed).
+    (printed, not asserted); the median-based sign agrees with each event's own at most events (printed);
+12. the wiring measured: `pushed_reads`' batched rows (writers at two layers in one prefill, chunks of several sizes)
+    equal separate forwards, one row each, unpushed, +d and -d, at the last word-piece and over the prompt; the null's
+    readers are never the writer's linked ones, one at each linked reader's layer, none twice; `pair_products` gives
+    `neuron_wiring`'s g and u.
 
 Run: .venv/bin/python -I scripts/check_atlas_ops.py   (exits 0 when every check holds)
 """
@@ -908,6 +912,63 @@ def check_wiring_use(hf: Any, tok: Any, f: torch.Tensor) -> None:
             "held; the full first-order change with them free", before)
 
 
+def check_wiring_measured(lm: Any, w: ao.Weights, tok: Any, f: torch.Tensor) -> None:
+    import numpy as np
+
+    before = len(failures)
+    prompts = [ids_of(tok, "Who are you?", chat=True), ids_of(tok, "Describe the color orange.", chat=True)]
+    writers = [(1, 3), (2, 40), (1, 7), (3, 90), (2, 11)]
+    readers = [[(2, 5), (4, 17), (5, 100)], [(3, 1), (5, 2)], [(2, 5), (3, 64), (4, 0), (5, 127)], [(4, 9)], [(5, 77), (3, 3)]]
+    lengths = [0.5, 1.2, 0.3, 2.0, 0.8]
+
+    def alone(ids: List[int], l: int, a: int, d: float, rs: List[Tuple[int, int]]) -> List[Tuple[float, float]]:
+        """One row by itself: the writer pushed by d (0: unpushed) at every word-piece but the start mark; each
+        reader's activation at the last word-piece and its mean past the start mark."""
+        iv = None
+        if d:
+            iv = ao.Interventions(rows=1, adds={l: d * w.write_dirs(l, [a])})
+        at = sorted({j for j, _ in rs})
+        got = observe(lm, ids, iv, [(lm.layers[j].mlp.down_proj, "pre") for j in at])
+        by = {j: calls[0][0] for j, calls in zip(at, got)}
+        return [(float(by[j][-1, b]), float(by[j][1:, b].mean())) for j, b in rs]
+
+    worst = 0.0
+    for batch in (5, 3, 64):  # two writers a prefill (at two layers in one), one, and all of them
+        got = ao.pushed_reads(lm, w, prompts, writers, readers, lengths, bos_id=tok.bos_token_id, batch=batch)
+        check(got.shape == (5, 4, 2, 3, 2) and bool(np.isnan(got[3, 1:]).all()), f"pushed reads: shape {got.shape}, NaN past a writer's own readers")
+        for a, ((l, n), rs) in enumerate(zip(writers, readers)):
+            for q, ids in enumerate(prompts):
+                for row, d in enumerate((0.0, lengths[a], -lengths[a])):
+                    want = alone(ids, l, n, d, rs)
+                    for r, (last, mean) in enumerate(want):
+                        worst = max(worst, abs(float(got[a, r, q, row, 0]) - last), abs(float(got[a, r, q, row, 1]) - mean))
+    check(worst < 1e-5, f"pushed reads: batched rows equal separate forwards, unpushed, +d and -d, last and mean ({worst:.1e} off)")
+    moved = ao.pushed_reads(lm, w, prompts[:1], writers[:1], readers[:1], [0.5], bos_id=tok.bos_token_id)
+    check(bool(np.isfinite(moved).all()) and bool(np.abs(moved[0, :, 0, 1] - moved[0, :, 0, 0]).min() > 0),
+          "pushed reads: a push moves every reader it reaches")
+    # the null: never a linked reader, one at each linked reader's layer, none twice
+    rng = np.random.default_rng(0)
+    bad = 0
+    for _ in range(400):
+        L_, width = 6, 12
+        linked = list({(int(rng.integers(1, L_)), int(rng.integers(width))) for _ in range(int(rng.integers(1, 9)))})
+        nl = ao.null_readers(linked, width, rng)
+        bad += int(not (len(nl) == len(set(nl)) == len(linked) and not set(nl) & set(linked)
+                        and sorted(j for j, _ in nl) == sorted(j for j, _ in linked)))
+    check(bad == 0, f"the null: never a linked reader, at the linked readers' layers, none twice ({bad} of 400 draws not)")
+    try:
+        ao.null_readers([(2, b) for b in range(4)], 4, rng)
+        check(False, "the null: a layer with no unlinked neuron left was not refused")
+    except ValueError as exc:
+        check("no neuron left" in str(exc), f"the null: refusal {exc}")
+    # g and u of any pair, as neuron_wiring reads a link
+    res = ao.neuron_wiring(w, 1, 12, f, k=10, gu=True)["down"]
+    g, u = ao.pair_products(w, 1, [12], [[(c["layer"], c["n"]) for c in res]])
+    check(all(abs(float(g[0, i]) - c["g"]) <= 1e-5 * max(1.0, abs(c["g"])) and abs(float(u[0, i]) - c["u"]) <= 1e-5 * max(1.0, abs(c["u"]))
+              for i, c in enumerate(res)), "pair_products: neuron_wiring's g and u, pair by pair")
+    section("the wiring measured: batched pushed reads equal separate forwards; the null never linked; any pair's g and u", before)
+
+
 def main() -> int:
     torch.set_grad_enabled(False)
     tok = stand_in_tokenizer()
@@ -926,6 +987,7 @@ def main() -> int:
     f = check_wiring(hf, lm, w, tok)
     check_steer_lens(lm, W_U, w, tok)
     check_wiring_use(hf, tok, f)
+    check_wiring_measured(lm, w, tok, f)
     # the runtime's own weight accessors give the same wiring as the plain modules
     before = len(failures)
     wr = ao.Weights(lm, rt)

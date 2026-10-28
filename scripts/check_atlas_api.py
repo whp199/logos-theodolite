@@ -2,10 +2,12 @@
 """A CPU-only check of the atlas's routes (backend/atlas.py) and its field notes (backend/field_notes.py), over the
 instrument's own FastAPI app with the tiny random Gemma 4 of scripts/atlas_stand_in.py bound in place of the model.
 Every reading is compared with the same operation of backend/atlas_ops.py called directly:
-1. the shape: GET /arch, and /api/health's atlas card just before the label gate and the lens;
+1. the shape: GET /arch (its links card naming both readings of a sign, none in use or measured yet), and /api/health's
+   atlas card just before the label gate and the lens;
 2. who may ask: a page served from another machine (Host, Origin) or marked cross-site is refused, a plain link is not;
 3. before any index is built: what needs one says so (ready / available false, an empty cone) and the wiring is read
-   live from the weights;
+   live from the weights; with model=use the same links, every use_sign null and the reason said; a model other than
+   rest or use refused in plain words on all four routes that take it;
 4. the live readings: both faces' words (the vault's own reading, each face's label check), the steer lens read live,
    the push chat's three voices (one neuron, several, a conversation carried on, refusals before the stream opens), the
    whole-text steer, both written greedily or with the instrument's sampler (the voices those of atlas_ops.write_rows
@@ -24,14 +26,17 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    own drive, refusals in plain words;
 6. with every index built (backend/atlas_build.py into the temporary atlas folder): the scales come from the stats
    index, the tooltip and the wiring from the indexes, the search finds a face by its first word-piece, the cone and
-   the web come back as the index has them, the layout and the active paths; a face's stored passages (the index's
+   the web come back as the index has them, the layout and the active paths; in use (model=use), each link's use_sign as
+   the index reads it, every other field as from rest, and the web summary, the cone and the active paths as the index
+   walks them; /arch's measured check (wiring_check, built here) per layer with its cost; a face's stored passages (the index's
    events in order, the peak unit marked, each side cut where the window starts or ends, at a boundary between
    documents (an end mark, or a start mark inside the window) or a turn mark, or where the count runs out, `rel`, the
    regime, reads and follows counted with their lift; `rel_to` naming the stats index's corpus, or saying it is
    another), refusals in plain words, and /reads given a passage's ids reading it again as the index has it; each
    index's provenance naming the weights it was built from, the server's own in /api/health, and a server whose
    weights are another file's refusing every index in plain words;
-7. a vault edit in force: the wiring is read live again, the faces say their index words are stale, the caches keyed by
+7. a vault edit in force: the wiring is read live again (in use too, its readers' operating points from the index,
+   marked stale for a neuron after the edit's layer), the faces say their index words are stale, the caches keyed by
    the edits in force are not reused, the passages of the edited neuron and of later layers are marked stale;
 8. the field notes: kept, shown on the tooltip and the wiring, forgotten, refused in plain words, a corrupt file moved
    aside with one warning; the folio's field book beside them: each face kept apart with its writer, a field left out
@@ -187,6 +192,9 @@ def main() -> int:
           "/arch: each layer's attention kind")
     check(all(not v["built"] for k, v in arch["indexes"].items() if k != "folder"), "/arch: no index built yet")
     check(arch["push"]["scale_source"] is None and arch["census"] == {}, "/arch: no scales read yet, no census")
+    check(arch["links"]["measured"] is None and arch["links"]["use"]["ready"] is False and "passages index is not built" in arch["links"]["use"]["why"]
+          and "from rest" in arch["links"]["models"]["rest"] and "in use" in arch["links"]["models"]["use"],
+          "/arch: both readings of a link named, neither in use nor measured yet, and why")
     h = c.get("/api/health").json()
     check(list(h)[-3:] == ["atlas", "label_gate", "lens"], f"/api/health keys end {list(h)[-4:]}")
     check(h["atlas"]["indexes"] == {k: False for k in h["atlas"]["indexes"]} and h["atlas"]["routes"] == "/api/atlas",
@@ -638,8 +646,15 @@ def main() -> int:
     ab.build_layout(rt, out, method="pca", log=quiet)
     ab.build_passages(rt, out, wins, "check", k=6, sample=3, extremes=(stats["pos"], stats["neg"]), extremes_source="the stats index (check)",
                       chunk=4, log=quiet)
+    ab.build_wiring_check(rt, out, f_idx, layers=[1, 2], writers="random:8", dose=0.25, batch=9, scale_source="check", log=quiet)
     arch = c.get("/api/atlas/arch").json()
     check(all(v_["built"] for k_, v_ in arch["indexes"].items() if k_ != "folder"), "/arch: every index built")
+    meas = arch["links"]["measured"]
+    wcm = idx.get("wiring_check")["meta"]
+    check(arch["links"]["use"] == {"ready": True} and set(meas["layers"]) == {"1", "2"} and meas["dose"] == 0.25 and meas["writers"] == "random:8"
+          and all(meas["layers"][l_]["last"] == wcm["summary"][l_]["last"] and meas["layers"][l_]["cost"] == wcm["cost"][l_] for l_ in ("1", "2"))
+          and meas["sign_disagreement"]["links"] == idx.sign_disagreement()["links"] and "sign_gate" in meas["layers"]["1"]["last"]["null"],
+          f"/arch: the measured check per layer, linked and null, with its cost, and the disagreement over the index ({sorted(meas or {})})")
     check(arch["push"]["scale_source"]["kind"] == "index" and arch["push"]["scale_source"]["corpus"] == "check", "/arch: the scales from the stats index")
     check(all(c.get("/api/health").json()["atlas"]["indexes"].values()), "/api/health: every index on disk")
     stand_in_card = {"format": "stand-in", "model": rt.model_id, "runtime": "TheodoliteRuntime"}

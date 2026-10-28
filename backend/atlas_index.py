@@ -35,6 +35,10 @@ git ignores), each with its provenance in a `meta` field (model, lens id, built_
   {face}_u float16 (the activation, and the gate and up pre-activations there; float16 reaches 65,504); with a sampled
   build also
   {face}_smp_{win, at, act, g, u} [L, N, S], drawn at random above half the face's extreme.
+- wiring_check.npz: the wiring measured (`atlas_build.build_wiring_check`): per layer measured, `L{l}_*` arrays (the
+  writers, their pushes, their linked readers and the null's, each pair's g, u, signs and strength, the readers'
+  operating points, and every read [W, R, Q, 3, 2]), `layers`; its meta holds each layer's summary and cost, and
+  is all the server reads of it (/arch). Merged from wiring_check.d/L{l}.npz, one a layer, as each is measured.
 - head_profiles.json: where each head looks over a few reference texts (built by the server on first need).
 - vocab.json: every word-piece decoded alone (written by the server on first need).
 Layers count from 0 in every array and field.
@@ -61,6 +65,7 @@ WIRING_K = 24
 EMPTY_Z = -1e4  # an empty wiring slot (fewer links than K)
 PASSAGES_K = 16
 PASSAGES_DIR = "passages.d"
+WIRING_CHECK_DIR = "wiring_check.d"
 FILES = {
     "lens": "lens.npz",
     "act_scale": "act_scale.npz",
@@ -68,8 +73,10 @@ FILES = {
     "steer_lens": "steer_lens.npz",
     "layout": "layout_writes.npz",
     "passages": f"{PASSAGES_DIR}/meta.json",  # a folder of .npy arrays, memory-mapped; its meta.json is written last
+    "wiring_check": "wiring_check.npz",
 }
 FOLDERS = {"passages"}
+META_ONLY = {"wiring_check"}  # a record the server reads only the meta of (its arrays are for analysis: np.load them)
 # the array of each file whose first two axes are [layers, neurons]
 SHAPE_KEY = {"lens": "lens_pos", "act_scale": "pos", "wiring": "down_z", "steer_lens": "up", "layout": "cell", "passages": "pos_act"}
 # arrays an index file must hold to be read: older builds lack them and are refused, with what to do
@@ -193,7 +200,7 @@ class AtlasIndex:
                 data = load_folder(p)
             else:
                 with np.load(p, allow_pickle=False) as z:
-                    data = {k: z[k] for k in z.files}
+                    data = {k: z[k] for k in z.files if name not in META_ONLY or k in ("meta", "layers")}
                 data["meta"] = meta_of(data)
             why = self._refusal(name, data)
             self._cache[name] = (mt, None if why else data, why)

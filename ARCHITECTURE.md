@@ -644,6 +644,7 @@ stand-in's never; `GET /arch` names a refused one).
 | `steer_lens.npz` | `up`, `down` [L, N, 12] word-piece ids, `up_kl`, `down_kl` [L, N]: the steer lens (below) | `steer`, hours, by ranges of layers, resumable |
 | `layout_writes.npz` | `cell` [L, N] int16: each neuron's cell on its layer's square grid, neurons writing alike side by side (unit write directions, PCA to 50, UMAP where installed, else the first two principal directions, snapped to the grid) | `all` |
 | `passages.d/` | one `.npy` per array, memory-mapped, and `meta.json` (written last): `windows` [W, seq] int32, the windows' word-piece ids (−1 past a short one's end; the corpus's own text, never committed); `unigram` [V] int32, each word-piece's count over the word-pieces read; per face `{pos,neg}_{win, at}` [L, N, 16] and `{pos,neg}_{act, g, u}` float16: its 16 strongest windows, one event a window (each window's peak past the start mark, then the 16 largest, ties to the lower window), with the activation and the gate and up pre-activations there; `{pos,neg}_smp_*` [L, N, S], S events drawn at random above half the face's extreme in `act_scale.npz`, at most one a window. About 0.7 GB on the 31B with S = 6 | `passages`, over the corpus it is given (give it the one `stats` read: `rel` and the samples' threshold are against the stats index's extremes, and the route says when the two corpora differ); parts of 1,024 windows, resumable, merged exactly; not in `all` |
+| `wiring_check.npz` | the links measured (below): per layer `L{l}_*`, the writers and their pushes, each one's linked readers and the null's, each pair's g, u, signs and strength, the readers' operating points, and every read [W, R, 4, 3, 2]; `layers`; the meta, all the server reads of it, holds each layer's summary and cost (`GET /arch` → `links.measured`) | `wiring_check`, after wiring (and passages, for the sign in use): one `wiring_check.d/L{l}.npz` a layer, resumable, merged as it goes |
 | `head_profiles.json`, `vocab.json` | where each head looks over eight reference texts; every word-piece decoded alone | by the server, on first need |
 
 **The push's unit.** A push of dose d adds d · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) to the
@@ -693,13 +694,27 @@ writer's own activation pushed) the change had the sign of α g + β u at 113 of
 each event's own at 76% of (link, event) pairs (both printed, on random weights, not asserted). `atlas_build.py` counts
 how often the two readings disagree over the whole index once both are built.
 
+Both readings are weight-only; `atlas_build.py wiring_check` measures them, prefill only (after neuron-explorer's steered
+prefill captures: a push at every prompt word-piece is rebuilt by one prefill). Per layer, `--writers` (random:512) are
+pushed by ±d along their write directions at every word-piece of the census's four questions but the start mark, d =
+`--dose` (0.25) times each one's write ceiling, a share of what it can write firing alone; its indexed readers, and as
+many readers at the same layers it is not linked to (the null, `null_readers`), are read at the last word-piece and over
+the prompt (`pushed_reads`: prefills of 64 rows, each with its own unpushed row). Reported per layer, for the linked
+readers and the null (`wiring_check_summary`, in the log and `GET /arch` → `links.measured`): the share whose change under
++d has the sign from rest, and under the push on the writer's `gate` face; the same against the sign in use at the
+reader's face that prompt (the last word-piece); Spearman's ρ of the change's size against |P| f²; how often +d and −d
+move a reader the same way (from rest the change is even in the writer, in use odd); how much more the linked readers
+move than the null; and a cost line (forwards, rows, seconds, minutes inferred on the 5090). On the stand-in's random
+weights, where every other path counts as much as the direct one, the signs held at about half the links, as for the
+null, and the linked readers moved about twice as much as the null's.
+
 **The steer lens.** ±0.8 · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
 you?", "Write whatever you like.") and two plain openings, one forward with an unpushed row each; per sign, the mean change
 of the next word-piece's log-probability (fp32, softcapped at 30), its twelve largest rises, and KL(pushed ‖ base).
 
 | route | what it answers |
 |---|---|
-| `GET /arch` | the model's shape (layers, their attention kind, heads, window, `values_from_keys`), which index files are built or refused, which layers have a census, the push's modes and units and its sampler (fields, the shared draw, samples, what is not offered), the limits, `label_gate` and `lens` cards |
+| `GET /arch` | the model's shape (layers, their attention kind, heads, window, `values_from_keys`), which index files are built or refused, which layers have a census, the push's modes and units and its sampler (fields, the shared draw, samples, what is not offered), the limits, `links` (both readings of a sign, whether links can be read in use here and why not, and `measured`, the wiring check per layer), `label_gate` and `lens` cards |
 | `GET /neuron/lens?layer&n` | both faces through the lens and by the naked eye with their checks, read live (vault edits included); the steer lens (index, or as read live; for a neuron edited in the vault only as read live since the edit, `steer_stale` saying why the index's is not shown); `act_range` {act_max, act_min, over_tokens, source, regimes}; `ceiling` {write, p50, rel, source}, the most it can write by itself |
 | `POST /neuron/steer_lens?layer&n` | the steer lens of one neuron, read live (GPU) |
 | `GET /neuron/wiring?layer&n&k=24&model=rest` | its strongest links each way, `down` (readers) and `up` (writers), each with `face`, that face's words and check, its census words and name; from the index, else live (`source`); `model=use` adds each link's `use_sign` {+, −} and `use` {ready, why, operating_points, stale, note} (above) |

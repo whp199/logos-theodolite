@@ -10,6 +10,7 @@
     .venv/bin/python scripts/atlas_build.py steer --layers 40-59  # the steer lens, a range of layers at a time
     .venv/bin/python scripts/atlas_build.py passages --hf HuggingFaceFW/fineweb-edu:sample-10BT \
         --hf HuggingFaceH4/ultrachat_200k::train_sft --tokens 2000000 --k 16 --sample 6   # each face's passages
+    .venv/bin/python scripts/atlas_build.py wiring_check --layers 40,50 --writers random:512 --dose 0.25   # links measured
     .venv/bin/python scripts/atlas_build.py all                   # lens, stats, wiring, layout (not the steer lens, nor passages)
 
 The folder is `$THEODOLITE_ATLAS_DIR/index`, else `atlas_data/index` in the checkout (git ignores it), or `--out`. Each
@@ -47,6 +48,21 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   0.8 GB each on the 31B) is written to passages.d/parts/ and a stopped run resumes; the parts are merged into
   passages.d/ (about 0.7 GB) and removed (--keep-parts keeps them). The windows it keeps are the corpus's own text:
   the folder stays in the atlas folder, which git ignores; never commit it.
+- wiring_check: the wiring measured, prefill only. Per layer (--layers, else all), --writers (random:512, drawn from
+  --seed and the layer) are each pushed by +d and -d along their write direction at every word-piece of the census's
+  four questions but the start mark, d = --dose (0.25) times the writer's own write ceiling, the most it can write by
+  itself: a quarter of what it could write firing alone, the same share for every writer, never a push the neuron
+  could not make (the steer lens's 0.8 of the stream is 1 to 10 times the ceiling at most layers), and meant to stay
+  near the first order the sign in use is read at (how near, untested on the 31B: the share of readers +d and -d move
+  the same way says). Its indexed readers and as many it is not linked to (the null)
+  are read at the last word-piece and over the prompt, in prefills of --batch rows (64), each with its own unpushed
+  row. Needs the wiring index (the passages index too, for the sign in use). Per layer it logs, and keeps in
+  wiring_check.npz for /arch, how often the sign from rest holds (under +d, and on the writer's gate face), the sign
+  in use, Spearman's rho of the change against |P| f^2, the same for the null, and how often +d and -d move a reader
+  the same way. Cost (inferred, prefill only): at 512 writers and four questions of some 20 word-pieces, 68 prefills of
+  up to 63 rows a layer, about 1.3 minutes a layer on the 5090 from the census's 0.71 s step and the stats pass's rate
+  (the log gives each layer's own figure and the seconds it took), some 1.3 hours for the 59 layers a later one
+  reads. A layer is written as it is done, and a stopped run resumes.
 `--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU
@@ -137,10 +153,12 @@ def corpus_texts(a: argparse.Namespace, rt: Any) -> tuple:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=__doc__.split("\n\n", 1)[1])
-    ap.add_argument("what", choices=["lens", "stats", "wiring", "steer", "layout", "passages", "all"])
+    ap.add_argument("what", choices=["lens", "stats", "wiring", "steer", "layout", "passages", "wiring_check", "all"])
     ap.add_argument("--out", help="the index folder (default: the atlas's)")
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in, not the model")
-    ap.add_argument("--layers", default="", help='for lens and steer: "40-59" or "3,7,11"')
+    ap.add_argument("--layers", default="", help='for lens, steer and wiring_check: "40-59" or "3,7,11"')
+    ap.add_argument("--writers", default="random:512", help='wiring_check: the writers a layer, "random:K", "0-99" or "1,5,9"')
+    ap.add_argument("--dose", type=float, default=0.25, help="wiring_check: the push, a share of each writer's own write ceiling")
     ap.add_argument("--text", action="append", help="stats, passages: a plain-text corpus file (documents split on blank lines)")
     ap.add_argument("--jsonl", action="append", help="stats, passages: a JSONL corpus file with a text field per line")
     ap.add_argument("--hf", action="append", help="stats, passages: a dataset name[:config[:split]], streamed (needs the datasets "
@@ -152,9 +170,9 @@ def main() -> int:
     ap.add_argument("--k", type=int, default=16, help="passages: the strongest windows kept a face, one event each")
     ap.add_argument("--sample", type=int, default=6, help="passages: events a face drawn at random above half its extreme "
                     "(needs the stats index; 0 for none)")
-    ap.add_argument("--seed", type=int, default=0, help="passages: the seed of the random draw")
+    ap.add_argument("--seed", type=int, default=0, help="passages, wiring_check: the seed of the random draw")
     ap.add_argument("--keep-parts", action="store_true", help="passages: keep the parts after merging them")
-    ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward")
+    ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward; wiring_check: rows per prefill")
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
     ap.add_argument("--replace", action="store_true", help="replace an index built for another model or other weights "
                     "(by default refused: build into another folder, --out or $THEODOLITE_ATLAS_DIR, to keep both)")
@@ -275,6 +293,16 @@ def main() -> int:
             sc = scales()
             print(f"steer: the push's unit is the stream's median length from {sc['source']}")
             print("->", ab.build_steer_lens(rt, out, sc["p50"], layers=layers, batch=a.batch))
+        elif step == "wiring_check":
+            sc = scales()
+            print(f"wiring_check: each link's strength |P| f^2 weighed with the norms' scales from {sc['source']}")
+            f = ao.link_scale(ao.Weights(lm, rt).scalars, sc["mlp_rms"], sc["mid_rms"])
+            try:
+                print("->", ab.build_wiring_check(rt, out, f, layers=layers, writers=a.writers, dose=a.dose, seed=a.seed,
+                                                  batch=a.batch, scale_source=sc["source"]))
+            except ValueError as exc:
+                raise SystemExit(str(exc))
+            disagreement()
     return 0
 
 

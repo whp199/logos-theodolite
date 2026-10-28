@@ -22,6 +22,11 @@ with the same quantity read live, one neuron at a time:
    stored passages' events; each link's sign in use is the same from the index's g and u as from the live ones; the
    count of signs in use that differ from rest is the count link by link; a wiring index without g and u still serves
    the sign from rest and says, in use, to rebuild it;
+5b. wiring_check.npz (the wiring measured): each writer's linked readers are its links in the wiring index, the null's
+   at the same layers and never linked; each push is the dose times the writer's ceiling; the reads are `pushed_reads`'
+   in another batch shape; the signs, g, u and strength are the index's and the weights'; the summary in the meta is
+   the stored arrays' (a share recounted by hand, Spearman's rho on cases with ties); the server reads only its meta;
+   a second run adds layers and skips those done, and one with another dose is refused;
 6. steer_lens.d / steer_lens.npz: each neuron's rises are `steer_lens`'s, KL too; a stopped run resumes and merges;
 7. layout_writes.npz: each layer's cells are distinct places on its sheet;
 8. the queries: a search finds a face by a word-piece of its label at the right rank; the cone's hops move one way
@@ -474,6 +479,81 @@ def main() -> int:
     (out / "wiring.npz").unlink()
     (out / "wiring.keep").rename(out / "wiring.npz")
     section("the wiring's g and u kept; operating points as medians; the sign in use alike from the index and live, counted", before)
+
+    before = len(failures)
+    lines: List[str] = []
+    ab.build_wiring_check(rt, out, f, layers=[1, 3], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=lines.append)
+    wc = idx.get("wiring_check")
+    m = wc["meta"] if wc else {}
+    check(wc is not None and sorted(wc) == ["layers", "meta"] and wc["layers"].tolist() == [1, 3] and m.get("dose") == 0.25
+          and m.get("writers") == "random:12" and m.get("dose_unit") == "each writer's write ceiling" and m.get("scale_source") == "check"
+          and m.get("wiring_built_at") == idx.get("wiring")["meta"]["built_at"] and m.get("passages_built_at") == P["meta"]["built_at"]
+          and set(m.get("summary", {})) == {"1", "3"} and m.get("sign_disagreement") == {k_: v_ for k_, v_ in idx.sign_disagreement().items() if k_ != "by_layer"},
+          f"wiring_check: written with its provenance, the server reading only its meta ({sorted(wc or {})}, {sorted(m)[:6]})")
+    check(idx.status()["wiring_check"]["built"] and "summary" in idx.status()["wiring_check"], "wiring_check: /arch's status carries its summary")
+    z = dict(np.load(out / "wiring_check.npz"))
+    wi = idx.get("wiring")
+    from backend.census import parse_neurons
+
+    ao_writers = lambda l_, n_: [A for A in parse_neurons("random:12", n_, 3 + l_) if float(w.write_ceiling(l_, [A])[0]) > 0]  # noqa: E731
+    bad_r = []
+    for l in (1, 3):
+        ws_ = z[f"L{l}_writers"].tolist()
+        check(ws_ == ao_writers(l, N) and np.allclose(z[f"L{l}_lengths"], 0.25 * w.write_ceiling(l, ws_).numpy(), rtol=1e-6),
+              f"wiring_check L{l}: the writers drawn, each pushed by 0.25 of its own ceiling")
+        for a_, A in enumerate(ws_):
+            lk = [(int(wi["down_layer"][l, A, i_]), int(wi["down_n"][l, A, i_])) for i_ in range(int(wi["K"])) if float(wi["down_z"][l, A, i_]) > -1e4]
+            rd = [tuple(int(x) for x in z[f"L{l}_readers"][a_, r_]) for r_ in range(z[f"L{l}_readers"].shape[1]) if z[f"L{l}_readers"][a_, r_, 0] >= 0]
+            isl = z[f"L{l}_linked"][a_, : len(rd)].tolist()
+            nl = [t for t, x in zip(rd, isl) if not x]
+            ok = (rd[: len(lk)] == lk and all(isl[: len(lk)]) and not any(isl[len(lk):]) and len(nl) == len(lk) and not set(nl) & set(lk)
+                  and len(set(nl)) == len(nl) and sorted(j for j, _ in nl) == sorted(j for j, _ in lk))
+            for r_, (j, b) in enumerate(rd):
+                g_, u_ = float(z[f"L{l}_g"][a_, r_]), float(z[f"L{l}_u"][a_, r_])
+                ok &= abs(z[f"L{l}_strength"][a_, r_] - abs(g_ * u_) * float(f[l, j]) ** 2) <= 1e-5 * abs(z[f"L{l}_strength"][a_, r_]) + 1e-30
+                if r_ < len(lk):
+                    ok &= (int(z[f"L{l}_sign"][a_, r_]), int(z[f"L{l}_gate"][a_, r_])) == (int(wi["down_sign"][l, A, r_]), int(wi["down_gate"][l, A, r_]))
+                    ok &= abs(g_ - float(wi["down_g"][l, A, r_])) <= 1e-3 * abs(g_) + 1e-7
+                else:
+                    ok &= (int(z[f"L{l}_sign"][a_, r_]), int(z[f"L{l}_gate"][a_, r_])) == ((1 if g_ * u_ > 0 else -1), (1 if g_ > 0 else -1))
+                op_ = idx.op_point(j, b)
+                ok &= all((op_[s_] is None and np.isnan(z[f"L{l}_op"][a_, r_, fi]).all()) or tuple(float(x) for x in z[f"L{l}_op"][a_, r_, fi]) == tuple(np.float32(op_[s_]).tolist())
+                          for fi, s_ in enumerate(("+", "-")))
+            if not ok:
+                bad_r.append((l, A))
+    check(not bad_r, f"wiring_check: the linked readers are the index's links, the null's at their layers and never linked; signs, g, u, strength, operating points ({bad_r[:3]})")
+    # the reads: pushed_reads again, in another batch shape, for the first three writers of layer 1
+    from backend.census import PROMPTS
+
+    qs = [rt.tokenize_prompt(rt.compose_prompt(v_, chat=True)) for v_ in PROMPTS.values()]
+    rd1 = [[tuple(int(x) for x in z["L1_readers"][a_, r_]) for r_ in range(z["L1_readers"].shape[1]) if z["L1_readers"][a_, r_, 0] >= 0] for a_ in range(3)]
+    again = ao.pushed_reads(lm, w, qs, [(1, int(A)) for A in z["L1_writers"][:3]], rd1, z["L1_lengths"][:3], bos_id=tok.bos_token_id, batch=3)
+    stored = z["L1_reads"][:3, : again.shape[1]]
+    check(np.allclose(np.nan_to_num(stored, nan=7.0), np.nan_to_num(again, nan=7.0), atol=1e-5), "wiring_check: the reads are pushed_reads' in another batch shape")
+    # the summary is the stored arrays', a share recounted by hand
+    sh1 = {k_[3:]: v_ for k_, v_ in z.items() if k_.startswith("L1_")}
+    s1 = ab.wiring_check_summary(sh1)
+    lk1 = sh1["linked"] & (sh1["readers"][..., 0] >= 0)
+    dp = (sh1["reads"][:, :, :, 1, 0] - sh1["reads"][:, :, :, 0, 0])[lk1]
+    by_hand = float((np.sign(dp) == sh1["sign"][lk1][:, None]).mean())
+    check(s1 == m["summary"]["1"] and abs(s1["last"]["linked"]["sign_plus"] - round(by_hand, 3)) < 1e-9 and s1["last"]["linked"]["pairs"] == dp.size,
+          f"wiring_check: the meta's summary is the stored arrays', sign_plus recounted ({s1['last']['linked']['sign_plus']} vs {by_hand:.3f})")
+    cst = m["cost"]["1"]
+    per_ = (7 - 1) // 2
+    check(cst["forwards"] == len(qs) * -(-12 // per_) and cst["rows"] == 7 and cst["minutes_5090"] > 0 and any("layer 1: 12 writers" in x and "min on the 5090" in x for x in lines),
+          f"wiring_check: the cost line, prefill only ({cst})")
+    check(abs(ab.spearman(np.array([1, 2, 3, 4.0]), np.array([10, 20, 30, 40.0])) - 1.0) < 1e-12
+          and abs(ab.spearman(np.array([1, 2, 3.0]), np.array([3, 2, 1.0])) + 1.0) < 1e-12
+          and abs(ab.spearman(np.array([1, 1, 2, 3.0]), np.array([1, 2, 3, 4.0])) - 0.9486832980505138) < 1e-12
+          and ab.spearman(np.array([1, 1, 1.0]), np.array([1, 2, 3.0])) is None, "spearman: ranks with ties at their mean, None for a constant side")
+    # a second run adds a layer and skips those done; one with another dose is refused
+    lines2: List[str] = []
+    ab.build_wiring_check(rt, out, f, layers=[1, 4], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=lines2.append)
+    check(idx.get("wiring_check")["layers"].tolist() == [1, 3, 4] and not any("layer 1:" in x for x in lines2) and any("layer 4:" in x for x in lines2),
+          "wiring_check: a second run adds its layers and skips those done")
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.5, seed=3, batch=7, log=quiet)
+    check("other settings (dose)" in said, f"wiring_check: a run with another dose refused in plain words ({said})")
+    section("the wiring measured: written, read back, its readers, null, reads, summary and cost; resumed; refused", before)
 
     before = len(failures)
     p50 = [float(x) for x in s["resid_q"][:, 1]]
