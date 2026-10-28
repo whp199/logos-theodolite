@@ -47,7 +47,8 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple
 import torch
 import torch.nn.functional as F
 
-from backend.engine_runtime import TheodoliteRuntime, dequantize_w4a16_cols
+from backend.engine_runtime import TheodoliteRuntime
+from backend.gguf_weights import dense_cols
 from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids, writes_nothing
 from backend.theodolite_math import (
     D_FF,
@@ -441,8 +442,8 @@ class LarqlVaultEngine:
         neuron_idx = max(0, min(int(neuron_idx), D_FF - 1))
         idx_t = torch.tensor([neuron_idx], device=self.runtime.device, dtype=torch.long)
 
-        # Get current/original column
-        orig_col = dequantize_w4a16_cols(down_proj.weight_packed, down_proj.weight_scale, idx_t)[0]
+        # Get current/original column (W4A16, GGUF or plain: `gguf_weights.dense_cols`)
+        orig_col = dense_cols(down_proj, idx_t)[0]
         orig_norm = float(torch.linalg.vector_norm(orig_col.float()).item())
 
         if op == "DELETE":

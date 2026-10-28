@@ -56,12 +56,11 @@ MAX_HEAD_SCALES = 64
 
 def dense_weight(linear: nn.Module) -> torch.Tensor:
     """A linear layer's weight [out, in] as the model uses it: dequantized from W4A16 where the checkpoint packs it
-    (`engine_runtime.dequantize_w4a16_full`), else the plain weight."""
-    if hasattr(linear, "weight_packed") and hasattr(linear, "weight_scale"):
-        from backend.engine_runtime import dequantize_w4a16_full
+    (`engine_runtime.dequantize_w4a16_full`) or from a GGUF's blocks (`gguf_weights.GGUFLinear`), else the plain weight
+    (`gguf_weights.dense`)."""
+    from backend.gguf_weights import dense
 
-        return dequantize_w4a16_full(linear.weight_packed, linear.weight_scale)
-    return linear.weight.detach()
+    return dense(linear)
 
 
 def ffn_width(lm: nn.Module, layer: int = 0) -> int:
