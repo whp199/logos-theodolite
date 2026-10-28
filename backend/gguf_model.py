@@ -161,7 +161,7 @@ def text_config_from_gguf(meta: Dict[str, Any], tensors: Dict[str, Any]) -> Dict
     if freqs is None:
         raise ValueError("This GGUF has no rope_freqs tensor, so the full layers' partial rotary factor is not known; "
                          "give the model's config.json (hf_config).")
-    f = np.asarray(unpack(torch.from_numpy(np.asarray(freqs.data).view(np.uint8).reshape(-1)), freqs.tensor_type))
+    f = np.asarray(unpack(torch.from_numpy(np.array(np.asarray(freqs.data).view(np.uint8).reshape(-1))), freqs.tensor_type))
     n_rot = int((f == 1.0).sum())
     if f.shape[0] != hd_full // 2 or not np.all(f[:n_rot] == 1.0) or not np.all(f[n_rot:] >= 1e29):
         raise ValueError(f"rope_freqs is not the proportional rope's pattern for a head of {hd_full} "
