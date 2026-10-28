@@ -24,9 +24,10 @@ temporary directory:
 7. on uvicorn (a real socket on a free port): a foreign Origin's WebSocket handshake gets HTTP 403, a local one 101;
 8. labd: a foreign Host, and any request a browser sends (an Origin, even a local one, or Sec-Fetch-Site), refused on
    every route (403), no docs pages; /exec and /reload without this launch's token (none, a wrong one, or before any
-   launch) refused (401) and the code not run, with it run; the token file written whole, readable by its user only
-   (0600), where labd.token_path says; labclient.py sends it (a job run end to end on uvicorn), and says in plain words
-   when there is none.
+   launch, "Bearer None" too) refused (401) and the code not run, with it run; the token file written whole, readable
+   by its user only (0600), where labd.token_path says; labclient.py sends it (a job run end to end on uvicorn), and
+   says in plain words when there is none; a second launch of labd.py on the port that labd is serving stops in plain
+   words before its model loads, and leaves the running launch's token file, and its jobs, alone.
 
 Run: .venv/bin/python -I scripts/check_local_only.py   (exits 0 when every check holds)
 """
@@ -337,8 +338,9 @@ def main() -> int:
     lc = TestClient(labd.app, base_url=BASE)
     job = {"code": "STORE['ran'] = STORE.get('ran', 0) + 1\nresult = 6 * 7", "label": "check_local_only"}
     labd.TOKEN["value"] = None
-    r = lc.post("/exec", json=job, headers={"Authorization": "Bearer "})
-    check(r.status_code == 401 and "ran" not in labd.STORE, f"before any launch's token, /exec runs nothing: {r.status_code}")
+    for sent in ("Bearer ", "Bearer None"):
+        r = lc.post("/exec", json=job, headers={"Authorization": sent})
+        check(r.status_code == 401 and "ran" not in labd.STORE, f"before any launch's token, /exec with {sent!r} runs nothing: {r.status_code}")
     tok_file = labd.token_path(labd.PORT)
     token = labd.write_token(tok_file)
     mode = stat.S_IMODE(tok_file.stat().st_mode)
@@ -384,6 +386,17 @@ def main() -> int:
                              capture_output=True, text=True, timeout=60)
         check(res.returncode == 0 and "hello" in res.stdout and res.stdout.strip().endswith("42") and labd.STORE.get("ran") == 1,
               f"labclient.py reads the token and the job runs: {res.returncode} {res.stdout!r} {res.stderr[-300:]!r}")
+        # a second launch on the port labd is serving: it stops before its model loads (none could here) and before it
+        # writes a token, so the running launch's file, and labclient's jobs, are untouched
+        served = tok_file.with_name(f"labd-{port}.token")
+        res = subprocess.run([sys.executable, "-I", str(ROOT_DIR / "experiments" / "lab" / "labd.py")], env={**os.environ, "LABD_PORT": str(port)},
+                             capture_output=True, text=True, timeout=120)
+        check(res.returncode != 0 and f"cannot listen on 127.0.0.1:{port}" in res.stderr and "no token written" in res.stderr
+              and "Traceback" not in res.stderr, f"a second launch on a served port stops in plain words: {res.returncode} {res.stderr[-300:]!r}")
+        check(served.is_file() and served.read_text() == token + "\n" and not list(served.parent.glob(".labd-token-*")),
+              "the running launch's token file untouched")
+        res = subprocess.run([sys.executable, "-I", client, "-", "--port", str(port)], input="result = 6 * 7", capture_output=True, text=True, timeout=60)
+        check(res.returncode == 0 and res.stdout.strip().endswith("42"), f"and the running launch still takes jobs: {res.returncode} {res.stderr[-300:]!r}")
         bad = tok_file.with_name(f"labd-{port}.token")
         bad.write_text("not-this-launch\n")
         res = subprocess.run([sys.executable, "-I", client, "-", "--port", str(port)], input="result = 1", capture_output=True, text=True, timeout=60)
@@ -395,8 +408,9 @@ def main() -> int:
     finally:
         srv.should_exit = True
         th.join(timeout=10)
-    check(len(labd.LOG.read_text().splitlines()) == 2, "each job that ran logged once (here, not in the repository)")
-    section("labd: the Host and any browser refused on every route, /exec and /reload only with the launch's token, labclient sends it", before)
+    check(len(labd.LOG.read_text().splitlines()) == 3, "each job that ran logged once (here, not in the repository)")
+    section("labd: the Host and any browser refused on every route, /exec and /reload only with the launch's token, labclient sends it, "
+            "a second launch leaves it alone", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

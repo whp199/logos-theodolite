@@ -18,7 +18,9 @@ Host) and any request a browser sends (an Origin or a Sec-Fetch-Site header): no
 /exec and /reload also want this launch's token (401 otherwise), a fresh random one written at each start to a file
 only its user can read (0600): $LABD_TOKEN_FILE, else ${XDG_RUNTIME_DIR:-~/.cache}/theodolite/labd-<port>.token,
 removed again on a clean exit. labclient.py reads it and sends it as `Authorization: Bearer <token>`; a client on
-another machine (the far end of a tunnel) needs a copy of that file. /health wants no token.
+another machine (the far end of a tunnel) needs a copy of that file. /health wants no token. The port is held before
+the token is written (and before the model loads), so a second launch on a port already taken stops there, in plain
+words, and leaves the running launch's token alone; a job sent while the model loads waits for it.
 """
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ import io
 import json
 import os
 import secrets
+import socket
 import sys
 import tempfile
 import time
@@ -199,11 +202,22 @@ async def execute(req: ExecReq):
 
 
 if __name__ == "__main__":
+    # the port held first (listening, as only then does a second socket's bind fail; uvicorn binds only after its
+    # startup, the model), so a launch on a port already served never writes over the running launch's token
+    sock = socket.socket()
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # as uvicorn's own: a restart waits out no TIME_WAIT
+    try:
+        sock.bind(("127.0.0.1", PORT))
+        sock.listen(2048)
+    except OSError as exc:
+        sys.exit(f"[labd] cannot listen on 127.0.0.1:{PORT} ({exc.strerror}): is labd, or the instrument's server, "
+                 "running there already? Nothing was started and no token written; $LABD_PORT picks another port.")
     token_file = token_path(PORT)
     mine = write_token(token_file)
     print(f"[labd] this launch's token: {token_file}", flush=True)
     try:
-        uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")
+        with contextlib.suppress(KeyboardInterrupt):  # as uvicorn.run: Ctrl-C is a clean stop
+            uvicorn.Server(uvicorn.Config(app, log_level="warning")).run(sockets=[sock])
     finally:
         with contextlib.suppress(OSError):
             if token_file.read_text().strip() == mine:  # not a later launch's
