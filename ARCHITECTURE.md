@@ -35,7 +35,7 @@ theodolite2/
 │   ├── atlas_index.py               # the atlas's indexes on disk, and the queries over them (cone, search, links)
 │   ├── atlas_build.py               # building those indexes on the GPU (lens, stats, wiring, steer lens, layout, passages)
 │   ├── census.py                    # the census: every neuron of a layer pushed on fixed questions, ranked vs controls
-│   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat
+│   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat; the folio's field book
 │   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex or an OpenAI-compatible endpoint (§4.8)
 │   ├── scientist_tools.py           # the scientist's 30 tools, in the pages' count of layers (stdlib only)
 │   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code and Codex
@@ -701,7 +701,8 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `POST /run`, `GET /run/view?pos&sign&lo&hi&min&q&limit`, `GET /run/heads?pos`, `GET /run/paths?pos&top&min`, `GET /head/row?layer&head&pos` | a text run once (at most 256 positions) and every activation kept: the neurons passing the filters at a word-piece or over all of them (score = activation over the neuron's usual extreme on that side), each head's write there, the links among the strongest (int16 rows as `/web`), one head's attention by unit |
 | `GET /head?layer&head`, `GET /head/profile?layer&head`, `POST /head/pattern`, `POST /attention`, `POST /attn_drive` | a head's q / k / v / o neurons from the weights with their words pooled; where it looks over eight texts; its attention on a text; which heads and blocks drive a neuron at one unit |
 | `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/card?layer`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers, its statistics and the run's card; the card alone (where the doses and the push unit come from, the unit a dose counts in, how loudly the next layer reads controls against neurons, how many neurons beat every control and how many would by chance, the card it was written on and whether its parts mixed runtime classes, a partial merge, a retest's stage, the writer's floor where measured); one answer; the layout of the run's answers |
-| `GET /notes`, `POST /notes` | names and notes (`backend/field_notes.py`): `{kind: "neuron" \| "head", layer, index, name?, note?, by}`; an omitted field is kept, both empty forgets the entry |
+| `GET /notes`, `POST /notes` | names and notes (`backend/field_notes.py`): `{kind: "neuron" \| "head", layer, index, name?, note?, by}`; an omitted field is kept, both empty forgets the entry. A neuron folio's name is this name, by `reader` |
+| `GET /fieldbook?layer&n`, `POST /fieldbook` | a neuron folio's field book, per face, in `field_book.json` beside the notes (`$THEODOLITE_FIELD_BOOK`; a file of its own, which a server from before never reads or writes): `{jobs: "one" \| "two" \| "unknown" \| null, pattern (≤ 4,000 characters), checked: {other_pole, long_contexts, steered, readers_traced}, by, at}`; given a neuron, both faces (`faces`, null where nothing is said) and its entry in the notes (`notes`); given neither, the whole book. POST `{layer, n, face, jobs?, pattern?, checked?, by}`: a field left out is kept (`checked` may give some ticks only), a face with nothing said is forgotten |
 
 **The census** (`backend/census.py`; `scripts/census_run.py` on the GPU, `scripts/census_tools.py` on the CPU). For one
 layer, every neuron (or a range) and some random directions are pushed as above on the design's questions and doses
@@ -757,7 +758,7 @@ weights), then a hedged verdict per sign on where neurons start to move more ans
 breaks. The server keeps the last two layers' answers it opened.
 
 `/api/health` carries an `atlas` card (routes, the index folder, which index files exist, the census layers, the
-notes' file) just before `label_gate` and `lens`. scripts/check_atlas_ops.py, check_atlas_index.py, check_atlas_api.py
+notes' file and the field book's) just before `label_gate` and `lens`. scripts/check_atlas_ops.py, check_atlas_index.py, check_atlas_api.py
 and check_census.py check all of this on the CPU stand-in (`scripts/atlas_stand_in.py`).
 
 ### 4.8 The scientist (`backend/scientist_chat.py`, `/api/atlas/scientist/*`)

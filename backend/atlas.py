@@ -116,11 +116,12 @@ def bind(get_state: Callable[[], Tuple[Any, Any]], gpu_lock: asyncio.Lock) -> No
 def health_card(rt: Any) -> Dict[str, Any]:
     """What /api/health says of the atlas: that its routes exist here, which indexes are on disk (by file: none is
     loaded for it; GET /arch says whether each fits this model), which layers have a census of this model, and where
-    the field notes are kept."""
+    the field notes and the folio's field book are kept."""
     root = AtlasIndex().root
     return {"version": ATLAS_VERSION, "routes": router.prefix, "index_folder": str(root),
             "indexes": {name: (root / f).exists() for name, f in FILES.items()},
-            "census_layers": sorted(cz.layer_runs(model=getattr(rt, "model_id", None))), "field_notes": str(fn.field_notes_path())}
+            "census_layers": sorted(cz.layer_runs(model=getattr(rt, "model_id", None))), "field_notes": str(fn.field_notes_path()),
+            "field_book": str(fn.field_book_path())}
 
 
 def atlas() -> "Atlas":
@@ -494,6 +495,17 @@ class NoteRequest(BaseModel):
     by: Optional[str] = None
 
 
+class FieldBookRequest(BaseModel):
+    layer: Optional[StrictInt] = None
+    n: Optional[StrictInt] = None
+    face: Optional[str] = None
+    # checked by field_notes.check_face, so a wrong value is answered in its words, and a field left out is kept
+    jobs: Optional[Any] = None
+    pattern: Optional[Any] = None
+    checked: Optional[Any] = None
+    by: Optional[str] = None
+
+
 def _check_neuron(a: Atlas, layer: int, n: int) -> None:
     if not 0 <= int(layer) < a.L:
         raise HTTPException(status_code=400, detail=f"Layer {layer} does not exist: layers count from 0 to {a.L - 1} here (page layers 1 to {a.L}).")
@@ -585,6 +597,43 @@ async def post_note(body: NoteRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"kind": kind, "key": fn.note_key(body.layer, body.index), "entry": entry, "file": str(fn.field_notes_path()),
             "warning": fn.take_warning()}
+
+
+@router.get("/fieldbook")
+async def get_field_book(layer: Optional[int] = None, n: Optional[int] = None) -> Dict[str, Any]:
+    """The folio's field book (backend/field_notes.py): one neuron's two faces (`faces`, each None when nothing is
+    said of it) with its entry in the notes (`notes`: the name the folio gives it, and the atlas's note), given its
+    `layer` and `n`; or, given neither, the whole book."""
+    if (layer is None) != (n is None):
+        raise HTTPException(status_code=400, detail="Give a neuron's layer and n, or neither for the whole field book.")
+    book = await fn.all_book()
+    files = {"file": str(fn.field_book_path()), "notes_file": str(fn.field_notes_path())}
+    if layer is None or n is None:
+        return {**book, **files, "warning": fn.take_warning("book")}
+    _check_neuron(atlas(), layer, n)
+    key = fn.note_key(layer, n)
+    faces = book["neurons"].get(key) or {}
+    notes = await fn.all_notes()
+    return {"layer": layer, "n": n, "faces": {s: faces.get(s) for s in fn.FACES}, "notes": notes["neurons"].get(key), **files,
+            "warning": fn.take_warning("book"), "notes_warning": fn.take_warning()}
+
+
+@router.post("/fieldbook")
+async def post_field_book(body: FieldBookRequest) -> Dict[str, Any]:
+    """Keep one face of a neuron's field book: `{layer, n, face, jobs?, pattern?, checked?, by}`, a field left out kept
+    as it was (`checked` may give some of its four ticks only); a face left with nothing said is forgotten. The name goes
+    to POST /notes, as the atlas's."""
+    a = atlas()
+    if body.layer is None or body.n is None:
+        raise HTTPException(status_code=400, detail="A face of the field book names its neuron: its layer and n.")
+    _check_neuron(a, body.layer, body.n)
+    change = off_gpu(fn.check_face, body.face, body.jobs, body.pattern, body.checked, body.by, body.model_fields_set)
+    try:
+        entry = await fn.write_face(int(body.layer), int(body.n), change)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"layer": body.layer, "n": body.n, "face": change["face"], "entry": entry, "file": str(fn.field_book_path()),
+            "warning": fn.take_warning("book")}
 
 
 # -- the census

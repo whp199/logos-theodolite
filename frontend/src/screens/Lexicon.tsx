@@ -1268,21 +1268,24 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </EntryApparatus>
         </Entry>
 
-        <Entry id="names" head="names and notes" tech="the atlas’s field book · field_notes.json">
+        <Entry id="names" head="names and notes" tech="the atlas’s field book · field_notes.json, field_book.json">
           <Body>
             A name and a note kept beside a neuron on the server, by you or by the scientist, for everyone who uses the
-            atlas there. A named neuron shows in red on the map, on every layer. Name a neuron in the atlas’s left panel;
-            leave a note in its details.
+            atlas there. A named neuron shows in red on the map, on every layer. Name a neuron in the atlas’s left panel
+            or on its folio, which is the same name; leave a note in its details. A folio’s field notes, face by face, are
+            kept beside them, and the atlas’s details show them.
           </Body>
           <Note>
             A name is a guess written down. The scientist marks its own with how sure it is: nothing when its firing, its
-            pushes and its words agree, (?) to (???) as they part. A neuron folio’s own name and field notes are another
-            thing: this browser keeps them for you alone.
+            pushes and its words agree, (?) to (???) as they part. With no server to keep them, a folio keeps its name and
+            field notes in this browser, for you alone, and says so.
           </Note>
           <EntryApparatus title="names and notes">
             One JSON file outside every checkout, written whole each time: <M>$THEODOLITE_FIELD_NOTES</M>, else{" "}
             <M>~/.local/share/theodolite/field_notes.json</M>; each entry, a neuron’s or a head’s, keeps who wrote it and
-            when. <M>GET/POST /api/atlas/notes</M>.
+            when. <M>GET/POST /api/atlas/notes</M>. The folios’ field book beside it, per face (jobs, pattern, four ticks,
+            who and when): <M>$THEODOLITE_FIELD_BOOK</M>, else <M>field_book.json</M> in the same folder, a file a server
+            from before never reads or writes. <M>GET/POST /api/atlas/fieldbook</M>.
           </EntryApparatus>
         </Entry>
 

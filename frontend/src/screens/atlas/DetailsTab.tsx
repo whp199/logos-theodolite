@@ -1,7 +1,8 @@
 /**
  * Everything the atlas knows of the open neuron (after the explorer's Details tab): its census statistics, both faces'
  * words under the label gate, its steer lens, its activation range, its strongest weight links each way and the heads
- * linked to it, and the reader's note (kept on the server: backend/field_notes.py).
+ * linked to it, the reader's note, and a summary of its folio's field book (both kept on the server:
+ * backend/field_notes.py).
  */
 import React, { useEffect, useRef, useState } from "react";
 import { HeldBackWords } from "../../components/HeldBack";
@@ -9,6 +10,7 @@ import { Apparatus, IfApparatus, LensCaution, Rubric } from "../../components/ki
 import { heldTag } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { href } from "../../router";
+import type { BookFace, BookReply } from "../NeuronFolio/saved";
 import { cite, get, noteKey, post, type HeadInfo, type Link, type SteerLens } from "./api";
 import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, theMap, useAtlas } from "./state";
@@ -454,6 +456,69 @@ const NoteField: React.FC = () => {
   );
 };
 
+const JOBS_SAID: Record<string, string> = { one: "one job", two: "two related jobs", unknown: "not yet understood" };
+const TICKS_SAID: [keyof BookFace["checked"], string][] = [
+  ["other_pole", "the other face read"],
+  ["long_contexts", "read in long contexts"],
+  ["steered", "steered"],
+  ["readers_traced", "its readers traced"],
+];
+
+/** The open neuron's field book, as its folio keeps it on the server: per face, how many jobs the reader judged it to
+ * do, the pattern in their words, and which of the four checks they ticked; written in the folio, read here. */
+const FieldBook: React.FC = () => {
+  const f = useAtlas((s) => s.focus);
+  const key = f && f.kind === "neuron" ? noteKey(f.layer, f.n) : "";
+  const [got, setGot] = useState<{ key: string; r: BookReply | null; error: string | null } | null>(null);
+  useEffect(() => {
+    if (!f || f.kind !== "neuron") return;
+    let live = true;
+    get<BookReply>("/api/atlas/fieldbook", { layer: f.layer, n: f.n })
+      .then((r) => live && setGot({ key, r, error: r.warning ?? null }))
+      .catch((e) => live && setGot({ key, r: null, error: (e as Error).message }));
+    return () => {
+      live = false;
+    };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!f || f.kind !== "neuron") return null;
+  const mine = got && got.key === key ? got : null;
+  const folio = href.neuron(f.layer + 1, f.n, 1);
+  const face = (sg: "+" | "-", e: BookFace | null) => {
+    if (!e) return null;
+    const ticked = TICKS_SAID.filter(([t]) => e.checked[t]).map(([, said]) => said);
+    return (
+      <div className={`atlas-face-box ${sg === "+" ? "up" : "down"}`} key={sg}>
+        <div className="atlas-lab">
+          {sg === "+" ? "+ face" : "− face"} · {e.jobs ? JOBS_SAID[e.jobs] : "jobs not yet said"}
+          {e.by === "scientist" ? " · by the scientist" : ""}
+        </div>
+        {e.pattern ? <p className="atlas-small" style={{ margin: "2px 0", fontStyle: "italic" }}>{e.pattern}</p> : null}
+        <div className="muted atlas-small">{ticked.length ? `checked: ${ticked.join(", ")}` : "nothing checked yet"}</div>
+      </div>
+    );
+  };
+  const faces = mine?.r ? [face("+", mine.r.faces["+"]), face("-", mine.r.faces["-"])].filter(Boolean) : [];
+  return (
+    <section className="atlas-sec">
+      <div className="kicker">its field book · the folio’s notes, one face at a time</div>
+      <ErrorLine error={mine?.error} />
+      {!mine ? (
+        <p className="muted atlas-small">reading its field book…</p>
+      ) : faces.length ? (
+        <div className="atlas-two">{faces}</div>
+      ) : mine.r ? (
+        <p className="muted atlas-small" style={{ margin: 0 }}>
+          Nothing written in its field book yet.
+        </p>
+      ) : null}
+      <p className="atlas-small" style={{ margin: "4px 0 0" }}>
+        <a href={folio}>{faces.length ? "its folio, where they are written →" : "write in its folio →"}</a>
+      </p>
+      <IfApparatus>{mine?.r ? <p className="muted atlas-small mono-wrap">{mine.r.file}</p> : null}</IfApparatus>
+    </section>
+  );
+};
+
 export const DetailsTab: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   if (!f || f.kind !== "neuron") return null;
@@ -466,6 +531,7 @@ export const DetailsTab: React.FC = () => {
       <Wiring />
       <Heads />
       <NoteField />
+      <FieldBook />
     </div>
   );
 };

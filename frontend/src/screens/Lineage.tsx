@@ -549,9 +549,11 @@ const Practices: React.FC = () => (
         here={
           <>
             A neuron’s field notes let you mark either face “not yet understood”, and its folio holds back a label
-            whose two readings share none of their first ten, saying why and keeping it in the apparatus. The folio’s
-            notes stay in this browser; the atlas keeps a name and a note for each neuron on the server, for everyone
-            who uses it. Keeping them with the vault: <NotInInstrument />
+            whose two readings share none of their first ten, saying why and keeping it in the apparatus. The name a
+            folio gives a neuron is the atlas’s name for it, and the folio’s notes, face by face, go to a field book
+            the server keeps beside the atlas’s names and notes, for everyone who uses it; the atlas shows them in the
+            neuron’s details. With no server they stay in this browser, and the folio says so. Keeping them with the
+            vault: <NotInInstrument />
           </>
         }
         links={[
@@ -610,7 +612,9 @@ const Practices: React.FC = () => (
       <dd>
         a neuron’s folio, vii: per face, one job / two related jobs / not yet understood, after the essay’s preliminary
         Qwen3-32B audit (about 90% / 7% / 2–4% [9]), with ticks for the other pole, long contexts, steering and
-        readers; kept for the visit only. Stored per-pole contexts: [CONTEXTS NOT YET COLLECTED].
+        readers; kept by the server in <M>field_book.json</M> beside the atlas’s <M>field_notes.json</M>, whose name
+        for the neuron is the folio’s (<M>GET/POST /api/atlas/fieldbook</M>, <M>backend/field_notes.py</M>), else in
+        this browser’s local storage. Stored per-pole contexts: [CONTEXTS NOT YET COLLECTED].
       </dd>
     </LinApparatus>
   </section>

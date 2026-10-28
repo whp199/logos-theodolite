@@ -82,7 +82,20 @@ import {
   parseReaders,
   pShown,
 } from "./NeuronFolio/replies";
-import { type FaceNotes, type FolioSaved, type Jobs, useFolioSaved } from "./NeuronFolio/saved";
+import {
+  type FaceNotes,
+  type FolioSaved,
+  type FolioWhere,
+  type Jobs,
+  type Migration,
+  MAX_NAME,
+  carriedKeys,
+  carryToServer,
+  folioEntries,
+  folioMigration,
+  markCarried,
+  useFolioSaved,
+} from "./NeuronFolio/saved";
 import {
   LINEARITY_TAIL,
   LINEARITY_TAIL_IDX,
@@ -106,7 +119,10 @@ import {
  *   the guess from test_motif_hypothesis;
  *   the canvas's recorded neuron (layer 54, neuron 15491, positive face) shows the study's recorded extras
  *   when the recorded sighting is loaded;
- *   the name and the field notes are kept per viewer in localStorage.
+ *   the name and the field notes are kept on the server whenever it answers for the neuron (NeuronFolio/saved.ts): the
+ *   name as the atlas's name for it, the notes per face in the field book beside the atlas's notes, with the atlas's own
+ *   note shown in vii; with no server they stay in this browser's localStorage, and vii says which keeps them and
+ *   offers, once, to carry this browser's to the server.
  */
 
 type NeuronRoute = Extract<Route, { name: "neuron" }>;
@@ -416,7 +432,7 @@ export const NeuronFolio: React.FC<{ route: Route }> = ({ route }) => {
 
 const Folio: React.FC<{ route: NeuronRoute }> = ({ route }) => {
   const m = useModel(route);
-  const [saved, update] = useFolioSaved(route.layerNo, route.neuron);
+  const [saved, update, where, reload] = useFolioSaved(route.layerNo, route.neuron);
 
   // read both faces on arrival, and again when the server comes back without an answer in hand
   const isOpen = m.conn === "open";
@@ -437,15 +453,15 @@ const Folio: React.FC<{ route: NeuronRoute }> = ({ route }) => {
   return (
     <Page route={route} folio="folio iii">
       <Breadcrumb m={m} />
-      <Hero m={m} saved={saved} update={update} />
-      <NeuronApparatus m={m} saved={saved} />
+      <Hero m={m} saved={saved} update={update} where={where} />
+      <NeuronApparatus m={m} saved={saved} where={where} />
       <Faces m={m} />
       <Says m={m} />
       <Listen m={m} />
       <Neighbours m={m} />
       <TestGuess m={m} />
       <DoMore m={m} />
-      <Notes m={m} saved={saved} update={update} />
+      <Notes m={m} saved={saved} update={update} where={where} reload={reload} />
     </Page>
   );
 };
@@ -508,7 +524,7 @@ const Particular: React.FC<{
   </div>
 );
 
-const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved, update }) => {
+const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd; where: FolioWhere }> = ({ m, saved, update, where }) => {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState("");
   const kept = saved.nick ?? m.defaultNick;
@@ -593,7 +609,12 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
         {!renaming ? (
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 18px" }}>
             <span style={{ fontSize: "16px", fontStyle: "italic", color: MUTED }}>
-              {kept ? "a name you gave it, not one the model knows" : "not yet named; any name you give it is yours, not one the model knows"}
+              {kept && where.kind === "server" && where.nameBy === "scientist" && saved.nick
+                ? "a name the scientist gave it in the atlas, which you kept: a guess, not a finding"
+                : kept
+                  ? "a name you gave it, not one the model knows"
+                  : "not yet named; any name you give it is yours, not one the model knows"}
+              {where.kind === "server" ? "; the atlas shows it too" : where.kind === "browser" ? "; kept in this browser" : ""}
             </span>
             <button
               type="button"
@@ -615,6 +636,7 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved
                 id="nick"
                 type="text"
                 value={draft}
+                maxLength={MAX_NAME}
                 autoFocus
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
@@ -825,7 +847,7 @@ function rawReadout(m: Model) {
   };
 }
 
-const NeuronApparatus: React.FC<{ m: Model; saved: FolioSaved }> = ({ m, saved }) => {
+const NeuronApparatus: React.FC<{ m: Model; saved: FolioSaved; where: FolioWhere }> = ({ m, saved, where }) => {
   const [rawOpen, setRawOpen] = useState(false);
   const s = m.sighting;
   const chosen = chosenOf(s);
@@ -841,6 +863,12 @@ const NeuronApparatus: React.FC<{ m: Model; saved: FolioSaved }> = ({ m, saved }
       trace_readers: st.readers[key]?.sightingId === st.sighting?.id ? (st.readers[key]?.data ?? null) : null,
       test_hypothesis: st.hypotheses[key]?.data ?? null,
       your_notes: saved,
+      your_notes_kept:
+        where.kind === "server"
+          ? { on: "the server", field_book: where.file, name_in: where.notesFile }
+          : where.kind === "browser"
+            ? { on: "this browser", why: where.why }
+            : null,
     });
   };
   const notRecorded: string[] = ["the gate g and up-projection u apart"];
@@ -4209,8 +4237,96 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
 /* ------------------------------------------------------ vii · field notes */
 
 const JOBS: Record<Jobs, string> = { one: "one job", two: "two related jobs", unknown: "not yet understood" };
+/** "one neuron", "three names", "24 faces" */
+const many = (k: number, noun: string) => `${numberWord(k)} ${noun}${k === 1 ? "" : "s"}`;
 
-const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved, update }) => {
+/**
+ * Once the server keeps the field book: this browser's notes from before, on neurons the server has nothing on, offered
+ * once (each key is asked about once: carried, or kept here when the reader says so).
+ */
+const CarryOffer: React.FC<{ where: FolioWhere; reload: () => void }> = ({ where, reload }) => {
+  const [mig, setMig] = useState<Migration | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const server = where.kind === "server";
+  useEffect(() => {
+    if (!server) return;
+    let live = true;
+    const entries = folioEntries().filter(([k]) => !carriedKeys().has(k));
+    if (!entries.length) return;
+    void (async () => {
+      try {
+        const [book, notes] = await Promise.all([
+          fetch("/api/atlas/fieldbook").then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
+          fetch("/api/atlas/notes").then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))),
+        ]);
+        const got = folioMigration(entries, { names: notes.neurons ?? {}, faces: book.neurons ?? {} });
+        if (live && got.posts.length) setMig(got);
+      } catch {
+        // the server's book or notes not read: nothing is offered
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [server]);
+  if (done) return <p className="status-line" style={{ margin: 0, maxWidth: "760px" }}>{done}</p>;
+  if (!mig) return null;
+  const names = mig.posts.filter((x) => x.path === "/api/atlas/notes").length;
+  const faces = mig.posts.length - names;
+  const keep = async () => {
+    setBusy(true);
+    const r = await carryToServer(mig);
+    markCarried(r.kept);
+    setBusy(false);
+    setMig(null);
+    const leftHere = [...mig.left.map((x) => `${x.what} (${x.why})`), ...r.failed.map((x) => `${x.what} (${x.why})`)];
+    setDone(
+      `Carried to the server: the notes on ${many(r.kept.length, "neuron")}.` +
+        (leftHere.length ? ` Left in this browser: ${leftHere.slice(0, 4).join("; ")}${leftHere.length > 4 ? "; and more" : ""}.` : ""),
+    );
+    reload();
+  };
+  return (
+    <div
+      role="region"
+      aria-label="Notes kept in this browser"
+      style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "760px", padding: "10px 0", borderTop: `1px solid ${HAIR_FAINT}`, borderBottom: `1px solid ${HAIR_FAINT}` }}
+    >
+      <p style={{ margin: 0 }}>
+        This browser keeps notes from before the server kept them, on {many(mig.keys.length, "neuron")} ({many(names, "name")},{" "}
+        {many(faces, "face")}) the server has nothing on. Keep them on the server, where the atlas and every page it serves read them?
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px" }}>
+        <button type="button" className="btn-ghost" disabled={busy} onClick={() => void keep()}>
+          {busy ? "carrying…" : "keep them on the server"}
+        </button>
+        <button
+          type="button"
+          className="btn-ghost"
+          disabled={busy}
+          onClick={() => {
+            markCarried(mig.keys);
+            setMig(null);
+          }}
+        >
+          leave them in this browser
+        </button>
+      </div>
+      <span style={{ fontSize: "15px", color: MUTED }}>
+        Nothing the server keeps is written over: a name or a face it already has stays as it is, and this browser’s copy stays here.
+      </span>
+    </div>
+  );
+};
+
+const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd; where: FolioWhere; reload: () => void }> = ({
+  m,
+  saved,
+  update,
+  where,
+  reload,
+}) => {
   const pas = usePassages(m.idx, m.neuron);
   const stored = pas && pas["+"].ready ? pas : null;
   const [face, setFace] = useState<"pos" | "neg">(m.focusFace > 0 ? "pos" : "neg");
@@ -4221,6 +4337,7 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
     layer: m.layerNo,
     index: m.idx,
     neuron: m.neuron,
+    kept: where.kind === "server" ? "on the server (field_book.json)" : where.kind === "browser" ? "in this browser" : null,
     pole: face === "pos" ? "+" : "-",
     jobs: nf.jobs === null ? null : JOBS[nf.jobs],
     pattern: nf.pattern,
@@ -4328,6 +4445,32 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
         )}
         {m.other?.lens ? "." : `, and its ${faceWord(m.otherFace)} face has not been read.`}
       </p>
+      <CarryOffer where={where} reload={reload} />
+      <p style={{ margin: 0, fontSize: "16px", color: MUTED, maxWidth: "760px" }}>
+        {where.kind === "server" ? (
+          <>
+            Kept on the server, in its field book: the atlas shows them in this neuron’s details, beside its name, for every page this server
+            answers. <a href={href.atlas(m.layerNo, m.neuron)}>open it in the atlas</a>
+          </>
+        ) : where.kind === "browser" ? (
+          <>Kept in this browser only, for you: {where.why}.</>
+        ) : (
+          <>Reading the server’s field book…</>
+        )}
+      </p>
+      {where.kind === "server" && where.error ? (
+        <p className="error-line" role="alert" style={{ margin: 0 }}>
+          {where.error}
+        </p>
+      ) : null}
+      {where.kind === "server" && where.note ? (
+        <p style={{ margin: 0, maxWidth: "760px" }}>
+          <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", fontSize: "16px", color: MUTED }}>
+            the atlas’s note on it · {where.note.by === "scientist" ? "the scientist’s, kept by you" : "yours"} ·
+          </span>{" "}
+          <span style={{ whiteSpace: "pre-wrap" }}>{where.note.text}</span>
+        </p>
+      ) : null}
       <div role="group" aria-label="Which face these notes are about" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>
         <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", fontSize: "16px", color: MUTED, marginRight: "6px" }}>notes on</span>
         {faceBtn("pos", "the positive face")}
@@ -4407,8 +4550,27 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
           </dd>
           <dt>kept where</dt>
           <dd>
-            in this browser only, for you alone (its local storage, key <span className="mono">theodolite.folio.v1.{m.layerNo}:{m.neuron}</span>),
-            with the name you gave it; the original instrument kept no notes. Proposed: stored with each pole’s contexts in the vault{" "}
+            {where.kind === "server" ? (
+              <>
+                on the server: the name as the atlas’s name for neuron {m.neuron} at index {m.idx} (
+                <span className="mono-wrap">{where.notesFile}</span>, by “reader”), these notes per face in its field book beside it (
+                <span className="mono-wrap">{where.file}</span>; <span className="mono">GET/POST /api/atlas/fieldbook</span>), a file of its own
+                that a server from before never reads or writes.
+              </>
+            ) : (
+              <>
+                in this browser only, for you alone (its local storage, key <span className="mono">theodolite.folio.v1.{m.layerNo}:{m.neuron}</span>
+                ), with the name you gave it{where.kind === "browser" ? `: ${where.why}` : ""}
+                {where.kind === "browser" && where.detail ? (
+                  <>
+                    {" "}
+                    (<span className="mono-wrap">{where.detail}</span>)
+                  </>
+                ) : null}
+                . A server that answers for this neuron keeps them in its field book instead.
+              </>
+            )}{" "}
+            The original instrument kept no notes. Proposed: stored with each pole’s contexts in the vault{" "}
             <span className="placeholder">[NOT YET BUILT]</span>
           </dd>
           <dt>the record</dt>

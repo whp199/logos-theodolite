@@ -509,8 +509,11 @@ process at a time):
 
 They go to `$THEODOLITE_ATLAS_DIR` (else `atlas_data/`, which git ignores). The costs in each script’s help were
 measured in a pilot on one RTX 5090 where they say so (27 October 2026), and are worked out from the arithmetic
-elsewhere: time a pilot with `--layers` or `--neurons 0-255` on any other card first (COMPUTE.md). Names and notes are kept in
-`$THEODOLITE_FIELD_NOTES`, else `~/.local/share/theodolite/field_notes.json`. To try the page without the GPU or the
+elsewhere: time a pilot with `--layers` or `--neurons 0-255` on any other card first (COMPUTE.md). Names and notes are
+kept in `$THEODOLITE_FIELD_NOTES`, else `~/.local/share/theodolite/field_notes.json`. A neuron folio’s name is that same
+name, and its field book (each face’s jobs, its pattern and the four ticks) is kept beside it in `field_book.json`
+(`$THEODOLITE_FIELD_BOOK`), whenever the server answers for the neuron; with no server the folio keeps both in the
+browser, says so, and offers once to carry them to the server. To try the page without the GPU or the
 weights, `.venv/bin/python scripts/atlas_stand_in.py --serve 8765` serves the whole instrument on a tiny random Gemma 4
 (build its indexes with `atlas_build.py all --stand-in`, and its passages with `atlas_build.py passages --stand-in`);
 what it shows is random, and the page says so.

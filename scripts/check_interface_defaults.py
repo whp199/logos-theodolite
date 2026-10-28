@@ -59,6 +59,12 @@ itself, not a copy of it. It checks:
    greedily and sends no sampler, so the server writes as it always has; sampled, it sends the temperature (kept within
    the server's bounds) and the seed when one is shown, nothing else; the server's PushChatRequest and sampler reader
    take every body it sends; and each turn's label says how it was written, from the server's word once given.
+12. the folio's notes carried to the server (frontend/src/screens/NeuronFolio/saved.ts folioMigration): each name
+   trimmed to POST /api/atlas/notes by the reader and each face with anything said to POST /api/atlas/fieldbook, at
+   layer = layerNo - 1, the names first; a blank face, a blank name, an unreadable value and keys of other kinds carry
+   nothing; a name longer than the atlas keeps, one holding a control character and a layer the pages do not have are
+   left in the browser, saying why, as is anything the server already keeps; every request it makes is one the
+   server's own checks take.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -113,6 +119,7 @@ def check(cond: bool, what: str) -> None:
 ENTRY = r"""
 import * as T from "./useTheodoliteStore";
 import { parseLql } from "../screens/vault/lql";
+import { folioMigration } from "../screens/NeuronFolio/saved";
 const st = () => T.useTheodoliteStore.getState();
 const send = (over = {}) => {
   const s = { ...st(), ...over };
@@ -275,6 +282,25 @@ st().setReadingPreset("as_built");
 out.centreKeptAsBuilt = st().frame.centre;
 st().setReadingPreset("mended");
 out.centreKeptMended = st().frame.centre;
+// the folio's notes carried to the server: this browser's keys as folioMigration reads them
+const enc = (v) => JSON.stringify(v);
+const blankFace = { jobs: null, pattern: "", other: false, long: false, steered: false, readers: false };
+const ENTRIES = [
+  ["theodolite.folio.v1.54:15491", enc({ nick: "  the to-be neuron  ", notes: { pos: { jobs: "one", pattern: "forms of to be, in any tongue",
+    other: true, long: false, steered: true, readers: false }, neg: blankFace } })],
+  ["theodolite.folio.v1.1:7", enc({ nick: null, notes: { pos: blankFace, neg: { ...blankFace, jobs: "unknown" } } })],
+  ["theodolite.folio.v1.3:9", enc({ nick: "   ", notes: { pos: blankFace, neg: blankFace } })],
+  ["theodolite.folio.v1.0:4", enc({ nick: "layer nought" })],
+  ["theodolite.folio.v1.12:5", enc({ nick: "x".repeat(121) })],
+  ["theodolite.folio.v1.12:6", enc({ nick: "a\tb" })],
+  ["theodolite.folio.v1.5:5", "{not json"],
+  ["theodolite.folio.v1.6:6", null],
+  ["theodolite.atlas.layer", "3"],
+];
+out.migration = {
+  plain: folioMigration(ENTRIES),
+  onServer: folioMigration(ENTRIES.slice(0, 2), { names: { "53:15491": { name: "kept there" } }, faces: { "53:15491": { "+": {} }, "0:7": { "-": {} } } }),
+};
 console.log(JSON.stringify(out));
 """
 
@@ -798,6 +824,48 @@ def check_contrast_text() -> None:
             check(phrase not in text, f"{name}: still says {phrase!r}")
 
 
+def check_migration(out: Dict[str, Any]) -> None:
+    print("12. the folio's notes carried to the server")
+    import backend.atlas as atlas_routes
+    import backend.field_notes as fn
+
+    mig = out["migration"]["plain"]
+    posts = mig["posts"]
+    name = {"path": "/api/atlas/notes", "body": {"kind": "neuron", "layer": 53, "index": 15491, "name": "the to-be neuron", "by": "reader"}}
+    check(posts[:1] == [name], f"the name at page layer 54 goes to layer 53, trimmed, by the reader: {posts[:1]}")
+    plus = {"path": "/api/atlas/fieldbook", "body": {"layer": 53, "n": 15491, "face": "+", "jobs": "one", "pattern": "forms of to be, in any tongue",
+                                                    "checked": {"other_pole": True, "long_contexts": False, "steered": True, "readers_traced": False},
+                                                    "by": "reader"}}
+    minus = {"path": "/api/atlas/fieldbook", "body": {"layer": 0, "n": 7, "face": "-", "jobs": "unknown", "pattern": "",
+                                                     "checked": {"other_pole": False, "long_contexts": False, "steered": False, "readers_traced": False},
+                                                     "by": "reader"}}
+    check(posts == [name, plus, minus], f"the names first, then each face with anything said (a blank face carries nothing): {posts}")
+    check(mig["keys"] == ["theodolite.folio.v1.54:15491", "theodolite.folio.v1.1:7"],
+          f"only the keys with something carried (not a blank name, an unreadable value, a missing one, another kind of key): {mig['keys']}")
+    left = {x["key"]: x for x in mig["left"]}
+    check(set(left) == {"theodolite.folio.v1.0:4", "theodolite.folio.v1.12:5", "theodolite.folio.v1.12:6"}, f"left in the browser: {sorted(left)}")
+    check("count from 1" in left.get("theodolite.folio.v1.0:4", {}).get("why", "") and "120 characters" in left.get("theodolite.folio.v1.12:5", {}).get("why", "")
+          and "control character" in left.get("theodolite.folio.v1.12:6", {}).get("why", ""), f"each says why: {mig['left']}")
+    srv = out["migration"]["onServer"]
+    check(srv["posts"] == [] and srv["keys"] == [] and len(srv["left"]) == 3 and all("already" in x["why"] for x in srv["left"]),
+          f"nothing the server already keeps is written over: {srv}")
+    # every request the migration makes is one the server takes, by its own checks
+    for p_ in posts:
+        b = p_["body"]
+        try:
+            if p_["path"] == "/api/atlas/notes":
+                req = atlas_routes.NoteRequest(**b)
+                fn.check_note(req.kind, req.name, req.note, req.by)
+            else:
+                req = atlas_routes.FieldBookRequest(**b)
+                fn.check_face(req.face, req.jobs, req.pattern, req.checked, req.by, req.model_fields_set)
+            ok = True
+        except Exception as exc:  # noqa: BLE001
+            ok = False
+            print(f"    {p_['path']}: {type(exc).__name__}: {exc}")
+        check(ok, f"{p_['path']}: the server does not take the body the migration sends: {b}")
+
+
 def main() -> int:
     out = run_store()
     if out is not None:
@@ -815,6 +883,8 @@ def main() -> int:
     push = run_push()
     if push is not None:
         check_push(push)
+    if out is not None:
+        check_migration(out)
     if failures:
         print(f"\ninterface defaults: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

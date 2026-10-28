@@ -29,7 +29,10 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
 7. a vault edit in force: the wiring is read live again, the faces say their index words are stale, the caches keyed by
    the edits in force are not reused, the passages of the edited neuron and of later layers are marked stale;
 8. the field notes: kept, shown on the tooltip and the wiring, forgotten, refused in plain words, a corrupt file moved
-   aside with one warning;
+   aside with one warning; the folio's field book beside them: each face kept apart with its writer, a field left out
+   kept, refused in plain words, a face with nothing said forgotten, a book of another version or a corrupt one moved
+   aside with one warning, the notes' version-1 file left byte for byte as it was by all of it; the folio's name, kept
+   as the atlas's, on the map's tooltip;
 9. the census routes on a run written here: its units ranked, a unit's rollouts and baselines, one rollout, the spread;
 10. the GPU lock: a reading waits for it while /arch and the notes still answer; a push chat closed mid-answer stops
     writing and holds the lock until its writer has stopped (uvicorn on a free port, a real connection closed).
@@ -176,7 +179,9 @@ def main() -> int:
     check(list(h)[-3:] == ["atlas", "label_gate", "lens"], f"/api/health keys end {list(h)[-4:]}")
     check(h["atlas"]["indexes"] == {k: False for k in h["atlas"]["indexes"]} and h["atlas"]["routes"] == "/api/atlas",
           "/api/health: the atlas card says no index is on disk")
-    check(h["atlas"]["field_notes"] == os.environ["THEODOLITE_FIELD_NOTES"], "/api/health: where the field notes are")
+    check(h["atlas"]["field_notes"] == os.environ["THEODOLITE_FIELD_NOTES"]
+          and h["atlas"]["field_book"] == str(Path(os.environ["THEODOLITE_FIELD_NOTES"]).with_name("field_book.json")),
+          "/api/health: where the field notes are, and the field book beside them")
     section("the shape: /arch and the health card", before)
 
     # ------------------------------------------------------------------------------------------- 2. who may ask
@@ -804,12 +809,76 @@ def main() -> int:
     check(r.json()["entry"] == {**r.json()["entry"], "name": "", "note": "only Bob"}, "/notes: an empty name clears the name only")
     r = c.post("/api/atlas/notes", json={"kind": "neuron", "layer": 2, "index": 5, "name": "", "note": ""})
     check(r.json()["entry"] is None and "2:5" not in c.get("/api/atlas/notes").json()["neurons"], "/notes: an empty name and note forget it")
+
+    # the folio's field book: per face, in a file of its own beside the notes
+    book_file = notes_file.with_name("field_book.json")
+    fb = c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()
+    check(fb["faces"] == {"+": None, "-": None} and fb["notes"] is None and fb["file"] == str(book_file) and fb["notes_file"] == str(notes_file)
+          and fb["warning"] is None and not book_file.exists(), f"/fieldbook: nothing said yet, and where it is kept ({fb})")
+    # the folio's name is the atlas's: written to the notes by the reader, it shows on the map's tooltip
+    c.post("/api/atlas/notes", json={"kind": "neuron", "layer": 2, "index": 5, "name": "the folio's name", "by": "reader"})
+    check(c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()["name"] == "the folio's name"
+          and c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()["notes"]["name"] == "the folio's name",
+          "/fieldbook: the folio's name, kept as the atlas's, shows on the tooltip and in the book's reply")
+    # from here on only the book is written: the notes' file, version 1, must stay byte for byte as it is
+    notes_bytes = notes_file.read_bytes()
+    check(json.loads(notes_bytes)["version"] == 1, "the notes' file is a version-1 file")
+    r = c.post("/api/atlas/fieldbook", json={"layer": 2, "n": 5, "face": "+", "jobs": "one", "pattern": "Bob as the one who acts",
+                                             "checked": {"steered": True}})
+    e_ = r.json().get("entry") or {}
+    check(r.status_code == 200 and e_.get("jobs") == "one" and e_.get("by") == "reader"
+          and e_.get("checked") == {"other_pole": False, "long_contexts": False, "steered": True, "readers_traced": False},
+          f"/fieldbook: a face kept, its writer recorded, the ticks not given false ({r.text[:200]})")
+    c.post("/api/atlas/fieldbook", json={"layer": 2, "n": 5, "face": "-", "jobs": "unknown"})
+    r = c.post("/api/atlas/fieldbook", json={"layer": 2, "n": 5, "face": "+", "checked": {"other_pole": True}})
+    e_ = r.json()["entry"]
+    check(e_["jobs"] == "one" and e_["pattern"] == "Bob as the one who acts" and e_["checked"]["steered"] and e_["checked"]["other_pole"],
+          "/fieldbook: a field left out is kept, and a tick given alone leaves the others")
+    r = c.post("/api/atlas/fieldbook", json={"layer": 2, "n": 5, "face": "+", "pattern": "Bob, as the subject", "by": "scientist"})
+    fb = c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()
+    check(fb["faces"]["+"]["by"] == "scientist" and fb["faces"]["+"]["pattern"] == "Bob, as the subject" and fb["faces"]["-"]["jobs"] == "unknown"
+          and fb["faces"]["-"]["pattern"] == "" and fb["faces"]["-"]["by"] == "reader", "/fieldbook: each face kept apart, each with its last writer")
+    on_disk = json.loads(book_file.read_text(encoding="utf-8"))
+    check(on_disk["version"] == 1 and set(on_disk["neurons"]) == {"2:5"} and set(on_disk["neurons"]["2:5"]) == {"+", "-"},
+          "/fieldbook: written to field_book.json beside the notes, by face")
+    for bad, says in [({"layer": 2, "n": 5, "face": "x", "jobs": "one"}, 'A face is "+" or "-"'),
+                      ({"layer": 2, "n": 5, "face": "+", "jobs": "three"}, 'jobs is "one", "two", "unknown"'),
+                      ({"layer": 2, "n": 5, "face": "+", "pattern": "a" * 4001}, "at most 4000 characters"),
+                      ({"layer": 2, "n": 5, "face": "+", "pattern": 7}, "A pattern is text"),
+                      ({"layer": 2, "n": 5, "face": "+", "checked": {"steered": "yes"}}, "A tick is true or false: steered"),
+                      ({"layer": 2, "n": 5, "face": "+", "checked": {"nudged": True}}, "there is no tick 'nudged'"),
+                      ({"layer": 2, "n": 5, "face": "+", "checked": [True]}, "checked is a table of ticks"),
+                      ({"layer": 2, "n": 5, "face": "+"}, "Give the face's jobs, its pattern or its ticks"),
+                      ({"layer": 2, "n": 5, "face": "+", "jobs": "one", "by": "someone"}, "by must be one of"),
+                      ({"layer": 6, "n": 5, "face": "+", "jobs": "one"}, "Layer 6 does not exist"),
+                      ({"layer": 2, "face": "+", "jobs": "one"}, "names its neuron")]:
+        r = c.post("/api/atlas/fieldbook", json=bad)
+        check(r.status_code == 400 and says in r.json()["detail"], f"/fieldbook refused {str(bad)[:80]}: {r.status_code} {r.text[:120]}")
+    r = c.get("/api/atlas/fieldbook", params={"layer": 2})
+    check(r.status_code == 400 and "or neither" in r.json()["detail"], "/fieldbook: a layer without its n refused")
+    r = c.post("/api/atlas/fieldbook", json={"layer": 2, "n": 5, "face": "-", "jobs": None})
+    whole = c.get("/api/atlas/fieldbook").json()
+    check(r.json()["entry"] is None and set(whole["neurons"]["2:5"]) == {"+"} and whole["file"] == str(book_file),
+          "/fieldbook: a face left with nothing said is forgotten; the whole book, given no neuron")
+    check(notes_file.read_bytes() == notes_bytes, "the notes' version-1 file is left byte for byte as it was by the field book's writes")
+    book_file.write_text('{"version": 2, "neurons": {}}', encoding="utf-8")
+    fb = c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()
+    asides = list(book_file.parent.glob("field_book.json.corrupt-*"))
+    check(fb["faces"] == {"+": None, "-": None} and fb["warning"] and "field book file could not be read" in fb["warning"]
+          and "not a version 1 file of the field book" in fb["warning"] and len(asides) == 1 and fb["notes"]["name"] == "the folio's name",
+          f"/fieldbook: a book of another version moved aside, with its warning ({fb['warning']})")
+    book_file.write_text("[1, 2", encoding="utf-8")
+    fb = c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()
+    check("not JSON" in (fb["warning"] or "") and len(list(book_file.parent.glob("field_book.json.corrupt-*"))) == 2
+          and c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()["warning"] is None
+          and c.get("/api/atlas/notes").json()["warning"] is None, "/fieldbook: a corrupt book moved aside, its warning once, the notes' none")
+    check(notes_file.read_bytes() == notes_bytes, "the notes' file is left as it was by the book's moves aside")
     notes_file.write_text("{not json", encoding="utf-8")
     g = c.get("/api/atlas/notes").json()
     asides = list(notes_file.parent.glob("field_notes.json.corrupt-*"))
     check(g["neurons"] == {} and g["warning"] and "moved aside" in g["warning"] and len(asides) == 1, f"/notes: a corrupt file moved aside ({g['warning']})")
     check(c.get("/api/atlas/notes").json()["warning"] is None and asides[0].read_text() == "{not json", "/notes: the warning once, the old file kept")
-    section("field notes: kept, shown, forgotten, refused, a corrupt file moved aside", before)
+    section("field notes and the field book: kept, shown, forgotten, refused, a corrupt file moved aside, the notes' file untouched", before)
 
     # ------------------------------------------------------------------------------------------------- 9. census
     before = len(failures)
