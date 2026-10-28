@@ -1259,7 +1259,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <EntryApparatus title="a push">
             “add”: h ← h + σ · d · p50<sub>ℓ</sub> · unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M>{" "}
             of layer ℓ, σ = +1, 0, −1 for the three voices, start mark spared; “×”: a<sub>n</sub> ← d · a<sub>n</sub>, a
-            <sub>n</sub>, −d · a<sub>n</sub>. Greedy, one batch of three; p50 is the stream’s median length leaving the
+            <sub>n</sub>, −d · a<sub>n</sub>. One batch of three, greedy unless “sampled” is chosen: then the instrument’s
+            own sampler at the temperature and seed shown, one draw a step shared by the three voices, so they part only
+            where the push moves the odds; each turn says which. p50 is the stream’s median length leaving the
             layer, over the stats index’s text, or over the study’s 36 texts (provisional) until that index is built. The
             most a neuron can write by itself is s<sub>ℓ</sub> · √D · ‖w<sub>post</sub> ⊙ unit(W<sub>down</sub>[:, n])‖
             (the norm caps it), and the push tab says what a dose is against it. <M>POST /api/atlas/push</M> (events).

@@ -55,6 +55,10 @@ itself, not a copy of it. It checks:
    when it says 2 (a Codex turn reverted whole, a message steered into it going with it), also when those two messages
    stand side by side, and the whole thread when it says more than the thread holds; the last message goes back into
    the box each time, and /rewind is asked once, with the chat and that message.
+11. the atlas's push tab (frontend/src/screens/atlas/push.ts, bundled and run the same way): by default it writes
+   greedily and sends no sampler, so the server writes as it always has; sampled, it sends the temperature (kept within
+   the server's bounds) and the seed when one is shown, nothing else; the server's PushChatRequest and sampler reader
+   take every body it sends; and each turn's label says how it was written, from the server's word once given.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -300,6 +304,78 @@ for (const [name, answer, items] of [["absent", {}, thread], ["one", { messages:
 }
 console.log(JSON.stringify(out));
 """
+
+
+# What the push tab's bundle prints: the bodies it sends and the labels it gives, from push.ts itself.
+PUSH_ENTRY = r"""
+import * as P from "./push";
+const F = { layer: 2, n: 5 };
+const hist = [{ user: "Who are you?", replies: ["a", "b", "c"] }];
+const sampled = { ...P.WRITING_DEFAULT, sampled: true, seed: 123 };
+const said = { temperature: 0.7, top_k: 0, top_p: 1, presence_penalty: 0, seed: 99, seed_drawn: true, samples: 1, seeds: [99],
+  draw: "shared across the three voices" };
+console.log(JSON.stringify({
+  initial: P.WRITING_DEFAULT,
+  greedy: P.pushBody(F, "Who are you?", 0.8, "add", [], P.WRITING_DEFAULT),
+  sampled: P.pushBody(F, "And then?", 2, "mul", hist, sampled),
+  noSeed: P.pushBody(F, "x", 0.8, "add", [], { ...sampled, seed: null }),
+  hot: P.pushBody(F, "x", 0.8, "add", [], { ...sampled, temperature: 5 }),
+  cold: P.pushBody(F, "x", 0.8, "add", [], { ...sampled, temperature: 0 }),
+  keptWhileGreedy: P.pushBody(F, "x", 0.8, "add", [], { ...sampled, sampled: false }),
+  labels: [P.writtenAs(null, P.WRITING_DEFAULT), P.writtenAs("greedy", sampled), P.writtenAs(null, sampled),
+           P.writtenAs(null, { ...sampled, seed: null }), P.writtenAs(said, sampled), P.writtenAs({ ...said, seed_drawn: false }, sampled)],
+  seeds: [P.newSeed(), P.newSeed(), P.newSeed()],
+}));
+"""
+
+
+def run_push() -> Dict[str, Any] | None:
+    """Bundle the push tab's request module with the frontend's esbuild and run it under node, as run_store does."""
+    node = shutil.which("node")
+    if not ESBUILD.exists() or node is None:
+        check(False, "the push tab's module cannot be bundled here (esbuild or node missing)")
+        return None
+    bundle = subprocess.run(
+        [str(ESBUILD), "--bundle", "--platform=node", "--format=esm", "--loader=ts", "--log-level=error",
+         "--sourcefile=check_interface_defaults_push.ts"],
+        input=PUSH_ENTRY, cwd=FRONTEND / "src" / "screens" / "atlas", capture_output=True, text=True, timeout=120, check=False,
+    )
+    check(bundle.returncode == 0, f"esbuild could not bundle push.ts:\n{bundle.stderr}")
+    if bundle.returncode != 0:
+        return None
+    ran = subprocess.run([node, "--input-type=module"], input=bundle.stdout, capture_output=True, text=True, timeout=120, check=False)
+    check(ran.returncode == 0, f"the bundled push.ts did not run under node:\n{ran.stderr}")
+    if ran.returncode != 0:
+        return None
+    return json.loads(ran.stdout.strip().splitlines()[-1])
+
+
+def check_push(out: Dict[str, Any]) -> None:
+    print("11. the atlas's push tab")
+    import backend.atlas as atlas
+    from backend.sampler_request import for_writing, sampler_of
+
+    check(out["initial"] == {"sampled": False, "temperature": 0.7, "seed": None}, f"the push tab starts as {out['initial']}")
+    check(out["greedy"] == {"layer": 2, "n": 5, "prompt": "Who are you?", "dose": 0.8, "mode": "add", "history": []},
+          f"a greedy turn sends {out['greedy']}, not the body it always sent")
+    check(out["sampled"].get("sampler") == {"temperature": 0.7, "seed": 123} and out["sampled"]["history"][0]["replies"] == ["a", "b", "c"],
+          f"a sampled turn sends {out['sampled'].get('sampler')}")
+    check(out["noSeed"].get("sampler") == {"temperature": 0.7}, f"a blank seed is sent as {out['noSeed'].get('sampler')}")
+    check(out["hot"]["sampler"]["temperature"] == 2 and out["cold"]["sampler"]["temperature"] == 0.05,
+          f"temperatures out of bounds are sent as {out['hot']['sampler']}, {out['cold']['sampler']}")
+    check("sampler" not in out["keptWhileGreedy"], "greedy with a temperature and seed kept sends a sampler")
+    for label in ("greedy", "sampled", "noSeed", "hot", "cold"):
+        try:
+            req = atlas.PushChatRequest(**out[label])
+            _smp, said = for_writing(sampler_of(req.sampler))
+            ok = (said == "greedy") == (label == "greedy") and (label != "sampled" or said["seed"] == 123)
+        except Exception as exc:  # noqa: BLE001
+            ok = False
+            print(f"    {label}: {type(exc).__name__}: {exc}")
+        check(ok, f"{label}: the server does not take the push the tab sends")
+    check(out["labels"] == ["greedy", "greedy", "T 0.7 · seed 123", "T 0.7 · seed drawn by the server", "T 0.7 · seed 99 (drawn)",
+                            "T 0.7 · seed 99"], f"the turns' labels: {out['labels']}")
+    check(all(isinstance(x, int) and 0 <= x < 2**31 for x in out["seeds"]) and len(set(out["seeds"])) > 1, f"new seeds {out['seeds']}")
 
 
 def run_bundle(entry: str, cwd: Path, what: str) -> Dict[str, Any] | None:
@@ -736,6 +812,9 @@ def main() -> int:
     rewind = run_bundle(REWIND_ENTRY, ATLAS_DIR, "scientist page")
     if rewind is not None:
         check_rewind(rewind)
+    push = run_push()
+    if push is not None:
+        check_push(push)
     if failures:
         print(f"\ninterface defaults: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

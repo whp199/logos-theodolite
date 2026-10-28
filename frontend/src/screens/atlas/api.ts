@@ -125,7 +125,14 @@ export interface Arch {
   census: Record<string, string>;
   /** layers whose only census is not read, and why (a run taken before the controls were shaped as neurons' writes) */
   census_refused?: Record<string, string>;
-  push: { modes: string[]; units: Record<string, string>; scale_source: ScaleSource | null };
+  push: {
+    modes: string[];
+    units: Record<string, string>;
+    scale_source: ScaleSource | null;
+    /** how the voices may be written (backend/sampler_request.py): each field and what it takes, greedy by default, the
+     * draw the three voices share, how many samples a whole-text steer writes, and the knobs not offered */
+    sampler?: { fields: Record<string, string>; default: string; draw: string; samples: string; not_offered: string[] };
+  };
   limits: { text: number; run: number; heads: number; push_new: number };
   label_gate: Record<string, unknown>;
   lens: Record<string, unknown> | null;

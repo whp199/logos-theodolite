@@ -2,7 +2,10 @@
  * The push (after the explorer's Chat tab): the model answers the person three times in one batch, the open neuron
  * pushed up, left as it is, and pushed down, each voice keeping its own earlier replies (POST /api/atlas/push, served as
  * events). "add" pushes along the neuron's own write direction by a share of the stream's usual length leaving its
- * layer; "×" multiplies its activation. "reads you" shows instead where in a text of the person's the neuron fires.
+ * layer; "×" multiplies its activation. The voices are written greedily, the census's reading, unless "sampled" is
+ * chosen: then the instrument's own sampler draws them at the temperature and seed shown, the three sharing each draw,
+ * and each turn says how it was written (push.ts). "reads you" shows instead where in a text of the person's the neuron
+ * fires.
  */
 import React, { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
@@ -10,6 +13,7 @@ import { Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { AtlasError, post, streamLines, type ReadsReply } from "./api";
 import { ErrorLine, FaceLine, overCeiling } from "./parts";
+import { MAX_SEED, MAX_TEMPERATURE, MIN_TEMPERATURE, WRITING_DEFAULT, newSeed, pushBody, writtenAs, type Sampling, type Writing } from "./push";
 import { useAtlas } from "./state";
 
 const ADD_STEPS = [...Array.from({ length: 30 }, (_, i) => +((i + 1) * 0.05).toFixed(2)), 1.75, 2, 2.5, 3, 4, 5];
@@ -21,6 +25,9 @@ interface Turn {
   replies: [string, string, string];
   dose: number;
   mode: "add" | "mul";
+  /** how it was asked to be written, and how the server says it was (its last event) */
+  asked: Writing;
+  sampling: Sampling | null;
   live: boolean;
   error: string | null;
 }
@@ -31,6 +38,7 @@ interface PushState {
   running: AbortController | null;
   mode: "add" | "mul";
   dose: { add: number; mul: number };
+  writing: Writing;
   dir: "writes" | "reads";
   reads: (ReadsReply & { text: string }) | null;
   readsError: string | null;
@@ -43,6 +51,7 @@ const usePush = create<PushState>(() => ({
   running: null,
   mode: "add",
   dose: { add: 0.8, mul: 2 },
+  writing: WRITING_DEFAULT,
   dir: "writes",
   reads: null,
   readsError: null,
@@ -72,7 +81,7 @@ async function runPush(text: string) {
   const p = usePush.getState();
   const dose = p.mode === "mul" ? p.dose.mul : p.dose.add;
   const history = p.thread.filter((t) => !t.error && !t.live).map((t) => ({ user: t.user, replies: t.replies }));
-  const turn: Turn = { user: text, replies: ["", "", ""], dose, mode: p.mode, live: true, error: null };
+  const turn: Turn = { user: text, replies: ["", "", ""], dose, mode: p.mode, asked: p.writing, sampling: null, live: true, error: null };
   const ctl = new AbortController();
   const thread = [...p.thread, turn];
   usePush.setState({ thread, running: ctl, key: keyOf() });
@@ -92,7 +101,7 @@ async function runPush(text: string) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: ctl.signal,
-      body: JSON.stringify({ layer: f.layer, n: f.n, prompt: text, dose, mode: p.mode, history }),
+      body: JSON.stringify(pushBody(f, text, dose, p.mode, history, p.writing)),
     });
     if (!r.ok) {
       let d = `HTTP ${r.status}`;
@@ -106,9 +115,12 @@ async function runPush(text: string) {
     const replies: [string, string, string] = ["", "", ""];
     let last = 0;
     for await (const ev of streamLines(r, true)) {
-      const e = ev as { row: number | null; t?: string; error?: string };
+      const e = ev as { row: number | null; t?: string; error?: string; sampling?: Sampling };
       if (e.error) update({ error: e.error });
-      if (e.row == null) continue;
+      if (e.row == null) {
+        if (e.sampling) update({ sampling: e.sampling });
+        continue;
+      }
       replies[e.row] += e.t ?? "";
       // a frame's worth of text at a time
       const now = performance.now();
@@ -186,7 +198,7 @@ const Thread: React.FC = () => {
           <div className="atlas-user">
             {t.user}
             <span className="atlas-recipe">
-              {t.mode === "mul" ? "×" : "add"} {t.dose}
+              {t.mode === "mul" ? "×" : "add"} {t.dose} · {writtenAs(t.sampling, t.asked)}
             </span>
           </div>
           <div className="atlas-cols">
@@ -216,6 +228,75 @@ const DoseNote: React.FC<{ dose: number }> = ({ dose }) => {
       {dose} of the stream’s usual length is {over < 1 ? "less than" : `${over.toFixed(1)}×`} the most this neuron can ever write by itself
       {c.source && c.source.includes("provisional") ? ` (the usual length read over ${c.source})` : ""}.
     </p>
+  );
+};
+
+/** Greedy or sampled; sampled, the temperature and the seed, shown and editable ("new seed" draws another; a blank seed
+ * is drawn by the server, and the turn shows it). */
+const WritingFields: React.FC = () => {
+  const w = usePush((s) => s.writing);
+  const [temp, setTemp] = useState<string | null>(null);
+  const set = (patch: Partial<Writing>) => usePush.setState({ writing: { ...usePush.getState().writing, ...patch } });
+  const fits = (t: string) => {
+    const v = Number(t.replace(",", "."));
+    return t.trim() !== "" && Number.isFinite(v) && v >= MIN_TEMPERATURE && v <= MAX_TEMPERATURE;
+  };
+  return (
+    <div className="row" style={{ gap: 10, alignItems: "center" }}>
+      <span className="atlas-seg" role="group" aria-label="how the three voices are written">
+        {([false, true] as const).map((on) => (
+          <button
+            key={String(on)}
+            type="button"
+            aria-pressed={w.sampled === on}
+            title={on ? "drawn by chance with the instrument's sampler, the three voices sharing each draw" : "its likeliest word-piece every time, as the census reads a push"}
+            onClick={() => set(on && w.seed == null ? { sampled: true, seed: newSeed() } : { sampled: on })}
+          >
+            {on ? "sampled" : "greedy"}
+          </button>
+        ))}
+      </span>
+      {w.sampled ? (
+        <>
+          <label className="atlas-small">
+            T{" "}
+            <input
+              className="input-num"
+              inputMode="decimal"
+              aria-label={`the temperature, from ${MIN_TEMPERATURE} to ${MAX_TEMPERATURE}`}
+              aria-invalid={temp !== null && !fits(temp) ? true : undefined}
+              value={temp ?? String(w.temperature)}
+              onChange={(e) => {
+                setTemp(e.target.value);
+                if (fits(e.target.value)) set({ temperature: Number(e.target.value.replace(",", ".")) });
+              }}
+              onBlur={() => setTemp(null)}
+              style={{ width: "3.2em", textAlign: "center" }}
+            />
+          </label>
+          <label className="atlas-small">
+            seed{" "}
+            <input
+              className="input-num"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={16}
+              placeholder="drawn"
+              aria-label="the seed: blank, and the server draws one"
+              value={w.seed ?? ""}
+              onChange={(e) => {
+                const d = e.target.value.replace(/\D/g, "");
+                set({ seed: d ? Math.min(Number(d), MAX_SEED) : null });
+              }}
+              style={{ width: "7.5em", textAlign: "center" }}
+            />
+          </label>
+          <button type="button" className="btn-link" onClick={() => set({ seed: newSeed() })}>
+            new seed
+          </button>
+        </>
+      ) : null}
+    </div>
   );
 };
 
@@ -341,6 +422,7 @@ export const PushTab: React.FC = () => {
           ) : null}
         </div>
         {dir === "writes" && mode === "add" ? <DoseNote dose={dose.add} /> : null}
+        {dir === "writes" ? <WritingFields /> : null}
         <div className="row" style={{ gap: 10, flexWrap: "nowrap" }}>
           <input className="input-line" value={text} placeholder={placeholder} onChange={(e) => setText(e.target.value)} aria-label={placeholder} />
           <button type="submit" className="btn-ghost">

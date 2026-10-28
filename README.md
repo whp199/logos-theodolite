@@ -143,7 +143,7 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | `lens` search over the steer and logit lenses | search over the lens, the naked eye and the steer lens, every lens label under the label gate |
 | `fires`: run your text, filter neurons by activation over their usual range, token paths | “run a text”: the same filters (layers, sign, score, words), the links among what fires at a word-piece, the heads lit by their write |
 | steered rollouts per prompt and dose | the census tab |
-| a three-column multi-turn steered chat (−, 0, +), add or ×, “reads you” | the push tab, the same |
+| a three-column multi-turn steered chat (−, 0, +), add or ×, “reads you” | the push tab, the same, greedy or sampled with the instrument’s own sampler, the three voices drawing alike; each turn says how it was written |
 | lens, connections, a name | the details: both faces under the gate, the steer lens, the activation range with GeGLU’s four sign regimes, wiring and head tables; a name and a note kept on the server; and each face’s stored passages in a tab of their own, with the regime at each and the word-pieces each face reads and that follow, which the reference does not keep |
 | embeddings: UMAP of a layer’s rollouts by neuron, prompt, dose or kind | the spread, the same colourings |
 | attention heads with q / k / v / o roles; head tools | the same, with each head’s profile over eight texts, its pattern on a text and the heads driving a neuron at a word-piece |
