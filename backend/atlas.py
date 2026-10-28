@@ -988,11 +988,11 @@ async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, befo
     events, at most one a window, then those drawn at random above half its extreme, each with its activation, its
     share of the face's extreme (`rel`), GeGLU's regime there (from the gate and up values, `g`, `u`), its window and
     position, and its display units ([text, is_peak], the window's word-pieces `span` [s, e)) cut at the window's start
-    or end, a document's end mark or a turn mark, else where `before` or `after` runs out (`cut`: why each side stops;
-    a character split over byte pieces is kept whole); `ids`, the window up to the span's end, for POST /reads. `reads`
-    and `follows`: the word-pieces at the peaks and just after them, counted over the k with their lift over the
-    corpus's base rate, which are leads (`words_note`), not labels the gate has checked. `ready: false`, saying which
-    build makes it, without the index; `stale` when a vault edit in force could have changed them."""
+    or end, a document's end mark or a turn mark, else where `before` or `after` (each at most 128) runs out (`cut`: why
+    each side stops; a character split over byte pieces is kept whole); `ids`, the window up to the span's end, for
+    POST /reads. `reads` and `follows`: the word-pieces at the peaks and just after them, counted over the k with their
+    lift over the corpus's base rate, which are leads (`words_note`), not labels the gate has checked. `ready: false`,
+    saying which build makes it, without the index; `stale` when a vault edit in force could have changed them."""
     a = atlas()
     _check_neuron(a, layer, n)
     face = {"+": "+", " ": "+", "pos": "+", "-": "-", "neg": "-"}.get(face, face)  # a bare "+" in a URL arrives as a space
@@ -1000,7 +1000,8 @@ async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, befo
         raise HTTPException(status_code=400, detail=f'A face is "+" or "-" (in a URL "+" is written %2B), not {face!r}.')
     if int(k) < 1 or int(before) < 0 or int(after) < 0:
         raise HTTPException(status_code=400, detail="k counts passages (at least 1); before and after count word-pieces (0 or more).")
-    return await asyncio.to_thread(_passages, a, layer, n, face, min(int(k), 64), min(int(before), 512), min(int(after), 512))
+    # at most 128 word-pieces each side: a span is split into display units a prefix at a time (`token_units`)
+    return await asyncio.to_thread(_passages, a, layer, n, face, min(int(k), 64), min(int(before), 128), min(int(after), 128))
 
 
 @router.get("/hover")
