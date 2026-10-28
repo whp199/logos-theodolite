@@ -92,8 +92,9 @@ DEFAULT_DESIGN = "main_rel"
 CALIBRATION_DESIGNS = ("calib_rel", "calib_ceil")
 # where the doses come from, said wherever a census is shown or handed to the scientist
 DOSES_FROM = {
-    "main_rel": "neuron-explorer's doses, chosen on Qwen3.5-4B; not yet calibrated on this model (take a calib_rel run "
-                "first), and one nominal dose is a different push at each layer",
+    "main_rel": "neuron-explorer's doses, chosen on Qwen3.5-4B; not yet calibrated on this model (take calib_rel and "
+                "calib_ceil runs on a few layers first and read them with census_tools.py curves), and one nominal dose is "
+                "a different push at each layer",
     "calib_rel": "a calibration ladder, for finding where effects begin and text breaks on this model",
     "calib_ceil": "a calibration ladder in each neuron's own write ceiling, for finding where effects begin and text breaks "
                   "on this model",
