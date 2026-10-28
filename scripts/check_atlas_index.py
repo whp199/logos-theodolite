@@ -47,7 +47,8 @@ with the same quantity read live, one neuron at a time:
    model id, other weight files of the checkpoint, not another snapshot of the same: atlas_index.weights_differ) is
    not read, in plain words; one built before metas named their weights is read on the model id alone; a steer lens
    layer or a passages part from other weights is refused, not resumed into; census_run.py says a stats index refused
-   for its weights is there and why, in the push unit's source too.
+   for its weights is there and why, in the push unit's source too; atlas_build.py does not write over an index built
+   for another model or from other weights unless given --replace, and says so when it does.
 
 Run: .venv/bin/python -I scripts/check_atlas_index.py   (exits 0 when every check holds)
 """

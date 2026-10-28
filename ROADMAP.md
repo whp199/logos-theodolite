@@ -7,7 +7,10 @@ counted 1–60, as on the pages; the study’s reports count from 0, so their L5
 
 <sub>Gathered on 21 October 2026, at `3cbc4b5`; gathered again on 22 October 2026, at `75ed78a`, after the first round of
 mends (the interface’s defaults, the label gate, the causal test and the smaller pieces) and R3’s registration; section
-i brought up to date at `c15b2d3`, with R3’s result, and on 28 October 2026, at `9093dac`, with R4’s.</sub>
+i brought up to date at `c15b2d3`, with R3’s result, and on 28 October 2026, at `9093dac`, with R4’s; sections ii–vi
+gathered again on 28 October 2026, at `554f058`, after a session that guarded every route, readied the census for its
+first calibration and for rented cards, built the passages, one field book, the wiring’s sign in use and faster 4-bit
+unpacking, and began the CPU and GGUF (section vii, new); what each hard job costs is in `COMPUTE.md`.</sub>
 
 <br>
 
@@ -102,19 +105,22 @@ joined instrument earns its keep (REPORT §3.3, erratum E47). The Lineage page (
 
 | | The condition | Where it stands |
 |---|---|---|
-| **1** | Labels grounded in what wakes a neuron: the passages that make each face fire, stored with it | **Not yet.** One input label still serves both faces (fault 7), and input-side labels carried only 6–8% of the signal. No passages are stored for either face |
+| **1** | Labels grounded in what wakes a neuron: the passages that make each face fire, stored with it | **Built, not yet run on the model.** `scripts/atlas_build.py passages` keeps each face’s sixteen strongest windows of a corpus, one event a window (ties to the lower window), with the gate and up values there and each word-piece’s count over the corpus (the passages index, ARCHITECTURE §4.7), checked by brute force on the CPU stand-in (`check_atlas_index.py`). The atlas’s passages tab, a neuron’s folio and the scientist’s `passages` show them, with the word-pieces each face reads and that follow and their lift over the corpus. None has been gathered on Gemma-4-31B, and those words are counts over sixteen passages that no test has checked; fault 7 (one input label for both faces) stays open until both are done |
 | **2** | Output labels trusted only from layer 41 up | **Yes.** No page sets a label below layer 41 in its main reading; the apparatus keeps it, with the reason, and the server marks it (`label_check`, with the rule in `label_gate`). The vault's console shows the server's replies whole and says which labels the pages hold back |
 | **3** | A label counts only when the lens and the naked eye agree | **Yes.** A label whose two readings share none of their first ten word-pieces is held back; the others show their count. The cut at none of ten is the instrument's (the study set none; in N1's data 7 of the 31 such labels within layers 41–58 were sound, against 160 of the 209 others, so as a yes/no sign the cut scores AUC 0.64, against the count's 0.84 as a graded score; labels sharing just one of ten were sound 16 times in 40, below the band's 167 in 240, `N1C_gate_cut.json`), and it applies only through the base-fitted J++ lens, within layers 41–59, the gate having been validated for base-fitted J++ labels on random neurons within 41–58 (E47). The demonstration sighting's labels and the vault's 24 recorded searches carry too few words for the count, so `experiments/scripts/N1G_01_recorded_label_checks.py` checked each ten a side on the GPU (`N1G_recorded_label_checks.json`): 46 of the sighting's 75 labelled faces and 98 of the vault's 240 rows are held back |
-| **4** | Each label spot-checked by cause and effect | **In part.** A neuron’s folio puts its label to the test (“test it at this word-piece”, and “test it on the study’s 36 texts” beside it), as do the WebSocket action `causal_check`, `POST /api/scientist/causal_check` and the MCP tool `causal_spot_check` (`backend/causal_check.py`, ARCHITECTURE §4.5): N1A’s ±k · max\|a\| on the neuron at the read position, with the untouched row in the same forward, at k = 10 in the linear regime by default and a frozen-norm write as a choice, since 60× steering saturates the post-feed-forward norm at layers 21–51 (E47). Each test reports how straight its push stayed, how far it rose above the same test at k = 0.01, and its P@10 for the lens’s and the naked eye’s labels; only the test on the 36 texts compares with the study’s figures. `scripts/verify_causal_check.py` checks it against N1A’s and N1V’s numbers on the real model. It is still run one label at a time, when asked: nothing tests every label |
+| **4** | Each label spot-checked by cause and effect | **In part.** A neuron’s folio puts its label to the test (“test it at this word-piece”, and “test it on the study’s 36 texts” beside it), as do the WebSocket action `causal_check`, `POST /api/scientist/causal_check` and the MCP tool `causal_spot_check` (`backend/causal_check.py`, ARCHITECTURE §4.5): N1A’s ±k · max\|a\| on the neuron at the read position, with the untouched row in the same forward, at k = 10 in the linear regime by default and a frozen-norm write as a choice, since 60× steering saturates the post-feed-forward norm at layers 21–51 (E47). Each test reports how straight its push stayed, how far it rose above the same test at k = 0.01, and its P@10 for the lens’s and the naked eye’s labels; only the test on the 36 texts compares with the study’s figures. `scripts/verify_causal_check.py` checks it against N1A’s and N1V’s numbers on the real model. It is still run one label at a time, when asked: nothing tests every label. Testing every label at pages 41–59 in N1A’s layout would be about 2 × 10²⁰ multiply-adds, some 3.7 days of one H100 (inferred, COMPUTE.md); sharing each text’s prefix would cut that about 45 times but changes N1A’s layout, and no resumable driver is written yet |
 
 Cammarata’s practices for reading a neuron ([9] in [`REFERENCES.md`](REFERENCES.md)), as the Lineage page sets them
-against the instrument, leave four more:
+against the instrument, leave three more:
 
-- read each face in long passages, not only its top word-pieces: you can write whole sentences into a neuron’s guess
-  test, but no passages are stored (the same gap as 1);
-- look upstream at what builds a neuron (downstream, the threads and “who listens” are there);
-- keep the field notes with the vault: they last for the visit only;
-- watch a neuron form across training checkpoints.
+- read each face in long passages, not only its top word-pieces: the passages are built (condition 1), not yet gathered
+  on the model;
+- keep the field notes with the vault: the server keeps them now, the name as the atlas’s and each face’s notes in a
+  field book beside it (§iii), but not with the vault’s records (`DESCRIBE POLE` does not return them);
+- watch a neuron form across training checkpoints: no intermediate checkpoints of Gemma 4 31B are known; the base model
+  against the instruct one is the nearest substitute, and needs the base model and the GPU.
+
+Looking upstream at what builds a neuron is in the folio now (§iii).
 
 <br>
 
@@ -124,36 +130,81 @@ against the instrument, leave four more:
   the lens and by the naked eye, against the matched controls sent or against E3’s average state (`contrasts`,
   `contrast_backgrounds`; ARCHITECTURE §4.1–4.2): the contrast axes V7 suggests
   ([`V7_tool_bugs_NOTES.md`](experiments/results/V7_tool_bugs_NOTES.md)), read in log-odds beside the frame rather
-  than as an axis of it. The landmarks page reads one in its section vii. Still open: through the lens the reading
-  inherits the base-fitted J++ (i), so the page marks its layers with the bands every page draws for the lens’s words
-  (1–20 the least trusted, where E3 (b) found the lens barely agreeing with the model’s own pronoun direction; 21–30
-  orderings only; 31–50 to be confirmed with an instruct-fitted reading; 51–59 counting only where one agrees: errata
-  E49 and E50), and the naked eye with its own background, which runs the other way (E3 (c)); the study measured the
-  average state’s lean on its six pronoun pairs and on its noun pairs (woman–man and the like), where it leans toward
-  the male words and is larger (E3 (c): at layers 41–50 a share of +1.4 on the pronouns and −3.1 on the nouns), not on
-  one pair or on other words; E3’s own lens figures for the average state reproduce today only as a band mean at
-  layers 41–50 (+2.35 against its +2.31, within 0.04): layer by layer they miss by 0.20 and 0.10 at layers 41 and 42,
-  and by more than 0.04 at 33 of the 60 layers (median 0.18, at most 1.85 at layer 3), by the study’s own code as by
-  the server, with the cause not established (by layer:
-  [`E3_background_mu_check.json`](experiments/results/E3_background_mu_check.json)); and the page sends one contrast
-  and one background at a time, where the server takes four and two. That E3’s average state is in the coordinates of
-  the server’s `resid_post` is checked by the end-to-end check (item 12) on one of E3’s neutral passages.
+  than as an axis of it. The landmarks page reads them in its section vii: up to four contrasts, one a row, against
+  either background or both, drawn one at a time (a pill for each contrast the sighting read, each background its own
+  line). Still open: through the lens the reading inherits the base-fitted J++ (i), so the page marks its layers with
+  the bands every page draws for the lens’s words (1–20 the least trusted, where E3 (b) found the lens barely agreeing
+  with the model’s own pronoun direction; 21–30 orderings only; 31–50 to be confirmed with an instruct-fitted reading;
+  51–59 counting only where one agrees: errata E49 and E50), and the naked eye with its own background, which runs the
+  other way (E3 (c)); the study measured the average state’s lean on its six pronoun pairs and on its noun pairs
+  (woman–man and the like), where it leans toward the male words and is larger (E3 (c): at layers 41–50 a share of
+  +1.4 on the pronouns and −3.1 on the nouns), not on one pair or on other words; E3’s own lens figures for the
+  average state reproduce today only as a band mean at layers 41–50 (+2.35 against its +2.31, within 0.04): layer by
+  layer they miss by 0.20 and 0.10 at layers 41 and 42, and by more than 0.04 at 33 of the 60 layers (median 0.18, at
+  most 1.85 at layer 3), by the study’s own code as by the server, with the cause not established (by layer:
+  [`E3_background_mu_check.json`](experiments/results/E3_background_mu_check.json)); four contrasts and two
+  backgrounds were checked on the CPU only (`check_interface_defaults.py`), and the chart seen only with readings
+  made up for it, since the stand-in cannot take a sighting (a sweep reads sixty layers and it has six). That E3’s
+  average state is in the coordinates of the server’s `resid_post` is checked by the end-to-end check (item 12) on one
+  of E3’s neutral passages.
 - **The vault: an edit’s voice. Built.** An edit can be heard before and after on a question of the reader’s choosing,
   written the likeliest way under the one GPU lock (`voice`; ARCHITECTURE §4.6), and the vault page asks for it by
-  default. The pages now call the “.patch MEMIT” edit an edit, a one-neuron column edit and not MEMIT; the code’s
-  names and the statements are kept for old callers and the study’s scripts. Every vault query runs in Python; the
-  `larql`/`vindex` binaries are called only for `--version` (README §iv). Still open: the voice is not offered through
-  MCP, whose vault tool does not hold the GPU lock, nor for an edit typed in the console; it is one question, so UPDATE
-  and INSERT are still tested by cause and effect only as far as that one answer goes (the study tested only DELETE,
-  E6 §2.3). The edit tab’s own example edit is not heard on the page’s own question: its answer does not change, so a
-  first reader hears nothing; the end-to-end check finds an edit that is heard, at layer 60, instead.
+  default. It is offered through MCP too (`query_larql_vault(lql_query, voice)`, the same `VoiceRequest`; run on its
+  own, the MCP server’s tools take turns under one lock of their own, so nothing lands between an edit’s two answers),
+  and for an edit typed in the console, heard by default with the edit tab’s question (`check_vault_voice.py`, on the
+  CPU stand-in; the end-to-end check compares the tool’s heard edit with the route’s, not yet run on the GPU). The
+  pages now call the “.patch MEMIT” edit an edit, a one-neuron column edit and not MEMIT; the code’s names and the
+  statements are kept for old callers and the study’s scripts. Every vault query runs in Python; the `larql`/`vindex`
+  binaries are called only for `--version` (README §iv). Still open: it is one question, so UPDATE and INSERT are still
+  tested by cause and effect only as far as that one answer goes (the study tested only DELETE, E6 §2.3). The edit
+  tab’s own example edit is not heard on the page’s own question: its answer does not change, so a first reader hears
+  nothing; the end-to-end check finds an edit that is heard, at layer 60, instead.
 - **Thinking on bare text. Built.** Sent as a chat, the sighting with thinking turned on uses the template’s own switch;
   sent as bare text, the interface leaves it out, since bare text has no turn to think in (`think_bare="none"`), and
-  the first pair names how thinking was switched on (`think_protocol`; null on later pairs). Still open: the server’s own default stays the
-  old imitation, `<|think|>` set before the text, for old callers, and the question’s apparatus keeps it as a marked
-  choice; the study recorded no fix for the bare case (the Lexicon’s cautions; E6 audit, item 11). Even in a chat the
-  thinking sighting is read at the end of its own prompt, where the silent one is read at the close of its empty
-  thought, unless an answer is begun (`think_read_token` names the word-piece it was read at).
+  the first pair names how thinking was switched on (`think_protocol`; null on later pairs). Still open: the server’s
+  own default stays the old imitation, `<|think|>` set before the text, for old callers, and the question’s apparatus
+  keeps it as a marked choice; the study recorded no fix for the bare case (the Lexicon’s cautions; E6 audit, item 11).
+  Even in a chat the thinking sighting is read at the end of its own prompt, where the silent one is read at the close
+  of its empty thought, unless an answer is begun (`think_read_token` names the word-piece it was read at).
+- **Who may ask, on every route. Built** (28 October 2026). Until then only the atlas, its scientist chat and the saved
+  prompts refused a page from another site: CORS allowed every origin, and `/api/larql`, the four `/api/scientist/*`
+  tools and `/ws/theodolite` checked neither Host nor Origin, so any page the reader visited (or one rebinding its name
+  to 127.0.0.1, or any page while a pod’s server was tunnelled to 127.0.0.1:8765) could run sweeps and vault edits on
+  the live model and read the replies. Every route, the pages and the socket now answer only this machine’s pages and
+  scripts run on it (`backend/local_only.py`, ARCHITECTURE §4), CORS names only loopback origins, and on Linux a
+  connection from another account on this machine is refused too (its owner read from `/proc/net/tcp`), except
+  through `npm run dev`’s proxy while it runs; `scripts/check_local_only.py` checks every route and the socket. The
+  lab daemon refuses web pages and any Host but this machine’s, and its `/exec` wants a token it writes at each start,
+  readable by its user only (`labclient.py` sends it); its port, 8765, is still the server’s. The scientist’s CLIs are
+  no longer given the Hugging Face or cloud credentials in the server’s environment, only their own logins, and a stop
+  no longer waits on a chat’s open event stream (`--timeout-graceful-shutdown 3`, README §v).
+- **The guess test’s statistics. Built.** A neuron’s folio, v (`test_motif_hypothesis`, `POST
+  /api/scientist/test_hypothesis`) said “yes, clearly” whenever Cohen’s d over population variances reached 0.8, at any
+  number of sentences, with nothing set against chance: one sentence a side gave d near 10⁴ (E6 §3, item 7). Its reply
+  now adds `selectivity` on the last word-piece’s unrounded readings: sample variances, Welch’s t and the n each side; a
+  two-sided p from splitting the sentences between the sides afresh (exact over every split up to 10,000 of them, else
+  10,000 shuffles under seed 0); hedged words (“selective on its + face, p = 0.029, n = 4 a side”), and no judgement
+  below four sentences a side. The folio shows that; the verdict as first built is still sent, for old callers
+  (`scripts/check_hypothesis_test.py`). Still open: each test is one neuron’s, so p’s from several are not corrected
+  together (the study used Benjamini–Hochberg, E6 §2.3); it is unpaired, where E6’s own test paired matched sentences
+  with sign flips; the peak is reported, not tested.
+- **One field book. Built.** A neuron’s folio reads and writes through the server whenever it answers for the neuron:
+  its name is the atlas’s name (`field_notes.json`, by the reader), and its notes, face by face (how many jobs, the
+  pattern in words, the four ticks), go to `field_book.json` beside it (`/api/atlas/fieldbook`; ARCHITECTURE §4.7), a
+  file of its own because a server from before moves aside any notes file but version 1 and keeps only the fields it
+  knows. The atlas’s details show the book, with a link to the folio. With no server, or from the moment it does not
+  keep a change, the folio keeps them in the browser and says so, and it offers once to carry a browser’s notes to
+  the server, writing over nothing the server keeps. Lineage practice vi.
+- **What builds a neuron, in the folio. Built.** Practice v, upstream: at the sighting’s own word-pieces, the heads,
+  the earlier feed-forward blocks and the earlier neurons whose writes make up its activation there (`POST
+  /api/atlas/attn_drive` with `ids`; each block’s part split over its neurons, one mat-vec a layer, checked on the
+  stand-in to add up to the block’s part to float error and against a direct-path finite difference), and by the
+  weights alone its strongest writers, each on the face that opens its gate. Both are leads: a neuron’s share is its
+  direct write with the norms held, not what it does through the layers between. Not yet run on the 31B.
+- **The scientist’s names as proposals. Built.** `set_name` and `write_note` propose (`field_proposals.json`,
+  `/api/atlas/proposals`): the atlas page shows each with keep and discard, nothing reads one before it is kept (the
+  map, lists, search, tooltips and later chats read only the names and notes kept), and a kept one is written as the
+  scientist’s.
 
 <br>
 
@@ -191,60 +242,174 @@ Still open here:
 - **The README’s pictures.** The views in README §ii were taken before this round, with the reading options as first
   built and before the label gate; their captions say so. They want retaking from a live sighting.
 - **References.** Section H of `REFERENCES.md` ([45] and [46], R3’s sources) was written from local files; its links
-  were not opened.
+  were not opened, and could not be from the machine of 28 October either (its network refused arxiv.org and
+  huggingface.co).
 
 <br>
 
 ## vi · the atlas
 
 The atlas (`#/atlas`; README §ii, ARCHITECTURE §4.7–4.8) was built on 27 October 2026 without a GPU: every piece of it
-was checked on a tiny random Gemma 4 on the CPU (`scripts/atlas_stand_in.py`; `check_atlas_ops.py`,
-`check_atlas_index.py`, `check_atlas_api.py`, `check_census.py`, `check_scientist.py`) and the page driven in a headless
-browser against it, but nothing yet on Gemma-4-31B itself.
+was checked on a tiny random Gemma 4 on the CPU (`scripts/atlas_stand_in.py` and the atlas’s checks) and the page
+driven in a headless browser against it. The same day its indexes were built on Gemma-4-31B on one RTX 5090 (the lens
+in 144 s; the stats over 2,000,054 word-pieces, a document from each corpus in turn, in 58 minutes; the wiring in about
+4 minutes; the layout in 9) and the page driven end to end on them, a Codex scientist with it; the index files are kept
+outside the repository. On 28 October the census, the wiring, the passages and the scientist gained the pieces below,
+each checked on the CPU stand-in and none yet run on the model. [`COMPUTE.md`](COMPUTE.md) says what each job costs and
+where to run it.
 
-- **Build its indexes and take its censuses on the model.** None exists yet. The costs in `scripts/atlas_build.py` and
-  `scripts/census_run.py` are worked out from the arithmetic, not measured: time a pilot first (`--layers`,
-  `--neurons random:8`). Until the stats index is built the push's unit and the activation ranges come from the study's
-  36 texts, and the pages mark them provisional.
-- **The census's doses come from Qwen3.5-4B.** `main_rel` (−0.7, +0.5, +0.8 and +3 of the stream's median length) is
-  neuron-explorer's design, where its log found answers readable near 0.5–0.8 and wrecked by 3. Run `calib_rel` on a few
-  layers of Gemma-4-31B first, and change the design if its window lies elsewhere; the scientist's methodology quotes
-  the same Qwen doses as a starting point. Every page and tool that shows a census now says the doses are uncalibrated.
-  One nominal dose is also a different push at each layer (by the stream's own read gain, about sixteen-fold across the
-  31B's layers), so the depth curve compares unlike doses until the dose is set per layer.
-- **The census's null, mended before any run** (review of 27 October 2026). Its controls were isotropic directions, which
-  the next layer reads about a hundred times louder than any neuron's write at pages 36–59; they are now drawn as
-  unit(w_post ⊙ r), matched to within 1.2× (`check_census.py` measures it on the checkpoint's own weights), and older
-  runs are not read. Even so, with C controls about N / (C + 1) neurons beat every control by chance alone (84 of a whole
-  layer with 256): the pages say so, each neuron carries a p and the layer a false-discovery q, and with 256 controls no
-  single neuron reaches q ≤ 0.05 unless some 1,700 of the layer beat every control. Singling neurons out needs far more
-  controls, or a census read as leads to test.
-- **The wiring, mended before any build** (the same review). Links were z-scored within each pair of layers and then
-  ranked across pairs, which drops Gemma's layer scalars (0.03–0.99, so a writer twenty layers back can arrive 10⁵
-  times fainter than the top link and still rank second); they are now ranked by |P| f², with the scalars and the
-  norms' usual scales, and the stats index keeps those scales. Their signs mixed two models (a sign said to hold
-  whichever way the writer fires, then multiplied along paths and split into "fed by" and "held back by"); every
-  consumer now reads them one way, from rest through GeGLU's gate. That model is still a simplification: a sign at the
-  reader's usual operating point (from the stats pass's gate and up values) would say what a link does in use.
-- **The push's size.** On the 31B the norm after each block caps what a single neuron can write, and the steer lens's
-  and the census's 0.8 of the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). The pages now
-  say so per neuron, and no longer call it a small push or tell readers to trust the steer lens over the lens. Before
-  the steer lens and the census are built on the model, choose their dose against the ceiling (a share of each
-  neuron's own most, or of k · max|a| through a frozen norm, erratum E47), with `calib_rel` on a few layers.
+- **Take its censuses, and its steer lens, on the model.** Neither exists beyond a `calib_rel` pilot of 8 neurons and 8
+  controls (580 answers, about 16 minutes at `--max-new 64`). The pilot measured the cost: every decode step of the 31B
+  takes about 0.71 s whatever the batch (1 to 64 rows), so a whole `main_rel` layer is about 3.6 days at `--batch 32
+  --max-new 64` and about two weeks at the default 256. The step is the 4-bit unpacking, not the model (COMPUTE §i).
+  The steer lens has never been timed (15 to 20 hours for all 60 layers on a 5090, and 3 to 5 on an H100, by two
+  estimates that disagree). On the home card, headless, time a pilot first; on a rented one, `scripts/pod/pilot.sh`
+  is that pilot (it times the step and the memory for each unpacker at several batches, takes a `calib_rel` run, times
+  one steer-lens layer, sets a canary batch against the home card’s and projects each job × 1.25 against the owner’s
+  approval, which `scripts/gpu_log.py` keeps with every pod against it); a layer’s census then runs in shards
+  (`scripts/pod/census_shard.sh`, every shard at the batch the pilot measured on that card class) and `sync.sh --final`
+  pulls and checks them before a pod goes. None of these has yet run on a rented card.
+- **Faster unpacking, the same bits. Built, not timed.** Every forward unpacks the 4-bit weights afresh (five eager
+  operations, three over int32 temporaries), which by the arithmetic is most of the 0.71 s step. `backend/w4a16_fast.py`
+  installs, without touching the R4-pinned runtime, a lookup-table unpacker (`--unpacker lut`), the same arithmetic
+  compiled alone (`compiled`, the model left eager with its hooks) or the weights kept unpacked (`resident`, about 60 GB
+  beside the 4-bit ones). Each gives the reference’s bits: `scripts/check_dequant.py` shows it on the CPU for every
+  (piece, bf16 scale) pair and for a 4-bit stand-in’s logits, vault edits, pushed answers and census rows, and `install`
+  tests every linear again on the card, refusing in plain words on any difference. Each census and index meta, and
+  `/api/health`, records which unpacker ran. Still open: time each on the card, and put the measured step into
+  `census_run.py`’s help.
+- **The census’s doses come from Qwen3.5-4B.** `main_rel` (−0.7, +0.5, +0.8 and +3 of the stream’s median length) is
+  neuron-explorer’s design, where its log found answers readable near 0.5–0.8 and wrecked by 3. Take `calib_rel` (±0.1
+  to 4 of the stream) and `calib_ceil` (±0.5 to 8 × each neuron’s write ceiling) on a few layers of Gemma-4-31B first;
+  one command takes several layers (`census_run.py --layers 20,30,40,45,50,57 --design calib_ceil`, layers from 0).
+  Read each run with `census_tools.py curves`, which lays out its dose window: per dose, neurons against controls, the
+  share of answers moved from the unpushed one and where they first part, the share cut off, distinct 4-grams, and the
+  push as a multiple of each neuron’s ceiling, with a hedged verdict per sign. The 8 + 8 pilot already taken can be read
+  the same way (`curves <layer> --weights`). Change the design if the window lies elsewhere. Every page and tool that
+  shows a census still says the doses are uncalibrated.
+- **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8
+  of the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
+  neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
+  a control by the ceiling of a neuron it is paired with, so one dose is the same share of each neuron’s most at every
+  layer and the depth curve compares like with like. Every answer records its ceiling and its push’s real share of the
+  stream. Which unit, and which doses, a whole layer is taken at waits on the calibration runs; the steer lens’s and the
+  census’s 0.8 is to be chosen against the ceiling the same way before either is built on the model.
+- **The census’s null.** Its controls are drawn as unit(w_post ⊙ r), matched to within 1.2× (`check_census.py`); with C
+  controls about N / (C + 1) neurons beat every control by chance alone (84 of a whole layer with 256), so each neuron
+  carries a p and the layer a false-discovery q, and with 256 controls no single neuron reaches q ≤ 0.05 unless some
+  1,700 of the layer beat every control. A second stage now exists: `census_run.py --neurons-from <screen>.units.jsonl
+  --top M --seed <another>` retests a screen’s M strongest neurons against fresh controls, its p and q taken over those
+  M alone (`stage` in the meta and on the card; the layer’s census stays the screen). Its cost is mostly the controls:
+  about (200 + 4,096) × 10 answers, some 17 hours on the 5090 at `--batch 32 --max-new 64` (worked out from the
+  pilot’s step). How many controls a whole layer gets, or whether it is read as leads to retest, is the owner’s choice.
+- **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
+  whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
+  row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card
+  holds once, then keep that `--batch`. Each meta records the runtime it was written on (the card, the versions, the
+  commit, the stats index’s sha256) and warns when that changes; the unpacker is recorded beside it. `--shard i/n`
+  writes whole chunks, each shard but the first with a canary batch, and the merge refuses a missing shard or answer
+  (unless `--partial`) and compares the canaries; a shard is never served as a layer’s census. The census frees the J++
+  lens after loading and reads each step back in one transfer. `scripts/verify_atlas_writer.py` measures the writer’s
+  floor (how far an unpushed answer agrees with itself written in the batch shapes the census writes in; about 18
+  minutes on the 5090, not yet run), and the census card quotes it once it is in `experiments/results/`: a pushed
+  answer that parts from the unpushed one no sooner than that floor may have parted by the batch’s shape alone. Still
+  to measure on a GPU: the batch the 5090 holds without the lens, and whether the canaries and a merged run are bit for
+  bit an unbroken one across processes on one card, and how far they differ across cards.
+- **The wiring.** Links are ranked by |P| f², with Gemma’s layer scalars and the norms’ usual scales (the review of 27
+  October 2026), and every consumer reads their signs one way, from rest through GeGLU’s gate. That model is a
+  simplification, and a second reading is now built beside it: to first order where the reader sits, a writer moves it
+  by f (α g + β u), α = gelu′(g₀) u₀, β = gelu(g₀), with the reader’s operating point on each face taken as the median
+  over its strongest stored passages of that face. It is odd in the writer, where the sign from rest is even.
+  `model=use` reads it on `/neuron/wiring`, `/web/summary`, `/cone` and `/run/paths` (the default stays from rest), the
+  details tab marks a link where the two disagree, and `atlas_build.py wiring_check` measures both: readers under ±d
+  pushes of 512 writers a layer, d a quarter of each writer’s own ceiling, against as many readers they are not linked
+  to. On the 31B all of it is the GPU’s: a passages build, a wiring rebuild that keeps each link’s g and u (about 4
+  minutes), then `wiring_check` (inferred, about 1.3 minutes a layer: pilot one layer first). Once built, report how
+  often the sign in use differs from the sign from rest over the whole index, and per layer the share of links whose
+  measured change has each sign, against the null.
+- **Stored passages for each face** (Cammarata’s practice iii, the study’s §3.5): built and checked on the stand-in,
+  not yet run on the model. One pass over the corpus the stats index was read over (`atlas_build.py passages`, the same
+  windows) keeps each face’s sixteen strongest windows and six drawn at random above half its extreme, with the gate
+  and up values at each event (the operating point the wiring’s sign in use reads). One forward a window, as stats is,
+  so it should cost about what stats costs, some 29 minutes a million word-pieces on the 5090 (inferred). The stats
+  pass now keeps its norms in float32 buffers (about 1.4 GB at two million word-pieces, where Python floats took about
+  11.5 GB, inferred), so a pass over ten million fits in memory, its quantiles unchanged.
 - **Single neurons at layers 21–31.** The study's 60-fold push overdrove them (errata E43, E46); whether the census's
   doses move them at all there is to be seen.
-- **Stored passages for each face** (Cammarata's practice iii, the study's §3.5): the stats index keeps each neuron's
-  extremes, not the text around them. A corpus pass that keeps the top passages per face would ground the labels in
-  what wakes a neuron.
-- **Two kinds of names.** A neuron's folio keeps its name and field notes in the browser; the atlas keeps names and notes
-  on the server, shared. They do not yet see each other.
-- **The scientist's reach.** Since the review of 27 October 2026 it reads, writes and edits files only in its work
-  folder under Claude Code, with no shell, and runs Codex's shell in its workspace-write sandbox;
-  `THEODOLITE_SCIENTIST_REACH=home` gives neuron-explorer's shell over the home folder, and the page asks first. Still
-  open: the folder rules are checked against a fake `claude`, not yet the real CLI (`Read(//<work>/**)` and the rest
-  should be tried once with a login); Codex in its sandbox can still read files outside its folder; an endpoint's
-  model can still write names and notes that a later chat reads (they are marked as stored text, but no page asks the
-  person first); and another account on this machine can reach the server's loopback port (the guard checks the peer
-  is this machine, not which user it is).
-- **Not carried over:** the explorer's HF-against-vLLM steering check (the atlas runs on one runtime) and its steered
-  prefill captures.
+- **The scientist’s reach.** Since the review of 27 October 2026 it reads, writes and edits files only in its work
+  folder under Claude Code, with no shell, and runs Codex’s shell in its workspace-write sandbox;
+  `THEODOLITE_SCIENTIST_REACH=home` gives neuron-explorer’s shell over the home folder, and the page asks first. On 28
+  October the folder rules were tried on the real CLI, Claude Code 2.1.312, against a stand-in Messages API, not a live
+  model (`scripts/verify_scientist_cli.py`): in the work folder Read, Write and Edit run; beside it, a path climbing out
+  of it, the prompt files, the home folder and `/proc/self/environ` are refused; Bash and Glob are not there; the
+  atlas’s tools run through the real MCP server. That run found that `--setting-sources project` let a CLAUDE.md (or a
+  settings file’s hook) in the work folder, which the scientist may write, or in any folder above it, the home folder’s
+  own `.claude/CLAUDE.md` included, reach every later chat; a chat now loads none (`--setting-sources ""`). A chat
+  takes up changed instructions and tools: a Claude Code chat at the folder reach is started again at the next message,
+  resuming its session; any other is marked stale and the page offers a restart, since ending its process group also
+  ends any commands it left running. The names and notes a scientist writes are proposals, kept or discarded by the
+  person (§iii). Still open: Codex in its sandbox can still read files outside its folder; another account is not told
+  apart on macOS or elsewhere, nor through vite’s proxy (a per-launch key would cover both); a scientist with a shell
+  over the home folder could keep its own proposal through the loopback port, which the guard cannot tell from the
+  page; the rules hold for the CLI version tried, so a new one should be tried with the same script; and no live model
+  has yet been watched to see whether what it reads would lead it to try what the CLI refuses.
+- **The push, greedy or sampled** (neuron-explorer read again at 6a6f0e9, 28 October 2026). `/push`, `/steer`, the push
+  tab and the scientist’s `steer` write greedily by default, as the census reads a push. On request they write with the
+  instrument’s own sampler (temperature, top-k, top-p, a presence penalty only with a temperature, a seed drawn and
+  echoed when none is given), each step one draw shared by the three voices (an exponential race seeded seed + s), so
+  the voices part only where the push moves the odds; `/steer` writes up to eight samples in one batch, and every reply
+  says how it was written. Checked on the stand-in in float32 only; still to see on the 31B whether the voices stay
+  alike at dose 0 in bf16, and what eight samples cost. The census stays greedy.
+- **Not carried over:** the explorer’s HF-against-vLLM steering check as such (the atlas runs on the instrument’s one
+  runtime; what it measured is measured here as the writer’s floor, above); its steered prefill captures (their idea,
+  a push at every prompt word-piece rebuilt by one prefill, gives the wiring its measured check); its steer’s min-p and
+  repetition penalty (`backend/sampler_request.py` says why: the penalty counts the prompt, the end-of-turn mark with
+  it, and can smooth away the loops a push is read by); its neuronary.org tools (recipes for Qwen3.5-4B’s neurons,
+  published as the person by a model, which the scientist’s reach rules would not allow) and its Chinese interface.
+
+<br>
+
+## vii · the CPU and GGUF
+
+The owner’s aim (28 October 2026): every part of the instrument on the CPU and from a GGUF, not only the W4A16
+checkpoint on one GPU. Two layers were built that day without a GPU and checked on the CPU stand-in only
+(`scripts/check_gguf.py`, `scripts/check_gguf_cpu.py`, ARCHITECTURE §5). The first: torch unpackers for thirteen GGUF
+types, equal to gguf-py’s bit for bit; a packed GGUF layer that hears the vault; a Gemma 4 built from a GGUF with its
+provenance; `GGUFRuntime` beside the pinned runtime; `make_runtime()` choosing between them from the environment; and
+`scripts/compare_gguf_ct.py`. The second: every entry point loads through the factory (the server, the census, the
+builds, the scientist’s MCP server run alone, the lab daemon); the lab’s gradient passes have a GGUF twin of their
+W4A16 autograd function; every index names the weights it was built from, the server refuses one built from others,
+and a build does not write over another model’s indexes unless asked; the CPU’s memory is estimated before a sweep, a
+census batch, the vault’s voice, a causal check and a steer-lens batch and refused in plain words; and `int4mm`, torch’s
+int4 CPU kernel, holds a Q4_0 GGUF’s or the checkpoint’s linears on the CPU (1.7 to 8 ms for a 5,376 × 21,504 layer at
+one row, against 0.5 to 1.5 s for the reference, measured on one 4-vCPU container), its readings kept apart by
+`+int4mm` in their model id: on the stand-in 30 of its 64 canary answers matched the reference word for word, against
+64 of 64 between two batches of the reference. The study’s registered scripts stay on the checkpoint and the card they
+were registered on. Nothing has yet run on Gemma-4-31B from a GGUF, nor on the CPU. What is left, in order:
+
+- **The real file, against the checkpoint.** Run `compare_gguf_ct.py` on a GGUF of the 31B: if Google’s QAT Q4_0 holds
+  the checkpoint’s codes and scales exactly, the two are one model, and the owner can decide whether an index or census
+  taken on one stands for the other (today the model ids and the indexes’ weights keep them apart). Then load it, take
+  the same tiny census both ways on the card, and run `scripts/compare_int4mm.py` on the CPU, whose rule, fixed before
+  any run, says whether int4mm’s readings may stand for the reference’s. Blocked by the file (which repository Google
+  publishes it in is unverified, and huggingface.co was not reachable from the machine it was built on) and, for the
+  tokenizer, by a cached Gemma 4 tokenizer to compare the GGUF-built one with.
+- **The instrument’s sweeps.** A sighting on `GGUFRuntime` is the pinned code with the GGUF accessors underneath, and has
+  never run: it reads 60 layers and the J++ lens, so the stand-in cannot hold it. The pinned runtime’s two CUDA memory
+  calls are sidestepped by hiding the GPUs on the CPU; mending them in the file itself waits until R4’s record no longer
+  needs `engine_runtime.py` pinned (a rerun of R4 would then go from its registered commit). Blocked by the file.
+- **A fast path on the CPU with the reference’s bits.** The reference unpacks every weight at every forward (3 to 16 ns
+  a weight here, minutes a forward); a lookup-table or compiled unpacker for Q4_0, as `w4a16_fast` has for W4A16, would
+  keep the bits but leave the product dense; int4mm for Q4_1 and the K types (Q4_K_M files are common) is a reader and
+  a check each. Blocked by the choice, and a machine to time it on.
+- **The atlas’s builds and the census on the CPU.** Both take a GGUF and the CPU. The lens build and the wiring are
+  products of the weights (hours on a CPU, inferred); the stats and passages passes are a forward per window (days
+  even through int4mm); the steer lens stays the GPU’s; a whole census layer is weeks to months (about 21 s a step of 64
+  rows through int4mm, inferred), so the CPU serves pilots. The census meta’s runtime record should also carry the
+  weights card. Blocked by compute.
+- **The CPU’s memory.** The estimates are arithmetic set against the card’s two measurements and lean high by about
+  half: a pilot on a CPU should measure a sweep’s and a census batch’s peak and recalibrate them.
+- **Beyond the 31B.** Refused today: Gemma 4’s mixture of experts (26B-A4B), its per-layer embeddings (E2B, E4B), its
+  shared key-value layers, the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4, Q1_0 and split GGUF files. Each is a reader and a
+  check, but the sweeps’ shapes are the 31B’s, fixed in the pinned `theodolite_math.py`, so the instrument’s own pages
+  wait on that pin too.
