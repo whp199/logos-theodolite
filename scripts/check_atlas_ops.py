@@ -10,7 +10,12 @@ model nor the lens, and hides the GPU. It checks, against brute force:
 2. `resolve` gives the three voices their rows: +dose, 0, -dose for "add" and "act", x dose, x1, x -dose for "mul";
 3. writing three rows at once, each under its own push and left-padded to the longest, writes what each row writes
    alone, and an unpushed row writes what the model writes unpushed; `TextDeltas` adds up to the decoded text, with
-   characters split over pieces held back until whole;
+   characters split over pieces held back until whole; written with the instrument's sampler: at temperature 0 every
+   Step is the greedy one; a seed draws the same again and another seed other pieces; with every push at dose 0 the
+   voices of a sample write alike (the shared draw); sample s's unpushed row is an unpushed write alone with seed + s;
+   over 4,000 seeds the first piece, and the second after a presence penalty that moves it, come as often as
+   `sampler_chances` says (chi-square), and the race itself on sharper logits; each piece's `sampler_prob` is above 0
+   and its chance replayed; a presence penalty without a temperature, and a sampled write without a seed, are refused;
 4. `read_neuron` is the activation a plain hook sees; a push on an earlier layer moves it, a push on the neuron itself
    at its own layer does not (the read comes first); `next_logprobs`' two rows equal two separate forwards;
 5. `all_activations` and `activation_extremes` equal per-text brute force, leaving out the start mark, and the four
@@ -263,6 +268,152 @@ def check_writing(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any, stop: Lis
     check(not any(p.endswith("�") for p in pieces), "TextDeltas: a delta ends inside a character")
     check(td.add(0, 1, True) == "", "TextDeltas: an end mark wrote text")
     section("text deltas add up to the decoded text, a split character held back until whole", before)
+
+
+def chi_square_p(counts: Dict[int, int], chances: torch.Tensor) -> Tuple[float, int]:
+    """The chi-square test of `counts` (piece -> how often drawn) against `chances` [V]: pieces expected fewer than 5
+    times pooled into one bin; (p, degrees of freedom). A piece drawn at chance 0 gives p = 0."""
+    n = sum(counts.values())
+    if any(float(chances[t]) <= 0 for t in counts):
+        return 0.0, 0
+    obs, exp, rest_o, rest_e = [], [], 0.0, 0.0
+    for t in torch.nonzero(chances > 0).flatten().tolist():
+        e = n * float(chances[t])
+        if e >= 5:
+            obs.append(float(counts.get(t, 0)))
+            exp.append(e)
+        else:
+            rest_o, rest_e = rest_o + counts.get(t, 0), rest_e + e
+    if rest_e > 0:
+        obs.append(rest_o)
+        exp.append(rest_e)
+    stat = sum((o - e) ** 2 / e for o, e in zip(obs, exp))
+    df = len(obs) - 1
+    return float(torch.special.gammaincc(torch.tensor(df / 2, dtype=torch.float64), torch.tensor(stat / 2, dtype=torch.float64))), df
+
+
+def check_sampling(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any, stop: List[int]) -> None:
+    from interp_engine.sampling import resolve_sampling
+
+    from backend.engine_runtime import SamplerSettings, sampler_chances
+
+    before = len(failures)
+    prompts = [ids_of(tok, "Who are you?", chat=True), ids_of(tok, "Write a snake game in Python.", chat=True) + [7, 9, 11],
+               ids_of(tok, "Describe the color orange.", chat=True)]
+    pushes = [ao.Push(3, 40, "add", 1.5), ao.Push(1, 9, "mul", 4.0)]
+    iv = ao.resolve(w, pushes, [], ao.THREE_VOICES, lambda l: 3.0, lambda l, i: 1.0)
+
+    def steps(rows: List[List[int]], ivv: Any, n: int = 16, **kw: Any) -> List[ao.Step]:
+        return list(ao.write_rows(lm, W_U, rows, ivv, max_new=n, stop_ids=stop, bos_id=tok.bos_token_id, softcap=30.0, top_k=5, **kw))
+
+    def pieces(st: List[ao.Step], rows: int) -> List[List[int]]:
+        out: List[List[int]] = [[] for _ in range(rows)]
+        for s in st:
+            out[s.row].append(s.token_id)
+        return out
+
+    # (a) greedy: no sampler, the default sampler, and a temperature of 0 with filters (which greedy ignores)
+    want = steps(prompts, iv)
+    for label, smp in (("the default sampler", SamplerSettings()), ("temperature 0 with top-k, top-p and a seed",
+                                                                    SamplerSettings(temperature=0.0, top_k=5, top_p=0.5, seed=9))):
+        got = steps(prompts, iv, sampler=smp)
+        check(got == want and all(s.sampler_prob is None for s in got), f"sampled write: {label} is not the greedy write, Step for Step")
+    hot = SamplerSettings(temperature=1.5, seed=11)
+    # (b) a seed draws the same again; another seed other pieces
+    one, again, other = steps(prompts, iv, sampler=hot), steps(prompts, iv, sampler=hot), steps(prompts, iv, sampler=SamplerSettings(temperature=1.5, seed=12))
+    check(one == again, "sampled write: the same seed does not draw the same again")
+    check(pieces(one, 3) != pieces(other, 3), "sampled write: another seed drew the same pieces")
+    check(pieces(one, 3) != pieces(want, 3), "sampled write: temperature 1.5 wrote the greedy answer")
+    # (f) every piece drawn had a chance, and its chance is the sampler's at that step, replayed one row at a time
+    check(all(s.sampler_prob is not None and s.sampler_prob > 0 for s in one), "sampled write: a piece drawn at chance 0")
+    settings = resolve_sampling(None, temperature=1.5, top_k=0, top_p=1.0, presence_penalty=0.0)
+    alone = steps([prompts[1]], ao.resolve(w, pushes, [], (0,), lambda l: 3.0, lambda l, i: 1.0), n=8, sampler=hot)
+    so_far: List[int] = []
+    worst = 0.0
+    for s in alone:
+        h = lm(input_ids=torch.tensor([prompts[1] + so_far]), use_cache=False).last_hidden_state[0, -1]
+        ch = sampler_chances(ao._model_logits(lm, W_U, h[None], 30.0)[0], settings, so_far)
+        worst = max(worst, abs(float(ch[s.token_id]) - s.sampler_prob) / float(ch[s.token_id]))
+        so_far.append(s.token_id)
+    check(worst < 1e-4, f"sampled write: sampler_prob is not the replayed chance of the piece (worst relative gap {worst:.2e})")
+    # (c) the shared draw: with every push at dose 0 the voices of each sample write alike, here two samples at once
+    zero = ao.resolve(w, [ao.Push(3, 40, "add", 0.0), ao.Push(2, 7, "act", 0.0)], [], ao.THREE_VOICES * 2, lambda l: 3.0, lambda l, i: 2.0)
+    z = pieces(steps([prompts[0]] * 6, zero, n=20, sampler=hot, samples_of=[0, 0, 0, 1, 1, 1]), 6)
+    check(z[0] == z[1] == z[2] and z[3] == z[4] == z[5] and z[0] != z[3],
+          "sampled write: with every push at dose 0 the three voices of a sample did not write alike (or two samples did)")
+    # (d) sample s's unpushed row is an unpushed write alone with seed + s; a real push moves its voices (at 0.7: on the
+    # stand-in's flat odds at 1.5 the shared draw keeps pushed voices with the unpushed one almost everywhere)
+    iv3 = ao.resolve(w, pushes, [], ao.THREE_VOICES * 3, lambda l: 3.0, lambda l, i: 1.0)
+    three = steps([prompts[2]] * 9, iv3, n=20, sampler=SamplerSettings(temperature=0.7, seed=11), samples_of=[0, 0, 0, 1, 1, 1, 2, 2, 2])
+    rows9 = pieces(three, 9)
+    for s in range(3):
+        solo = steps([prompts[2]], None, n=20, sampler=SamplerSettings(temperature=0.7, seed=11 + s))
+        mine = [x for x in three if x.row == 3 * s + 1]
+        check([x.token_id for x in solo] == rows9[3 * s + 1] and all(abs(a.sampler_prob - b.sampler_prob) < 1e-6 for a, b in zip(solo, mine)),
+              f"sampled write: sample {s}'s unpushed row is not the unpushed write alone with seed {11 + s}")
+    check(any(rows9[3 * s] != rows9[3 * s + 1] or rows9[3 * s + 2] != rows9[3 * s + 1] for s in range(3)),
+          "sampled write: the pushes moved no sampled voice")
+    section("sampled writing: temperature 0 is greedy; a seed draws again; the voices of a sample share their draw; a sample's "
+            "unpushed row is the write alone with seed + s; each chance is the sampler's", before)
+
+    # (e) over 4,000 seeds the first piece comes as often as the sampler says (500 samples a batch, seeds 0-3,999), and the
+    # second, after the commonest first piece, under a presence penalty that moves it (favouring the piece just written)
+    before = len(failures)
+    ids = prompts[0]
+    h0 = lm(input_ids=torch.tensor([ids]), use_cache=False).last_hidden_state[0, -1]
+    l0 = ao._model_logits(lm, W_U, h0[None], 30.0)[0]
+    for T, pp in ((0.7, 0.0), (1.5, 0.0), (0.7, -1.5)):
+        smp = dict(temperature=T, top_k=5, top_p=0.9, presence_penalty=pp)
+        firsts: Dict[int, int] = {}
+        seconds: Dict[int, Dict[int, int]] = {}
+        for b in range(8):
+            got = pieces(steps([ids] * 500, None, n=2, sampler=SamplerSettings(**smp, seed=500 * b), samples_of=list(range(500))), 500)
+            for r in got:
+                firsts[r[0]] = firsts.get(r[0], 0) + 1
+                if len(r) > 1:
+                    seconds.setdefault(r[0], {})
+                    seconds[r[0]][r[1]] = seconds[r[0]].get(r[1], 0) + 1
+        st = resolve_sampling(None, **smp)
+        p, df = chi_square_p(firsts, sampler_chances(l0, st, []))
+        check(p > 1e-3 and df >= 2, f"T {T}, top-k 5, top-p 0.9: the first piece over 4,000 seeds against sampler_chances: p {p:.2g} ({df} df)")
+        if pp:
+            f = max(firsts, key=firsts.get)
+            h1 = lm(input_ids=torch.tensor([ids + [f]]), use_cache=False).last_hidden_state[0, -1]
+            l1 = ao._model_logits(lm, W_U, h1[None], 30.0)[0]
+            pen, plain = sampler_chances(l1, st, [f]), sampler_chances(l1, resolve_sampling(None, **{**smp, "presence_penalty": 0.0}), [f])
+            check(float(pen[f]) > float(plain[f]) + 0.05, f"the presence penalty {pp} does not move the second piece ({float(plain[f]):.3f} -> {float(pen[f]):.3f})")
+            p, df = chi_square_p(seconds[f], pen)
+            check(p > 1e-3 and df >= 1, f"T {T}, presence penalty {pp}: the second piece after {f} ({sum(seconds[f].values())} rows) against "
+                                        f"sampler_chances with it written: p {p:.2g} ({df} df)")
+    # the stand-in's five likeliest are nearly level, which tells temperatures apart poorly: the race itself, then, on
+    # sharper logits (randn x 3 over 1,000 pieces, softcapped, as check_sampler_mirror draws them), 4,000 seeds at once,
+    # and the test must tell a temperature 25% off
+    sharp = torch.tanh(torch.randn(1000, generator=torch.Generator().manual_seed(5)) * 3.0 / 30.0) * 30.0
+    for T in (0.7, 1.5):
+        st = resolve_sampling(None, temperature=T, top_k=50, top_p=0.9, presence_penalty=0.0)
+        nxt, at = ao._Race(st, 0, list(range(4000)), torch.device("cpu")).draw(sharp.expand(4000, -1), [[]] * 4000)
+        counts: Dict[int, int] = {}
+        for t in nxt.tolist():
+            counts[t] = counts.get(t, 0) + 1
+        ch = sampler_chances(sharp, st, [])
+        p, df = chi_square_p(counts, ch)
+        off, _ = chi_square_p(counts, sampler_chances(sharp, resolve_sampling(None, temperature=1.25 * T, top_k=50, top_p=0.9, presence_penalty=0.0), []))
+        check(p > 1e-3 and df >= 10 and off < 1e-6 and torch.equal(at.flatten(), ch[nxt]),
+              f"the race at T {T}, top-k 50, top-p 0.9 on sharper logits: p {p:.2g} ({df} df), against T {1.25 * T:g} p {off:.2g}")
+    for bad, says in ((SamplerSettings(presence_penalty=0.5), "only with a temperature above 0"),
+                      (SamplerSettings(temperature=0.7), "needs its seed")):
+        try:
+            steps([ids], None, n=2, sampler=bad)
+            check(False, f"sampled write: {bad} was not refused")
+        except ValueError as exc:
+            check(says in str(exc), f"sampled write refused: {exc}")
+    try:
+        steps([ids] * 2, None, n=2, sampler=hot, samples_of=[0])
+        check(False, "sampled write: samples_of for 1 of 2 rows was not refused")
+    except ValueError:
+        pass
+    section("sampled writing: over 4,000 seeds the first piece, and the second under a presence penalty, as sampler_chances "
+            "says (chi-square), the race on sharper logits too; a penalty without a temperature, and a draw without a seed, refused", before)
 
 
 def check_reading(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any) -> None:
@@ -578,6 +729,7 @@ def main() -> int:
     print(f"stand-in: {len(lm.layers)} layers, {w.d_ff} neurons each, d_model {w.d_model}, vocabulary {len(tok)}")
     check_pushes(lm, w, tok)
     check_writing(lm, W_U, w, tok, stop)
+    check_sampling(lm, W_U, w, tok, stop)
     check_reading(lm, W_U, w, tok)
     check_heads(hf, tok, w)
     f = check_wiring(hf, lm, w, tok)

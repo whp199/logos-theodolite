@@ -6,9 +6,10 @@ Gemma 4 of scripts/atlas_stand_in.py:
    (null_pct, p, the Benjamini-Hochberg q, the chance count N / (C + 1)), answers pushed past max_rel left out; the
    word-shift score against the controls, a control left out of its own null; the slim rows a whole layer is ranked
    from give the same ranking; a half-written last line is left out; the controls' directions, unit(w_post * r);
-2. a run taken on the stand-in: every answer is the greedy answer written alone under the same push (a neuron along its
-   write direction, a control along its drawn direction, dose x p50; a baseline unpushed), with its push recorded, and
-   the meta records the controls' shape, the doses' source and how loudly the next layer reads controls and neurons;
+2. a run taken on the stand-in: every batch written with no sampler (greedy), every answer the greedy answer written
+   alone under the same push (a neuron along its write direction, a control along its drawn direction, dose x p50; a
+   baseline unpushed), with its push recorded, and the meta records the controls' shape, the doses' source and how
+   loudly the next layer reads controls and neurons;
 3. continuing: a run cut short and rerun ends with the same answers; a rerun with nothing to do writes nothing; more
    neurons added write only theirs, and the meta names every neuron the run holds; a run taken with other settings is
    refused in plain words; a run stopped between steps keeps only whole batches and finishes as the uninterrupted one;
@@ -301,7 +302,22 @@ def run_checks(tmp: Path) -> int:
     out.parent.mkdir(parents=True)
     kw = dict(p50=p50, p50_source="the study's 36 texts", design_name="main_rel", controls=2, seed=3, max_new=10, top_k=5,
               batch=7, log=lambda s: None)
-    res = cz.take_census(rt, 3, [0, 5, 9], out, **kw)
+    # the census writes greedily: every batch goes to write_rows with no sampler (its ranking, its resume keys and the
+    # depth report are defined on one likeliest answer per unit, question and dose)
+    written_with: List[Dict[str, Any]] = []
+    plain_write = ao.write_rows
+
+    def spy(*a: Any, **k: Any) -> Any:
+        written_with.append({**k, "rows": len(a[2])})
+        return plain_write(*a, **k)
+
+    ao.write_rows = spy
+    try:
+        res = cz.take_census(rt, 3, [0, 5, 9], out, **kw)
+    finally:
+        ao.write_rows = plain_write
+    check(sum(k["rows"] for k in written_with) == 54 and all(k.get("sampler") is None and k.get("samples_of") is None for k in written_with),
+          f"take_census writes greedily: no sampler passed to write_rows ({len(written_with)} batches)")
     got = list(cz.read_rows(out))
     check(res == {"written": 54, "skipped": 0, "stopped": False} and len(got) == 54, f"take_census: {res}, {len(got)} rows")
     check(len({cz.row_key(r) for r in got}) == 54, "every answer once")

@@ -413,6 +413,58 @@ class Step:
     top_ids: List[int]
     top_lps: List[float]
     end: bool  # an end mark: the row stops after it
+    sampler_prob: Optional[float] = None  # the chance the sampler drew it at (`sampler_chances`); None when greedy
+
+
+def sampling_of(sampler: Any, vocab: int) -> Optional[Any]:
+    """`sampler` (an `engine_runtime.SamplerSettings`, or None) as the settings the instrument's sampler resolves it to
+    (interp_engine's `SamplingSettings`, every knob given, as `capture_for_sweep` gives them), or None when it writes
+    greedily: no sampler, or a temperature of 0 with no presence penalty. A top-k of the whole vocabulary or more is
+    off, which keeps the same pieces. A presence penalty at temperature 0 is refused: the instrument's sampler would
+    take it off the likeliest piece's score too, and the push's greedy answer is the census's and the method's reading,
+    which a penalty would change without saying so."""
+    if sampler is None:
+        return None
+    temperature = float(sampler.temperature)
+    penalty = float(sampler.presence_penalty or 0.0)
+    if temperature <= 0.0:
+        if penalty:
+            raise ValueError("A presence penalty is taken here only with a temperature above 0: greedy is the reading, and a "
+                             "penalty would change it. Set a temperature to sample, or leave the penalty at 0.")
+        return None
+    if sampler.seed is None:
+        raise ValueError("A sampled write needs its seed (the routes draw one when none is given, and echo it).")
+    from interp_engine.sampling import resolve_sampling
+
+    k = int(sampler.top_k or 0)
+    return resolve_sampling(None, temperature=temperature, top_k=0 if k >= int(vocab) else k,
+                            top_p=float(sampler.top_p) if sampler.top_p is not None else 1.0, presence_penalty=penalty)
+
+
+class _Race:
+    """The draw of a sampled write, shared by the rows of each sample: every step, one q ~ Exp(1) over the vocabulary for
+    sample s, from a CPU generator seeded seed + s (so a draw does not depend on the device), and each row r of it takes
+    argmax(chances_r / q). That is the exponential race, an exact draw from each row's own chances; rows sharing q part
+    only where their chances differ."""
+
+    def __init__(self, settings: Any, seed: int, samples_of: Sequence[int], device: torch.device) -> None:
+        from backend.engine_runtime import sampler_chances
+
+        self.chances_of, self.settings = sampler_chances, settings
+        self.gens = [torch.Generator(device="cpu").manual_seed(int(seed) + s) for s in range(max(samples_of) + 1)]
+        self.of_row = torch.tensor([int(s) for s in samples_of], dtype=torch.long, device=device)
+
+    def draw(self, logits: torch.Tensor, written: Sequence[Sequence[int]]) -> Tuple[torch.Tensor, torch.Tensor]:
+        """[B] the pieces drawn from [B, V] logits, and [B, 1] float32 the chance each was drawn at. Each row's chances
+        are the instrument's sampler's (`sampler_chances`, in the logits' own dtype, as interp_engine draws from them),
+        its presence penalty on the pieces that row has written so far."""
+        ch = torch.stack([self.chances_of(logits[r], self.settings, written[r]) for r in range(logits.shape[0])]).float()
+        V = ch.shape[-1]
+        q = torch.stack([torch.empty(V, dtype=torch.float32).exponential_(1.0, generator=g) for g in self.gens]).to(ch.device)
+        # a piece the sampler cannot draw scores 0 even where q is 0 (0 / 0 would be NaN, which argmax takes)
+        score = torch.where(ch > 0, ch / q[self.of_row], torch.zeros((), dtype=ch.dtype, device=ch.device))
+        nxt = score.argmax(-1)
+        return nxt, ch.gather(-1, nxt[:, None])
 
 
 def _model_logits(lm: nn.Module, W_U: torch.Tensor, h: torch.Tensor, softcap: Optional[float]) -> torch.Tensor:
@@ -438,16 +490,38 @@ def write_rows(
     softcap: Optional[float] = 30.0,
     top_k: int = 0,
     cancel: Optional[Callable[[], bool]] = None,
+    sampler: Any = None,
+    samples_of: Optional[Sequence[int]] = None,
 ) -> Iterator[Step]:
-    """Write greedily from several prompts at once, each row under its own pushes (`iv`, one value per row), left-padded
-    in one batch with a cache: the next piece of every row unfinished, in order, step after step. A row stops after the
-    first of `stop_ids` it writes; the batch stops at `max_new` or when `cancel()` turns true. The start mark of each row
-    is spared by the pushes (`spare_bos`); the pieces written are never the start mark. With `top_k`, each step carries
-    the k likeliest pieces and their log-probabilities."""
+    """Write from several prompts at once, each row under its own pushes (`iv`, one value per row), left-padded in one
+    batch with a cache: the next piece of every row unfinished, in order, step after step. A row stops after the first
+    of `stop_ids` it writes; the batch stops at `max_new` or when `cancel()` turns true. The start mark of each row is
+    spared by the pushes (`spare_bos`); the pieces written are never the start mark. With `top_k`, each step carries
+    the k likeliest pieces and their log-probabilities (the model's own, whatever the sampler).
+
+    Greedily, as always, unless `sampler` (an `engine_runtime.SamplerSettings`) has a temperature above 0
+    (`sampling_of`; a temperature of 0 with no presence penalty is the greedy path, unchanged). Then each step draws
+    every row's piece from the instrument's own sampler by one exponential race per sample (`_Race`): row r belongs to
+    sample `samples_of[r]` (every row to sample 0 when None), drawn with `sampler.seed + s`. The rows of a sample share
+    their draw, so a pushed row parts from the unpushed one only where the push moves the odds, and rows whose logits
+    come out alike write alike: with every push at dose 0 the voices are the same, and a sample's unpushed row writes
+    what an unpushed write alone with seed + s does (both checked in float32 on the stand-in; on the GPU the batch's
+    size can move a row's numbers, as it can a greedy row's). Each row's draw follows its own chances exactly but is not
+    interp_engine's own draw (`torch.multinomial`, in sorted order under top-p), so a seed here does not draw what the
+    same seed draws in a sweep. Each Step then carries `sampler_prob`. There is no min-p and no repetition penalty:
+    backend/sampler_request.py says why."""
     dev = model_device(lm)
     B = len(rows_ids)
     if iv is not None and iv.rows != B:
         raise ValueError(f"{iv.rows} rows of pushes for {B} prompts.")
+    settings = sampling_of(sampler, int(W_U.shape[0]))
+    race: Optional[_Race] = None
+    if settings is not None:
+        of = [0] * B if samples_of is None else [int(s) for s in samples_of]
+        if len(of) != B or min(of) < 0:
+            raise ValueError(f"samples_of names a sample (from 0) for each of the {B} rows, not {list(samples_of or [])}.")
+        race = _Race(settings, int(sampler.seed), of, dev)
+    written: List[List[int]] = [[] for _ in range(B)]  # each row's pieces so far, which the presence penalty counts
     T = max(len(r) for r in rows_ids)
     pad = 0
     ids = torch.tensor([[pad] * (T - len(r)) + [int(t) for t in r] for r in rows_ids], dtype=torch.long, device=dev)
@@ -466,15 +540,21 @@ def write_rows(
             if cancel is not None and cancel():
                 return
             logits = _model_logits(lm, W_U, h, softcap)
-            nxt = logits.argmax(-1)
+            if race is None:
+                nxt = logits.argmax(-1)
+            else:
+                nxt, drawn_at = race.draw(logits, written)
             lsm = F.log_softmax(logits.float(), dim=-1)
-            # the step's chosen pieces, their log-probabilities and the top k, read back to the CPU in one transfer
-            # rather than a few per row (float64 holds every float32 and every piece id exactly)
+            # the step's chosen pieces, their log-probabilities and the top k (and, sampled, the chance each was drawn
+            # at), read back to the CPU in one transfer rather than a few per row (float64 holds every float32 and
+            # every piece id exactly)
             cols = [nxt[:, None].double(), lsm.gather(-1, nxt[:, None]).double()]
             k = int(top_k) if top_k else 0
             if k:
                 tv, ti = torch.topk(lsm, k=k, dim=-1)
                 cols += [ti.double(), tv.double()]
+            if race is not None:
+                cols.append(drawn_at.double())
             host = torch.cat(cols, dim=-1).cpu().tolist()
             for r in range(B):
                 if done[r]:
@@ -482,13 +562,16 @@ def write_rows(
                 got = host[r]
                 t = int(got[0])
                 end = t in stop
+                if race is not None:
+                    written[r].append(t)
                 yield Step(
                     row=r,
                     token_id=t,
                     logprob=got[1],
                     top_ids=[int(x) for x in got[2 : 2 + k]],
-                    top_lps=[round(x, 4) for x in got[2 + k :]],
+                    top_lps=[round(x, 4) for x in got[2 + k : 2 + 2 * k]],
                     end=end,
+                    sampler_prob=got[2 + 2 * k] if race is not None else None,
                 )
                 if end:
                     done[r] = True
