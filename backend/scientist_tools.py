@@ -416,7 +416,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         us.sort(key=lambda u: -u["z"])
         return {"null": card.get("null"), "doses_from": card.get("doses_from"), "push_unit_from": card.get("p50_source"),
                 **({"writer_floor": card["writer_floor"]["says"]} if card.get("writer_floor") else {}),
-                "ranked":[{"neuron": cite(a["layer"], u["n"]), "mass": u["z"], "null_pct": u["null_pct"], "q": u.get("q"), "words": u["words"],
+                "ranked": [{"neuron": cite(a["layer"], u["n"]), "mass": u["z"], "null_pct": u["null_pct"], "q": u.get("q"), "words": u["words"],
                             **({"name": u["name"]} if u.get("name") else {})} for u in us[: int(a.get("limit", 30))]]}
     if name in ("set_name", "write_note"):
         _need(a, "layer", "n")
