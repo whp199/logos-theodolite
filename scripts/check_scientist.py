@@ -542,8 +542,9 @@ def run_checks() -> int:
         aws = sorted(k for k in SECRETS if k.startswith("AWS_"))
         check(sorted(k for k in SECRETS if k in sc.child_env("claude")) == aws and not any(k in sc.child_env("codex") for k in SECRETS),
               "on Bedrock, Claude Code keeps the AWS variables it logs in with; Codex still gets none")
-        os.environ["CLAUDE_CODE_USE_BEDROCK"] = "0"
-        check(not any(k in sc.child_env("claude") for k in SECRETS), "CLAUDE_CODE_USE_BEDROCK=0 is not Bedrock")
+        for off in ("0", "2"):  # Claude Code reads only 1, true, yes or on as set
+            os.environ["CLAUDE_CODE_USE_BEDROCK"] = off
+            check(not any(k in sc.child_env("claude") for k in SECRETS), f"CLAUDE_CODE_USE_BEDROCK={off} is not Bedrock")
     finally:
         os.environ.pop("CLAUDE_CODE_USE_BEDROCK", None)
     tools_seen = next(x for x in flog() if x["kind"] == "tools")["names"]

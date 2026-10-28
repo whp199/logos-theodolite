@@ -140,8 +140,9 @@ SECRET_ENV = {"HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HF_API_TOKEN", "RUNPOD_API_
 SECRET_PREFIXES = ("AWS_", "AZURE_")
 # Never a CLI's own login. Claude Code's (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or its login
 # under ~/.claude) and Codex's (OPENAI_API_KEY, CODEX_*, or ~/.codex/auth.json, linked into its own home) are not
-# touched; and when Claude Code is told to reach its model through Bedrock, Vertex or Foundry, the cloud's variables it
-# then reads are its login, and pass to it (not to Codex, whose own home names no such provider).
+# touched; and when Claude Code is told to reach its model through Bedrock, Vertex or Foundry (its flag 1, true, yes or
+# on, as Claude Code reads it), the cloud's variables it then reads are its login, and pass to it (not to Codex, whose
+# own home names no such provider).
 CLAUDE_CLOUD_LOGINS = {"CLAUDE_CODE_USE_BEDROCK": ("AWS_",), "CLAUDE_CODE_USE_VERTEX": ("GOOGLE_APPLICATION_CREDENTIALS",),
                        "CLAUDE_CODE_USE_FOUNDRY": ("AZURE_",)}
 
@@ -150,7 +151,7 @@ def child_env(agent: str = "claude", **extra: str) -> Dict[str, str]:
     """The environment a Claude Code (`agent` "claude") or Codex ("codex") process starts with: this one's, less every
     endpoint's key and the credentials above, but with that process's own login."""
     keys = {p.get("key_env") for p in profiles().values()} | {"THEODOLITE_OPENAI_API_KEY", "OPENROUTER_API_KEY"}
-    on = lambda v: (v or "").strip().lower() not in ("", "0", "false", "no", "off")  # noqa: E731
+    on = lambda v: (v or "").strip().lower() in ("1", "true", "yes", "on")  # noqa: E731
     own = tuple(p for flag, ps in CLAUDE_CLOUD_LOGINS.items() if agent == "claude" and on(os.environ.get(flag)) for p in ps)
     secret = lambda k: (k in SECRET_ENV or k.startswith(SECRET_PREFIXES)) and not k.startswith(own)  # noqa: E731
     return {**{k: v for k, v in os.environ.items() if k not in keys and not secret(k)}, **extra}

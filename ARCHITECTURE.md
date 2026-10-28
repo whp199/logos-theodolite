@@ -699,9 +699,9 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
   `HUGGING_FACE_HUB_TOKEN`, `HF_API_TOKEN`, `RUNPOD_API_KEY`, `VAST_API_KEY`, `LAMBDA_API_KEY`, `MODAL_TOKEN_ID`,
   `MODAL_TOKEN_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS`, `NEURONARY_TOKEN`, and every `AWS_*` and `AZURE_*`). Each
   keeps its own login: Claude Code's `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN` or
-  `~/.claude`, and the cloud's variables when `CLAUDE_CODE_USE_BEDROCK`, `_VERTEX` or `_FOUNDRY` is set (to Claude Code
-  only); Codex's `OPENAI_API_KEY`, `CODEX_*` or its `auth.json`. A credential in a file (`~/.cache/huggingface/token`,
-  say) is bounded only by the reach.
+  `~/.claude`, and the cloud's variables when `CLAUDE_CODE_USE_BEDROCK`, `_VERTEX` or `_FOUNDRY` is on (1, true, yes or
+  on, as Claude Code reads it; to Claude Code only); Codex's `OPENAI_API_KEY`, `CODEX_*` or its `auth.json`. A
+  credential in a file (`~/.cache/huggingface/token`, say) is bounded only by the reach.
 - `openai`: any OpenAI-compatible Chat Completions endpoint that takes tool calls (LM Studio, Ollama, OpenRouter, vLLM,
   llama.cpp's server). The server runs the loop: it streams the reply, runs each tool call through the atlas's routes in
   this process (`InProcessApi`, an ASGI client), sends the results back (each cut to 16,000 characters) and goes on until
