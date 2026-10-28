@@ -10,7 +10,7 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    forward lays them, columns and rows together and a row alone (a Q4_0 layer holding a W4A16 module's codes and scales
    computes its forward bit for bit, overlays and all, its stored weight untouched); dense, dense_cols and dense_rows
    alike on a plain Linear, a W4A16 module and a GGUF layer;
-3. the stand-in written to tiny GGUF files (F32, F16, BF16, Q8_0, Q4_0; Q4_K, with llama.cpp's Q8_0 fallback where a
+3. the stand-in written to tiny GGUF files (F32, F16, BF16, Q8_0, Q4_0; Q4_K, with llama.cpp's Q5_0 fallback where a
    row is not 256 long, on a stand-in four times as wide) and read back: the config from the metadata is the
    stand-in's; every tensor is gguf's dequantised; the forward equals the stand-in carrying those numbers, bit for bit
    in float32 on the CPU, with the layers packed, resident and dense; the norm convention by a round trip (the file
@@ -346,6 +346,10 @@ def run_checks(tmp: Path) -> int:
     files: Dict[str, Path] = {}
     for qt in ("F32", "F16", "BF16", "Q8_0", "Q4_0"):
         files[qt] = gm.write_gemma4_gguf(hf, tmp / f"stand-in-{qt}.gguf", tokenizer=tok, qtype=qt)
+    fb = [gm.quantize_rows(np.zeros((2, n_), np.float32), qt_)[1] for qt_, n_ in
+          (("Q4_K", 64), ("Q5_K", 96), ("Q6_K", 128), ("Q2_K", 32), ("Q3_K", 160), ("Q4_K", 48), ("Q8_0", 48), ("Q4_K", 512))]
+    check(fb == ["Q5_0", "Q5_1", "Q8_0", "Q4_0", "Q4_0", "F16", "F16", "Q4_K"],
+          f"the writer's fallback where a block does not divide a row is llama.cpp's table: {fb}")
     wide = wide_stand_in(tok, 256, 512)
     files["Q4_K"] = gm.write_gemma4_gguf(wide, tmp / "stand-in-wide-Q4_K.gguf", tokenizer=tok, qtype="Q4_K")
     for qt, path in files.items():
@@ -353,7 +357,8 @@ def run_checks(tmp: Path) -> int:
         r = gguf.GGUFReader(str(path))
         types = Counter(t.tensor_type.name for t in r.tensors)
         if qt == "Q4_K":
-            check(types["Q4_K"] > 0 and types["Q8_0"] == 6, f"Q4_K: rows of 64 and 128 (o_proj) fall back to Q8_0 as llama.cpp's do: {dict(types)}")
+            check(types["Q4_K"] > 0 and types["Q5_0"] == 6 and "Q8_0" not in types,
+                  f"Q4_K: rows of 64 and 128 (o_proj) fall back to Q5_0 as llama.cpp's do: {dict(types)}")
         ref = stand_in_with(tok, path, hidden, ffn)
         want = ref(ids).logits
         want2 = ref(ids2).logits
@@ -384,7 +389,7 @@ def run_checks(tmp: Path) -> int:
     for mode in gm.LINEAR_MODES:
         m16, _ = gm.build_gemma4(files["Q4_0"], dtype=torch.bfloat16, linears=mode)
         check(torch.equal(m16(ids).logits, want16), f"Q4_0 {mode} in bf16: the forward equals the bf16 stand-in's, bit for bit")
-    section("the stand-in as GGUF (F32, F16, BF16, Q8_0, Q4_0, Q4_K): config, tensors and forward as the stand-in carrying "
+    section("the stand-in as GGUF (F32, F16, BF16, Q8_0, Q4_0, Q4_K with Q5_0): config, tensors and forward as the stand-in carrying "
             "the file's numbers, packed, resident and dense", before)
 
     before = len(failures)

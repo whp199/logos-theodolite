@@ -648,16 +648,24 @@ def quantize_q4_k(x: np.ndarray) -> np.ndarray:
     return out.reshape(*shape[:-1], shape[-1] // 256 * 144)
 
 
+# llama.cpp's type for a row a 256-block type does not divide (src/llama-quant.cpp `tensor_type_fallback`, master read
+# 28 October 2026); it turns to F16 when 32 does not divide the row either, and so does a 32-block type's row
+FALLBACK_TYPES = {"Q2_K": "Q4_0", "Q3_K": "Q4_0", "Q4_K": "Q5_0", "Q5_K": "Q5_1", "Q6_K": "Q8_0"}
+
+
 def quantize_rows(x: np.ndarray, qtype: str) -> Tuple[np.ndarray, str]:
     """Rows [..., n] in `qtype` -> (the array GGUFWriter takes, the type written). A row a block does not divide falls
-    back as llama.cpp's quantiser does: to Q8_0 when 32 divides it, else F16."""
+    back as llama.cpp's quantiser does (`FALLBACK_TYPES`: Q4_K to Q5_0, Q6_K to Q8_0, ...; F16 when 32 does not divide
+    it either)."""
     import gguf
 
     qt = qtype.upper()
     n = x.shape[-1]
     bs = GGML_TYPES[type_code(qt)][1]
     if n % bs:
-        qt = "Q8_0" if n % 32 == 0 else "F16"
+        qt = FALLBACK_TYPES.get(qt, "F16") if bs > 32 else "F16"
+        if n % GGML_TYPES[type_code(qt)][1]:
+            qt = "F16"
     x = np.ascontiguousarray(x, dtype=np.float32)
     if qt == "F32":
         return x, qt
