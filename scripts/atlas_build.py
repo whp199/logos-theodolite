@@ -35,7 +35,7 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU
 (backend/runtime_factory.py, ARCHITECTURE §5); each file records the model id, a GGUF's naming its file and fingerprint,
-and the server reads an index only for the model it was built on.
+and one off the GPU or in float32 its device and dtype; the server reads an index only for the model id it was built on.
 """
 
 from __future__ import annotations

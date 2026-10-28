@@ -11,7 +11,8 @@ ranked (scripts/census_tools.py rank).
 
 The model is the W4A16 checkpoint on cuda:0 unless THEODOLITE_GGUF names a GGUF of Gemma 4 or THEODOLITE_DEVICE=cpu
 puts it on the CPU (backend/runtime_factory.py; THEODOLITE_GGUF_LENS=none leaves out the J++ lens, which a census does
-not read); the run's meta records the model id, a GGUF's carrying its file and fingerprint (ARCHITECTURE §5).
+not read); the run's meta records the model id, a GGUF's carrying its file and fingerprint and one off the GPU or in
+float32 its device and dtype (`@cpu/bfloat16`), so a run is continued only where and as it began (ARCHITECTURE §5).
 
 Layers count from 0 (page layer = layer + 1), as every script and field of the atlas. The runs go to the census folder
 (`$THEODOLITE_CENSUS_DIR`, else `<atlas folder>/census/runs`; a stand-in's under its own `stand-in/`), named by --run

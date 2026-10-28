@@ -18,10 +18,14 @@ checkpoint's packing:
   the 31B.
 Every other method is the pinned runtime's own, unchanged (the sightings, the writing, the contrasts, the lens card).
 
-The model id it gives every reading (`model_id`, which every index, census run and lens card records, and which the
-server compares before it reads an index) is `gguf:<file name>#<fingerprint>` (`gguf_model.gguf_stem_id`), so nothing
-taken on one file is read as another file's or as the W4A16 checkpoint's. `weights_card` is the file's provenance with
-how the model was built and where its tokenizer came from; GET /api/health sends it ("weights").
+The model id it gives every reading (`model_id`, which every index, census run and lens card records, which a census
+run must share to be continued, and which the server compares before it reads an index) is `gguf:<file name>#<fingerprint>`
+(`gguf_model.gguf_stem_id`), with `@<device>/<dtype>` after it off the GPU or in float32
+(`runtime_factory.reading_class`: `@cpu/bfloat16`, `@cpu/float32`, `@cuda/float32`), so a reading is not taken for
+another file's, for the W4A16 checkpoint's, or for one of another numeric class. How the linear layers are held
+(packed, resident or dense) is not in it: the three hold the same weight, and give the same forward bit for bit
+(scripts/check_gguf.py). `weights_card` is the file's provenance with how the model was built and where its tokenizer
+came from; GET /api/health sends it ("weights").
 
 scripts/check_gguf.py drives it on the stand-in of scripts/atlas_stand_in.py written to tiny GGUF files.
 """
@@ -39,6 +43,7 @@ import torch
 from backend import engine_runtime as er
 from backend import gguf_model as gm
 from backend.gguf_weights import dense, dense_cols, dense_rows
+from backend.runtime_factory import reading_class
 from interp_engine import EagerModel
 
 logger = logging.getLogger(__name__)
@@ -91,7 +96,7 @@ class GGUFRuntime(er.TheodoliteRuntime):
             tokenizer, tok_rec = gm.load_tokenizer(self.gguf_path, self.tokenizer_repos, reader=reader)
         # the pinned load records transformers' missing keys here; the GGUF builder refuses a file that leaves any
         setattr(hf_model, "ie_missing_keys", frozenset())
-        self.model_id = gm.gguf_stem_id(self.gguf_path, prov)
+        self.model_id = gm.gguf_stem_id(self.gguf_path, prov) + reading_class(self.device, self.dtype)
         self.weights_card = {**prov, "path": str(self.gguf_path), **built, "tokenizer": tok_rec,
                              "runtime": type(self).__name__}
 

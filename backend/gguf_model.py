@@ -753,6 +753,7 @@ def write_gemma4_gguf(
 
 
 def gguf_stem_id(path: Union[str, Path], prov: Dict[str, Any]) -> str:
-    """The model id a GGUF runtime gives its readings: the file's name and its fingerprint (`provenance()["id"]`), so an
-    index or census taken on one file is never read as another's, nor as the W4A16 checkpoint's."""
+    """The model id a GGUF runtime gives its readings, before `runtime_factory.reading_class` says where and in what
+    they were taken: the file's name and its fingerprint (`provenance()["id"]`), so an index or census taken on one file
+    is not read as another's (as far as the fingerprint tells them apart), nor as the W4A16 checkpoint's."""
     return f"gguf:{Path(path).name}#{prov['id']}"

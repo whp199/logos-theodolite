@@ -754,8 +754,14 @@ run on Gemma-4-31B itself, from either a GGUF or the checkpoint on the CPU.
   accessors above; everything else is the pinned code. On the stand-in its accessors, a push in three voices, a neuron
   read, a sighting's row capture and naked-eye readout, a vault DELETE on a packed layer and a census equal the stand-in
   runtime's, bit for bit in float32.
-- The model id of a GGUF reading is `gguf:<file>#<fingerprint>`, so every index, census run and lens card records which
-  file it was taken on, and the server never reads one file's index as another's or as the checkpoint's.
+- The model id of a GGUF reading is `gguf:<file>#<fingerprint>`, and any reading taken off the GPU or in float32 carries
+  where and in what after it (`runtime_factory.reading_class`: `gguf:<file>#<fingerprint>@cpu/bfloat16`, and the
+  checkpoint on the CPU `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`; bfloat16 on a GPU adds nothing). Every index,
+  census run and lens card records that id, a census run is continued only on the same id, and the server reads an
+  index only for it: so a file's readings are not read as another file's (as far as the fingerprint tells them apart)
+  or the checkpoint's, and readings of two numeric classes are not mixed in one run. How a GGUF's layers are held
+  (packed, resident, dense) is not in the id: the three give the same forward bit for bit (in float32 and bf16 on the
+  CPU stand-in), and the `weights` card says which.
 - `scripts/compare_gguf_ct.py` says whether a GGUF holds the checkpoint's weights, tensor by tensor; for Q4_0 against
   W4A16 (both group-32 symmetric 4-bit) also the codes and the scales. Its self-test runs on the CPU.
 
@@ -803,7 +809,7 @@ A machine with more cores and memory bandwidth should be some times faster (infe
 suits reading weights (the wiring, the lens build, `compare_gguf_ct.py`), single forwards (a sighting's capture) and
 pilots, not a census of a layer (217,604 answers would take weeks). bf16 on the CPU runs through oneDNN, fast with AMX or
 AVX512-BF16 and emulated without; its sums are not the GPU's, so a reading taken on the CPU is its own determinism class,
-and `device` says which.
+and its model id says so (`@cpu/bfloat16`).
 
 **CUDA assumptions, audited.** In the unpinned code: GET /api/health asked the card's memory whenever CUDA was available
 (now only for a runtime on a GPU); the server, the atlas, the vault, the causal check and the scientist's tools catch

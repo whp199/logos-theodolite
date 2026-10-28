@@ -13,9 +13,16 @@ scripts/census_run.py and scripts/atlas_build.py.
 
 With none of them set, `make_runtime()` is `TheodoliteRuntime(load_jlens=...)`, exactly as these entry points built it
 before. On the CPU (THEODOLITE_DEVICE=cpu) the GPUs are hidden from this process before anything touches CUDA
-(CUDA_VISIBLE_DEVICES=""), as the stand-in's scripts hide them: the pinned runtime asks
-`torch.cuda.max_memory_allocated(self.device)` whenever CUDA is available, which with a CPU device would fail on a
-machine that has a GPU (inferred from torch's code; no GPU here to show it).
+(CUDA_VISIBLE_DEVICES=""), as the stand-in's scripts hide them. That is a precaution: the pinned runtime asks
+`torch.cuda.max_memory_allocated(self.device)` whenever CUDA is available, which torch 2.14.1 answers with 0 while CUDA
+is not initialised in the process and refuses for a CPU device once it is (`memory_stats_as_nested_dict`; read from
+torch's code, no GPU here to show it); hidden GPUs keep a library from initialising CUDA in a CPU process.
+
+A reading taken off the GPU, or in float32, is its own numeric class, and says so in its model id (`reading_class`):
+the checkpoint on the CPU is `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16` (`CheckpointRuntime`), a GGUF on the CPU
+`gguf:<file>#<fingerprint>@cpu/bfloat16`. Every census run, index and lens card records that id, a run resumes only on
+the same one and the server reads an index only for it, so readings of two classes never mix in one file. bfloat16
+on a GPU, as the instrument has always run, adds nothing.
 """
 
 from __future__ import annotations
@@ -24,6 +31,8 @@ import logging
 import os
 import re
 from typing import Any
+
+from backend.engine_runtime import TheodoliteRuntime
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +68,31 @@ def hide_gpus() -> None:
                        "CUDA_VISIBLE_DEVICES= before starting this process for a CPU runtime.")
 
 
+def reading_class(device: Any, dtype: Any = None) -> str:
+    """What a model id carries past the weights' own name when its readings are not taken as the instrument takes them
+    (bfloat16 on a GPU): "@cpu/bfloat16", "@cpu/float32", "@cuda/float32"; "" for bfloat16 on any GPU. `dtype` defaults
+    to bfloat16 (the checkpoint's)."""
+    import torch
+
+    dev = torch.device(device)
+    dt = str(dtype if dtype is not None else torch.bfloat16).replace("torch.", "")
+    return "" if dev.type == "cuda" and dt == "bfloat16" else f"@{dev.type}/{dt}"
+
+
+class CheckpointRuntime(TheodoliteRuntime):
+    """The pinned runtime on the W4A16 checkpoint, off the GPU: its own `load()`, unchanged, then its model id tagged
+    with where the readings are taken (`reading_class`), so nothing taken on the CPU is read as a GPU reading."""
+
+    def load(self) -> "CheckpointRuntime":
+        super().load()  # loads the weights by self.model_id, the repo id, so the tag goes on after
+        self.model_id = f"{self.model_id}{reading_class(self.device)}"
+        return self
+
+
 def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
     """The runtime this process runs, not yet loaded (call `.load()`): a `GGUFRuntime` on THEODOLITE_GGUF when it is
-    set, else the pinned `TheodoliteRuntime` on the W4A16 checkpoint; on THEODOLITE_DEVICE (default cuda:0). `kwargs`
-    go to `GGUFRuntime` (`load_jpp=False` leaves the lenses out)."""
+    set, else the pinned `TheodoliteRuntime` on the W4A16 checkpoint (a `CheckpointRuntime` on the CPU); on
+    THEODOLITE_DEVICE (default cuda:0). `kwargs` go to `GGUFRuntime` (`load_jpp=False` leaves the lenses out)."""
     device = runtime_device()
     if device == "cpu":
         hide_gpus()
@@ -90,8 +120,8 @@ def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
             hf_config=os.environ.get(CONFIG_ENV, "").strip() or None,
             **kwargs,
         )
-    from backend.engine_runtime import TheodoliteRuntime
-
     if device == DEFAULT_DEVICE:
         return TheodoliteRuntime(load_jlens=load_jlens)
+    if device == "cpu":
+        return CheckpointRuntime(device=device, load_jlens=load_jlens)
     return TheodoliteRuntime(device=device, load_jlens=load_jlens)

@@ -359,8 +359,10 @@ def run_checks(tmp: Path) -> int:
         p_.data = p_.data.to(torch.bfloat16)
     for layer in ref16.model.layers:
         layer.layer_scalar = layer.layer_scalar.to(torch.bfloat16)
-    m16, _ = gm.build_gemma4(files["Q4_0"], dtype=torch.bfloat16, linears="packed")
-    check(torch.equal(m16(ids).logits, ref16(ids).logits), "Q4_0 packed in bf16: the forward equals the bf16 stand-in's, bit for bit")
+    want16 = ref16(ids).logits
+    for mode in gm.LINEAR_MODES:
+        m16, _ = gm.build_gemma4(files["Q4_0"], dtype=torch.bfloat16, linears=mode)
+        check(torch.equal(m16(ids).logits, want16), f"Q4_0 {mode} in bf16: the forward equals the bf16 stand-in's, bit for bit")
     section("the stand-in as GGUF (F32, F16, BF16, Q8_0, Q4_0, Q4_K): config, tensors and forward as the stand-in carrying "
             "the file's numbers, packed, resident and dense", before)
 
@@ -511,7 +513,7 @@ def run_checks(tmp: Path) -> int:
     rt_g = GGUFRuntime(files["Q4_0"], device="cpu", dtype=torch.float32, tokenizer=tok, load_jpp=False).load()
     ref = stand_in_with(tok, files["Q4_0"])
     rt_s = asi.stand_in_runtime(ref, tok)
-    check(rt_g.model_id.startswith("gguf:stand-in-Q4_0.gguf#") and rt_g.weights_card["id"] in rt_g.model_id
+    check(rt_g.model_id == f"gguf:stand-in-Q4_0.gguf#{rt_g.weights_card['id']}@cpu/float32"
           and rt_g.weights_card["linears"] == "packed" and rt_g.weights_card["layers_as"] == {"Q4_0 packed": 41}
           and rt_g.lens_card() is None and rt_g.end_of_turn_ids() == rt_s.end_of_turn_ids() and rt_g.sliding_window == asi.WINDOW,
           f"loaded: {rt_g.model_id}, {rt_g.weights_card['layers_as']}, no lens, the stand-in's turn ends and window")
@@ -586,6 +588,15 @@ def run_checks(tmp: Path) -> int:
     check(len(rg) == 34 and rg == rs, f"a tiny census (2 neurons, 1 control, main_rel): {len(rg)} answers, row for row the stand-in's")
     check(mg["model"] == rt_g.model_id and mg["read_gain"] == ms["read_gain"] and mg["prompt_ids"] == ms["prompt_ids"],
           "its meta: the GGUF's model id, the same read gain and prompts")
+    rt_16 = GGUFRuntime(files["Q4_0"], device="cpu", dtype=torch.bfloat16, tokenizer=tok, load_jpp=False).load()
+    try:
+        cz.take_census(rt_16, 2, [0, 1, 2], tmp / "census-gguf.jsonl", p50=1.5, p50_source="fixed", controls=1, seed=0,
+                       max_new=6, top_k=3, batch=5, log=quiet)
+        check(False, "the same census continued in bf16 on a float32 run refused")
+    except ValueError as exc:
+        check("model" in str(exc) and rt_16.model_id.endswith("@cpu/bfloat16") and len(list(cz.read_rows(tmp / "census-gguf.jsonl"))) == 34,
+              f"the same census continued in bf16 onto the float32 run: refused, nothing written ({exc})")
+    del rt_16
     section("a census on the GGUF runtime, row for row the stand-in's", before)
 
     # ------------------------------------------------------------ 5. the runtime from the environment, and the CLI
@@ -598,6 +609,23 @@ def run_checks(tmp: Path) -> int:
         rt0 = rf.make_runtime(load_jlens=False)
         check(type(rt0) is er.TheodoliteRuntime and str(rt0.device) == "cuda:0" and rt0.load_jlens is False,
               "nothing set: the pinned TheodoliteRuntime on cuda:0, as the entry points built it")
+        check([rf.reading_class(d, t) for d, t in (("cuda:0", None), ("cuda:1", torch.bfloat16), ("cpu", None),
+                                                   ("cpu", torch.float32), ("cuda:0", torch.float32))]
+              == ["", "", "@cpu/bfloat16", "@cpu/float32", "@cuda/float32"],
+              "reading_class: nothing for bf16 on a GPU; the device and dtype otherwise")
+        os.environ[rf.DEVICE_ENV] = "cpu"
+        rt_c = rf.make_runtime(load_jlens=False)
+        pinned_load = er.TheodoliteRuntime.load
+        er.TheodoliteRuntime.load = lambda self: self  # the checkpoint is not here: the pinned load stood in for
+        try:
+            id_before = rt_c.model_id
+            rt_c.load()
+        finally:
+            er.TheodoliteRuntime.load = pinned_load
+        check(type(rt_c) is rf.CheckpointRuntime and str(rt_c.device) == "cpu" and id_before == er.DEFAULT_W4A16_MODEL_ID
+              and rt_c.model_id == er.DEFAULT_W4A16_MODEL_ID + "@cpu/bfloat16" and os.environ.get("CUDA_VISIBLE_DEVICES") == "",
+              f"THEODOLITE_DEVICE=cpu: the checkpoint loads by its repo id, its readings then recorded as {rt_c.model_id}")
+        os.environ.pop(rf.DEVICE_ENV)
         os.environ.update({rf.GGUF_ENV: str(files["Q4_0"]), rf.DEVICE_ENV: "cpu", rf.DTYPE_ENV: "float32", rf.LENS_ENV: "none",
                            rf.LINEARS_ENV: "resident"})
         rt1 = rf.make_runtime(load_jlens=False)
