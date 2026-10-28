@@ -270,8 +270,9 @@ def main(argv=None) -> int:
 
             if not is_cpu_oom(exc):
                 raise
-            raise SystemExit(f"{plain(exc, 'the census')} Every whole batch before it is kept: lower --batch or --max-new, "
-                             "and the same command continues the run.")
+            raise SystemExit(f"{plain(exc, 'the census')} Every whole batch before it is kept, and the same command "
+                             "continues the run; a run's batch is fixed, so a smaller --batch or --max-new is another "
+                             "run (--run).")
         if a.canary_only:
             print(f"-> {res['canary']} ({res['written']} answers written, {res['skipped']} were there): compare it with the same "
                   "batch from another card by census_tools.py canary")

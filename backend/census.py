@@ -1183,7 +1183,8 @@ def take_census(
     from backend import cpu_memory  # on the CPU, a batch against MemAvailable, refused before anything is written
 
     cpu_memory.ensure(rt, lambda: cpu_memory.writing_need(rt, batch, max(len(p) for p in prompt_ids.values()), max_new),
-                      f"A census batch of {batch} answers of up to {max_new} word-pieces", "lower --batch or --max-new")
+                      f"A census batch of {batch} answers of up to {max_new} word-pieces",
+                      "lower --batch or --max-new (a run already begun keeps its own: take another --run)")
     stop = rt.end_of_turn_ids()
     out_path = Path(out_path)
     w_post = w.norm(layer, "post_feedforward").cpu().numpy()
