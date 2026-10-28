@@ -398,14 +398,23 @@ export async function rewindLast(act: "edit" | "reroll") {
   const it = items[u] as Extract<Item, { kind: "user" }>;
   if (st().busy) await stop();
   const chat = st().chat;
+  let cut = 1;
   if (chat) {
     try {
-      await post("/api/atlas/scientist/rewind", { chat, text: it.msg });
+      const r = await post<{ messages?: number }>("/api/atlas/scientist/rewind", { chat, text: it.msg });
+      cut = Math.max(1, r.messages ?? 1);
     } catch (e) {
       // still answering, or the chat is gone: say so and keep the thread
       return pushPart(ensureBox(), { t: "error", text: errText(e) });
     }
   }
+  // Codex reverts a turn whole, so a message sent into it while it ran leaves with this one: the thread loses what the
+  // scientist no longer has (`messages`), and edit and reroll take up the last message only
+  for (let i = u - 1; i >= 0 && cut > 1; i--)
+    if (items[i].kind === "user") {
+      u = i;
+      cut--;
+    }
   setItems(items.slice(0, u));
   save();
   if (act === "reroll") void agentTurn(it.msg, it.shown, it.atts);

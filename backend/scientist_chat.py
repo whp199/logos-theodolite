@@ -394,10 +394,13 @@ def _chat(cid: str, agent: Optional[str] = None) -> Dict[str, Any]:
     return c
 
 
-def _log(cid: str, ev: Dict[str, Any]) -> None:
+def _log(cid: str, ev: Dict[str, Any]) -> int:
+    """An event added to a codex or openai chat's replay log (`logs/<chat>.jsonl`); the byte its line begins at."""
     logs_dir().mkdir(parents=True, exist_ok=True)
-    with open(logs_dir() / f"{cid}.jsonl", "a", encoding="utf-8") as f:
-        f.write(json.dumps(ev, ensure_ascii=False) + "\n")
+    with open(logs_dir() / f"{cid}.jsonl", "ab") as f:
+        at = f.seek(0, os.SEEK_END)
+        f.write((json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8"))
+    return at
 
 
 def _emit(c: Dict[str, Any], ev: Dict[str, Any]) -> None:
@@ -1181,7 +1184,7 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
                 await _ensure_codex(c, self_url)
             except Exception as exc:
                 raise HTTPException(status_code=502, detail=f"codex: {exc}") from None
-            _log(cid, {"t": "user", "text": shown})
+            at = _log(cid, {"t": "user", "text": shown})
             items = [{"type": "text", "text": msg, "text_elements": []}] + [x for a in req.attachments if (x := _codex_input(a))]
             c["busy"], c["last"] = True, time.time()
             _emit(c, {"t": "sent"})
@@ -1195,7 +1198,9 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
             tid = (r.get("turn") or {}).get("id")
             if c["busy"]:  # a quick turn can be over before its start is answered here: then no turn runs
                 c["turn_id"] = tid
-            _meta_set(cid, turns=_meta().get(cid, {}).get("turns", []) + [tid])
+            # where in the log each turn began (its first message), for /rewind: a message steered into it comes later
+            known = _meta().get(cid, {})
+            _meta_set(cid, turns=known.get("turns", []) + [tid], turn_at={**(known.get("turn_at") or {}), str(tid): at})
             return {"ok": True}
         try:
             proc = await _ensure_claude(c, self_url)
@@ -1367,7 +1372,9 @@ async def history(chat: str) -> Dict[str, Any]:
 async def rewind(req: ChatRequest, request: Request) -> Dict[str, Any]:
     """Cut a chat back to just before the last message the person sent that ends with `text` (any last message
     without it), so it can be sent again: the reply goes too. A Claude Code session is backed up beside it first. No
-    match (already cut) is not an error."""
+    match (already cut) is not an error. A Codex chat's last turn is reverted whole (thread/revert drops the turn), so
+    a message the person sent into it while it ran goes with it: its log is cut back to where that turn began, and
+    `messages` says how many of the person's messages left it (the page takes as many off its thread)."""
     cid = _check_chat(req.chat)
     text = (req.text or "").strip()
     m = _meta().get(cid, {})
@@ -1384,16 +1391,17 @@ async def rewind(req: ChatRequest, request: Request) -> Dict[str, Any]:
         _cut_log(cid)
         return {"ok": True, "cut": last is not None}
     if agent == "codex":
-        turns = m.get("turns") or []
+        turns, turn_at = m.get("turns") or [], m.get("turn_at") or {}
+        at = None
         if turns and c is not None:
             try:
                 await _ensure_codex(c, _self_url(request))
                 await _rpc(c, "thread/revert", {"threadId": c["thread"], "beforeTurnId": turns[-1]})
             finally:
                 await _end_chat(c)
-            _meta_set(cid, turns=turns[:-1])
-        _cut_log(cid)
-        return {"ok": True, "cut": bool(turns)}
+            at = turn_at.get(str(turns[-1]))  # None for a turn taken before the log said where turns begin
+            _meta_set(cid, turns=turns[:-1], turn_at={k: v for k, v in turn_at.items() if k != str(turns[-1])})
+        return {"ok": True, "cut": bool(turns), "messages": _cut_log(cid, at)}
     if c is not None:  # a live process holds the conversation in memory; the next message resumes from the cut file
         await _end_chat(c)
     path = _session_file(cid)
@@ -1421,14 +1429,25 @@ async def rewind(req: ChatRequest, request: Request) -> Dict[str, Any]:
     return {"ok": True, "cut": True}
 
 
-def _cut_log(cid: str) -> None:
+def _cut_log(cid: str, at: Optional[int] = None) -> int:
+    """Cuts a codex or openai chat's replay log back to before a message the person sent: the one whose line begins at
+    byte `at` (where a Codex turn began, `turn_at`), else the last. What comes before is kept byte for byte, so where
+    each earlier turn began still holds. How many of the person's messages went."""
     path = logs_dir() / f"{cid}.jsonl"
     if not path.exists():
-        return
-    ev = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
-    last = max((i for i, e in enumerate(ev) if e.get("t") == "user"), default=None)
-    if last is not None:
-        path.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in ev[:last]), encoding="utf-8")
+        return 0
+    users, pos = [], 0
+    with open(path, "rb") as f:
+        for raw in f:
+            if raw.strip() and json.loads(raw).get("t") == "user":
+                users.append(pos)
+            pos += len(raw)
+    cut = at if at in users else (users[-1] if users else None)
+    if cut is None:
+        return 0
+    with open(path, "rb+") as f:
+        f.truncate(cut)
+    return sum(p >= cut for p in users)
 
 
 @router.post("/restart")

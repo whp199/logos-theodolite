@@ -25,7 +25,10 @@ so the chat is driven over real connections):
    approval it asks for declined, an interrupt, history from the log, a rewind (thread/revert); then its instructions
    changed: marked stale, once, with no new process, the first state event saying so; POST /restart ends its process
    group, a command it left running in the background with it, and says so, and the next message resumes the thread
-   with the new developerInstructions;
+   with the new developerInstructions; a message sent mid-turn joins the turn (turn/steer), and a rewind of that turn
+   reverts it whole, so the log loses both its messages, as the fake's thread does, and says how many went (2), and
+   the log and the thread stay in step through a message asked again and a second rewind, and for a chat whose turns
+   were taken before the log said where each began;
 6. an OpenAI-compatible endpoint, played by a fake server: its models; the tool loop (the request: the model, the
    tools, the key from its environment variable, the system prompt without the shell section; the tool calls
    streamed in pieces and run against the atlas in this process; the result sent back; the answer); arguments that
@@ -316,7 +319,13 @@ def log(kind, **kw):
         f.write(json.dumps({"kind": kind, **kw}) + "\n")
 log("start", argv=sys.argv[1:], cwd=os.getcwd(), codex_home=os.environ.get("CODEX_HOME"),
     env=sorted(k for k in json.loads(os.environ.get("FAKE_WATCH", "[]")) if k in os.environ))
-n = 0
+# each thread's turns as Codex keeps them ([turn id, the messages it took]), across its processes
+STATE = os.environ["FAKE_LOG"] + ".threads.json"
+state = json.load(open(STATE)) if os.path.exists(STATE) else {"threads": {}, "turns": 0}
+def keep(thread):
+    json.dump(state, open(STATE, "w"))
+    log("thread", id=thread, turns=state["threads"][thread])
+thread, running = None, None
 def send(obj):
     print(json.dumps(obj), flush=True)
 for line in sys.stdin:
@@ -331,23 +340,45 @@ for line in sys.stdin:
     if meth == "initialize":
         res({"serverInfo": {"name": "fake-codex"}})
     elif meth in ("thread/start", "thread/resume"):
-        res({"thread": {"id": p.get("threadId") or "thr_1"}})
+        thread = p.get("threadId") or f"thr_{len(state['threads']) + 1}"
+        state["threads"].setdefault(thread, [])
+        res({"thread": {"id": thread}})
     elif meth == "turn/start":
-        n += 1
-        tid = f"turn_{n}"
+        state["turns"] += 1
+        tid = f"turn_{state['turns']}"
         res({"turn": {"id": tid}})
+        state["threads"][thread].append([tid, [p["input"][0]["text"]]])
+        keep(thread)
         if "background" in p["input"][0]["text"]:  # a command left running, in the app-server's process group
             log("job", pid=subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"]).pid)
         note("turn/started", {"turn": {"id": tid}})
+        if "slowly" in p["input"][0]["text"]:  # a turn that runs until a message is steered into it
+            running = tid
+            note("item/agentMessage/delta", {"itemId": "m1", "delta": "Working "})
+            continue
         note("item/agentMessage/delta", {"itemId": "m1", "delta": "Reading "})
         note("item/agentMessage/delta", {"itemId": "m1", "delta": "the neuron."})
-        send({"jsonrpc": "2.0", "id": 900 + n, "method": "item/commandExecution/requestApproval", "params": {"command": "rm -rf /"}})
+        send({"jsonrpc": "2.0", "id": 900 + state["turns"], "method": "item/commandExecution/requestApproval", "params": {"command": "rm -rf /"}})
         item = {"type": "mcpToolCall", "id": "it1", "tool": "neuron", "arguments": {"layer": 3, "n": 5}}
         note("item/started", {"item": item})
         note("item/completed", {"item": {**item, "status": "completed", "result": {"content": [{"type": "text", "text": "{\"neuron\": \"L3 N5\"}"}]}}})
         note("item/agentMessage/delta", {"itemId": "m2", "delta": "Done."})
         note("turn/completed", {"turn": {"id": tid, "status": "completed"}})
-    elif meth in ("turn/steer", "turn/interrupt", "thread/revert"):
+    elif meth == "turn/steer" and running and p.get("expectedTurnId") == running:  # it joins the running turn
+        res({"turnId": running})
+        state["threads"][thread][-1][1].append(p["input"][0]["text"])
+        keep(thread)
+        note("item/agentMessage/delta", {"itemId": "m1", "delta": "on both."})
+        note("turn/completed", {"turn": {"id": running, "status": "completed"}})
+        running = None
+    elif meth == "thread/revert":  # the turn named and every later one leave the thread
+        turns = state["threads"].get(p["threadId"], [])
+        del turns[next((i for i, t in enumerate(turns) if t[0] == p["beforeTurnId"]), len(turns)):]
+        keep(p["threadId"])
+        res({})
+    elif meth == "turn/steer":  # no such turn running
+        send({"jsonrpc": "2.0", "id": mid, "error": {"code": -32600, "message": "expectedTurnId is not the active turn"}})
+    elif meth == "turn/interrupt":
         res({})
     else:
         send({"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": meth}})
@@ -788,7 +819,8 @@ def run_checks() -> int:
     check(hist["agent"] == "codex" and [e["t"] for e in hist["events"]][:2] == ["user", "text"] and hist["events"][0]["text"] == "Read L3 N5.", "history from the log")
     r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat2}).json()
     rev = [x for x in clog() if x["kind"] == "rpc" and x["method"] == "thread/revert"]
-    check(r == {"ok": True, "cut": True} and rev and rev[-1]["params"] == {"threadId": "thr_1", "beforeTurnId": "turn_1"}, "a rewind reverts the thread's last turn")
+    check(r == {"ok": True, "cut": True, "messages": 1} and rev and rev[-1]["params"] == {"threadId": "thr_1", "beforeTurnId": "turn_1"},
+          f"a rewind reverts the thread's last turn: {r}")
     check(hc.get("/api/atlas/scientist/history", params={"chat": chat2}).json()["events"] == [] and
           json.loads((sc.scientist_dir() / "chats.json").read_text())[chat2]["turns"] == [], "and cuts the log")
     # its instructions changed: Codex may have left a command running (nohup keeps it in the process group), so the
@@ -835,7 +867,52 @@ def run_checks() -> int:
           "the next message resumes the thread with the new developerInstructions")
     check(hc.post("/api/atlas/scientist/restart", json={"chat": str(uuid.uuid4())}).json() == {"ok": True, "ended": False}, "/restart on a chat with no process")
     ev.stop = True
-    section("Codex: its home, the thread, a turn, an approval declined, history, rewind, changed instructions", before)
+    # a message sent while a turn runs joins it (turn/steer), and Codex reverts a turn whole (thread/revert drops it and
+    # every later one): a rewind of that turn takes both its messages off the log, as off the thread, and says how many
+    # went, for the page to take as many off its own thread
+    def meta_of(cid_: str) -> Dict[str, Any]:
+        return json.loads((sc.scientist_dir() / "chats.json").read_text())[cid_]
+
+    def said(cid_: str) -> List[str]:
+        return [e["text"] for e in hc.get("/api/atlas/scientist/history", params={"chat": cid_}).json()["events"] if e["t"] == "user"]
+
+    def thread_of(cid_: str) -> List[str]:
+        """What Codex's thread holds for the chat (the fake's own record), message by message."""
+        turns_ = json.loads(Path(f"{codex_log}.threads.json").read_text())["threads"][meta_of(cid_)["thread"]]
+        return [t for _, ts in turns_ for t in ts]
+
+    chat7 = str(uuid.uuid4())
+    ev7 = Events(srv.url, chat7)
+    msgs = ["Read L3 N5.", "Now read L3 N6 slowly.", "And compare it with L3 N7."]
+    k0 = ev7.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[0], "agent": "codex"})
+    ev7.wait(lambda e: e["t"] == "done", 60, k0)
+    k1 = ev7.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[1]})
+    ev7.wait(lambda e: e["t"] == "text", 30, k1)
+    r = hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[2]}).json()
+    ev7.wait(lambda e: e["t"] == "done", 60, k1)
+    steered = [x for x in clog() if x["kind"] == "rpc" and x["method"] == "turn/steer"]
+    check(r == {"ok": True} and steered and steered[-1]["params"]["input"][0]["text"] == msgs[2] and len(meta_of(chat7)["turns"]) == 2
+          and said(chat7) == msgs == thread_of(chat7), "a message sent mid-turn joins the turn (turn/steer): two turns, three messages, in the log as in the thread")
+    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7, "text": msgs[2]}).json()
+    check(r == {"ok": True, "cut": True, "messages": 2} and said(chat7) == msgs[:1] == thread_of(chat7) and len(meta_of(chat7)["turn_at"]) == 1,
+          f"a rewind of that turn reverts it whole, and the log loses both its messages, as the thread does: {r} {said(chat7)} {thread_of(chat7)}")
+    k2 = ev7.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[2]})  # asked again: the last message alone
+    ev7.wait(lambda e: e["t"] == "done", 60, k2)
+    check(said(chat7) == [msgs[0], msgs[2]] == thread_of(chat7), "asked again, the log and the thread agree")
+    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7, "text": msgs[2]}).json()
+    check(r == {"ok": True, "cut": True, "messages": 1} and said(chat7) == msgs[:1] == thread_of(chat7), f"and a second rewind stays in step: {r}")
+    k3 = ev7.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[2]})
+    ev7.wait(lambda e: e["t"] == "done", 60, k3)
+    sc._meta_set(chat7, turn_at=None)  # a chat whose turns were taken before the log said where each began
+    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7}).json()
+    check(r == {"ok": True, "cut": True, "messages": 1} and said(chat7) == msgs[:1] == thread_of(chat7),
+          f"without where its turns began, the log is cut at its last message, as before: {r}")
+    ev7.stop = True
+    section("Codex: its home, the thread, a turn, an approval declined, history, rewind, changed instructions, a steered turn rewound", before)
 
     # --------------------------------------------------------------------------- 6. an OpenAI-compatible endpoint
     before = len(failures)
