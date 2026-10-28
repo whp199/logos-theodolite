@@ -17,10 +17,10 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    holds w, transformers' own GGUF reader reads w for gemma4 and w - 1 under Gemma 3's rule, and a file holding w + 1
    does not give the stand-in's forward); a matching config.json taken, one that differs refused, and one standing in
    for keys or the rope_freqs tensor a file leaves out (which alone is refused, asking for it); an IQ tensor, a
-   mixture of experts, per-layer embeddings and another arch refused; the provenance (size, the header's and both
-   ends' sha256, the tensor types, a fingerprint that moves when a byte of the data does); the tokenizer from the
-   file's own metadata encodes as the stand-in's does; the 31B's metadata, as llama.cpp writes it, built on the meta
-   device into its 410 linear layers and 29.287 billion quantised weights;
+   mixture of experts, per-layer embeddings and another arch refused; the provenance (size, the sha256 of the header
+   and of the data's first and last MiB, the tensor types, a fingerprint that moves when a byte at either end of the
+   data does); the tokenizer from the file's own metadata encodes as the stand-in's does; the 31B's metadata, as
+   llama.cpp writes it, built on the meta device into its 410 linear layers and 29.287 billion quantised weights;
 4. GGUFRuntime on the Q4_0 file, packed, against the stand-in's runtime carrying the same numbers: every accessor that
    reads the packing, write_col_norms by hand, a push written in three voices and a neuron read, the lens-free parts
    of a sighting (the rows it captures, the naked eye's readout), a vault DELETE on a packed layer, a column written
@@ -538,7 +538,7 @@ def run_checks(tmp: Path) -> int:
     r = gguf.GGUFReader(str(path))
     check(pv["size"] == len(data) and pv["header_bytes"] == r.data_offset
           and pv["sha256_header"] == hashlib.sha256(data[: r.data_offset]).hexdigest()
-          and pv["sha256_first_mib"] == hashlib.sha256(data[: 1 << 20]).hexdigest()
+          and pv["sha256_data_first_mib"] == hashlib.sha256(data[r.data_offset : r.data_offset + (1 << 20)]).hexdigest()
           and pv["sha256_last_mib"] == hashlib.sha256(data[-(1 << 20):]).hexdigest(), "provenance: the size and the three sha256")
     check(pv["tensor_types"] == dict(Counter(t.tensor_type.name for t in r.tensors)) and pv["tensors"] == len(r.tensors)
           and pv["architecture"] == "gemma4" and pv["metadata"]["gemma4.block_count"] == 6 and "general.file_type" in pv["metadata"],
@@ -550,6 +550,12 @@ def run_checks(tmp: Path) -> int:
     flipped.write_bytes(bytes(b))
     pf = gm.provenance(flipped)
     check(pf["id"] != pv["id"] and pf["sha256_header"] == pv["sha256_header"], "provenance: one bit of the last tensor flipped moves the fingerprint, not the header's sha256")
+    b = bytearray(data)
+    b[r.data_offset] ^= 1
+    flipped.write_bytes(bytes(b))
+    pf = gm.provenance(flipped)
+    check(pf["id"] != pv["id"] and pf["sha256_header"] == pv["sha256_header"] and pf["sha256_data_first_mib"] != pv["sha256_data_first_mib"],
+          "provenance: one bit of the first tensor flipped moves the fingerprint and the data's first MiB, not the header's sha256")
     section("the provenance record", before)
 
     before = len(failures)
@@ -577,6 +583,7 @@ def run_checks(tmp: Path) -> int:
     rt_s = asi.stand_in_runtime(ref, tok)
     check(rt_g.model_id == f"gguf:stand-in-Q4_0.gguf#{rt_g.weights_card['id']}@cpu/float32"
           and rt_g.weights_card["linears"] == "packed" and rt_g.weights_card["layers_as"] == {"Q4_0 packed": 41}
+          and "path" not in rt_g.weights_card and str(tmp) not in json.dumps(rt_g.weights_card)
           and rt_g.lens_card() is None and rt_g.end_of_turn_ids() == rt_s.end_of_turn_ids() and rt_g.sliding_window == asi.WINDOW,
           f"loaded: {rt_g.model_id}, {rt_g.weights_card['layers_as']}, no lens, the stand-in's turn ends and window")
     lm_g, lm_s = language_model(rt_g.hf_model), language_model(rt_s.hf_model)

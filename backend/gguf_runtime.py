@@ -18,14 +18,15 @@ checkpoint's packing:
   the 31B.
 Every other method is the pinned runtime's own, unchanged (the sightings, the writing, the contrasts, the lens card).
 
-The model id it gives every reading (`model_id`, which every index, census run and lens card records, which a census
-run must share to be continued, and which the server compares before it reads an index) is `gguf:<file name>#<fingerprint>`
+The model id it gives every reading (`model_id`, which every index, census run and lens card records, which a census run
+must share to be continued, and which the server compares before it reads an index) is `gguf:<file name>#<fingerprint>`
 (`gguf_model.gguf_stem_id`), with `@<device>/<dtype>` after it off the GPU or in float32
 (`runtime_factory.reading_class`: `@cpu/bfloat16`, `@cpu/float32`, `@cuda/float32`), so a reading is not taken for
-another file's, for the W4A16 checkpoint's, or for one of another numeric class. How the linear layers are held
-(packed, resident or dense) is not in it: the three hold the same weight, and give the same forward bit for bit
-(scripts/check_gguf.py). `weights_card` is the file's provenance with how the model was built and where its tokenizer
-came from; GET /api/health sends it ("weights").
+another file's (as far as the fingerprint tells files apart: `gguf_model.provenance`), for the W4A16 checkpoint's, or
+for one of another numeric class. How the linear layers are held (packed, resident or dense) is not in it: the three
+hold the same weight, and give the same forward bit for bit (scripts/check_gguf.py). `weights_card` is the file's
+provenance with how the model was built and where its tokenizer came from (the file's name, not its path, which only the
+log names); GET /api/health sends it ("weights").
 
 scripts/check_gguf.py drives it on the stand-in of scripts/atlas_stand_in.py written to tiny GGUF files.
 """
@@ -97,8 +98,8 @@ class GGUFRuntime(er.TheodoliteRuntime):
         # the pinned load records transformers' missing keys here; the GGUF builder refuses a file that leaves any
         setattr(hf_model, "ie_missing_keys", frozenset())
         self.model_id = gm.gguf_stem_id(self.gguf_path, prov) + reading_class(self.device, self.dtype)
-        self.weights_card = {**prov, "path": str(self.gguf_path), **built, "tokenizer": tok_rec,
-                             "runtime": type(self).__name__}
+        # the file's name, not its path: the card goes out over HTTP (GET /api/health), and the log above names the path
+        self.weights_card = {**prov, **built, "tokenizer": tok_rec, "runtime": type(self).__name__}
 
         self.eager_model = EagerModel(
             self.model_id,

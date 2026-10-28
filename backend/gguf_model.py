@@ -28,8 +28,8 @@ separate mmproj file), and the instrument drops them anyway.
 
 `load_tokenizer` takes the tokenizer from a Hugging Face repo when it is cached here and its vocabulary is the file's,
 else builds it from the file's own metadata through transformers. `provenance` is the record every reading taken on
-the model carries (`GGUFRuntime.weights_card`): the file's size, sha256 of its header and of its first and last MiB,
-the tensor types it holds, its arch and the metadata that matter.
+the model carries (`GGUFRuntime.weights_card`): the file's size, sha256 of its header, of the first MiB of its tensor
+data and of its last MiB, the tensor types it holds, its arch and the metadata that matter.
 
 `write_gemma4_gguf` writes a Gemma 4 text model in llama.cpp's layout (the keys and tensor names its converter writes,
 norms unshifted, `rope_freqs` for the proportional rope of the full layers): for the CPU checks, which write the
@@ -514,10 +514,11 @@ def _pieces(names: Sequence[str]) -> List[str]:
 def load_tokenizer(path: Union[str, Path], repos: Sequence[str] = (), reader: Any = None) -> Tuple[Any, Dict[str, Any]]:
     """(tokenizer, a record of where it came from). From the first of `repos` that is in the local Hugging Face cache
     and holds the file's vocabulary piece for piece (the "▁" of SentencePiece read as a space on both sides);
-    else from the file's own metadata through transformers (`AutoTokenizer.from_pretrained(folder, gguf_file=name)`),
-    which for Gemma 4 builds a `GemmaTokenizer` from the file's pieces and merges (whether that one splits text exactly
-    as the repo's tokenizer.json does is not checked here: no Gemma 4 tokenizer is cached on the machine this was
-    written on)."""
+    else from the file's own metadata through transformers' GGUF tokenizer steps
+    (`integrations.gguf.get_gguf_tokenizer`, then `convert_gguf_tokenizer`, into a `PreTrainedTokenizerFast`; not
+    `AutoTokenizer.from_pretrained(folder, gguf_file=name)`, which fails on a llama.cpp Gemma 4: see below), which for
+    Gemma 4 build it from the file's pieces and merges (whether that one splits text exactly as the repo's
+    tokenizer.json does is not checked here: no Gemma 4 tokenizer is cached on the machine this was written on)."""
     from transformers import AutoTokenizer
 
     reader = reader if reader is not None else open_gguf(path)
@@ -578,16 +579,18 @@ _GENERAL_KEYS = ("general.name", "general.basename", "general.finetune", "genera
 
 def provenance(path: Union[str, Path], reader: Any = None) -> Dict[str, Any]:
     """The file a model was read from, as every reading on it records it: its name and size; sha256 of its header
-    (the bytes before the tensor data: every key and every tensor's name, type, shape and offset), of its first MiB
-    and of its last MiB; `id`, a short fingerprint of those four; the tensor types and how many of each; its arch and
-    the metadata that matter. The whole file is not hashed (an 18 GB file would take minutes); the header and the two
-    ends change with any change of key, tensor table or the data at either end."""
+    (the bytes before the tensor data: every key and every tensor's name, type, shape and offset), of the first MiB of
+    its tensor data (the header itself runs to some MiB on the 31B: its vocabulary is among the keys) and of its last
+    MiB; `id`, a short fingerprint of those four; the tensor types and how many of each; its arch and the metadata that
+    matter. The whole file is not hashed (an 18 GB file would take minutes); the header and the two ends of the data
+    change with any change of key, tensor table or the data in its first or last MiB, not with one in between."""
     p = Path(path)
     reader = reader if reader is not None else open_gguf(p)
     size = p.stat().st_size
+    start = int(reader.data_offset)
     with open(p, "rb") as f:
-        head = _sha256_range(f, 0, int(reader.data_offset))
-        first = _sha256_range(f, 0, min(MIB, size))
+        head = _sha256_range(f, 0, start)
+        first = _sha256_range(f, start, min(MIB, size - start))
         last = _sha256_range(f, max(0, size - MIB), min(MIB, size))
     meta = read_metadata(reader)
     types = Counter(type_name(t.tensor_type) for t in reader.tensors)
@@ -601,7 +604,7 @@ def provenance(path: Union[str, Path], reader: Any = None) -> Dict[str, Any]:
         "id": fid,
         "sha256_header": head,
         "header_bytes": int(reader.data_offset),
-        "sha256_first_mib": first,
+        "sha256_data_first_mib": first,
         "sha256_last_mib": last,
         "architecture": meta.get("general.architecture"),
         "name": meta.get("general.name"),

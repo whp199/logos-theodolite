@@ -782,10 +782,12 @@ reads them back unchanged, gets the stand-in's own forward, and shows a file hol
 `compare_gguf_ct.py` names a file whose norms sit exactly 1 above the checkpoint's.
 
 **Provenance** (`gguf_model.provenance`, the `weights` card): the file's name and size, sha256 of its header (every key
-and every tensor's name, type, shape and offset), of its first MiB and of its last MiB, a fingerprint of the four, the
-count of each tensor type, the arch and the metadata that matter, and how the model was built (config source, linear
-layers, dtype, device) and where its tokenizer came from. The whole file is not hashed: the fingerprint moves with any
-key, tensor table or byte at either end, not with a change in the middle.
+and every tensor's name, type, shape and offset), of the first MiB of its tensor data (the header alone is some MiB on
+the 31B, its 262,144-piece vocabulary among the keys: inferred, no 31B GGUF read here) and of its last MiB, a
+fingerprint of the four, the count of each tensor type, the arch and the metadata that matter, and how the model was
+built (config source, linear layers, dtype, device) and where its tokenizer came from; not the file's path, which
+stays in the log. The whole file is not hashed: the fingerprint moves with any key, tensor table or byte in the first or
+last MiB of the data, not with a change in between.
 
 **The tokenizer.** From `google/gemma-4-31B-it-qat-w4a16-ct` or `google/gemma-4-31b-it` when cached here and its pieces
 are the file's; else from the file's own metadata through transformers' GGUF tokenizer converter. transformers'
@@ -819,8 +821,10 @@ and its model id says so (`@cpu/bfloat16`).
 kernel's out-of-memory killer, so it is not refused in plain words); `_GPU_LOCK` is named for the GPU but serialises the
 model wherever it runs; `scripts/verify_*.py` are GPU checks by design. In the pinned `engine_runtime.py`, left as it is:
 `load()` (`:833`) and every sighting (`:2393`) call `torch.cuda.max_memory_allocated(self.device)` whenever CUDA is
-available, which for a CPU device on a machine with a GPU would raise (read from torch's code, not seen: there is no GPU
-here), hence the hidden GPUs; the default device is `cuda:0` (`:741`); the J++ lens always goes to the runtime's device
+available, which for a CPU device torch 2.14.1 answers with 0 while CUDA is not initialised in the process, and refuses
+once it is (`memory_stats_as_nested_dict`; read from torch's code, not seen: there is no GPU here), so the GPUs are
+hidden as a precaution against a library initialising CUDA (a process that already has is warned); the default device
+is `cuda:0` (`:741`); the J++ lens always goes to the runtime's device
 (`:879`); the norm loop counts 60 layers (`:818`); the accessors read `weight_packed` (`:990-1077`, `:1252`); the sweep's
 shapes are the 31B's (`N_LAYERS`, `D_MODEL`, `D_FF` from the pinned `theodolite_math.py`). Changing any of these in the
 pinned file would make `R4_common.pinned_differ()` name it, and R4 reruns would then go from R4's registered commit, as
