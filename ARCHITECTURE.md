@@ -703,6 +703,7 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/card?layer`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers, its statistics and the run's card; the card alone (where the doses and the push unit come from, the unit a dose counts in, how loudly the next layer reads controls against neurons, how many neurons beat every control and how many would by chance, the card it was written on and whether its parts mixed runtime classes, a partial merge, a retest's stage, the writer's floor where measured); one answer; the layout of the run's answers |
 | `GET /notes`, `POST /notes` | names and notes (`backend/field_notes.py`): `{kind: "neuron" \| "head", layer, index, name?, note?, by}`; an omitted field is kept, both empty forgets the entry. A neuron folio's name is this name, by `reader` |
 | `GET /fieldbook?layer&n`, `POST /fieldbook` | a neuron folio's field book, per face, in `field_book.json` beside the notes (`$THEODOLITE_FIELD_BOOK`; a file of its own, which a server from before never reads or writes): `{jobs: "one" \| "two" \| "unknown" \| null, pattern (≤ 4,000 characters), checked: {other_pole, long_contexts, steered, readers_traced}, by, at}`; given a neuron, both faces (`faces`, null where nothing is said) and its entry in the notes (`notes`); given neither, the whole book. POST `{layer, n, face, jobs?, pattern?, checked?, by}`: a field left out is kept (`checked` may give some ticks only), a face with nothing said is forgotten |
+| `GET /proposals`, `POST /proposals`, `POST /proposals/keep`, `POST /proposals/discard` | the names and notes the scientist proposes (its `set_name`, `write_note`), waiting for the person in `field_proposals.json` beside the notes (`$THEODOLITE_FIELD_PROPOSALS`): `{kind, layer, index, name?, note?, chat}`, checked as a note is (an empty string proposes clearing), the reply naming the entry the notes keep now. Nothing reads a proposal as a name or note (the routes above, the map, search, later chats). Keep `{kind, layer, index, part?}` writes it to the notes as the scientist's (`name_by` / `note_by` "scientist") and removes it; discard removes it; `part` is "name" or "note", else both; 404 when none waits |
 
 **The census** (`backend/census.py`; `scripts/census_run.py` on the GPU, `scripts/census_tools.py` on the CPU). For one
 layer, every neuron (or a range) and some random directions are pushed as above on the design's questions and doses
@@ -758,7 +759,7 @@ weights), then a hedged verdict per sign on where neurons start to move more ans
 breaks. The server keeps the last two layers' answers it opened.
 
 `/api/health` carries an `atlas` card (routes, the index folder, which index files exist, the census layers, the
-notes' file and the field book's) just before `label_gate` and `lens`. scripts/check_atlas_ops.py, check_atlas_index.py, check_atlas_api.py
+notes' file, the field book's and the proposals') just before `label_gate` and `lens`. scripts/check_atlas_ops.py, check_atlas_index.py, check_atlas_api.py
 and check_census.py check all of this on the CPU stand-in (`scripts/atlas_stand_in.py`).
 
 ### 4.8 The scientist (`backend/scientist_chat.py`, `/api/atlas/scientist/*`)
@@ -841,7 +842,8 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 
 The tools (`backend/scientist_tools.py`, 30, standard library only) take and give layers in the pages' count (L54 N15491)
 and call the atlas's routes: reading the atlas (`overview`, `neuron`, `passages`, `rollouts`, `cone`, `web_summary`,
-`search_lens`, `top_units`), names and notes (`set_name`, `write_note`, `names`), live readings (`steer`, `activations`, `compare`,
+`search_lens`, `top_units`), names and notes (`set_name` and `write_note` propose, for the person to keep or discard on the
+page; `names` lists those kept), live readings (`steer`, `activations`, `compare`,
 `logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), and the
 person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highlight_neurons`, `annotate_neurons`,
 `show_text`, `show_search`). scripts/check_scientist.py checks the tools, the MCP server and all three backends against

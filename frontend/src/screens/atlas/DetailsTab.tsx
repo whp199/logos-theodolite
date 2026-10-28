@@ -12,7 +12,7 @@ import { wp } from "../../lib/words";
 import { href } from "../../router";
 import type { BookFace, BookReply } from "../NeuronFolio/saved";
 import { cite, get, noteKey, post, type HeadInfo, type Link, type SteerLens } from "./api";
-import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, words } from "./parts";
+import { CensusProvenance, ErrorLine, FaceLine, gateOf, NameMark, overCeiling, ProposalLine, words } from "./parts";
 import { goToNeuron, hoverCache, openHead, remember, saveNote, theMap, useAtlas } from "./state";
 
 const CensusStats: React.FC = () => {
@@ -451,6 +451,7 @@ const NoteField: React.FC = () => {
             ? `${(entry.note_by ?? entry.by) === "scientist" ? "the scientist" : "you"}, ${new Date(entry.at).toLocaleString()}`
             : "kept on the server, beside the neuron, when you leave the box")}
       </p>
+      <ProposalLine layer={f.layer} n={f.n} part="note" />
       <IfApparatus>{notes ? <p className="muted atlas-small mono-wrap">{notes.file}</p> : null}</IfApparatus>
     </section>
   );

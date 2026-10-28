@@ -146,11 +146,12 @@ STAND_IN_MODEL_ID = "stand-in (scripts/atlas_stand_in.py: 6 layers, random weigh
 
 
 def use_stand_in_atlas() -> Path:
-    """Point this process's atlas folder at `<atlas folder>/stand-in` (indexes, census runs and field notes all under
-    it), so nothing a stand-in run builds or writes lands among the model's. Returns the folder."""
+    """Point this process's atlas folder at `<atlas folder>/stand-in` (indexes, census runs, field notes, the folios'
+    field book and the scientist's proposals all under it), so nothing a stand-in run builds or writes lands among the
+    model's. Returns the folder."""
     from backend.atlas_index import ATLAS_DIR_ENV, atlas_dir
     from backend.census import CENSUS_DIR_ENV
-    from backend.field_notes import FIELD_NOTES_ENV
+    from backend.field_notes import FIELD_BOOK_ENV, FIELD_NOTES_ENV, FIELD_PROPOSALS_ENV
 
     root = atlas_dir()
     if root.name != "stand-in":
@@ -158,6 +159,8 @@ def use_stand_in_atlas() -> Path:
     os.environ[ATLAS_DIR_ENV] = str(root)
     os.environ[CENSUS_DIR_ENV] = str(root / "census" / "runs")
     os.environ[FIELD_NOTES_ENV] = str(root / "field_notes.json")
+    os.environ[FIELD_BOOK_ENV] = str(root / "field_book.json")
+    os.environ[FIELD_PROPOSALS_ENV] = str(root / "field_proposals.json")
     return root
 
 

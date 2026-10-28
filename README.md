@@ -513,7 +513,9 @@ elsewhere: time a pilot with `--layers` or `--neurons 0-255` on any other card f
 kept in `$THEODOLITE_FIELD_NOTES`, else `~/.local/share/theodolite/field_notes.json`. A neuron folio’s name is that same
 name, and its field book (each face’s jobs, its pattern and the four ticks) is kept beside it in `field_book.json`
 (`$THEODOLITE_FIELD_BOOK`), whenever the server answers for the neuron; with no server the folio keeps both in the
-browser, says so, and offers once to carry them to the server. To try the page without the GPU or the
+browser, says so, and offers once to carry them to the server. The names and notes the scientist writes are proposals,
+in `field_proposals.json` beside them (`$THEODOLITE_FIELD_PROPOSALS`), until you keep or discard them on the atlas page:
+nothing reads one before it is kept, later chats included. To try the page without the GPU or the
 weights, `.venv/bin/python scripts/atlas_stand_in.py --serve 8765` serves the whole instrument on a tiny random Gemma 4
 (build its indexes with `atlas_build.py all --stand-in`, and its passages with `atlas_build.py passages --stand-in`);
 what it shows is random, and the page says so.

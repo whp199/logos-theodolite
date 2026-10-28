@@ -29,6 +29,18 @@ sentence or two (at most 4,000 characters), `checked` its four ticks {"other_pol
 "readers_traced"}, each true or false, `by` who wrote the face last and `at` when. A face with nothing said is
 forgotten. The folio's name for a neuron is the notes' `name` above, by "reader" (`GET` and `POST /api/atlas/fieldbook`).
 
+The names and notes the scientist writes (backend/scientist_tools.py `set_name`, `write_note`) are proposals until the
+person keeps them, in a third file, `$THEODOLITE_FIELD_PROPOSALS`, else `field_proposals.json` beside the notes:
+
+    {"version": 1,
+     "neurons": {"<layer>:<neuron>": {"name"?, "note"?, "chat", "at"}},
+     "heads":   {"<layer>:<head>":   {"name"?, "note"?, "chat", "at"}}}
+
+(an empty name or note proposes clearing it; `chat` is the chat that proposed it). Nothing reads a proposal as a name:
+the atlas's lists, search, tooltips and map, and later chats, read only the notes above. Keeping one writes it to the
+notes as the scientist's (`name_by`, `note_by` "scientist") and removes it; discarding removes it (`GET` and `POST
+/api/atlas/proposals`, `POST /api/atlas/proposals/keep` and `/discard`).
+
 Writes take this module's own lock (never the GPU's: notes are written while the model works) and replace the file
 atomically (`saved_prompts._write_atomic`). A file that cannot be read is moved aside to `<file>.corrupt-<UTC stamp>`,
 never written over, and the next reply says so once (`warning`), as the saved prompts do.
@@ -50,11 +62,14 @@ logger = logging.getLogger("theodolite.field_notes")
 
 FIELD_NOTES_ENV = "THEODOLITE_FIELD_NOTES"
 FIELD_BOOK_ENV = "THEODOLITE_FIELD_BOOK"
+FIELD_PROPOSALS_ENV = "THEODOLITE_FIELD_PROPOSALS"
 FILE_VERSION = 1
 MAX_NAME = 120
 MAX_NOTE = 4000
 MAX_PATTERN = 4000
 MAX_ENTRIES = 20000
+MAX_PROPOSALS = 5000
+MAX_CHAT = 200
 KINDS = {"neuron": "neurons", "head": "heads"}
 WRITERS = ("reader", "scientist")
 FACES = ("+", "-")
@@ -62,7 +77,7 @@ JOBS = ("one", "two", "unknown")
 TICKS = ("other_pole", "long_contexts", "steered", "readers_traced")
 
 _LOCK = asyncio.Lock()
-# each file's warning, kept for the next reply: "notes", "book"
+# each file's warning, kept for the next reply: "notes", "book", "proposals"
 _pending: Dict[str, str] = {}
 # the notes as last read, per file, with the file's (mtime, size) then: every hover of the atlas reads them
 _CACHE: Dict[str, Tuple[Tuple[int, int], Dict[str, Any]]] = {}
@@ -83,6 +98,14 @@ def field_book_path() -> Path:
     if env:
         return Path(env).expanduser()
     return field_notes_path().with_name("field_book.json")
+
+
+def field_proposals_path() -> Path:
+    """Where the scientist's proposals wait: `$THEODOLITE_FIELD_PROPOSALS`, else beside the notes."""
+    env = os.environ.get(FIELD_PROPOSALS_ENV)
+    if env:
+        return Path(env).expanduser()
+    return field_notes_path().with_name("field_proposals.json")
 
 
 def _utc_now() -> str:
@@ -114,7 +137,8 @@ def _valid_entry(e: Any) -> bool:
 
 
 # what each file is called in its warning, and what starts empty when it is moved aside
-_WHAT = {"notes": ("field notes", "the notes start"), "book": ("field book", "the field book starts")}
+_WHAT = {"notes": ("field notes", "the notes start"), "book": ("field book", "the field book starts"),
+         "proposals": ("scientist's proposals", "the proposals start")}
 
 
 def _move_aside(path: Path, why: str, which: str = "notes") -> None:
@@ -379,3 +403,93 @@ async def all_book(path: Optional[Path] = None) -> Dict[str, Any]:
     """The whole field book, read under the module's lock."""
     async with _LOCK:
         return read_book(path or field_book_path())
+
+
+# ---------------------------------------------------------------------------------------- the scientist's proposals
+
+
+def _valid_proposal(e: Any) -> bool:
+    if not isinstance(e, dict) or not set(e) <= {"name", "note", "chat", "at"} or not ("name" in e or "note" in e):
+        return False
+    texts = [e[f] for f in ("name", "note", "chat", "at") if f in e]
+    return all(isinstance(t, str) and not _has_broken(t) for t in texts) and isinstance(e.get("chat"), str) and isinstance(e.get("at"), str)
+
+
+def read_proposals(path: Optional[Path] = None) -> Dict[str, Any]:
+    """The proposals waiting for the person; empty when there is no file yet. An unreadable file is moved aside."""
+    path = path or field_proposals_path()
+    data = _read_json(path, "proposals", "proposals")
+    if data is None:
+        return _empty()
+    out = _empty()
+    for key in KINDS.values():
+        entries = data.get(key, {})
+        if not isinstance(entries, dict) or not all(_valid_key(k) and _valid_proposal(e) for k, e in entries.items()):
+            _move_aside(path, f"a malformed entry in its {key}", "proposals")
+            return _empty()
+        out[key] = {k: {f: e[f] for f in ("name", "note", "chat", "at") if f in e} for k, e in entries.items()}
+    return out
+
+
+async def propose(kind: str, layer: int, index: int, name: Optional[str], note: Optional[str], chat: str,
+                  path: Optional[Path] = None) -> Dict[str, Any]:
+    """Keep a proposal of the scientist's (its name or note as `check_note` cleaned them, None where it proposes
+    neither): a later one replaces the earlier one's name or note, and leaves the other. Nothing in the notes changes.
+    Returns the proposal as it waits."""
+    path = path or field_proposals_path()
+    key = note_key(layer, index)
+    table = KINDS[kind]
+    async with _LOCK:
+        data = read_proposals(path)
+        entries: Dict[str, Any] = data[table]
+        if key not in entries and sum(len(v) for v in (data["neurons"], data["heads"])) >= MAX_PROPOSALS:
+            raise ValueError(f"{MAX_PROPOSALS} proposals already wait for the person; ask them to keep or discard some first.")
+        e = dict(entries.get(key) or {})
+        if name is not None:
+            e["name"] = name
+        if note is not None:
+            e["note"] = note
+        e.update({"chat": str(chat)[:MAX_CHAT], "at": _utc_now()})
+        entries[key] = e
+        _write_atomic(path, data)
+        return e
+
+
+async def decide(kind: str, layer: int, index: int, keep: bool, part: Optional[str] = None,
+                 path: Optional[Path] = None, notes_path: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """The person's answer to a proposal: kept, its name or note (`part`; both when None) is written to the notes as the
+    scientist's (`name_by`, `note_by` "scientist"), as POST /notes would write it; kept or discarded, that part leaves
+    the proposals. None when no such proposal waits. Returns {"parts", "entry" (the notes' entry, when kept),
+    "proposal" (what still waits, or None)}."""
+    path = path or field_proposals_path()
+    notes_path = notes_path or field_notes_path()
+    key = note_key(layer, index)
+    table = KINDS[kind]
+    async with _LOCK:
+        data = read_proposals(path)
+        e = data[table].get(key)
+        if e is None:
+            return None
+        parts = [p for p in ("name", "note") if p in e and (part is None or part == p)]
+        if not parts:
+            return None
+        entry = None
+        if keep:
+            notes = read_notes(notes_path)
+            entry = _put_note(notes, kind, key, e["name"] if "name" in parts else None, e["note"] if "note" in parts else None, "scientist")
+            _write_atomic(notes_path, notes)
+            _CACHE.pop(str(notes_path), None)
+        rest = {f: v for f, v in e.items() if f not in parts}
+        if "name" in rest or "note" in rest:
+            data[table][key] = rest
+        else:
+            data[table].pop(key, None)
+            rest = None
+        _write_atomic(path, data)
+        return {"parts": parts, "entry": entry, "proposal": rest}
+
+
+async def all_proposals(path: Optional[Path] = None) -> Dict[str, Any]:
+    """Every proposal waiting for the person, read under the module's lock."""
+    async with _LOCK:
+        return read_proposals(path or field_proposals_path())

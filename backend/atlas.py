@@ -116,12 +116,12 @@ def bind(get_state: Callable[[], Tuple[Any, Any]], gpu_lock: asyncio.Lock) -> No
 def health_card(rt: Any) -> Dict[str, Any]:
     """What /api/health says of the atlas: that its routes exist here, which indexes are on disk (by file: none is
     loaded for it; GET /arch says whether each fits this model), which layers have a census of this model, and where
-    the field notes and the folio's field book are kept."""
+    the field notes, the folio's field book and the scientist's proposals are kept."""
     root = AtlasIndex().root
     return {"version": ATLAS_VERSION, "routes": router.prefix, "index_folder": str(root),
             "indexes": {name: (root / f).exists() for name, f in FILES.items()},
             "census_layers": sorted(cz.layer_runs(model=getattr(rt, "model_id", None))), "field_notes": str(fn.field_notes_path()),
-            "field_book": str(fn.field_book_path())}
+            "field_book": str(fn.field_book_path()), "field_proposals": str(fn.field_proposals_path())}
 
 
 def atlas() -> "Atlas":
@@ -506,6 +506,16 @@ class FieldBookRequest(BaseModel):
     by: Optional[str] = None
 
 
+class ProposalRequest(BaseModel):
+    kind: Optional[str] = None
+    layer: Optional[StrictInt] = None
+    index: Optional[StrictInt] = None
+    name: Optional[str] = None
+    note: Optional[str] = None
+    chat: Optional[str] = Field(None, max_length=fn.MAX_CHAT)
+    part: Optional[str] = None  # keep or discard only the name, or only the note (both when left out)
+
+
 def _check_neuron(a: Atlas, layer: int, n: int) -> None:
     if not 0 <= int(layer) < a.L:
         raise HTTPException(status_code=400, detail=f"Layer {layer} does not exist: layers count from 0 to {a.L - 1} here (page layers 1 to {a.L}).")
@@ -634,6 +644,73 @@ async def post_field_book(body: FieldBookRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"layer": body.layer, "n": body.n, "face": change["face"], "entry": entry, "file": str(fn.field_book_path()),
             "warning": fn.take_warning("book")}
+
+
+def _proposal_unit(a: Atlas, body: ProposalRequest) -> Tuple[str, int, int]:
+    """(kind, layer, index) of a proposal's request, checked against the model."""
+    if body.kind not in fn.KINDS:
+        raise HTTPException(status_code=400, detail='kind must be "neuron" or "head".')
+    if body.layer is None or body.index is None:
+        raise HTTPException(status_code=400, detail="A proposal names its layer and its index (the neuron's, or the head's).")
+    if body.kind == "neuron":
+        _check_neuron(a, body.layer, body.index)
+    else:
+        _check_head(a, body.layer, body.index)
+    return body.kind, int(body.layer), int(body.index)
+
+
+@router.get("/proposals")
+async def get_proposals() -> Dict[str, Any]:
+    """The names and notes the scientist has proposed, waiting for the person to keep or discard them; nothing else
+    reads them (backend/field_notes.py)."""
+    data = await fn.all_proposals()
+    return {**data, "file": str(fn.field_proposals_path()), "warning": fn.take_warning("proposals")}
+
+
+@router.post("/proposals")
+async def post_proposal(body: ProposalRequest) -> Dict[str, Any]:
+    """A name or note the scientist proposes (its tools' `set_name` and `write_note`): `{kind, layer, index, name?, note?,
+    chat}`, checked as a note is; it waits for the person, and the notes are not changed. `kept` is the entry the notes
+    keep now, which the atlas and later chats go on reading until the person keeps the proposal."""
+    a = atlas()
+    kind, name, note, _by = off_gpu(fn.check_note, body.kind, body.name, body.note, "scientist")
+    kind, layer, index = _proposal_unit(a, body)
+    try:
+        proposal = await fn.propose(kind, layer, index, name, note, body.chat or "")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    kept = (await fn.all_notes())[fn.KINDS[kind]].get(fn.note_key(layer, index))
+    return {"kind": kind, "key": fn.note_key(layer, index), "proposal": proposal, "kept": kept, "file": str(fn.field_proposals_path()),
+            "warning": fn.take_warning("proposals")}
+
+
+async def _decide(body: ProposalRequest, keep: bool) -> Dict[str, Any]:
+    a = atlas()
+    kind, layer, index = _proposal_unit(a, body)
+    if body.part not in (None, "name", "note"):
+        raise HTTPException(status_code=400, detail='part is "name" or "note", or left out for both.')
+    try:
+        r = await fn.decide(kind, layer, index, keep, body.part)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if r is None:
+        what = f"{'the ' + body.part + ' of ' if body.part else ''}{kind} {index} at layer {layer}"
+        raise HTTPException(status_code=404, detail=f"No proposal waits for {what}: it may have been kept or discarded already.")
+    return {"kind": kind, "key": fn.note_key(layer, index), "kept" if keep else "discarded": r["parts"], "entry": r["entry"],
+            "proposal": r["proposal"], "file": str(fn.field_proposals_path()), "warning": fn.take_warning("proposals")}
+
+
+@router.post("/proposals/keep")
+async def keep_proposal(body: ProposalRequest) -> Dict[str, Any]:
+    """The person keeps a proposal (`{kind, layer, index, part?}`): its name or note, or both, written to the notes as
+    the scientist's (`name_by`, `note_by` "scientist"), and removed from the proposals. 404 when none waits."""
+    return await _decide(body, True)
+
+
+@router.post("/proposals/discard")
+async def discard_proposal(body: ProposalRequest) -> Dict[str, Any]:
+    """The person discards a proposal (`{kind, layer, index, part?}`); the notes are not changed. 404 when none waits."""
+    return await _decide(body, False)
 
 
 # -- the census

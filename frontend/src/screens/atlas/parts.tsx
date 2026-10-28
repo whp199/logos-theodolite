@@ -5,12 +5,12 @@
  * steer lens is a measured effect (the next word-piece's change when the neuron is pushed), which the gate does not
  * cover: it is shown as such.
  */
-import React from "react";
+import React, { useState } from "react";
 import { HeldBackWords } from "../../components/HeldBack";
 import { labelGate, layerIdx, parseLabelCheck } from "../../lib/labels";
 import { wp } from "../../lib/words";
 import { noteKey, type CensusCard, type FaceWords, type LensFace, type PooledWord } from "./api";
-import { useAtlas } from "./state";
+import { decideProposal, useAtlas } from "./state";
 
 export const words = (list: readonly string[] | null | undefined, k = 6) => (list ?? []).slice(0, k).map((t) => wp(t)).join("  ");
 
@@ -126,6 +126,55 @@ export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: 
       {card.writer_floor ? ` ${card.writer_floor.says}` : ""}
     </p>
   ) : null;
+
+/** A name or a note the scientist proposed for a neuron or head (its set_name and write_note), waiting for the person:
+ * shown with keep and discard. Nothing else reads it until it is kept; kept, it is written as the scientist's. */
+export const ProposalLine: React.FC<{ kind?: "neuron" | "head"; layer: number; n: number; part: "name" | "note" }> = ({
+  kind = "neuron",
+  layer,
+  n,
+  part,
+}) => {
+  const p = useAtlas((s) => (kind === "neuron" ? s.proposals?.neurons : s.proposals?.heads)?.[noteKey(layer, n)]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const text = p?.[part];
+  if (p == null || text == null) return null;
+  const answer = async (keep: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await decideProposal(kind, layer, n, keep, part);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div
+      className="atlas-small"
+      role="group"
+      aria-label={`the scientist’s proposed ${part}`}
+      style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", columnGap: 8 }}
+    >
+      <span>
+        <span className="muted">the scientist proposes {part === "name" ? "the name" : "the note"}: </span>
+        {text ? part === "name" ? <b>{text}</b> : <span style={{ whiteSpace: "pre-wrap" }}>{text}</span> : <i>none (it would clear it)</i>}
+      </span>
+      <span style={{ whiteSpace: "nowrap" }}>
+        <button type="button" className="btn-link" disabled={busy} onClick={() => void answer(true)}>
+          keep
+        </button>
+        <span className="muted"> · </span>
+        <button type="button" className="btn-link" disabled={busy} onClick={() => void answer(false)}>
+          discard
+        </button>
+      </span>
+      <ErrorLine error={error} />
+    </div>
+  );
+};
 
 /** A neuron's name as lists show it, marked when the scientist wrote it (field notes' `name_by`): a guess, not a finding. */
 export const NameMark: React.FC<{ layer: number; n: number; name: string }> = ({ layer, n, name }) => {

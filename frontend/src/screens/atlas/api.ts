@@ -415,6 +415,22 @@ export interface Notes {
   file: string;
   warning: string | null;
 }
+/** A name or note the scientist proposed (its set_name and write_note), waiting for the person to keep or discard it;
+ * nothing reads it as a name before it is kept (backend/field_notes.py). An empty string proposes clearing. */
+export interface Proposal {
+  name?: string;
+  note?: string;
+  /** the chat that proposed it */
+  chat: string;
+  at: string;
+}
+export interface Proposals {
+  version: number;
+  neurons: Record<string, Proposal>;
+  heads: Record<string, Proposal>;
+  file: string;
+  warning: string | null;
+}
 export interface ReadsReply {
   units: { text: string; act: number; pieces: number[]; pos: number }[];
   act_range: ActRange | null;

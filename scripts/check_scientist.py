@@ -6,8 +6,9 @@ so the chat is driven over real connections):
 1. the tools' schemas, and the pages' count: layers from 1 in every argument and reply, refused below 1;
 2. each tool against the atlas's routes in this process, its reply the routes' own in the pages' count (a neuron, its
    links, reads, steering (greedy, and sampled with its knobs passed through and its seeds given back), odds, compare,
-   fires, heads, the drive, the census, names and notes kept without overwriting each other, the cone and the web once
-   the indexes are built), and each screen action reaching the chat's page in the API's count;
+   fires, heads, the drive, the census, names and notes proposed by set_name and write_note and read by nothing (names,
+   neuron, the notes) until the person keeps them, kept without overwriting each other, the cone and the web once the
+   indexes are built), and each screen action reaching the chat's page in the API's count, a proposal among them;
 3. the MCP server, started as Claude Code starts it: initialize, its tools, a call, refusals in plain words;
 4. Claude Code, played by a fake `claude` that starts the MCP server from the config it is given and calls it: the
    command line (stream-json, the prompt file, the MCP config naming this server and the chat, the tools allowed, a
@@ -1210,17 +1211,33 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
         check(isinstance(cc_, dict) and "lens" in cc_, "causal_check: the instrument's own record")
     except st.ToolError as exc:
         check("does not exist" in str(exc) or "400" in str(exc), f"causal_check refused in plain words on the stand-in: {exc}")
-    # names and notes: neither overwrites the other
+    # names and notes: the scientist proposes, the person keeps; neither overwrites the other
+    notes_file = Path(os.environ["THEODOLITE_FIELD_NOTES"])
     r = await st.call("set_name", {"layer": 3, "n": 5, "name": "bob watcher (?)"}, api)
+    check(r["proposed"] is True and r["name"] == "bob watcher (?)" and r["kept_name"] is None and "keep or discard" in r["status"],
+          f"set_name proposes, and says the name waits for the person: {r}")
+    check(not notes_file.exists() and (await st.call("names", {}, api)) == {"neurons": {}, "heads": {}, "named_by_a_scientist": [], "awaiting_the_person": ["L3 N5"]},
+          "a proposed name is no name yet: the notes are not written, names lists it as waiting, without its text")
     await api.post("/api/atlas/notes", {"kind": "neuron", "layer": 2, "index": 5, "note": "the person's own note"})
     r = await st.call("set_name", {"layer": 3, "n": 5, "name": "bob watcher (??)"}, api)
-    check(r == {"ok": True, "neuron": "L3 N5", "name": "bob watcher (??)", "note": "the person's own note"}, f"set_name keeps the person's note: {r}")
+    check(r["name"] == "bob watcher (??)" and r["kept_name"] is None and r["kept_note"] == "the person's own note", f"set_name again: the later proposal replaces it ({r})")
     r = await st.call("write_note", {"layer": 3, "n": 5, "note": "steers toward Bob at +2"}, api)
-    check(r["name"] == "bob watcher (??)" and r["note"] == "steers toward Bob at +2", "write_note keeps the name")
+    check(r["note"] == "steers toward Bob at +2" and "name" not in r and r["kept_note"] == "the person's own note", f"write_note proposes a note ({r})")
+    nv5 = await st.call("neuron", {"layer": 3, "n": 5}, api)
+    check(nv5["name"] is None and nv5["note"] == "the person's own note" and nv5["awaiting_the_person"] == ["name", "note"],
+          f"neuron reads the kept note, not the proposals, and says what waits ({nv5.get('name')}, {nv5.get('note')}, {nv5.get('awaiting_the_person')})")
+    waiting = (await api.get("/api/atlas/proposals"))["neurons"]["2:5"]
+    check(waiting["name"] == "bob watcher (??)" and waiting["note"] == "steers toward Bob at +2" and waiting["chat"] == "",
+          "the proposals, under the API's key, with the chat that made them")
+    # the person keeps the name and discards the note
+    await api.post("/api/atlas/proposals/keep", {"kind": "neuron", "layer": 2, "index": 5, "part": "name"})
+    await api.post("/api/atlas/proposals/discard", {"kind": "neuron", "layer": 2, "index": 5})
     nm = await st.call("names", {}, api)
-    check(nm["neurons"] == {"L3 N5": "bob watcher (??)"} and nm["named_by_a_scientist"] == ["L3 N5"], f"names in the pages' count: {nm}")
-    notes = json.loads(Path(os.environ["THEODOLITE_FIELD_NOTES"]).read_text())
-    check(notes["neurons"]["2:5"]["by"] == "scientist" and notes["neurons"]["2:5"]["name_by"] == "scientist", "kept under the API's key, by the scientist")
+    check(nm["neurons"] == {"L3 N5": "bob watcher (??)"} and nm["named_by_a_scientist"] == ["L3 N5"] and nm["awaiting_the_person"] == [],
+          f"names in the pages' count, once kept: {nm}")
+    notes = json.loads(notes_file.read_text())
+    check(notes["neurons"]["2:5"]["by"] == "scientist" and notes["neurons"]["2:5"]["name_by"] == "scientist" and notes["neurons"]["2:5"]["note"] == "the person's own note"
+          and notes["neurons"]["2:5"]["note_by"] == "reader", "kept under the API's key, the name the scientist's, the person's note left as it was")
     # each field keeps its author: the person's note under the scientist's name leaves the name the scientist's
     await api.post("/api/atlas/notes", {"kind": "neuron", "layer": 2, "index": 5, "note": "the person checks it", "by": "reader"})
     nr = await st.call("neuron", {"layer": 3, "n": 5}, api)
@@ -1246,7 +1263,7 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
         check(r["ok"] and got == {"t": "ui", **want}, f"{tool}: {got}")
     r = await st.call("set_name", {"layer": 3, "n": 6, "name": "next one"}, api, cid)
     got = await asyncio.wait_for(q.get(), 5)
-    check(got == {"t": "ui", "action": "rename", "layer": 2, "n": 6, "name": "next one"}, f"set_name renames on the page: {got}")
+    check(got == {"t": "ui", "action": "propose", "layer": 2, "n": 6, "name": "next one"}, f"set_name shows its proposal on the page: {got}")
     r = await st.call("select_neuron", {"layer": 3, "n": 5}, api, "no-such-chat")
     check(r["ok"] is False and "no such chat" in r["note"], "a screen action for a chat not open")
     try:
@@ -1317,7 +1334,8 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     ro = await st.call("rollouts", {"layer": 4, "n": 7, "max_chars": 50}, api)
     check(ro["layer"] == 4 and len(ro["rollouts"]) == 2 and all(len(x["text"]) <= 50 for x in ro["rollouts"]), "rollouts cut to max_chars, page layer 4")
     ov = await st.call("overview", {}, api)
-    check(ov["census_layers"] == [4] and ov["indexes"]["wiring"] and ov["named"]["neurons"] == 2, f"overview: census at page layer 4, the indexes, the names ({ov['named']})")
+    check(ov["census_layers"] == [4] and ov["indexes"]["wiring"] and ov["named"]["neurons"] == 1 and ov["proposals_awaiting_the_person"] == ["L3 N6"],
+          f"overview: census at page layer 4, the indexes, the names kept, the one proposal waiting ({ov['named']}, {ov['proposals_awaiting_the_person']})")
 
 
 if __name__ == "__main__":

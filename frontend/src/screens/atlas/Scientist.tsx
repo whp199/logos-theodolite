@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Rubric } from "../../components/kit";
 import { href } from "../../router";
-import type { PastChat } from "./api";
-import { ErrorLine } from "./parts";
+import { cite, citeHead, type PastChat } from "./api";
+import { ErrorLine, ProposalLine } from "./parts";
 import {
   askWeb,
   attachFiles,
@@ -24,7 +24,7 @@ import {
   type Part,
   type Pick,
 } from "./scientist";
-import { goToNeuron, openHead, useAtlas } from "./state";
+import { goToNeuron, loadProposals, openHead, useAtlas } from "./state";
 
 /* --------------------------------------------------------------------------- a little markdown, made as elements */
 
@@ -370,6 +370,45 @@ const BackendPick: React.FC = () => {
   );
 };
 
+/** Every name and note the scientist proposed that still waits for the person (backend/field_notes.py): kept, it is the
+ * name or note everywhere, as the scientist's; until then nothing reads it, later chats included. */
+const Waiting: React.FC = () => {
+  const p = useAtlas((s) => s.proposals);
+  useEffect(() => {
+    void loadProposals();
+  }, []);
+  const rows = p
+    ? [
+        ...Object.keys(p.neurons).map((k) => ({ kind: "neuron" as const, k, v: p.neurons[k] })),
+        ...Object.keys(p.heads).map((k) => ({ kind: "head" as const, k, v: p.heads[k] })),
+      ]
+    : [];
+  if (!rows.length) return null;
+  return (
+    <div role="region" aria-label="proposals waiting for you" style={{ margin: "4px 0 6px" }}>
+      <div className="kicker">waiting for you · the scientist’s proposals</div>
+      {rows.slice(0, 12).map(({ kind, k, v }) => {
+        const [l, n] = k.split(":").map(Number);
+        return (
+          <div key={`${kind}/${k}`} style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <button type="button" className="btn-link" style={{ whiteSpace: "nowrap" }} onClick={() => void (kind === "neuron" ? goToNeuron(l, n) : openHead(l, n))}>
+              {kind === "neuron" ? cite(l, n) : citeHead(l, n)}
+            </button>
+            <div style={{ minWidth: 0 }}>
+              {"name" in v ? <ProposalLine kind={kind} layer={l} n={n} part="name" /> : null}
+              {"note" in v ? <ProposalLine kind={kind} layer={l} n={n} part="note" /> : null}
+            </div>
+          </div>
+        );
+      })}
+      {rows.length > 12 ? <p className="muted atlas-small">and {rows.length - 12} more</p> : null}
+      <p className="muted atlas-small" style={{ margin: "2px 0 0" }}>
+        Nothing reads a proposal until you keep it: the map, the lists, search and later chats read the names and notes kept.
+      </p>
+    </div>
+  );
+};
+
 export const Scientist: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   const busy = useScientist((s) => s.busy);
@@ -475,6 +514,7 @@ export const Scientist: React.FC = () => {
           </button>
         </div>
       ) : null}
+      <Waiting />
       {f && !busy && !needsAck ? (
         <div className="atlas-actions">
           <button type="button" className="btn-ghost plain" onClick={() => void explainFocus()}>

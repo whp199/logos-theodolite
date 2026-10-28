@@ -20,6 +20,7 @@ import {
   type NeuronHeads,
   type NeuronLens,
   type Notes,
+  type Proposals,
   type RunReply,
   type RunView,
   type ScaleSource,
@@ -66,6 +67,8 @@ export interface AtlasState {
   layerMode: number | null;
   units: Record<number, CensusUnitRow[]>;
   notes: Notes | null;
+  /** the scientist's proposed names and notes, waiting for the person */
+  proposals: Proposals | null;
   unit: CensusUnit | null;
   lens: NeuronLens | null;
   wiring: Wiring | null;
@@ -104,6 +107,7 @@ export const useAtlas = create<AtlasState>(() => ({
   layerMode: null,
   units: {},
   notes: null,
+  proposals: null,
   unit: null,
   lens: null,
   wiring: null,
@@ -159,6 +163,7 @@ export async function loadArch(): Promise<Arch | null> {
     }
     set({ arch, archError: null, layer, run: { ...st().run, hi: arch.n_layers } });
     void loadNotes();
+    void loadProposals();
     return arch;
   } catch (e) {
     set({ archError: message(e) });
@@ -571,6 +576,22 @@ export async function saveNote(layer: number, n: number, body: { name?: string; 
   return r;
 }
 
+export async function loadProposals() {
+  try {
+    set({ proposals: await get<Proposals>("/api/atlas/proposals") });
+  } catch {
+    // they stay as they were
+  }
+}
+
+/** The person's answer to the scientist's proposal on a neuron or head: kept, it is written to the notes as the
+ * scientist's and becomes the name or note everywhere; discarded, it goes. `part` answers for the name or the note
+ * alone. */
+export async function decideProposal(kind: "neuron" | "head", layer: number, n: number, keep: boolean, part?: "name" | "note") {
+  await post(`/api/atlas/proposals/${keep ? "keep" : "discard"}`, { kind, layer, index: n, ...(part ? { part } : {}) });
+  await Promise.all([loadNotes(), loadProposals()]);
+}
+
 /* ---------------------------------------------------------------------------------------- the scientist's hand */
 
 export function clearScientistMarks() {
@@ -601,6 +622,9 @@ export async function scientistUi(e: Record<string, unknown>) {
       break;
     case "rename":
       await loadNotes();
+      break;
+    case "propose":
+      await loadProposals();
       break;
     case "camera":
       if (map?.layerMode !== null) map?.exitLayer();

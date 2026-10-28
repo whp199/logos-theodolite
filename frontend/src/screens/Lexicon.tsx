@@ -1277,15 +1277,19 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             A name is a guess written down. The scientist marks its own with how sure it is: nothing when its firing, its
-            pushes and its words agree, (?) to (???) as they part. With no server to keep them, a folio keeps its name and
-            field notes in this browser, for you alone, and says so.
+            pushes and its words agree, (?) to (???) as they part, and only proposes it: the atlas shows its proposal with
+            keep and discard, and nothing reads it, the map and later chats included, until you keep it. With no server
+            to keep them, a folio keeps its name and field notes in this browser, for you alone, and says so.
           </Note>
           <EntryApparatus title="names and notes">
             One JSON file outside every checkout, written whole each time: <M>$THEODOLITE_FIELD_NOTES</M>, else{" "}
             <M>~/.local/share/theodolite/field_notes.json</M>; each entry, a neuron’s or a head’s, keeps who wrote it and
             when. <M>GET/POST /api/atlas/notes</M>. The folios’ field book beside it, per face (jobs, pattern, four ticks,
             who and when): <M>$THEODOLITE_FIELD_BOOK</M>, else <M>field_book.json</M> in the same folder, a file a server
-            from before never reads or writes. <M>GET/POST /api/atlas/fieldbook</M>.
+            from before never reads or writes. <M>GET/POST /api/atlas/fieldbook</M>. The scientist’s proposals wait in{" "}
+            <M>field_proposals.json</M> beside them (<M>$THEODOLITE_FIELD_PROPOSALS</M>), each with the chat that made it;
+            kept, one is written to the notes as the scientist’s. <M>GET/POST /api/atlas/proposals</M>, and{" "}
+            <M>/keep</M> and <M>/discard</M>.
           </EntryApparatus>
         </Entry>
 

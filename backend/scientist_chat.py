@@ -1293,12 +1293,13 @@ async def events(chat: str) -> StreamingResponse:
 @router.post("/ui")
 async def ui(body: Dict[str, Any]) -> Dict[str, Any]:
     """A screen action from the scientist's tools (select, head, tab, camera, highlight, annotate, text, search,
-    rename), passed to the chat's page; layers counted from 0."""
+    propose: a name or note proposed, which the page shows for the person to keep or discard; rename, from before),
+    passed to the chat's page; layers counted from 0."""
     cid = str(body.pop("chat", ""))
     c = _chats.get(cid)
     if c is None:
         return {"ok": False, "error": "no such chat is open on this server"}
-    if body.get("action") not in set(st.UI_TOOLS.values()) | {"rename"}:
+    if body.get("action") not in set(st.UI_TOOLS.values()) | {"rename", "propose"}:
         return {"ok": False, "error": f"no screen action {body.get('action')!r}"}
     _emit(c, {"t": "ui", **body})
     return {"ok": True, "note": "shown in the atlas" if c["listeners"] else "the person's page is not open; nothing was shown"}

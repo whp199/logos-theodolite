@@ -3,7 +3,7 @@ import { IfApparatus, LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
 import { cite, citeHead, noteKey, type RunRow, type SearchRow } from "./api";
-import { censusChance, Chips, ErrorLine, FaceLine, NameMark } from "./parts";
+import { censusChance, Chips, ErrorLine, FaceLine, NameMark, ProposalLine } from "./parts";
 import {
   closeFocus,
   goToNeuron,
@@ -92,6 +92,7 @@ const FocusHead: React.FC = () => {
         </div>
       ) : null}
       {f.kind === "neuron" ? <NameField layer={f.layer} n={f.n} /> : null}
+      {f.kind === "neuron" ? <ProposalLine layer={f.layer} n={f.n} part="name" /> : null}
     </div>
   );
 };

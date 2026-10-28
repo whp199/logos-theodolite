@@ -32,7 +32,9 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    aside with one warning; the folio's field book beside them: each face kept apart with its writer, a field left out
    kept, refused in plain words, a face with nothing said forgotten, a book of another version or a corrupt one moved
    aside with one warning, the notes' version-1 file left byte for byte as it was by all of it; the folio's name, kept
-   as the atlas's, on the map's tooltip;
+   as the atlas's, on the map's tooltip; the scientist's proposals: kept apart, never served as a name or note (the
+   tooltip, /neuron, /notes, the census, the book) before the person keeps them, refused in plain words, discarded in
+   part, kept as the scientist's, a head's too, a malformed file moved aside;
 9. the census routes on a run written here: its units ranked, a unit's rollouts and baselines, one rollout, the spread;
 10. the GPU lock: a reading waits for it while /arch and the notes still answer; a push chat closed mid-answer stops
     writing and holds the lock until its writer has stopped (uvicorn on a free port, a real connection closed).
@@ -180,8 +182,9 @@ def main() -> int:
     check(h["atlas"]["indexes"] == {k: False for k in h["atlas"]["indexes"]} and h["atlas"]["routes"] == "/api/atlas",
           "/api/health: the atlas card says no index is on disk")
     check(h["atlas"]["field_notes"] == os.environ["THEODOLITE_FIELD_NOTES"]
-          and h["atlas"]["field_book"] == str(Path(os.environ["THEODOLITE_FIELD_NOTES"]).with_name("field_book.json")),
-          "/api/health: where the field notes are, and the field book beside them")
+          and h["atlas"]["field_book"] == str(Path(os.environ["THEODOLITE_FIELD_NOTES"]).with_name("field_book.json"))
+          and h["atlas"]["field_proposals"] == str(Path(os.environ["THEODOLITE_FIELD_NOTES"]).with_name("field_proposals.json")),
+          "/api/health: where the field notes are, and the field book and the proposals beside them")
     section("the shape: /arch and the health card", before)
 
     # ------------------------------------------------------------------------------------------- 2. who may ask
@@ -873,12 +876,61 @@ def main() -> int:
           and c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()["warning"] is None
           and c.get("/api/atlas/notes").json()["warning"] is None, "/fieldbook: a corrupt book moved aside, its warning once, the notes' none")
     check(notes_file.read_bytes() == notes_bytes, "the notes' file is left as it was by the book's moves aside")
+
+    # the scientist's proposals: kept apart until the person keeps them, never read as names before
+    props_file = notes_file.with_name("field_proposals.json")
+    check(c.get("/api/atlas/proposals").json() == {"version": 1, "neurons": {}, "heads": {}, "file": str(props_file), "warning": None},
+          "/proposals: none yet, and where they wait")
+    r = c.post("/api/atlas/proposals", json={"kind": "neuron", "layer": 2, "index": 5, "name": " bob, the subject (?) ", "chat": "chat-1"})
+    pr_ = r.json()
+    check(r.status_code == 200 and pr_["proposal"]["name"] == "bob, the subject (?)" and pr_["proposal"]["chat"] == "chat-1"
+          and pr_["kept"]["name"] == "the folio's name", f"/proposals: a name proposed, trimmed, beside the name kept ({r.text[:200]})")
+    c.post("/api/atlas/proposals", json={"kind": "neuron", "layer": 2, "index": 5, "note": "steers toward Bob at +2", "chat": "chat-1"})
+    waiting = c.get("/api/atlas/proposals").json()["neurons"]
+    check(set(waiting) == {"2:5"} and waiting["2:5"]["name"] == "bob, the subject (?)" and waiting["2:5"]["note"] == "steers toward Bob at +2",
+          "/proposals: a later proposal adds its note and leaves the name")
+    on_page = [c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()["name"], c.get("/api/atlas/neuron", params={"layer": 2, "n": 5}).json()["name"],
+               c.get("/api/atlas/notes").json()["neurons"]["2:5"]["name"], c.get("/api/atlas/census/unit", params={"layer": 2, "n": 5}).json()["name"],
+               c.get("/api/atlas/fieldbook", params={"layer": 2, "n": 5}).json()["notes"]["name"]]
+    check(on_page == ["the folio's name"] * 5 and c.get("/api/atlas/notes").json()["neurons"]["2:5"]["note"] == "",
+          f"a proposal is never served as a name or a note before it is kept: the tooltip, /neuron, /notes, the census, the book ({on_page})")
+    for bad, says in [({"kind": "x", "layer": 2, "index": 5, "name": "a"}, 'kind must be "neuron" or "head"'),
+                      ({"kind": "neuron", "layer": 2, "index": 5}, "Give a name, a note"),
+                      ({"kind": "neuron", "layer": 2, "index": 5, "name": "a\nb"}, "control characters"),
+                      ({"kind": "neuron", "layer": 2, "index": 5, "name": "a" * 121}, "at most 120"),
+                      ({"kind": "neuron", "layer": 6, "index": 5, "name": "a"}, "Layer 6 does not exist"),
+                      ({"kind": "neuron", "index": 5, "name": "a"}, "names its layer and its index")]:
+        r = c.post("/api/atlas/proposals", json=bad)
+        check(r.status_code == 400 and says in r.json()["detail"], f"/proposals refused {bad}: {r.status_code} {r.text[:120]}")
+    r = c.post("/api/atlas/proposals/keep", json={"kind": "neuron", "layer": 2, "index": 5, "part": "both"})
+    check(r.status_code == 400 and 'part is "name" or "note"' in r.json()["detail"], "/proposals/keep: a part that is neither refused")
+    r = c.post("/api/atlas/proposals/keep", json={"kind": "neuron", "layer": 2, "index": 6})
+    check(r.status_code == 404 and "No proposal waits" in r.json()["detail"], f"/proposals/keep: none waits there ({r.text[:120]})")
+    r = c.post("/api/atlas/proposals/discard", json={"kind": "neuron", "layer": 2, "index": 5, "part": "note"})
+    check(r.status_code == 200 and r.json()["discarded"] == ["note"] and r.json()["entry"] is None and r.json()["proposal"]["name"] == "bob, the subject (?)"
+          and "note" not in r.json()["proposal"], "/proposals/discard: the note discarded, the name still waiting")
+    check(notes_file.read_bytes() == notes_bytes, "the notes' version-1 file is left byte for byte as it was by proposals made and discarded")
+    r = c.post("/api/atlas/proposals/keep", json={"kind": "neuron", "layer": 2, "index": 5})
+    e_ = r.json().get("entry") or {}
+    check(r.status_code == 200 and r.json()["kept"] == ["name"] and r.json()["proposal"] is None and e_.get("name") == "bob, the subject (?)"
+          and e_.get("name_by") == "scientist" and e_.get("by") == "scientist", f"/proposals/keep: the name kept as the scientist's ({r.text[:200]})")
+    check(c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()["name"] == "bob, the subject (?)" and c.get("/api/atlas/proposals").json()["neurons"] == {},
+          "/proposals/keep: once kept it is the name everywhere, and it waits no more")
+    c.post("/api/atlas/proposals", json={"kind": "head", "layer": 3, "index": 1, "note": "reads the word before", "chat": "chat-2"})
+    r = c.post("/api/atlas/proposals/keep", json={"kind": "head", "layer": 3, "index": 1, "part": "note"})
+    h31 = c.get("/api/atlas/notes").json()["heads"]["3:1"]
+    check(r.json()["kept"] == ["note"] and h31["note"] == "reads the word before" and h31["note_by"] == "scientist" and h31["name"] == "previous-word head",
+          "/proposals: a head's note kept, its name as it was")
+    props_file.write_text('{"version": 1, "neurons": {"2:5": {"chat": "x", "at": "y"}}, "heads": {}}', encoding="utf-8")
+    g = c.get("/api/atlas/proposals").json()
+    check(g["neurons"] == {} and "scientist's proposals file could not be read" in (g["warning"] or "")
+          and len(list(props_file.parent.glob("field_proposals.json.corrupt-*"))) == 1, f"/proposals: a malformed file moved aside ({g['warning']})")
     notes_file.write_text("{not json", encoding="utf-8")
     g = c.get("/api/atlas/notes").json()
     asides = list(notes_file.parent.glob("field_notes.json.corrupt-*"))
     check(g["neurons"] == {} and g["warning"] and "moved aside" in g["warning"] and len(asides) == 1, f"/notes: a corrupt file moved aside ({g['warning']})")
     check(c.get("/api/atlas/notes").json()["warning"] is None and asides[0].read_text() == "{not json", "/notes: the warning once, the old file kept")
-    section("field notes and the field book: kept, shown, forgotten, refused, a corrupt file moved aside, the notes' file untouched", before)
+    section("field notes, the field book and proposals: kept, shown, forgotten, refused, a corrupt file moved aside, the notes' file untouched", before)
 
     # ------------------------------------------------------------------------------------------------- 9. census
     before = len(failures)

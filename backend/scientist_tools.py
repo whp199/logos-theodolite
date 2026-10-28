@@ -174,13 +174,16 @@ TOOLS: List[Dict[str, Any]] = [
      "of a whole layer). A rank is a lead to test, not a finding; the doses are not yet calibrated on this model. Empty when "
      "the layer has no census.",
      "inputSchema": {"type": "object", "properties": {"layer": LN["layer"], "limit": {"type": "integer", "default": 30}}, "required": ["layer"]}},
-    {"name": "set_name", "description": "Name a neuron in the atlas (shown in its panel, in lists and on the map), or clear its name with an "
-     "empty string. Only when the person asks, or after they agree to a name you suggested.",
+    {"name": "set_name", "description": "Propose a name for a neuron (an empty string proposes clearing its name). It waits on the atlas "
+     "page for the person to keep or discard; until they keep it, the atlas's panel, lists, search and map, and later chats, "
+     "read only the name kept before (kept_name). Propose one only when the person asks, or after they agree to a name you suggested.",
      "inputSchema": {"type": "object", "properties": {**LN, "name": {"type": "string"}}, "required": ["layer", "n", "name"]}},
-    {"name": "write_note", "description": "Keep a short note on a neuron (your evidence in a few lines, beside its name), or clear it with an "
-     "empty string. Only when the person asks, or agrees.",
+    {"name": "write_note", "description": "Propose a short note on a neuron (your evidence in a few lines, beside its name; an empty string "
+     "proposes clearing it). It waits for the person to keep or discard, as a name does. Only when the person asks, or agrees.",
      "inputSchema": {"type": "object", "properties": {**LN, "note": {"type": "string"}}, "required": ["layer", "n", "note"]}},
-    {"name": "names", "description": "Every neuron and head named so far, as {\"L54 N15491\": name} and {\"L54 h3\": name}.",
+    {"name": "names", "description": "Every neuron and head named so far (the names the person kept), as {\"L54 N15491\": name} and "
+     "{\"L54 h3\": name}; and the neurons and heads whose proposed names or notes still wait for the person (awaiting_the_person, "
+     "without their text).",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "steer", "description": "Live: the model answers a chat prompt three ways in one batch, pushed up, as it is, and pushed down. "
      "One neuron (layer, n) or several (neurons: [{layer, n, dose?, mode?}], all at once, each the other way in the down "
@@ -324,6 +327,13 @@ def _slim_link(c: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+async def _waiting(api: Any) -> List[str]:
+    """The neurons and heads whose proposed names or notes wait for the person, cited without their text: a chat reads
+    only what the person kept."""
+    p = await api.get("/api/atlas/proposals")
+    return [cite(*map(int, k.split(":"))) for k in p.get("neurons", {})] + [cite_head(*map(int, k.split(":"))) for k in p.get("heads", {})]
+
+
 async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = "") -> Any:
     """Run one tool: its arguments in the pages' count, its reply in the pages' count (see the module's docstring)."""
     if name not in NAMES:
@@ -351,12 +361,14 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             "lens": {"id": lens.get("id"), "name": lens.get("name"), "fitted_on": lens.get("fitted_on"), "applied_to": lens.get("applied_to"),
                      "caution": lens.get("caution")},
             "named": {"neurons": len(notes.get("neurons", {})), "heads": len(notes.get("heads", {}))},
+            "proposals_awaiting_the_person": await _waiting(api),
         }
     if name == "neuron":
         _need(a, "layer", "n")
         r = await api.get("/api/atlas/neuron", layer=a["layer"], n=a["n"])
         notes = await api.get("/api/atlas/notes")
         entry = notes.get("neurons", {}).get(f"{a['layer']}:{a['n']}") or {}
+        waiting = (await api.get("/api/atlas/proposals")).get("neurons", {}).get(f"{a['layer']}:{a['n']}") or {}
         faces = {}
         for s in ("+", "-"):
             f = r["faces"][s]
@@ -364,6 +376,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         return {
             "neuron": cite(a["layer"], a["n"]), "name": r.get("name") or None, "note": entry.get("note") or None,
             "name_by": entry.get("name_by") if r.get("name") else None, "note_by": entry.get("note_by") if entry.get("note") else None,
+            **({"awaiting_the_person": [p for p in ("name", "note") if p in waiting]} if waiting else {}),
             "edited_in_vault": r.get("edited"), "faces": faces, "gate_trigger": r.get("gate_trigger"),
             "steer": r.get("steer"), "steer_stale": r.get("steer_stale"), "activation": r.get("act_range"), "ceiling": r.get("ceiling"),
             "census": r.get("census"), "wiring": r.get("wiring_source"),
@@ -434,27 +447,31 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
                 "ranked": [{"neuron": cite(a["layer"], u["n"]), "mass": u["z"], "null_pct": u["null_pct"], "q": u.get("q"), "words": u["words"],
                             **({"name": u["name"]} if u.get("name") else {})} for u in us[: int(a.get("limit", 30))]]}
     if name in ("set_name", "write_note"):
+        # a proposal, never the notes themselves: it waits on the page for the person to keep or discard
         _need(a, "layer", "n")
-        body: Dict[str, Any] = {"kind": "neuron", "layer": a["layer"], "index": a["n"], "by": "scientist"}
+        body: Dict[str, Any] = {"kind": "neuron", "layer": a["layer"], "index": a["n"], "chat": chat}
         if name == "set_name":
             _need(a, "name")
             body["name"] = str(a["name"])
         else:
             _need(a, "note")
             body["note"] = str(a["note"])
-        r = await api.post("/api/atlas/notes", body)
-        entry = r.get("entry") or {}
-        if name == "set_name":
-            await api.post("/api/atlas/scientist/ui", {"chat": chat, "action": "rename", "layer": a["layer"], "n": a["n"],
-                                                       "name": entry.get("name", "")})
-        return {"ok": True, "neuron": cite(a["layer"], a["n"]), "name": entry.get("name") or None, "note": entry.get("note") or None}
+        r = await api.post("/api/atlas/proposals", body)
+        p, kept = r.get("proposal") or {}, r.get("kept") or {}
+        await api.post("/api/atlas/scientist/ui", {"chat": chat, "action": "propose", "layer": a["layer"], "n": a["n"],
+                                                   **{k: p[k] for k in ("name", "note") if k in body and k in p}})
+        return {"ok": True, "proposed": True, "neuron": cite(a["layer"], a["n"]),
+                **{k: p[k] for k in ("name", "note") if k in body and k in p},
+                "kept_name": kept.get("name") or None, "kept_note": kept.get("note") or None,
+                "status": "a proposal, waiting on the atlas page for the person to keep or discard; until they keep it, "
+                              "the atlas and later chats read the name and note kept before (kept_name, kept_note)"}
     if name == "names":
         notes = await api.get("/api/atlas/notes")
         out_n = {cite(*map(int, k.split(":"))): e["name"] for k, e in notes.get("neurons", {}).items() if e.get("name")}
         out_h = {cite_head(*map(int, k.split(":"))): e["name"] for k, e in notes.get("heads", {}).items() if e.get("name")}
         by_sci = [cite(*map(int, k.split(":"))) for k, e in notes.get("neurons", {}).items() if e.get("name") and e.get("name_by") == "scientist"]
         by_sci += [cite_head(*map(int, k.split(":"))) for k, e in notes.get("heads", {}).items() if e.get("name") and e.get("name_by") == "scientist"]
-        return {"neurons": out_n, "heads": out_h, "named_by_a_scientist": by_sci}
+        return {"neurons": out_n, "heads": out_h, "named_by_a_scientist": by_sci, "awaiting_the_person": await _waiting(api)}
     if name == "steer":
         _need(a, "prompt")
         if not a.get("neurons"):
