@@ -818,10 +818,10 @@ far as its events tell: Claude Code answers from its first streamed event, think
 took a message mid-turn may yet run that message as a turn of its own, so until its next turn begins it is marked stale
 instead. An `openai` chat's prompt is built afresh every round; its tools change only when the server starts again.
 
-The routes answer only this machine's pages and scripts (§4), and on Linux only the account the server runs as, a
-request whose sender left before the guard could see whose it was included, so another account on the machine can no
-longer send a chat a message that it takes as the person's own turn, nor an attachment (except through
-`npm run dev`'s proxy while it runs, §4, or on a machine where the guard cannot tell, which its log says).
+The routes answer only this machine's pages and scripts (§4), and on Linux only the account the server runs as (a
+request whose sender has gone before the guard could look is refused too), so another account on the machine can no
+longer send a chat a message that it takes as the person's own turn, nor an attachment (except through `npm run dev`'s
+proxy while it runs, §4, or where the guard cannot tell whose a connection is, which its log says).
 
 | route | |
 |---|---|
