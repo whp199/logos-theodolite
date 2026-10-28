@@ -1348,6 +1348,7 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check([x["neuron"] for x in tu["ranked"]] in (["L4 N7", "L4 N9"], ["L4 N9", "L4 N7"]), f"top_units of page layer 4: {tu}")
     check(tu["doses_from"] == cz.DOSES_FROM["main_rel"] and tu["null"]["controls"] == 0 and tu["null"]["above_all_by_chance"] is None,
           "top_units: where the doses come from, and that a run without controls sets nothing against chance")
+    check(tu.get("dose_unit") == "stream" and "stage" not in tu, f"top_units: the unit a dose counts in, and no stage for a screen ({tu.get('dose_unit')})")
     check((await st.call("top_units", {"layer": 2}, api)) == {"ranked": [], "note": "this layer has no census"}, "top_units: a layer without one")
     ro = await st.call("rollouts", {"layer": 4, "n": 7, "max_chars": 50}, api)
     check(ro["layer"] == 4 and len(ro["rollouts"]) == 2 and all(len(x["text"]) <= 50 for x in ro["rollouts"]), "rollouts cut to max_chars, page layer 4")
