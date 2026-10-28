@@ -21,3 +21,7 @@ dependencies = [
     "pytest>=9.0.0",
     "httpx>=0.28.0",
 ]
+
+[project.optional-dependencies]
+# reading a GGUF of Gemma 4 (backend/gguf_model.py, scripts/compare_gguf_ct.py)
+gguf = ["gguf>=0.19.0"]
