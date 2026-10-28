@@ -684,11 +684,10 @@ class AtlasIndex:
         its z signed by the face the link pushes the reader toward. With `model` "use" (LINK_MODEL_USE) every link whose
         two ends both fired, whichever face its writer fired on, signed by where the writer's firing pushes the reader
         at the reader's operating point on the face it fired on (a link whose reader has none there is left out). Rows
-        int16 (src layer, src neuron, dst layer, dst neuron, round(10 z) * sign, 1); and how many neurons were active."""
+        int16 (src layer, src neuron, dst layer, dst neuron, round(10 z) * sign, 1); and how many neurons were active
+        (whichever the reading, and also where no link can be read in use, which gives no rows)."""
         ci = self.get("wiring")
         if ci is None:
-            return np.zeros((0, 6), np.int16), 0
-        if model == "use" and self.use_refused():
             return np.zeros((0, 6), np.int16), 0
         flat = np.abs(score).ravel()
         k = min(int(top), max(flat.size - 1, 1))
@@ -696,6 +695,8 @@ class AtlasIndex:
         cand = cand[flat[cand] >= float(min_score)]
         N = score.shape[1]
         active = {(int(i // N), int(i % N)) for i in cand}
+        if model == "use" and self.use_refused():
+            return np.zeros((0, 6), np.int16), len(active)
         K = int(ci["K"])
         rows = []
         for l, n in active:

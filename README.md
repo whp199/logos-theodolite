@@ -501,7 +501,7 @@ process at a time):
 .venv/bin/python scripts/atlas_build.py stats --hf <dataset> --tokens 2000000   # optional: ranges over a corpus of your choosing
 .venv/bin/python scripts/atlas_build.py steer --layers 40-59         # the steer lens, a range of layers at a time (hours)
 .venv/bin/python scripts/atlas_build.py passages --hf <dataset> --tokens 2000000   # each face's strongest passages (the corpus stats read)
-.venv/bin/python scripts/atlas_build.py wiring        # again after passages: each link's g and u, for the sign in use (minutes)
+.venv/bin/python scripts/atlas_build.py wiring        # once, if built before 28 October 2026: each link's g and u, for the sign in use (minutes)
 .venv/bin/python scripts/atlas_build.py wiring_check --layers 20,40,53 --writers random:512   # the links measured under pushes
 .venv/bin/python scripts/census_run.py --layers 20,40,53 --design calib_ceil --neurons random:32 --random-controls 16   # doses first
 .venv/bin/python scripts/census_tools.py curves 53 --weights         # where pushes start to tell and where text breaks (CPU)

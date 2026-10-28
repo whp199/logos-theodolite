@@ -19,14 +19,17 @@ with the same quantity read live, one neuron at a time:
    the word-pieces read; the server reads the arrays memory-mapped;
 5. wiring.npz: each neuron's links each way are `neuron_wiring`'s, the same neurons, z (as float16 keeps it) and sign,
    and each link's g and u as float16 keeps them; each neuron's operating point on each face is the median over its
-   stored passages' events; each link's sign in use is the same from the index's g and u as from the live ones; the
-   count of signs in use that differ from rest is the count link by link; a wiring index without g and u still serves
-   the sign from rest and says, in use, to rebuild it;
+   stored passages' events; each link's sign in use is the same from the index's g and u as from the live ones, and is
+   gate x sign(alpha g + beta u) written out at its reader's brute-force operating point (each reader's downstream, the
+   open neuron's upstream); the count of signs in use that differ from rest is the count link by link; a wiring index
+   without g and u still serves the sign from rest and says, in use, to rebuild it;
 5b. wiring_check.npz (the wiring measured): each writer's linked readers are its links in the wiring index, the null's
    at the same layers and never linked; each push is the dose times the writer's ceiling; the reads are `pushed_reads`'
    in another batch shape; the signs, g, u and strength are the index's and the weights'; the summary in the meta is
-   the stored arrays' (a share recounted by hand, Spearman's rho on cases with ties); the server reads only its meta;
-   a second run adds layers and skips those done, and one with another dose is refused;
+   the stored arrays', every share, rho and size recounted pair by pair by hand at both read sites, linked and null
+   (Spearman's rho also on cases with ties); the server reads only its meta; a second run adds layers and skips those
+   done, past a half-written shard, and one with another dose, other scales or against another passages index is
+   refused, as is a batch below 3;
 6. steer_lens.d / steer_lens.npz: each neuron's rises are `steer_lens`'s, KL too; a stopped run resumes and merges;
 7. layout_writes.npz: each layer's cells are distinct places on its sheet;
 8. the queries: a search finds a face by a word-piece of its label at the right rank; the cone's hops move one way
@@ -35,8 +38,9 @@ with the same quantity read live, one neuron at a time:
    many it left out); the active paths join only neurons that fired; the scores scale by each side's extreme; in use,
    a reader is reached on the face its writer's firing pushes it further toward (the harder one where both are),
    a writer upstream on the face whose firing pushes its reader the way asked, the active paths keep every link
-   whose ends both fired, signed at the reader's own face, and the web summary says the passages index is missing
-   without it;
+   whose ends both fired, signed at the reader's own face (each against alpha g + beta u written out at the reader's
+   brute-force operating point), and without the passages index the web summary says it is missing and the active
+   paths, none, still count the neurons that fired;
 9. head profiles: each head's shares of weight add up to one per read, and its pairs read more than one unit back;
 10. provenance: every index's meta names the weights it was built from (runtime_factory.weights_card), and an index
    built for another model, of another shape, by an older build or from other weights (another GGUF behind the same
@@ -154,6 +158,73 @@ def raises(fn, *args, **kw) -> str:
     except Exception as exc:  # noqa: BLE001
         return str(exc) or type(exc).__name__
     return ""
+
+
+def ranks_by_hand(v: List[float]) -> List[float]:
+    """Ranks from 0, a run of ties each given the run's mean rank (scipy-free, and not atlas_build's)."""
+    order = sorted(range(len(v)), key=lambda i: v[i])
+    r = [0.0] * len(v)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            r[order[k]] = (i + j) / 2
+        i = j + 1
+    return r
+
+
+def wiring_summary_by_hand(sh: dict) -> dict:
+    """One layer of the measured check summed up again pair by pair (the brute force `wiring_check_summary` is checked
+    against): each (writer, reader, question) of a group, its change under +d and -d from the unpushed row, the push on
+    the writer's gate face taken by that gate, the reader's face read from its own unpushed row at the last word-piece,
+    the sign in use from that face's stored operating point and the pair's g and u, and Spearman's rho from ranks."""
+    sgn = lambda x: 1 if x > 0 else (-1 if x < 0 else 0)  # noqa: E731
+    share = lambda k, n: round(k / n, 3) if n else None  # noqa: E731
+    out: dict = {}
+    for si, site in enumerate(("last", "mean")):
+        res: dict = {}
+        for name in ("linked", "null"):
+            n, plus, on_gate, same, n_use, use_plus, use_gate, sizes, size_q, strength = 0, 0, 0, 0, 0, 0, 0, [], [], []
+            for a in range(sh["readers"].shape[0]):
+                for r in range(sh["readers"].shape[1]):
+                    if int(sh["readers"][a, r, 0]) < 0 or bool(sh["linked"][a, r]) != (name == "linked"):
+                        continue
+                    gate, sign = int(sh["gate"][a, r]), int(sh["sign"][a, r])
+                    dp = sh["reads"][a, r, :, 1, si] - sh["reads"][a, r, :, 0, si]  # [Q], float32 as stored
+                    dm = sh["reads"][a, r, :, 2, si] - sh["reads"][a, r, :, 0, si]
+                    dg = dp if gate > 0 else dm
+                    for q in range(len(dp)):
+                        n += 1
+                        plus += sgn(dp[q]) == sign
+                        on_gate += sgn(dg[q]) == sign
+                        same += int(sgn(dp[q]) == sgn(dm[q]) and dp[q] != 0)
+                        sizes.append(abs(dg[q]))
+                        if site == "last":
+                            al, be = (float(x) for x in sh["op"][a, r, 0 if sh["reads"][a, r, q, 0, 0] > 0 else 1])
+                            if np.isfinite(al) and np.isfinite(be):
+                                kappa = sgn(al * float(sh["g"][a, r]) + be * float(sh["u"][a, r]))
+                                n_use += 1
+                                use_plus += sgn(dp[q]) == kappa
+                                use_gate += sgn(dg[q]) == gate * kappa
+                    size_q.append(float(np.abs(dg).mean()))
+                    strength.append(float(sh["strength"][a, r]))
+            got: dict = {"pairs": n, "sign_plus": share(plus, n), "sign_gate": share(on_gate, n), "same_way": share(same, n)}
+            if site == "last":
+                got["use_plus"], got["use_gate"] = share(use_plus, n_use), share(use_gate, n_use)
+                got["n_use"] = n_use
+            rx, ry = ranks_by_hand(size_q), ranks_by_hand(strength)
+            mx, my = sum(rx) / max(1, len(rx)), sum(ry) / max(1, len(ry))
+            cov = sum((x - mx) * (y - my) for x, y in zip(rx, ry))
+            vx, vy = sum((x - mx) ** 2 for x in rx), sum((y - my) ** 2 for y in ry)
+            got["rho"] = cov / (vx * vy) ** 0.5 if len(rx) >= 3 and vx > 0 and vy > 0 else None
+            got["moved"] = float(np.median(np.array(sizes, np.float32))) if sizes else None
+            res[name] = got
+        mv, mn = res["linked"]["moved"], res["null"]["moved"]
+        res["moved_over_null"] = round(mv / mn, 2) if mv is not None and mn else None
+        out[site] = res
+    return out
 
 
 class Stop(Exception):
@@ -410,8 +481,28 @@ def main() -> int:
     section("the wiring index is neuron_wiring's, link by link, in order of strength across layers", before)
 
     before = len(failures)
+    # each neuron's operating point on each face by brute force: the median over its stored events, one at a time
+    P = idx.get("passages")
+    c_ = (2.0 / np.pi) ** 0.5
+    ops_hand: dict = {}
+
+    def op_hand(l_: int, n_: int) -> dict:
+        if (l_, n_) not in ops_hand:
+            ops_hand[(l_, n_)] = {}
+            for face, f_ in (("+", "pos"), ("-", "neg")):
+                ok = np.asarray(P[f"{f_}_win"][l_, n_]) >= 0
+                g_, u_ = np.asarray(P[f"{f_}_g"][l_, n_], np.float64)[ok], np.asarray(P[f"{f_}_u"][l_, n_], np.float64)[ok]
+                ops_hand[(l_, n_)][face] = (float(np.median(np.array([ao.gelu_tanh_grad(x) for x in g_]) * u_)),
+                                            float(np.median(0.5 * g_ * (1 + np.tanh(c_ * (g_ + 0.044715 * g_**3)))))) if ok.any() else None
+        return ops_hand[(l_, n_)]
+
+    def coupling_hand(reader: tuple, face: str, c: dict):
+        """alpha g + beta u at the reader's brute-force operating point on `face`, written out; None without one."""
+        op_ = op_hand(*reader)[face]
+        return None if op_ is None else op_[0] * c["g"] + op_[1] * c["u"]
+
     # each link's g and u, kept as float16, are the live ones
-    gu_bad, n_gu, use_bad, n_use = [], 0, [], 0
+    gu_bad, n_gu, use_bad, n_use, hand_bad, n_hand = [], 0, [], 0, [], 0
     for l in range(L):
         for n in range(0, N, 9):
             live = ao.neuron_wiring(w, l, n, f, k=10, gu=True)
@@ -427,23 +518,28 @@ def main() -> int:
                 a_, b_ = idx.use_signs(got[side], side, l, n), idx.use_signs(live[side], side, l, n)
                 n_use += len(a_)
                 use_bad += [(l, n, side, i_) for i_, (p_, q_) in enumerate(zip(a_, b_)) if p_ != q_]
+                # and by hand, at the reader's own operating point: each reader downstream, the open neuron itself upstream
+                for c, us in zip(got[side], a_):
+                    reader = (c["layer"], c["n"]) if side == "down" else (l, n)
+                    for face in ("+", "-"):
+                        cs = coupling_hand(reader, face, c)
+                        n_hand += 1
+                        if us[face] != (None if cs is None else c["gate"] * (1 if cs > 0 else -1)):
+                            hand_bad.append((l, n, side, reader, face))
     check(n_gu > 500 and not gu_bad, f"wiring: each link's g and u as float16 keeps the live ones ({len(gu_bad)} of {n_gu} differ: {gu_bad[:2]})")
     check(n_use > 500 and not use_bad, f"in use: the same use_sign from the index's g and u as from the live ones ({len(use_bad)} of {n_use} differ)")
-    # each neuron's operating point on each face: the median over its stored events (brute force, one at a time)
-    P = idx.get("passages")
-    c_ = (2.0 / np.pi) ** 0.5
+    check(n_hand > 1000 and not hand_bad, f"in use: each use_sign is gate x sign(alpha g + beta u) at its reader's own operating point, the open neuron's "
+          f"upstream ({len(hand_bad)} of {n_hand} differ: {hand_bad[:2]})")
     op_bad, faces_none = [], 0
     for l in range(L):
         for n in range(0, N, 5):
             op = idx.op_point(l, n)
-            for face, f_ in (("+", "pos"), ("-", "neg")):
-                ok = np.asarray(P[f"{f_}_win"][l, n]) >= 0
-                if not ok.any():
+            for face in ("+", "-"):
+                want = op_hand(l, n)[face]
+                if want is None:
                     faces_none += 1
                     op_bad += [(l, n, face)] if op[face] is not None else []
                     continue
-                g_, u_ = np.asarray(P[f"{f_}_g"][l, n], np.float64)[ok], np.asarray(P[f"{f_}_u"][l, n], np.float64)[ok]
-                want = (np.median(np.array([ao.gelu_tanh_grad(x) for x in g_]) * u_), np.median(0.5 * g_ * (1 + np.tanh(c_ * (g_ + 0.044715 * g_**3)))))
                 if op[face] is None or any(abs(op[face][i_] - want[i_]) > 1e-5 * max(1.0, abs(want[i_])) for i_ in (0, 1)):
                     op_bad.append((l, n, face, op[face], want))
     check(not op_bad, f"in use: each face's operating point is the median of gelu'(g) u and gelu(g) over its stored events ({op_bad[:2]})")
@@ -488,6 +584,7 @@ def main() -> int:
     check(wc is not None and sorted(wc) == ["layers", "meta"] and wc["layers"].tolist() == [1, 3] and m.get("dose") == 0.25
           and m.get("writers") == "random:12" and m.get("dose_unit") == "each writer's write ceiling" and m.get("scale_source") == "check"
           and m.get("wiring_built_at") == idx.get("wiring")["meta"]["built_at"] and m.get("passages_built_at") == P["meta"]["built_at"]
+          and m.get("stats_built_at") == s["meta"]["built_at"]
           and set(m.get("summary", {})) == {"1", "3"} and m.get("sign_disagreement") == {k_: v_ for k_, v_ in idx.sign_disagreement().items() if k_ != "by_layer"},
           f"wiring_check: written with its provenance, the server reading only its meta ({sorted(wc or {})}, {sorted(m)[:6]})")
     check(idx.status()["wiring_check"]["built"] and "summary" in idx.status()["wiring_check"], "wiring_check: /arch's status carries its summary")
@@ -530,14 +627,26 @@ def main() -> int:
     again = ao.pushed_reads(lm, w, qs, [(1, int(A)) for A in z["L1_writers"][:3]], rd1, z["L1_lengths"][:3], bos_id=tok.bos_token_id, batch=3)
     stored = z["L1_reads"][:3, : again.shape[1]]
     check(np.allclose(np.nan_to_num(stored, nan=7.0), np.nan_to_num(again, nan=7.0), atol=1e-5), "wiring_check: the reads are pushed_reads' in another batch shape")
-    # the summary is the stored arrays', a share recounted by hand
-    sh1 = {k_[3:]: v_ for k_, v_ in z.items() if k_.startswith("L1_")}
-    s1 = ab.wiring_check_summary(sh1)
-    lk1 = sh1["linked"] & (sh1["readers"][..., 0] >= 0)
-    dp = (sh1["reads"][:, :, :, 1, 0] - sh1["reads"][:, :, :, 0, 0])[lk1]
-    by_hand = float((np.sign(dp) == sh1["sign"][lk1][:, None]).mean())
-    check(s1 == m["summary"]["1"] and abs(s1["last"]["linked"]["sign_plus"] - round(by_hand, 3)) < 1e-9 and s1["last"]["linked"]["pairs"] == dp.size,
-          f"wiring_check: the meta's summary is the stored arrays', sign_plus recounted ({s1['last']['linked']['sign_plus']} vs {by_hand:.3f})")
+    # the summary is the stored arrays', every figure recounted by hand, pair by pair, for the linked readers and the null
+    sum_bad, n_use_hand = [], 0
+    for l in (1, 3):
+        sh_ = {k_[len(f"L{l}_"):]: v_ for k_, v_ in z.items() if k_.startswith(f"L{l}_")}
+        s_l, hand = ab.wiring_check_summary(sh_), wiring_summary_by_hand(sh_)
+        sum_bad += [(l, "meta")] if s_l != m["summary"][str(l)] else []
+        for site in ("last", "mean"):
+            for name in ("linked", "null"):
+                a_, b_ = s_l[site][name], hand[site][name]
+                n_use_hand += b_.get("n_use", 0) if name == "linked" else 0
+                for key in ("pairs", "sign_plus", "sign_gate", "same_way") + (("use_plus", "use_gate") if site == "last" else ()):
+                    sum_bad += [(l, site, name, key, a_[key], b_[key])] if a_[key] != b_[key] else []
+                if (a_["rho"] is None) != (b_["rho"] is None) or (a_["rho"] is not None and abs(a_["rho"] - b_["rho"]) > 5e-4 + 1e-9):
+                    sum_bad.append((l, site, name, "rho", a_["rho"], b_["rho"]))
+                if abs(a_["moved"] - b_["moved"]) > 1e-6 * abs(b_["moved"]) + 1e-12:
+                    sum_bad.append((l, site, name, "moved", a_["moved"], b_["moved"]))
+            if s_l[site]["moved_over_null"] != hand[site]["moved_over_null"]:
+                sum_bad.append((l, site, "moved_over_null", s_l[site]["moved_over_null"], hand[site]["moved_over_null"]))
+    check(not sum_bad and n_use_hand > 0, f"wiring_check: the meta's summary is the stored arrays', every share, rho and size recounted by hand "
+          f"({n_use_hand} linked pairs read in use; {sum_bad[:3]})")
     cst = m["cost"]["1"]
     per_ = (7 - 1) // 2
     check(cst["forwards"] == len(qs) * -(-12 // per_) and cst["rows"] == 7 and cst["minutes_5090"] > 0 and any("layer 1: 12 writers" in x and "min on the 5090" in x for x in lines),
@@ -546,13 +655,24 @@ def main() -> int:
           and abs(ab.spearman(np.array([1, 2, 3.0]), np.array([3, 2, 1.0])) + 1.0) < 1e-12
           and abs(ab.spearman(np.array([1, 1, 2, 3.0]), np.array([1, 2, 3, 4.0])) - 0.9486832980505138) < 1e-12
           and ab.spearman(np.array([1, 1, 1.0]), np.array([1, 2, 3.0])) is None, "spearman: ranks with ties at their mean, None for a constant side")
-    # a second run adds a layer and skips those done; one with another dose is refused
+    # a second run adds a layer and skips those done, past a shard a stopped run left half-written; one with another
+    # dose, against another passages index or with other scales is refused, and so is a batch that holds no writer
+    (out / "wiring_check.d" / "L2.npz.tmp.npz").write_bytes(b"half a shard")
     lines2: List[str] = []
-    ab.build_wiring_check(rt, out, f, layers=[1, 4], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=lines2.append)
-    check(idx.get("wiring_check")["layers"].tolist() == [1, 3, 4] and not any("layer 1:" in x for x in lines2) and any("layer 4:" in x for x in lines2),
-          "wiring_check: a second run adds its layers and skips those done")
-    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.5, seed=3, batch=7, log=quiet)
-    check("other settings (dose)" in said, f"wiring_check: a run with another dose refused in plain words ({said})")
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[1, 4], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=lines2.append)
+    check(not said and idx.get("wiring_check")["layers"].tolist() == [1, 3, 4] and not any("layer 1:" in x for x in lines2) and any("layer 4:" in x for x in lines2),
+          f"wiring_check: a second run adds its layers and skips those done, a half-written shard not taken for a layer ({said})")
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.5, seed=3, batch=7, scale_source="check", log=quiet)
+    check("other settings or against other indexes (dose)" in said, f"wiring_check: a run with another dose refused in plain words ({said})")
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="other", log=quiet)
+    check("(scale_source)" in said, f"wiring_check: a run with scales from elsewhere refused ({said})")
+    (out / "passages.d" / "meta.json").rename(out / "passages.meta.off")
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=quiet)
+    (out / "passages.meta.off").rename(out / "passages.d" / "meta.json")
+    check("(passages_built_at)" in said and not (out / "wiring_check.d" / "L2.npz").exists(),
+          f"wiring_check: a run against another passages index (here none) refused, so no layer is read at other operating points ({said})")
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.25, seed=3, batch=2, scale_source="check", log=quiet)
+    check("--batch 3 at least" in said, f"wiring_check: a batch too small for a writer's two pushes refused ({said})")
     section("the wiring measured: written, read back, its readers, null, reads, summary and cost; resumed; refused", before)
 
     before = len(failures)
@@ -629,14 +749,14 @@ def main() -> int:
         want_w = {}
         for c in gl["down"][:4]:
             t = (c["layer"], c["n"])
-            cand = [(s_, abs(cs)) for s_ in ("+", "-") for cs in [idx._coupling(t, s_, c)] if cs is not None and one(face) * (1 if cs > 0 else -1) == one(s_)]
+            cand = [(s_, abs(cs)) for s_ in ("+", "-") for cs in [coupling_hand(t, s_, c)] if cs is not None and one(face) * (1 if cs > 0 else -1) == one(s_)]
             if cand:
                 want_w[t] = max(cand, key=lambda x: x[1])[0]
         check({t: r["face"] for t, r in wk.items() if r["hop"] == 1} == want_w,
               f"walk down in use from the {face} face: each reader on the face pushed further (the harder of two), none pushed back toward rest only")
         up_u = idx.walk(4, 30, "up", face, first=6, model="use")
         want_u = {(c["layer"], c["n"]): ("+" if one(face) * (1 if cs > 0 else -1) > 0 else "-")
-                  for c in idx.links(4, 30, 10, gu=True)["up"][:6] for cs in [idx._coupling((4, 30), face, c)] if cs is not None}
+                  for c in idx.links(4, 30, 10, gu=True)["up"][:6] for cs in [coupling_hand((4, 30), face, c)] if cs is not None}
         check({t: r["face"] for t, r in up_u.items() if r["hop"] == -1} == want_u and all(r["drives"] == face for r in up_u.values()),
               f"walk up in use toward the {face} face: each writer on the face whose firing pushes the neuron that way")
     check("give face" in raises(idx.walk, 4, 30, "up", None, model="use"), "walk up in use without a face refused")
@@ -645,7 +765,7 @@ def main() -> int:
     for (l_, n_) in active:
         for i_, c in enumerate(idx.links(l_, n_, int(ci["K"]), gu=True)["down"]):
             t = (c["layer"], c["n"])
-            cs = idx._coupling(t, "+" if score[t] > 0 else "-", c) if t in active else None
+            cs = coupling_hand(t, "+" if score[t] > 0 else "-", c) if t in active else None
             if cs is not None:
                 z10 = int(round(float(ci["down_z"][l_, n_, i_]) * 10))
                 want_rows.append((l_, n_, *t, z10 * (1 if score[l_, n_] > 0 else -1) * (1 if cs > 0 else -1)))
@@ -656,7 +776,8 @@ def main() -> int:
     (out / "passages.d" / "meta.json").rename(out / "passages.meta.off")
     wsn = idx.web_summary(2, 60, vocab, model="use")
     check(not wsn["ready"] and wsn["missing"] == "passages" and "atlas_build.py passages" in wsn["why"] and idx.op_point(2, 60) == {"+": None, "-": None}
-          and idx.active_paths(score, top=40, model="use")[0].shape == (0, 6), f"in use without the passages index: says so ({wsn})")
+          and idx.active_paths(score, top=40, model="use")[0].shape == (0, 6) and idx.active_paths(score, top=40, model="use")[1] == n_active,
+          f"in use without the passages index: says so, no paths, the active neurons still counted ({wsn})")
     (out / "passages.meta.off").rename(out / "passages.d" / "meta.json")
     acts = np.array([[[2.0, -1.0], [0.5, -3.0]]], np.float32)  # [1, T=2, N=2]
     sc = scale_scores(acts, np.array([[4.0, 0.0]]), np.array([[-1.0, -2.0]]))

@@ -30,8 +30,9 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   the study's 36 texts first): 4 minutes in all, 4.3 GiB above the model. About 250 MB compressed. It also keeps each
   link's g and u (float16: 248 MB more uncompressed, which compressed to about three quarters on the stand-in, so some
   180 MB more in the file; about 0.6 GiB more on the card and the same time, inferred), from which the sign in use is
-  read at each reader's operating point in the passages index (ARCHITECTURE §4.7): an older build serves the sign from
-  rest only, so rebuild it once the passages are built. With both there, a wiring or passages step ends by counting
+  read at each reader's operating point in the passages index (ARCHITECTURE §4.7). g and u are the weights' alone, so
+  `all` keeps them and a new passages index needs no new wiring; a wiring.npz built before 28 October 2026 lacks them
+  and serves the sign from rest only: rebuild it once. With both there, a wiring or passages step ends by counting
   how often the sign in use differs from the sign from rest.
 - layout: a principal-component projection and (with umap-learn installed) a UMAP of 21,504 points per layer, on the
   CPU; about a minute a layer with UMAP.
@@ -55,14 +56,15 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   could not make (the steer lens's 0.8 of the stream is 1 to 10 times the ceiling at most layers), and meant to stay
   near the first order the sign in use is read at (how near, untested on the 31B: the share of readers +d and -d move
   the same way says). Its indexed readers and as many it is not linked to (the null)
-  are read at the last word-piece and over the prompt, in prefills of --batch rows (64), each with its own unpushed
-  row. Needs the wiring index (the passages index too, for the sign in use). Per layer it logs, and keeps in
-  wiring_check.npz for /arch, how often the sign from rest holds (under +d, and on the writer's gate face), the sign
-  in use, Spearman's rho of the change against |P| f^2, the same for the null, and how often +d and -d move a reader
-  the same way. Cost (inferred, prefill only): at 512 writers and four questions of some 20 word-pieces, 68 prefills of
+  are read at the last word-piece and over the prompt, in prefills of up to --batch rows (63 at its 64; 3 at least),
+  each with its own unpushed row. Needs the wiring index (the passages index too, for the sign in use). Per layer it
+  logs, and keeps in wiring_check.npz for /arch, how often the sign from rest holds (under +d, and on the writer's gate
+  face), the sign in use, Spearman's rho of the change against |P| f^2, the same for the null, and how often +d and -d
+  move a reader the same way. Cost (inferred, prefill only): at 512 writers and four questions of some 20 word-pieces, 68 prefills of
   up to 63 rows a layer, about 1.3 minutes a layer on the 5090 from the census's 0.71 s step and the stats pass's rate
   (the log gives each layer's own figure and the seconds it took), some 1.3 hours for the 59 layers a later one
-  reads. A layer is written as it is done, and a stopped run resumes.
+  reads. A layer is written as it is done, and a stopped run resumes (a run with other settings, or against another
+  wiring, passages or stats index, is refused, so every layer is read against the same ones).
 `--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU
@@ -172,7 +174,7 @@ def main() -> int:
                     "(needs the stats index; 0 for none)")
     ap.add_argument("--seed", type=int, default=0, help="passages, wiring_check: the seed of the random draw")
     ap.add_argument("--keep-parts", action="store_true", help="passages: keep the parts after merging them")
-    ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward; wiring_check: rows per prefill")
+    ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward; wiring_check: rows per prefill at most (3 at least)")
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
     ap.add_argument("--replace", action="store_true", help="replace an index built for another model or other weights "
                     "(by default refused: build into another folder, --out or $THEODOLITE_ATLAS_DIR, to keep both)")

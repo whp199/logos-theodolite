@@ -459,7 +459,7 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
     which no later layer reads) are pushed along their write directions by +d and -d at every word-piece but the start
     mark, d = `dose` times each one's write ceiling (`Weights.write_ceiling`, the most it can write by itself), so every
     writer is pushed by the same small share of what it could write firing alone, never by more than it can write; on
-    each of the census's four questions, prefills of up to `batch` rows, each with its own unpushed row
+    each of the census's four questions, prefills of up to `batch` rows (at least 3), each with its own unpushed row
     (`atlas_ops.pushed_reads`). Read: each writer's readers in the wiring index (its `down` links) at the last
     word-piece and as their mean over the prompt, and as many readers at the same layers it is not linked to
     (`atlas_ops.null_readers`, seeded by the seed and the layer), the null; each pair's g and u from the weights
@@ -467,7 +467,8 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
     operating points from the passages index when built (the sign in use).
 
     A layer is written as `wiring_check.d/L{l}.npz` as it is measured (a stopped run resumes at the next; a run with
-    other settings is refused), and every layer measured so far merged into `wiring_check.npz` (arrays `L{l}_*`,
+    other settings, or against another wiring, passages or stats index or other scales, is refused, so every layer is
+    read against the same ones), and every layer measured so far merged into `wiring_check.npz` (arrays `L{l}_*`,
     `layers`), whose meta holds the provenance, each layer's `wiring_check_summary` (also in the log and /arch), how
     often the two signs disagree over the whole index (`AtlasIndex.sign_disagreement`), and each layer's cost: its
     forwards and rows, the seconds it took here, and the minutes inferred on the 5090 (prefill only)."""
@@ -482,19 +483,25 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
         why = index.refused("wiring")
         raise ValueError("wiring_check reads each writer's readers from the wiring index: " + (f"it is not read ({why})" if why else
                          "build it first (scripts/atlas_build.py wiring)"))
-    P = index.get("passages")
+    if int(batch) < 3:
+        raise ValueError(f"wiring_check takes --batch 3 at least (not {batch}): a prefill holds its unpushed row and a writer's +d "
+                         "and -d.")
+    P, S = index.get("passages"), index.get("act_scale")
     prompts = {k: rt.tokenize_prompt(rt.compose_prompt(v, chat=True)) for k, v in cz.PROMPTS.items()}
     Q = len(prompts)
     folder = Path(out_dir) / WIRING_CHECK_DIR
+    # the indexes and scales every layer is read against: the readers, their operating points, each link's strength
     plan = {"model": getattr(rt, "model_id", None), "writers": str(writers), "dose": float(dose), "seed": int(seed),
-            "batch": int(batch), "questions": dict(cz.PROMPTS), "wiring_built_at": wiring["meta"].get("built_at")}
+            "batch": int(batch), "questions": dict(cz.PROMPTS), "wiring_built_at": wiring["meta"].get("built_at"),
+            "passages_built_at": P["meta"].get("built_at") if P is not None else None,
+            "stats_built_at": S["meta"].get("built_at") if S is not None else None, "scale_source": str(scale_source)}
     plan_path = folder / "plan.json"
     if plan_path.exists():
         old = json.loads(plan_path.read_text(encoding="utf-8"))
         differ = [key for key in plan if old.get(key) != plan[key]]
         if differ:
-            raise ValueError(f"The layers in {folder} were measured with other settings ({', '.join(differ)}): measure with the "
-                             "same ones to add layers, or remove that folder to start again.")
+            raise ValueError(f"The layers in {folder} were measured with other settings or against other indexes ({', '.join(differ)}): "
+                             "measure with the same ones to add layers, or remove that folder to start again.")
     else:
         folder.mkdir(parents=True, exist_ok=True)
         plan_path.write_text(json.dumps(plan, indent=1), encoding="utf-8")
@@ -564,18 +571,18 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
             f"{say(lt['linked']['use_gate'])}; rho {say(lt['linked']['rho'])} (null {say(lt['null']['rho'])}); +d and -d the same way at "
             f"{say(lt['linked']['same_way'])}; linked readers moved {say(lt['moved_over_null'])} x the null's; {n_fwd} prefills in "
             f"{cost['seconds']:.0f} s here, about {cost['minutes_5090']:.1f} min on the 5090 (inferred)")
-    return merge_wiring_check(rt, Path(out_dir), plan, index, scale_source=scale_source, log=log)
+    return merge_wiring_check(rt, Path(out_dir), plan, index, log=log)
 
 
-def merge_wiring_check(rt: Any, out_dir: Path, plan: Dict[str, Any], index: AtlasIndex, *, scale_source: str = "",
-                       log: Log = print) -> Path:
+def merge_wiring_check(rt: Any, out_dir: Path, plan: Dict[str, Any], index: AtlasIndex, *, log: Log = print) -> Path:
     """Every layer measured so far (`wiring_check.d/L{l}.npz`) into `wiring_check.npz`: arrays `L{l}_*`, `layers`, and
-    the meta (`build_wiring_check`)."""
+    the meta (`build_wiring_check`; the plan's indexes and scales are every layer's)."""
     folder = out_dir / WIRING_CHECK_DIR
     arrays: Dict[str, np.ndarray] = {}
     summary: Dict[str, Any] = {}
     cost: Dict[str, Any] = {}
-    done = sorted(int(p.stem[1:]) for p in folder.glob("L*.npz"))
+    # a shard's own name only: a run stopped while writing one leaves `L{l}.npz.tmp.npz` (save_npz), which is not a layer
+    done = sorted(int(p.stem[1:]) for p in folder.glob("L*.npz") if p.stem[1:].isdigit())
     for l in done:
         with np.load(folder / f"L{l}.npz") as z:
             for key in z.files:
@@ -584,15 +591,13 @@ def merge_wiring_check(rt: Any, out_dir: Path, plan: Dict[str, Any], index: Atla
                     summary[str(l)], cost[str(l)] = s["summary"], s["cost"]
                 else:
                     arrays[f"L{l}_{key}"] = z[key]
-    P = index.get("passages")
     dis = index.sign_disagreement()
     path = out_dir / FILES["wiring_check"]
     save_npz(path, compressed=True, **arrays, layers=np.array(done, np.int32),
              meta=_meta(rt, **{k: v for k, v in plan.items() if k != "model"}, dose_unit="each writer's write ceiling",
                         readers="the wiring index's down links of each writer, then as many it is not linked to at "
                         "the same layers (the null)", reads="(unpushed, +d, -d) x (the last word-piece, the mean over the "
-                        "prompt past the start mark)", passages_built_at=P["meta"].get("built_at") if P is not None else None,
-                        scale_source=scale_source, layers=done, summary=summary, cost=cost,
+                        "prompt past the start mark)", layers=done, summary=summary, cost=cost,
                         sign_disagreement={k: v for k, v in dis.items() if k != "by_layer"} if dis else None))
     log(f"wiring_check: {len(done)} layers measured so far -> {path}")
     return path

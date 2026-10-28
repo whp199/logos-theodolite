@@ -644,7 +644,7 @@ stand-in's never; `GET /arch` names a refused one).
 | `steer_lens.npz` | `up`, `down` [L, N, 12] word-piece ids, `up_kl`, `down_kl` [L, N]: the steer lens (below) | `steer`, hours, by ranges of layers, resumable |
 | `layout_writes.npz` | `cell` [L, N] int16: each neuron's cell on its layer's square grid, neurons writing alike side by side (unit write directions, PCA to 50, UMAP where installed, else the first two principal directions, snapped to the grid) | `all` |
 | `passages.d/` | one `.npy` per array, memory-mapped, and `meta.json` (written last): `windows` [W, seq] int32, the windows' word-piece ids (−1 past a short one's end; the corpus's own text, never committed); `unigram` [V] int32, each word-piece's count over the word-pieces read; per face `{pos,neg}_{win, at}` [L, N, 16] and `{pos,neg}_{act, g, u}` float16: its 16 strongest windows, one event a window (each window's peak past the start mark, then the 16 largest, ties to the lower window), with the activation and the gate and up pre-activations there; `{pos,neg}_smp_*` [L, N, S], S events drawn at random above half the face's extreme in `act_scale.npz`, at most one a window. About 0.7 GB on the 31B with S = 6 | `passages`, over the corpus it is given (give it the one `stats` read: `rel` and the samples' threshold are against the stats index's extremes, and the route says when the two corpora differ); parts of 1,024 windows, resumable, merged exactly; not in `all` |
-| `wiring_check.npz` | the links measured (below): per layer `L{l}_*`, the writers and their pushes, each one's linked readers and the null's, each pair's g, u, signs and strength, the readers' operating points, and every read [W, R, 4, 3, 2]; `layers`; the meta, all the server reads of it, holds each layer's summary and cost (`GET /arch` → `links.measured`) | `wiring_check`, after wiring (and passages, for the sign in use): one `wiring_check.d/L{l}.npz` a layer, resumable, merged as it goes |
+| `wiring_check.npz` | the links measured (below): per layer `L{l}_*`, the writers and their pushes, each one's linked readers and the null's, each pair's g, u, signs and strength, the readers' operating points, and every read [W, R, 4, 3, 2]; `layers`; the meta, all the server reads of it, holds each layer's summary and cost (`GET /arch` → `links.measured`) | `wiring_check`, after wiring (and passages, for the sign in use): one `wiring_check.d/L{l}.npz` a layer, resumable (a run with other settings, or against another wiring, passages or stats index, refused), merged as it goes |
 | `head_profiles.json`, `vocab.json` | where each head looks over eight reference texts; every word-piece decoded alone | by the server, on first need |
 
 **The push's unit.** A push of dose d adds d · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) to the
@@ -699,14 +699,14 @@ prefill captures: a push at every prompt word-piece is rebuilt by one prefill). 
 pushed by ±d along their write directions at every word-piece of the census's four questions but the start mark, d =
 `--dose` (0.25) times each one's write ceiling, a share of what it can write firing alone; its indexed readers, and as
 many readers at the same layers it is not linked to (the null, `null_readers`), are read at the last word-piece and over
-the prompt (`pushed_reads`: prefills of 64 rows, each with its own unpushed row). Reported per layer, for the linked
-readers and the null (`wiring_check_summary`, in the log and `GET /arch` → `links.measured`): the share whose change under
-+d has the sign from rest, and under the push on the writer's `gate` face; the same against the sign in use at the
-reader's face that prompt (the last word-piece); Spearman's ρ of the change's size against |P| f²; how often +d and −d
-move a reader the same way (from rest the change is even in the writer, in use odd); how much more the linked readers
-move than the null; and a cost line (forwards, rows, seconds, minutes inferred on the 5090). On the stand-in's random
-weights, where every other path counts as much as the direct one, the signs held at about half the links, as for the
-null, and the linked readers moved about twice as much as the null's.
+the prompt (`pushed_reads`: prefills of up to `--batch` rows, 63 at its 64, each with its own unpushed row). Reported
+per layer, for the linked readers and the null (`wiring_check_summary`, in the log and `GET /arch` → `links.measured`):
+the share whose change under +d has the sign from rest, and under the push on the writer's `gate` face; the same against
+the sign in use at the reader's face that prompt (the last word-piece); Spearman's ρ of the change's size against
+|P| f²; how often +d and −d move a reader the same way (from rest the change is even in the writer, in use odd); how
+much more the linked readers move than the null; and a cost line (forwards, rows, seconds, minutes inferred on the
+5090). On the stand-in's random weights, where every other path counts as much as the direct one, the signs held at
+about half the links, as for the null, and the linked readers moved about twice as much as the null's.
 
 **The steer lens.** ±0.8 · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
 you?", "Write whatever you like.") and two plain openings, one forward with an unpushed row each; per sign, the mean change
