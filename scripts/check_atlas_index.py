@@ -5,7 +5,8 @@ with the same quantity read live, one neuron at a time:
 1. `forward_from_layer` from any layer, on right-padded rows, gives the whole forward's final states;
 2. lens.npz: each face's first ten word-pieces through the lens and by the naked eye are the ids the vault's
    DESCRIBE POLE ranks for its label (`label_top_ids`), and the index's label check is the vault's, count and reasons;
-3. act_scale.npz: the extremes and the stream's quantiles of `activation_extremes` over the same windows;
+3. act_scale.npz: the extremes and the stream's quantiles of `activation_extremes` over the same windows, the norms
+   kept in float32 buffers giving exactly the quantiles of the Python lists they replace;
 4. wiring.npz: each neuron's links each way are `neuron_wiring`'s, the same neurons, z (as float16 keeps it) and sign;
 5. steer_lens.d / steer_lens.npz: each neuron's rises are `steer_lens`'s, KL too; a stopped run resumes and merges;
 6. layout_writes.npz: each layer's cells are distinct places on its sheet;
@@ -68,6 +69,29 @@ def section(title: str, before: int) -> None:
 
 def quiet(_s: str) -> None:
     pass
+
+
+def old_norm_lists(lm: torch.nn.Module, wins: List[List[int]]) -> dict:
+    """The three norms per layer as the stats pass kept them before its buffers: Python floats, extended a text at a
+    time (the reference the buffers are checked against)."""
+    L = len(lm.layers)
+    got = {key: [[] for _ in range(L)] for key in ("resid_q", "mlp_rms_q", "mid_rms_q")}
+    hooks = []
+    for l, layer in enumerate(lm.layers):
+        e_post, e_pre = float(layer.post_feedforward_layernorm.eps), float(layer.pre_feedforward_layernorm.eps)
+        hooks.append(layer.register_forward_hook(lambda _m, _a, o, l=l: got["resid_q"][l].extend(
+            (o[0] if isinstance(o, tuple) else o)[0, 1:].float().norm(dim=-1).tolist())))
+        hooks.append(layer.mlp.register_forward_hook(lambda _m, _a, o, l=l, e=e_post: got["mlp_rms_q"][l].extend(
+            (o[0, 1:].float().pow(2).mean(-1) + e).sqrt().tolist())))
+        hooks.append(layer.pre_feedforward_layernorm.register_forward_pre_hook(lambda _m, a, l=l, e=e_pre: got["mid_rms_q"][l].extend(
+            (a[0][0, 1:].float().pow(2).mean(-1) + e).sqrt().tolist())))
+    try:
+        for ids in wins:
+            lm(input_ids=torch.tensor([ids]), use_cache=False)
+    finally:
+        for h in hooks:
+            h.remove()
+    return got
 
 
 def main() -> int:
@@ -146,7 +170,18 @@ def main() -> int:
     check(np.allclose(s["mlp_rms_q"][:, 1], ns["mlp_rms"], rtol=1e-5) and np.allclose(s["mid_rms_q"][:, 1], ns["mid_rms"], rtol=1e-5),
           "stats: the feed-forward norms' scales are activation_extremes'")
     check(int(s["tokens"]) == ex.tokens and s["meta"].get("corpus") == "check", "stats: provenance")
-    section("the activation extremes, the stream's quantiles and the norms' scales are activation_extremes'", before)
+    # the norms are kept in float32 buffers, one value a word-piece: the quantiles are those of the Python floats the
+    # pass once kept (gathered here by hooks of that old kind), exactly
+    check(all(isinstance(v, np.ndarray) and v.dtype == np.float32 and v.shape == (ex.tokens,) for vs in (ex.resid_norms, ex.mlp_rms, ex.mid_rms) for v in vs),
+          "stats: each norm a float32 buffer of one value a word-piece read")
+    old_lists = old_norm_lists(lm, wins)
+    old_q = lambda vs: np.array([np.quantile(np.array(v, np.float32), [0.1, 0.5, 0.9]) for v in vs], np.float32)  # noqa: E731
+    check(all(np.array_equal(s[key], old_q(old_lists[key])) for key in ("resid_q", "mlp_rms_q", "mid_rms_q")),
+          "stats: the quantiles from the float32 buffers are those of the old Python lists, exactly")
+    check(ao.stream_p50(ex) == [float(np.median(v)) for v in old_lists["resid_q"]]
+          and ao.norm_scales(ex)["mid_rms"] == [float(np.median(v)) for v in old_lists["mid_rms_q"]],
+          "stats: the push's unit and the norms' scales are the old lists' medians, exactly")
+    section("the activation extremes, the stream's quantiles and the norms' scales are activation_extremes'; the norms kept in float32", before)
 
     before = len(failures)
     f = ao.link_scale(w.scalars, [float(x) for x in s["mlp_rms_q"][:, 1]], [float(x) for x in s["mid_rms_q"][:, 1]])

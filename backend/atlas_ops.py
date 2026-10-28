@@ -673,7 +673,10 @@ class Extremes:
     of the stream leaving layer l at each of them; `mlp_rms[l]` the rms of layer l's feed-forward output before its
     post-feed-forward norm, and `mid_rms[l]` the rms of the stream entering that block (the pre-feed-forward norm's
     input), at each of them, each as its norm divides by it (sqrt(mean square + eps)): the two norms' usual scales, which
-    weigh the wiring across layers (`link_scale`)."""
+    weigh the wiring across layers (`link_scale`). Each is a float32 array of `tokens` values per layer, allocated once
+    for the whole pass: the hooks compute them in float32, so nothing is rounded, and 2,000,054 word-pieces of the 31B
+    take 60 x 3 x 4 bytes a word-piece, about 1.4 GB, where Python floats took about 11.5 GB (float16 would halve it,
+    but would move the push's unit p50 by up to 4.9e-4 of itself, past the 1e-4 a census allows between two runs)."""
 
     pos: torch.Tensor
     neg: torch.Tensor
@@ -682,9 +685,9 @@ class Extremes:
     pn: torch.Tensor
     np: torch.Tensor
     tokens: int = 0
-    resid_norms: List[List[float]] = field(default_factory=list)
-    mlp_rms: List[List[float]] = field(default_factory=list)
-    mid_rms: List[List[float]] = field(default_factory=list)
+    resid_norms: List[np.ndarray] = field(default_factory=list)
+    mlp_rms: List[np.ndarray] = field(default_factory=list)
+    mid_rms: List[np.ndarray] = field(default_factory=list)
 
 
 @torch.no_grad()
@@ -693,8 +696,10 @@ def activation_extremes(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, ke
     with outsized activations, as the reference's neuron_stats leaves it out)."""
     L, N = len(lm.layers), ffn_width(lm, 0)
     z = lambda: torch.zeros(L, N, dtype=torch.float32)  # noqa: E731
-    ex = Extremes(pos=z(), neg=z(), pp=z(), nn=z(), pn=z(), np=z(), resid_norms=[[] for _ in range(L)],
-                  mlp_rms=[[] for _ in range(L)], mid_rms=[[] for _ in range(L)])
+    T = sum(max(0, len(ids) - 1) for ids in texts_ids) if keep_norms else 0
+    buf = lambda: [np.empty(T, np.float32) for _ in range(L)]  # noqa: E731
+    ex = Extremes(pos=z(), neg=z(), pp=z(), nn=z(), pn=z(), np=z(), resid_norms=buf(), mlp_rms=buf(), mid_rms=buf())
+    at = [0]  # where the text being read starts in the buffers
     dev = model_device(lm)
     gate: Dict[int, torch.Tensor] = {}
     up: Dict[int, torch.Tensor] = {}
@@ -722,16 +727,19 @@ def activation_extremes(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, ke
             hooks.append(layer.mlp.down_proj.register_forward_pre_hook(pre))
             if keep_norms:
 
+                def put(store: List[np.ndarray], l: int, v: torch.Tensor) -> None:
+                    store[l][at[0] : at[0] + v.shape[0]] = v.cpu().numpy()
+
                 def post(_m: nn.Module, _a: Tuple[Any, ...], out: Any, l: int = l) -> None:
                     h = out[0] if isinstance(out, tuple) else out
-                    ex.resid_norms[l].extend(h[0, 1:].float().norm(dim=-1).cpu().tolist())
+                    put(ex.resid_norms, l, h[0, 1:].float().norm(dim=-1))
 
                 # each as the norm divides by it: sqrt(mean square + eps)
                 def mlp_out(_m: nn.Module, _a: Tuple[Any, ...], out: Any, l: int = l, eps: float = float(layer.post_feedforward_layernorm.eps)) -> None:
-                    ex.mlp_rms[l].extend((out[0, 1:].float().pow(2).mean(-1) + eps).sqrt().cpu().tolist())
+                    put(ex.mlp_rms, l, (out[0, 1:].float().pow(2).mean(-1) + eps).sqrt())
 
                 def mid_in(_m: nn.Module, args: Tuple[Any, ...], l: int = l, eps: float = float(layer.pre_feedforward_layernorm.eps)) -> None:
-                    ex.mid_rms[l].extend((args[0][0, 1:].float().pow(2).mean(-1) + eps).sqrt().cpu().tolist())
+                    put(ex.mid_rms, l, (args[0][0, 1:].float().pow(2).mean(-1) + eps).sqrt())
 
                 hooks.append(layer.register_forward_hook(post))
                 hooks.append(layer.mlp.register_forward_hook(mlp_out))
@@ -740,6 +748,7 @@ def activation_extremes(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, ke
             x = torch.tensor([[int(t) for t in ids]], dtype=torch.long, device=dev)
             lm(input_ids=x, use_cache=False)
             ex.tokens += max(0, len(ids) - 1)
+            at[0] += max(0, len(ids) - 1)
             gate.clear()
             up.clear()
     finally:
@@ -748,16 +757,20 @@ def activation_extremes(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, ke
     return ex
 
 
+def _median(v: Any) -> float:
+    """The median of float32 values taken in float64, as it was taken over the Python floats they once were."""
+    return float(np.median(np.asarray(v, np.float64))) if len(v) else float("nan")
+
+
 def stream_p50(ex: Extremes) -> List[float]:
     """The median length of the stream leaving each layer over the word-pieces `ex` read (the add push's unit)."""
-    return [float(np.median(v)) if v else float("nan") for v in ex.resid_norms]
+    return [_median(v) for v in ex.resid_norms]
 
 
 def norm_scales(ex: Extremes) -> Dict[str, List[float]]:
     """The two norms' usual scales per layer over the word-pieces `ex` read (medians): `mlp_rms`, the feed-forward
     output's rms before the post-feed-forward norm; `mid_rms`, the stream's rms entering the block."""
-    med = lambda vs: [float(np.median(v)) if v else float("nan") for v in vs]  # noqa: E731
-    return {"mlp_rms": med(ex.mlp_rms), "mid_rms": med(ex.mid_rms)}
+    return {"mlp_rms": [_median(v) for v in ex.mlp_rms], "mid_rms": [_median(v) for v in ex.mid_rms]}
 
 
 @torch.no_grad()

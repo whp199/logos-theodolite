@@ -128,7 +128,7 @@ def build_stats(rt: Any, out_dir: Path, texts_ids: Sequence[Sequence[int]], corp
     lm = language_model(rt.hf_model)
     t0 = time.time()
     ex = ao.activation_extremes(lm, texts_ids)
-    qs = lambda vs: np.array([np.quantile(np.array(v, np.float32), [0.1, 0.5, 0.9]) if v else [np.nan] * 3 for v in vs], np.float32)  # noqa: E731
+    qs = lambda vs: np.array([np.quantile(np.asarray(v, np.float32), [0.1, 0.5, 0.9]) if len(v) else [np.nan] * 3 for v in vs], np.float32)  # noqa: E731
     log(f"stats: {ex.tokens} word-pieces in {len(texts_ids)} windows ({time.time() - t0:.0f} s)")
     path = Path(out_dir) / FILES["act_scale"]
     save_npz(path, pos=ex.pos.numpy(), neg=ex.neg.numpy(), pp=ex.pp.numpy(), nn=ex.nn.numpy(), pn=ex.pn.numpy(),
