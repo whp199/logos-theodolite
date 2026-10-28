@@ -48,7 +48,13 @@ itself, not a copy of it. It checks:
    (E3_background_mu_check.json) is of the pinned file; and the claims the GPU stage or this track made untrue stay
    gone (that μ's coordinates are not checked, that contrast axes are not built, that every pair names think_protocol,
    that a replacing edit's "before" is the replaced edit's voice, that layers 1-10 were not tested, the column
-   "overwrite").
+   "overwrite");
+10. the scientist's rewind on the page (frontend/src/screens/atlas/scientist.ts `rewindLast`, bundled likewise, its
+   requests answered in place of the server): "edit" on a thread of three messages and their replies takes off the
+   last message and its reply when the server's /rewind says nothing of `messages` or says 1, the last two and theirs
+   when it says 2 (a Codex turn reverted whole, a message steered into it going with it), also when those two messages
+   stand side by side, and the whole thread when it says more than the thread holds; the last message goes back into
+   the box each time, and /rewind is asked once, with the chat and that message.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -75,6 +81,7 @@ if str(ROOT_DIR) not in sys.path:
 
 FRONTEND = ROOT_DIR / "frontend"
 STORE_DIR = FRONTEND / "src" / "store"
+ATLAS_DIR = FRONTEND / "src" / "screens" / "atlas"
 ESBUILD = FRONTEND / "node_modules" / ".bin" / "esbuild"
 
 # The user's decisions for track A1: the frame on raw rows, the neurons ranked by write size.
@@ -268,8 +275,36 @@ console.log(JSON.stringify(out));
 """
 
 
-def run_store() -> Dict[str, Any] | None:
-    """Bundle the store with the frontend's esbuild and run it under node; None (and a failure) when it cannot run."""
+# What the second bundle prints: the scientist's thread after "edit" (rewindLast), on a thread of three messages and
+# their replies (or two of the messages side by side), with /rewind answered as the server would, saying or not how
+# many messages went.
+REWIND_ENTRY = r"""
+import { rewindLast, useScientist } from "./scientist.ts";
+const user = (msg) => ({ kind: "user", msg, shown: msg, atts: [] });
+const reply = (text) => ({ kind: "assistant", parts: [{ t: "md", text }] });
+const out = {};
+const thread = [user("one"), reply("to one"), user("two"), reply("to two"), user("three"), reply("to three")];
+// a message sent before any of the reply to the one before it had come: two messages side by side
+const adjacent = [user("one"), reply("to one"), user("two"), user("three"), reply("to both")];
+for (const [name, answer, items] of [["absent", {}, thread], ["one", { messages: 1 }, thread], ["two", { messages: 2 }, thread],
+                                     ["more", { messages: 5 }, thread], ["adjacent", { messages: 2 }, adjacent]]) {
+  const sent = [];
+  globalThis.fetch = async (path, init) => {
+    sent.push({ path, body: JSON.parse(init.body) });
+    return new Response(JSON.stringify({ ok: true, cut: true, ...answer }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  useScientist.setState({ chat: "c1", busy: false, input: "", items: [...items] });
+  await rewindLast("edit");
+  const s = useScientist.getState();
+  out[name] = { items: s.items.map((x) => (x.kind === "user" ? x.msg : "reply")), input: s.input, sent };
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def run_bundle(entry: str, cwd: Path, what: str) -> Dict[str, Any] | None:
+    """Bundle `entry` (in `cwd`) with the frontend's esbuild and run it under node; None (and a failure) when it cannot
+    run."""
     node = shutil.which("node")
     check(ESBUILD.exists(), f"{ESBUILD} is missing: run npm install in frontend/")
     check(node is not None, "node is not on PATH")
@@ -278,17 +313,22 @@ def run_store() -> Dict[str, Any] | None:
     bundle = subprocess.run(
         [str(ESBUILD), "--bundle", "--platform=node", "--format=esm", "--loader=ts", "--log-level=error",
          "--sourcefile=check_interface_defaults_entry.ts"],
-        input=ENTRY, cwd=STORE_DIR, capture_output=True, text=True, timeout=120, check=False,
+        input=entry, cwd=cwd, capture_output=True, text=True, timeout=120, check=False,
     )
-    check(bundle.returncode == 0, f"esbuild could not bundle the store:\n{bundle.stderr}")
+    check(bundle.returncode == 0, f"esbuild could not bundle {what}:\n{bundle.stderr}")
     if bundle.returncode != 0:
         return None
     ran = subprocess.run([node, "--input-type=module"], input=bundle.stdout, capture_output=True, text=True,
                          timeout=120, check=False)
-    check(ran.returncode == 0, f"the bundled store did not run under node:\n{ran.stderr}")
+    check(ran.returncode == 0, f"the bundled {what} did not run under node:\n{ran.stderr}")
     if ran.returncode != 0:
         return None
     return json.loads(ran.stdout.strip().splitlines()[-1])
+
+
+def run_store() -> Dict[str, Any] | None:
+    """Bundle the store with the frontend's esbuild and run it under node; None (and a failure) when it cannot run."""
+    return run_bundle(ENTRY, STORE_DIR, "store")
 
 
 def server_defaults() -> Dict[str, Any]:
@@ -511,6 +551,19 @@ def check_voice(out: Dict[str, Any]) -> None:
     check(ok, "the server's VoiceRequest does not take the voice the console sends")
 
 
+def check_rewind(out: Dict[str, Any]) -> None:
+    print("10. the scientist's rewind on the page")
+    kept = {k: v["items"] for k, v in out.items()}
+    check(kept["absent"] == kept["one"] == ["one", "reply", "two", "reply"],
+          f"a rewind of one message did not take off only the last message and its reply: {kept['absent']}, {kept['one']}")
+    check(kept["two"] == ["one", "reply"], f"a rewind of two messages (a steered Codex turn) kept {kept['two']}")
+    check(kept["more"] == [], f"a rewind of more messages than the thread holds kept {kept['more']}")
+    check(kept["adjacent"] == ["one", "reply"], f"a rewind of two messages sent side by side kept {kept['adjacent']}")
+    check(all(v["input"] == "three" for v in out.values()), f"edit did not put the last message back in the box: {[v['input'] for v in out.values()]}")
+    check(all(v["sent"] == [{"path": "/api/atlas/scientist/rewind", "body": {"chat": "c1", "text": "three"}}] for v in out.values()),
+          f"/rewind was not asked once with the chat and the last message: {[v['sent'] for v in out.values()]}")
+
+
 def check_text() -> None:
     print("4. the text the checks and pages lean on")
     store = (STORE_DIR / "useTheodoliteStore.ts").read_text(encoding="utf-8")
@@ -680,6 +733,9 @@ def main() -> int:
         check_think(out)
         check_contrasts(out)
         check_voice(out)
+    rewind = run_bundle(REWIND_ENTRY, ATLAS_DIR, "scientist page")
+    if rewind is not None:
+        check_rewind(rewind)
     if failures:
         print(f"\ninterface defaults: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1
