@@ -7,8 +7,9 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    sizes against gguf's table; the IQ types refused in plain words; on the GPU too when there is one;
 2. the GGUF layer and the accessors: rows and columns unpacked alone equal the whole weight's; packed, resident and
    chunked unpacking give the same weight and forward; the vault's column and row overlays laid on as the pinned W4A16
-   forward lays them (a Q4_0 layer holding a W4A16 module's codes and scales computes its forward bit for bit, overlays
-   and all); dense, dense_cols and dense_rows alike on a plain Linear, a W4A16 module and a GGUF layer;
+   forward lays them, columns and rows together and a row alone (a Q4_0 layer holding a W4A16 module's codes and scales
+   computes its forward bit for bit, overlays and all, its stored weight untouched); dense, dense_cols and dense_rows
+   alike on a plain Linear, a W4A16 module and a GGUF layer;
 3. the stand-in written to tiny GGUF files (F32, F16, BF16, Q8_0, Q4_0; Q4_K, with llama.cpp's Q8_0 fallback where a
    row is not 256 long, on a stand-in four times as wide) and read back: the config from the metadata is the
    stand-in's; every tensor is gguf's dequantised; the forward equals the stand-in carrying those numbers, bit for bit
@@ -22,8 +23,9 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    device into its 410 linear layers and 29.287 billion quantised weights;
 4. GGUFRuntime on the Q4_0 file, packed, against the stand-in's runtime carrying the same numbers: every accessor that
    reads the packing, write_col_norms by hand, a push written in three voices and a neuron read, the lens-free parts
-   of a sighting (the rows it captures, the naked eye's readout), a vault DELETE on a packed layer (heard by the
-   forward, seen by every accessor, the blocks untouched), and a census taken row for row alike;
+   of a sighting (the rows it captures, the naked eye's readout), a vault DELETE on a packed layer, a column written
+   in its place and a gate row (heard by the forward, seen by every accessor and write_col_norms as the pinned ones see
+   them, the blocks untouched), and a census taken row for row alike;
 5. the choice of runtime from the environment (runtime_factory.make_runtime), and census_run.py on a GGUF on the CPU;
 6. scripts/compare_gguf_ct.py's self-test: a checkpoint in the W4A16 layout and a Q4_0 GGUF written from the same
    codes and scales are found identical, again with every other block written the other way round (d = -scale, codes
@@ -316,6 +318,22 @@ def run_checks(tmp: Path) -> int:
     q40r = gw.GGUFLinear(torch.from_numpy(cmp.q4_0_blocks(codes, scale.float())), "Q4_0", in_f, out_f, dtype=torch.bfloat16, resident=True)
     q40r._memit_col_overlays[37], q40r._memit_row_overlays[4] = col, row
     check(torch.equal(q40r(xb), ct(xb)) and torch.equal(q40r.weight_dense, w_ct), "resident: the same, its resident weight untouched")
+    # a row overlay alone, no column: the pinned forward then clones for the rows (nothing else would)
+    ct_r = W4A16Module(cmp.ct_pack(codes), scale)
+    plain_r = nn.Linear(in_f, out_f, bias=False, dtype=torch.bfloat16)
+    plain_r.weight.data.copy_(w_ct)
+    gw.install_overlay_forward(plain_r)
+    rows_only = [(gw.GGUFLinear(torch.from_numpy(cmp.q4_0_blocks(codes, scale.float())), "Q4_0", in_f, out_f, dtype=torch.bfloat16, resident=res_), what)
+                 for res_, what in ((False, "packed"), (True, "resident"))] + [(plain_r, "a plain Linear")]
+    for m_ in [ct_r] + [m_ for m_, _ in rows_only]:
+        m_._memit_row_overlays[4] = row.clone()
+    want_r = w_ct.clone()
+    want_r[4, :] = row.to(torch.bfloat16)
+    check(torch.equal(ct_r(xb), F.linear(xb, want_r)), "the pinned W4A16 forward with a row overlay alone")
+    for m_, what in rows_only:
+        stored = m_.weight if isinstance(m_, nn.Linear) else (m_.weight_dense if m_.resident else gw.dense(m_))
+        check(torch.equal(m_(xb), ct_r(xb)) and torch.equal(stored, w_ct) and torch.equal(gw.dense(m_), w_ct),
+              f"{what} with a row overlay alone: the pinned forward's numbers, laid on a clone (its weight untouched)")
     section("GGUFLinear: slices, packed/resident/chunked, the vault's overlays as _w4a16_forward lays them; the accessors alike "
             "on plain, W4A16 and GGUF layers", before)
 
@@ -615,7 +633,38 @@ def run_checks(tmp: Path) -> int:
     down._memit_col_overlays.clear()
     vault.active_patches.clear()
     check(torch.equal(rt_g.hf_model(torch.tensor(prompt)).logits, clean), "with the edit cleared, the forward is as before")
-    section("a vault edit on a packed GGUF layer: heard, seen, the blocks untouched", before)
+    # a column that is not zero (as an UPDATE or INSERT writes one; they read the J++ lens, not loaded here, so it is laid
+    # on as the vault lays it) and a row on gate_proj, on the GGUF runtime and on the stand-in's alike
+    g9 = torch.Generator().manual_seed(9)
+    v7, r9 = torch.randn(asi.HIDDEN, generator=g9), torch.randn(asi.HIDDEN, generator=g9)
+    gate_g = lm_g.layers[2].mlp.gate_proj
+    down_s, gate_s = lm_s.layers[2].mlp.down_proj, lm_s.layers[2].mlp.gate_proj
+    down._memit_col_overlays[7] = v7.clone()
+    gate_g._memit_row_overlays[9] = r9.clone()
+    down_s._memit_col_overlays, gate_s._memit_row_overlays = {7: v7.clone()}, {9: r9.clone()}
+    nidx2 = torch.tensor([7, 9, 0, 7])
+    check(torch.equal(rt_g.slice_w_down(2, nidx2), rt_s.slice_w_down(2, nidx2)) and torch.equal(rt_g.slice_w_down(2, nidx2)[0], v7)
+          and torch.equal(rt_g.get_full_w_down(2), rt_s.get_full_w_down(2)) and torch.equal(rt_g.get_full_w_down(2)[:, 7], v7),
+          "a non-zero column overlay: slice_w_down and get_full_w_down as the pinned ones read it")
+    check(torch.equal(rt_g.slice_w_gate(2, nidx2), rt_s.slice_w_gate(2, nidx2)) and torch.equal(rt_g.slice_w_gate(2, nidx2)[1], r9)
+          and torch.equal(rt_g.get_full_w_gate(2), rt_s.get_full_w_gate(2)) and torch.equal(rt_g.get_full_w_gate(2)[9], r9)
+          and torch.equal(rt_g.slice_w_up(2, nidx2), rt_s.slice_w_up(2, nidx2)),
+          "a gate row overlay: slice_w_gate and get_full_w_gate as the pinned ones read it (up_proj, as there, without)")
+    wn7 = rt_g.write_col_norms(2)
+    want7 = torch.linalg.vector_norm(v7.float() * w_post)
+    check(torch.equal(wn7[7], want7) and not torch.equal(want7, torch.linalg.vector_norm(v7)) and torch.equal(wn7[:7], wn[:7])
+          and torch.equal(wn7[8:], wn[8:]), "write_col_norms: the overlay column's ||w_post (.) v||, the others as before")
+    edited = stand_in_with(tok, files["Q4_0"])
+    edited.model.layers[2].mlp.down_proj.weight.data[:, 7] = v7
+    edited.model.layers[2].mlp.gate_proj.weight.data[9] = r9
+    check(torch.equal(rt_g.hf_model(torch.tensor(prompt)).logits, edited(torch.tensor(prompt)).logits)
+          and torch.equal(down.weight_blocks, saved) and torch.equal(gw.dense(gate_g), gw.dense(gate_s)),
+          "heard: the forward is the stand-in's with that column and that row written in, the blocks untouched")
+    down._memit_col_overlays.clear()
+    gate_g._memit_row_overlays.clear()
+    del down_s._memit_col_overlays, gate_s._memit_row_overlays
+    check(torch.equal(rt_g.hf_model(torch.tensor(prompt)).logits, clean), "with both cleared, the forward is as before")
+    section("vault edits on packed GGUF layers (a zeroed and a written column, a gate row): heard, seen, the blocks untouched", before)
 
     before = len(failures)
     runs = {}
