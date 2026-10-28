@@ -221,7 +221,8 @@ def main(argv: Optional[list] = None) -> int:
     import argparse
 
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--serve", type=int, metavar="PORT", help="serve the instrument on the stand-in, on 127.0.0.1:PORT")
+    ap.add_argument("--serve", type=int, metavar="PORT",
+                    help="serve the instrument on the stand-in, on 127.0.0.1:PORT (a stop waits at most 3 s on open streams)")
     a = ap.parse_args(argv)
     if not a.serve:
         ap.print_help()
@@ -232,7 +233,8 @@ def main(argv: Optional[list] = None) -> int:
     print(f"the stand-in's atlas folder: {root}")
     rt, vault = stand_in()
     app = bind_server(rt, vault)
-    uvicorn.run(app, host="127.0.0.1", port=int(a.serve), log_level="info")
+    # a chat's event stream never ends: without a limit, a stop would wait on every page left open (README §v)
+    uvicorn.run(app, host="127.0.0.1", port=int(a.serve), log_level="info", timeout_graceful_shutdown=3)
     return 0
 
 

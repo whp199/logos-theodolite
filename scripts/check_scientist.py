@@ -23,7 +23,10 @@ so the chat is driven over real connections):
    are not JSON; a message sent mid-turn answered in the same turn; an interrupt leaving a valid conversation; a
    profile without streaming; an endpoint's error and a missing key in plain words; a profile file holding a key
    refused; history, past chats, rewind;
-7. who may ask: the chat's routes refuse a page from another machine.
+7. who may ask: the chat's routes refuse a page from another machine;
+8. a stop: scripts/atlas_stand_in.py --serve in a process of its own, a chat's event stream held open (it never ends
+   of itself), then SIGINT: the server exits within 6 s (its graceful-shutdown limit is 3 s; with none it would wait
+   for as long as the stream stays open).
 
 Run: .venv/bin/python -I scripts/check_scientist.py   (exits 0 when every check holds)
 """
@@ -40,6 +43,7 @@ if __name__ == "__main__":
 import asyncio
 import json
 import shutil
+import signal
 import socket
 import stat
 import subprocess
@@ -119,7 +123,8 @@ class Served:
 
         self.port = free_port()
         self.url = f"http://127.0.0.1:{self.port}"
-        self.srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=self.port, log_level="warning", lifespan="off"))
+        self.srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=self.port, log_level="warning", lifespan="off",
+                                                 timeout_graceful_shutdown=3))
         self.th = threading.Thread(target=self.srv.run, daemon=True)
         self.th.start()
         for _ in range(400):
@@ -788,6 +793,42 @@ def run_checks() -> int:
             except (ProcessLookupError, PermissionError):
                 pass
     srv.stop()
+
+    # ------------------------------------------------------------------- 8. a stop with a chat's event stream open
+    before = len(failures)
+    port = free_port()
+    with open(TMP / "serve.log", "w") as serve_log:
+        proc = subprocess.Popen([PY, "-I", str(ROOT_DIR / "scripts" / "atlas_stand_in.py"), "--serve", str(port)],
+                                stdout=serve_log, stderr=subprocess.STDOUT)
+    try:
+        url, up = f"http://127.0.0.1:{port}", False
+        for _ in range(1200):  # the stand-in is built first
+            if proc.poll() is not None:
+                break
+            try:
+                up = httpx.get(f"{url}/api/health", timeout=2).status_code == 200
+            except httpx.HTTPError:
+                pass
+            if up:
+                break
+            time.sleep(0.1)
+        check(up, f"scripts/atlas_stand_in.py --serve {port} answers")
+        stream = Events(url, str(uuid.uuid4()))
+        check(bool(stream.events) and stream.events[0]["t"] == "state", "a chat's event stream is open (it never ends of itself)")
+        t0 = time.time()
+        proc.send_signal(signal.SIGINT)
+        try:
+            proc.wait(timeout=6)
+        except subprocess.TimeoutExpired:
+            pass
+        check(proc.poll() is not None, f"the server stopped within 6 s of SIGINT with the stream still open ({time.time() - t0:.1f} s)")
+        stream.stop = True
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    section("a stop with a chat's event stream open: the server exits within seconds", before)
+
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0
 

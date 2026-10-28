@@ -841,7 +841,8 @@ def main() -> int:
         sk.bind(("127.0.0.1", 0))
         port = sk.getsockname()[1]
     atlas_routes.bind(server.get_app_state, asyncio.Lock())
-    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", lifespan="off"))
+    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", lifespan="off",
+                                        timeout_graceful_shutdown=3))
     th = threading.Thread(target=srv.run, daemon=True)
     th.start()
     for _ in range(200):

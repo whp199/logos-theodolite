@@ -422,9 +422,12 @@ J++ lens adds 3.4 GB. Those speeds are inferred from one 4-core machine: time a 
 
 ```bash
 (cd frontend && npm ci && npm run build)      # the server serves frontend/dist at /
-.venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765
+.venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765 --timeout-graceful-shutdown 3
 # open http://127.0.0.1:8765/   ·   live-reloading interface: (cd frontend && npm run dev), proxied to :8765
 ```
+
+A page left open keeps the scientist's event stream open, and it never ends of itself: `--timeout-graceful-shutdown 3`
+lets a stop end it after 3 s instead of waiting for every such page to close.
 
 The server answers only its own pages, served from this machine, and scripts run on it: a request or a WebSocket whose
 Host or Origin names another machine, or that a browser marks as sent from another site (a plain link excepted), is

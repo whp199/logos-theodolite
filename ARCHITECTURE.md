@@ -726,7 +726,7 @@ The scientist folder is `$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scient
 | `GET /backends` | whether `claude` and `codex` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}` |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
 | `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
-| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `ping` |
+| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, README §v), or a stop would wait on every page left open |
 | `POST /interrupt` | `{chat}`: stops the reply; the chat (and Claude Code's or Codex's background commands) goes on |
 | `POST /ui` | from the tools: a screen action (`select`, `head`, `tab`, `camera`, `highlight`, `annotate`, `text`, `search`, `rename`), passed to the chat's page as a `ui` event, layers from 0 |
 | `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events |
