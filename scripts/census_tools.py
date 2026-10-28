@@ -85,6 +85,12 @@ def run_ceilings(run: Path, meta: dict, stand_in: bool) -> dict:
         got = dict(zip(want, w.write_ceiling(layer, want).tolist())) if want else {}
     else:
         model = meta.get("model") or "google/gemma-4-31B-it-qat-w4a16-ct"
+        if model.startswith("gguf:"):
+            raise SystemExit(f"{run.name} was taken on a GGUF ({model.split('#', 1)[0]}), whose ceilings are not read from a "
+                             "Hugging Face checkpoint: leave out --weights (answers taken since dose units were kept record "
+                             "their own).")
+        # a reading off the GPU or in float32 names its class after "@" (backend/runtime_factory.reading_class)
+        model = model.split("@", 1)[0]
         files = cz.cached_checkpoint(model)
         if not files:
             raise SystemExit(f"{model} is not in the Hugging Face cache here, so its ceilings cannot be read: leave out --weights.")
@@ -246,11 +252,14 @@ def main(argv=None) -> int:
         elif a.what == "curves":
             run = resolve_run(a.run, calibration=True)
             meta = json.loads(cz.meta_path_of(run).read_text(encoding="utf-8"))
-            ceilings = run_ceilings(run, meta, a.stand_in) if a.weights else None
+            recorded = all(r.get("ceiling") is not None for r in cz.read_rows(run, tolerate_tail=True) if r["kind"] != "baseline")
+            if a.weights and recorded:
+                print("every pushed answer records its own ceiling, so the weights are not read (--weights is not needed)")
+            ceilings = run_ceilings(run, meta, a.stand_in) if a.weights and not recorded else None
             curves = cz.dose_curves(cz.read_rows(run, tolerate_tail=True), ceilings,
                                     base=cz.baseline_ids(cz.read_rows(run, tolerate_tail=True)))
             has = any(x["over_ceiling"] is not None for x in curves)
-            source = ("the answers' own record, else the weights" if a.weights else "the answers' own record") if has else ""
+            source = ("the answers' own record, else the weights" if ceilings is not None else "the answers' own record") if has else ""
             questions = [p for p in cz.PROMPTS if p in {q for q, _ in meta.get("design") or []}]
             window = cz.dose_window(curves, meta.get("dose_unit", "stream"), questions)
             print_curves(run, meta, curves, window, source)

@@ -425,6 +425,14 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
     if mode == "reference":
         _STATE.update(rec)
         return dict(rec)
+    if not linears:
+        # a GGUF's layers, or a dense model's: nothing here is W4A16, so no unpacker but the reference would run (a GGUF's
+        # are held as THEODOLITE_GGUF_LINEARS says, backend/runtime_factory.py); the record says what was asked
+        say(f"No W4A16 linears in this model, so the {mode} unpacker has nothing to unpack: the reference is recorded "
+            "(a GGUF's layers are held as THEODOLITE_GGUF_LINEARS says).")
+        rec.update(mode="reference", asked=mode)
+        _STATE.update(rec)
+        return dict(rec)
     if mode == "lut" and sys.byteorder != "little":
         raise Refused("The lut unpacker reads the packed words as bytes, low nibble first, which holds only on a "
                       "little-endian machine; this one is big-endian. Use the reference unpacker.")

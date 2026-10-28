@@ -405,8 +405,8 @@ The study used model snapshot `52f3f65bc7a02d555763bc923bd1d9094898219d` and len
 
 ```bash
 uv pip install "gguf>=0.19"                            # reads GGUF files (the optional "gguf" extra)
-THEODOLITE_GGUF=~/models/gemma-4-31b-it-q4_0.gguf .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765
-THEODOLITE_DEVICE=cpu .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765        # the checkpoint, on the CPU
+THEODOLITE_GGUF=~/models/gemma-4-31b-it-q4_0.gguf .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765 --timeout-graceful-shutdown 3
+THEODOLITE_DEVICE=cpu .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765 --timeout-graceful-shutdown 3   # the checkpoint, on the CPU
 THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=resident THEODOLITE_GGUF_LENS=none \
     .venv/bin/python scripts/census_run.py --layer 45 --neurons random:8 --random-controls 8 --max-new 32
 .venv/bin/python -I scripts/compare_gguf_ct.py <file>  # does the GGUF hold the checkpoint's weights?
@@ -487,13 +487,16 @@ process at a time):
 .venv/bin/python scripts/census_tools.py spread 53                   # its answers laid out by what they say (CPU)
 ```
 
-They go to `$THEODOLITE_ATLAS_DIR` (else `atlas_data/`, which git ignores). The costs in each script’s help are worked
-out from the arithmetic, not measured: time a pilot with `--layers` or `--neurons 0-255` first. Names and notes are kept in
+They go to `$THEODOLITE_ATLAS_DIR` (else `atlas_data/`, which git ignores). The costs in each script’s help were
+measured in a pilot on one RTX 5090 where they say so (27 October 2026), and are worked out from the arithmetic
+elsewhere: time a pilot with `--layers` or `--neurons 0-255` on any other card first (COMPUTE.md). Names and notes are kept in
 `$THEODOLITE_FIELD_NOTES`, else `~/.local/share/theodolite/field_notes.json`. To try the page without the GPU or the
 weights, `.venv/bin/python scripts/atlas_stand_in.py --serve 8765` serves the whole instrument on a tiny random Gemma 4
-(build its indexes with `atlas_build.py all --stand-in`); what it shows is random, and the page says so.
+(build its indexes with `atlas_build.py all --stand-in`, and its passages with `atlas_build.py passages --stand-in`);
+what it shows is random, and the page says so.
 
-Every forward unpacks the 4-bit weights afresh. `--unpacker lut` or `--unpacker compiled` on `atlas_build.py` and
+Every forward unpacks the checkpoint’s 4-bit weights afresh (a GGUF’s layers are held as `THEODOLITE_GGUF_LINEARS`
+says, above: `--unpacker` is the W4A16 checkpoint’s). `--unpacker lut` or `--unpacker compiled` on `atlas_build.py` and
 `census_run.py` (`THEODOLITE_UNPACKER` for the server) unpacks them faster with the same bits, tested against the
 runtime’s own unpacker at load on a GPU and refused in plain words on any difference; `--unpacker resident` keeps them
 unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit weights (an 80 GB card holds it, with
@@ -555,9 +558,9 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 
 | Path | What is there |
 |---|---|
-| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py`, `causal_check.py` (a label's causal test, N1A's protocol); the atlas: `atlas.py` (its routes), `atlas_ops.py` (pushes, reads, wiring, heads, the steer lens), `atlas_index.py` and `atlas_build.py` (its indexes), `census.py`, `field_notes.py`, `scientist_chat.py`, `scientist_tools.py` and `scientist_mcp.py` (the scientist), `scientist_prompt.md` and `scientist_methodology.md` (its instructions) |
+| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py`, `causal_check.py` (a label's causal test, N1A's protocol); the atlas: `atlas.py` (its routes), `atlas_ops.py` (pushes, reads, wiring, heads, the steer lens), `atlas_index.py` and `atlas_build.py` (its indexes), `census.py`, `field_notes.py`, `scientist_chat.py`, `scientist_tools.py` and `scientist_mcp.py` (the scientist), `scientist_prompt.md` and `scientist_methodology.md` (its instructions); `local_only.py` (who may ask, on every route and the socket), `w4a16_fast.py` (faster unpackers of the 4-bit weights, the same bits); the CPU and GGUF: `runtime_factory.py` (which runtime a process runs), `gguf_weights.py`, `gguf_model.py` and `gguf_runtime.py` |
 | `frontend/` | Vite and React: ten pages (welcome, instrument, layer leaf, neuron folio, atlas, landmarks, nudge, vault, lexicon, lineage), the rubrics and apparatus switches, and the study’s recorded sighting for when no server answers |
-| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first); the atlas: `atlas_build.py`, `census_run.py` and `census_tools.py`, `atlas_stand_in.py` (its CPU stand-in), and `check_atlas_ops.py`, `check_atlas_index.py`, `check_atlas_api.py`, `check_census.py` and `check_scientist.py` (its checks, on the CPU) |
+| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first); the atlas: `atlas_build.py`, `census_run.py` and `census_tools.py`, `atlas_stand_in.py` (its CPU stand-in), and `check_atlas_ops.py`, `check_atlas_index.py`, `check_atlas_api.py`, `check_census.py` and `check_scientist.py` (its checks, on the CPU); `check_local_only.py` (the guard), `check_hypothesis_test.py` (the guess test against chance), `check_dequant.py` (the unpackers, bit for bit), `check_gguf.py` and `compare_gguf_ct.py` (the GGUF path, and whether a GGUF holds the checkpoint’s weights) |
 | `experiments/REPORT.md` | The main write-up |
 | `ROADMAP.md` | What is still open, gathered from this README’s fault table, the report’s errata, the pages and the records of R1 to R4 |
 | `experiments/lab/` | `labd.py` (the GPU daemon holding the model and lenses), `labclient.py` (submit jobs), `labkit.py` (lens readouts, gender scores, the corrected decomposition, interventions, exact same-position VJPs through the 4-bit model) |

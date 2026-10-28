@@ -105,11 +105,19 @@ def get_app_state() -> Tuple[TheodoliteRuntime, LarqlVaultEngine]:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global _RUNTIME, _VAULT
+    # how the 4-bit weights are unpacked ($THEODOLITE_UNPACKER, backend/w4a16_fast.py: each gives the same bits, tested
+    # before anything is read where install tests it: compiled, resident, and lut on CUDA; the reference unless set),
+    # its name checked before the model loads, which takes minutes on the 31B
+    unpacker = os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference"
+    if unpacker not in w4a16_fast.MODES:
+        raise w4a16_fast.Refused(f"${w4a16_fast.UNPACKER_ENV} names the unpackers {', '.join(w4a16_fast.MODES)}, not "
+                                 f"{unpacker!r}; nothing was loaded.")
     logger.info("Initializing TheodoliteRuntime (Gemma-4-31B W4A16 + J++ Lens)...")
     _RUNTIME = make_runtime(load_jlens=False).load()  # THEODOLITE_GGUF / THEODOLITE_DEVICE (backend/runtime_factory.py)
-    # how the 4-bit weights are unpacked ($THEODOLITE_UNPACKER, backend/w4a16_fast.py: each gives the same bits, tested
-    # before anything is read where install tests it: compiled, resident, and lut on CUDA; the reference unless set)
-    w4a16_fast.install(_RUNTIME, os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference", log=logger.info)
+    try:
+        w4a16_fast.install(_RUNTIME, unpacker, log=logger.info)
+    except w4a16_fast.Refused as exc:  # a self-test failed: said in plain words, as census_run.py and atlas_build.py do
+        raise SystemExit(str(exc)) from exc
     _VAULT = LarqlVaultEngine(_RUNTIME)
     bind_runtime(_RUNTIME, _VAULT)
     logger.info("TheodoliteRuntime & LarqlVaultEngine bound and ready.")

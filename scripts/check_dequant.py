@@ -596,9 +596,11 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
                              "--out-dir", str(runs), "--no-rank"], env=env, capture_output=True, text=True, timeout=600)
     meta_p = cz.meta_path_of(runs / "L2-main_rel.jsonl")
     meta = json.loads(meta_p.read_text()) if meta_p.exists() else {}
-    check(r.returncode == 0 and (meta.get("unpacker") or {}).get("mode") == "lut",
-          f"census_run.py --unpacker lut: recorded in the run's meta ({meta.get('unpacker')}; {r.stderr[-300:]})")
-    check("unpacker: lut on 0 linears" in r.stdout, f"census_run.py says which unpacker: {r.stdout[:200]}")
+    # the stand-in's linears are dense, not W4A16: the reference is recorded, with what was asked
+    un = meta.get("unpacker") or {}
+    check(r.returncode == 0 and un.get("mode") == "reference" and un.get("asked") == "lut" and un.get("linears") == 0,
+          f"census_run.py --unpacker lut on a model with no W4A16 linears: the reference recorded, lut asked ({un}; {r.stderr[-300:]})")
+    check("No W4A16 linears in this model" in r.stdout, f"census_run.py says why: {r.stdout[:300]}")
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--unpacker", "fast"],
                        env=env, capture_output=True, text=True, timeout=300)
     check(r.returncode != 0 and "invalid choice: 'fast'" in r.stderr, f"census_run.py: an unknown unpacker refused ({r.stderr[-200:]})")
@@ -607,8 +609,8 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
                              "--layout-method", "pca", "--out", str(idx)], env=env, capture_output=True, text=True, timeout=600)
     lay = idx / FILES["layout"]
     m = json.loads(str(np.load(lay)["meta"])) if lay.exists() else {}
-    check(r.returncode == 0 and (m.get("unpacker") or {}).get("mode") == "lut",
-          f"atlas_build.py --unpacker lut: recorded in the index's meta ({m.get('unpacker')}; {r.stderr[-300:]})")
+    check(r.returncode == 0 and (m.get("unpacker") or {}).get("mode") == "reference" and (m.get("unpacker") or {}).get("asked") == "lut",
+          f"atlas_build.py --unpacker lut: recorded in the index's meta, the reference on a dense model ({m.get('unpacker')}; {r.stderr[-300:]})")
 
     # the server's own lifespan, over the 4-bit stand-in in place of the model it loads
     from fastapi.testclient import TestClient

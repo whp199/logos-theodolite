@@ -13,6 +13,7 @@ whose own methods are unchanged, with a random bf16 "lens" at each layer (the id
 lens's provenance, so the lens card and the label gate behave as on the real server.
 
     .venv/bin/python -I scripts/atlas_build.py all --stand-in      # its indexes, into atlas_data/stand-in/index
+    .venv/bin/python -I scripts/atlas_build.py passages --stand-in # each face's strongest passages, the same folder
     .venv/bin/python -I scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
     .venv/bin/python -I scripts/atlas_stand_in.py --serve 8765     # the instrument's server on the stand-in
 

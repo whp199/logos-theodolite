@@ -23,7 +23,8 @@ process (the model loaded once), each its own run. The runs go to the census fol
 with a `.meta.json` beside each. The same command again continues a stopped run (rows already written are skipped; a
 run taken with other settings is refused, not mixed). The atlas page reads the main run of each layer (`main_rel`
 before others, then the largest) as soon as it has rows. Once the model is loaded the J++ lens is freed from the card:
-the census reads none of it (each run's meta still names it).
+the census reads none of it (each run's meta still names it; a runtime loaded without one, THEODOLITE_GGUF_LENS=none,
+names none).
 
 The push is the atlas's "add", along the neuron's write direction at the stream leaving the layer, in one of two units
 (--dose-unit): stream, dose x p50, p50 the median length of that stream (from the stats index when built, else read
@@ -184,8 +185,12 @@ def main(argv=None) -> int:
         from backend.runtime_factory import make_runtime  # THEODOLITE_GGUF / THEODOLITE_DEVICE, else the W4A16 checkpoint
 
         rt = make_runtime(load_jlens=False).load()
-    lens_id = free_lens(rt)
-    print(f"the J++ lens ({lens_id or 'unnamed'}) freed from the card: the census reads none of it", flush=True)
+    if getattr(rt, "jpp_lenses", None):
+        lens_id = free_lens(rt)
+        print(f"the J++ lens ({lens_id or 'unnamed'}) freed from the card: the census reads none of it", flush=True)
+    else:  # THEODOLITE_GGUF_LENS=none, or a runtime that loads none: the meta names what the runtime's card says
+        lens_id = None
+        print("no J++ lens loaded: the census reads none", flush=True)
     from backend import w4a16_fast
 
     try:
