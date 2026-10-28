@@ -458,6 +458,13 @@ out from the arithmetic, not measured: time a pilot with `--layers` or `--neuron
 weights, `.venv/bin/python scripts/atlas_stand_in.py --serve 8765` serves the whole instrument on a tiny random Gemma 4
 (build its indexes with `atlas_build.py all --stand-in`); what it shows is random, and the page says so.
 
+Every forward unpacks the 4-bit weights afresh. `--unpacker lut` or `--unpacker compiled` on `atlas_build.py` and
+`census_run.py` (`THEODOLITE_UNPACKER` for the server) unpacks them faster with the same bits, tested against the
+runtime’s own unpacker at load on a GPU and refused in plain words on any difference; `--unpacker resident` keeps them
+unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit weights (an 80 GB card holds it, with
+little left for a batch). The 0.71 s a decode step in `census_run.py`’s help was measured with the default, `reference`
+(ARCHITECTURE §2).
+
 The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model) or
 Codex (`codex`) where the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
 or `$THEODOLITE_LMSTUDIO_URL`), Ollama (`http://127.0.0.1:11434/v1`, or `$THEODOLITE_OLLAMA_URL`), OpenRouter (its key in

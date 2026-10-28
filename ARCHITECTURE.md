@@ -18,6 +18,7 @@ theodolite2/
 │   ├── __init__.py
 │   ├── theodolite_math.py           # Four core vectorized mathematical modules + contrasts + CKA + unembed
 │   ├── engine_runtime.py            # interp-engine + J++ / JLens loader + 4-bit weight dequantizer
+│   ├── w4a16_fast.py                # faster unpackers of those weights, the same bits (lut, compiled, resident; §2)
 │   ├── larql_vault.py               # LARQL / VINDEX3 FFN vault indexer, LQL parser, .patch edits & their voice
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
@@ -48,6 +49,7 @@ theodolite2/
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
 │   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)
 │   ├── check_vault_voice.py         # an edit's voice: order, failures, reply keys, over HTTP and the WebSocket (CPU only)
+│   ├── check_dequant.py             # the faster unpackers against the runtime's, bit for bit, on a 4-bit stand-in (CPU only)
 │   ├── export_E3_background_mu.py   # writes experiments/results/E3_background_mu.npy (+ .json) from E3's caches (CPU)
 │   ├── verify_causal_check.py       # the causal spot-check against N1A's and N1V's figures on the real model (GPU)
 │   ├── verify_e2e_ui_and_mcp.py     # server, MCP tools and headless-Chrome pages end to end (GPU)
@@ -95,6 +97,19 @@ theodolite2/
 | `global_layers_0based` | `[5, 11, 17, 23, 29, 35, 41, 47, 53, 59]` | 0-indexed equivalents in `interp-engine` and `J[l]` |
 | `sliding_window` | `1024` | Local attention window on the remaining 50 layers (`head_dim=256`) |
 | `VRAM Envelope` | `< 30.0 GB` | Single RTX 5090 (32,607 MiB total) |
+
+**The 4-bit weights.** The 410 quantised linears stay packed (int32 words of eight 4-bit pieces, a bf16 scale per 32
+weights: compressed-tensors' pack-quantized layout) and are unpacked to bf16 on every forward by
+`engine_runtime.dequantize_w4a16_full`, whose file R4 pins by sha256. `backend/w4a16_fast.py` installs a faster unpacker
+from outside it, chosen by `--unpacker` (`scripts/census_run.py`, `scripts/atlas_build.py`) or `$THEODOLITE_UNPACKER`
+(the server): `lut`, a 256-entry table over the packed bytes and then the same multiply by the scale; `compiled`, the
+same arithmetic through `torch.compile`, the unpacker alone, the model left eager with its hooks; `resident`, each weight
+unpacked once and kept beside the packed one, overlays applied to a clone as the pinned forward applies them. Each gives
+the reference's bits: the pieces minus 8 are exact in bf16, so on every route the one rounding is the multiply by the
+scale, an exact float32 product rounded once to nearest even. `scripts/check_dequant.py` shows it on the CPU for every
+(piece, bf16 scale) pair and on a 4-bit stand-in's readings; at install `compiled` and `resident` (and `lut` on CUDA)
+are compared with the reference on every linear, by bits, and refused in plain words on any difference. A reading
+records which ran (`unpacker` in a census run's or an index's meta, and in `/api/health`).
 
 ---
 
