@@ -25,9 +25,11 @@ a fair null is near 1, and the run warns when it is not).
 
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
-answers / batch x (max_new + 1) x 0.71 s and the batch should be as large as the card holds. Memory: the model and lens
-take 21.2 GiB; each row costs about 0.8 MB per word-piece of context on top (a batch of 32 at --max-new 64 peaked 3.1
-GiB above the model), so at --max-new 256 a batch of 32 needs some 7 GiB more and may not fit beside a desktop: lower
+answers / batch x (max_new + 1) x 0.71 s and the batch should be as large as the card holds. That 0.71 s is the
+reference unpacker's (--unpacker reference, the default): lut and compiled give the same bits in a step two to five
+times shorter on a 5090 by the arithmetic, not yet timed. Memory: the model and lens take 21.2 GiB; each row costs
+about 0.8 MB per word-piece of context on top (a batch of 32 at --max-new 64 peaked 3.1 GiB above the model), so at
+--max-new 256 a batch of 32 needs some 7 GiB more and may not fit beside a desktop: lower
 --batch or --max-new. A calib_rel run of 8 neurons and 8 controls (580 answers) at --batch 32 --max-new 64 took about 16
 minutes. answers = (neurons + controls) x 10 + 4 for main_rel: a whole layer is (21,504 + 256) x 10 + 4 = 217,604
 answers, about 3.6 days at --batch 32 --max-new 64 and about two weeks at --max-new 256; the reference's depth curve
@@ -67,6 +69,9 @@ def main(argv=None) -> int:
     ap.add_argument("--out-dir", default="", help="the census folder (default: the atlas's)")
     ap.add_argument("--no-rank", action="store_true", help="leave the ranking to the server or census_tools.py rank")
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in (scripts/atlas_stand_in.py), for a dry run")
+    ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
+                    help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
+                    "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
     a = ap.parse_args(argv)
 
     if a.stand_in:
@@ -89,6 +94,12 @@ def main(argv=None) -> int:
         from backend.engine_runtime import TheodoliteRuntime
 
         rt = TheodoliteRuntime(load_jlens=False).load()
+    from backend import w4a16_fast
+
+    try:
+        w4a16_fast.install(rt, a.unpacker, log=lambda s: print(s, flush=True))
+    except w4a16_fast.Refused as exc:
+        raise SystemExit(str(exc))
     lm = language_model(rt.hf_model)
     L, N = len(lm.layers), ao.ffn_width(lm, 0)
     if not 0 <= a.layer < L:

@@ -42,6 +42,7 @@ from pydantic import BaseModel, Field, StrictInt, ValidationError
 
 from backend import atlas as atlas_routes
 from backend import scientist_chat
+from backend import w4a16_fast
 from backend import causal_check as cc
 from backend.engine_runtime import (
     DEFAULT_TRACKED_CONCEPTS,
@@ -101,6 +102,9 @@ async def lifespan(_app: FastAPI):
     global _RUNTIME, _VAULT
     logger.info("Initializing TheodoliteRuntime (Gemma-4-31B W4A16 + J++ Lens)...")
     _RUNTIME = TheodoliteRuntime(load_jlens=False).load()
+    # how the 4-bit weights are unpacked ($THEODOLITE_UNPACKER, backend/w4a16_fast.py: each gives the same bits, tested
+    # before anything is read; the reference unpacker unless it is set)
+    w4a16_fast.install(_RUNTIME, os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference", log=logger.info)
     _VAULT = LarqlVaultEngine(_RUNTIME)
     bind_runtime(_RUNTIME, _VAULT)
     logger.info("TheodoliteRuntime & LarqlVaultEngine bound and ready.")
@@ -1367,6 +1371,8 @@ async def api_health() -> Dict[str, Any]:
         # the CUDA allocator's settings as torch reports them ("" for its defaults); the sweep limit's memory margin
         # was measured with expandable segments on (engine_runtime, the note above `import torch`)
         "allocator": runtime.allocator_settings,
+        # how the 4-bit weights are unpacked (backend/w4a16_fast.py; $THEODOLITE_UNPACKER): every unpacker the same bits
+        "unpacker": w4a16_fast.describe(runtime),
         # the model's sliding attention window in word-pieces (text_config.sliding_window), as every sighting sends it
         "sliding_window": runtime.sliding_window,
         "larql_cli": vault.cli_versions(),

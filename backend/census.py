@@ -494,6 +494,7 @@ def take_census(
     import torch
 
     from backend import atlas_ops as ao
+    from backend import w4a16_fast
     from backend.causal_check import language_model
 
     if design_name not in DESIGNS:
@@ -527,6 +528,9 @@ def take_census(
         "p50": float(p50), "p50_source": p50_source, "stop_ids": stop, "greedy": True, "chat": "thinking off",
         "lens": (rt.lens_card() or {}).get("id") if hasattr(rt, "lens_card") else None,
         "stand_in": bool(getattr(rt, "atlas_stand_in", False)),
+        # how this session unpacked the 4-bit weights (backend/w4a16_fast.py): every unpacker gives the same bits, so a
+        # run may be continued under another; not a resume key
+        "unpacker": w4a16_fast.describe(rt),
     }
     if controls and gain["ratio"] is not None and not 0.5 <= gain["ratio"] <= 2.0:
         log(f"warning: the next layer reads the controls {gain['ratio']}x as loudly as the neurons (a fair null is near 1)")

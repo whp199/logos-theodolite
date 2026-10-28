@@ -131,6 +131,9 @@ def main() -> int:
     ap.add_argument("--chunk", type=int, default=0, help="lens: columns per product; wiring: columns per product")
     ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward")
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
+    ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
+                    help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
+                    "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
     a = ap.parse_args()
     sys.stdout.reconfigure(line_buffering=True)  # each step's progress as it comes, into a log file too
 
@@ -154,6 +157,12 @@ def main() -> int:
         from backend.engine_runtime import TheodoliteRuntime
 
         rt = TheodoliteRuntime(load_jlens=False).load()
+    from backend import w4a16_fast
+
+    try:
+        w4a16_fast.install(rt, a.unpacker, log=print)
+    except w4a16_fast.Refused as exc:
+        raise SystemExit(str(exc))
     out = Path(a.out) if a.out else index_dir()
     out.mkdir(parents=True, exist_ok=True)
     lm = language_model(rt.hf_model)

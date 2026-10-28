@@ -35,9 +35,11 @@ def _now() -> str:
 
 
 def _meta(rt: Any, **kw: Any) -> np.ndarray:
+    from backend.w4a16_fast import describe  # how the 4-bit weights were unpacked (all unpackers give the same bits)
+
     card = rt.lens_card() if hasattr(rt, "lens_card") else None
     m = {"model": getattr(rt, "model_id", None), "built_at": _now(), "lens_id": (card or {}).get("id"),
-         "stand_in": bool(getattr(rt, "atlas_stand_in", False)), **kw}
+         "stand_in": bool(getattr(rt, "atlas_stand_in", False)), "unpacker": describe(rt), **kw}
     return np.array(json.dumps(m))
 
 
