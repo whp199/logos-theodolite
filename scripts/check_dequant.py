@@ -629,7 +629,7 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
     server.make_runtime = Loads  # type: ignore[assignment]
     try:
         os.environ[wf.UNPACKER_ENV] = "resident"
-        with TestClient(server.app) as client:
+        with TestClient(server.app, base_url="http://127.0.0.1:8765") as client:
             health = client.get("/api/health").json()
         un = health.get("unpacker") or {}
         check(un.get("mode") == "resident" and un.get("linears") == 41 and (un.get("self_test") or {}).get("same_bits") is True,
@@ -637,13 +637,13 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
         check(list(health)[-2:] == ["label_gate", "lens"], f"/api/health: label_gate and lens still last ({list(health)[-3:]})")
         os.environ[wf.UNPACKER_ENV] = "quick"
         try:
-            with TestClient(server.app):
+            with TestClient(server.app, base_url="http://127.0.0.1:8765"):
                 pass
             check(False, "the server refuses an unpacker that is not one")
         except wf.Refused as exc:
             check("not 'quick'" in str(exc), f"the server stops in plain words: {exc}")
         os.environ.pop(wf.UNPACKER_ENV)
-        with TestClient(server.app) as client:
+        with TestClient(server.app, base_url="http://127.0.0.1:8765") as client:
             un = client.get("/api/health").json().get("unpacker") or {}
         check(un.get("mode") == "reference", f"without $THEODOLITE_UNPACKER, the reference: {un}")
     finally:
