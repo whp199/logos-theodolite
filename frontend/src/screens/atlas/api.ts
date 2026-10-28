@@ -275,6 +275,10 @@ export interface CensusCard {
   p50_source: string | null;
   read_gain: { neurons: number; controls: number; ratio: number | null } | null;
   null: { neurons: number; controls: number; above_all: number; above_all_by_chance: number | null; q05: number };
+  /** the card it was written on; whether its parts were written on more than one runtime class; shards missing */
+  device?: string | null;
+  mixed_runtime?: boolean;
+  partial?: { missing_shards: number[]; missing_answers: number } | null;
 }
 export interface Rollout {
   prompt: string;

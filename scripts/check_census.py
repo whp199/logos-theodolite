@@ -25,7 +25,15 @@ Gemma 4 of scripts/atlas_stand_in.py:
    ceiling; a control, dose x its paired neuron's), each row's ceiling, push and real share of the stream, a unit
    change refused, an older meta read as the stream unit, a ceiling run ranked and in the depth report, and a stand-in
    calib_ceil run read back by census_tools.py curves;
-9. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
+9. batch plans: a whole layer's plan, the 16 x batch plan as the code before plans batched a fresh run; the batch, the
+   plan, the job list and the runtime recorded; a run stopped mid-chunk, and one whose last batch was torn, each
+   finish equal to an unbroken run row for row, and a file its plan did not write is refused; another batch refused,
+   another runtime warned and recorded; three shards, each whole chunks with a canary, merged equal the unbroken run
+   row for row, layer_runs reads no shard; the merge names a missing shard (joined with --partial and said so), a
+   changed canary (shard and field), two runtime classes, and refuses a shard given twice; an old meta (no batch, plan,
+   dose unit, runtime or job list) with its rows regrouped still continues and merges; census_run.py --shard and
+   census_tools.py merge from the command line;
+10. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
    next layer reads the census's controls about as loudly as the layer's neurons, and an isotropic control far louder.
 
 Run: .venv/bin/python -I scripts/check_census.py   (exits 0 when every check holds)
@@ -40,6 +48,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     os.environ["HF_HUB_OFFLINE"] = "1"
 
+import hashlib
 import json
 import math
 import shutil
@@ -275,8 +284,12 @@ def run_checks(tmp: Path) -> int:
     out.write_text("".join(lines[:-9]))
     res = cz.take_census(rt, 3, [0, 5, 9], out, **kw)
     again = list(cz.read_rows(out))
-    check(res["written"] == 9 and res["skipped"] == 45 and len(again) == 54, f"a run cut short continues: {res}")
-    check({cz.row_key(r): r["token_ids"] for r in again} == {cz.row_key(r): r["token_ids"] for r in got}, "and ends with the same answers")
+    # 45 rows were left; the batch they end inside was written in part, so it is cut off and written again whole
+    ends = np.cumsum([len(b_[2]) for b_ in cz.plan_batches(cz.census_jobs([0, 5, 9], 2, cz.DESIGNS["main_rel"]), 7)])
+    whole = int(max(e_ for e_ in ends if e_ <= 45))
+    check(res["written"] == 54 - whole and res["skipped"] == whole and len(again) == 54, f"a run cut short continues: {res}")
+    check({cz.row_key(r): r["token_ids"] for r in again} == {cz.row_key(r): r["token_ids"] for r in got} and again == got,
+          "and ends with the same answers, row for row")
     check(cz.take_census(rt, 3, [0, 5, 9], out, **kw) == {"written": 0, "skipped": 54, "stopped": False}, "nothing left to write")
     res = cz.take_census(rt, 3, [0, 5, 9, 12], out, **kw)
     check(res["written"] == 10 and {r["neuron"] for r in cz.read_rows(out) if r["kind"] == "neuron"} == {0, 5, 9, 12}, f"a neuron added: {res}")
@@ -615,7 +628,205 @@ def run_checks(tmp: Path) -> int:
           and set(cjs.get("window", {})) == {"+", "-"}, "curves: a ceiling run's push is its dose times the ceiling, from its own record")
     section("the dose against each neuron's own ceiling: pushes measured, rows and meta, refusals, old metas, ranking, calib_ceil read back", before)
 
-    # ------------------------------------------------------------- 9. the null on the real checkpoint's own weights
+    # ------------------------------------------------------------- 9. batch plans: a stop, a torn batch, shards, merges
+    before = len(failures)
+    layer_jobs = cz.census_jobs(range(21504), 256, cz.DESIGNS["main_rel"])
+    p10, p16 = cz.plan_batches(layer_jobs, 32), cz.plan_batches(layer_jobs, 32, cz.PLAN_BEFORE)
+    fewest = sum(math.ceil(sum(1 for j_ in layer_jobs if j_["prompt"] == q_) / 32) for q_ in cz.PROMPTS)
+    check(len(p10) == fewest == 6804 and len(p16) == 7227 and sorted(i for _, _, b_ in p10 for i in b_) == list(range(len(layer_jobs))),
+          f"plan_batches: a whole main_rel layer at --batch 32 in {len(p10)} batches at 10 x batch (the fewest its questions allow), "
+          f"{len(p16)} at 16 x batch; every answer once")
+
+    def old_batches(jobs_: List[Dict[str, Any]], B_: int) -> List[List[Any]]:  # the code before batch plans, on a fresh run
+        out_: List[List[Any]] = []
+        for c0 in range(0, len(jobs_), B_ * 16):
+            part_ = jobs_[c0 : c0 + B_ * 16]
+            for p_ in cz.PROMPTS:
+                js_ = [j_ for j_ in part_ if j_["prompt"] == p_]
+                out_ += [[cz.row_key(j_) for j_ in js_[b_ : b_ + B_]] for b_ in range(0, len(js_), B_)]
+        return out_
+
+    small = cz.census_jobs(range(40), 7, cz.DESIGNS["main_rel"])
+    check([[cz.row_key(small[i]) for i in b_] for _, _, b_ in cz.plan_batches(small, 9, cz.PLAN_BEFORE)] == old_batches(small, 9)
+          and all(len({small[i]["prompt"] for i in b_}) == 1 for _, _, b_ in cz.plan_batches(small, 9)),
+          "the 16 x batch plan batches a fresh run as the code before batch plans did; every batch shares its question")
+    pdir = tmp / "plan"
+    pdir.mkdir()
+    NU = list(range(7))
+    kp = dict(p50=p50, p50_source="the study's 36 texts", design_name="main_rel", controls=3, seed=3, max_new=6, top_k=5, batch=5,
+              log=lambda s: None)
+    u_jobs = cz.census_jobs(NU, 3, cz.DESIGNS["main_rel"])
+    u_plan = cz.plan_batches(u_jobs, 5)
+    unbroken = pdir / "L3-u.jsonl"
+    cz.take_census(rt, 3, NU, unbroken, **kp)
+    U = list(cz.read_rows(unbroken))
+    um = json.loads(cz.meta_path_of(unbroken).read_text())
+    check(len(U) == len(u_jobs) == 104 and um["batch"] == 5 and um["plan"] == cz.PLAN and um["plan_kept"] is True
+          and um["jobs"] == cz.jobs_digest(u_jobs) and um["neuron_ids"] == "0-6" and um["d_ff"] == w.d_ff and "shard" not in um,
+          "an unbroken run: its meta records the batch, the plan and the job list it was made from")
+    rtm = um.get("runtime") or {}
+    check(set(rtm) == {"device", "torch", "cuda", "transformers", "interp_engine", "compressed_tensors", "unpacker", "git", "git_clean",
+                       "act_scale_sha256"} and rtm["device"] == "cpu" and rtm["torch"] == torch.__version__
+          and rtm["unpacker"] == "backend.engine_runtime.dequantize_w4a16_full" and rtm["act_scale_sha256"] is None
+          and (rtm["git"] is None or len(rtm["git"]) == 40), f"the runtime record: {rtm}")
+    check(cz.runtime_record(None, fa)["act_scale_sha256"] == hashlib.sha256(fa.read_bytes()).hexdigest(), "the runtime record: the stats index's sha256")
+    calls = [0]
+
+    def stop_after(n_: int) -> Any:
+        calls[0] = 0
+
+        def f_() -> bool:
+            calls[0] += 1
+            return calls[0] > n_
+        return f_
+
+    stopped = pdir / "L3-stop.jsonl"
+    res = cz.take_census(rt, 3, NU, stopped, **kp, cancel=stop_after(40))
+    part_rows = list(cz.read_rows(stopped))
+    first_chunk = sum(len(b_[2]) for b_ in u_plan if b_[0] == 0)
+    check(res["stopped"] and 0 < len(part_rows) < first_chunk and part_rows == U[: len(part_rows)], f"a run stopped mid-chunk: {res}")
+    res = cz.take_census(rt, 3, NU, stopped, **kp)
+    check(res["written"] == 104 - len(part_rows) and list(cz.read_rows(stopped)) == U, "and continued, it equals the unbroken run row for row")
+    ends = np.cumsum([len(b_[2]) for b_ in u_plan])
+    bt = next(b_ for b_, (c_, _, idx) in enumerate(u_plan) if c_ == 1 and len(idx) == 5)  # a whole batch of the second chunk
+    start = int(ends[bt - 1])
+    torn = pdir / "L3-torn.jsonl"
+    u_lines = unbroken.read_text().splitlines(keepends=True)
+    torn.write_text("".join(u_lines[: start + 2]) + u_lines[start + 2][:40])
+    shutil.copy(cz.meta_path_of(unbroken), cz.meta_path_of(torn))
+    said: List[str] = []
+    res = cz.take_census(rt, 3, NU, torn, **{**kp, "log": said.append})
+    check(res["written"] == 104 - start and res["skipped"] == start and list(cz.read_rows(torn)) == U
+          and any("half-written" in s_ for s_ in said) and any("written in part (2 of its 5" in s_ for s_ in said),
+          f"a torn last batch (two whole answers and half of a third): cut off, written again whole, row for row as unbroken ({res})")
+    straddle = pdir / "L3-straddle.jsonl"
+    straddle.write_text("".join(u_lines[:7] + u_lines[8:30]))
+    shutil.copy(cz.meta_path_of(unbroken), cz.meta_path_of(straddle))
+    try:
+        cz.take_census(rt, 3, NU, straddle, **kp)
+        check(False, "a file holding answers its plan did not write is refused")
+    except ValueError as exc:
+        check("batch plan did not write" in str(exc) and "batch 1 of its plan" in str(exc), f"refusal: {exc}")
+    try:
+        cz.take_census(rt, 3, NU, unbroken, **{**kp, "batch": 6})
+        check(False, "a run is not continued at another batch size")
+    except ValueError as exc:
+        check("batch" in str(exc), f"refusal: {exc}")
+    m_ = json.loads(cz.meta_path_of(stopped).read_text())
+    m_["runtime"] = {**m_["runtime"], "torch": "0.0-elsewhere"}
+    cz.meta_path_of(stopped).write_text(json.dumps(m_))
+    said = []
+    res = cz.take_census(rt, 3, NU, stopped, **{**kp, "log": said.append})
+    m_ = json.loads(cz.meta_path_of(stopped).read_text())
+    check(res["written"] == 0 and any(s_.startswith("warning") and "torch" in s_ for s_ in said) and len(m_.get("mixed_runtime", [])) == 2,
+          "a run continued on another runtime: warned and recorded (mixed_runtime), not refused")
+    # three shards, each its whole chunks, merged
+    sdir = tmp / "shards"
+    sdir.mkdir()
+    base_run = sdir / "L3-main.jsonl"
+    shards = [cz.shard_path(base_run, i, 3) for i in range(3)]
+    for i, sp_ in enumerate(shards):
+        cz.take_census(rt, 3, NU, sp_, **kp, shard=(i, 3))
+    sm = [json.loads(cz.meta_path_of(sp_).read_text()) for sp_ in shards]
+    check([m_["shard"]["batches"] for m_ in sm] == [[0, sm[1]["shard"]["batches"][0]], [sm[1]["shard"]["batches"][0], sm[2]["shard"]["batches"][0]],
+                                                    [sm[2]["shard"]["batches"][0], len(u_plan)]]
+          and [m_["shard"]["chunks"] for m_ in sm] == [[0, 1], [1, 2], [2, 3]] and all(m_["shard"]["n"] == 3 for m_ in sm),
+          f"--shard i/3: whole chunks each, together the plan ({[m_['shard'] for m_ in sm]})")
+    check(not cz.canary_path_of(shards[0]).exists() and all(
+          [cz.row_key(r_) for r_ in cz.read_rows(cz.canary_path_of(sp_))] == [cz.row_key(u_jobs[i]) for i in u_plan[0][2]] for sp_ in shards[1:]),
+          "every shard but 0 writes plan batch 0 again, its canary")
+    check(cz.layer_runs(sdir) == {}, "layer_runs never reads a shard as a layer's census")
+    n_in, n_out = cz.merge_runs(shards, base_run)
+    mm = json.loads(cz.meta_path_of(base_run).read_text())
+    check(list(cz.read_rows(base_run)) == U and (n_in, n_out) == (104, 104), "three shards merged equal the unbroken run, row for row")
+    check("shard" not in mm and mm["shards"] == [sp_.name for sp_ in shards] and mm["canary"] == "identical on 2 of 2 shards"
+          and mm["neurons"] == um["neurons"] and mm["neuron_ids"] == "0-6" and mm["plan_kept"] is True and "partial" not in mm
+          and "mixed_runtime" not in mm, f"the merged meta: {mm.get('canary')}, {mm.get('shards')}")
+    check(cz.layer_runs(sdir) == {3: base_run}, "the merged run is the layer's census")
+    try:
+        cz.merge_runs([shards[0], shards[2]], sdir / "x.jsonl")
+        check(False, "a missing shard is refused")
+    except ValueError as exc:
+        check("Shard 1 of 3 is missing" in str(exc) and "--partial" in str(exc), f"refusal: {exc}")
+    cz.merge_runs([shards[0], shards[2]], sdir / "L3-part.jsonl", partial=True)
+    pm = json.loads(cz.meta_path_of(sdir / "L3-part.jsonl").read_text())
+    n1 = len(list(cz.read_rows(shards[1])))
+    check(pm["partial"]["missing_shards"] == [1] and pm["partial"]["missing_answers"] == n1 and len(pm["partial"]["first_missing"]) == 5
+          and list(cz.read_rows(sdir / "L3-part.jsonl")) == [r_ for r_ in U if r_ not in list(cz.read_rows(shards[1]))],
+          f"--partial: joined, and the meta says what is missing ({pm.get('partial')})")
+    for bad, why in (([shards[0], shards[1], shards[1], shards[2]], "given twice"), ([shards[0], unbroken], "not one")):
+        try:
+            cz.merge_runs(bad, sdir / "x.jsonl")
+            check(False, f"merge refuses: {why}")
+        except ValueError as exc:
+            check(why in str(exc), f"refusal: {exc}")
+    can2 = cz.canary_path_of(shards[2])
+    keep_can = can2.read_text()
+    crs = list(cz.read_rows(can2))
+    crs[1]["token_ids"] = crs[1]["token_ids"][:-1] + [crs[1]["token_ids"][-1] + 1]
+    can2.write_text("".join(json.dumps(r_) + "\n" for r_ in crs))
+    m1 = json.loads(cz.meta_path_of(shards[1]).read_text())
+    cz.meta_path_of(shards[1]).write_text(json.dumps({**m1, "runtime": {**m1["runtime"], "device": "NVIDIA H100 80GB HBM3"}}))
+    cz.merge_runs(shards, sdir / "L3-odd.jsonl")
+    om = json.loads(cz.meta_path_of(sdir / "L3-odd.jsonl").read_text())
+    check(om["canary"].startswith("identical on 1 of 2 shards") and f"shard 2's differs from shard 0's (first in token_ids of {crs[1]['kind']}" in om["canary"],
+          f"a changed canary is named, shard and field: {om['canary']}")
+    check(len(om.get("mixed_runtime", [])) == 2 and {c_["device"] for c_ in om["mixed_runtime"]} == {"cpu", "NVIDIA H100 80GB HBM3"},
+          "shards on two runtime classes: both recorded (mixed_runtime), not refused")
+    can2.write_text(keep_can)
+    cz.meta_path_of(shards[1]).write_text(json.dumps(m1))
+    try:
+        cz.take_census(rt, 3, NU, cz.shard_path(base_run, 0, 4), **kp, shard=(0, 4))
+        check(False, "more shards than the plan has chunks are refused")
+    except ValueError as exc:
+        check("at most 3 shards" in str(exc), f"refusal: {exc}")
+    try:
+        cz.take_census(rt, 3, NU + [9], shards[0], **kp, shard=(0, 3))
+        check(False, "a shard's neurons cannot change")
+    except ValueError as exc:
+        check("shard of a run with other neurons" in str(exc), f"refusal: {exc}")
+    # a run begun before batch plans (its meta has no batch, plan, dose unit, runtime or job list), its rows regrouped
+    old_run = pdir / "L3-old.jsonl"
+    old_run.write_text("".join(u_lines[:3] + u_lines[6:40] + u_lines[41:57]))
+    stale = {k_: v_ for k_, v_ in um.items() if k_ not in ("batch", "plan", "dose_unit", "runtime", "jobs", "plan_kept", "plan_left", "d_ff",
+                                                         "neuron_ids", "ceilings")}
+    cz.meta_path_of(old_run).write_text(json.dumps(stale))
+    said = []
+    res = cz.take_census(rt, 3, NU, old_run, **{**kp, "log": said.append})
+    om = json.loads(cz.meta_path_of(old_run).read_text())
+    check(res["written"] == 104 - 53 and {cz.row_key(r_): r_["token_ids"] for r_ in cz.read_rows(old_run)} == {cz.row_key(r_): r_["token_ids"] for r_ in U},
+          f"an old run (no batch plan in its meta, its rows regrouped by an earlier resume) continues, and ends with the same answers ({res})")
+    check(om["plan"] == cz.PLAN_BEFORE and om["batch"] == 5 and om["plan_kept"] is False and om["plan_left"] == "answers written before batch plans"
+          and om["dose_unit"] == "stream" and any("left its batch plan" in s_ for s_ in said), f"and its meta says it has left its plan: {om.get('plan_left')}")
+    halves = [pdir / "L3-oa.jsonl", pdir / "L3-ob.jsonl"]
+    halves[0].write_text("".join(u_lines[:60]))
+    halves[1].write_text("".join(u_lines[40:]))
+    for h_ in halves:
+        cz.meta_path_of(h_).write_text(json.dumps(stale))
+    check(cz.merge_runs(halves, pdir / "L3-oj.jsonl") == (124, 104) and cz.merge_runs([halves[0], unbroken], pdir / "L3-ok.jsonl") == (164, 104),
+          "old metas still merge, among themselves and with a new run's")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
+                             "--max-new", "4", "--batch", "5", "--run", "L2-sh", "--shard", "1/2"], env=env, capture_output=True, text=True, timeout=600)
+    sh_dir = tmp / "atlas" / "stand-in" / "census" / "runs"
+    s1 = sh_dir / "L2-sh.s1of2.jsonl"
+    check(r.returncode == 0 and s1.exists() and cz.canary_path_of(s1).exists() and "ranked only once its run is joined" in r.stdout
+          and not cz.units_path_of(s1).exists(), f"census_run.py --shard 1/2: a shard and its canary, not ranked ({r.stderr[-300:]})")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "merge", str(s1), "--out", str(sh_dir / "L2-sh.jsonl")],
+                       env=env, capture_output=True, text=True, timeout=300)
+    check(r.returncode != 0 and "Shard 0 of 2 is missing" in r.stderr, f"census_tools.py merge: a missing shard said ({r.stderr[-200:]})")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
+                             "--max-new", "4", "--batch", "5", "--run", "L2-sh", "--shard", "0/2"], env=env, capture_output=True, text=True, timeout=600)
+    r2 = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "merge", str(sh_dir / "L2-sh.s0of2.jsonl"), str(s1), "--out",
+                              str(sh_dir / "L2-sh.jsonl")], env=env, capture_output=True, text=True, timeout=300)
+    check(r.returncode == 0 and r2.returncode == 0 and "canary: identical on 1 of 1 shard" in r2.stdout and len(list(cz.read_rows(sh_dir / "L2-sh.jsonl"))) == 124,
+          f"census_tools.py merge: two shards joined, the canary compared ({r2.stdout[-200:]} {r2.stderr[-200:]})")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--shard", "2/2"], env=env,
+                       capture_output=True, text=True, timeout=300)
+    check(r.returncode != 0 and "--shard is i/n" in r.stderr, "census_run.py: a shard that does not exist is refused")
+    section("batch plans: a stop mid-chunk, a torn batch and three shards each equal an unbroken run row for row; merges, "
+            "canaries, refusals, runtimes, old metas", before)
+
+    # ------------------------------------------------------------ 10. the null on the real checkpoint's own weights
     before = len(failures)
     real = real_read_gain()
     if real is None:

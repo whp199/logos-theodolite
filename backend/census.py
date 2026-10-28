@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import collections
 import glob
+import hashlib
 import json
 import math
 import os
@@ -506,8 +507,10 @@ def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
                refused: Optional[Dict[int, str]] = None, calibration: bool = False) -> Dict[int, Path]:
     """layer -> the path of its census run: a main_rel run first, then the largest; calibration runs left out (as the
     reference's `layer_runs`), or, with `calibration`, only they are read (for the dose window, census_tools.py
-    curves); given the model read here, runs taken on another model left out. Runs taken before the controls were
-    drawn through w_post (CENSUS_VERSION) are not read: given `refused`, each such layer's reason goes there."""
+    curves); given the model read here, runs taken on another model left out. A shard of a run (its meta names its
+    `shard`) is never read as a layer's census: only the run `merge_runs` joins from its shards is. Runs taken before
+    the controls were drawn through w_post (CENSUS_VERSION) are not read: given `refused`, each such layer's reason
+    goes there."""
     runs_dir = Path(runs_dir) if runs_dir is not None else census_dir()
     best: Dict[int, Tuple[Path, Tuple[bool, int]]] = {}
     for meta_path in glob.glob(str(runs_dir / "*.meta.json")):
@@ -515,7 +518,7 @@ def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
             meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if not isinstance(meta, dict) or (meta.get("design_name") in CALIBRATION_DESIGNS) != bool(calibration):
+        if not isinstance(meta, dict) or meta.get("shard") or (meta.get("design_name") in CALIBRATION_DESIGNS) != bool(calibration):
             continue
         if model is not None and meta.get("model") is not None and meta.get("model") != model:
             continue
@@ -683,18 +686,183 @@ def census_jobs(neurons: Sequence[int], controls: int, design: Sequence[Tuple[st
     return jobs
 
 
+def neuron_ranges(neurons: Iterable[int]) -> str:
+    """Neurons as `parse_neurons` reads them back, runs of neighbours as ranges: "0-99,105,200-299"."""
+    ns = sorted({int(n) for n in neurons})
+    parts: List[str] = []
+    i = 0
+    while i < len(ns):
+        j = i
+        while j + 1 < len(ns) and ns[j + 1] == ns[j] + 1:
+            j += 1
+        parts.append(f"{ns[i]}-{ns[j]}" if j > i else str(ns[i]))
+        i = j + 1
+    return ",".join(parts)
+
+
+# ------------------------------------------------------------------------------------------------------- batch plans
+
+# A run's batches are planned from its whole job list and the batch size alone, so a run continued after a stop, a run
+# taken in shards and an unbroken run write every answer in the same batch: on the GPU a row's numbers depend on the
+# size of its batch (cuBLAS chooses its kernels by the shape; rows of the 31B written in batches of other shapes were
+# not bit-identical, N1A), though not on which rows share it, every operation of the decoder being per row. A plan
+# takes the jobs a chunk of k x batch at a time, each chunk's answers grouped by question so a batch shares its
+# question: 10 x batch for runs begun now (one batch's worth of main_rel's units, whose questions split 3 : 3 : 3 : 1, so
+# few batches are part-full), 16 x batch kept for runs begun before batch plans were recorded.
+PLANS = {"10 x batch": 10, "16 x batch": 16}
+PLAN = "10 x batch"
+PLAN_BEFORE = "16 x batch"
+
+
+def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:
+    """A run's batches in the order they are written, [(chunk, question, [job indices])]: the job list (`census_jobs`)
+    taken `plan` x batch at a time (PLANS), each chunk's jobs grouped by question in PROMPTS' order, `batch` at a time.
+    A function of the whole job list and the batch size alone."""
+    if plan not in PLANS:
+        raise ValueError(f"The census's batch plans are {', '.join(PLANS)}, not {plan!r}.")
+    B = max(int(batch), 1)
+    size = B * PLANS[plan]
+    out: List[Tuple[int, str, List[int]]] = []
+    for c, c0 in enumerate(range(0, len(jobs), size)):
+        part = range(c0, min(c0 + size, len(jobs)))
+        for p in PROMPTS:
+            js = [i for i in part if jobs[i]["prompt"] == p]
+            out.extend((c, p, js[b0 : b0 + B]) for b0 in range(0, len(js), B))
+    return out
+
+
+def jobs_digest(jobs: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """The job list a run's plan is made from, as its meta keeps it: how many answers, and a digest of their keys in
+    order."""
+    return {"n": len(jobs), "sha256": hashlib.sha256(json.dumps([list(row_key(j)) for j in jobs]).encode("utf-8")).hexdigest()[:16]}
+
+
+def shard_batches(plan: Sequence[Tuple[int, str, List[int]]], i: int, n: int) -> Tuple[int, int]:
+    """Shard i of n's planned batches, [b0, b1): whole chunks, the chunks [i C / n, (i + 1) C / n) of the plan's C, so
+    no chunk is split between shards and each shard writes its batches exactly as an unbroken run would."""
+    if not 0 <= int(i) < int(n):
+        raise ValueError(f"Shard {i} of {n} does not exist: shards count from 0 to {int(n) - 1}.")
+    C = plan[-1][0] + 1 if plan else 0
+    if C < int(n):
+        raise ValueError(f"The run plans {C} chunk{'s' if C != 1 else ''} of answers, so it splits into at most {C} shards, not {n}.")
+    c0, c1 = int(i) * C // int(n), (int(i) + 1) * C // int(n)
+    b0 = next(b for b, (c, _, _) in enumerate(plan) if c >= c0)
+    b1 = next((b for b, (c, _, _) in enumerate(plan) if c >= c1), len(plan))
+    return b0, b1
+
+
+def shard_path(run_path: Path, i: int, n: int) -> Path:
+    return Path(str(run_path)[: -len(".jsonl")] + f".s{int(i)}of{int(n)}.jsonl")
+
+
+def canary_path_of(run_path: Path) -> Path:
+    return Path(str(run_path)[: -len(".jsonl")] + ".canary.jsonl")
+
+
+def file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def runtime_record(device: Any = None, act_scale: Optional[Path] = None) -> Dict[str, Any]:
+    """The runtime class a run's bits come from, as its meta keeps it: the card ("cpu", or the GPU's name), torch and
+    its CUDA, transformers, interp-engine and compressed-tensors, the W4A16 unpacker the runtime calls (a module may
+    rebind it), the code's git commit and whether its tracked files are as committed, and the sha256 of the stats index
+    the push's unit was read from. A run continued, or a shard joined, on another class is said and recorded
+    (`mixed_runtime`), never refused: each class's readings are valid; their bits are not alike."""
+    import importlib.metadata as md
+    import subprocess
+
+    import torch
+
+    def version(name: str) -> Optional[str]:
+        try:
+            return md.version(name)
+        except md.PackageNotFoundError:
+            return None
+
+    dev = torch.device(device) if device is not None else torch.device("cpu")
+    try:
+        from backend import engine_runtime as er
+
+        fn = er.dequantize_w4a16_full
+        unpacker: Optional[str] = f"{fn.__module__}.{fn.__qualname__}"
+    except Exception:  # noqa: BLE001  (a runtime without its W4A16 path; the stand-in reads plain Linear modules)
+        unpacker = None
+    root = Path(__file__).resolve().parent.parent
+    sha: Optional[str] = None
+    clean: Optional[bool] = None
+    try:
+        got = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, timeout=20)
+        if got.returncode == 0 and got.stdout.strip():
+            sha = got.stdout.strip()
+            st = subprocess.run(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=no"],
+                                capture_output=True, text=True, timeout=20)
+            clean = st.returncode == 0 and not st.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return {
+        "device": torch.cuda.get_device_name(dev) if dev.type == "cuda" else "cpu",
+        "torch": torch.__version__, "cuda": torch.version.cuda, "transformers": version("transformers"),
+        "interp_engine": version("interp-engine"), "compressed_tensors": version("compressed-tensors"), "unpacker": unpacker,
+        "git": sha, "git_clean": clean, "act_scale_sha256": file_sha256(Path(act_scale)) if act_scale else None,
+    }
+
+
+def runtime_differ(old: Optional[Dict[str, Any]], new: Optional[Dict[str, Any]]) -> List[str]:
+    """The fields two runtime records disagree on ([] where either is missing: a run taken before they were kept)."""
+    if not old or not new:
+        return []
+    return [k for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k)]
+
+
+def runtime_classes(records: Iterable[Optional[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    """The distinct runtime records among `records`, in the order met (None left out)."""
+    out: List[Dict[str, Any]] = []
+    for r in records:
+        if r and r not in out:
+            out.append(r)
+    return out
+
+
+def row_keys(path: Path) -> Tuple[List[Tuple[str, int, str, float]], List[int]]:
+    """A JSON-lines run's row keys in file order, and the byte at which each row's line starts."""
+    keys: List[Tuple[str, int, str, float]] = []
+    starts: List[int] = []
+    if not Path(path).exists():
+        return keys, starts
+    pos = 0
+    with open(path, "rb") as f:
+        for line in f:
+            if line.strip():
+                keys.append(row_key(json.loads(line)))
+                starts.append(pos)
+            pos += len(line)
+    return keys, starts
+
+
 # what must agree for a run to be continued (a rerun of the same command resumes; anything else is a different run)
 RESUME_KEYS = ("model", "layer", "design_name", "design", "prompt_ids", "max_new", "top_k", "seed", "random_controls", "push",
-               "controls", "version", "dose_unit")
+               "controls", "version", "dose_unit", "batch", "plan")
 # what a key missing from an older meta means: it was taken before the key was recorded
 RESUME_DEFAULTS: Dict[str, Any] = {"dose_unit": "stream"}
+# keys a meta lacks when it was taken before batch plans: any batch was accepted then, and such a run still continues
+BEFORE_PLANS = ("batch", "plan")
 
 
 def settings_differ(old: Dict[str, Any], new: Dict[str, Any]) -> List[str]:
-    """The settings two runs' metas disagree on (RESUME_KEYS, a key an older meta lacks read as RESUME_DEFAULTS says,
-    and the push's unit p50 beyond float noise)."""
-    differ = [k for k in RESUME_KEYS
-              if json.dumps(old.get(k, RESUME_DEFAULTS.get(k))) != json.dumps(new.get(k, RESUME_DEFAULTS.get(k)))]
+    """The settings two runs' metas disagree on (RESUME_KEYS, a key an older meta lacks read as RESUME_DEFAULTS says, or,
+    for BEFORE_PLANS, as agreeing with any, and the push's unit p50 beyond float noise)."""
+    differ = []
+    for k in RESUME_KEYS:
+        a, b = old.get(k, RESUME_DEFAULTS.get(k)), new.get(k, RESUME_DEFAULTS.get(k))
+        if k in BEFORE_PLANS and (a is None or b is None):
+            continue
+        if json.dumps(a) != json.dumps(b):
+            differ.append(k)
     p_old, p_new = old.get("p50"), new.get("p50")
     if p_old is not None and p_new is not None and abs(float(p_old) - float(p_new)) > 1e-4 * max(1.0, abs(float(p_new))):
         differ.append("p50")
@@ -717,6 +885,8 @@ def take_census(
     batch: int = 32,
     neurons_spec: str = "",
     dose_unit: str = "",
+    shard: Optional[Tuple[int, int]] = None,
+    p50_file: Optional[Path] = None,
     log: Any = print,
     cancel: Any = None,
 ) -> Dict[str, Any]:
@@ -724,8 +894,18 @@ def take_census(
     neuron and each control pushed on every (question, dose) of the design, and the questions unpushed, one greedy
     answer each of at most `max_new` word-pieces, `batch` answers at a time (`atlas_ops.write_rows`, each row its own
     push; the rows of a batch share their question, so none is padded). A dose is in `dose_unit` (DOSE_UNITS; "" for
-    the design's own, "stream" but for calib_ceil). Rows already in the file are skipped; a batch is written whole or
-    not at all (`cancel()` stops between steps). Returns counts."""
+    the design's own, "stream" but for calib_ceil). `p50_file` is the stats index p50 was read from, if any (its sha256
+    goes in the runtime record).
+
+    The batches are planned from the whole job list and the batch size (`plan_batches`), and written whole, in plan
+    order, or not at all (`cancel()` stops between steps). Continuing, a planned batch whose answers are all in the file
+    is skipped, and a last batch written in part (a run killed mid-write) is cut off and written again whole, so a
+    stopped run finishes as an unbroken one would, row for row; a file holding answers its plan did not write is
+    refused. A run begun before batch plans (its meta has none), or whose neurons changed since it was begun, has left
+    its plan (`plan_kept` false, `plan_left` why): its missing answers are written by the plan's batches, a batch's
+    missing part as a batch of its own. `shard` (i, n) takes shard i of n of the plan's chunks (`shard_batches`) into
+    `out_path` (`shard_path`); every shard but 0 first writes plan batch 0 again beside it (`canary_path_of`) for the
+    merge to compare. Returns counts."""
     import time
 
     import torch
@@ -784,30 +964,89 @@ def take_census(
         # how this session unpacked the 4-bit weights (backend/w4a16_fast.py): every unpacker gives the same bits, so a
         # run may be continued under another (every session's then kept in "unpacker_sessions"); not a resume key
         "unpacker": w4a16_fast.describe(rt),
+        "d_ff": int(N), "neuron_ids": neuron_ranges(neurons), "batch": int(batch),
+        "runtime": runtime_record(w.device, p50_file),
     }
     if controls and gain["ratio"] is not None and not 0.5 <= gain["ratio"] <= 2.0:
         log(f"warning: the next layer reads the controls {gain['ratio']}x as loudly as the neurons (a fair null is near 1)")
     meta_path = meta_path_of(out_path)
-    if meta_path.exists():
-        old = json.loads(meta_path.read_text(encoding="utf-8"))
+    old = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else None
+    meta["plan"] = (old.get("plan") or PLAN_BEFORE) if old is not None else PLAN  # a run keeps the plan it was begun with
+    all_jobs = census_jobs(neurons, controls, design)
+    meta["jobs"] = jobs_digest(all_jobs)
+    plan = plan_batches(all_jobs, batch, meta["plan"])
+    b0, b1 = shard_batches(plan, *shard) if shard else (0, len(plan))
+    if shard:
+        meta["shard"] = {"i": int(shard[0]), "n": int(shard[1]), "chunks": [plan[b0][0], plan[b1 - 1][0] + 1], "batches": [b0, b1]}
+    if old is not None:
         differ = settings_differ(old, meta)
         if differ:
             raise ValueError(f"{out_path.name} was taken with other settings ({', '.join(differ)}); name another run "
                              "(--run) or remove it.")
+        if shard and old.get("jobs") != meta["jobs"]:
+            raise ValueError(f"{out_path.name} is a shard of a run with other neurons, and a shard's answers cannot change: "
+                             "take the shards again under another run (--run).")
+        moved = runtime_differ(old.get("runtime"), meta["runtime"])
+        if moved:
+            log(f"warning: {out_path.name} was begun on another runtime ({', '.join(moved)} differ): its answers' bits may "
+                "differ from the earlier ones' (recorded as mixed_runtime)")
+        classes = runtime_classes((old.get("mixed_runtime") or [old.get("runtime")]) + [meta["runtime"]])
+        if len(classes) > 1:
+            meta["mixed_runtime"] = classes
         meta["started_at"] = old.get("started_at")
         meta["neurons"] = old.get("neurons") if neurons_spec in ("", old.get("neurons")) else f"{old.get('neurons')} + {neurons_spec}"
         # every session's unpacker, the first first ("unpacker" is this one's; None where a meta did not record one)
         meta["unpacker_sessions"] = old.get("unpacker_sessions", [old.get("unpacker")]) + [meta["unpacker"]]
     meta["started_at"] = meta.get("started_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    write_json_atomic(meta_path, meta)
 
     if drop_partial_tail(out_path):
         log(f"{out_path.name}: a half-written last answer was cut off; it is written again")
-    done = {row_key(r) for r in read_rows(out_path)} if out_path.exists() else set()
+    keys, starts = row_keys(out_path)
+    left = None if not keys else ("answers written without a meta" if old is None else
+                                  "answers written before batch plans" if "plan_kept" not in old else
+                                  "the run's neurons changed after it was begun" if old.get("jobs") != meta["jobs"] else
+                                  (old.get("plan_left") or "answers written off its plan") if not old.get("plan_kept") else None)
+    if left and shard:
+        raise ValueError(f"{out_path.name} holds a shard's answers its plan did not write ({left}): take the shards again "
+                         "under another run (--run).")
+    batch_of = {row_key(all_jobs[i]): b for b, (_, _, idx) in enumerate(plan) for i in idx}
+    torn = 0
+    if keys and not left:
+        # a last batch written in part: its rows are the file's last, and the file holds no others of it
+        last = batch_of.get(keys[-1])
+        while torn < len(keys) and batch_of.get(keys[-1 - torn]) == last:
+            torn += 1
+        if last is None or torn >= len(plan[last][2]) or sum(batch_of.get(k) == last for k in keys) != torn:
+            torn = 0
+        kept = set(keys[: len(keys) - torn])
+        stray = sum(1 for k in kept if not b0 <= batch_of.get(k, -1) < b1)
+        part = next(((b, n_) for b in range(b0, b1) for n_ in [sum(row_key(all_jobs[i]) in kept for i in plan[b][2])]
+                     if 0 < n_ < len(plan[b][2])), None)
+        if stray or part:
+            what = (f"{stray} answer{'s' if stray != 1 else ''} outside its planned batches" if stray else
+                    f"batch {part[0]} of its plan holds {part[1]} of its {len(plan[part[0]][2])} answers, not at the end of the file")
+            raise ValueError(f"{out_path.name} holds answers its batch plan did not write ({what}): rows of another plan "
+                             "or another run; name another run (--run) or remove it.")
+    meta["plan_kept"] = not left
+    if left:
+        meta["plan_left"] = left
+    write_json_atomic(meta_path, meta)
+    if torn:
+        with open(out_path, "rb+") as f:
+            f.truncate(starts[len(keys) - torn])
+        log(f"{out_path.name}: its last batch was written in part ({torn} of its {len(plan[batch_of[keys[-1]]][2])} answers): "
+            "cut off, and written again whole")
+        keys = keys[: len(keys) - torn]
+    done = set(keys)
     ctrl = torch.from_numpy(ctrl_np)
-    jobs = [j for j in census_jobs(neurons, controls, design) if row_key(j) not in done]
-    log(f"layer {layer}: {len(neurons)} neurons + {controls} controls, {len(jobs)} answers to write ({len(done)} already "
-        f"written), push unit " + ("each neuron's write ceiling, " if by_ceiling else "") + f"p50 {p50:.2f} ({p50_source})")
+    todo = [(b, miss) for b in range(b0, b1) for miss in [[i for i in plan[b][2] if row_key(all_jobs[i]) not in done]] if miss]
+    total = sum(len(plan[b][2]) for b in range(b0, b1))
+    log(f"layer {layer}: {len(neurons)} neurons + {controls} controls, {sum(len(m) for _, m in todo)} answers to write "
+        f"({len(done)} already written)" + (f", shard {shard[0]} of {shard[1]} (batches {b0} to {b1 - 1} of {len(plan)})" if shard else "")
+        + ", push unit " + ("each neuron's write ceiling, " if by_ceiling else "") + f"p50 {p50:.2f} ({p50_source})")
+    if left:
+        log(f"{out_path.name} has left its batch plan ({left}): its missing answers are written by the plan's batches, a "
+            "batch's missing part as a batch of its own")
     softcap = ao.softcap_of(rt.hf_model)
     written, pieces, t0 = 0, 0, time.time()
 
@@ -862,59 +1101,174 @@ def take_census(
             out.append(rec)
         return out
 
+    if shard and int(shard[0]) > 0:
+        # the canary: plan batch 0 (shard 0's first) written again here, outside the run, for the merge to compare
+        canary = canary_path_of(out_path)
+        want = [row_key(all_jobs[i]) for i in plan[0][2]]
+        have = [row_key(r) for r in read_rows(canary, tolerate_tail=True)] if canary.exists() else []
+        if have != want:
+            recs = write_batch([all_jobs[i] for i in plan[0][2]])
+            if recs is None:
+                log("stopped before the canary was written; the same command continues the shard")
+                return {"written": 0, "skipped": len(done), "stopped": True}
+            tmp = canary.with_name(canary.name + ".tmp")
+            tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs), encoding="utf-8")
+            os.replace(tmp, canary)
+            log(f"{canary.name}: plan batch 0 written again ({len(recs)} answers), for the merge to compare with shard 0's")
+
     with open(out_path, "a", encoding="utf-8") as f:
-        # a chunk of the run at a time, its answers grouped by question so a batch shares its question
-        chunk = max(int(batch), 1) * 16
-        for c0 in range(0, len(jobs), chunk):
-            part = jobs[c0 : c0 + chunk]
-            for p in PROMPTS:
-                js = [j for j in part if j["prompt"] == p]
-                for b0 in range(0, len(js), max(int(batch), 1)):
-                    recs = write_batch(js[b0 : b0 + max(int(batch), 1)])
-                    if recs is None:
-                        log(f"stopped: {written} answers written; the same command continues the run")
-                        return {"written": written, "skipped": len(done), "stopped": True}
-                    f.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in recs)
-                    f.flush()
-                    written += len(recs)
-                    pieces += sum(r["n_gen"] for r in recs)
-            dt = time.time() - t0
-            log(f"{min(c0 + chunk, len(jobs))}/{len(jobs)} answers, {pieces / max(dt, 1e-9):,.0f} pieces/s, {written / max(dt, 1e-9):.2f} answers/s")
+        for k, (b, miss) in enumerate(todo):
+            recs = write_batch([all_jobs[i] for i in miss])
+            if recs is None:
+                log(f"stopped: {written} answers written; the same command continues the run")
+                return {"written": written, "skipped": len(done), "stopped": True}
+            f.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in recs)
+            f.flush()
+            written += len(recs)
+            pieces += sum(r["n_gen"] for r in recs)
+            if k == len(todo) - 1 or plan[todo[k + 1][0]][0] != plan[b][0]:  # a chunk's last batch
+                dt = time.time() - t0
+                log(f"{len(done) + written}/{total} answers, {pieces / max(dt, 1e-9):,.0f} pieces/s, {written / max(dt, 1e-9):.2f} answers/s")
     return {"written": written, "skipped": len(done), "stopped": False}
 
 
 # ------------------------------------------------------------------------------------- shards, depth and the spread
 
 
-def merge_runs(inputs: Sequence[Path], out: Path) -> Tuple[int, int]:
-    """Join runs of one layer taken in shards into one run, a row per (kind, neuron, prompt, dose), the first met kept
-    (sweep/merge_runs.py); its meta is the first input's with the shards and their unpackers named. Runs taken with
-    other settings are refused. Returns (rows read, rows kept)."""
+def merge_runs(inputs: Sequence[Path], out: Path, partial: bool = False) -> Tuple[int, int]:
+    """Join runs of one layer taken in parts into one run, a row per (kind, neuron, prompt, dose), the first met kept
+    (sweep/merge_runs.py); its meta is the first input's with the parts named (`shards`), their unpackers session by
+    session (`unpacker_sessions`), their neurons joined, and, where they were taken on different runtime classes, each
+    class (`mixed_runtime`). Runs taken with other settings are refused. Shards of one run (census_run.py --shard i/n, each meta naming its `shard`) are joined more strictly: every
+    shard 0..n-1 once, the union of their answers the run's whole job list (what is missing is listed, and refused
+    unless `partial`, which the merged meta then records), each shard's canary compared with shard 0's answers as whole
+    JSON values (`canary`). Returns (rows read, rows kept)."""
     inputs = [Path(p) for p in inputs]
     metas = [json.loads(meta_path_of(p).read_text(encoding="utf-8")) for p in inputs]
+    if any(m.get("shard") for m in metas):
+        return _merge_shards(inputs, metas, Path(out), partial)
     for p, m in zip(inputs[1:], metas[1:]):
         differ = settings_differ(metas[0], m)
         if differ:
             raise ValueError(f"{p.name} was taken with other settings than {inputs[0].name} ({', '.join(differ)}).")
+    n_in, n_out, _, _ = _join_rows(inputs, Path(out))
+    meta = dict(metas[0])
+    meta["shards"] = [p.name for p in inputs]
+    # each part's unpackers, session by session, in the parts' order
+    meta["unpacker_sessions"] = _unpacker_sessions(metas)
+    specs = list(dict.fromkeys(str(m.get("neurons")) for m in metas))
+    if len(specs) > 1:
+        meta["neurons"] = " + ".join(specs)
+    classes = runtime_classes(r for m in metas for r in (m.get("mixed_runtime") or [m.get("runtime")]))
+    if len(classes) > 1:
+        meta["mixed_runtime"] = classes
+    write_json_atomic(meta_path_of(Path(out)), meta)
+    return n_in, n_out
+
+
+def _unpacker_sessions(metas: Sequence[Dict[str, Any]]) -> List[Any]:
+    """Every session's unpacker (backend/w4a16_fast.py) across `metas`, in order; None where a meta recorded none."""
+    return [u for m in metas for u in m.get("unpacker_sessions", [m.get("unpacker")])]
+
+
+def _join_rows(inputs: Sequence[Path], out: Path, keep: Optional[set] = None) -> Tuple[int, int, set, Dict[Any, Dict[str, Any]]]:
+    """Stream `inputs` into `out` (atomically), the first row per key kept; returns (rows read, rows kept, their keys,
+    the rows of the first input whose keys are in `keep`)."""
     seen: set = set()
+    kept_rows: Dict[Any, Dict[str, Any]] = {}
     n_in = n_out = 0
-    out = Path(out)
     tmp = out.with_name(out.name + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
-        for p in inputs:
+        for j, p in enumerate(inputs):
             for r in read_rows(p):
                 n_in += 1
                 k = row_key(r)
+                if j == 0 and keep is not None and k in keep:
+                    kept_rows.setdefault(k, r)
                 if k in seen:
                     continue
                 seen.add(k)
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
                 n_out += 1
     os.replace(tmp, out)
-    meta = dict(metas[0])
-    meta["shards"] = [p.name for p in inputs]
-    # each shard's unpackers, session by session, in the shards' order
-    meta["unpacker_sessions"] = [u for m in metas for u in m.get("unpacker_sessions", [m.get("unpacker")])]
+    return n_in, n_out, seen, kept_rows
+
+
+def _merge_shards(inputs: List[Path], metas: List[Dict[str, Any]], out: Path, partial: bool) -> Tuple[int, int]:
+    not_shards = [p.name for p, m in zip(inputs, metas) if not m.get("shard")]
+    if not_shards:
+        raise ValueError(f"Shards of a run are joined among themselves, and {', '.join(not_shards)} is not one.")
+    ns = sorted({int(m["shard"]["n"]) for m in metas})
+    if len(ns) > 1:
+        raise ValueError(f"These shards split their runs {' and '.join(map(str, ns))} ways: only shards of one run are joined.")
+    n = ns[0]
+    by_i: Dict[int, Tuple[Path, Dict[str, Any]]] = {}
+    for p, m in zip(inputs, metas):
+        i = int(m["shard"]["i"])
+        if i in by_i:
+            raise ValueError(f"Shard {i} of {n} is given twice ({by_i[i][0].name} and {p.name}).")
+        by_i[i] = (p, m)
+    order = sorted(by_i)
+    p0, m0 = by_i[order[0]]
+    for i in order[1:]:
+        p, m = by_i[i]
+        differ = settings_differ(m0, m) + (["jobs"] if m.get("jobs") != m0.get("jobs") else [])
+        if differ:
+            raise ValueError(f"{p.name} was taken with other settings than {p0.name} ({', '.join(differ)}).")
+    missing = [i for i in range(n) if i not in by_i]
+    if missing and not partial:
+        raise ValueError(f"Shard{'s' if len(missing) > 1 else ''} {', '.join(map(str, missing))} of {n} "
+                         f"{'are' if len(missing) > 1 else 'is'} missing: finish {'them' if len(missing) > 1 else 'it'} and merge "
+                         "again, or merge with --partial.")
+    jobs = census_jobs(parse_neurons(m0["neuron_ids"], int(m0["d_ff"])), int(m0["random_controls"]), [tuple(x) for x in m0["design"]])
+    if jobs_digest(jobs) != m0.get("jobs"):
+        raise ValueError(f"The run's job list cannot be rebuilt from {p0.name}'s meta (its digest differs).")
+    plan = plan_batches(jobs, int(m0["batch"]), m0["plan"])
+    canary_keys = {row_key(jobs[i]) for i in plan[0][2]}
+    tmp_out = out.with_name(out.name + ".merging")
+    n_in, n_out, have, first = _join_rows([by_i[i][0] for i in order], tmp_out, keep=canary_keys if 0 in by_i else None)
+    absent = [row_key(j) for j in jobs if row_key(j) not in have]
+    if absent and not partial:
+        tmp_out.unlink()
+        raise ValueError(f"{len(absent)} of the run's {len(jobs)} answers are in no shard (the first: "
+                         + "; ".join(f"{k} {nn} {pp} {d:+g}" for k, nn, pp, d in absent[:3])
+                         + "): finish the shards and merge again, or merge with --partial.")
+    os.replace(tmp_out, out)
+    # the canaries: each shard's plan batch 0, against shard 0's own answers, as whole JSON values
+    same, notes = 0, []
+    for i in order:
+        if i == 0:
+            continue
+        cpath = canary_path_of(by_i[i][0])
+        if 0 not in by_i:
+            notes.append(f"shard {i}'s not compared (shard 0 is missing)")
+            continue
+        if not cpath.exists():
+            notes.append(f"shard {i} wrote none")
+            continue
+        rows_c = list(read_rows(cpath, tolerate_tail=True))
+        diff = next(((r, f) for r in rows_c for f in sorted(set(r) | set(first.get(row_key(r), {})))
+                     if r.get(f) != first.get(row_key(r), {}).get(f)), None)
+        if diff is None and len(rows_c) == len(canary_keys):
+            same += 1
+        elif diff is None:
+            notes.append(f"shard {i}'s holds {len(rows_c)} of plan batch 0's {len(canary_keys)} answers")
+        else:
+            r, f = diff
+            notes.append(f"shard {i}'s differs from shard 0's (first in {f} of {r['kind']} {r['neuron']} {r['prompt']} {float(r['dose']):+g})")
+    others = len([i for i in order if i != 0])
+    meta = {k: v for k, v in m0.items() if k != "shard"}
+    meta["shards"] = [by_i[i][0].name for i in order]
+    meta["unpacker_sessions"] = _unpacker_sessions([by_i[i][1] for i in order])
+    meta["canary"] = "; ".join([f"identical on {same} of {others} shard{'s' if others != 1 else ''}"] + notes) if others else "one shard: none to compare"
+    meta["plan_kept"] = all(bool(by_i[i][1].get("plan_kept")) for i in order)
+    classes = runtime_classes(r for i in order for r in (by_i[i][1].get("mixed_runtime") or [by_i[i][1].get("runtime")]))
+    meta.pop("mixed_runtime", None)
+    if len(classes) > 1:
+        meta["mixed_runtime"] = classes
+    if missing or absent:
+        meta["partial"] = {"missing_shards": missing, "missing_answers": len(absent),
+                           "first_missing": [list(k) for k in absent[:5]]}
     write_json_atomic(meta_path_of(out), meta)
     return n_in, n_out
 

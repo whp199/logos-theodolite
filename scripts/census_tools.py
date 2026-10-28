@@ -10,7 +10,10 @@ layers, the spread of a run's answers, and a calibration run's dose window.
 
 rank writes `<run>.units.jsonl` (each unit's words, z, mass, null_pct, shift, per-dose coherence) and prints the top
 of it and the controls' null (sweep/rank.py). merge keeps one row per (kind, neuron, prompt, dose) and refuses runs
-taken with other settings (sweep/merge_runs.py). depth reads every layer's main run, subsampled to the same pool
+taken with other settings (sweep/merge_runs.py); shards of one run (census_run.py --shard i/n) are joined only whole:
+every shard once, every answer of the run's job list (else refused, unless --partial, which the merged meta records),
+each shard's canary compared with shard 0's answers, and the runtime classes they were written on recorded (a
+warning, never a refusal). Rank a sharded run after the merge. depth reads every layer's main run, subsampled to the same pool
 (--neurons, --controls) so the word-cluster mass compares across layers (sweep/depth_report.py). spread embeds each
 answer (sentence-transformers' BAAI/bge-small-en-v1.5 where installed, as the reference's build_embeddings.py, else a
 download-free word embedding) and lays the answers out in two dimensions (UMAP where umap-learn is installed, else
@@ -140,6 +143,8 @@ def main(argv=None) -> int:
     m = sub.add_parser("merge", help="join shards of one layer's run")
     m.add_argument("inputs", nargs="+")
     m.add_argument("--out", required=True)
+    m.add_argument("--partial", action="store_true", help="join shards though some, or some of their answers, are missing "
+                   "(the merged meta says so)")
     d = sub.add_parser("depth", help="the depth report across layers")
     d.add_argument("--neurons", type=int, default=384)
     d.add_argument("--controls", type=int, default=64)
@@ -195,7 +200,16 @@ def main(argv=None) -> int:
                       f"p {rec.get('p')}, q {rec.get('q')}, {ws}")
             print(f"-> {out}")
         elif a.what == "merge":
-            n_in, n_out = cz.merge_runs([Path(x) for x in a.inputs], Path(a.out))
+            n_in, n_out = cz.merge_runs([Path(x) for x in a.inputs], Path(a.out), partial=a.partial)
+            meta = json.loads(cz.meta_path_of(Path(a.out)).read_text(encoding="utf-8"))
+            if meta.get("canary"):
+                print(f"canary: {meta['canary']}")
+            if meta.get("partial"):
+                miss = meta["partial"]
+                print(f"partial: shards missing {miss['missing_shards'] or 'none'}, {miss['missing_answers']} answers missing")
+            if meta.get("mixed_runtime"):
+                print(f"warning: the parts were written on {len(meta['mixed_runtime'])} runtime classes (mixed_runtime): "
+                      "each one's readings are valid, their bits are not alike")
             print(f"{n_in} rows in, {n_out} kept -> {a.out}")
         elif a.what == "depth":
             report = cz.depth_report(cz.layer_runs(), neurons=a.neurons, controls=a.controls)

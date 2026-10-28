@@ -72,7 +72,9 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=0, help="draws the controls' directions and random:K's neurons")
     ap.add_argument("--max-new", type=int, default=256, help="word-pieces per answer at most (pushed answers often loop)")
     ap.add_argument("--top-k", type=int, default=5, help="the likeliest pieces kept at each step")
-    ap.add_argument("--batch", type=int, default=32, help="answers written together")
+    ap.add_argument("--batch", type=int, default=32, help="answers written together (fixed for the run: its rows' bits depend on it)")
+    ap.add_argument("--shard", default="", help="i/n: take shard i of n of the run's planned chunks, into <run>.s<i>of<n>.jsonl "
+                                                "(join them with census_tools.py merge, then rank)")
     ap.add_argument("--run", default="", help="the run's name (default L<layer>-<design>)")
     ap.add_argument("--out-dir", default="", help="the census folder (default: the atlas's)")
     ap.add_argument("--no-rank", action="store_true", help="leave the ranking to the server or census_tools.py rank")
@@ -81,6 +83,12 @@ def main(argv=None) -> int:
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
                     "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
     a = ap.parse_args(argv)
+    shard = None
+    if a.shard:
+        i, _, n = a.shard.partition("/")
+        if not (i.isdigit() and n.isdigit() and 0 <= int(i) < int(n)):
+            raise SystemExit(f"--shard is i/n, shard i of n counting from 0 (0/4 to 3/4), not {a.shard!r}.")
+        shard = (int(i), int(n))
 
     if a.stand_in:
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -117,10 +125,13 @@ def main(argv=None) -> int:
     except ValueError as exc:
         raise SystemExit(str(exc))
 
-    stats = AtlasIndex(model=getattr(rt, "model_id", None), shape=(L, N)).get("act_scale")
+    index = AtlasIndex(model=getattr(rt, "model_id", None), shape=(L, N))
+    stats = index.get("act_scale")
+    p50_file = None
     if stats is not None:
         p50 = float(stats["resid_q"][a.layer, 1])
         source = f"the stats index ({stats['meta'].get('corpus')}, {int(stats['tokens'])} word-pieces)"
+        p50_file = index.path("act_scale")
     else:
         from backend.mcp_scientist import _study_ids
 
@@ -130,6 +141,8 @@ def main(argv=None) -> int:
     out_dir = Path(a.out_dir) if a.out_dir else cz.census_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"{a.run or f'L{a.layer}-{a.design}'}.jsonl"
+    if shard:
+        out = cz.shard_path(out, *shard)
     stop = threading.Event()
 
     def on_signal(_sig, _frame):  # stop between steps: the batch under way is dropped, every whole one kept
@@ -140,11 +153,14 @@ def main(argv=None) -> int:
     try:
         res = cz.take_census(rt, a.layer, neurons, out, p50=p50, p50_source=source, design_name=a.design,
                              controls=a.random_controls, seed=a.seed, max_new=a.max_new, top_k=a.top_k, batch=a.batch,
-                             neurons_spec=a.neurons, dose_unit=a.dose_unit, cancel=stop.is_set, log=lambda s: print(s, flush=True))
+                             neurons_spec=a.neurons, dose_unit=a.dose_unit, shard=shard, p50_file=p50_file,
+                             cancel=stop.is_set, log=lambda s: print(s, flush=True))
     except ValueError as exc:
         raise SystemExit(str(exc))
     print(f"-> {out} ({res['written']} answers written, {res['skipped']} were there)")
-    if not a.no_rank and out.exists():
+    if shard:
+        print("a shard is ranked only once its run is joined: census_tools.py merge <run>.s*of*.jsonl --out <run>.jsonl, then rank")
+    elif not a.no_rank and out.exists():
         units = cz.write_units(out)
         print(f"-> {units}")
     return 0
