@@ -80,7 +80,7 @@ import {
   parseHypothesis,
   parseInspection,
   parseReaders,
-  pText,
+  pShown,
 } from "./NeuronFolio/replies";
 import { type FaceNotes, type FolioSaved, type Jobs, useFolioSaved } from "./NeuronFolio/saved";
 import {
@@ -3689,6 +3689,7 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
   const dShown = res ? (res.test ? res.test.d : res.d) : null;
   // how its p was counted: over every split, or from seeded shuffles
   const sel = res?.test;
+  const pSel = sel ? pShown(sel) : null;
   const howP =
     sel?.pMethod === "exact" ? `, over all ${sel.splits ?? "?"} splits` : sel?.pMethod ? `, from ${sel.splits ?? "?"} shuffles (seed ${sel.seed ?? "?"})` : "";
   // what was (or will be) sent: the folio sends bare text, so each sentence is read at its own last word-piece
@@ -3783,7 +3784,7 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             >
               {res?.test ? (
                 <span style={NUM}>
-                  {res.test.p === null ? "no p" : `p = ${pText(res.test.p)}`}
+                  {pSel === null ? "no p" : `p = ${pSel}`}
                   {res.test.t !== null ? ` · t = ${signed(res.test.t, 2)}` : ""} · n = {nText(res.test)}
                 </span>
               ) : res ? (
@@ -3890,7 +3891,7 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
             {res?.test ? (
               <>
                 {" "}
-                Returned here: {res.test.p === null ? "no p" : `p = ${pText(res.test.p)}`}
+                Returned here: {pSel === null ? "no p" : `p = ${pSel}`}
                 {howP}
                 , t = {res.test.t === null ? "—" : signedRaw(res.test.t)} on {res.test.df === null ? "—" : res.test.df.toFixed(1)} degrees of freedom, n ={" "}
                 {nText(res.test)}.
@@ -3901,8 +3902,8 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
           </dd>
           <dt>verdict</dt>
           <dd>
-            under 4 sentences a side: <span className="mono">TOO_FEW_TO_JUDGE</span>, whatever the numbers (at three a side no split reaches p &lt;
-            0.05); p ≥ 0.05: <span className="mono">NOT_SHOWN</span>; else <span className="mono">SELECTIVE_NORTH_POLE (+)</span> when ā<sub>+</sub>{" "}
+            a reading that is not a finite number: <span className="mono">CANNOT_TEST</span>; under 4 sentences a side:{" "}
+            <span className="mono">TOO_FEW_TO_JUDGE</span>, whatever the numbers (at three a side no split reaches p &lt; 0.05); p ≥ 0.05: <span className="mono">NOT_SHOWN</span>; else <span className="mono">SELECTIVE_NORTH_POLE (+)</span> when ā<sub>+</sub>{" "}
             &gt; ā<sub>−</sub> and ā<sub>+</sub> &gt; 0, <span className="mono">SELECTIVE_SOUTH_POLE (-)</span> when ā<sub>+</sub> &lt; ā
             <sub>−</sub> and ā<sub>+</sub> &lt; 0, and <span className="mono">DIFFERS_NOT_AS_GUESSED</span> otherwise (the quiet sentences
             fire a face more). The verdict as first built is still sent, for old callers, and is not the answer above: d ≥ 0.8 and ā<sub>+</sub>{" "}

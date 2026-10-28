@@ -9,17 +9,20 @@ and run under node, as scripts/check_interface_defaults.py runs the store):
    by hand; exact p's against every split counted in plain Python; no spread at all, rounding included, as an infinite
    t; identical sides (p = 1, not shown); three a side as far apart as can be (p = 0.1, too few to judge) and one a
    side (no t, no p, too few); past 10,000 splits a seeded permutation p, the same at each call, within its Monte Carlo
-   error of the exact p, and never 0; every reply JSON without NaN or infinity; an empty side, or a reading that is
-   not a finite number, refused in plain words;
-2. the tool, its capture replaced by hand-made activations: its `selectivity` is `motif_statistics` of them, the keys
-   as first built are kept (`verdict` and `cohens_d` over population variances: one sentence a side still reads
-   CONFIRMED, d = 50,000, while the test says too few to judge), `label_gate` and `lens` last; an empty side, a layer
-   or a neuron that does not exist refused in plain words before the model is run;
-3. the HTTP route (POST /api/scientist/test_hypothesis, TestClient): the same reply, the same refusals as 400s, and
-   a run on the stand-in's own activations;
+   error of the exact p, and never 0; an exact p that is a tie at two figures (0.125) written as Python rounds it
+   (`p_text` "0.12"); every reply JSON without NaN or infinity; an empty side refused in plain words, and readings
+   that are not finite numbers left untested (CANNOT_TEST), said so;
+2. the tool, its capture replaced by hand-made activations: its `selectivity` is `motif_statistics` of them, read
+   from the readings unrounded (5.00004 is not the 5.0 its record shows), the keys as first built are kept (`verdict`
+   and `cohens_d` over population variances: one sentence a side still reads CONFIRMED, d = 50,000, while the test
+   says too few to judge; a reading that is not a finite number still gives the reply), `label_gate` and `lens` last;
+   an empty side, a layer or a neuron that does not exist refused in plain words before the model is run;
+3. the HTTP route (POST /api/scientist/test_hypothesis, TestClient): the same reply, a reading that is not a finite
+   number included, the same refusals as 400s, and a run on the stand-in's own activations;
 4. the folio's words: for each verdict the server's own words with the faces named ("selective on its positive face,
-   p = 0.029, n = 4 a side"), an older server's verdict never read as a yes, a p written alike by both and never
-   rounded up to 0.05 from below, and no "yes, clearly" left in the folio.
+   p = 0.029, n = 4 a side"), the server's own p where a tie would round apart, an older server's verdict never read
+   as a yes, a p written alike by both and never rounded up to 0.05 from below, and no "yes, clearly" left in the
+   folio.
 
 Run: .venv/bin/python -I scripts/check_hypothesis_test.py   (exits 0 when every check holds)
 """
@@ -131,7 +134,7 @@ def run_checks() -> int:
     check(s["p_method"] == "exact" and s["splits"] == 70 and close(s["p"], 2 / 70) and s["seed"] is None,
           f"the exact p over all 70 splits: only this split and its mirror are as far apart, 2/70: {s['p']}")
     check(s["verdict"] == "SELECTIVE_NORTH_POLE (+)" and s["face"] == "+" and s["words"] == "selective on its + face, p = 0.029, n = 4 a side"
-          and s["min_n"] == 4 and s["alpha"] == 0.05, f"the verdict and its words: {s['verdict']}, {s['words']!r}")
+          and s["p_text"] == "0.029" and s["min_n"] == 4 and s["alpha"] == 0.05, f"the verdict and its words: {s['verdict']}, {s['words']!r}, {s['p_text']!r}")
     s = ms.motif_statistics([-5.0, -6.0, -7.0, -8.0], [-1.0, -2.0, -3.0, -4.0])
     check(s["verdict"] == "SELECTIVE_SOUTH_POLE (-)" and s["face"] == "-" and close(s["welch_t"], -4.38178) and close(s["cohens_d"], -3.09839)
           and s["words"] == "selective on its - face, p = 0.029, n = 4 a side", f"the - face: {s['verdict']}, {s['words']!r}")
@@ -183,19 +186,27 @@ def run_checks() -> int:
     s = ms.motif_statistics([10.0 + i for i in range(8)], [float(i) for i in range(8)])
     check(s["p_method"] == "permutation" and s["p"] >= 1 / 10_001 and s["p"] < 0.01 and s["verdict"] == "SELECTIVE_NORTH_POLE (+)",
           f"eight a side wholly apart: a permutation p never 0 ({s['p']}), and judged")
+    s = ms.motif_statistics(*TIE)
+    check(s["p"] == 0.125 and s["splits"] == 792 and s["p_text"] == "0.12" and s["words"] == "no difference shown: p = 0.12, n = 5 and 7",
+          f"an exact p of 99/792 = 0.125, a tie at two figures, written as Python rounds it: {s['p']}, {s['p_text']!r}, {s['words']!r}")
+    untested = ([1.0, float("nan"), 2.0, 3.0], [0.0, 1.0, 2.0, float("inf")])
+    s = ms.motif_statistics(*untested)
+    check(s["verdict"] == "CANNOT_TEST" and s["p"] is None and s["p_text"] is None and s["welch_t"] is None and s["cohens_d"] is None
+          and s["mean_pos"] is None and s["sd_neg"] is None and s["face"] is None and s["n_pos"] == 4
+          and s["words"] == "cannot test: 2 of the 8 readings are not a finite number, n = 4 a side",
+          f"readings that are not finite numbers: nothing tested, not read as p = 0, and said so: {s['words']!r}")
     allowed = True
-    for args in (([5.0], [0.0]), ([2.0] * 4, [1.0] * 4), ([1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0]), (a, b)):
+    for args in (([5.0], [0.0]), ([2.0] * 4, [1.0] * 4), ([1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0]), (a, b), untested):
         try:
             json.dumps(ms.motif_statistics(*args), allow_nan=False)
         except ValueError:
             allowed = False
     check(allowed, "every reply is JSON without NaN or infinity")
-    for bad, said in ((([], [1.0]), "both sides"), (([1.0, float("nan"), 2.0, 3.0], [0.0, 1.0, 2.0, 3.0]), "not a finite number")):
-        try:
-            ms.motif_statistics(*bad)
-            check(False, f"{said}: refused")
-        except ValueError as exc:
-            check(said in str(exc), f"refused in plain words, not read as p = 0: {exc}")
+    try:
+        ms.motif_statistics([], [1.0])
+        check(False, "an empty side: refused")
+    except ValueError as exc:
+        check("both sides" in str(exc), f"an empty side refused in plain words, not read as p = 0: {exc}")
     section("the statistics on hand-made activations", before)
 
     # ---------------------------------------------------------------------- 2. the tool, on hand-made activations
@@ -235,6 +246,10 @@ def run_checks() -> int:
         "same": ([1.0, 2.0, 3.0, 4.0], [1.0, 2.0, 3.0, 4.0]),
         "one": ([5.0], [0.0]),
         "eight": ([1.5, 0.25, 2.0, 1.0, 0.75, 1.25, 2.5, 0.5], [0.0, 0.5, -0.25, 1.0, 0.25, -0.5, 0.75, 0.125]),
+        "tie": TIE,
+        # not exact at the 4 places a record is rounded to: as float32 holds them, which is what the capture gives
+        "unrounded": ([float(np.float32(v)) for v in (5.00004, 6.00004, 7.00004, 8.00004)], [1.0, 2.0, 3.0, 4.0]),
+        "untested": ([5.0, float("nan"), 7.0, 8.0], [1.0, 2.0, 3.0, 4.0]),
     }
     asked = {k: (sentences(f"{k}+", p_), sentences(f"{k}-", n_)) for k, (p_, n_) in cases.items()}
     replies: Dict[str, Any] = {}
@@ -257,6 +272,14 @@ def run_checks() -> int:
     check(replies["eight"]["selectivity"]["p_method"] == "permutation" and replies["same"]["selectivity"]["verdict"] == "NOT_SHOWN"
           and replies["differs"]["selectivity"]["verdict"] == "DIFFERS_NOT_AS_GUESSED" and replies["south"]["selectivity"]["verdict"] == "SELECTIVE_SOUTH_POLE (-)",
           "each verdict through the tool")
+    un = replies["unrounded"]
+    check([x["last_token_signed_act"] for x in un["pos_prompt_results"]] == [5.0, 6.0, 7.0, 8.0] and un["mean_pos_signed_act"] == 6.5
+          and un["selectivity"]["mean_pos"] == ms._sig(sum(cases["unrounded"][0]) / 4) and un["selectivity"]["mean_pos"] != 6.5,
+          f"the test reads the last word-piece unrounded: mean {un['selectivity']['mean_pos']}, where the records, rounded, give {un['mean_pos_signed_act']}")
+    nan_rep = replies["untested"]
+    check(all(k in nan_rep for k in OLD_KEYS) and nan_rep["selectivity"]["verdict"] == "CANNOT_TEST" and nan_rep["selectivity"]["p"] is None
+          and nan_rep["selectivity"]["words"] == "cannot test: 1 of the 8 readings is not a finite number, n = 4 a side",
+          f"a reading that is not a finite number: the reply still comes, its keys as first built, and the test says it cannot: {nan_rep['selectivity']['words']!r}")
     n_calls = calls[0]
     pos4, neg4 = asked["north"]
     refusals = [
@@ -285,6 +308,9 @@ def run_checks() -> int:
     r = client.post("/api/scientist/test_hypothesis", json={"layer": 3, "neuron_idx": N, "pos_prompts": pos4, "neg_prompts": neg4})
     check(r.status_code == 200 and r.json()["selectivity"] == json.loads(json.dumps(replies["north"]["selectivity"]))
           and r.json()["verdict"] == "CONFIRMED_NORTH_POLE (+)", f"the route gives the tool's reply: {r.status_code}")
+    r = client.post("/api/scientist/test_hypothesis", json={"layer": 3, "neuron_idx": N, "pos_prompts": asked["untested"][0], "neg_prompts": asked["untested"][1]})
+    check(r.status_code == 200 and all(k in r.json() for k in OLD_KEYS) and r.json()["selectivity"]["verdict"] == "CANNOT_TEST"
+          and r.json()["cohens_d"] is None, f"a reading that is not a finite number: a reply, not a 400 (its d as first built sent as null): {r.status_code} {r.text[:160]}")
     for body, said in [({"layer": N_LAYERS, "neuron_idx": N}, "layers count from 0"), ({"layer": 3, "neuron_idx": FFN}, "neurons count from 0"),
                        ({"layer": 3, "neuron_idx": N, "pos_prompts": []}, "pos_prompts is empty"),
                        ({"layer": 3, "neuron_idx": N, "neg_prompts": []}, "neg_prompts is empty")]:
@@ -314,6 +340,8 @@ def run_checks() -> int:
             check(shown[k]["words"] == want, f"{k}: the folio says {shown[k]['words']!r}, the server {server!r}")
         check(shown["north"]["words"] == "selective on its positive face, p = 0.029, n = 4 a side", f"the folio's words: {shown['north']['words']!r}")
         check(shown["one"]["words"].startswith("too few to judge") and shown["one"]["test"]["p"] is None, f"one a side: {shown['one']['words']!r}")
+        check(shown["tie"]["words"] == "no difference shown: p = 0.12, n = 5 and 7" and shown["tie"]["test"]["pWords"] == "0.12",
+              f"a tie at two figures: the folio shows the server's p, not its own rounding of 0.125 (\"0.13\"): {shown['tie']['words']!r}")
         check(shown["older"]["test"] is None and shown["older"]["words"].startswith("d at 0.8 or more on its positive face")
               and "nothing set against chance" in shown["older"]["words"], f"an older server's CONFIRMED: {shown['older']['words']!r}")
         words = [v["words"] for k, v in shown.items() if k not in ("old", "p")] + shown["old"]
@@ -333,6 +361,9 @@ def run_checks() -> int:
 
 
 P_SHOWN = [0.0496, 0.04999, 0.05, 0.051, 0.0285714, 1.0, 0.31, 0.00309969, 1 / 10_001]
+# five against seven whose exact p is 99 of the 792 splits, 0.125: a tie at two figures, which Python rounds to even
+# ("0.12") and toPrecision up ("0.13")
+TIE = ([6.0, 6.0, 5.0, 0.0, 8.0], [4.0, 3.0, 0.0, 1.0, 3.0, 1.0, 5.0])
 ENTRY = r"""
 import { hypothesisWords, parseHypothesis, pText, verdictWords } from "./replies";
 const REPLIES = __REPLIES__;

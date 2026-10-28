@@ -156,7 +156,8 @@ export interface HypRow {
 /** test_motif_hypothesis's test against chance (`selectivity`, backend/mcp_scientist.py motif_statistics): on the last
  * word-piece's readings, Welch's t and a p from splitting the sentences between the sides afresh. */
 export interface Selectivity {
-  /** SELECTIVE_NORTH_POLE (+), SELECTIVE_SOUTH_POLE (-), DIFFERS_NOT_AS_GUESSED, NOT_SHOWN or TOO_FEW_TO_JUDGE */
+  /** SELECTIVE_NORTH_POLE (+), SELECTIVE_SOUTH_POLE (-), DIFFERS_NOT_AS_GUESSED, NOT_SHOWN, TOO_FEW_TO_JUDGE or
+   * CANNOT_TEST (a reading not a finite number) */
   verdict: string;
   /** the server's own words for it */
   words: string | null;
@@ -171,6 +172,9 @@ export interface Selectivity {
   df: number | null;
   /** two-sided; null below two sentences a side */
   p: number | null;
+  /** p as the server's `words` write it (`p_text`): what the folio shows, since toPrecision rounds an exact tie up
+   * where Python rounds it to even (0.125: "0.13" here, "0.12" there) */
+  pWords: string | null;
   /** "exact" (every split) or "permutation" (`splits` shuffles, seeded `seed`) */
   pMethod: string | null;
   splits: number | null;
@@ -211,6 +215,7 @@ function parseSelectivity(v: unknown): Selectivity | null {
     t: num(s.welch_t),
     df: num(s.welch_df),
     p: num(s.p),
+    pWords: str(s.p_text),
     pMethod: str(s.p_method),
     splits: num(s.splits),
     seed: num(s.seed),
@@ -260,7 +265,8 @@ export function verdictWords(v: string): string {
 }
 
 /** A p as the server writes it: two significant figures, or more where two would round it up to the 0.05 it is judged
- * by (0.0496 is not 0.05). */
+ * by (0.0496 is not 0.05); but an exact tie at the last figure rounds up here and to even there, so a test's own
+ * `pWords` is shown when it is sent (`pShown`). */
 export function pText(p: number, alpha = 0.05): string {
   let s = "";
   for (const k of [2, 3, 4, 6]) {
@@ -270,13 +276,16 @@ export function pText(p: number, alpha = 0.05): string {
   return s;
 }
 
+/** A test's p as shown: the server's own writing of it, else written here; null when it has none. */
+export const pShown = (t: Selectivity): string | null => t.pWords ?? (t.p === null ? null : pText(t.p, t.alpha ?? 0.05));
+
 /** How many sentences each side had: "4 a side", or "6 and 4" (where it should fire, then where quiet). */
 export const nText = (t: Selectivity): string =>
   t.nPos !== null && t.nPos === t.nNeg ? `${t.nPos} a side` : `${t.nPos ?? "?"} and ${t.nNeg ?? "?"}`;
 
 /** The test against chance in plain words, hedged as the server's own `words` are: what it found, its p and its n. */
 export function selectivityWords(t: Selectivity): string {
-  const p = t.p === null ? null : pText(t.p, t.alpha ?? 0.05);
+  const p = pShown(t);
   const n = nText(t);
   if (t.verdict === "TOO_FEW_TO_JUDGE") return `too few to judge: n = ${n}, and the test needs at least ${t.minN ?? 4} a side`;
   if (t.verdict === "NOT_SHOWN") return p === null ? `no difference shown: n = ${n}` : `no difference shown: p = ${p}, n = ${n}`;

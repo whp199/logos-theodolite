@@ -378,24 +378,25 @@ def motif_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAW
     arbitrary; Welch's t keeps the test fair when the sides vary unequally. A difference with no spread on either side
     has an infinite t (sent as null) and is weighed as such. Fewer than two a side leave t and p null.
 
-    `verdict`: TOO_FEW_TO_JUDGE below MOTIF_MIN_N sentences a side, whatever the numbers; else NOT_SHOWN unless
-    p < MOTIF_ALPHA; else SELECTIVE_NORTH_POLE (+) when the + sentences read higher and their mean is above 0,
-    SELECTIVE_SOUTH_POLE (-) when they read lower and their mean is below 0 (`face`), and DIFFERS_NOT_AS_GUESSED when
-    the sides differ the other way: the quiet sentences fire a face more. `words` says it with its p and n. One test is
-    one neuron's: p's from several want correcting together (the study used Benjamini-Hochberg, E6 §2.3). An empty
-    side, or a reading that is not a finite number, is refused in plain words (ValueError)."""
+    `verdict`: CANNOT_TEST when a reading is not a finite number (its means, spreads, d, t and p are then null);
+    TOO_FEW_TO_JUDGE below MOTIF_MIN_N sentences a side, whatever the numbers; else NOT_SHOWN unless p < MOTIF_ALPHA;
+    else SELECTIVE_NORTH_POLE (+) when the + sentences read higher and their mean is above 0, SELECTIVE_SOUTH_POLE (-)
+    when they read lower and their mean is below 0 (`face`), and DIFFERS_NOT_AS_GUESSED when the sides differ the other
+    way: the quiet sentences fire a face more. `words` says it with its p and n, and `p_text` is that p as written
+    there (`_p_words`, from the p unrounded), for a page to show as it is. One test is one neuron's: p's from several
+    want correcting together (the study used Benjamini-Hochberg, E6 §2.3). An empty side is refused in plain words
+    (ValueError)."""
     a = np.asarray(pos, dtype=np.float64)
     b = np.asarray(neg, dtype=np.float64)
     n1, n2 = len(a), len(b)
     if not n1 or not n2:
         raise ValueError("The test needs sentences on both sides.")
-    if not (np.isfinite(a).all() and np.isfinite(b).all()):
-        raise ValueError("A reading is not a finite number (the model overflowed on a sentence), so there is nothing to test.")
-    m1, m2 = float(a.mean()), float(b.mean())
-    sd1 = float(a.std(ddof=1)) if n1 > 1 else None
-    sd2 = float(b.std(ddof=1)) if n2 > 1 else None
+    bad = int(np.count_nonzero(~np.isfinite(a)) + np.count_nonzero(~np.isfinite(b)))  # readings not finite numbers
+    m1, m2 = (float(a.mean()), float(b.mean())) if not bad else (None, None)
+    sd1 = float(a.std(ddof=1)) if n1 > 1 and not bad else None
+    sd2 = float(b.std(ddof=1)) if n2 > 1 and not bad else None
     d = t = df = p = method = splits = None
-    if n1 > 1 and n2 > 1:
+    if n1 > 1 and n2 > 1 and not bad:
         x = np.concatenate([a, b])
         n = len(x)
         floor = 4 * n * float(np.finfo(np.float64).eps) * float(np.abs(x).max())
@@ -422,7 +423,10 @@ def motif_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAW
             p = (1 + count) / (1 + draws)
     n_words = f"{n1} a side" if n1 == n2 else f"{n1} and {n2}"
     face = None
-    if n1 < MOTIF_MIN_N or n2 < MOTIF_MIN_N:
+    if bad:
+        verdict = "CANNOT_TEST"
+        words = f"cannot test: {bad} of the {n1 + n2} readings {'is' if bad == 1 else 'are'} not a finite number, n = {n_words}"
+    elif n1 < MOTIF_MIN_N or n2 < MOTIF_MIN_N:
         verdict = "TOO_FEW_TO_JUDGE"
         words = f"too few to judge: n = {n_words}, and the test needs at least {MOTIF_MIN_N} a side"
     elif p is None or not p < MOTIF_ALPHA:
@@ -450,6 +454,7 @@ def motif_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAW
         "welch_t": _sig(t),
         "welch_df": _sig(df),
         "p": _sig(p),
+        "p_text": None if p is None else _p_words(p),
         "p_method": method,
         "splits": splits,
         "seed": int(seed) if method == "permutation" else None,
@@ -485,7 +490,8 @@ async def test_motif_hypothesis(
     a side reads as "CONFIRMED" (d near 10^4). Quote `selectivity` instead (`motif_statistics`): on the last word-piece's
     unrounded readings, the n each side, sample variances, Welch's t, a two-sided p for it by splitting the sentences
     afresh (exact over every split up to MOTIF_DRAWS of them, else MOTIF_DRAWS shuffles seeded MOTIF_SEED), and its own
-    verdict and `words`, which judge nothing below MOTIF_MIN_N sentences a side. The peak is reported but not tested.
+    verdict and `words`, which judge nothing below MOTIF_MIN_N sentences a side, nor when a reading is not a finite
+    number (CANNOT_TEST: the reply still comes, with the keys as first built). The peak is reported but not tested.
 
     Refusals are plain-word ValueErrors (an empty side, a layer or a neuron that does not exist), all before the model
     is run; an empty side was once read as one reading of 0.0, and an out-of-range layer moved to the nearest.
