@@ -24,7 +24,8 @@ them is the same, byte for byte. It loads neither the real model nor the lens, a
    the reference: a forward's logits, bare, under a vault edit (a down_proj column overlay by apply_patch_surgery) and
    under a gate_proj row overlay; the runtime's slices and whole weights with each in force; the stream's p50 over the
    study's texts; three answers written at once under their own pushes (write_rows); a census run's rows, with the
-   mode in its meta; the resident weights untouched after all of it, and "reference" putting every forward back;
+   mode in its meta, and a run continued under another unpacker, or merged with one, keeping each session's; the
+   resident weights untouched after all of it, and "reference" putting every forward back;
 6. the command lines and the server: census_run.py --stand-in --unpacker lut records it in the run's meta and an
    unknown unpacker is refused; atlas_build.py --unpacker lut records it in an index's meta; the server's own lifespan
    installs $THEODOLITE_UNPACKER and GET /api/health says which, and a name that is not one stops it in plain words;
@@ -560,12 +561,25 @@ def check_stand_in(rt: Any, vault: LarqlVaultEngine, modes: List[str], tmp: Path
                       and m._resident_w._version == m._resident_version for _n, m in lins),
                   "resident: every kept weight still the reference's bits, never written in place, after all of it")
         print(f"        {mode}: installed and read in {dt:.1f} s")
+    # the reference's run continued under lut (nothing is left to write, so only its meta moves), then merged with lut's
+    wf.install(rt, "lut", log=lambda s: None)
+    res = cz.take_census(rt, 3, [0, 5], tmp / "reference.jsonl", p50=ref["p50"][3], p50_source="check_dequant",
+                         design_name="main_rel", controls=1, seed=3, max_new=6, top_k=5, batch=5, log=lambda s: None)
+    meta = json.loads(cz.meta_path_of(tmp / "reference.jsonl").read_text(encoding="utf-8"))
+    check(res["written"] == 0 and [u["mode"] for u in meta.get("unpacker_sessions", [])] == ["reference", "lut"]
+          and meta["unpacker"]["mode"] == "lut",
+          f"a run continued under another unpacker keeps each session's: {meta.get('unpacker_sessions')}")
+    cz.merge_runs([tmp / "reference.jsonl", tmp / "lut.jsonl"], tmp / "merged.jsonl")
+    merged = json.loads(cz.meta_path_of(tmp / "merged.jsonl").read_text(encoding="utf-8"))
+    check([u["mode"] for u in merged.get("unpacker_sessions", [])] == ["reference", "lut", "lut"],
+          f"a merged run keeps every shard's sessions' unpackers: {[u['mode'] for u in merged.get('unpacker_sessions', [])]}")
     wf.install(rt, "reference")
     lins = wf.packed_linears(rt.hf_model)
     check(ER.dequantize_w4a16_full is wf.REFERENCE and all(pinned_forward(m) and "_resident_w" not in m.__dict__ for _n, m in lins),
           "reference: the runtime's own unpacker and the pinned forward on every linear, as loaded")
     section(f"the 4-bit stand-in, byte for byte in {', '.join(modes)}: logits bare and under a column and a row overlay, "
-            "slices and whole weights, p50, three pushed answers at once, a census run's rows", before)
+            "slices and whole weights, p50, three pushed answers at once, a census run's rows; each session's unpacker kept "
+            "on resume and merge", before)
 
 
 # ---------------------------------------------------------------------------------- 6. command lines and server

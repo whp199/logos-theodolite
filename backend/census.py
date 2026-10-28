@@ -529,7 +529,7 @@ def take_census(
         "lens": (rt.lens_card() or {}).get("id") if hasattr(rt, "lens_card") else None,
         "stand_in": bool(getattr(rt, "atlas_stand_in", False)),
         # how this session unpacked the 4-bit weights (backend/w4a16_fast.py): every unpacker gives the same bits, so a
-        # run may be continued under another; not a resume key
+        # run may be continued under another (every session's then kept in "unpacker_sessions"); not a resume key
         "unpacker": w4a16_fast.describe(rt),
     }
     if controls and gain["ratio"] is not None and not 0.5 <= gain["ratio"] <= 2.0:
@@ -543,6 +543,8 @@ def take_census(
                              "(--run) or remove it.")
         meta["started_at"] = old.get("started_at")
         meta["neurons"] = old.get("neurons") if neurons_spec in ("", old.get("neurons")) else f"{old.get('neurons')} + {neurons_spec}"
+        # every session's unpacker, the first first ("unpacker" is this one's; None where a meta did not record one)
+        meta["unpacker_sessions"] = old.get("unpacker_sessions", [old.get("unpacker")]) + [meta["unpacker"]]
     meta["started_at"] = meta.get("started_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     write_json_atomic(meta_path, meta)
 
@@ -620,8 +622,8 @@ def take_census(
 
 def merge_runs(inputs: Sequence[Path], out: Path) -> Tuple[int, int]:
     """Join runs of one layer taken in shards into one run, a row per (kind, neuron, prompt, dose), the first met kept
-    (sweep/merge_runs.py); its meta is the first input's with the shards named. Runs taken with other settings are
-    refused. Returns (rows read, rows kept)."""
+    (sweep/merge_runs.py); its meta is the first input's with the shards and their unpackers named. Runs taken with
+    other settings are refused. Returns (rows read, rows kept)."""
     inputs = [Path(p) for p in inputs]
     metas = [json.loads(meta_path_of(p).read_text(encoding="utf-8")) for p in inputs]
     for p, m in zip(inputs[1:], metas[1:]):
@@ -645,6 +647,8 @@ def merge_runs(inputs: Sequence[Path], out: Path) -> Tuple[int, int]:
     os.replace(tmp, out)
     meta = dict(metas[0])
     meta["shards"] = [p.name for p in inputs]
+    # each shard's unpackers, session by session, in the shards' order
+    meta["unpacker_sessions"] = [u for m in metas for u in m.get("unpacker_sessions", [m.get("unpacker")])]
     write_json_atomic(meta_path_of(out), meta)
     return n_in, n_out
 
