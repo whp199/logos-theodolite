@@ -10,11 +10,12 @@ was written: "greedy", or the sampler with its seeds and the draw the three voic
 Neither min-p nor a repetition penalty is offered, though neuron-explorer's steer takes both (REFERENCES.md [47], read
 again at 6a6f0e9). The instrument's sampler has temperature, top-k, top-p and the presence penalty, and interp_engine
 resolves no other knob: min-p would be a second vocabulary for the job top-k and top-p do, and engines differ on whether
-it comes before or after the temperature (inferred, not checked here). A repetition penalty divides the logit of every
-word-piece in the prompt as well as in the answer, so it reaches the end-of-turn mark the prompt holds and the writing
-stops on, and an answer is then less likely to end; and a penalty that removes a loop can make a meaningless push read
-coherent, where the method reads the loop as evidence. The presence penalty counts only the word-pieces written, so it
-has neither fault at the stop mark; it is offered with the method's caution (backend/scientist_methodology.md).
+it comes before or after the temperature (inferred, not checked here). A repetition penalty scales down the logit of
+every word-piece in the prompt as well as in the answer, as transformers' does, so it reaches the end-of-turn mark the
+prompt holds and the writing stops on, and an answer is then less likely to end; and a penalty that removes a loop can
+make a meaningless push read coherent, where the method reads the loop as evidence. The presence penalty counts only
+the word-pieces written, so it leaves the prompt's stop mark alone; it can still smooth a loop away, so it is offered
+only with sampling and with the method's caution (backend/scientist_methodology.md).
 """
 
 from __future__ import annotations
