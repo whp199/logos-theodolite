@@ -14,13 +14,13 @@ Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code 
 its work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (writes only in the work folder,
 no network). "home" is the explorer's own setting, taken only when the person sets it: Claude Code's Read, Glob, Grep,
 Write, Edit and Bash pre-approved over the home folder, Codex with full access and never asking. Either way Claude Code
-loads no settings file and no CLAUDE.md (`--setting-sources ""`: a CLAUDE.md it wrote in its work folder would otherwise
-reach every later chat as instructions, and so would one in any folder above it), neither process is given the
-endpoints' keys nor the Hugging Face and cloud credentials in the server's environment (`child_env`; each keeps its own
-login), and the page
-says what the chosen backend can do (`REACH_WORDS`), asking once before the first chat when it is "home". What a
-scientist reads (model output, census answers, names and notes, attachments) can carry instructions; with a shell
-over the home folder nothing stands between them and it.
+loads no settings file, hook, rules file or CLAUDE.md (`--setting-sources ""`: a CLAUDE.md it wrote in its work folder
+would otherwise reach every later chat as instructions, and so would one in any folder above it, and a
+.claude/settings.json written there, by a Codex chat whose sandbox may write in that folder, say, would run its hooks as
+shell commands), neither process is given the endpoints' keys nor the Hugging Face and cloud credentials in the server's
+environment (`child_env`; each keeps its own login), and the page says what the chosen backend can do (`REACH_WORDS`),
+asking once before the first chat when it is "home". What a scientist reads (model output, census answers, names and
+notes, attachments) can carry instructions; with a shell over the home folder nothing stands between them and it.
 - "openai": any OpenAI-compatible Chat Completions endpoint (LM Studio, Ollama, OpenRouter, vLLM, llama.cpp's server)
   that supports tool calling. The endpoint runs no tools, so the server runs the loop: it streams the model's reply,
   runs each tool call through the atlas's own routes in this process, sends the results back, and goes on until the
@@ -554,8 +554,9 @@ def _claude_cmd(cid: str, self_url: str) -> List[str]:
         w = str(work_dir()).rstrip("/")
         tools = ["--tools", "Read", "Write", "Edit", "--allowedTools", "mcp__atlas", *[f"{t}(/{w}/**)" for t in ("Read", "Write", "Edit")],
                  "--disallowedTools", "Bash"]
-    # no settings file and no CLAUDE.md at all (""): under "project" a CLAUDE.md in its work folder, which it may write,
-    # or in any folder above it reached every later chat as instructions (seen on Claude Code 2.1.312)
+    # no settings file, hook, rules file or CLAUDE.md at all (""): under "project" a CLAUDE.md in its work folder, which
+    # it may write, or in any folder above it reached every later chat as instructions, and the work folder's
+    # .claude/settings.json ran its hooks as shell commands, at either reach (seen on Claude Code 2.1.312)
     cmd = [_bin("claude"), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
            "--include-partial-messages", "--system-prompt-file", str(prompt_file("claude", self_url)),
            "--mcp-config", json.dumps(mcp), "--strict-mcp-config", *tools, "--setting-sources", ""]

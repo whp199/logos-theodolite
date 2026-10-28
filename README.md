@@ -548,10 +548,11 @@ restart, since that also ends its process group, with any commands it left runni
 > elsewhere. `THEODOLITE_SCIENTIST_REACH=home` gives it neuron-explorer’s own reach: a shell and file tools over your
 > home folder, pre-approved, so it runs commands and edits files there without asking, and what it reads (the model’s
 > answers, names and notes, attachments) can steer it; the page asks once before the first such chat. At either reach
-> Claude Code loads no settings file and no CLAUDE.md (`--setting-sources ""`), so a CLAUDE.md it writes in its folder,
-> or one in any folder above it, is not taken up by a later chat. These rules were tried on Claude Code 2.1.312 against
-> a stand-in API, not a live model (`scripts/verify_scientist_cli.py`). Over an endpoint
-> it has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint (OpenRouter is a
+> Claude Code loads no settings file, hook or CLAUDE.md (`--setting-sources ""`), so a CLAUDE.md it writes in its
+> folder, or one in any folder above it, is not taken up by a later chat, and a `.claude/settings.json` written there
+> runs no hook (under the old `project` setting it ran as a shell command, at either reach). These rules were tried on
+> Claude Code 2.1.312 against a stand-in API, not a live model (`scripts/verify_scientist_cli.py`). Over an endpoint it
+> has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint (OpenRouter is a
 > third-party service).
 
 **On a rented card** (the plan, its prices and the budget rule: COMPUTE.md)
