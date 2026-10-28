@@ -14,7 +14,8 @@ Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code 
 its work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (writes only in the work folder,
 no network). "home" is the explorer's own setting, taken only when the person sets it: Claude Code's Read, Glob, Grep,
 Write, Edit and Bash pre-approved over the home folder, Codex with full access and never asking. Either way the
-person's own Claude Code settings are not loaded, the endpoints' keys are not passed to either process, and the page
+person's own Claude Code settings are not loaded, neither process is given the endpoints' keys nor the Hugging Face and
+cloud credentials in the server's environment (`child_env`; each keeps its own login), and the page
 says what the chosen backend can do (`REACH_WORDS`), asking once before the first chat when it is "home". What a
 scientist reads (model output, census answers, names and notes, attachments) can carry instructions; with a shell
 over the home folder nothing stands between them and it.
@@ -132,10 +133,27 @@ def reach() -> str:
     return "home" if os.environ.get(REACH_ENV, "").strip().lower() == "home" else "folder"
 
 
-def child_env(**extra: str) -> Dict[str, str]:
-    """The environment a Claude Code or Codex process starts with: this one's, less every endpoint's key."""
+# Credentials no scientist needs, kept from both processes: the checkpoint's host and the accounts a GPU is rented with
+# (the census on a pod, say). Every AWS_* and AZURE_* variable counts, as their credentials have many names.
+SECRET_ENV = {"HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HF_API_TOKEN", "RUNPOD_API_KEY", "VAST_API_KEY", "LAMBDA_API_KEY",
+              "MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET", "GOOGLE_APPLICATION_CREDENTIALS", "NEURONARY_TOKEN"}
+SECRET_PREFIXES = ("AWS_", "AZURE_")
+# Never a CLI's own login. Claude Code's (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or its login
+# under ~/.claude) and Codex's (OPENAI_API_KEY, CODEX_*, or ~/.codex/auth.json, linked into its own home) are not
+# touched; and when Claude Code is told to reach its model through Bedrock, Vertex or Foundry, the cloud's variables it
+# then reads are its login, and pass to it (not to Codex, whose own home names no such provider).
+CLAUDE_CLOUD_LOGINS = {"CLAUDE_CODE_USE_BEDROCK": ("AWS_",), "CLAUDE_CODE_USE_VERTEX": ("GOOGLE_APPLICATION_CREDENTIALS",),
+                       "CLAUDE_CODE_USE_FOUNDRY": ("AZURE_",)}
+
+
+def child_env(agent: str = "claude", **extra: str) -> Dict[str, str]:
+    """The environment a Claude Code (`agent` "claude") or Codex ("codex") process starts with: this one's, less every
+    endpoint's key and the credentials above, but with that process's own login."""
     keys = {p.get("key_env") for p in profiles().values()} | {"THEODOLITE_OPENAI_API_KEY", "OPENROUTER_API_KEY"}
-    return {**{k: v for k, v in os.environ.items() if k not in keys}, **extra}
+    on = lambda v: (v or "").strip().lower() not in ("", "0", "false", "no", "off")  # noqa: E731
+    own = tuple(p for flag, ps in CLAUDE_CLOUD_LOGINS.items() if agent == "claude" and on(os.environ.get(flag)) for p in ps)
+    secret = lambda k: (k in SECRET_ENV or k.startswith(SECRET_PREFIXES)) and not k.startswith(own)  # noqa: E731
+    return {**{k: v for k, v in os.environ.items() if k not in keys and not secret(k)}, **extra}
 
 
 # ------------------------------------------------------------------------------------------------------- the prompt
@@ -526,7 +544,7 @@ async def _ensure_claude(c: Dict[str, Any], self_url: str) -> Any:
     if not shutil.which(_bin("claude")):
         raise RuntimeError("Claude Code (the `claude` command) is not installed where the server runs.")
     # its own process group, so ending a chat also ends what it started (the MCP server, its scripts)
-    proc = c["proc"] = await asyncio.create_subprocess_exec(*_claude_cmd(c["session"], self_url), cwd=str(work_dir()), env=child_env(),
+    proc = c["proc"] = await asyncio.create_subprocess_exec(*_claude_cmd(c["session"], self_url), cwd=str(work_dir()), env=child_env("claude"),
                                                             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                                                             stderr=asyncio.subprocess.PIPE, limit=1 << 24, start_new_session=True)
     c["pump"] = asyncio.create_task(_pump_claude(c, proc))
@@ -674,7 +692,7 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
         return proc
     if not shutil.which(_bin("codex")):
         raise RuntimeError("Codex (the `codex` command) is not installed where the server runs.")
-    env = child_env(CODEX_HOME=_codex_home())
+    env = child_env("codex", CODEX_HOME=_codex_home())
     proc = c["proc"] = await asyncio.create_subprocess_exec(_bin("codex"), "app-server", cwd=str(work_dir()), env=env,
                                                             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                                                             stderr=asyncio.subprocess.DEVNULL, limit=1 << 24, start_new_session=True)

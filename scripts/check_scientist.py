@@ -13,7 +13,8 @@ so the chat is driven over real connections):
    command line (stream-json, the prompt file, the MCP config naming this server and the chat, the tools allowed, a
    new session then a resumed one), the events of a turn (text, the tool, the screen action, its result, done with
    its cost), what the person had open told in the pages' count, attachments, a message sent mid-turn, an interrupt,
-   past chats and their history from the session file, and a rewind;
+   past chats and their history from the session file, and a rewind; the environment both CLIs start with: no
+   endpoint's key, no Hugging Face or cloud credential, each CLI's own login (and Claude Code's cloud login on Bedrock);
 5. Codex, played by a fake `codex app-server`: its home, the thread and its instructions, a turn's events, an
    approval it asks for declined, an interrupt, history from the log, a rewind (thread/revert);
 6. an OpenAI-compatible endpoint, played by a fake server: its models; the tool loop (the request: the model, the
@@ -55,9 +56,15 @@ os.environ["THEODOLITE_FIELD_NOTES"] = str(TMP / "notes.json")
 os.environ["THEODOLITE_CENSUS_DIR"] = str(TMP / "census")
 os.environ["THEODOLITE_SCIENTIST_DIR"] = str(TMP / "scientist")
 os.environ["HOME"] = str(TMP / "home")
-for k in ("THEODOLITE_OPENAI_BASE_URL", "THEODOLITE_OPENAI_API_KEY", "THEODOLITE_OPENAI_MODEL", "OPENROUTER_API_KEY", "THEODOLITE_SELF_URL"):
+for k in ("THEODOLITE_OPENAI_BASE_URL", "THEODOLITE_OPENAI_API_KEY", "THEODOLITE_OPENAI_MODEL", "OPENROUTER_API_KEY", "THEODOLITE_SELF_URL",
+          "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"):
     os.environ.pop(k, None)
 (TMP / "home").mkdir()
+# credentials no scientist is given, and the CLIs' own logins, which they are (test values, set before section 4)
+SECRETS = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HF_API_TOKEN", "RUNPOD_API_KEY", "VAST_API_KEY", "LAMBDA_API_KEY", "MODAL_TOKEN_ID",
+           "MODAL_TOKEN_SECRET", "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "GOOGLE_APPLICATION_CREDENTIALS",
+           "AZURE_CLIENT_SECRET", "NEURONARY_TOKEN")
+LOGINS = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY", "CODEX_API_KEY")
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 for p in (ROOT_DIR, ROOT_DIR / "scripts"):
@@ -186,7 +193,8 @@ def log(kind, **kw):
     with open(os.environ["FAKE_LOG"], "a") as f:
         f.write(json.dumps({"kind": kind, **kw}) + "\n")
 sid = opt("--session-id") if "--session-id" in args else opt("--resume")
-log("start", argv=args, cwd=os.getcwd(), sid=sid, resumed="--resume" in args, prompt=open(opt("--system-prompt-file")).read())
+log("start", argv=args, cwd=os.getcwd(), sid=sid, resumed="--resume" in args, prompt=open(opt("--system-prompt-file")).read(),
+    env=sorted(k for k in json.loads(os.environ.get("FAKE_WATCH", "[]")) if k in os.environ))
 cfg = json.loads(opt("--mcp-config"))["mcpServers"]["atlas"]
 mcp = subprocess.Popen([cfg["command"], *cfg["args"]], env={**os.environ, **cfg["env"]}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
 rid = [0]
@@ -268,7 +276,8 @@ import json, os, sys
 def log(kind, **kw):
     with open(os.environ["FAKE_LOG"], "a") as f:
         f.write(json.dumps({"kind": kind, **kw}) + "\n")
-log("start", argv=sys.argv[1:], cwd=os.getcwd(), codex_home=os.environ.get("CODEX_HOME"))
+log("start", argv=sys.argv[1:], cwd=os.getcwd(), codex_home=os.environ.get("CODEX_HOME"),
+    env=sorted(k for k in json.loads(os.environ.get("FAKE_WATCH", "[]")) if k in os.environ))
 n = 0
 def send(obj):
     print(json.dumps(obj), flush=True)
@@ -458,6 +467,8 @@ def run_checks() -> int:
 
     # ------------------------------------------------------------------------------------------- 4. Claude Code
     before = len(failures)
+    os.environ.update({k: "test-" + k.lower() for k in (*SECRETS, *LOGINS)})
+    os.environ["FAKE_WATCH"] = json.dumps([*SECRETS, *LOGINS])
     fake_log = TMP / "fake_claude.log"
     os.environ["FAKE_LOG"] = str(fake_log)
     os.environ["THEODOLITE_CLAUDE_BIN"] = str(write_exec(TMP / "fake-claude", FAKE_CLAUDE.replace("{PY}", PY)))
@@ -517,6 +528,19 @@ def run_checks() -> int:
     env_ = sc.child_env()
     check("OPENROUTER_API_KEY" not in env_ and "THEODOLITE_OPENAI_API_KEY" not in env_ and "PATH" in env_, "the endpoints' keys are not passed to Claude Code or Codex")
     os.environ.pop("OPENROUTER_API_KEY", None)
+    claude_env, codex_env = sc.child_env("claude"), sc.child_env("codex", CODEX_HOME="h")
+    check(not any(k in e for k in SECRETS for e in (claude_env, codex_env)) and all(k in e for k in LOGINS for e in (claude_env, codex_env))
+          and codex_env["CODEX_HOME"] == "h", "the Hugging Face and cloud credentials kept from both, each CLI's own login left in")
+    check(starts[0]["env"] == sorted(LOGINS), f"the Claude Code process started with its login and none of them: {starts[0]['env']}")
+    os.environ["CLAUDE_CODE_USE_BEDROCK"] = "1"
+    try:
+        aws = sorted(k for k in SECRETS if k.startswith("AWS_"))
+        check(sorted(k for k in SECRETS if k in sc.child_env("claude")) == aws and not any(k in sc.child_env("codex") for k in SECRETS),
+              "on Bedrock, Claude Code keeps the AWS variables it logs in with; Codex still gets none")
+        os.environ["CLAUDE_CODE_USE_BEDROCK"] = "0"
+        check(not any(k in sc.child_env("claude") for k in SECRETS), "CLAUDE_CODE_USE_BEDROCK=0 is not Bedrock")
+    finally:
+        os.environ.pop("CLAUDE_CODE_USE_BEDROCK", None)
     tools_seen = next(x for x in flog() if x["kind"] == "tools")["names"]
     check(tools_seen == names, "the MCP server it started lists the scientist's tools")
     user = next(x for x in flog() if x["kind"] == "user")
@@ -600,6 +624,7 @@ def run_checks() -> int:
     check(ts["approvalPolicy"] == "never" and ts["config"]["mcp_servers"]["atlas"]["env"] == {"THEODOLITE_URL": srv.url, "THEODOLITE_CHAT": chat2}
           and "You are running as Codex" in ts["developerInstructions"] and ts["cwd"] == str(sc.work_dir()), "the thread: no approvals, the atlas's MCP server, its instructions")
     home = Path(next(x for x in clog() if x["kind"] == "start")["codex_home"])
+    check(next(x for x in clog() if x["kind"] == "start")["env"] == sorted(LOGINS), "the Codex process started with its login and none of the credentials")
     cfg = (home / "config.toml").read_text()
     check('model = "gpt-test"' in cfg and "other" not in cfg and "memories = false" in cfg and (home / "auth.json").is_symlink(),
           "codex's own home: the person's login, model and effort, nothing else")
