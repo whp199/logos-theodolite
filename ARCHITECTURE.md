@@ -27,6 +27,7 @@ theodolite2/
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
+│   ├── sampler_request.py           # how an answer is written, as a request asks: the sweep's and the atlas's sampler
 │   ├── local_only.py                # who may ask: every route and the socket answer only this machine's pages (§4)
 │   ├── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
 │   ├── atlas.py                     # the atlas's routes, /api/atlas/* (§4.7)
@@ -691,8 +692,8 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `GET /web?layer&n&first&k&zmin&cap&hops` | the cone for the map: int16 rows of six (src layer, src n, dst layer, dst n, round(10 z) · sign, hop; hop > 0 downstream); `X-Web-Total` |
 | `GET /web/summary?layer&n&…&src` | the cone's words, followed from rest and pooled: `down["+"]` / `down["-"]`, what the neurons it drives write when it fires on its + / − face; `up["+"]` / `up["-"]`, what the neurons that push it toward its + / − face write; weighted by the reaching link's strength (0.8 a hop past the first) times the log of their lift over the layer's base rate; from the steer lens, else from labels the gate lets through (`gated` counts the faces left out); not ready, with `missing`, without the wiring index or without any words to pool |
 | `GET /layout` | `cell` [L, N] int16 as base64 |
-| `POST /push` | the three voices (server-sent events): `{prompt, history: [{user, replies: [3]}], layer, n, dose (0.8), mode ("add"), neurons, system, max_new (160, ≤ 512)}`; events `{row, t}` per piece of text, then `{row: null, done: true}` or `{row: null, error}` |
-| `POST /steer` | the three voices as whole texts |
+| `POST /push` | the three voices (server-sent events): `{prompt, history: [{user, replies: [3]}], layer, n, dose (0.8), mode ("add"), neurons, system, max_new (160, ≤ 512), sampler}`; `sampler` as §4.1's (greedy unless a temperature is set; a seed drawn and echoed when none is given; a presence penalty only with a temperature; no min_p or repetition_penalty, `backend/sampler_request.py` says why), drawn once a step for all three voices: one exponential race over the vocabulary, its noise from a CPU generator seeded `seed`, so the voices part only where the push moves the odds (a row's draw follows the sampler's chances but is not interp_engine's, so a seed does not repeat a sweep's); events `{row, t}` per piece of text, then `{row: null, done: true, sampling}` (`"greedy"`, or `{temperature, top_k, top_p, presence_penalty, seed, seed_drawn, samples, seeds, draw: "shared across the three voices"}`) or `{row: null, error}` |
+| `POST /steer` | the three voices as whole texts, with `sampling`; `samples` (1–8, sampled only): 3k rows in one batch, sample s drawn with seed + s, `up`, `baseline` and `down` then lists |
 | `POST /reads` | one neuron's activation at every display unit of a text (`{layer, n, text, chat, neurons, heads}`, or `ids` in place of `text`, read exactly as given, a stored passage's among them; at most 2,048 positions), with `act_range` |
 | `POST /logprobs` | the next word-piece's log-probabilities (fp32, softcapped), with pushes or head scales: both rows, their KL and the pieces that gained and lost most |
 | `POST /compare` | up to 300 neurons over up to 24 texts, one forward a text: per neuron and text its largest and smallest activation with their units, and its peak score against its usual range |

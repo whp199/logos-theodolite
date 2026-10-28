@@ -8,7 +8,10 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    live from the weights;
 4. the live readings: both faces' words (the vault's own reading, each face's label check), the steer lens read live,
    the push chat's three voices (one neuron, several, a conversation carried on, refusals before the stream opens), the
-   whole-text steer, reads (pushes and head scales in the same pass; a push at or after the neuron's own block leaves
+   whole-text steer, both written greedily or with the instrument's sampler (the voices those of atlas_ops.write_rows
+   with the same sampler, a seed drawn and echoed when none is given, several samples of a steer as lists, each
+   sample's unpushed voice the steer of one sample with seed + s, every push at dose 0 writing the three voices alike,
+   every reply saying how it was written, the sampler's refusals in plain words; /arch's card), reads (pushes and head scales in the same pass; a push at or after the neuron's own block leaves
    it as it was), the next piece's odds (KL, what rose and fell), compare, fires (the whole text and one unit);
 5. the run view: scores at a word-piece and at each neuron's strongest, the filters, the map; heads' writes; one
    head's row, its pattern, its wiring, its profile, its attention; the drive of a neuron, whose parts add up;
@@ -139,13 +142,15 @@ def main() -> int:
         tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, enable_thinking=False))
     vocab = [tok.decode([i]) for i in range(int(W_U.shape[0]))]
 
-    def write_direct(rows: List[List[int]], pushes: List[ao.Push], max_new: int, scales: Any = None) -> List[str]:
+    def write_direct(rows: List[List[int]], pushes: List[ao.Push], max_new: int, scales: Any = None, sampler: Any = None,
+                     k: int = 1) -> List[str]:
         pp, sc = (p50, act_scale) if scales is None else scales
-        iv = ao.resolve(w, pushes, [], ao.THREE_VOICES, p50=lambda l: pp[l], act_scale=sc)
-        td = ao.TextDeltas(tok, 3)
-        out = ["", "", ""]
-        for st in ao.write_rows(lm, W_U, rows, iv, max_new=max_new, stop_ids=rt.end_of_turn_ids(), bos_id=bos,
-                                spare_bos=True, softcap=cap):
+        iv = ao.resolve(w, pushes, [], ao.THREE_VOICES * k, p50=lambda l: pp[l], act_scale=sc)
+        td = ao.TextDeltas(tok, 3 * k)
+        out = [""] * (3 * k)
+        for st in ao.write_rows(lm, W_U, rows * k, iv, max_new=max_new, stop_ids=rt.end_of_turn_ids(), bos_id=bos,
+                                spare_bos=True, softcap=cap, sampler=sampler,
+                                samples_of=[r // 3 for r in range(3 * k)] if sampler is not None else None):
             out[st.row] += td.add(st.row, st.token_id, st.end)
         return out
 
@@ -273,12 +278,12 @@ def main() -> int:
     got = voices(evs)
     want = write_direct([chat_ids([{"role": "user", "content": prompt}])] * 3, [ao.Push(2, 5, "add", 0.8)], 14)
     check(r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream"), "/push: an event stream")
-    check(evs and evs[-1] == {"row": None, "done": True}, f"/push: ends done ({evs[-1:]})")
+    check(evs and evs[-1] == {"row": None, "done": True, "sampling": "greedy"}, f"/push: ends done, written greedily ({evs[-1:]})")
     check(got == want, f"/push: the three voices are atlas_ops.write_rows's ({got!r} vs {want!r})")
     check(got[0] != got[1] or got[2] != got[1], "/push: a push of 0.8 moves the answer")
     r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14}).json()
-    check([r["up"], r["baseline"], r["down"]] == want and r["pushed"] == [{"layer": 2, "n": 5, "mode": "add", "dose": 0.8}],
-          "/steer: the same three voices as whole texts")
+    check([r["up"], r["baseline"], r["down"]] == want and r["pushed"] == [{"layer": 2, "n": 5, "mode": "add", "dose": 0.8}]
+          and r["sampling"] == "greedy", "/steer: the same three voices as whole texts, written greedily")
     hist = [{"user": prompt, "replies": got}]
     r = c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": "And then?", "history": hist, "max_new": 10})
     rows = [chat_ids([{"role": "user", "content": prompt}, {"role": "assistant", "content": got[i]}, {"role": "user", "content": "And then?"}])
@@ -295,6 +300,53 @@ def main() -> int:
                       ({"neurons": [{"layer": 0, "head": 9}], "prompt": "x"}, "has 4 attention heads")]:
         r = c.post("/api/atlas/push", json=bad)
         check(r.status_code == 400 and says in r.json()["detail"], f"/push refused before streaming: {bad} -> {r.status_code} {r.text[:120]}")
+
+    # written with the instrument's sampler (backend/sampler_request.py): one draw a step shared by the three voices
+    from backend.engine_runtime import SamplerSettings
+
+    one = [chat_ids([{"role": "user", "content": prompt}])] * 3
+    shared = "shared across the three voices"
+    r = c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14, "sampler": {"temperature": 0.9, "seed": 7}})
+    evs = events(r.text)
+    hot = write_direct(one, [ao.Push(2, 5, "add", 0.8)], 14, sampler=SamplerSettings(temperature=0.9, seed=7))
+    check(voices(evs) == hot and hot != want, f"/push sampled: the voices are write_rows's with the same sampler, not the greedy ones ({voices(evs)!r})")
+    check(evs[-1] == {"row": None, "done": True, "sampling": {"temperature": 0.9, "top_k": 0, "top_p": 1.0, "presence_penalty": 0.0, "seed": 7,
+                                                              "seed_drawn": False, "samples": 1, "seeds": [7], "draw": shared}},
+          f"/push sampled: the last event says how it was written ({evs[-1]})")
+    r = c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14, "sampler": {"temperature": 0.9}})
+    got_s = events(r.text)[-1].get("sampling") or {}
+    check(got_s.get("seed_drawn") is True and isinstance(got_s.get("seed"), int)
+          and voices(events(r.text)) == write_direct(one, [ao.Push(2, 5, "add", 0.8)], 14, sampler=SamplerSettings(temperature=0.9, seed=got_s["seed"])),
+          f"/push sampled without a seed: one drawn, echoed, and it draws the same again ({got_s})")
+    knobs = {"temperature": 0.9, "top_k": 40, "top_p": 0.95, "presence_penalty": 0.3, "seed": 7}
+    r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14, "sampler": knobs, "samples": 3}).json()
+    ws = write_direct(one, [ao.Push(2, 5, "add", 0.8)], 14, sampler=SamplerSettings(**knobs), k=3)
+    check(r["up"] == ws[0::3] and r["baseline"] == ws[1::3] and r["down"] == ws[2::3] and len(set(r["baseline"])) > 1,
+          "/steer, three samples: lists of three, the voices of write_rows with the same sampler, the samples apart")
+    check(r["sampling"] == {**knobs, "seed_drawn": False, "samples": 3, "seeds": [7, 8, 9], "draw": shared}, f"/steer: its sampling {r['sampling']}")
+    r1 = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14, "sampler": {**knobs, "seed": 8}}).json()
+    check(isinstance(r1["baseline"], str) and r1["baseline"] == r["baseline"][1] and r1["sampling"]["seeds"] == [8],
+          "/steer: sample 1's unpushed voice is the steer of one sample with seed + 1")
+    r0 = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14, "dose": 0.0, "sampler": {"temperature": 1.2, "seed": 3},
+                                          "samples": 2}).json()
+    check(r0["up"] == r0["baseline"] == r0["down"] and r0["baseline"][0] != r0["baseline"][1],
+          "/steer at dose 0: the three voices of each sample alike (the shared draw), the two samples apart")
+    for bad, says in [({"sampler": {"temperature": 2.5}}, "temperature is from 0 to 2"), ({"sampler": {"top_p": 0}}, "top_p is above 0"),
+                      ({"sampler": {"top_k": -1}}, "top_k is a whole number from 0"), ({"sampler": {"seed": -3}}, "seed is a whole number"),
+                      ({"sampler": {"temperature": 0.7}, "samples": 9}, "1 to 8 samples"), ({"sampler": {"temperature": 0.7}, "samples": 0}, "1 to 8 samples"),
+                      ({"sampler": {"presence_penalty": 0.5}}, "only with a temperature above 0"), ({"samples": 3}, "would all be the same"),
+                      ({"sampler": {"temperature": 0.7, "min_p": 0.05}}, "has no min_p"),
+                      ({"sampler": {"temperature": 0.7, "repetition_penalty": 1.1}}, "has no repetition_penalty"),
+                      ({"sampler": {"temp": 0.7}}, "not 'temp'"), ({"sampler": {"temperature": 0.7, "seed": 2**53 - 2}, "samples": 4}, "at most 2^53 - 4")]:
+        r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": "x", **bad})
+        check(r.status_code == 400 and says in r.json()["detail"], f"/steer refused: {bad} -> {r.status_code} {r.text[:160]}")
+    for bad, says in [({"sampler": {"presence_penalty": -0.5}}, "only with a temperature above 0"), ({"sampler": {"temperature": 3}}, "temperature is from 0 to 2")]:
+        r = c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": "x", **bad})
+        check(r.status_code == 400 and says in r.json()["detail"], f"/push refused before streaming: {bad} -> {r.status_code} {r.text[:160]}")
+    card = c.get("/api/atlas/arch").json()["push"]["sampler"]
+    check(card["default"] == "greedy" and set(card["fields"]) == {"temperature", "top_k", "top_p", "presence_penalty", "seed"}
+          and card["not_offered"] == ["min_p", "repetition_penalty"] and shared in card["draw"] and "1 to 8" in card["samples"],
+          f"/arch: the push card names the sampler, its limits and the shared draw ({card})")
 
     # reads
     r = c.post("/api/atlas/reads", json={"layer": 3, "n": 7, "text": text}).json()

@@ -69,6 +69,7 @@ from backend.mcp_scientist import (
     trace_downstream_readers,
 )
 from backend.runtime_factory import make_runtime, weights_card
+from backend.sampler_request import SamplerRequest
 from backend.saved_prompts import router as saved_prompts_router
 from backend.theodolite_math import (
     CONTRAST_BACKGROUNDS,
@@ -165,17 +166,6 @@ class SteeringLaserRequest(BaseModel):
     # when set, push strength * ||h|| at every position and layer (NormScaledAddSpec) instead of the absolute
     # length `scale`; V7 found ~0.01 fluent and ~0.024 the edge of collapse
     strength: Optional[float] = None
-
-
-class SamplerRequest(BaseModel):
-    # How the answer is written; the defaults are greedy, as the instrument always wrote and the study generated.
-    # Every knob is sent as the value it means: top_k 0 and top_p 1 are off (interp_engine reads a missing knob as
-    # the checkpoint's recommendation, temperature 1, top-k 64, top-p 0.95, so none is ever left missing).
-    temperature: float = Field(0.0, ge=0.0, le=2.0)  # 0 = greedy (argmax)
-    top_k: int = Field(0, ge=0, le=VOCAB_SIZE)  # 0 = off
-    top_p: float = Field(1.0, gt=0.0, le=1.0)  # 1 = off
-    presence_penalty: float = Field(0.0, ge=-2.0, le=2.0)  # subtracted from every piece already WRITTEN (not the prompt)
-    seed: Optional[int] = Field(None, ge=0, le=2**53 - 1)  # None: drawn by the server when sampling, and echoed
 
 
 # a typed word, as the landmarks take one: capped in length only (each is resolved, or refused, by the runtime)

@@ -42,6 +42,7 @@ from pydantic import BaseModel, Field, StrictInt
 from backend import atlas_ops as ao
 from backend import census as cz
 from backend import field_notes as fn
+from backend import sampler_request as sr
 from backend.atlas_index import FILES, LENS_K, AtlasIndex, match_ids, scale_scores
 from backend.causal_check import language_model
 from backend.label_gate import LABEL_GATE_CARD
@@ -54,6 +55,9 @@ MAX_TEXT_POSITIONS = 2048  # a text read once, its activations of one neuron kep
 MAX_RUN_POSITIONS = 256  # a text whose every activation is kept for the run view: 60 x 21,504 x 2 bytes a piece
 MAX_HEAD_POSITIONS = 512  # a text whose attention is kept head by head (about 2.5 GB on the CPU at 512 on the 31B)
 MAX_PUSH_NEW = 512
+# whole-text steer samples: 3 rows each in one batch (on the 31B a step costs about the same for 1 to 64 rows; each row
+# keeps about 0.8 MB a word-piece of context, so 24 rows of 200 are about 3.8 GB)
+MAX_STEER_SAMPLES = 8
 MAX_COMPARE_NEURONS = 300
 MAX_COMPARE_TEXTS = 24
 CACHE_SIZE = 256
@@ -394,6 +398,9 @@ class PushChatRequest(BaseModel):
     mode: str = Field("add", max_length=8)
     max_new: int = Field(160, ge=1, le=MAX_PUSH_NEW)
     spare_bos: bool = True
+    # how the voices are written: greedy unless a temperature above 0 is given (backend/sampler_request.py, read in
+    # plain words there); the last event says how they were written
+    sampler: Optional[Dict[str, Any]] = None
 
 
 class ReadRequest(BaseModel):
@@ -470,6 +477,8 @@ class SteerRequest(BaseModel):
     dose: float = 0.8
     mode: str = Field("add", max_length=8)
     max_new: int = Field(150, ge=1, le=MAX_PUSH_NEW)
+    sampler: Optional[Dict[str, Any]] = None  # as the push chat's
+    samples: StrictInt = 1  # 1 to MAX_STEER_SAMPLES, sampled only: sample s drawn with seed + s, 3 rows each in one batch
 
 
 class NoteRequest(BaseModel):
@@ -535,7 +544,11 @@ async def arch() -> Dict[str, Any]:
             "add": "a share of the stream's median length leaving the layer, along the neuron's write direction",
             "mul": "a factor on the neuron's own activation (0 silences it)",
             "act": "a multiple of the neuron's largest |activation|, added to it"},
-            "scale_source": sc["source"] if sc else None},
+            "scale_source": sc["source"] if sc else None,
+            "sampler": {"fields": sr.FIELDS, "default": "greedy", "draw": f"{sr.SHARED_DRAW}: each step one exponential "
+                        "race over the vocabulary, its noise from a CPU generator seeded seed + s for sample s, so the voices "
+                        "part only where the push moves the odds", "samples": f"POST /steer: 1 to {MAX_STEER_SAMPLES}, three "
+                        "rows each in one batch; the push chat writes one", "not_offered": sorted(sr.NOT_OFFERED)}},
         "limits": {"text": MAX_TEXT_POSITIONS, "run": MAX_RUN_POSITIONS, "heads": MAX_HEAD_POSITIONS, "push_new": MAX_PUSH_NEW},
         "label_gate": LABEL_GATE_CARD,
         "lens": a.rt.lens_card(),
@@ -1144,12 +1157,15 @@ async def layout() -> Dict[str, Any]:
 @router.post("/push")
 async def push_chat(req: PushChatRequest, request: Request) -> StreamingResponse:
     """The three voices (the reference's /api/steer): the model writes its answer to `prompt` three times in one batch,
-    pushed up, as it is, and pushed down, greedily, each row replaying its own earlier replies (`history`; the user's
-    turns are shared). One neuron (layer, n, dose, mode) or several (`neurons`, each pushed as asked in the first row
-    and the other way in the last). Server-sent events: {"row", "t"} for each piece of text as it comes, then
-    {"row": null, "done": true} (or "error"). The GPU lock is held while it writes; closing the page stops it."""
+    pushed up, as it is, and pushed down, each row replaying its own earlier replies (`history`; the user's turns are
+    shared): greedily, or with the instrument's sampler (`sampler`), one draw a step shared by the three voices. One
+    neuron (layer, n, dose, mode) or several (`neurons`, each pushed as asked in the first row and the other way in the
+    last). Server-sent events: {"row", "t"} for each piece of text as it comes, then {"row": null, "done": true,
+    "sampling"} (or "error"), `sampling` "greedy" or the sampler with its seed. The GPU lock is held while it writes;
+    closing the page stops it."""
     a = atlas()
     ps, hs = off_gpu(a.parse_pushes, _push_items(req))
+    smp, sampling = off_gpu(_sampler, req)
     loop = asyncio.get_running_loop()
     q: asyncio.Queue = asyncio.Queue()
     cancel = threading.Event()
@@ -1168,11 +1184,11 @@ async def push_chat(req: PushChatRequest, request: Request) -> StreamingResponse
             td = ao.TextDeltas(a.rt.tokenizer, 3)
             for st in ao.write_rows(a.lm, a.W_U, rows, iv, max_new=req.max_new, stop_ids=a.rt.end_of_turn_ids(),
                                     bos_id=a.rt.tokenizer.bos_token_id, spare_bos=req.spare_bos,
-                                    softcap=ao.softcap_of(a.rt.hf_model), cancel=cancel.is_set):
+                                    softcap=ao.softcap_of(a.rt.hf_model), cancel=cancel.is_set, sampler=smp):
                 t = td.add(st.row, st.token_id, st.end)
                 if t:
                     loop.call_soon_threadsafe(q.put_nowait, {"row": st.row, "t": t})
-            loop.call_soon_threadsafe(q.put_nowait, {"row": None, "done": True})
+            loop.call_soon_threadsafe(q.put_nowait, {"row": None, "done": True, "sampling": sampling})
         except Exception as exc:  # surfaced beside the chat, in plain words where it can be
             msg = str(exc) if isinstance(exc, ValueError) else f"{type(exc).__name__}: {exc}"
             loop.call_soon_threadsafe(q.put_nowait, {"row": None, "error": msg})
@@ -1225,24 +1241,42 @@ def _push_items(req: Union[PushChatRequest, "SteerRequest"]) -> List[PushIn]:
     return items
 
 
-def _steer_whole(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.HeadScale]) -> Dict[str, Any]:
-    iv, echo = a.interventions(ps, hs, ao.THREE_VOICES)
+def _sampler(req: Union[PushChatRequest, "SteerRequest"]) -> Tuple[Any, Union[str, Dict[str, Any]]]:
+    """The sampler a push chat (one sample) or a whole-text steer (`samples`) asks for, as write_rows takes it, and how
+    its reply says the voices were written (backend/sampler_request.py); refused in plain words."""
+    k = getattr(req, "samples", 1)
+    if isinstance(k, bool) or not 1 <= int(k) <= MAX_STEER_SAMPLES:
+        raise ValueError(f"A steer writes 1 to {MAX_STEER_SAMPLES} samples (three rows each, in one batch), not {k}.")
+    return sr.for_writing(sr.sampler_of(req.sampler), int(k))
+
+
+def _steer_whole(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.HeadScale], smp: Any,
+                 sampling: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    k = int(req.samples)
+    iv, echo = a.interventions(ps, hs, ao.THREE_VOICES * k)
     ids = a.chat_ids([{"role": "user", "content": req.prompt}])
-    rows = [ids, ids, ids]
-    td = ao.TextDeltas(a.rt.tokenizer, 3)
-    texts = ["", "", ""]
+    rows = [ids] * (3 * k)
+    td = ao.TextDeltas(a.rt.tokenizer, 3 * k)
+    texts = [""] * (3 * k)
     for st in ao.write_rows(a.lm, a.W_U, rows, iv, max_new=req.max_new, stop_ids=a.rt.end_of_turn_ids(),
-                            bos_id=a.rt.tokenizer.bos_token_id, softcap=ao.softcap_of(a.rt.hf_model)):
+                            bos_id=a.rt.tokenizer.bos_token_id, softcap=ao.softcap_of(a.rt.hf_model), sampler=smp,
+                            samples_of=[r // 3 for r in range(3 * k)] if smp is not None else None):
         texts[st.row] += td.add(st.row, st.token_id, st.end)
-    return {"prompt": req.prompt, "pushed": echo, "up": texts[0], "baseline": texts[1], "down": texts[2]}
+    voices: Dict[str, Any] = {"up": texts[0::3], "baseline": texts[1::3], "down": texts[2::3]}
+    if k == 1:  # one sample: the whole texts, as before
+        voices = {key: v[0] for key, v in voices.items()}
+    return {"prompt": req.prompt, "pushed": echo, **voices, "sampling": sampling}
 
 
 @router.post("/steer")
 async def steer(req: SteerRequest) -> Dict[str, Any]:
-    """The three voices as whole texts (the scientist's `steer`): pushed up, as it is, pushed down."""
+    """The three voices as whole texts (the scientist's `steer`): pushed up, as it is, pushed down; greedily, or with
+    the instrument's sampler, `samples` of them (each a list then, sample s drawn with seed + s), the three voices of a
+    sample sharing each draw. `sampling` says how they were written."""
     a = atlas()
     ps, hs = off_gpu(a.parse_pushes, _push_items(req))
-    return await on_gpu(_steer_whole, a, req, ps, hs)
+    smp, sampling = off_gpu(_sampler, req)
+    return await on_gpu(_steer_whole, a, req, ps, hs, smp, sampling)
 
 
 def read_ids(a: Atlas, ids: Sequence[int]) -> List[int]:
