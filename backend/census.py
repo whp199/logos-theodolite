@@ -268,6 +268,212 @@ def shift_scores(rows: Iterable[Dict[str, Any]], max_rel: float = 1.6, k: int = 
     return out
 
 
+# ------------------------------------------------------------------------------------------------------ the dose window
+
+# where text breaks: the answers' distinct 4-grams this far below the unpushed answers'
+BREAKS_BY = 0.1
+KINDS = ("baseline", "neuron", "random")
+
+
+def first_departure(ids: Sequence[int], base: Sequence[int]) -> Optional[int]:
+    """Where an answer first parts from its question's unpushed answer (sweep/peek.py): the first word-piece that
+    differs, or, where one is the other cut short, where the shorter ends; None where the two are the same."""
+    for i, (a, b) in enumerate(zip(ids, base)):
+        if int(a) != int(b):
+            return i
+    return None if len(ids) == len(base) else min(len(ids), len(base))
+
+
+def baseline_ids(rows: Iterable[Dict[str, Any]]) -> Dict[str, List[int]]:
+    """{question: the word-piece ids of its unpushed answer}, the first met."""
+    base: Dict[str, List[int]] = {}
+    for r in rows:
+        if r["kind"] == "baseline":
+            base.setdefault(str(r["prompt"]), [int(t) for t in r.get("token_ids") or []])
+    return base
+
+
+def dose_curves(rows: Iterable[Dict[str, Any]], ceilings: Optional[Dict[Tuple[str, int], float]] = None,
+                base: Optional[Dict[str, Sequence[int]]] = None) -> List[Dict[str, Any]]:
+    """A run's dose window (sweep/peek.py --curves): one entry per (dose, kind), the unpushed answers first (kind
+    "baseline", dose 0), then every dose of the design for the neurons and for the controls ("random"):
+    - n: its answers; units: the units they come from;
+    - rel_push: the median push over the stream's median length;
+    - over_ceiling: the median push over the write ceiling of the unit's neuron (`atlas_ops.Weights.write_ceiling`, the
+      most it can write by itself; a control is set against the neuron it is paired with, `control_refs`), from each
+      answer's own `ceiling` where it records one, else from `ceilings` ({(kind, neuron): ceiling}); None where
+      neither gives it;
+    - moved: the share of its answers that part from their question's unpushed answer (`first_departure`), and
+      moved_se, the standard error of that share with the units as the sample (each unit's share of its answers
+      moved), so a unit's answers on the three questions are not counted as three draws;
+    - departure: the median word-piece where they first part (an answer's length where it never does);
+    - capped: the share cut off at the length limit; distinct4: their mean share of distinct 4-grams; logprob: the mean
+      of each answer's mean log-probability.
+    `rows` are a run's whole rows, word-piece ids kept (`read_rows`, not `read_slim`). To read a run once, one line at
+    a time, give `base` (`baseline_ids` over the run first); else the unpushed answers are found among `rows`."""
+    if base is None:
+        rows = list(rows)
+        base = baseline_ids(rows)
+    cells: Dict[Tuple[float, str], Dict[str, List[float]]] = collections.defaultdict(lambda: collections.defaultdict(list))
+    moved_by: Dict[Tuple[float, str], Dict[int, List[bool]]] = collections.defaultdict(lambda: collections.defaultdict(list))
+    for r in rows:
+        kind = str(r["kind"])
+        dose = 0.0 if kind == "baseline" else float(r["dose"])
+        c = cells[(dose, kind)]
+        ids = r.get("token_ids") or []
+        lp = r.get("logprob") or []
+        c["rel"].append(float(r.get("rel_push") or 0.0))
+        c["capped"].append(r.get("finish") == "length")
+        c["d4"].append(distinct4(ids))
+        c["lp"].append(float(np.mean(lp)) if lp else 0.0)
+        cl = r.get("ceiling")
+        if cl is None and ceilings is not None:
+            cl = ceilings.get((kind, int(r["neuron"])))
+        if kind != "baseline" and cl:
+            c["over"].append(abs(float(r.get("push") or 0.0)) / float(cl))
+        b = base.get(str(r["prompt"]))
+        if b is not None:
+            dep = first_departure(ids, b)
+            c["moved"].append(dep is not None)
+            c["dep"].append(len(ids) if dep is None else dep)
+            moved_by[(dose, kind)][int(r["neuron"])].append(dep is not None)
+
+    def med(v: List[float]) -> Optional[float]:
+        return float(np.median(v)) if v else None
+
+    def mean(v: List[float]) -> Optional[float]:
+        return float(np.mean(v)) if v else None
+
+    out: List[Dict[str, Any]] = []  # unrounded: dose_window compares them
+    for dose, kind in sorted(cells, key=lambda k: (k[1] != "baseline", k[0], KINDS.index(k[1]) if k[1] in KINDS else 9)):
+        c = cells[(dose, kind)]
+        share = [float(np.mean(v)) for v in moved_by[(dose, kind)].values()]
+        se = float(np.std(share, ddof=1) / math.sqrt(len(share))) if len(share) > 1 else 0.0
+        out.append({"dose": dose, "kind": kind, "n": len(c["rel"]), "units": len(moved_by[(dose, kind)]) or None,
+                    "rel_push": med(c["rel"]), "over_ceiling": med(c["over"]), "moved": mean(c["moved"]), "moved_se": se,
+                    "departure": med(c["dep"]), "capped": mean(c["capped"]), "distinct4": mean(c["d4"]), "logprob": mean(c["lp"])})
+    return out
+
+
+def dose_window(curves: Sequence[Dict[str, Any]], dose_unit: str = "stream", questions: Sequence[str] = (),
+                breaks_by: float = BREAKS_BY) -> Dict[str, Dict[str, Any]]:
+    """Where the window opens and where text breaks, per sign ("+", "-"), read off `dose_curves`:
+    - moves: the smallest dose at which the neurons' answers part from the unpushed ones more often than the controls'
+      by more than twice the standard error of the difference (units as the sample); None where none does, or without
+      controls;
+    - breaks: per kind, the smallest dose at which the answers' distinct 4-grams fall more than `breaks_by` below the
+      unpushed answers'; None where none does;
+    - says: the same in plain words, hedged: one run, its units, one question set, one greedy answer each.
+    `dose_unit` is the run's ("stream": doses are shares of the stream's median length; "ceiling": multiples of each
+    neuron's write ceiling), `questions` the design's."""
+    cell = {(c["dose"], c["kind"]): c for c in curves}
+    base = next((c for c in curves if c["kind"] == "baseline"), None)
+    n_neu = max((c["units"] or 0 for c in curves if c["kind"] == "neuron"), default=0)
+    n_ctl = max((c["units"] or 0 for c in curves if c["kind"] == "random"), default=0)
+
+    def at(d: float, c: Dict[str, Any]) -> str:
+        if dose_unit == "ceiling":
+            rel = c.get("rel_push")
+            return f"{d:+g} x each neuron's ceiling" + (f" (a median {rel:.2g} of the stream)" if rel is not None else "")
+        over = c.get("over_ceiling")
+        return f"{d:+g} of the stream" + (f" (a median {over:.2g} x each neuron's ceiling)" if over is not None else "")
+
+    out: Dict[str, Dict[str, Any]] = {}
+    for sign, word in (("+", "up"), ("-", "down")):
+        doses = sorted({c["dose"] for c in curves if c["kind"] != "baseline" and (c["dose"] > 0) == (sign == "+") and c["dose"] != 0},
+                       key=abs)
+        moves = None
+        if n_ctl:
+            for d in doses:
+                a, b = cell.get((d, "neuron")), cell.get((d, "random"))
+                if a and b and a["moved"] is not None and b["moved"] is not None:
+                    gap = a["moved"] - b["moved"]
+                    if gap > 0 and gap > 2.0 * math.sqrt(a["moved_se"] ** 2 + b["moved_se"] ** 2):
+                        moves = d
+                        break
+        breaks: Dict[str, Optional[float]] = {}
+        for kind in ("neuron", "random"):
+            breaks[kind] = None
+            if base is None or base["distinct4"] is None:
+                continue
+            for d in doses:
+                c = cell.get((d, kind))
+                if c and c["distinct4"] is not None and c["distinct4"] < base["distinct4"] - breaks_by:
+                    breaks[kind] = d
+                    break
+        if not doses:
+            continue
+        if not n_ctl:
+            says = f"Pushed {word}, with no controls nothing here is set against chance"
+        elif moves is None:
+            says = f"Pushed {word}, the neurons move no more answers than the controls at any dose here"
+        else:
+            says = f"Pushed {word}, the neurons move more answers than the controls from {at(moves, cell[(moves, 'neuron')])}"
+        if base is not None:
+            bn, br = breaks["neuron"], breaks["random"]
+            says += (f"; their text breaks (distinct 4-grams more than {breaks_by:g} below the unpushed answers') from "
+                     f"{at(bn, cell[(bn, 'neuron')])}" if bn is not None else
+                     f"; their text does not break (distinct 4-grams more than {breaks_by:g} below the unpushed answers') at these doses")
+            if n_ctl:
+                says += f", the controls' from {br:+g}" if br is not None else ", the controls' at none of them"
+        qs = f" ({', '.join(questions)})" if questions else ""
+        says += (f". On {n_neu} neurons and {n_ctl} controls, one question set{qs}, one greedy answer each: a lead for "
+                 "choosing doses, not a measurement of them.")
+        out[sign] = {"moves": moves, "breaks": breaks, "says": says}
+    return out
+
+
+def cached_checkpoint(repo_id: str) -> List[Path]:
+    """The checkpoint's safetensors files in the local Hugging Face cache, wherever huggingface_hub keeps it
+    ($HF_HUB_CACHE, $HF_HOME, else ~/.cache/huggingface); [] when it is not all there. Nothing is downloaded."""
+    from huggingface_hub import try_to_load_from_cache
+
+    index = try_to_load_from_cache(repo_id, "model.safetensors.index.json")
+    if isinstance(index, str):
+        names = sorted(set(json.loads(Path(index).read_text(encoding="utf-8"))["weight_map"].values()))
+        paths = [try_to_load_from_cache(repo_id, n) for n in names]
+        return [Path(p) for p in paths] if paths and all(isinstance(p, str) for p in paths) else []
+    one = try_to_load_from_cache(repo_id, "model.safetensors")
+    return [Path(one)] if isinstance(one, str) else []
+
+
+def checkpoint_ceilings(files: Sequence[Path], layer: int, neurons: Sequence[int]) -> Tuple[Dict[int, float], int]:
+    """({neuron: its write ceiling}, the layer's width), read on the CPU from a checkpoint's safetensors `files` (a few
+    tensors of one layer: its down columns, its post-feed-forward norm and its layer scalar), as
+    `atlas_ops.Weights.write_ceiling` reads them on the model: s_l * sqrt(D) * ||w_post (.) unit(W_down[:, n])||. A
+    W4A16 down projection is unpacked column by column (`engine_runtime.dequantize_w4a16_cols`)."""
+    import torch
+    from safetensors import safe_open
+
+    from backend.engine_runtime import dequantize_w4a16_cols
+
+    P = f"model.language_model.layers.{int(layer)}."
+    found: Dict[str, Any] = {}
+    for path in files:
+        with safe_open(str(path), "pt") as f:
+            keys = set(f.keys())
+            for k in ("mlp.down_proj.weight_packed", "mlp.down_proj.weight_scale", "mlp.down_proj.weight",
+                      "post_feedforward_layernorm.weight", "layer_scalar"):
+                if P + k in keys and k not in found:
+                    found[k] = f.get_tensor(P + k)
+    if "post_feedforward_layernorm.weight" not in found or not ("mlp.down_proj.weight_packed" in found or "mlp.down_proj.weight" in found):
+        raise ValueError(f"The checkpoint holds no down projection or post-feed-forward norm for layer {layer}.")
+    idx = torch.tensor([int(n) for n in neurons], dtype=torch.long)
+    if "mlp.down_proj.weight_packed" in found:
+        packed = found["mlp.down_proj.weight_packed"]
+        width = int(packed.shape[1]) * 8
+        cols = dequantize_w4a16_cols(packed, found["mlp.down_proj.weight_scale"], idx).float()
+    else:
+        dense = found["mlp.down_proj.weight"]
+        width = int(dense.shape[1])
+        cols = dense[:, idx].T.float()
+    w_post = found["post_feedforward_layernorm.weight"].float()
+    s = float(found["layer_scalar"].reshape(-1)[0]) if "layer_scalar" in found else 1.0
+    unit = cols / cols.norm(dim=-1, keepdim=True).clamp(min=1e-30)
+    ceil = s * math.sqrt(int(w_post.shape[0])) * (unit * w_post).norm(dim=-1)
+    return {int(n): float(c) for n, c in zip(neurons, ceil.tolist())}, width
+
+
 # ---------------------------------------------------------------------------------------------------------------- runs
 
 CENSUS_DIR_ENV = "THEODOLITE_CENSUS_DIR"
@@ -285,11 +491,11 @@ def census_dir() -> Path:
 
 
 def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
-               refused: Optional[Dict[int, str]] = None) -> Dict[int, Path]:
+               refused: Optional[Dict[int, str]] = None, calibration: bool = False) -> Dict[int, Path]:
     """layer -> the path of its census run: a main_rel run first, then the largest; calibration runs left out (as the
-    reference's `layer_runs`), and, given the model read here, runs taken on another model. Runs taken before the
-    controls were drawn through w_post (CENSUS_VERSION) are not read: given `refused`, each such layer's reason goes
-    there."""
+    reference's `layer_runs`), or, with `calibration`, only they are read (for the dose window, census_tools.py
+    curves); given the model read here, runs taken on another model left out. Runs taken before the controls were
+    drawn through w_post (CENSUS_VERSION) are not read: given `refused`, each such layer's reason goes there."""
     runs_dir = Path(runs_dir) if runs_dir is not None else census_dir()
     best: Dict[int, Tuple[Path, Tuple[bool, int]]] = {}
     for meta_path in glob.glob(str(runs_dir / "*.meta.json")):
@@ -297,7 +503,7 @@ def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
             meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if not isinstance(meta, dict) or meta.get("design_name") in CALIBRATION_DESIGNS:
+        if not isinstance(meta, dict) or (meta.get("design_name") in CALIBRATION_DESIGNS) != bool(calibration):
             continue
         if model is not None and meta.get("model") is not None and meta.get("model") != model:
             continue
@@ -437,6 +643,19 @@ def read_gain(write: np.ndarray, ctrl: np.ndarray, w_next: np.ndarray) -> Dict[s
             "read_by": "the next layer's input norm (the final norm after the last layer)"}
 
 
+def gain_sample(seed: int, n: int) -> np.ndarray:
+    """The layer's neurons a run measures its read gain over: up to 512 of its `n`, drawn from seed + 2."""
+    return np.random.default_rng(int(seed) + 2).choice(int(n), min(512, int(n)), replace=False)
+
+
+def control_refs(seed: int, count: int, n: int) -> List[int]:
+    """The neuron each control is paired with: control k with the k-th neuron of `gain_sample` (cycling), so the
+    controls' write ceilings are drawn from the layer's own. Under the ceiling unit a control is pushed by its paired
+    neuron's ceiling; the dose window sets a control's push against it under either unit."""
+    sample = gain_sample(seed, n)
+    return [int(sample[k % len(sample)]) for k in range(int(count))]
+
+
 def unit_order(neurons: Sequence[int], controls: int) -> List[Tuple[str, int]]:
     """The neurons with the controls spread evenly among them, so any prefix of a run has its share of controls."""
     units: List[Tuple[str, int]] = [("neuron", int(n)) for n in neurons]
@@ -514,7 +733,7 @@ def take_census(
     out_path = Path(out_path)
     w_post = w.norm(layer, "post_feedforward").cpu().numpy()
     ctrl_np = control_dirs(seed, controls, w_post)
-    sample = np.random.default_rng(int(seed) + 2).choice(N, min(512, N), replace=False)
+    sample = gain_sample(seed, N)
     w_next = (w.norm(layer + 1, "input") if layer + 1 < L else rt.final_norm_weight.detach().float()).cpu().numpy()
     gain = read_gain(w.write_dirs(layer, sample.tolist()).cpu().numpy(), ctrl_np, w_next)
     meta = {

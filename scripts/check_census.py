@@ -17,7 +17,10 @@ Gemma 4 of scripts/atlas_stand_in.py:
 5. merge, the depth report (subsampled to a common pool) and the spread (the words embedder, laid out in the unit square);
 6. the command lines: census_run.py --stand-in into the stand-in's own folder, then census_tools.py rank, depth and
    spread on it;
-7. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
+7. the dose window: where an answer first parts from the unpushed one, the curves per dose and kind and the verdict per
+   sign on answers worked out by hand, the write ceilings read from a W4A16 checkpoint in two files, the Hugging Face
+   cache found through huggingface_hub, and a stand-in calib_rel run read back by census_tools.py curves;
+8. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
    next layer reads the census's controls about as loudly as the layer's neurons, and an isotropic control far louder.
 
 Run: .venv/bin/python -I scripts/check_census.py   (exits 0 when every check holds)
@@ -413,7 +416,105 @@ def run_checks(tmp: Path) -> int:
     check(r.returncode != 0 and "No census of layer 17" in r.stderr, "census_tools.py: a layer without a census said so")
     section("the command lines, into the stand-in's own folder", before)
 
-    # ------------------------------------------------------------- 7. the null on the real checkpoint's own weights
+    # ---------------------------------------------------------------------------------------------- 7. the dose window
+    before = len(failures)
+    check(cz.first_departure([1, 2, 3], [1, 2, 3]) is None and cz.first_departure([1, 9, 3], [1, 2, 3]) == 1
+          and cz.first_departure([1, 2], [1, 2, 3]) == 2 and cz.first_departure([1, 2, 3, 4], [1, 2, 3]) == 3, "first_departure")
+    B6 = [1, 2, 3, 4, 5, 6]
+
+    def crow(kind: str, n: int, ids: List[int], dose: float, prompt: str = "who", finish: str = "stop", lp: float = -1.0) -> Dict[str, Any]:
+        r = row(kind, n, "", dose=dose, prompt=prompt, ids=ids)
+        r.update(finish=finish, push=dose * 10.0, logprob=[lp] * len(ids))
+        return r
+
+    hand = [crow("baseline", -1, B6, 0.0), crow("baseline", -1, [8, 9, 10, 11, 12], 0.0, prompt="free"),
+            # +0.5: n0 as unpushed; n1 parts at 2 and is cut off; n2 stops early (parts at 3); r0, r1 as unpushed
+            crow("neuron", 0, B6, 0.5), crow("neuron", 1, [1, 2, 9, 9, 9, 9], 0.5, finish="length", lp=-3.0), crow("neuron", 2, [1, 2, 3], 0.5),
+            crow("random", 0, B6, 0.5), crow("random", 1, B6, 0.5),
+            # +2: every neuron loops from the first piece; the controls as unpushed; on "free" too
+            *[crow("neuron", n, [7] * 6, 2.0) for n in range(3)], *[crow("neuron", n, [7] * 6, 2.0, prompt="free") for n in range(3)],
+            crow("random", 0, B6, 2.0), crow("random", 1, B6, 2.0),
+            # -0.5: one control parts at 4
+            crow("neuron", 0, B6, -0.5), crow("random", 0, [1, 2, 3, 4, 0, 0], -0.5)]
+    ceil = {("neuron", 0): 2.0, ("neuron", 1): 4.0, ("neuron", 2): 5.0, ("random", 0): 10.0, ("random", 1): 20.0}
+    cv = {(c_["dose"], c_["kind"]): c_ for c_ in cz.dose_curves(hand, ceil)}
+    n5, r5, n2 = cv[(0.5, "neuron")], cv[(0.5, "random")], cv[(2.0, "neuron")]
+    # +0.5, neurons: moved 2 of 3; departures 6 (never), 2, 3 -> median 3; push 5 over ceilings 2, 4, 5 -> median 1.25
+    check(n5["n"] == 3 and n5["units"] == 3 and n5["moved"] == 2 / 3 and n5["departure"] == 3.0 and n5["capped"] == 1 / 3
+          and n5["over_ceiling"] == 1.25 and n5["rel_push"] == 0.5 and abs(n5["logprob"] - (-5.0 / 3)) < 1e-12, f"dose_curves +0.5 neurons: {n5}")
+    check(abs(n5["moved_se"] - float(np.std([0, 1, 1], ddof=1) / math.sqrt(3))) < 1e-12 and r5["moved"] == 0.0 and r5["departure"] == 6.0
+          and r5["over_ceiling"] == 0.375, f"dose_curves: the standard error over units, the controls' row ({r5})")
+    # +2: six answers of three units, each unit's two moved, so its share is 1 and the standard error 0; distinct4 1/3
+    check(n2["n"] == 6 and n2["units"] == 3 and n2["moved"] == 1.0 and n2["moved_se"] == 0.0 and n2["departure"] == 0.0
+          and abs(n2["distinct4"] - 1 / 3) < 1e-12, f"dose_curves +2 neurons: {n2}")
+    b0 = cv[(0.0, "baseline")]
+    check(b0["n"] == 2 and b0["moved"] == 0.0 and b0["over_ceiling"] is None and b0["distinct4"] == 1.0, f"a baseline row departs nowhere: {b0}")
+    check([(c_["dose"], c_["kind"]) for c_ in cz.dose_curves(hand)][:3] == [(0.0, "baseline"), (-0.5, "neuron"), (-0.5, "random")]
+          and cz.dose_curves(hand)[1]["over_ceiling"] is None, "dose_curves: the unpushed answers first, then by dose; no ceilings, none")
+    streamed = cz.dose_curves(iter(hand), ceil, base=cz.baseline_ids(hand))
+    check(streamed == cz.dose_curves(hand, ceil), "dose_curves: read once with the unpushed answers given, the same")
+    win = cz.dose_window(cz.dose_curves(hand, ceil), "stream", ["who", "free"])
+    # +0.5: the gap 2/3 is exactly twice its standard error, not more; +2: 1 against 0 with no spread
+    check(win["+"]["moves"] == 2.0 and win["+"]["breaks"] == {"neuron": 2.0, "random": None}, f"dose_window +: {win['+']}")
+    check("from +2 of the stream" in win["+"]["says"] and "On 3 neurons and 2 controls, one question set (who, free)" in win["+"]["says"]
+          and "not a measurement" in win["+"]["says"], f"dose_window says: {win['+']['says']}")
+    check(win["-"]["moves"] is None and "no more answers than the controls" in win["-"]["says"], f"dose_window -: {win['-']}")
+    no_ctl = cz.dose_window(cz.dose_curves([r_ for r_ in hand if r_["kind"] != "random"]))
+    check(no_ctl["+"]["moves"] is None and "no controls" in no_ctl["+"]["says"], "dose_window: without controls nothing is set against chance")
+    # the ceilings read from a checkpoint: a W4A16 down projection in two safetensors files, as the 31B's are packed
+    from safetensors.torch import save_file
+
+    Dk, Nk, lk = 64, 128, 3
+    g_ = torch.Generator().manual_seed(7)
+    nib = torch.randint(0, 16, (Dk, Nk), generator=g_, dtype=torch.int32)
+    packed = torch.zeros(Dk, Nk // 8, dtype=torch.int32)
+    for j in range(8):
+        packed |= nib[:, j::8] << (4 * j)
+    scale = (2.0 ** torch.randint(-6, -2, (Dk, Nk // 32), generator=g_)).to(torch.bfloat16)
+    w_post_k = (torch.rand(Dk, generator=g_) + 0.5).to(torch.bfloat16)
+    Pk = f"model.language_model.layers.{lk}."
+    fa, fb = tmp / "ck-a.safetensors", tmp / "ck-b.safetensors"
+    save_file({Pk + "mlp.down_proj.weight_packed": packed, Pk + "mlp.down_proj.weight_scale": scale}, str(fa))
+    save_file({Pk + "post_feedforward_layernorm.weight": w_post_k, Pk + "layer_scalar": torch.tensor([0.75], dtype=torch.bfloat16)}, str(fb))
+    got_c, width = cz.checkpoint_ceilings([fa, fb], lk, [0, 9, 127])
+    cols = (nib.double() - 8.0) * scale.double().repeat_interleave(32, dim=1)  # [D, N], exact in bf16
+    want_c = {n: 0.75 * math.sqrt(Dk) * float((cols[:, n] / cols[:, n].norm() * w_post_k.double()).norm()) for n in (0, 9, 127)}
+    check(width == Nk and all(abs(got_c[n] - want_c[n]) < 1e-5 * want_c[n] for n in want_c), f"checkpoint_ceilings: {got_c} vs {want_c}")
+    cache = tmp / "hf"
+    snap = cache / "models--org--tiny" / "snapshots" / "abc"
+    snap.mkdir(parents=True)
+    (cache / "models--org--tiny" / "refs").mkdir()
+    (cache / "models--org--tiny" / "refs" / "main").write_text("abc")
+    shutil.copy(fa, snap / "model.safetensors")
+    probe = f"import sys; sys.path.insert(0, {str(ROOT_DIR)!r}); from backend import census as cz; print(cz.cached_checkpoint('org/tiny'), cz.cached_checkpoint('org/none'))"
+    r = subprocess.run([sys.executable, "-I", "-c", probe], env={**os.environ, "HF_HUB_CACHE": str(cache), "HF_HUB_OFFLINE": "1"},
+                       capture_output=True, text=True, timeout=120)
+    check(r.returncode == 0 and str(snap / "model.safetensors") in r.stdout and r.stdout.strip().endswith("[]"),
+          f"cached_checkpoint: the Hugging Face cache found through huggingface_hub ({r.stdout.strip()} {r.stderr[-300:]})")
+    # a stand-in calibration run, read back by the command line
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "3", "--design", "calib_rel", "--neurons",
+                             "random:4", "--random-controls", "4", "--max-new", "8", "--batch", "16", "--no-rank"],
+                       env=env, capture_output=True, text=True, timeout=600)
+    calib = tmp / "atlas" / "stand-in" / "census" / "runs" / "L3-calib_rel.jsonl"
+    check(r.returncode == 0 and calib.exists() and len(list(cz.read_rows(calib))) == 8 * 36 + 4, f"census_run.py calib_rel: {r.stderr[-400:]}")
+    cj = tmp / "curves.json"
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "curves", "3", "--weights", "--json", str(cj)],
+                       env=env, capture_output=True, text=True, timeout=300)
+    cjs = json.loads(cj.read_text()) if cj.exists() else {}
+    doses = sorted({d_ for _, d_ in cz.DESIGNS["calib_rel"]})
+    check(r.returncode == 0 and "L3-calib_rel.jsonl" in r.stdout and "Pushed up" in r.stdout and "Pushed down" in r.stdout,
+          f"census_tools.py curves 3: a layer's calibration run read, though layer_runs leaves it out ({r.stderr[-300:]})")
+    ents = cjs.get("curves", [])
+    check(sorted({e["dose"] for e in ents if e["kind"] == "neuron"}) == doses and sorted({e["dose"] for e in ents if e["kind"] == "random"}) == doses
+          and all(e["n"] == 12 for e in ents if e["kind"] != "baseline"), "curves: every dose of the design, for neurons and controls, 12 answers each")
+    check(all(e["over_ceiling"] is not None and e["over_ceiling"] > 0 for e in ents if e["kind"] != "baseline")
+          and cjs.get("ceilings_from", "").endswith("else the weights") and set(cjs.get("window", {})) == {"+", "-"},
+          "curves --weights: the push over each unit's ceiling, read from the stand-in's weights; a verdict per sign")
+    base_e = next((e for e in ents if e["kind"] == "baseline"), {})
+    check(base_e.get("n") == 4 and base_e.get("moved") == 0.0, f"curves: the four unpushed answers depart nowhere ({base_e})")
+    section("the dose window: departures, curves and the verdict by hand, ceilings from a checkpoint, a calib_rel run read back", before)
+
+    # ------------------------------------------------------------- 8. the null on the real checkpoint's own weights
     before = len(failures)
     real = real_read_gain()
     if real is None:
