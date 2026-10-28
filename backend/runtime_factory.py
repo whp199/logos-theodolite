@@ -1,5 +1,6 @@
 """Which runtime a process runs (`backend/runtime_factory.py`): one choice, read from the environment, for the server,
-scripts/census_run.py and scripts/atlas_build.py.
+scripts/census_run.py, scripts/atlas_build.py, the standalone scientist (backend/mcp_scientist.py run alone), the lab
+daemon (experiments/lab/labd.py) and the GPU checks scripts/verify_optics.py and scripts/verify_causal_check.py.
 
     THEODOLITE_GGUF=<file.gguf>        a GGUF of Gemma 4 (backend/gguf_runtime.py), else the W4A16 checkpoint as today
     THEODOLITE_DEVICE=cpu | cuda:N     where the model runs (default cuda:0, as today)
@@ -24,6 +25,10 @@ the checkpoint on the CPU is `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16` (
 `gguf:<file>#<fingerprint>@cpu/bfloat16`. Every census run, index and lens card records that id, a run resumes only on
 the same one and the server reads an index only for it, so readings of two classes never mix in one file. bfloat16
 on a GPU, as the instrument has always run, adds nothing.
+
+`weights_card(rt)` says what a runtime's readings are taken from, for any runtime: a GGUF's own card (its file's
+provenance and how its model was built), the checkpoint's repo id and the snapshot of it this machine's Hugging Face
+cache holds, or the stand-in's; GET /api/health and the lab daemon's /health send it.
 """
 
 from __future__ import annotations
@@ -31,7 +36,8 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import Any
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 from backend.engine_runtime import TheodoliteRuntime
 
@@ -126,3 +132,37 @@ def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
     if device == "cpu":
         return CheckpointRuntime(device=device, load_jlens=load_jlens)
     return TheodoliteRuntime(device=device, load_jlens=load_jlens)
+
+
+def checkpoint_snapshot(repo_id: str) -> Optional[str]:
+    """The snapshot (commit) of `repo_id` that this machine's Hugging Face cache holds under its `main` ref, which the
+    pinned load reads first (`local_files_only`); None when the repo is not cached here, or `repo_id` is a folder."""
+    try:
+        from huggingface_hub import try_to_load_from_cache
+
+        found = try_to_load_from_cache(repo_id, "config.json")
+    except Exception:  # an id the hub cannot parse (a folder's path), or no hub library
+        return None
+    if not isinstance(found, str):
+        return None
+    parts = Path(found).parts
+    return parts[parts.index("snapshots") + 1] if "snapshots" in parts[:-1] else None
+
+
+def weights_card(rt: Any) -> Dict[str, Any]:
+    """What `rt`'s readings are taken from, as GET /api/health and the lab daemon send it: a GGUF runtime's own card
+    (`GGUFRuntime.weights_card`: the file's provenance, how the model was built, where its tokenizer came from); for
+    the stand-in of scripts/atlas_stand_in.py, that; else the W4A16 checkpoint's repo id (the model id before any
+    `reading_class`) and the snapshot of it the cache holds (`checkpoint_snapshot`; None when it holds none, so `id`
+    is None too), with where and in what the readings are taken."""
+    card = getattr(rt, "weights_card", None)
+    if card:
+        return dict(card)
+    model_id = str(getattr(rt, "model_id", "") or "")
+    if getattr(rt, "atlas_stand_in", False):
+        return {"format": "stand-in", "model": model_id, "runtime": type(rt).__name__}
+    repo = model_id.split("@", 1)[0]
+    snapshot = checkpoint_snapshot(repo)
+    return {"format": "compressed-tensors W4A16", "repo": repo, "snapshot": snapshot,
+            "id": snapshot[:16] if snapshot else None, "linears": "packed", "dtype": "bfloat16",
+            "device": str(getattr(rt, "device", "")), "runtime": type(rt).__name__}

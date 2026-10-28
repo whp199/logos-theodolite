@@ -2,12 +2,20 @@
 """Lab daemon: keeps Gemma-4-31B (W4A16) + J++/JLens loaded in ONE GPU process and executes
 submitted experiment code against it, serialized by a lock.
 
-POST /exec  {"code": "...", "label": "..."}  -> {"ok", "stdout", "result", "error", "elapsed_s"}
+The runtime is `backend.runtime_factory.make_runtime(load_jlens=True)`'s: with none of its variables set, the pinned
+TheodoliteRuntime on the W4A16 checkpoint on cuda:0, both lenses loaded, as the study's experiments ran; THEODOLITE_GGUF
+puts a GGUF of Gemma 4 under it and THEODOLITE_DEVICE=cpu the CPU (ARCHITECTURE §5); /health and every /exec reply name
+the weights read.
+
+POST /exec  {"code": "...", "label": "..."}  -> {"ok", "stdout", "result", "error", "elapsed_s", "model", "weights"}
   Code runs with top-level await allowed, in a fresh namespace containing:
-    rt (TheodoliteRuntime), lab (labkit.Lab), torch, np, F, STORE (persistent dict shared across calls)
-  Assign to a variable named `result` to return JSON-serializable data.
+    rt (TheodoliteRuntime, or GGUFRuntime, its subclass), lab (labkit.Lab), torch, np, F, STORE (persistent dict
+    shared across calls)
+  Assign to a variable named `result` to return JSON-serializable data. `model` is the runtime's model id (a GGUF's
+  file and fingerprint, and where and in what off the GPU: runtime_factory.reading_class) and `weights` its weights
+  card (runtime_factory.weights_card), so a result written to `out` names the weights it was read from.
 POST /reload  -> reload labkit (after editing labkit.py)
-GET  /health
+GET  /health  -> also the model id, device and weights card once the model is loaded
 Binds 127.0.0.1 only, on port 8765 unless $LABD_PORT says otherwise: the same port as the instrument's server
 (README §v), so run one or the other (one GPU process at a time), and through an SSH tunnel to a pod either one would
 sit at the browser's own 127.0.0.1:8765.
@@ -54,7 +62,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
-from backend.engine_runtime import TheodoliteRuntime
+from backend.runtime_factory import make_runtime, weights_card
 import labkit
 
 LOG = REPO / "experiments" / "results" / "labd_exec_log.local.jsonl"  # gitignored; the study's log is labd_exec_log_2026-10-16.jsonl
@@ -140,16 +148,27 @@ def _jsonable(x):
 @app.on_event("startup")
 async def _startup():
     t0 = time.time()
-    rt = TheodoliteRuntime(load_jlens=True).load()
+    rt = make_runtime(load_jlens=True).load()  # nothing set: TheodoliteRuntime(load_jlens=True), as before
     STATE["rt"] = rt
+    STATE["weights"] = weights_card(rt)
     STATE["lab"] = labkit.Lab(rt)
-    print(f"[labd] ready in {time.time()-t0:.1f}s; VRAM alloc {torch.cuda.memory_allocated()/2**30:.2f} GB", flush=True)
+    if rt.device.type == "cuda":
+        print(f"[labd] ready in {time.time()-t0:.1f}s; VRAM alloc {torch.cuda.memory_allocated()/2**30:.2f} GB", flush=True)
+    else:
+        import resource
+
+        print(f"[labd] ready in {time.time()-t0:.1f}s on {rt.device} ({rt.model_id}); peak RAM "
+              f"{resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20:.2f} GB", flush=True)
 
 
 @app.get("/health")
 async def health():
+    rt = STATE.get("rt")
     return {"ready": "lab" in STATE, "busy": LOCK.locked(), "waiting": WAITING["n"], "running": STATE.get("running"),
-            "vram_alloc_gb": torch.cuda.memory_allocated() / 2**30}
+            "vram_alloc_gb": torch.cuda.memory_allocated() / 2**30,
+            # what the experiments read: None until the model is loaded
+            "model": getattr(rt, "model_id", None), "device": str(rt.device) if rt is not None else None,
+            "weights": STATE.get("weights")}
 
 
 @app.post("/reload", dependencies=[Depends(launch_token)])
@@ -187,7 +206,8 @@ async def execute(req: ExecReq):
             gc.collect()
             torch.cuda.empty_cache()
         out = {"ok": err is None, "stdout": buf.getvalue()[-200_000:], "error": err,
-               "result": result, "elapsed_s": round(time.time() - t0, 2)}
+               "result": result, "elapsed_s": round(time.time() - t0, 2),
+               "model": getattr(STATE["rt"], "model_id", None), "weights": STATE.get("weights")}
         STATE["running"] = None
         if req.out:
             try:
@@ -197,7 +217,7 @@ async def execute(req: ExecReq):
                 out["out_write_error"] = repr(e)
         with LOG.open("a") as f:
             f.write(json.dumps({"t": time.time(), "label": req.label, "ok": out["ok"],
-                                "elapsed_s": out["elapsed_s"], "error": (err or "")[-2000:]}) + "\n")
+                                "elapsed_s": out["elapsed_s"], "error": (err or "")[-2000:], "model": out["model"]}) + "\n")
         return out
 
 

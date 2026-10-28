@@ -40,8 +40,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from backend.engine_runtime import TheodoliteRuntime
 from backend.larql_vault import LarqlVaultEngine
+from backend.runtime_factory import make_runtime, weights_card
 from backend.theodolite_math import (
     D_FF,
     D_MODEL,
@@ -76,8 +76,12 @@ async def main() -> int:
         raise RuntimeError("CUDA GPU required for Gemma-4-31B verification.")
 
     torch.cuda.reset_peak_memory_stats()
-    runtime = TheodoliteRuntime(load_jlens=True).load()
+    # THEODOLITE_GGUF puts a GGUF of Gemma 4 under the same checks (backend/runtime_factory.py); with nothing set, the
+    # pinned TheodoliteRuntime on the W4A16 checkpoint, as before
+    runtime = make_runtime(load_jlens=True).load()
     vault = LarqlVaultEngine(runtime)
+    card = weights_card(runtime)
+    print(f"  Weights           : {runtime.model_id} ({card.get('format')}, id {card.get('id')})")
 
     # (f) the lens every reading below goes through, as /api/health, every sweep and the scientist tools name it;
     # the base model is what the file's own provenance says, not a fallback

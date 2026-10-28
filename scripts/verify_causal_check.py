@@ -2,9 +2,10 @@
 """GPU check of the causal spot-check on the real model (`causal_spot_check`, backend/causal_check.py): does the
 instrument's test reproduce the study's own numbers, and do its premises hold on this runtime's W4A16 path?
 
-Stop the :8765 server first (this loads the model itself and needs the whole card). It loads TheodoliteRuntime and the
-vault, binds the scientist tools, and calls the tool directly (and once through the server app's WebSocket, in
-process). Layers count from 0 here, as in the study's reports (page layer = code layer + 1). It checks:
+Stop the :8765 server first (this loads the model itself and needs the whole card). It loads the runtime
+(backend/runtime_factory.py's make_runtime: the W4A16 checkpoint on cuda:0, unless THEODOLITE_GGUF names a GGUF of
+Gemma 4, whose numbers are then held to the study's) and the vault, binds the scientist tools, and calls the tool
+directly (and once through the server app's WebSocket, in process). Layers count from 0 here, as in the study's reports (page layer = code layer + 1). It checks:
 A. N1A's gender poles (study mode, k = 60, activation; experiments/results/N1A_gender.json, tag kA): layer 50 neuron
    5313, face -: max|a| 6.531 (within 2%), c(' she') - c(' he') +13.81 (within 5%), mean KL 0.442 (within 10%), and at
    least 7 of its ten top rises among N1A's causal_top10; layer 50 n549, face -: -12.85 (within 5%); layer 40 n16757,
@@ -59,6 +60,7 @@ import torch  # noqa: E402
 import backend.causal_check as cc  # noqa: E402
 import backend.mcp_scientist as ms  # noqa: E402
 from backend.larql_vault import LarqlVaultEngine  # noqa: E402
+from backend.runtime_factory import make_runtime, weights_card  # noqa: E402
 
 RESULTS = ROOT_DIR / "experiments" / "results"
 SWEEP_2048_PEAK_GIB = 25.5  # torch's own peak of the worst sweep at 2048 (engine_runtime, above MAX_SWEEP_POSITIONS)
@@ -307,7 +309,8 @@ def main() -> int:
         print("Something answers on :8765: stop the Theodolite server first (this loads the model itself).")
         return 2
     t0 = time.perf_counter()
-    rt = TheodoliteRuntime(load_jlens=False).load()
+    rt = make_runtime(load_jlens=False).load()  # nothing set: TheodoliteRuntime(load_jlens=False), as before
+    summary["model"], summary["weights"] = rt.model_id, weights_card(rt)
     vault = LarqlVaultEngine(rt)
     ms.bind_runtime(rt, vault)
     lm = cc.language_model(rt.hf_model)

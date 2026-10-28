@@ -50,6 +50,7 @@ from backend import causal_check as cc
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
 from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids, writes_nothing
 from backend.larql_vault import LarqlVaultEngine
+from backend.runtime_factory import make_runtime
 from backend.theodolite_math import (
     D_FF,
     N_LAYERS,
@@ -75,10 +76,12 @@ def bind_runtime(runtime: TheodoliteRuntime, vault: Optional[LarqlVaultEngine] =
 
 
 def get_runtime_and_vault() -> tuple[TheodoliteRuntime, LarqlVaultEngine]:
-    """Lazily obtain or initialize the singleton `TheodoliteRuntime` and `LarqlVaultEngine`."""
+    """Lazily obtain or initialize the singleton runtime and `LarqlVaultEngine`. Run alone (no server bound one), the
+    runtime is `runtime_factory.make_runtime()`'s, as the server's: the W4A16 checkpoint on cuda:0 unless
+    THEODOLITE_GGUF or THEODOLITE_DEVICE say otherwise (ARCHITECTURE §5)."""
     global _SHARED_RUNTIME, _SHARED_VAULT
     if _SHARED_RUNTIME is None:
-        _SHARED_RUNTIME = TheodoliteRuntime(load_jlens=False).load()
+        _SHARED_RUNTIME = make_runtime(load_jlens=False).load()
     if _SHARED_VAULT is None:
         _SHARED_VAULT = LarqlVaultEngine(_SHARED_RUNTIME)
     return _SHARED_RUNTIME, _SHARED_VAULT
