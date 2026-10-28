@@ -105,6 +105,58 @@ Compared function by function with docstrings stripped, none of these has change
 `theodolite_math.py` diff only adds the contrast functions, and the 4-bit forward's changes are comments. The
 replication record of §4.2 checks this on the model as well.
 
+### 0.1 The registered files (sha256)
+
+Made at commit `00dba90`, after the CPU checks of §10 were rerun there. This file is the one file not listed: the
+registration commit adds this table to it.
+
+**R4's own files:**
+
+| file | sha256 |
+|---|---|
+| `experiments/scripts/R4_00_replicate.py` | `dbb782686ee86b0d2337edb86846e77a7db290e5d6458a192e375aedd49a3f37` |
+| `experiments/scripts/R4_01_check.py` | `f9442896d48f063b2c6c9a66c69c6814ce20dfcde03f04407f393b63d76cbdc3` |
+| `experiments/scripts/R4_02_eval.py` | `f82f7f99facdc9bf45237d8ffab5ebf219db3321777abe1779670186c17aea66` |
+| `experiments/scripts/R4_03_analyze.py` | `d0842992712a527c4a0c3cc16ab99bdf6e5ee8456df412968d55ac11f3d4f1a8` |
+| `experiments/scripts/R4_common.py` | `5e9934b521f599eba6d1bd42146afe5ce276c943285c8353d34ae321a7c79e8b` |
+| `experiments/scripts/R4_power.py` | `c8c59c773721c71633e01efd33cb7a5129515ce76ac0c452b7e217da9bd5d2a4` |
+| `experiments/scripts/R4_prompts.json` | `ead4c2d17f4f7e60abcdda5098731752eebae2f31d045d4241dec9bbc7851393` |
+| `experiments/results/R4_01_check.json` | `a939a76049c4b01c5ceb725fa9f02f7d07ea34603c4d07dc10e456666de025a3` |
+| `experiments/results/R4_power.json` | `ff1a2a9f21711ff49bd9eac4f7a14da2aa78ed3f064255b4ab6d79129000efe3` |
+| `experiments/results/R4_selftests.json` | `44565df3274e40153b55d2346ea510baf2dfa770a9d0067fd66b7be3d17c37ad` |
+| `experiments/results/R4_03_r3_reproduction.json` | `f96d4ae698c043748d4185cd58333a655ee8af27ecb3ca6c602eaeaab667e2aa` |
+| `experiments/results/R4_00_reread.json` | `aaa07cf2906eba8d9f4830e2477548a6f556d3ac2c647ae1d354f57290560c4d` |
+| `experiments/results/R4_00_runs.jsonl` | `4a6cb2282be1e04c226399b1bac362f2606ae045059eab2c464447d7eb87155f` |
+| `experiments/results/R4_00_replication.json` | `703020cf601094f6369d909ea31284101f4721ee5726f0d222917f4c30bd9bc1` |
+
+**The files R4 imports or reads, unchanged** (`R4_common.PINNED_UNCHANGED`, checked by `runtime_state` and, for the rule's code, by R4_03):
+
+| file | sha256 |
+|---|---|
+| `experiments/scripts/R1_common.py` | `9a8ad1f21a6291855e15fe768eae79671413e53696f9bf4fa313057de2590d95` |
+| `experiments/scripts/R2_common.py` | `a3fe4ab44edbce3eeba01efa1428c82b7abb5f8b0555d7485fb2d008d78b762d` |
+| `experiments/scripts/R2_03_analyze.py` | `9293011e96b3a132a915b306b2835846cc284e073fa5644124f20048cc377ecd` |
+| `experiments/scripts/R2_prompts.json` | `623a7fb73e6a082335653bb02c8e22d7e6d731ef343ff299af57709a772d01fd` |
+| `experiments/scripts/R3_common.py` | `b2dc742295a84c73c9538b068a07e78e8bd1ffab65483b6adb117f5f307ec2c9` |
+| `experiments/scripts/R3_05_eval.py` | `354273c5cec2937d7b87a2b49fa6120ec08c905a43ac056f07851af100f83974` |
+| `experiments/scripts/R3_06_analyze.py` | `f952e0ebdc89ffb8f8ce4fac654858f3da4bde43c71d97e56ad231f91ac2c8f2` |
+| `experiments/scripts/R3_gpu.py` | `3a2148a99a2d1451178b771c987229d816f4f0b2f06685e58a206c7f054118f9` |
+| `experiments/scripts/R3_fitlib.py` | `2276111dd64aa392e3a8a8362798181e1c3d50528a7481edd5d5986deba0dc47` |
+| `experiments/scripts/R3_lrp.py` | `97e96f218cad63c56619f9679d0174e0726e18cf67e0e55ec5518bcbb70f25bb` |
+| `experiments/scripts/R3_prompts.json` | `e3cae4b1becbd1fd4ac120e69e9c06dd2baf3dc6b0b4ae067d11b019957f4329` |
+| `experiments/scripts/R3_sources.json` | `39f8340a03008ecda0b528ffa5208a3b4d267b9239fb376f8c43e39780b667d6` |
+| `experiments/results/R2_01_check.json` | `9baad05e2d0057b2f7621fb389400cd5c24e119151b292648ca81343a8181581` |
+| `experiments/results/R2_02_eval.json` | `6e277f60987c88a70f85355e2e749aac8cfa18f5480a5b044befedc3626f9c70` |
+| `experiments/results/R2_03_analysis.json` | `94a632527ce6d1f356c836272ef5e1c32d8bef549cb62d6a8136dae83a22a75e` |
+| `experiments/results/R3_05_eval.json` | `d2fe1a334f6ae1a65e61d716a6a40c3e1ba56e6a1cc1aa196281618275fa80e1` |
+| `experiments/results/R3_06_analysis.json` | `a843c309eed0aa5461e1fc7c823169f20413f6573bd4c6691ce132138c609d50` |
+| `backend/__init__.py` | `4af5cefc7edd058ef3353b6992f42cf22fa8d3a7cd8e4a8b3ecca376808293c0` |
+| `backend/theodolite_math.py` | `d738dc2ff14d428ad3ba01e7789b301dbff137d3f707e3af04862b504a1479fb` |
+| `backend/engine_runtime.py` | `69eed1b4f1a319bad35dcf604d0e3cdd48aa2b1f4287a9c5e7efeb1c04605256` |
+| `backend/label_gate.py` | `83a998b746249b07a52e29b0dd1a06e999206d27a518f2f8271f439b946c136e` |
+
+**The environment:** the model snapshot `52f3f65bc7a02d555763bc923bd1d9094898219d` (its files' blobs, `R4_common.SNAPSHOT_BLOBS`; the weights `1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20`); torch `2.14.1+cu130`, transformers `5.20.0`; the other libraries and the GPU as the replication record keeps them (`R4_00_replication.json`, `made_with.environment`), with the 67 module files the GPU process loaded (`made_with.loaded_code`). R1's lens: `~/.local/share/theodolite/lenses/R1_18_it_lens.pt`, sha256 `80ce560943f39bc4183a7387512d20ad7ef779476fc1ef01b5010463a43e107b`; J++: `ef50bc54b04738e558b7d86847889bb5d60437e45276b1952e73da91b4e9f5fc`.
+
 ## 1. Question
 
 The instrument reads `google/gemma-4-31B-it-qat-w4a16-ct` through J++, which was fitted on the base model, and every
@@ -727,8 +779,7 @@ Generation dominates and grows with the prompts:
       simulated by R4_power.
 - [x] The replication record, run and passed (an owner-approved GPU run on 28 October), after every amendment had
       landed: 100% on every readout, every position found again, R1's record reproduced exactly (§4.2).
-- [ ] The CPU checks rerun at the registration commit, and the registration commit on `r4-r1-lens` with §0's sha256
-      table.
+- [x] The CPU checks rerun at `00dba90`, and the registration commit on `r4-r1-lens` with §0's sha256 table (§0.1).
 
 ## 13. Amendments before any data
 

@@ -1,7 +1,7 @@
 {
  "schema": "R4_power/1",
- "written_at": "2026-10-28T00:26:06",
- "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
+ "written_at": "2026-10-28T00:43:04",
+ "head": "00dba9023b70fe9eb0c3b9a5f4a64258aef01f37",
  "input": {
   "R2_02_eval.json": "6e277f60987c88a70f85355e2e749aac8cfa18f5480a5b044befedc3626f9c70",
   "R3_05_eval.json": "d2fe1a334f6ae1a65e61d716a6a40c3e1ba56e6a1cc1aa196281618275fa80e1",

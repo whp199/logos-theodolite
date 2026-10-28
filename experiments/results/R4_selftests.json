@@ -3,24 +3,17 @@
  "scripts": {
   "R4_02_eval.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R4_02_eval.py --selftest --out <scratch> --limit 3",
-   "at": "2026-10-28T00:26:14",
-   "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
-   "scripts_uncommitted_then": [
-    "experiments/scripts/R4_00_replicate.py",
-    "experiments/scripts/R4_01_check.py",
-    "experiments/scripts/R4_02_eval.py",
-    "experiments/scripts/R4_03_analyze.py",
-    "experiments/scripts/R4_common.py",
-    "experiments/scripts/R4_power.py"
-   ],
-   "seconds": 6.3,
+   "at": "2026-10-28T00:43:12",
+   "head": "00dba9023b70fe9eb0c3b9a5f4a64258aef01f37",
+   "scripts_uncommitted_then": [],
+   "seconds": 6.9,
    "ok": true,
    "n_checks": 6,
    "n_failed": 0,
    "checks": [
     {
      "ok": true,
-     "check": "every check before the model passes on the CPU (sizes only here); waiting for: ['R4_00_replication.json is not written yet (\u00a74.2)']; failed: []"
+     "check": "every check before the model passes on the CPU (sizes only here); waiting for: []; failed: []"
     },
     {
      "ok": true,
@@ -52,17 +45,10 @@
   },
   "R4_00_replicate.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R4_00_replicate.py --selftest",
-   "at": "2026-10-28T00:26:27",
-   "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
-   "scripts_uncommitted_then": [
-    "experiments/scripts/R4_00_replicate.py",
-    "experiments/scripts/R4_01_check.py",
-    "experiments/scripts/R4_02_eval.py",
-    "experiments/scripts/R4_03_analyze.py",
-    "experiments/scripts/R4_common.py",
-    "experiments/scripts/R4_power.py"
-   ],
-   "seconds": 11.8,
+   "at": "2026-10-28T00:43:29",
+   "head": "00dba9023b70fe9eb0c3b9a5f4a64258aef01f37",
+   "scripts_uncommitted_then": [],
+   "seconds": 15.3,
    "ok": true,
    "n_checks": 9,
    "n_failed": 0,
@@ -113,17 +99,10 @@
   },
   "R4_03_analyze.py": {
    "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R4_03_analyze.py --selftest",
-   "at": "2026-10-28T00:26:32",
-   "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
-   "scripts_uncommitted_then": [
-    "experiments/scripts/R4_00_replicate.py",
-    "experiments/scripts/R4_01_check.py",
-    "experiments/scripts/R4_02_eval.py",
-    "experiments/scripts/R4_03_analyze.py",
-    "experiments/scripts/R4_common.py",
-    "experiments/scripts/R4_power.py"
-   ],
-   "seconds": 3.3,
+   "at": "2026-10-28T00:43:34",
+   "head": "00dba9023b70fe9eb0c3b9a5f4a64258aef01f37",
+   "scripts_uncommitted_then": [],
+   "seconds": 3.2,
    "ok": true,
    "n_checks": 21,
    "n_failed": 0,

@@ -1,6 +1,6 @@
 {
  "schema": "R4_03_r3_reproduction/1",
- "written_at": "2026-10-28T00:26:07",
+ "written_at": "2026-10-28T00:43:05",
  "input": {
   "path": "experiments/results/R3_05_eval.json",
   "sha256": "d2fe1a334f6ae1a65e61d716a6a40c3e1ba56e6a1cc1aa196281618275fa80e1"
