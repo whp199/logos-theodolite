@@ -390,7 +390,8 @@ class PushChatRequest(BaseModel):
 class ReadRequest(BaseModel):
     layer: StrictInt
     n: StrictInt
-    text: str = Field(..., min_length=1, max_length=64000)
+    text: Optional[str] = Field(None, min_length=1, max_length=64000)
+    ids: Optional[List[StrictInt]] = Field(None, max_length=65536)  # word-piece ids read exactly (at most 2,048: `_read`)
     chat: bool = False
     neurons: List[PushIn] = Field(default_factory=list, max_length=ao.MAX_PUSHES)
     heads: List[HeadIn] = Field(default_factory=list, max_length=ao.MAX_HEAD_SCALES)
@@ -845,6 +846,163 @@ async def neuron_heads(layer: int, n: int) -> Dict[str, Any]:
     return {"layer": layer, "n": n, "roles": {k: r[k] for k in ("q", "k", "v", "o")}, "z_by_layer": r["z_by_layer"]}
 
 
+# -- a neuron's stored passages
+
+REGIMES = {"pp": "gate > 0, up > 0", "nn": "gate < 0, up < 0 (the double negative)", "pn": "gate > 0, up < 0",
+           "np": "gate < 0, up > 0"}
+PASSAGES_UNBUILT = ("the passages index is not built: scripts/atlas_build.py passages builds it (one forward a window of a "
+                    "corpus, as the stats index; give it the same corpus)")
+
+
+def regime(g: float, u: float) -> str:
+    """GeGLU's sign regime at an event, as `atlas_ops.Extremes` counts them (a gate or up of 0 counts as negative)."""
+    return ("p" if g > 0 else "n") + ("p" if u > 0 else "n")
+
+
+def passage_marks(tok: Any) -> Dict[int, Tuple[str, str]]:
+    """The word-pieces a passage is never shown across: {id: (what it marks, "begins" | "ends")}: the start mark (a
+    window's first piece: the model read nothing before it), the end mark (between two documents) and the two turn
+    marks of a chat (`<|turn>` opens a turn, `<turn|>` closes it), where the tokenizer has them."""
+    out: Dict[int, Tuple[str, str]] = {}
+    for t, what, side in (("<|turn>", "turn", "begins"), ("<turn|>", "turn", "ends")):
+        i = tok.convert_tokens_to_ids(t)
+        if isinstance(i, int) and i >= 0 and i != tok.unk_token_id:
+            out[i] = (what, side)
+    if tok.eos_token_id is not None:
+        out[int(tok.eos_token_id)] = ("document", "ends")
+    if tok.bos_token_id is not None:
+        out[int(tok.bos_token_id)] = ("start", "begins")
+    return out
+
+
+def cut_passage(ids: Sequence[int], at: int, before: int, after: int, marks: Dict[int, Tuple[str, str]]) -> Tuple[int, int, Optional[str], Optional[str]]:
+    """The span [s, e) of a window shown around its word-piece `at`: at most `before` pieces before it and `after` after,
+    never across a mark (`passage_marks`, itself left out); a peak on a mark that begins something shows nothing before
+    it, on one that ends something nothing after. Returns (s, e, why it stops before, why after): the mark's kind, "end"
+    for the window's own end, None where the count ran out first."""
+    s, e, why_b, why_a = at, at + 1, None, None
+    own = marks.get(int(ids[at]))
+    if own and own[1] == "begins":
+        why_b = own[0]
+    else:
+        while at - s < before and s > 0:
+            m = marks.get(int(ids[s - 1]))
+            if m:
+                why_b = m[0]
+                break
+            s -= 1
+    if own and own[1] == "ends":
+        why_a = own[0]
+    else:
+        while e - at - 1 < after:
+            if e >= len(ids):
+                why_a = "end"
+                break
+            m = marks.get(int(ids[e]))
+            if m:
+                why_a = m[0]
+                break
+            e += 1
+    return s, e, why_b, why_a
+
+
+def whole_characters(tok: Any, ids: Sequence[int], s: int, e: int, marks: Dict[int, Tuple[str, str]], reach: int = 3) -> Tuple[int, int]:
+    """A span [s, e) widened by up to `reach` word-pieces each way where it would begin or end inside a character split
+    over several byte pieces (an emoji, a CJK character), never across a mark."""
+    text = lambda: tok.decode([int(t) for t in ids[s:e]])  # noqa: E731
+    for _ in range(reach):
+        if e < len(ids) and int(ids[e]) not in marks and text().endswith("\ufffd"):
+            e += 1
+    for _ in range(reach):
+        if s > 1 and int(ids[s - 1]) not in marks and text().startswith("\ufffd"):
+            s -= 1
+    return s, e
+
+
+def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, after: int) -> Dict[str, Any]:
+    head: Dict[str, Any] = {"layer": layer, "n": n, "face": face}
+    got = a.index.passages(layer, n, face, k)
+    if got is None:
+        why = a.index.refused("passages")
+        return {**head, "ready": False, "note": PASSAGES_UNBUILT if not why else f"the passages index is not read: {why}"}
+    P = a.index.get("passages")
+    meta = P["meta"]
+    tokens, unigram = int(meta.get("tokens") or 0), P["unigram"]
+    vocab = a.vocab()
+    tok = a.rt.tokenizer
+    marks = passage_marks(tok)
+    stats = a.index.get("act_scale")
+    ext = float(stats["pos" if face == "+" else "neg"][layer, n]) if stats is not None else 0.0
+    rel_to = f"its extreme in the stats index ({stats['meta'].get('corpus')})" if ext else None
+    if not ext and got["top"]:
+        ext, rel_to = got["top"][0]["act"], "its strongest passage here (no stats index)"
+    word = lambda t: vocab[int(t)] if 0 <= int(t) < len(vocab) else ""  # noqa: E731
+    out, reads, follows = [], {}, {}
+    for kind, slots in (("top", got["top"]), ("sample", sorted(got["sample"], key=lambda x: -abs(x["act"])))):
+        for x in slots:
+            ids = a.index.window_ids(x["window"]) or []
+            at = x["at"]
+            s, e, why_b, why_a = cut_passage(ids, at, before, after, marks)
+            s, e = whole_characters(tok, ids, s, e, marks)
+            units = [[text, (at - s) in idx] for text, idx in ao.token_units(tok, ids[s:e])]
+            nxt = ids[at + 1] if at + 1 < len(ids) else None
+            if kind == "top":
+                reads[ids[at]] = reads.get(ids[at], 0) + 1
+                if nxt is not None:
+                    follows[nxt] = follows.get(nxt, 0) + 1
+            out.append({"kind": kind, "act": round(x["act"], 4), "rel": round(x["act"] / ext, 3) if ext else None,
+                        "regime": regime(x["g"], x["u"]), "g": round(x["g"], 4), "u": round(x["u"], 4), "window": x["window"], "at": at,
+                        "units": units, "span": [s, e], "next": word(nxt) if nxt is not None else None, "cut": [why_b, why_a],
+                        "ids": ids[:e]})
+
+    def lifted(counts: Dict[int, int]) -> List[Dict[str, Any]]:
+        used = sum(counts.values())
+        rows = [{"tok": word(t), "id": int(t), "n": c,
+                 "lift": round((c / used) / (int(unigram[int(t)]) / tokens), 1) if used and tokens and int(unigram[int(t)]) else None}
+                for t, c in counts.items()]
+        return sorted(rows, key=lambda r: (-r["n"], -(r["lift"] or 0)))[:8]
+
+    k_used = len(got["top"])
+    res = {**head, "ready": True, "source": "index", "corpus": meta.get("corpus"), "tokens": tokens, "windows": meta.get("windows"),
+           "built_at": meta.get("built_at"), "k": k_used, "K": meta.get("K"), "per_window": meta.get("per_window"),
+           "sampled": meta.get("sample") or 0, "sample_threshold": meta.get("sample_threshold"),
+           "extreme": round(ext, 4) if ext else None, "rel_to": rel_to, "passages": out,
+           "reads": lifted(reads), "follows": lifted(follows),
+           "words_note": f"from {k_used} passages of a {tokens:,}-word-piece corpus; not validated as a label",
+           "regimes": REGIMES,
+           "read_again": "POST /reads with {layer, n, ids}: a passage's ids are its window from the start mark to the "
+                         "passage's end, earlier documents included, as the model read it"}
+    edited = a.edited()
+    if (layer, n) in edited:
+        res["stale"] = ("read before the vault edit in force on this neuron: its own edit changes what it writes, not where it "
+                        "fires; read a passage again (POST /reads with its ids) to see it as it now is")
+    elif any(l < layer for l, _ in edited):
+        res["stale"] = ("read before the vault edits in force at earlier layers, which can move where it fires: read a passage "
+                        "again (POST /reads with its ids) to see it as it now is")
+    return res
+
+
+@router.get("/neuron/passages")
+async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, before: int = 24, after: int = 6) -> Dict[str, Any]:
+    """One face's stored passages (the passages index, built by scripts/atlas_build.py passages; no GPU): its k strongest
+    events, at most one a window, then those drawn at random above half its extreme, each with its activation, its
+    share of the face's extreme (`rel`), GeGLU's regime there (from the gate and up values, `g`, `u`), its window and
+    position, and its display units ([text, is_peak], the window's word-pieces `span` [s, e)) cut at the window's start
+    or end, a document's end mark or a turn mark, else where `before` or `after` runs out (`cut`: why each side stops;
+    a character split over byte pieces is kept whole); `ids`, the window up to the span's end, for POST /reads. `reads`
+    and `follows`: the word-pieces at the peaks and just after them, counted over the k with their lift over the
+    corpus's base rate, which are leads (`words_note`), not labels the gate has checked. `ready: false`, saying which
+    build makes it, without the index; `stale` when a vault edit in force could have changed them."""
+    a = atlas()
+    _check_neuron(a, layer, n)
+    face = {"+": "+", " ": "+", "pos": "+", "-": "-", "neg": "-"}.get(face, face)  # a bare "+" in a URL arrives as a space
+    if face not in ("+", "-"):
+        raise HTTPException(status_code=400, detail=f'A face is "+" or "-" (in a URL "+" is written %2B), not {face!r}.')
+    if int(k) < 1 or int(before) < 0 or int(after) < 0:
+        raise HTTPException(status_code=400, detail="k counts passages (at least 1); before and after count word-pieces (0 or more).")
+    return await asyncio.to_thread(_passages, a, layer, n, face, min(int(k), 64), min(int(before), 512), min(int(after), 512))
+
+
 @router.get("/hover")
 async def hover(layer: int, n: int) -> Dict[str, Any]:
     """What the map's tooltip shows, from the indexes alone (no GPU): both faces' words with their checks, the steer
@@ -1054,9 +1212,25 @@ async def steer(req: SteerRequest) -> Dict[str, Any]:
     return await on_gpu(_steer_whole, a, req, ps, hs)
 
 
+def read_ids(a: Atlas, ids: Sequence[int]) -> List[int]:
+    """Word-piece ids to read exactly as given (a stored passage's, which decoded text need not tokenise back to),
+    checked in plain words."""
+    if not ids:
+        raise ValueError("Give the word-piece ids to read.")
+    if len(ids) > MAX_TEXT_POSITIONS:
+        raise ValueError(f"The ids are {len(ids)} word-pieces; this reading takes at most {MAX_TEXT_POSITIONS:,}. Shorten them.")
+    V = int(a.W_U.shape[0])
+    bad = [int(t) for t in ids if not 0 <= int(t) < V]
+    if bad:
+        raise ValueError(f"Word-piece {bad[0]} does not exist: the vocabulary has {V:,} (0 to {V - 1}).")
+    return [int(t) for t in ids]
+
+
 def _read(a: Atlas, req: ReadRequest) -> Dict[str, Any]:
     _check_neuron(a, req.layer, req.n)
-    ids = a.ids_of(req.text, req.chat)
+    if (req.text is None) == (req.ids is None):
+        raise ValueError("Give a text to read (text) or its word-piece ids (ids), one of the two.")
+    ids = a.ids_of(req.text, req.chat) if req.text is not None else read_ids(a, req.ids)
     iv, echo = a.interventions(*a.parse_pushes(req.neurons, req.heads), (1,))
     acts = ao.read_neuron(a.lm, ids, req.layer, req.n, iv, bos_id=a.rt.tokenizer.bos_token_id, spare_bos=req.spare_bos)
     units = []
@@ -1070,7 +1244,9 @@ def _read(a: Atlas, req: ReadRequest) -> Dict[str, Any]:
 async def reads(req: ReadRequest) -> Dict[str, Any]:
     """The neuron's activation at every word-piece of a text (the reference's "reads you" and the scientist's
     `activations`), by display unit (the strongest piece of each), optionally with other neurons pushed and heads scaled
-    in the same pass, to test what drives it: only what comes before its feed-forward block can move it."""
+    in the same pass, to test what drives it: only what comes before its feed-forward block can move it. `ids` in place
+    of `text` reads those word-pieces exactly as given (no start mark added, `chat` unused): a stored passage's ids
+    read it again as its window was read."""
     a = atlas()
     return await on_gpu(_read, a, req)
 

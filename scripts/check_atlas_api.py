@@ -14,9 +14,12 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    head's row, its pattern, its wiring, its profile, its attention; the drive of a neuron, whose parts add up;
 6. with every index built (backend/atlas_build.py into the temporary atlas folder): the scales come from the stats
    index, the tooltip and the wiring from the indexes, the search finds a face by its first word-piece, the cone and
-   the web come back as the index has them, the layout and the active paths;
+   the web come back as the index has them, the layout and the active paths; a face's stored passages (the index's
+   events in order, the peak unit marked, each side cut where the window starts or ends, at a document's end mark or a
+   turn mark, or where the count runs out, `rel`, the regime, reads and follows counted with their lift), refusals in
+   plain words, and /reads given a passage's ids reading it again as the index has it;
 7. a vault edit in force: the wiring is read live again, the faces say their index words are stale, the caches keyed by
-   the edits in force are not reused;
+   the edits in force are not reused, the passages of the edited neuron and of later layers are marked stale;
 8. the field notes: kept, shown on the tooltip and the wiring, forgotten, refused in plain words, a corrupt file moved
    aside with one warning;
 9. the census routes on a run written here: its units ranked, a unit's rollouts and baselines, one rollout, the spread;
@@ -213,6 +216,9 @@ def main() -> int:
           "/web/summary unbuilt: says the wiring index is missing")
     check(c.get("/api/atlas/layout").json() == {"available": False}, "/layout unbuilt")
     check(c.get("/api/atlas/cone", params={"layer": 2, "n": 5}).json()["ready"] is False, "/cone unbuilt")
+    pr = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5}).json()
+    check(pr["ready"] is False and "scripts/atlas_build.py passages" in pr["note"] and "passages" not in pr,
+          f"/neuron/passages unbuilt: says which build makes it ({pr})")
     wr = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()
     sc36 = ao.norm_scales(ao.activation_extremes(lm, _study_ids(rt)))
     live = ao.neuron_wiring(w, 2, 5, ao.link_scale(w.scalars, sc36["mlp_rms"], sc36["mid_rms"]), k=24)
@@ -538,6 +544,86 @@ def main() -> int:
           "/push: the push's unit from the stats index")
     section("with every index built: the indexes answer", before)
 
+    before = len(failures)
+    P = idx.get("passages")
+    marks = atlas_routes.passage_marks(tok)
+    eos = tok.eos_token_id
+    # cut_passage on hand-made ids: never across a mark, the mark itself left out; a peak on a mark that ends something
+    # shows nothing after it, on one that begins something nothing before it
+    t_open, t_close = tok.convert_tokens_to_ids("<|turn>"), tok.convert_tokens_to_ids("<turn|>")
+    ids_h = [bos, 40, 41, t_open, 42, 43, 44, 45, t_close, 46]
+    check(atlas_routes.cut_passage(ids_h, 6, 24, 6, marks) == (4, 8, "turn", "turn"), "cut_passage: a peak inside a turn shows that turn only")
+    check(atlas_routes.cut_passage(ids_h, 6, 1, 0, marks) == (5, 7, None, None), "cut_passage: the counts run out first")
+    check(atlas_routes.cut_passage([bos, 40, eos, 41, 42], 2, 24, 6, marks) == (1, 3, "start", "document"), "cut_passage: a peak on an end mark, nothing after it")
+    check(atlas_routes.cut_passage([bos, 40, t_open, 41], 2, 24, 6, marks) == (2, 4, "turn", "end"), "cut_passage: a peak on a turn's opening, nothing before it")
+    pr = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "+"}).json()
+    want = idx.passages(2, 5, "+")
+    tops = [x for x in pr["passages"] if x["kind"] == "top"]
+    smps = [x for x in pr["passages"] if x["kind"] == "sample"]
+    check(pr["ready"] and pr["source"] == "index" and pr["k"] == len(tops) == 6 and pr["K"] == 6 and pr["per_window"] == 1
+          and pr["tokens"] == int(stats["tokens"]) and pr["corpus"] == "check" and pr["sampled"] == 3 and len(smps) == len(want["sample"]),
+          f"/neuron/passages: six top passages and the samples, with their provenance ({ {k_: pr.get(k_) for k_ in ('k', 'K', 'tokens', 'corpus', 'sampled')} })")
+    check([(x["window"], x["at"]) for x in tops] == [(x["window"], x["at"]) for x in want["top"]] and len({x["window"] for x in tops}) == 6,
+          "/neuron/passages: the index's events, strongest first, one a window")
+    span_bad, cuts = [], set()
+    for face in ("+", "-"):
+        for (l, n) in ((2, 5), (0, 9), (4, 77), (5, 120)):
+            r_ = c.get("/api/atlas/neuron/passages", params={"layer": l, "n": n, "face": face, "before": 24, "after": 6}).json()
+            ext_ = float(stats["pos" if face == "+" else "neg"][l, n])
+            for x in r_["passages"]:
+                ids_w, at = idx.window_ids(x["window"]), x["at"]
+                s_, e_ = x["span"]
+                why_b, why_a = x["cut"]
+                cuts.add(why_b)
+                cuts.add(why_a)
+                shown = ids_w[s_:e_]
+                # the units are the span's own, the peak marked in the one holding it; the span stops where its reason
+                # says: right after a mark (the start mark, an end mark), at the window's end, or once the count is
+                # reached (a few pieces more to keep a character whole)
+                ok = (x["ids"] == ids_w[:e_] and s_ <= at < e_
+                      and x["units"] == [[t, (at - s_) in i_] for t, i_ in ao.token_units(tok, shown)]
+                      and not any(t in marks for i_, t in enumerate(shown) if s_ + i_ != at)
+                      and (why_b != "start" or s_ == 1) and (why_b != "document" or ids_w[s_ - 1] == eos)
+                      and (why_b is not None or 24 <= at - s_ <= 27)
+                      and (why_a != "end" or e_ == len(ids_w)) and (why_a != "document" or ids_w[e_] == eos)
+                      and (why_a is not None or 6 <= e_ - at - 1 <= 9)
+                      and x["regime"] == ("p" if x["g"] > 0 else "n") + ("p" if x["u"] > 0 else "n")
+                      and (x["rel"] is None or abs(x["rel"] - x["act"] / ext_) < 2e-3)
+                      and x["next"] == (vocab[ids_w[at + 1]] if at + 1 < len(ids_w) else None))
+                if not ok:
+                    span_bad.append((l, n, face, x["window"], at, x["cut"]))
+    check(not span_bad, f"/neuron/passages: each passage's span, peak unit, cut, regime, rel and next ({span_bad[:3]})")
+    check({"start", "document", "end", None} <= cuts, f"/neuron/passages: passages cut at the window's start, at a document's end mark, at the window's end and by the count ({cuts})")
+    from collections import Counter
+
+    rc = Counter(idx.window_ids(x["window"])[x["at"]] for x in tops)
+    fc = Counter(idx.window_ids(x["window"])[x["at"] + 1] for x in tops if x["at"] + 1 < len(idx.window_ids(x["window"])))
+    uni, toks_ = P["unigram"], int(stats["tokens"])
+    for key, cnt in (("reads", rc), ("follows", fc)):
+        check(sorted((r_["id"], r_["n"]) for r_ in pr[key]) == sorted(cnt.items()) and all(
+            abs(r_["lift"] - (r_["n"] / sum(cnt.values())) / (int(uni[r_["id"]]) / toks_)) < 0.06 for r_ in pr[key]),
+              f"/neuron/passages: {key} counts the word-pieces {'at the peaks' if key == 'reads' else 'just after them'}, each with its lift over the unigram base rate")
+    check(pr["words_note"] == f"from 6 passages of a {toks_:,}-word-piece corpus; not validated as a label", f"/neuron/passages: the words' note ({pr['words_note']})")
+    check(c.get("/api/atlas/neuron/passages?layer=2&n=5&face=+").json()["face"] == "+" and c.get("/api/atlas/neuron/passages",
+          params={"layer": 2, "n": 5, "face": "-", "k": 2}).json()["k"] == 2, "/neuron/passages: a bare + in a URL is the + face; k shows fewer")
+    for params, says in [({"layer": 2, "n": 5, "face": "x"}, 'A face is "+" or "-"'), ({"layer": 6, "n": 5}, "Layer 6 does not exist"),
+                         ({"layer": 2, "n": 5, "k": 0}, "k counts passages"), ({"layer": 2, "n": 5, "before": -1}, "0 or more")]:
+        r = c.get("/api/atlas/neuron/passages", params=params)
+        check(r.status_code == 400 and says in r.json()["detail"], f"/neuron/passages {params}: refused in plain words ({r.text[:120]})")
+    # /reads given a stored passage's ids reads its window again: the activation at the peak is the index's
+    x0 = tops[0]
+    rd = c.post("/api/atlas/reads", json={"layer": 2, "n": 5, "ids": x0["ids"]}).json()
+    live = ao.read_neuron(lm, x0["ids"], 2, 5, None, bos_id=bos, spare_bos=True)
+    check([u["act"] for u in rd["units"]] == [max((live[i] for i in idx_), key=abs) for _, idx_ in ao.token_units(tok, x0["ids"])]
+          and sum(len(u["pieces"]) for u in rd["units"]) == len(x0["ids"]), "/reads with ids: read exactly as given, as read_neuron reads those ids")
+    check(np.float16(live[x0["at"]]) == P["pos_act"][2, 5, 0], f"/reads with ids: the stored passage read again gives the index's activation ({live[x0['at']]})")
+    for body, says in [({"layer": 2, "n": 5}, "one of the two"), ({"layer": 2, "n": 5, "text": "hi", "ids": [bos, 40]}, "one of the two"),
+                       ({"layer": 2, "n": 5, "ids": [bos] * 2049}, "at most 2,048"), ({"layer": 2, "n": 5, "ids": [bos, len(vocab)]}, f"Word-piece {len(vocab)} does not exist"),
+                       ({"layer": 2, "n": 5, "ids": []}, "Give the word-piece ids")]:
+        r = c.post("/api/atlas/reads", json=body)
+        check(r.status_code == 400 and says in r.json()["detail"], f"/reads {str(body)[:60]}: refused in plain words ({r.text[:120]})")
+    section("the passages: the index's events, cut at marks, reads and follows, refusals, and /reads with their ids", before)
+
     # ------------------------------------------------------------------------------------------- 7. a vault edit
     before = len(failures)
     roles_before = c.get("/api/atlas/neuron/heads", params={"layer": 2, "n": 5}).json()
@@ -557,6 +643,12 @@ def main() -> int:
     check(nl["edited"] and "writes_nothing" in nl["faces"]["+"]["check"]["reasons"], "/neuron/lens: read as it now is")
     check(nl["steer"] is None and "before the vault edit" in nl.get("steer_stale", "") and nl["ceiling"]["write"] == 0.0,
           "/neuron/lens: the index's steer lens, read before the edit, is not shown as its own; a silenced neuron can write nothing")
+    st_own = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5}).json().get("stale", "")
+    st_later = c.get("/api/atlas/neuron/passages", params={"layer": 4, "n": 7}).json().get("stale", "")
+    check("vault edit in force on this neuron" in st_own and "earlier layers" in st_later
+          and "stale" not in c.get("/api/atlas/neuron/passages", params={"layer": 1, "n": 7}).json()
+          and "stale" not in c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 6}).json(),
+          "/neuron/passages: stale on the edited neuron and on later layers, not on its own layer's others or earlier ones")
     check("stale" in c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5}).json() and "stale" in c.get("/api/atlas/cone", params={"layer": 2, "n": 5}).json()
           and c.get("/api/atlas/web", params={"layer": 2, "n": 5}).headers.get("X-Web-Stale") == "1"
           and "links_stale" in c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json(),
