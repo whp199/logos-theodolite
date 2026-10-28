@@ -103,7 +103,7 @@ async def lifespan(_app: FastAPI):
     logger.info("Initializing TheodoliteRuntime (Gemma-4-31B W4A16 + J++ Lens)...")
     _RUNTIME = TheodoliteRuntime(load_jlens=False).load()
     # how the 4-bit weights are unpacked ($THEODOLITE_UNPACKER, backend/w4a16_fast.py: each gives the same bits, tested
-    # before anything is read; the reference unpacker unless it is set)
+    # before anything is read where install tests it: compiled, resident, and lut on CUDA; the reference unless set)
     w4a16_fast.install(_RUNTIME, os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference", log=logger.info)
     _VAULT = LarqlVaultEngine(_RUNTIME)
     bind_runtime(_RUNTIME, _VAULT)

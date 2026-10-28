@@ -107,9 +107,11 @@ same arithmetic through `torch.compile`, the unpacker alone, the model left eage
 unpacked once and kept beside the packed one, overlays applied to a clone as the pinned forward applies them. Each gives
 the reference's bits: the pieces minus 8 are exact in bf16, so on every route the one rounding is the multiply by the
 scale, an exact float32 product rounded once to nearest even. `scripts/check_dequant.py` shows it on the CPU for every
-(piece, bf16 scale) pair and on a 4-bit stand-in's readings; at install `compiled` and `resident` (and `lut` on CUDA)
-are compared with the reference on every linear, by bits, and refused in plain words on any difference. A reading
-records which ran (`unpacker` in a census run's or an index's meta, and in `/api/health`).
+(piece, bf16 scale) pair (`compiled`: every number; only the NaNs' own bits differ, which no finite checkpoint holds)
+and on a 4-bit stand-in's readings. At install `compiled` (and `lut` on CUDA only) is compared with the reference on
+every linear, by bits and strides, and on that table; `resident` by each kept weight against a fresh unpacking and each
+linear's forward against the pinned one on a fixed two-row probe, by bits; any difference is refused in plain words. A
+reading records which ran (`unpacker` in a census run's or an index's meta, and in `/api/health`).
 
 ---
 
