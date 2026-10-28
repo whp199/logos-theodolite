@@ -829,8 +829,8 @@ and `scripts/check_sweep_refactor.py` (two checkouts, one older than the factory
 | `THEODOLITE_CPU_MEMORY` | `off` | leave out the CPU's memory estimates (below) |
 
 `GET /api/health` now also sends `device` and `weights`, the weights card (`runtime_factory.weights_card`: a GGUF's
-provenance; for the checkpoint its repo id and the snapshot of it the Hugging Face cache holds); the lab daemon's
-`/health` and every `/exec` reply send the model id and the card too.
+provenance; for the checkpoint its repo id, the snapshot of it the Hugging Face cache holds and its weight files); the
+lab daemon's `/health` and every `/exec` reply send the model id and the card too.
 
 **What works now**
 
@@ -861,10 +861,14 @@ provenance; for the checkpoint its repo id and the snapshot of it the Hugging Fa
   on the CPU.
 - Every index's meta names the weights it was built from (`weights`, the weights card), beside the model id; the
   server, `census_run.py`'s stats lookup and `atlas_build.py` read an index only when `atlas_index.weights_differ`
-  finds no difference (a GGUF by its fingerprint and header, the checkpoint by its repo and snapshot; an index built
-  before metas named their weights, or a snapshot the cache does not name, by the model id alone), and refuse it in
-  plain words otherwise ("built from other weights (…): rebuild it"). A steer lens layer, the passages' parts and a
-  partial lens build are not resumed on other weights.
+  finds no difference (a GGUF by its fingerprint and header; the checkpoint by its repo and the weight files its
+  snapshot links to, config.json and the .safetensors, by the blobs the hub's cache names for their content, so another
+  commit of the same files, a model card edited, is the same weights; an index built before metas named their weights,
+  or a cache that does not link its files, by the model id alone), and refuse it in plain words otherwise ("built from
+  other weights (…): rebuild it"); `census_run.py` and `atlas_build.py` say so when the stats index is there but
+  refused, rather than that there is none. A steer lens layer, the passages' parts and a partial lens build are not
+  resumed on other weights. A census run's meta records the model id only, so a run is not kept to one set of weights
+  behind one id.
 - The lab's gradient passes (`labkit.Lab.grad_linears`, `same_pos_vjp`, what the lens fits rest on) run through a GGUF
   twin of its W4A16 autograd function (`_GGUFLinearFn`: the weight unpacked by `gguf_weights`, overlays laid on, and
   unpacked again in backward, so no weight is kept), so lens fits and other lab experiments can run from a GGUF or on
@@ -880,15 +884,15 @@ provenance; for the checkpoint its repo id and the snapshot of it the Hugging Fa
 
 **Packed or dense.** `packed` keeps each quantised layer's blocks (on the CPU read in place through the file's memory
 map) and unpacks the whole weight at every forward, as the W4A16 forward unpacks the checkpoint; `resident` unpacks once
-at load and drops the blocks; `dense` builds plain `nn.Linear` layers, as transformers' own GGUF loader would; `int4mm`
-is the int4 kernel below, not one of the three. A tensor stored as F32, F16 or BF16 is a plain layer in every mode. All
-three hear the vault's overlays as `_w4a16_forward` lays them (column overlays, then row overlays, on a clone), and the
-forward is the same numbers in every mode. The embedding (which is also the tied lm_head), the norms and the layer
-scalars are unpacked to the model's dtype.
+at load and drops the blocks; `dense` builds plain `nn.Linear` layers, as transformers' own GGUF loader would. A tensor
+stored as F32, F16 or BF16 is a plain layer in every mode. All three hear the vault's overlays as `_w4a16_forward` lays
+them (column overlays, then row overlays, on a clone), and the forward is the same numbers in every mode. The embedding
+(which is also the tied lm_head), the norms and the layer scalars are unpacked to the model's dtype.
+`int4mm`, the int4 kernel below, is none of the three.
 
-**The norm convention.** `Gemma4RMSNorm` multiplies by its stored weight, which already holds what Gemma 2 and 3 write
-as 1 + w; a Gemma 4 GGUF stores that same number. Read in llama.cpp's converter (`conversion/gemma.py`, master of 28
-October 2026: `Gemma4Model.norm_shift` returns 0, where its Gemma 3 adds 1) and in transformers (its GGUF reader
+**The norm convention.** `Gemma4RMSNorm` multiplies by its stored weight, which already holds what Gemma 2 and 3 write as
+1 + w; a Gemma 4 GGUF stores that same number. Read in llama.cpp's converter (`conversion/gemma.py`, master of
+28 October 2026: `Gemma4Model.norm_shift` returns 0, where its Gemma 3 adds 1) and in transformers (its GGUF reader
 subtracts 1 for gemma2 and gemma3 and has no rule for gemma4). The check writes the stand-in with its norms as they are,
 reads them back unchanged, gets the stand-in's own forward, and shows a file holding w + 1 would not;
 `compare_gguf_ct.py` names a file whose norms sit exactly 1 above the checkpoint's.
@@ -905,13 +909,12 @@ last MiB of the data, not with a change in between.
 are the file's; else from the file's own metadata through transformers' GGUF tokenizer converter. transformers'
 `AutoTokenizer.from_pretrained(..., gguf_file=...)` cannot be used for a llama.cpp Gemma 4: it first builds a config,
 and `Gemma4TextConfig` refuses the per-layer `head_count_kv` list llama.cpp writes. Whether the GGUF-built tokenizer
-splits text exactly as the repo's `tokenizer.json` is not checked (no Gemma 4 tokenizer is cached on the machine this
-was written on); on the stand-in it does, and transformers' converter adds GPT-2's `<|endoftext|>` past the model's
-rows.
+splits text exactly as the repo's `tokenizer.json` is not checked (no Gemma 4 tokenizer is cached on the machine this was
+written on); on the stand-in it does, and transformers' converter adds GPT-2's `<|endoftext|>` past the model's rows.
 
-**transformers' own GGUF loader** (5.21) does not build a llama.cpp Gemma 4 correctly: besides the config above, its
-name map looks for `layer_output_scale`, where llama.cpp writes `layer_output_scale.weight`, so the layer scalars are
-left out. That is why `gguf_model.py` builds the model itself.
+**transformers' own GGUF loader** (5.21) does not build a llama.cpp Gemma 4 correctly: besides the config above, its name
+map looks for `layer_output_scale`, where llama.cpp writes `layer_output_scale.weight`, so the layer scalars are left out.
+That is why `gguf_model.py` builds the model itself.
 
 **The CPU path** (`THEODOLITE_DEVICE=cpu`; measured on 4 vCPUs of a 2.1 GHz Xeon with AMX and AVX512-BF16, the rest
 inferred):
@@ -944,39 +947,51 @@ took 0.19 s at one row and 10 s at 64, and quantises the activations to int8; th
 the reference at 8 rows and more. The kernel's weight is (q − 8) × scale + zero: a W4A16 scale is held exactly, a Q4_0
 d (fp16) is rounded to bf16, and the sums are the kernel's own, so its readings are not the reference's bits: their
 model id ends `+int4mm` (no census run, index or lens card mixes them with the reference's) and the weights card says
-`int4mm`. Its accessors read the file's blocks (or `weight_packed`) as before; a layer under a vault edit, and the
-lab's gradient passes, run the reference; a layer the kernel cannot take (out features not in sixteens, a GGUF type
-other than Q4_0) stays packed. A row's product through the kernel is the same alone or in a batch.
+`int4mm`. Its accessors read the file's blocks (or `weight_packed`) as before. A vault edit keeps the kernel's
+product and adds the edit as its difference from the file's numbers (`int4_cpu.with_overlay_terms`: the edited
+columns' new values less the file's, times their activations, in float32), so an edit that changes no weight changes no
+reading, and what the voice, a sweep or a causal check credits to an edit is the edit's alone, not a change of numeric
+path as well (before this the edited layer ran the reference, and on the stand-in an edit setting a column to its own
+value changed 13 of 30 greedy answers). The lab's gradient passes run the reference; a layer the kernel cannot take (out
+features not in sixteens, a GGUF type other than Q4_0) stays packed, and a file of which it takes none is refused. A
+row's product through the kernel is the same alone or in a batch.
 
 How far it departs is `int4_cpu.compare_rows`, after neuron-explorer's `sweep/check_equivalence.py` judged on what a
 census reads: `scripts/compare_int4mm.py` takes a canary census on the reference at two batches (the floor) and through
-the kernel, and holds it to a rule fixed before any run on the 31B: its readings stand for the reference's only if they
-depart no further than the floor in identical answers, shared prefix, largest |Δ log-prob| and top-5 overlap. On the
-stand-in's Q4_0 GGUF in bf16 the floor is nought (the reference is the same at batch 8 and 3), and through the kernel
-30 of 64 answers are identical, the shared prefix 65%, the largest |Δ log-prob| over it 0.024, the top-5 overlap 0.95:
-its own class by the rule (the stand-in's small, near-tied logits split greedy answers easily; the 31B is untested).
+the kernel (by default the design's canary: 16 neurons and 8 controls), and holds it to a rule fixed before any run
+on the 31B: its readings are their own class if they depart further than the floor in identical answers, shared
+prefix, largest |Δ log-prob| or top-5 overlap. Those are only the per-answer half of the equivalence design it follows:
+the per-run half (the rankings of a whole depth pool compared: Spearman's ρ of mass, the top 100's overlap, the neurons
+above every control, the false discoveries) is not taken, so the script can only refuse; within the floor on all four,
+the kernel's readings still do not stand for the reference's. On the stand-in's Q4_0 GGUF in bf16 (4 neurons, 2 controls, 64
+answers) the floor is nought (the reference is the same at batch 8 and 3), and through the kernel 30 of 64 answers are
+identical, the shared prefix 65%, the largest |Δ log-prob| over it 0.024, the top-5 overlap 0.95 (at the script's
+defaults, 244 answers: 119 identical, 67%, 0.030, 0.96): its own class by the rule (the stand-in's small, near-tied
+logits split greedy answers easily; the 31B is untested).
 
 A machine with more cores and memory bandwidth should be some times faster (inferred, not measured). Either way the CPU
 suits reading weights (the wiring, the lens build, `compare_gguf_ct.py`), single forwards (a sighting's capture) and
 pilots, not a census of a layer (217,604 answers: a step of 64 rows takes minutes on the reference path and about 21 s
-through int4mm, 253 layer-sized products, so some 50 days a layer at `--max-new 64` even so; inferred, not run). bf16 on
-the CPU runs through oneDNN, fast with AMX or AVX512-BF16 and emulated without; its sums are not the GPU's, so a reading
-taken on the CPU is its own determinism class, and its model id says so (`@cpu/bfloat16`).
+through int4mm, 253 layer-sized products, so some 50 days a layer at `--max-new 64` even so; inferred, not run).
+bf16 on the CPU runs through oneDNN, fast with AMX or
+AVX512-BF16 and emulated without; its sums are not the GPU's, so a reading taken on the CPU is its own determinism class,
+and its model id says so (`@cpu/bfloat16`).
 
 **CUDA assumptions, audited.** In the unpinned code: GET /api/health asked the card's memory whenever CUDA was available
 (now only for a runtime on a GPU); the server, the atlas, the vault, the causal check and the scientist's tools catch
 `torch.cuda.OutOfMemoryError`, which the CPU never raises (an allocation the CPU cannot make is a `RuntimeError` or the
-kernel's out-of-memory killer: now estimated first and refused in plain words, `backend/cpu_memory.py`); `_GPU_LOCK` is
-named for the GPU but serialises the model wherever it runs; `scripts/verify_*.py` are GPU checks by design. In the
-pinned `engine_runtime.py`, left as it is: `load()` (`:833`) and every sighting (`:2393`) call
-`torch.cuda.max_memory_allocated(self.device)` whenever CUDA is available, which for a CPU device torch 2.14.1 answers
-with 0 while CUDA is not initialised in the process, and refuses once it is (`memory_stats_as_nested_dict`; read from
-torch's code, not seen: there is no GPU here), so the GPUs are hidden as a precaution against a library initialising
-CUDA (a process that already has is warned); the default device is `cuda:0` (`:741`); the J++ lens always goes to the
-runtime's device (`:879`); the norm loop counts 60 layers (`:818`); the accessors read `weight_packed` (`:990-1077`,
-`:1252`); the sweep's shapes are the 31B's (`N_LAYERS`, `D_MODEL`, `D_FF` from the pinned `theodolite_math.py`).
-Changing any of these in the pinned file would make `R4_common.pinned_differ()` name it, and R4 reruns would then go
-from R4's registered commit, as R3's go from `it-jpp-refit`.
+kernel's out-of-memory killer: five readings that hold large buffers are now estimated first and refused in plain
+words, `backend/cpu_memory.py`); `_GPU_LOCK` is named for the GPU but serialises the
+model wherever it runs; `scripts/verify_*.py` are GPU checks by design. In the pinned `engine_runtime.py`, left as it is:
+`load()` (`:833`) and every sighting (`:2393`) call `torch.cuda.max_memory_allocated(self.device)` whenever CUDA is
+available, which for a CPU device torch 2.14.1 answers with 0 while CUDA is not initialised in the process, and refuses
+once it is (`memory_stats_as_nested_dict`; read from torch's code, not seen: there is no GPU here), so the GPUs are
+hidden as a precaution against a library initialising CUDA (a process that already has is warned); the default device
+is `cuda:0` (`:741`); the J++ lens always goes to the runtime's device
+(`:879`); the norm loop counts 60 layers (`:818`); the accessors read `weight_packed` (`:990-1077`, `:1252`); the sweep's
+shapes are the 31B's (`N_LAYERS`, `D_MODEL`, `D_FF` from the pinned `theodolite_math.py`). Changing any of these in the
+pinned file would make `R4_common.pinned_differ()` name it, and R4 reruns would then go from R4's registered commit, as
+R3's go from `it-jpp-refit`.
 
 **Not supported yet:** the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4 and Q1_0 (refused in plain words); Gemma 4's
 mixture-of-experts (26B-A4B), per-layer embeddings (E2B, E4B) and shared key-value layers (refused); a bit-identical

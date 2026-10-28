@@ -5,7 +5,8 @@ instrument's test reproduce the study's own numbers, and do its premises hold on
 Stop the :8765 server first (this loads the model itself and needs the whole card). It loads the runtime
 (backend/runtime_factory.py's make_runtime: the W4A16 checkpoint on cuda:0, unless THEODOLITE_GGUF names a GGUF of
 Gemma 4, whose numbers are then held to the study's) and the vault, binds the scientist tools, and calls the tool
-directly (and once through the server app's WebSocket, in process). Layers count from 0 here, as in the study's reports (page layer = code layer + 1). It checks:
+directly (and once through the server app's WebSocket, in process). Layers count from 0 here, as in the study's
+reports (page layer = code layer + 1). It checks:
 A. N1A's gender poles (study mode, k = 60, activation; experiments/results/N1A_gender.json, tag kA): layer 50 neuron
    5313, face -: max|a| 6.531 (within 2%), c(' she') - c(' he') +13.81 (within 5%), mean KL 0.442 (within 10%), and at
    least 7 of its ten top rises among N1A's causal_top10; layer 50 n549, face -: -12.85 (within 5%); layer 40 n16757,
