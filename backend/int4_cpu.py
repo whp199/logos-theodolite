@@ -24,11 +24,14 @@ scripts/check_gguf_cpu.py §4, on the real model by scripts/compare_int4mm.py.
 
 What it leaves alone. The accessors (`slice_w_*`, `get_full_w_*`, `write_col_norms`, the atlas's weights, the vault's
 reads) read the layer's own blocks or `weight_packed` as before, so they give the file's numbers, not the kernel's. A
-layer with a vault edit in force runs the reference forward, overlays laid on as `_w4a16_forward` lays them (`int4mm`
-has no overlays of its own). The lab's gradient passes (labkit.Lab.grad_linears) run the reference forward and
-backward (the kernel has no backward). A layer the kernel cannot take (out features not a multiple of 16, in features
-not of 32, a GGUF type other than Q4_0) stays packed on the reference path, as `layers_as` counts. On a GPU it is
-refused: the kernel is the CPU's.
+layer with a vault edit in force keeps the kernel's product and adds the edit to it as its difference from those
+numbers (`with_overlay_terms`), so an edit that changes no weight adds exactly nought, and what a reading credits to
+an edit (the voice before and after it, a sweep or causal check with it in force) is the edit's alone, not a change of
+numeric path as well. The lab's gradient passes (labkit.Lab.grad_linears) run the reference forward and backward (the
+kernel has no backward). A layer the kernel cannot take (out features not a multiple of 16, in features
+not of 32, a GGUF type other than Q4_0) stays packed on the reference path, as `layers_as` counts; a model of which it
+can take none (a Q4_K file) is refused, not run on the reference under a `+int4mm` id. On a GPU it is refused: the
+kernel is the CPU's.
 """
 
 from __future__ import annotations
@@ -43,7 +46,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from backend.gguf_weights import GGUFLinear, with_overlays
+from backend.gguf_weights import GGUFLinear, dense_cols, dense_rows
 
 KERNEL = "int4mm"
 SUFFIX = "+int4mm"  # after the model id's reading class: gguf:<file>#<fp>@cpu/bfloat16+int4mm
@@ -84,6 +87,35 @@ def mm(x: torch.Tensor, packed: torch.Tensor, scales_zeros: torch.Tensor, out_fe
     return y if bias is None else y + bias.to(y.dtype)
 
 
+def with_overlay_terms(mod: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """The kernel's product `y` (x @ W.T + b) with the module's live vault overlays laid on as their differences from
+    its own weight W (`gguf_weights.dense_cols` / `dense_rows`: the file's numbers, which the accessors and the vault
+    read), summed in float32 and rounded once to y's dtype; `y` itself when none is in force. A column overlay
+    (`_memit_col_overlays`: w[:, i] = v) adds x[..., i] (v - W[:, i]); a row overlay (`_memit_row_overlays`: w[i, :] = v,
+    laid on after the columns, as `_w4a16_forward` lays them) adds x (v - W'[i, :]) at output i, W' the weight with the
+    column overlays on. Each v is first rounded to the model's dtype, as the reference rounds it. So an overlay that
+    changes no weight adds exactly nought, and the edited layer is the kernel's weight moved by the edit."""
+    cols: Optional[Dict[int, torch.Tensor]] = getattr(mod, "_memit_col_overlays", None)
+    rows: Optional[Dict[int, torch.Tensor]] = getattr(mod, "_memit_row_overlays", None)
+    if not cols and not rows:
+        return y
+    dt = y.dtype  # the model's, as the kernel reads the activations
+    acc = y.to(torch.float32)
+    if cols:
+        cidx = torch.tensor(list(cols), dtype=torch.long, device=x.device)
+        new_c = torch.stack([v.to(device=x.device, dtype=dt) for v in cols.values()]).to(torch.float32)  # [K, out]
+        delta_c = new_c - dense_cols(mod, cidx).to(device=x.device, dtype=torch.float32)
+        acc = acc + x.index_select(-1, cidx).to(dt).to(torch.float32) @ delta_c
+    if rows:
+        ridx = torch.tensor(list(rows), dtype=torch.long, device=x.device)
+        new_r = torch.stack([v.to(device=x.device, dtype=dt) for v in rows.values()]).to(torch.float32)  # [R, in]
+        base = dense_rows(mod, ridx).to(device=x.device, dtype=torch.float32).clone()
+        if cols:
+            base[:, cidx] = new_c[:, ridx].T  # the rows as the column overlays left them
+        acc = acc.index_add(-1, ridx, x.to(dt).to(torch.float32) @ (new_r - base).T)
+    return acc.to(dt)
+
+
 def q4_0_codes(blocks: torch.Tensor, in_features: int) -> Tuple[torch.Tensor, torch.Tensor]:
     """A Q4_0 tensor's bytes uint8 [out, in / 32 x 18] -> (codes uint8 [out, in] in 0..15, d float32 [out, in / 32]):
     each block d (fp16) then 16 bytes, byte j holding element j low and j + 16 high (gguf_weights._q4_0)."""
@@ -106,8 +138,8 @@ def w4a16_codes(weight_packed: torch.Tensor) -> torch.Tensor:
 class Int4GGUFLinear(GGUFLinear):
     """A Q4_0 `GGUFLinear` whose forward is torch's int4 CPU kernel. It keeps its blocks (on the CPU the file's memory
     map) for every accessor, which read the file's numbers as a packed layer's do, and torch's packing of the same codes
-    with d in the model's dtype for the forward; with a vault overlay in force, or `int4_enabled` false, its forward is
-    the packed layer's own (the reference)."""
+    with d in the model's dtype for the forward; a vault overlay in force is added to the kernel's product
+    (`with_overlay_terms`); with `int4_enabled` false its forward is the packed layer's own (the reference)."""
 
     int4mm = True
 
@@ -124,9 +156,9 @@ class Int4GGUFLinear(GGUFLinear):
         return f"in_features={self.in_features}, out_features={self.out_features}, Q4_0 int4mm, {self.compute_dtype}"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if not self.int4_enabled or self._memit_col_overlays or self._memit_row_overlays:
+        if not self.int4_enabled:
             return super().forward(x)
-        return mm(x, self.int4_packed, self.int4_scales_zeros, self.out_features, self.bias)
+        return with_overlay_terms(self, x, mm(x, self.int4_packed, self.int4_scales_zeros, self.out_features, self.bias))
 
 
 def int4_layers(model: nn.Module) -> List[nn.Module]:
@@ -140,17 +172,19 @@ def _w4a16_forward(module: nn.Module) -> Any:
     pinned = er._make_w4a16_linear_forward(module)
 
     def _int4mm_forward(self: nn.Module, x: torch.Tensor) -> torch.Tensor:
-        if not self.int4_enabled or getattr(self, "_memit_col_overlays", None) or getattr(self, "_memit_row_overlays", None):
+        if not self.int4_enabled:
             return pinned(x)  # the reference: the pinned forward, its overlays laid on
-        return mm(x, self.int4_packed, self.int4_scales_zeros, int(self.weight_packed.shape[0]), getattr(self, "bias", None))
+        y = mm(x, self.int4_packed, self.int4_scales_zeros, int(self.weight_packed.shape[0]), getattr(self, "bias", None))
+        return with_overlay_terms(self, x, y)
 
     return types.MethodType(_int4mm_forward, module)
 
 
 def install_w4a16(rt_or_model: Any, dtype: torch.dtype = torch.bfloat16) -> Dict[str, Any]:
     """Bind the kernel's forward on every W4A16 module of a loaded checkpoint (weight_packed and weight_scale kept, for
-    the accessors and for the reference forward an edited layer runs), its scales exact (they are bf16). Returns how the
-    linears are held ({"w4a16 int4mm": n, "w4a16 packed": m} for those the kernel cannot take)."""
+    the accessors, the vault's edits laid on the kernel's product and the reference forward the layer runs when the
+    kernel is turned off), its scales exact (they are bf16). Returns how the linears are held ({"w4a16 int4mm": n,
+    "w4a16 packed": m} for those the kernel cannot take); refused when it can take none."""
     why = kernel_missing()
     if why:
         raise ValueError(f"The int4mm linears cannot be used: {why}.")
@@ -170,6 +204,9 @@ def install_w4a16(rt_or_model: Any, dtype: torch.dtype = torch.bfloat16) -> Dict
         mod.int4_packed, mod.int4_scales_zeros, mod.int4_enabled, mod.int4mm = packed, sz, True, True
         mod.forward = _w4a16_forward(mod)
         kinds["w4a16 int4mm"] += 1
+    if not kinds["w4a16 int4mm"]:
+        raise ValueError(f"The int4mm linears cannot be used: the kernel takes none of this model's W4A16 layers "
+                         f"({dict(kinds) or 'it has none'}), so its readings would be the reference's under another model id.")
     return dict(sorted(kinds.items()))
 
 

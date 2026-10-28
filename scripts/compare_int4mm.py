@@ -4,7 +4,7 @@ THEODOLITE_CHECKPOINT_LINEARS=int4mm) departs from the reference path, and how m
 
     .venv/bin/python -I scripts/compare_int4mm.py --time                 # a 5,376 x 21,504 layer each way, 1, 8, 64 rows
     THEODOLITE_GGUF=model.gguf THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEODOLITE_GGUF_LENS=none \\
-        .venv/bin/python -I scripts/compare_int4mm.py --layer 45 --neurons 0-3 --random-controls 2 --max-new 16 --json int4mm.json
+        .venv/bin/python -I scripts/compare_int4mm.py --layer 45 --max-new 16 --json int4mm.json
     .venv/bin/python -I scripts/compare_int4mm.py --stand-in             # the same on the stand-in written as a Q4_0 GGUF
 
 --time: one random Q4_0 layer of 5,376 x 21,504 and one of 21,504 x 5,376 (the 31B's feed-forward shapes), at 1, 8 and
@@ -12,17 +12,20 @@ THEODOLITE_CHECKPOINT_LINEARS=int4mm) departs from the reference path, and how m
 unpack, then F.linear), the resident bf16 product and the kernel (`int4_cpu.timed_layer`); about 3 GB of memory.
 
 The comparison, after neuron-explorer's sweep/check_equivalence.py, judged on what a census reads
-(scripts/check_gguf_cpu.py §4 runs it on the stand-in): a canary census
-(backend/census.py's questions and main_rel's doses, the neurons --neurons of --layer beside --random-controls controls,
-answers of at most --max-new word-pieces, the stream's p50 read once over the study's 36 texts on the reference path),
-taken on one runtime three times: on the reference path at --batch and at --floor-batch (the instrument's own floor:
-how far two batch sizes of the reference already differ here), then through the kernel at --batch (`int4_cpu.enable`
-turns it off and on in place, and the model id's +int4mm with it). For each pair (`int4_cpu.compare_rows`): the
-answers identical, the shared prefix as a share of the reference's answer, the steps where they split, the largest
-|delta log-prob| over the shared prefix, the overlap of the five likeliest. The rule, fixed here before any run on the
-31B: the kernel's readings stand for the reference's only if they depart from it no further than the floor on all
-four of those; else they are their own class, as their model id already makes them. Exits 0 either way; the verdict
-is printed and in --json.
+(scripts/check_gguf_cpu.py §4 runs it on the stand-in): a canary census (backend/census.py's questions and main_rel's
+doses, the neurons --neurons of --layer beside --random-controls controls, by default the 16 and 8 of the canary in
+the equivalence design this follows, answers of at most --max-new word-pieces, the stream's p50 read once over the
+study's 36 texts on the reference path), taken on one runtime three times: on the reference path at --batch and at
+--floor-batch (the instrument's own floor: how far two batch sizes of the reference already differ here), then
+through the kernel at --batch (`int4_cpu.enable` turns it off and on in place, and the model id's +int4mm with it).
+For each pair (`int4_cpu.compare_rows`): the answers identical, the shared prefix as a share of the reference's
+answer, the steps where they split, the largest |delta log-prob| over the shared prefix, the overlap of the five
+likeliest: the design's per-answer measures. Its per-run half (both rankings of a whole depth pool, 4,484 answers:
+Spearman's rho of mass, the top 100's overlap, the neurons above every control, the false-discovery counts) is not
+taken here, so this rule can only refuse. The rule, fixed here before any run on the 31B: the kernel's readings are
+their own class, as their model id already makes them, if they depart from the reference further than the floor on
+any of the four measures; within it on all four they still do not stand for the reference's until the ranking's half
+has been taken and its leads are unchanged. Exits 0 either way; the verdict is printed and in --json.
 """
 
 from __future__ import annotations
@@ -57,7 +60,9 @@ def canary(rt: Any, out_dir: Path, tag: str, layer: int, neurons: List[int], con
 
 
 def verdict(floor: Dict[str, Any], kernel: Dict[str, Any]) -> Dict[str, Any]:
-    """The rule: the kernel's departure from the reference no larger than the floor's on each of the four measures."""
+    """The rule's per-answer half: whether the kernel's departure from the reference is no larger than the floor's on
+    each of the four measures (`within_floor`, and `per_answer_within_floor` all four). `stands_for_reference` is never
+    true here: the design's per-run half, the ranking's leads over a whole depth pool, is not taken (`ranking` None)."""
     share = lambda r: r["identical"] / max(1, r["answers"])  # noqa: E731
     each = {
         "identical": share(kernel) >= share(floor),
@@ -65,10 +70,11 @@ def verdict(floor: Dict[str, Any], kernel: Dict[str, Any]) -> Dict[str, Any]:
         "max_abs_dlogprob": kernel["max_abs_dlogprob"] <= floor["max_abs_dlogprob"],
         "topk_overlap": (kernel["topk_overlap"] or 0.0) >= (floor["topk_overlap"] or 0.0),
     }
-    return {"stands_for_reference": all(each.values()), "within_floor": each}
+    return {"stands_for_reference": False, "per_answer_within_floor": all(each.values()), "within_floor": each,
+            "ranking": None}
 
 
-def compare(rt: Any, out_dir: Path, *, layer: int, neurons: List[int], controls: int = 2, max_new: int = 16,
+def compare(rt: Any, out_dir: Path, *, layer: int, neurons: List[int], controls: int = 8, max_new: int = 16,
             batch: int = 8, floor_batch: int = 3) -> Dict[str, Any]:
     """The three canaries and their comparisons (the module's docstring); `rt` holds int4mm layers, left on."""
     from backend import atlas_ops as ao
@@ -121,8 +127,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--reps", type=int, default=5, help="--time: the best of this many")
     ap.add_argument("--stand-in", action="store_true", help="compare on the stand-in written as a Q4_0 GGUF (a dry run)")
     ap.add_argument("--layer", type=int, default=2, help="the canary's layer, counting from 0")
-    ap.add_argument("--neurons", default="0-3", help='the canary\'s neurons: "0-3", "5,9,12"')
-    ap.add_argument("--random-controls", type=int, default=2)
+    ap.add_argument("--neurons", default="0-15", help='the canary\'s neurons: "0-15" (the design\'s 16), "5,9,12"')
+    ap.add_argument("--random-controls", type=int, default=8, help="the canary's random controls (the design's 8)")
     ap.add_argument("--max-new", type=int, default=16)
     ap.add_argument("--batch", type=int, default=8, help="the batch of the reference and the kernel")
     ap.add_argument("--floor-batch", type=int, default=3, help="the reference's second batch, for the floor")
@@ -176,8 +182,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("  " + say(f"floor (the reference at batch {rep['batch']} against batch {rep['floor_batch']})", rep["floor"]))
     print("  " + say(f"int4mm (against the reference, both at batch {rep['batch']})", rep["kernel"]))
     v = rep["verdict"]
-    print(("the kernel's readings depart no further than the floor: they may stand for the reference's"
-           if v["stands_for_reference"] else
+    print(("the kernel's answers depart no further than the floor; the ranking's half of the rule (a whole depth pool) is "
+           "not taken here, so they do not yet stand for the reference's"
+           if v["per_answer_within_floor"] else
            f"the kernel's readings depart further than the floor ({', '.join(k for k, ok in v['within_floor'].items() if not ok)}): "
            "they are their own class, as their model id makes them"))
     if a.json:

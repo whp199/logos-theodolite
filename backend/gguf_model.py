@@ -11,7 +11,8 @@ on). The seven linear layers of every block are `linears`:
 - "resident": the same layer, unpacked once at load (memory the dense weight's);
 - "dense": a plain `nn.Linear` holding the unpacked weight, as transformers' own GGUF loader would build it;
 - "int4mm" (the CPU only): a Q4_0 tensor becomes an `int4_cpu.Int4GGUFLinear`, multiplied by torch's int4 CPU kernel,
-  its blocks kept for the accessors; any other block type is packed. Not bit-identical to the other three: its model
+  its blocks kept for the accessors and the vault's edits added to its product (`int4_cpu.with_overlay_terms`); any
+  other block type is packed (a file with no Q4_0 layer is refused). Not bit-identical to the other three: its model
   id says so (backend/int4_cpu.py).
 A tensor stored as F32, F16 or BF16 is a plain `nn.Linear` in every mode. Every linear layer hears the vault's
 overlays as the W4A16 forward does (`gguf_weights.with_overlays`). Embeddings, norms and layer scalars are unpacked to
@@ -475,6 +476,10 @@ def build_gemma4(
                 install_overlay_forward(new)
                 kinds[f"{qname} dense"] += 1
             setattr(parent, attr, new)
+    if linears == "int4mm" and not kinds["Q4_0 int4mm"]:
+        raise ValueError(f"The int4mm linears cannot be used: torch's int4 kernel takes Q4_0 layers, and this file has none "
+                         f"it can take ({dict(sorted(kinds.items()))}), so its readings would be the reference's under "
+                         "another model id. Use packed, resident or dense.")
     # everything else: embeddings, norms, layer scalars (buffers), by name
     for name, p in list(hf.named_parameters()):
         if p.device.type != "meta":

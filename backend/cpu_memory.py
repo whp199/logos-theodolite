@@ -136,12 +136,14 @@ def unpack_bytes(x: Any) -> int:
     """The largest transient of one packed layer's forward, the layers being unpacked one at a time: a W4A16 module
     through the pinned unpacker (two int32 temporaries, the pieces and the weight: 12 bytes a weight, as
     w4a16_fast.resident_need counts them), a packed GGUF layer (its weight in the model's dtype, and about 12 bytes a
-    weight of the rows unpacked at once); nothing for a plain, resident or int4mm layer."""
+    weight of the rows unpacked at once), an int4mm layer whose kernel is turned off as the packed layer it then is;
+    nothing for a plain or resident layer, or an int4mm one through the kernel (an edit in force unpacks only its
+    columns or rows)."""
     from backend.gguf_weights import GGUFLinear
 
     worst = 0
     for mod in _model(x).modules():
-        if getattr(mod, "int4mm", False) or "_resident_w" in mod.__dict__:
+        if (getattr(mod, "int4mm", False) and getattr(mod, "int4_enabled", True)) or "_resident_w" in mod.__dict__:
             continue
         if isinstance(mod, GGUFLinear):
             if mod.resident:
@@ -232,12 +234,11 @@ _ALLOC_WORDS = ("DefaultCPUAllocator: can't allocate memory", "DefaultCPUAllocat
 
 
 def is_cpu_oom(exc: BaseException) -> bool:
-    """Whether `exc` is torch's CPU allocator refusing an allocation (a RuntimeError) or torch's own out-of-memory
-    error not raised by CUDA."""
-    if isinstance(exc, torch.cuda.OutOfMemoryError):
-        return False
+    """Whether `exc` is torch's CPU allocator refusing an allocation: a plain RuntimeError in its words. torch's own
+    out-of-memory error (`torch.cuda.OutOfMemoryError` is `torch.OutOfMemoryError` in torch 2.14) is the GPU's here,
+    the only accelerator the instrument runs on, and is not the CPU's."""
     if isinstance(exc, torch.OutOfMemoryError):
-        return True
+        return False
     return isinstance(exc, RuntimeError) and any(w in str(exc) for w in _ALLOC_WORDS)
 
 

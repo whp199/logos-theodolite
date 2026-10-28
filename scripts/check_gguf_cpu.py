@@ -26,12 +26,15 @@ tiny GGUF files, as scripts/check_gguf.py writes them:
    for the CPU's;
 4. int4mm (backend/int4_cpu.py, torch's int4 CPU kernel): a Q4_0 GGUF loaded with it names the mode in its model id
    (+int4mm) and weights card; its accessors read the file's numbers bit for bit; a layer's product is within bf16 of
-   the exact one but not the reference's bits, and a row's the same alone or in a batch; with a vault edit in force, or
-   turned off, the reference forward bit for bit; `compare_rows` on answers made by hand; the canary census of
-   scripts/compare_int4mm.py (after neuron-explorer's check_equivalence): the reference's floor between two batches,
-   the kernel's departure from it, and the rule's verdict; a census or an index of the reference refused for it; on a
-   4-bit stand-in the W4A16 linears through the kernel, an edit on one running the pinned forward, w4a16_fast's
-   resident refused beside it; THEODOLITE_CHECKPOINT_LINEARS=int4mm's model id and card; int4mm off the CPU refused;
+   the exact one but not the reference's bits, and a row's the same alone or in a batch; a vault edit that changes no
+   weight adds exactly nought to the kernel's product, and an edited column and row move it within bf16 of the edited
+   weight's exact product; turned off, the reference forward bit for bit, its unpacking counted; `compare_rows` on
+   answers made by hand; the canary census of scripts/compare_int4mm.py (after neuron-explorer's check_equivalence):
+   the reference's floor between two batches, the kernel's departure from it, and the rule's verdict; a census or an
+   index of the reference refused for it; on a 4-bit stand-in the W4A16 linears through the kernel, an edit on one
+   laid on the kernel's product, w4a16_fast's resident refused beside it; THEODOLITE_CHECKPOINT_LINEARS=int4mm's
+   model id and card; int4mm off the CPU, on a file of which it takes no layer, and THEODOLITE_CHECKPOINT_LINEARS
+   beside a GGUF refused;
 5. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
 
 Run: .venv/bin/python -I scripts/check_gguf_cpu.py   (exits 0 when every check holds)
@@ -587,14 +590,40 @@ def run_checks(tmp: Path) -> int:
     check(not torch.equal(yi, yr) and err_i < 2 ** -6 and err_r < 2 ** -6 and torch.equal(d_i(x[:1]), d_i(x)[:1]),
           f"one layer's product: not the reference's bits, both within bf16 of the exact product (largest relative "
           f"error {err_i:.1e} through the kernel, {err_r:.1e} unpacked), and a row's the same alone or in a batch")
-    v = torch.randn(asi.HIDDEN, generator=torch.Generator().manual_seed(7))
-    d_i._memit_col_overlays[9], d_r._memit_col_overlays[9] = v.clone(), v.clone()
-    check(torch.equal(d_i(x), d_r(x)), "a vault column in force: the layer runs the reference forward, overlays and all, bit for bit")
-    d_i._memit_col_overlays.clear(), d_r._memit_col_overlays.clear()
+    # the vault's edits: laid on the kernel's product as their difference from the file's numbers, so an edit that
+    # changes no weight changes no reading, and an edit's effect is the edit's alone
     prompt_i = torch.tensor([rt_ref.tokenize_prompt(rt_ref.compose_prompt("Who are you?", chat=True))])
+    y0, logits0 = d_i(x), rt_i4.hf_model(prompt_i).logits
+    d_i._memit_col_overlays[9] = d_i.unpacked_cols(torch.tensor([9]))[0].clone()
+    d_i._memit_row_overlays[4] = d_i.unpacked_rows(torch.tensor([4]))[0].clone()
+    check(torch.equal(d_i(x), y0) and torch.equal(rt_i4.hf_model(prompt_i).logits, logits0),
+          "an edit that changes no weight (a column and a row set to what they are) adds exactly nought through the kernel: "
+          "the layer's product and the model's logits bit for bit")
+    d_i._memit_col_overlays.clear(), d_i._memit_row_overlays.clear()
+    v = torch.randn(asi.HIDDEN, generator=torch.Generator().manual_seed(7))
+    r4 = torch.randn(asi.FFN, generator=torch.Generator().manual_seed(9))
+    w_file = d_r.unpacked().double()
+    w_ed = w_file.clone()
+    w_ed[:, 9] = v.to(torch.bfloat16).double()
+    w_ed[4, :] = r4.to(torch.bfloat16).double()
+    exact_ed = x.double() @ w_ed.T
+    d_i._memit_col_overlays[9], d_r._memit_col_overlays[9] = v.clone(), v.clone()
+    d_i._memit_row_overlays[4], d_r._memit_row_overlays[4] = r4.clone(), r4.clone()
+    yi_ed, yr_ed = d_i(x).double(), d_r(x).double()
+    err_ed = float((yi_ed - exact_ed).abs().max() / exact_ed.abs().max())
+    moved = (yi_ed - y0.double()) - (yr_ed - yr.double())  # what the edit moved through the kernel, less through the reference
+    check(err_ed < 2 ** -6 and float((yr_ed - exact_ed).abs().max() / exact_ed.abs().max()) < 2 ** -6
+          and float(moved.abs().max() / exact_ed.abs().max()) < 2 ** -6 and not torch.equal(yi_ed, yr_ed),
+          f"a column and a row edited: through the kernel within bf16 of the edited weight's exact product (largest relative "
+          f"error {err_ed:.1e}), the edit moving it as it moves the reference, not the reference's bits")
+    d_i._memit_col_overlays.clear(), d_r._memit_col_overlays.clear()
+    d_i._memit_row_overlays.clear(), d_r._memit_row_overlays.clear()
+    check(cm.unpack_bytes(rt_i4) == 0, f"through the kernel nothing is unpacked at a forward ({cm.unpack_bytes(rt_i4)} bytes)")
     off = ic.enable(rt_i4, False)
-    check(off == 41 and rt_i4.model_id == rt_ref.model_id and torch.equal(rt_i4.hf_model(prompt_i).logits, rt_ref.hf_model(prompt_i).logits),
-          "turned off (int4_cpu.enable): the reference forward bit for bit, and the model id without +int4mm")
+    check(off == 41 and rt_i4.model_id == rt_ref.model_id and torch.equal(rt_i4.hf_model(prompt_i).logits, rt_ref.hf_model(prompt_i).logits)
+          and cm.unpack_bytes(rt_i4) == cm.unpack_bytes(rt_ref) > 0,
+          "turned off (int4_cpu.enable): the reference forward bit for bit, the model id without +int4mm, and its unpacking "
+          "counted as the packed layers'")
     ic.enable(rt_i4, True)
     check(rt_i4.model_id.endswith("+int4mm") and not torch.equal(rt_i4.hf_model(prompt_i).logits, rt_ref.hf_model(prompt_i).logits),
           "on again: +int4mm, and not the reference's logits")
@@ -618,8 +647,12 @@ def run_checks(tmp: Path) -> int:
     check(fl["answers"] == kn["answers"] == 64 and fl["identical"] == 64 and fl["max_abs_dlogprob"] == 0.0
           and rt_i4.model_id.endswith("+int4mm"),
           "the canary (64 answers): on the CPU the reference is the same at batch 8 and 3, so its floor is nought")
+    same = c4.verdict(fl, fl)
+    check(same["per_answer_within_floor"] is True and same["stands_for_reference"] is False and same["ranking"] is None,
+          "the rule can only refuse: a run within the floor on all four measures still does not stand for the reference "
+          "(the ranking's half is not taken)")
     check(kn["identical"] < kn["answers"] and kn["max_abs_dlogprob"] > 0 and rep["verdict"]["stands_for_reference"] is False
-          and kn["topk_overlap"] > 0.8 and kn["shared_share"] > 0.4,
+          and rep["verdict"]["per_answer_within_floor"] is False and kn["topk_overlap"] > 0.8 and kn["shared_share"] > 0.4,
           f"through the kernel some answers split ({kn['answers'] - kn['identical']} of {kn['answers']}; the stand-in's "
           f"logits are small and near-tied), so by the rule its readings are their own class; the five likeliest mostly "
           f"agree ({kn['topk_overlap']})")
@@ -652,9 +685,14 @@ def run_checks(tmp: Path) -> int:
           and torch.equal(rt_w.slice_w_down(2, nidx), before_w),
           f"install_w4a16 on a 4-bit stand-in: {kinds}; the product within bf16 of the exact one, not the pinned bits; "
           "the accessors as before")
+    mod_w._memit_col_overlays[3] = gw.dense_cols(mod_w, torch.tensor([3]))[0].clone()
+    check(torch.equal(mod_w(xw), y_k), "a W4A16 layer through the kernel: an edit that changes no weight adds exactly nought")
     mod_w._memit_col_overlays[3] = v.clone()
     pinned = er._make_w4a16_linear_forward(mod_w)
-    check(torch.equal(mod_w(xw), pinned(xw)), "a vault column in force on a W4A16 layer: the pinned forward, bit for bit")
+    y_pe, y_ke = pinned(xw).double(), mod_w(xw).double()
+    check(float((y_ke - y_pe).abs().max() / y_pe.abs().max()) < 2 ** -6 and not torch.equal(y_ke, y_pe),
+          "a vault column in force on a W4A16 layer: the kernel's product moved by the edit, within bf16 of the pinned "
+          "forward's, not its bits")
     mod_w._memit_col_overlays.clear()
     said = raises(wf.install, rt_w, "resident")
     check("int4mm" in said and wf.describe(rt_w)["mode"] == "reference",
@@ -680,13 +718,19 @@ def run_checks(tmp: Path) -> int:
           f"THEODOLITE_CHECKPOINT_LINEARS=int4mm on the CPU: {rt_cc.model_id}, {card_cc['layers_as']}")
     for env_, word in (({rf.GGUF_ENV: q4_0, rf.LINEARS_ENV: "int4mm"}, "set THEODOLITE_DEVICE=cpu"),
                        ({rf.CHECKPOINT_LINEARS_ENV: "int4mm"}, "set THEODOLITE_DEVICE=cpu"),
-                       ({rf.CHECKPOINT_LINEARS_ENV: "resident"}, "packed (the default) or int4mm")):
+                       ({rf.CHECKPOINT_LINEARS_ENV: "resident"}, "packed (the default) or int4mm"),
+                       ({rf.GGUF_ENV: q4_0, rf.DEVICE_ENV: "cpu", rf.CHECKPOINT_LINEARS_ENV: "int4mm"},
+                        "is the W4A16 checkpoint's, and THEODOLITE_GGUF is set")):
         with environment(**env_):
             said = raises(rf.make_runtime)
         check(word in said, f"{env_}: refused in plain words ({said[:90]})")
     said = raises(gm.build_gemma4, q4_0, device="meta", linears="int4mm")
     check(said.startswith("The int4mm linears cannot be used: int4mm is torch's CPU kernel, and this model is built on meta"),
           f"int4mm on another device than the CPU refused by the builder too ({said[:90]})")
+    said = raises(gm.build_gemma4, files["Q8_0"], device="cpu", linears="int4mm")
+    check(said.startswith("The int4mm linears cannot be used: torch's int4 kernel takes Q4_0 layers, and this file has none "
+                          "it can take ({'Q8_0 packed': 41})"),
+          f"a file of which the kernel takes no layer refused, not run on the reference under +int4mm ({said[:110]})")
     section("int4mm: torch's int4 CPU kernel on Q4_0 and W4A16 layers, within bf16 of the exact product but not the "
             "reference's bits, measured against it by the canary, and kept apart by its model id", before)
 
