@@ -63,8 +63,8 @@ itself, not a copy of it. It checks:
    trimmed to POST /api/atlas/notes by the reader and each face with anything said to POST /api/atlas/fieldbook, at
    layer = layerNo - 1, the names first; a blank face, a blank name, an unreadable value and keys of other kinds carry
    nothing; a name longer than the atlas keeps, one holding a control character and a layer the pages do not have are
-   left in the browser, saying why, as is anything the server already keeps; every request it makes is one the
-   server's own checks take.
+   left in the browser, saying which neuron's part and why, as is anything the server already keeps; every request it
+   makes is one the server's own checks take.
 
 Run: .venv/bin/python -I scripts/check_interface_defaults.py   (exits 0 when every check holds)
 """
@@ -846,6 +846,9 @@ def check_migration(out: Dict[str, Any]) -> None:
     check(set(left) == {"theodolite.folio.v1.0:4", "theodolite.folio.v1.12:5", "theodolite.folio.v1.12:6"}, f"left in the browser: {sorted(left)}")
     check("count from 1" in left.get("theodolite.folio.v1.0:4", {}).get("why", "") and "120 characters" in left.get("theodolite.folio.v1.12:5", {}).get("why", "")
           and "control character" in left.get("theodolite.folio.v1.12:6", {}).get("why", ""), f"each says why: {mig['left']}")
+    check(left.get("theodolite.folio.v1.12:5", {}).get("what") == "L12 N5\u2019s name" and left.get("theodolite.folio.v1.0:4", {}).get("what") == "all of L0 N4\u2019s notes"
+          and [x["what"] for x in out["migration"]["onServer"]["left"]] == ["L54 N15491\u2019s name", "L54 N15491\u2019s positive face\u2019s notes", "L1 N7\u2019s negative face\u2019s notes"],
+          f"each says which neuron's part it is, in the pages' count: {[x['what'] for x in mig['left']]}")
     srv = out["migration"]["onServer"]
     check(srv["posts"] == [] and srv["keys"] == [] and len(srv["left"]) == 3 and all("already" in x["why"] for x in srv["left"]),
           f"nothing the server already keeps is written over: {srv}")

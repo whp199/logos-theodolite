@@ -475,7 +475,7 @@ const FieldBook: React.FC = () => {
     if (!f || f.kind !== "neuron") return;
     let live = true;
     get<BookReply>("/api/atlas/fieldbook", { layer: f.layer, n: f.n })
-      .then((r) => live && setGot({ key, r, error: r.warning ?? null }))
+      .then((r) => live && setGot({ key, r, error: r.warning ?? r.notes_warning ?? null })) // the notes' warning is taken by this read
       .catch((e) => live && setGot({ key, r: null, error: (e as Error).message }));
     return () => {
       live = false;

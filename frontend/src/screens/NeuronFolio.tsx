@@ -613,12 +613,24 @@ const Hero: React.FC<{ m: Model; saved: FolioSaved; update: Upd; where: FolioWhe
         {!renaming ? (
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 18px" }}>
             <span style={{ fontSize: "16px", fontStyle: "italic", color: MUTED }}>
-              {kept && where.kind === "server" && where.nameBy === "scientist" && saved.nick
-                ? "a name the scientist gave it in the atlas, which you kept: a guess, not a finding"
-                : kept
+              {where.kind === "server" && where.nameBy === "scientist" && saved.nick
+                ? "the scientist’s name for it in the atlas: a guess, not a finding"
+                : saved.nick
                   ? "a name you gave it, not one the model knows"
-                  : "not yet named; any name you give it is yours, not one the model knows"}
-              {where.kind === "server" ? "; the atlas shows it too" : where.kind === "browser" ? "; kept in this browser" : ""}
+                  : kept
+                    ? "the folio’s own name for it, from the recorded sighting, not one the model knows"
+                    : "not yet named; any name you give it is yours, not one the model knows"}
+              {saved.nick
+                ? where.kind === "server"
+                  ? where.nameBy === "scientist"
+                    ? ""
+                    : "; the atlas shows it too"
+                  : where.kind === "browser"
+                    ? "; kept in this browser"
+                    : ""
+                : kept && where.kind === "server"
+                  ? "; the atlas keeps no name for it"
+                  : ""}
             </span>
             <button
               type="button"
@@ -3350,9 +3362,10 @@ const Builds: React.FC<{ m: Model }> = ({ m }) => {
         </div>
       ) : null}
       <Rubric style={{ maxWidth: "760px" }}>
-        Both are leads, not causes. The drive is exact arithmetic at one word-piece, but a neuron’s share counts only its own write straight into
-        this layer, the norms held at their scale there; what it does through the layers between is in those layers’ parts. The weights alone know
-        nothing of the text. Test a lead by silencing it and reading this neuron again.
+        Both are leads, not causes. The drive’s parts add up exactly to its linearised activation at one word-piece, which can stand well off
+        the activation itself; a neuron’s share counts only its own write straight into this layer, the norms held at their scale there, and
+        what it does through the layers between is in those layers’ parts. The weights alone know nothing of the text. Test a lead by silencing
+        it and reading this neuron again.
       </Rubric>
       <Apparatus title="what builds it" label="Apparatus for what builds it">
         <dl className="dl num">
@@ -4478,8 +4491,9 @@ const JOBS: Record<Jobs, string> = { one: "one job", two: "two related jobs", un
 const many = (k: number, noun: string) => `${numberWord(k)} ${noun}${k === 1 ? "" : "s"}`;
 
 /**
- * Once the server keeps the field book: this browser's notes from before, on neurons the server has nothing on, offered
- * once (each key is asked about once: carried, or kept here when the reader says so).
+ * Once the server keeps the field book: this browser's notes from before it did, or kept here while it did not answer,
+ * on neurons the server has nothing on, offered once (each key is asked about once: carried, or kept here when the
+ * reader says so; a key the server did not keep a change to is asked about again).
  */
 const CarryOffer: React.FC<{ where: FolioWhere; reload: () => void }> = ({ where, reload }) => {
   const [mig, setMig] = useState<Migration | null>(null);
@@ -4531,8 +4545,9 @@ const CarryOffer: React.FC<{ where: FolioWhere; reload: () => void }> = ({ where
       style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "760px", padding: "10px 0", borderTop: `1px solid ${HAIR_FAINT}`, borderBottom: `1px solid ${HAIR_FAINT}` }}
     >
       <p style={{ margin: 0 }}>
-        This browser keeps notes from before the server kept them, on {many(mig.keys.length, "neuron")} ({many(names, "name")},{" "}
-        {many(faces, "face")}) the server has nothing on. Keep them on the server, where the atlas and every page it serves read them?
+        This browser keeps notes on {many(mig.keys.length, "neuron")} ({many(names, "name")}, {many(faces, "face")}) the server has
+        nothing on, from before it kept them or from while it was not answering. Keep them on the server, where the atlas and every page it
+        serves read them?
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px" }}>
         <button type="button" className="btn-ghost" disabled={busy} onClick={() => void keep()}>
@@ -4703,7 +4718,7 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd; where: FolioWh
       {where.kind === "server" && where.note ? (
         <p style={{ margin: 0, maxWidth: "760px" }}>
           <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", fontSize: "16px", color: MUTED }}>
-            the atlas’s note on it · {where.note.by === "scientist" ? "the scientist’s, kept by you" : "yours"} ·
+            the atlas’s note on it · {where.note.by === "scientist" ? "the scientist’s: a guess, not a finding" : "yours"} ·
           </span>{" "}
           <span style={{ whiteSpace: "pre-wrap" }}>{where.note.text}</span>
         </p>

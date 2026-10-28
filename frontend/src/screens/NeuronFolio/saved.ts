@@ -7,8 +7,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * book beside it (field_book.json, GET and POST /api/atlas/fieldbook), shared by every page and chat this server
  * answers. With no server (the recorded sighting on a page served alone), an older one without a field book, or a
  * neuron the server's model does not have, they are kept in this browser's localStorage under
- * `theodolite.folio.v1.${layerNo}:${neuron}`, as before; every read and write is wrapped so the page works when storage
- * is blocked (the notes then last for this visit). Which of the two keeps them is said beside them (`FolioWhere`).
+ * `theodolite.folio.v1.${layerNo}:${neuron}`, as before, and so they are from the moment the server does not keep a
+ * write; every read and write is wrapped so the page works when storage is blocked (the notes then last for this
+ * visit). Which of the two keeps them is said beside them (`FolioWhere`).
  * `folioMigration` turns this browser's keys into the requests that carry them to the server, which the folio offers
  * once for each key.
  */
@@ -156,7 +157,7 @@ export type FolioWhere =
       nameBy: "reader" | "scientist" | null;
       /** the atlas's own note on the neuron, and who wrote it */
       note: { text: string; by: "reader" | "scientist"; at: string } | null;
-      /** the last write that did not come back, or a moved-aside file's warning */
+      /** a moved-aside file's warning */
       error: string | null;
     }
   | { kind: "browser"; why: string; detail?: string };
@@ -204,8 +205,10 @@ async function postJson(path: string, body: unknown): Promise<unknown> {
 /**
  * The folio's name and notes for one neuron (`layerNo` counted 1-60), and where they are kept. Through the server when
  * it answers for the neuron: the name goes to POST /api/atlas/notes when kept, each face to POST /api/atlas/fieldbook a
- * moment after its last change (one write at a time per face, in order). Else in this browser, as before. `reload`
- * reads the server again (after notes are carried to it).
+ * moment after its last change (one write at a time per face, in order). Else in this browser, as before. A write the
+ * server does not keep (it stopped answering, say) turns the folio to this browser for the rest of the visit, with all
+ * of it kept there, and the key is offered to the server again when it next answers. `reload` reads the server again
+ * (after notes are carried to it).
  */
 export function useFolioSaved(layerNo: number, neuron: number) {
   const key = folioKey(layerNo, neuron);
@@ -252,19 +255,32 @@ export function useFolioSaved(layerNo: number, neuron: number) {
     };
   }, [key, gen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fail = (e: unknown) =>
-    setWhere((w) => (w.kind === "server" ? { ...w, error: `not kept on the server: ${(e as Error).message}` } : w));
+  // a write the server did not keep: the folio as it stands (`snap` when the page has moved to another neuron since) is
+  // kept in this browser, the rest of the visit is too, and the key is no longer marked carried
+  const fail = (k: string, snap: FolioSaved) => (e: unknown) => {
+    const here = keyRef.current === k;
+    save(k, here ? latest.current : snap);
+    unmarkCarried(k);
+    if (here)
+      setWhere((w) =>
+        w.kind === "server"
+          ? {
+              kind: "browser",
+              why: "the server did not keep a change during this visit, so from then on they are kept here, and offered to it again when it answers",
+              detail: (e as Error).message,
+            }
+          : w,
+      );
+  };
 
   const writeFace = useCallback(
     (face: "+" | "-") => {
-      const f = face === "+" ? latest.current.notes.pos : latest.current.notes.neg;
-      const body = faceBody(layer, neuron, face, f);
-      chains.current[face] = chains.current[face]
-        .then(() => postJson("/api/atlas/fieldbook", body))
-        .then(() => setWhere((w) => (w.kind === "server" && w.error?.startsWith("not kept") ? { ...w, error: null } : w)))
-        .catch(fail);
+      if (whereRef.current.kind === "browser") return; // kept in this browser already
+      const snap = latest.current;
+      const body = faceBody(layer, neuron, face, face === "+" ? snap.notes.pos : snap.notes.neg);
+      chains.current[face] = chains.current[face].then(() => postJson("/api/atlas/fieldbook", body)).catch(fail(key, snap));
     },
-    [layer, neuron], // eslint-disable-line react-hooks/exhaustive-deps
+    [key, layer, neuron], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // a face changed a moment ago is written before the folio closes
@@ -295,7 +311,7 @@ export function useFolioSaved(layerNo: number, neuron: number) {
       if ((next.nick ?? "") !== (prev.nick ?? "")) {
         void postJson("/api/atlas/notes", { kind: "neuron", layer, index: neuron, name: (next.nick ?? "").trim(), by: "reader" })
           .then(() => setWhere((x) => (x.kind === "server" ? { ...x, nameBy: next.nick ? "reader" : null } : x)))
-          .catch(fail);
+          .catch(fail(key, next));
       }
       for (const [face, side] of [
         ["+", "pos"],
@@ -354,8 +370,9 @@ export function folioMigration(entries: readonly (readonly [string, string | nul
     if (!m) continue;
     const layerNo = parseInt(m[1], 10);
     const n = parseInt(m[2], 10);
+    const its = `L${layerNo} N${n}’s`; // the neuron each part left here is about, in the pages' count
     if (layerNo < 1) {
-      left.push({ key, what: "all of it", why: "its layer is not one of the pages’ (they count from 1)" });
+      left.push({ key, what: `all of ${its} notes`, why: "its layer is not one of the pages’ (they count from 1)" });
       continue;
     }
     const layer = layerNo - 1;
@@ -364,9 +381,9 @@ export function folioMigration(entries: readonly (readonly [string, string | nul
     const nick = (v.nick ?? "").trim();
     if (nick) {
       // eslint-disable-next-line no-control-regex
-      if (/[\u0000-\u001f\u007f-\u009f]/.test(nick)) left.push({ key, what: "its name", why: "it holds a control character, which a name cannot" });
-      else if (nick.length > MAX_NAME) left.push({ key, what: "its name", why: `it is longer than the ${MAX_NAME} characters the atlas keeps` });
-      else if (server.names?.[at]?.name) left.push({ key, what: "its name", why: "the server already names it" });
+      if (/[\u0000-\u001f\u007f-\u009f]/.test(nick)) left.push({ key, what: `${its} name`, why: "it holds a control character, which a name cannot" });
+      else if (nick.length > MAX_NAME) left.push({ key, what: `${its} name`, why: `it is longer than the ${MAX_NAME} characters the atlas keeps` });
+      else if (server.names?.[at]?.name) left.push({ key, what: `${its} name`, why: "the server already names it" });
       else {
         posts.push({ path: "/api/atlas/notes", body: { kind: "neuron", layer, index: n, name: nick, by: "reader" } });
         keys.add(key);
@@ -379,7 +396,7 @@ export function folioMigration(entries: readonly (readonly [string, string | nul
       const f = v.notes[side];
       if (isBlank(f)) continue;
       if (server.faces?.[at]?.[face]) {
-        left.push({ key, what: `its ${face === "+" ? "positive" : "negative"} face’s notes`, why: "the server already keeps notes on that face" });
+        left.push({ key, what: `${its} ${face === "+" ? "positive" : "negative"} face’s notes`, why: "the server already keeps notes on that face" });
         continue;
       }
       faces.push({ path: "/api/atlas/fieldbook", body: faceBody(layer, n, face, f) });
@@ -411,6 +428,16 @@ export function carriedKeys(): Set<string> {
     return new Set(Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
   } catch {
     return new Set();
+  }
+}
+
+/** Ask about a key again: the server did not keep a change to it. */
+export function unmarkCarried(key: string) {
+  try {
+    const all = carriedKeys();
+    if (all.delete(key)) window.localStorage.setItem(CARRIED_KEY, JSON.stringify([...all]));
+  } catch {
+    // not remembered: the key may not be offered again
   }
 }
 
