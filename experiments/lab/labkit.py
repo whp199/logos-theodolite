@@ -1,5 +1,10 @@
 """labkit: experiment primitives over a loaded TheodoliteRuntime (Gemma-4-31B W4A16 + J++/JLens).
 
+The runtime may also be a GGUFRuntime (backend/gguf_runtime.py), on a GPU or the CPU: the gradient passes
+(`Lab.grad_linears`, `same_pos_vjp`) unpack a GGUF's packed layers through gguf_weights' unpackers as they unpack the
+checkpoint's W4A16 ones, and `Lab.model_id` and `Lab.weights` (runtime_factory.weights_card) say what an experiment
+read, for its record.
+
 Conventions
 - Layers are 0-based (0..59). resid_post[l] = residual stream leaving layer l.
 - Lens readout at layer l:  hJ = h @ J[l].T, logits = 30*tanh(RMSNorm_final(hJ) @ W_U.T / 30).
@@ -45,6 +50,12 @@ class Lab:
         self.layers = rt._decoder_layers
         self._hooks: List = []
         self.gender = self._build_gender_ids()
+        # what the experiments read: the model id (a GGUF's file and fingerprint, where and in what off the GPU) and the
+        # weights card (the checkpoint's repo and snapshot, or the GGUF's provenance)
+        from backend.runtime_factory import weights_card
+
+        self.model_id = rt.model_id
+        self.weights = weights_card(rt)
 
     # ------------------------------------------------------------------ tokenization
     def tid(self, s: str) -> int:
@@ -421,29 +432,62 @@ class _W4A16LinearFn(torch.autograd.Function):
         return g.to(w.dtype) @ w, None, None
 
 
+class _GGUFLinearFn(torch.autograd.Function):
+    """The GGUF twin of `_W4A16LinearFn`, for a `gguf_weights.GGUFLinear`: y = x @ W.T (+ b), W unpacked from the
+    layer's GGUF blocks by gguf_weights' unpackers (`GGUFLinear.unpacked`: the numbers of gguf-py's dequantiser, cast
+    to the layer's dtype) with the vault's overlays laid on as the layer's own forward lays them (`with_overlays`),
+    and unpacked again in backward, so no weight is kept for it (a resident layer's weight is read where it lies).
+    Unlike `_W4A16LinearFn`, as the study ran it, it hears an edit in force: its forward is the layer's own."""
+
+    @staticmethod
+    def forward(ctx, x, mod):
+        from backend.gguf_weights import with_overlays
+        w = with_overlays(mod, mod.unpacked())
+        ctx.mod = mod
+        return F.linear(x.to(w.dtype), w, mod.bias)
+
+    @staticmethod
+    def backward(ctx, g):
+        from backend.gguf_weights import with_overlays
+        w = with_overlays(ctx.mod, ctx.mod.unpacked())
+        return g.to(w.dtype) @ w, None
+
+
 @contextmanager
 def _grad_linears(self):
-    """Temporarily swap every W4A16 linear to the recompute-in-backward autograd function."""
+    """Temporarily swap every W4A16 linear to the recompute-in-backward autograd function, and every packed (or
+    resident) GGUF linear to its GGUF twin. A plain nn.Linear (a GGUF tensor stored as F32, F16 or BF16, or a model
+    built with dense layers) keeps its own forward, through which autograd already passes."""
     import types
+    from backend.gguf_weights import GGUFLinear
     saved = []
     for _n, mod in self.hf.named_modules():
         if hasattr(mod, "weight_packed") and hasattr(mod, "weight_scale"):
-            saved.append((mod, mod.forward))
+            saved.append((mod, mod.__dict__.get("forward")))
             def fwd(m, x):
                 return _W4A16LinearFn.apply(x, m.weight_packed, m.weight_scale)
             mod.forward = types.MethodType(fwd, mod)
+        elif isinstance(mod, GGUFLinear):
+            saved.append((mod, mod.__dict__.get("forward")))
+            def fwd_gguf(m, x):
+                return _GGUFLinearFn.apply(x, m)
+            mod.forward = types.MethodType(fwd_gguf, mod)
     try:
         yield
     finally:
         for mod, f in saved:
-            mod.forward = f
+            if f is None:
+                del mod.forward  # the class's own forward again
+            else:
+                mod.forward = f
 
 
 def _same_pos_vjp(self, ids: Sequence[int], pos: int, d_final: torch.Tensor,
                   target: str = "resid59") -> torch.Tensor:
     """True same-position VJP: g_l = (d h_59[pos] / d h_l[pos])^T d_final for l = 0..58, plus l=59 -> d itself.
     target='resid59' differentiates <h_59[pos], d> (the quantity the J-lens linearly approximates).
-    Returns [60, D] float32 (row l = gradient wrt resid_post[l][pos]).
+    Returns [60, D] float32 (row l = gradient wrt resid_post[l][pos]); on a model of another depth (a GGUF of the
+    stand-in), its own number of layers.
     Note: gradients at h_l[pos] here include paths through attention at LATER positions? No: we backprop only
     from position `pos`, and causal attention means h_59[pos] depends on h_l[p<=pos]; we read the gradient at
     h_l[pos] only, i.e. the same-position block of the full Jacobian."""
@@ -458,16 +502,17 @@ def _same_pos_vjp(self, ids: Sequence[int], pos: int, d_final: torch.Tensor,
             outs[l] = h
             return (h,) + tuple(out[1:]) if isinstance(out, tuple) else h
         return hook
-    for l in range(N_LAYERS):
+    n_layers = len(self.layers)  # 60 on the 31B, as N_LAYERS
+    for l in range(n_layers):
         hs.append(self.layers[l].register_forward_hook(mk(l)))
     try:
         with torch.enable_grad(), _grad_linears(self):
             inp = torch.tensor([list(ids)[: pos + 1]], device=self.dev)
             self.hf.model.language_model(input_ids=inp, use_cache=False) if hasattr(self.hf.model, "language_model") \
                 else self.hf.model(input_ids=inp, use_cache=False)
-            obj = (outs[N_LAYERS - 1][0, pos].float() * d_final.to(self.dev).float()).sum()
+            obj = (outs[n_layers - 1][0, pos].float() * d_final.to(self.dev).float()).sum()
             obj.backward()
-            G = torch.stack([outs[l].grad[0, pos].float() for l in range(N_LAYERS)], 0)
+            G = torch.stack([outs[l].grad[0, pos].float() for l in range(n_layers)], 0)
     finally:
         for h in hs:
             h.remove()
