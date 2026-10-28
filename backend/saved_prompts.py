@@ -17,8 +17,9 @@ Routes (an `APIRouter`, included by backend/server.py above its static mount):
 The text is kept exactly as given (only the name is trimmed); ids are made here; `saved_at` is ISO-8601 UTC. Writes
 take this module's own lock (never the GPU's: these routes answer while a sweep runs) and replace the file atomically.
 A file that cannot be read is moved aside to `<file>.corrupt-<UTC stamp>`, never written over, and the next reply says
-so once (`warning`); so is a file that is not UTF-8 text or is nested too deeply to read. The server's CORS allows
-every origin, so these routes refuse a request from a web page served anywhere but this machine (403): its Host must
+so once (`warning`); so is a file that is not UTF-8 text or is nested too deeply to read. The server refuses a page
+served anywhere else before any route (backend/local_only.py), and these routes keep a rule of their own as well, so
+they refuse a request from a web page served anywhere but this machine (403) in any app they are part of: its Host must
 name this machine (a page at another name that resolves here, DNS rebinding, sends its own name as the Host even on a
 same-origin GET, which carries no Origin), and so must its Origin when it sends one. A script sent to this machine
 (no Origin; curl, the checks) is allowed. A text holding half of a character (a lone surrogate) is refused with 422:
@@ -81,8 +82,9 @@ def _hostname(url: str) -> Optional[str]:
 
 
 def same_machine(request: Request) -> None:
-    """Refuse a request sent by a page served from anywhere but this machine (403): global CORS is "*", so without
-    this any site the reader visits could read or change the lists. The Host is checked first: a same-origin GET
+    """Refuse a request sent by a page served from anywhere but this machine (403): CORS alone does not stop a request
+    being sent, so without this (or the server's own guard, backend/local_only.py) a site the reader visits could
+    change the lists. The Host is checked first: a same-origin GET
     sends no Origin, so a page at another name that resolves to this machine (DNS rebinding) is known only by the
     Host its browser sends. Vite's proxy sends the server's own Host (changeOrigin). A script sent to this machine (no
     Origin, a Host of 127.0.0.1, localhost or [::1], or none at all) is allowed."""

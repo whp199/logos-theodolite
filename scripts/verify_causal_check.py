@@ -262,7 +262,8 @@ def part_d(rt: TheodoliteRuntime, vault: LarqlVaultEngine) -> None:
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
     t0 = time.perf_counter()
-    with TestClient(server.app).websocket_connect("/ws/theodolite") as ws:
+    # a local Host, as the pages send it: backend/local_only.py refuses TestClient's "testserver"
+    with TestClient(server.app).websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as ws:
         ws.send_json({"action": "causal_check", "layer": 50, "neuron_idx": 5313, "token_ids": ids})
         msg = ws.receive_json()
         took = time.perf_counter() - t0

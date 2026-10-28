@@ -503,7 +503,8 @@ def check_routes() -> None:
         yield
 
     server.app.router.lifespan_context = no_lifespan
-    client = TestClient(server.app)
+    # a local Host, as the pages send it: backend/local_only.py refuses TestClient's "testserver"
+    client = TestClient(server.app, base_url="http://127.0.0.1:8765")
 
     r = client.post("/api/larql", json={"query": UPD})
     check(r.status_code == 200 and list(r.json()) == edit_keys(UPD) and rt.n_voice_calls == 0, f"HTTP, no voice: {r.text[:200]}")
@@ -528,7 +529,7 @@ def check_routes() -> None:
     check(len(vault.active_patches) == n_records, "HTTP: nothing edited by a refused or failed voice")
     rt.fail_calls = {}
 
-    with client.websocket_connect("/ws/theodolite") as ws:
+    with client.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as ws:
         ws.send_json({"action": "larql", "query": UPD})
         msg = ws.receive_json()
         check(msg["type"] == "larql_result" and msg["ok"] and list(msg["data"]) == edit_keys(UPD),

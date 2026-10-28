@@ -27,6 +27,7 @@ theodolite2/
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
 │   ├── server.py                    # FastAPI + Binary Float32 WebSocket server + REST endpoints
+│   ├── local_only.py                # who may ask: every route and the socket answer only this machine's pages (§4)
 │   ├── mcp_scientist.py             # FastMCP server for autonomous circuit motif discovery
 │   ├── atlas.py                     # the atlas's routes, /api/atlas/* (§4.7)
 │   ├── atlas_ops.py                 # live neuron operations: pushes, three voices, reads, odds, heads, wiring, steer lens
@@ -49,6 +50,7 @@ theodolite2/
 │   ├── check_atlas_api.py           # every atlas route against the operation it serves, the GPU lock, refusals (CPU only)
 │   ├── check_census.py              # the census's statistics, resume, stop, merge and spread (CPU only)
 │   ├── check_scientist.py           # the scientist's tools, MCP server and three backends against fakes (CPU only)
+│   ├── check_local_only.py          # who may ask: every route and the socket, refused or let in (CPU only)
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
 │   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)
@@ -225,6 +227,19 @@ Each sweep over WebSocket `/ws/theodolite` transmits:
      word geometry), `steering_applied`; per layer `proj_frac`, `pole_write_sizes`, `poles_ffn_explained`; per filament
      `direct_gate`, `direct_act`, `score`, `score_kind` (binary column 4 carries `score`, which is C unless
      `thread_score="direct"`).
+
+**Who may ask.** Every route of the server, its pages and `/ws/theodolite` answer only the instrument's own pages,
+served from this machine, and scripts run on it (`backend/local_only.py`: `LocalOnly`, one ASGI middleware around the
+whole app, outside CORS, applying the atlas's `local_pages_only`, §4.7). The peer must be loopback; the Host must be
+127.0.0.1 / localhost / [::1] on any port (or absent), and so must the Origin when there is one; a request marked
+`Sec-Fetch-Site: cross-site` or `same-site` is refused unless it is a GET navigation (a link). A refused request gets
+403 in plain words; a refused socket is closed with 1008 before it is accepted, which uvicorn sends as an HTTP 403 to
+the handshake. CORS (`allow_origin_regex`) lets only those origins read a reply, and governs no WebSocket: the guard is
+what covers the socket, the older routes (`/api/larql`, `/api/scientist/*`), the docs and the static pages. Vite's dev
+proxy passes (`/api` with the server's Host, `/ws` with its own, 127.0.0.1:5173; both with the page's own Origin).
+Another account on this machine is not refused. The MCP servers (`backend/scientist_mcp.py`, and
+`backend/mcp_scientist.py` run alone, on FastMCP's default stdio transport) listen on no port. `scripts/check_local_only.py`
+checks every route and the socket.
 
 ### 4.1 A sighting of every word-piece (request fields, all optional)
 
@@ -422,9 +437,10 @@ current piece (`think_stop_reason` "stopped"); either way the request ends `canc
   (`$THEODOLITE_SAVED_PROMPTS`, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/saved_prompts.json`), written
   atomically under its own lock (never the GPU's); an unreadable file is moved aside to `<file>.corrupt-<UTC stamp>` and
   reported once (a file that is not UTF-8, is nested too deeply, or holds a lone surrogate counts as unreadable).
-  Requests from a page on another host get 403 (CORS is "*"): the Host must be 127.0.0.1 / localhost / [::1] on any
-  port (a DNS-rebinding page sends its own name as the Host, and a same-origin GET sends no Origin; vite's proxy sends
-  the server's own Host), and so must the Origin when there is one; no Origin (a script) is allowed. A name or text
+  Requests from a page on another host get 403 (from the server's guard, §4, and from these routes' own rule): the
+  Host must be 127.0.0.1 / localhost / [::1] on any port (a DNS-rebinding page sends its own name as the Host, and a
+  same-origin GET sends no Origin; vite's proxy sends the server's own Host), and so must the Origin when there is
+  one; no Origin (a script) is allowed. A name or text
   holding half of a character (a lone surrogate) is refused with 422.
 
 ### 4.5 The causal spot-check (`backend/causal_check.py`)
@@ -552,6 +568,7 @@ through these routes; the design follows lyramakesmusic/neuron-explorer, built f
 
 - **Who may ask.** Every route answers only pages served from this machine (`local_pages_only`: Host, Origin and
   Sec-Fetch-Site checked; 403 otherwise), since these routes run the model and, through the scientist (§4.8), a shell.
+  The server's guard (§4) applies the same rule to every route it has, before these routes' own.
 - **The GPU.** A route that runs the model takes the server's `_GPU_LOCK` and works in a worker thread
   (`on_gpu`), so `/api/health` and the sockets keep answering; a push chat holds the lock while it writes and stops at
   its next word-piece when its page goes away (the wait for the writer is shielded from the request's cancellation).

@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+"""A CPU-only check of who may ask the instrument's server (backend/local_only.py, around backend/server.py's whole
+app): no model, no GPU. The server's app is driven with FastAPI's TestClient without its lifespan, so nothing
+is loaded and a route that would read the model answers 503; its routes are found from the app itself (its own, the
+included routers', FastAPI's docs, and a static mount of pages standing in for frontend/dist when that is not
+built). Folders and files go to a new temporary directory:
+1. the routes: every path and method of the app, the socket and the pages' mount, each found;
+2. a foreign Host (a page rebinding its own name to 127.0.0.1 sends that name, also on a same-origin GET with no
+   Origin), on every route and method, an unknown path and the socket: 403 with the reason in plain words, and the
+   socket closed (1008) before it is accepted;
+3. a foreign Origin with a local Host (another site, a look-alike name, "null"), likewise;
+4. a cross-site preflight on every route: 403 and no access-control header; a request a browser marks cross-site or
+   same-site without an Origin (an <img>, a <script>, a page on another port fetching this one): 403, unless it is a
+   plain navigation (a GET, which reads nothing back);
+5. what passes, on every route: a script (no Origin; Host 127.0.0.1, localhost or [::1], or none), the instrument's
+   own page (its Origin and Host), vite's proxy (frontend/vite.config.ts: /api with the server's Host, /ws with
+   vite's own, 127.0.0.1:5173, and the page's Origin), a link opened from another site; each reaches its route
+   (whatever it answers without a model, never the guard's 403), and the socket is accepted and answers;
+6. CORS: a local page's preflight is answered with its own origin; no reply to any request above names a foreign one;
+7. on uvicorn (a real socket on a free port): a foreign Origin's WebSocket handshake gets HTTP 403, a local one 101.
+
+Run: .venv/bin/python -I scripts/check_local_only.py   (exits 0 when every check holds)
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+
+if __name__ == "__main__":
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    os.environ["HF_HUB_OFFLINE"] = "1"
+
+import re
+import shutil
+import socket
+import tempfile
+import threading
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+TMP = Path(tempfile.mkdtemp(prefix="local-only-"))
+os.environ["THEODOLITE_ATLAS_DIR"] = str(TMP / "atlas")
+os.environ["THEODOLITE_FIELD_NOTES"] = str(TMP / "notes.json")
+os.environ["THEODOLITE_CENSUS_DIR"] = str(TMP / "census")
+os.environ["THEODOLITE_SCIENTIST_DIR"] = str(TMP / "scientist")
+os.environ["THEODOLITE_SAVED_PROMPTS"] = str(TMP / "saved_prompts.json")
+os.environ["HOME"] = str(TMP / "home")
+(TMP / "home").mkdir()
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from fastapi.routing import APIWebSocketRoute
+from fastapi.staticfiles import StaticFiles
+from fastapi.testclient import TestClient
+from starlette.routing import Mount, WebSocketRoute
+from starlette.websockets import WebSocketDisconnect
+
+import backend.server as server
+from backend.local_only import REFUSED
+
+failures: List[str] = []
+passed = 0
+BASE = "http://127.0.0.1:8765"  # the Host the server's own pages send (and vite's /api proxy, changeOrigin)
+FOREIGN_HOSTS = ["evil.example", "evil.example:8765", "127.0.0.1.nip.io:8765", "localhost.evil.example"]
+FOREIGN_ORIGINS = ["https://evil.example", "http://localhost.evil.example:8765", "http://127.0.0.1.evil.example", "null"]
+LOCAL_ORIGINS = ["http://127.0.0.1:8765", "http://localhost:5173", "http://[::1]:4173"]
+
+
+def check(ok: bool, what: str) -> None:
+    global passed
+    if ok:
+        passed += 1
+    else:
+        failures.append(what)
+        print(f"  FAIL  {what}")
+
+
+def section(title: str, before: int) -> None:
+    if len(failures) == before:
+        print(f"  ok    {title}")
+
+
+def free_port() -> int:
+    with socket.socket() as sk:
+        sk.bind(("127.0.0.1", 0))
+        return sk.getsockname()[1]
+
+
+def routes_of(app: Any) -> List[Tuple[str, str, List[str]]]:
+    """(kind, path, methods) for every route of the app, an included router's too, whichever way the installed FastAPI
+    keeps them (whole in the 0.162 installed here, flattened in older ones)."""
+    out: List[Tuple[str, str, List[str]]] = []
+
+    def walk(routes: Any, prefix: str) -> None:
+        for r in routes:
+            if hasattr(r, "original_router"):
+                walk(r.original_router.routes, prefix + getattr(getattr(r, "include_context", None), "prefix", ""))
+            elif isinstance(r, Mount):
+                out.append(("mount", prefix + r.path, ["GET"]))
+            elif isinstance(r, (APIWebSocketRoute, WebSocketRoute)):
+                out.append(("socket", prefix + r.path, []))
+            else:
+                out.append(("http", prefix + r.path, sorted(set(r.methods or ()) - {"HEAD"})))
+
+    walk(app.routes, "")
+    return out
+
+
+def filled(path: str) -> str:
+    """A path's parameters given values (a saved prompt's kind, and an id)."""
+    return re.sub(r"\{[^}]+\}", "0" * 16, path.replace("{kind}", "question"))
+
+
+def is_refusal(r: Any) -> bool:
+    try:
+        return r.status_code == 403 and r.json().get("detail") == REFUSED
+    except ValueError:
+        return False
+
+
+def foreign_allowed(r: Any) -> Optional[str]:
+    """The origin a reply lets read it, when that is not this machine's."""
+    o = r.headers.get("access-control-allow-origin")
+    return o if o is not None and not re.fullmatch(r"https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?", o) else None
+
+
+def socket_closed(c: TestClient, url: str, headers: Dict[str, str]) -> Optional[int]:
+    """The close code when the handshake is refused before it is accepted; None when it is accepted."""
+    try:
+        with c.websocket_connect(url, headers=dict(headers)):
+            return None
+    except WebSocketDisconnect as exc:
+        return exc.code
+
+
+def main() -> int:
+    seen: List[Any] = []  # every reply, for CORS
+
+    def ask(c: TestClient, method: str, path: str, **kw: Any) -> Any:
+        if method in ("POST", "PUT", "PATCH") and "json" not in kw:
+            kw["json"] = {}
+        r = c.request(method, path, **kw)
+        seen.append(r)
+        return r
+
+    c = TestClient(server.app, base_url=BASE)  # not entered as a context manager: the lifespan (the model) never runs
+    pages = TMP / "dist"
+    pages.mkdir()
+    (pages / "index.html").write_text("<!doctype html><title>the instrument</title>", encoding="utf-8")
+    if not any(isinstance(r, Mount) for r in server.app.routes):  # frontend/dist not built here: mount one as the server does
+        server.app.mount("/", StaticFiles(directory=str(pages), html=True), name="frontend")
+
+    # ---------------------------------------------------------------------------------------------- 1. the routes
+    before = len(failures)
+    routes = routes_of(server.app)
+    http = [(filled(p), m) for kind, p, ms in routes if kind == "http" for m in ms]
+    paths = {p for kind, p, _ in routes}
+    check(len(http) >= 60, f"every HTTP route found ({len(http)})")
+    for want in ("/api/health", "/api/larql", "/api/scientist/inspect_pole", "/api/scientist/trace_readers", "/api/scientist/causal_check",
+                 "/api/scientist/test_hypothesis", "/favicon.ico", "/docs", "/openapi.json", "/api/saved_prompts", "/api/atlas/arch",
+                 "/api/atlas/push", "/api/atlas/scientist/send", "/api/atlas/scientist/events"):
+        check(want in paths, f"{want} among the routes")
+    check(("socket", "/ws/theodolite", []) in routes and any(kind == "mount" for kind, _, _ in routes), "the socket and the pages' mount")
+    http += [("/", "GET"), ("/index.html", "GET"), ("/no/such/page", "GET")]  # the pages, and a path nothing serves
+    section(f"the routes: {len(http)} paths and methods, the socket, the pages", before)
+
+    # ------------------------------------------------------------------------------------------ 2. a foreign Host
+    before = len(failures)
+    for path, method in http:
+        for host in FOREIGN_HOSTS:
+            r = ask(c, method, path, headers={"Host": host})
+            check(is_refusal(r), f"{method} {path} with Host {host}: {r.status_code}")
+    for host in FOREIGN_HOSTS:
+        code = socket_closed(c, f"ws://{host}/ws/theodolite", {})
+        check(code == 1008, f"the socket with Host {host}: {code}")
+    section("a foreign Host refused on every route, and the socket closed before it is accepted", before)
+
+    # ----------------------------------------------------------------------------------------- 3. a foreign Origin
+    before = len(failures)
+    for path, method in http:
+        for origin in FOREIGN_ORIGINS:
+            r = ask(c, method, path, headers={"Origin": origin})
+            check(is_refusal(r), f"{method} {path} from {origin}: {r.status_code}")
+    for origin in FOREIGN_ORIGINS:
+        code = socket_closed(c, "ws://127.0.0.1:8765/ws/theodolite", {"Origin": origin})
+        check(code == 1008, f"the socket from {origin}: {code}")
+    section("a foreign Origin refused on every route and on the socket", before)
+
+    # ----------------------------------------------------------------------- 4. preflights, and what browsers mark
+    before = len(failures)
+    for path, method in http:
+        r = ask(c, "OPTIONS", path, headers={"Origin": "https://evil.example", "Access-Control-Request-Method": method,
+                                             "Access-Control-Request-Headers": "content-type"})
+        check(is_refusal(r) and not any(k.lower().startswith("access-control") for k in r.headers), f"a cross-site preflight for {method} {path}: {r.status_code}")
+        for hdrs in ({"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "no-cors"}, {"Sec-Fetch-Site": "same-site", "Sec-Fetch-Mode": "cors"},
+                     {"Origin": "http://localhost:5173", "Sec-Fetch-Site": "same-site", "Sec-Fetch-Mode": "cors"}):
+            r = ask(c, method, path, headers=hdrs)
+            check(is_refusal(r), f"{method} {path} with {hdrs}: {r.status_code}")
+        if method != "GET":
+            r = ask(c, method, path, headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"})
+            check(is_refusal(r), f"a cross-site form sent to {method} {path}: {r.status_code}")
+    code = socket_closed(c, "ws://127.0.0.1:8765/ws/theodolite", {"Origin": "http://localhost:5173", "Sec-Fetch-Site": "same-site",
+                                                                  "Sec-Fetch-Mode": "websocket"})
+    check(code == 1008, f"the socket from a page on another port of this machine, not through vite's proxy: {code}")
+    section("cross-site preflights refused with no access-control header; requests marked cross- or same-site refused", before)
+
+    # ------------------------------------------------------------------------------------------- 5. what passes
+    before = len(failures)
+    for path, method in http:
+        heard = [ask(c, method, path),  # a script
+                 ask(c, method, path, headers={"Host": "localhost:8765"}),
+                 ask(c, method, path, headers={"Host": "[::1]:8765"}),
+                 ask(c, method, path, headers={"Origin": "http://127.0.0.1:8765", "Sec-Fetch-Site": "same-origin"}),  # its own page
+                 ask(c, method, path, headers={"Origin": "http://127.0.0.1:5173", "Sec-Fetch-Site": "same-origin"})]  # vite's /api
+        if method == "GET":
+            heard.append(ask(c, method, path, headers={"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"}))  # a link
+        check(all(r.status_code != 403 for r in heard), f"{method} {path} from this machine: {[r.status_code for r in heard]}")
+    check(ask(c, "GET", "/").text.startswith("<!doctype html>"), "the pages are served")
+    check(ask(c, "GET", "/api/health").status_code == 503, "a route that reads the model says it is not loaded (no lifespan here)")
+    from backend.local_only import refused
+
+    # a request with no Host at all (HTTP/1.0, a hand-made ASGI call) is a script on this machine
+    check(not refused({"type": "http", "method": "GET", "path": "/api/health", "headers": [], "client": ("127.0.0.1", 5)}),
+          "no Host at all: allowed, as the saved prompts and the atlas allow it")
+    real_state = server.get_app_state
+    server.get_app_state = lambda: (None, None)  # type: ignore[assignment]  # the socket's loop runs; nothing here reads the model
+    try:
+        for url, hdrs in (("ws://127.0.0.1:8765/ws/theodolite", {"Origin": "http://127.0.0.1:8765"}),  # its own page
+                          ("ws://127.0.0.1:5173/ws/theodolite", {"Origin": "http://127.0.0.1:5173"}),  # through vite's /ws proxy
+                          ("ws://localhost:8765/ws/theodolite", {})):  # a script
+            try:
+                with c.websocket_connect(url, headers=dict(hdrs)) as ws:
+                    ws.send_json({"action": "larql", "voice": "not a voice"})
+                    msg = ws.receive_json()
+                check(msg.get("type") == "larql_result" and msg.get("ok") is False and "no edit was made" in msg.get("error", ""),
+                      f"the socket at {url} {hdrs}: accepted, and answers ({msg})")
+            except WebSocketDisconnect as exc:
+                check(False, f"the socket at {url} {hdrs} refused: {exc.code}")
+    finally:
+        server.get_app_state = real_state  # type: ignore[assignment]
+    section("scripts, the instrument's own pages, vite's proxy and plain links pass, on every route and on the socket", before)
+
+    # ------------------------------------------------------------------------------------------------- 6. CORS
+    before = len(failures)
+    for origin in LOCAL_ORIGINS:
+        r = ask(c, "OPTIONS", "/api/larql", headers={"Origin": origin, "Access-Control-Request-Method": "POST",
+                                                      "Access-Control-Request-Headers": "content-type"})
+        check(r.status_code == 200 and r.headers.get("access-control-allow-origin") == origin, f"a preflight from {origin}: {r.status_code} {r.headers.get('access-control-allow-origin')}")
+    leaks = [(r.request.method, r.request.url.path, foreign_allowed(r)) for r in seen if foreign_allowed(r)]
+    check(not leaks, f"no reply names a foreign origin as allowed ({len(seen)} replies): {leaks[:3]}")
+    check(sum(1 for r in seen if r.headers.get("access-control-allow-origin")) >= len(LOCAL_ORIGINS), "local origins are named")
+    section(f"CORS: local pages' origins answered, a foreign one never ({len(seen)} replies)", before)
+
+    # ------------------------------------------------------------------------------------- 7. on a real socket
+    before = len(failures)
+    import uvicorn
+
+    port = free_port()
+    server.get_app_state = lambda: (None, None)  # type: ignore[assignment]  # an accepted socket waits for a message
+    srv = uvicorn.Server(uvicorn.Config(server.app, host="127.0.0.1", port=port, log_level="warning", lifespan="off",
+                                        timeout_graceful_shutdown=3))
+    th = threading.Thread(target=srv.run, daemon=True)
+    th.start()
+    for _ in range(200):
+        if srv.started:
+            break
+        time.sleep(0.05)
+
+    def handshake(origin: str) -> str:
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as sk:
+            sk.sendall((f"GET /ws/theodolite HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                        f"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nOrigin: {origin}\r\n\r\n").encode())
+            return sk.recv(4096).decode("latin-1").split("\r\n", 1)[0]
+
+    try:
+        line = handshake("https://evil.example")
+        check(line.startswith("HTTP/1.1 403"), f"a foreign Origin's handshake on uvicorn: {line!r}")
+        line = handshake(f"http://127.0.0.1:{port}")
+        check(line.startswith("HTTP/1.1 101"), f"the page's own handshake on uvicorn: {line!r}")
+    finally:
+        srv.should_exit = True
+        th.join(timeout=10)
+        server.get_app_state = real_state  # type: ignore[assignment]
+    section("on uvicorn: a refused handshake is an HTTP 403, an accepted one 101", before)
+
+    print(f"\n{passed} checks passed, {len(failures)} failed")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    try:
+        code = main()
+    finally:
+        shutil.rmtree(TMP, ignore_errors=True)
+    sys.exit(code)

@@ -16,6 +16,9 @@ live `SteeringSpec` laser interventions, LARQL `.patch` weight surgery, and Fast
 A sweep request with a `request_id` is answered as a stream: progress while the answer is written, the answer once,
 one (binary, JSON) pair per sighted word-piece, then an end; `cancel_sweep` stops it (ARCHITECTURE.md §4.1-4.3).
 Without one it gets the single pair it always got. Saved questions and system prompts: backend/saved_prompts.py.
+
+Every route, the pages and the socket answer only the instrument's own pages, served from this machine, and scripts run
+on it (backend/local_only.py, around the whole app); CORS allows only pages served from this machine.
 """
 
 from __future__ import annotations
@@ -44,6 +47,7 @@ from backend import atlas as atlas_routes
 from backend import scientist_chat
 from backend import w4a16_fast
 from backend import causal_check as cc
+from backend.local_only import LocalOnly
 from backend.engine_runtime import (
     DEFAULT_TRACKED_CONCEPTS,
     MAX_SWEEP_POSITIONS,
@@ -118,13 +122,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS lets a page read a reply back only when it was served from this machine (any port: the server, vite's dev and
+# preview servers). CORS does not stop a request being sent, and a browser applies none to a WebSocket, so LocalOnly,
+# added last and so run first, refuses a request or a socket from anywhere else before CORS or any route sees it.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(LocalOnly)
 
 
 class SteeringLaserRequest(BaseModel):
@@ -1519,7 +1527,8 @@ async def ws_theodolite(websocket: WebSocket) -> None:
 
     A receiver task reads the socket into a queue, so a `cancel_sweep` is handled at once, even mid-sweep; every
     other action is answered in the order it came. Every send goes through one outbox, so a pair's binary frame and
-    its JSON leave back to back."""
+    its JSON leave back to back. A handshake from anywhere but this machine never reaches here: LocalOnly closes it
+    (1008) before it is accepted."""
     await websocket.accept()
     runtime, vault = get_app_state()
     logger.info("WebSocket client connected to /ws/theodolite")

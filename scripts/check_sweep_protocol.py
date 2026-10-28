@@ -543,7 +543,8 @@ def check_socket() -> None:
 
     server.app.router.lifespan_context = no_lifespan
     client = TestClient(server.app)
-    with client.websocket_connect("/ws/theodolite") as raw:
+    # a local Host, as the pages send it: backend/local_only.py refuses TestClient's "testserver"
+    with client.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as raw:
         s = Socket(raw)
 
         print("2. a request without request_id: one pair, as before")

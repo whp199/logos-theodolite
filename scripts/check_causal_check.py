@@ -774,7 +774,8 @@ def check_transports(rt: TheodoliteRuntime, vault: LarqlVaultEngine, mcp_reply: 
     server.app.router.lifespan_context = no_lifespan
     g = torch.Generator().manual_seed(22)
     ids = rand_ids(14, g)  # the ids check_tool used
-    client = TestClient(server.app)
+    # a local Host, as the pages send it: backend/local_only.py refuses TestClient's "testserver"
+    client = TestClient(server.app, base_url="http://127.0.0.1:8765")
     health = client.get("/api/health").json()
     want_card = {"version": 1, "writes": ["activation", "frozen_norm"], "contexts": ["given", "study"],
                  "scale_refs": ["study", "this_text"], "k_default": 10.0, "k_max": 200.0, "k_floor": 0.01,
@@ -792,7 +793,7 @@ def check_transports(rt: TheodoliteRuntime, vault: LarqlVaultEngine, mcp_reply: 
     res = client.post("/api/scientist/causal_check", json={**body, "layer": "three"})
     check(res.status_code == 422, f"HTTP 422: {res.status_code}")
 
-    with client.websocket_connect("/ws/theodolite") as ws:
+    with client.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as ws:
         ws.send_json({"action": "causal_check", **body})
         msg = ws.receive_json()
         check(msg.get("type") == "causal_check" and list(msg.get("data", {})) == REPLY_KEYS, f"WS reply: {msg.get('type')}")

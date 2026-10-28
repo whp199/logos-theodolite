@@ -424,6 +424,11 @@ J++ lens adds 3.4 GB. Those speeds are inferred from one 4-core machine: time a 
 # open http://127.0.0.1:8765/   ·   live-reloading interface: (cd frontend && npm run dev), proxied to :8765
 ```
 
+The server answers only its own pages, served from this machine, and scripts run on it: a request or a WebSocket whose
+Host or Origin names another machine, or that a browser marks as sent from another site (a plain link excepted), is
+refused (`backend/local_only.py`). So a page elsewhere, or one rebinding its name to 127.0.0.1, cannot run sweeps or
+edit the vault through your browser. Another account on this machine is not refused.
+
 The same sighting, asked of the server directly over its WebSocket, `/ws/theodolite` (every field below the first three
 is optional, and each default reproduces the instrument as first built):
 
