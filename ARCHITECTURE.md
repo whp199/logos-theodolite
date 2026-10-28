@@ -437,11 +437,10 @@ current piece (`think_stop_reason` "stopped"); either way the request ends `canc
   (`$THEODOLITE_SAVED_PROMPTS`, else `${XDG_DATA_HOME:-~/.local/share}/theodolite/saved_prompts.json`), written
   atomically under its own lock (never the GPU's); an unreadable file is moved aside to `<file>.corrupt-<UTC stamp>` and
   reported once (a file that is not UTF-8, is nested too deeply, or holds a lone surrogate counts as unreadable).
-  Requests from a page on another host get 403 (from the server's guard, §4, and from these routes' own rule): the
-  Host must be 127.0.0.1 / localhost / [::1] on any port (a DNS-rebinding page sends its own name as the Host, and a
-  same-origin GET sends no Origin; vite's proxy sends the server's own Host), and so must the Origin when there is
-  one; no Origin (a script) is allowed. A name or text
-  holding half of a character (a lone surrogate) is refused with 422.
+  Requests from a page on another host get 403 (from the server's guard, §4, and from these routes' own rule): the Host
+  must be 127.0.0.1 / localhost / [::1] on any port (a DNS-rebinding page sends its own name as the Host, and a
+  same-origin GET sends no Origin; vite's proxy sends the server's own Host), and so must the Origin when there is one;
+  no Origin (a script) is allowed. A name or text holding half of a character (a lone surrogate) is refused with 422.
 
 ### 4.5 The causal spot-check (`backend/causal_check.py`)
 

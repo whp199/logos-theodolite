@@ -18,6 +18,9 @@ temporary directory:
    vite's own, 127.0.0.1:5173, and the page's Origin), a link opened from another site; each reaches its route
    (whatever it answers without a model, never the guard's 403), and the socket is accepted and answers;
 6. CORS: a local page's preflight is answered with its own origin; no reply to any request above names a foreign one;
+   and the CORS layer alone, built from the server's own options (the guard refuses a foreign Origin before CORS sees
+   it), allows only this machine's origins, never every origin, and names no foreign one to a preflight or a GET with
+   a cookie;
 7. on uvicorn (a real socket on a free port): a foreign Origin's WebSocket handshake gets HTTP 403, a local one 101;
 8. labd: a foreign Host, and any request a browser sends (an Origin, even a local one, or Sec-Fetch-Site), refused on
    every route (403), no docs pages; /exec and /reload without this launch's token (none, a wrong one, or before any
@@ -264,7 +267,28 @@ def main() -> int:
     leaks = [(r.request.method, r.request.url.path, foreign_allowed(r)) for r in seen if foreign_allowed(r)]
     check(not leaks, f"no reply names a foreign origin as allowed ({len(seen)} replies): {leaks[:3]}")
     check(sum(1 for r in seen if r.headers.get("access-control-allow-origin")) >= len(LOCAL_ORIGINS), "local origins are named")
-    section(f"CORS: local pages' origins answered, a foreign one never ({len(seen)} replies)", before)
+    # the CORS layer alone: LocalOnly refuses a foreign Origin before CORS sees it, so the replies above would pass with
+    # CORS allowing every origin; built from the server's own options, it must allow only this machine's
+    from starlette.applications import Starlette
+    from starlette.middleware.cors import CORSMiddleware
+    from starlette.responses import PlainTextResponse
+    from starlette.routing import Route
+
+    opts = next(m for m in server.app.user_middleware if m.cls is CORSMiddleware)
+    alone = CORSMiddleware(None, *opts.args, **opts.kwargs)  # type: ignore[arg-type]
+    look_alikes = FOREIGN_ORIGINS + ["http://localhost.evil.example", "http://127.0.0.1:8765.evil.example", "https://127.0.0.1.nip.io"]
+    allowed = [o for o in look_alikes if alone.is_allowed_origin(o)]
+    check(not alone.allow_all_origins and not allowed, f"the server's CORS options allow no foreign origin: {allowed}, every origin {alone.allow_all_origins}")
+    check(all(alone.is_allowed_origin(o) for o in LOCAL_ORIGINS + ["http://127.0.0.1:5173", "http://localhost"]), "they allow this machine's, on any port")
+    bare = TestClient(Starlette(routes=[Route("/", lambda request: PlainTextResponse("ok"))], middleware=[opts]))
+    for origin in look_alikes:
+        rs = [bare.options("/", headers={"Origin": origin, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"}),
+              bare.get("/", headers={"Origin": origin, "Cookie": "a=b"})]
+        check(all(r.headers.get("access-control-allow-origin") is None for r in rs),
+              f"CORS alone names {origin} to no preflight or credentialed GET: {[r.headers.get('access-control-allow-origin') for r in rs]}")
+    r = bare.options("/", headers={"Origin": "http://127.0.0.1:5173", "Access-Control-Request-Method": "POST"})
+    check(r.headers.get("access-control-allow-origin") == "http://127.0.0.1:5173", f"CORS alone answers a local page: {r.headers.get('access-control-allow-origin')}")
+    section(f"CORS: local pages' origins answered, a foreign one never ({len(seen)} replies, and the CORS layer alone)", before)
 
     # ------------------------------------------------------------------------------------- 7. on a real socket
     before = len(failures)

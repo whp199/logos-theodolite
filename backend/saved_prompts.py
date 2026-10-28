@@ -83,11 +83,11 @@ def _hostname(url: str) -> Optional[str]:
 
 def same_machine(request: Request) -> None:
     """Refuse a request sent by a page served from anywhere but this machine (403): CORS alone does not stop a request
-    being sent, so without this (or the server's own guard, backend/local_only.py) a site the reader visits could
-    change the lists. The Host is checked first: a same-origin GET
-    sends no Origin, so a page at another name that resolves to this machine (DNS rebinding) is known only by the
-    Host its browser sends. Vite's proxy sends the server's own Host (changeOrigin). A script sent to this machine (no
-    Origin, a Host of 127.0.0.1, localhost or [::1], or none at all) is allowed."""
+    being sent, so without this (or the server's own guard, backend/local_only.py) a site the reader visits could change
+    the lists. The Host is checked first: a same-origin GET sends no Origin, so a page at another name that resolves to
+    this machine (DNS rebinding) is known only by the Host its browser sends. Vite's proxy sends the server's own Host
+    (changeOrigin). A script sent to this machine (no Origin, a Host of 127.0.0.1, localhost or [::1], or none at all)
+    is allowed."""
     host_header = request.headers.get("host")
     origin = request.headers.get("origin")
     refused = (host_header is not None and _hostname("//" + host_header) not in LOCAL_HOSTS) or (
