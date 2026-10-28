@@ -139,6 +139,11 @@ Exception: MIT (neuron-explorer)
     sweep/steer_sweep.py, sweep/rank.py, sweep/depth_report.py,
     sweep/merge_runs.py and sweep/peek.py (its dose-response curves);
   - frontend/src/screens/atlas/ (map.ts above all), from explorer/static/.
+  Read again at commit 6a6f0e95bf49ad6626940021148f775d7d55d1e4 (28 October
+  2026): its sampled steer (commits 8324db8 and 2dd845d) suggested the
+  sampler of the push and of the scientist's steer (backend/atlas_ops.py,
+  backend/sampler_request.py), which is written on the instrument's own
+  sampler and takes none of that code.
 
   MIT License
 
