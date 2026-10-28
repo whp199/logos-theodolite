@@ -478,7 +478,7 @@ export interface Backends {
   reach?: { mode: "folder" | "home"; env: string; claude: string; codex: string; openai: string };
 }
 export interface ChatEvent {
-  t: "state" | "sent" | "text" | "thinking" | "tool" | "tool_result" | "ui" | "error" | "done" | "ping" | "user";
+  t: "state" | "sent" | "text" | "thinking" | "tool" | "tool_result" | "ui" | "error" | "done" | "note" | "stale" | "ping" | "user";
   [k: string]: unknown;
 }
 export interface PastChat {

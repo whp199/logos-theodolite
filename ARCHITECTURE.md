@@ -741,16 +741,26 @@ The scientist folder is `$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scient
 `backend/scientist_prompt.md`, `backend/scientist_methodology.md` and the person's own `prompt.local.md` there (for
 `openai`, without the shell's section).
 
+A Claude Code or Codex chat reads those files, `scientist_mcp.py` and `scientist_tools.py` when its process starts, and
+the server watches them by modification time. At the person's next message to a live, idle chat that started before
+they last changed, a Claude Code chat at the folder reach is ended and started again, resuming its session, with a
+`note` event: it has no shell, so only its MCP server lives in its process group. Any other chat (Codex at either
+reach, Claude Code at "home") is not started again unasked, since ending its process group would also end the commands
+it left running in the background: it is marked stale (a `stale` event, which the first `state` event of a stream also
+carries), and the page offers `POST /restart`. A chat mid-turn is never ended. An `openai` chat's prompt is built
+afresh every round; its tools change only when the server starts again.
+
 | route | |
 |---|---|
 | `GET /backends` | whether `claude` and `codex` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}` |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
 | `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
-| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, README §v), or a stop would wait on every page left open |
+| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, README §v), or a stop would wait on every page left open |
 | `POST /interrupt` | `{chat}`: stops the reply; the chat (and Claude Code's or Codex's background commands) goes on |
 | `POST /ui` | from the tools: a screen action (`select`, `head`, `tab`, `camera`, `highlight`, `annotate`, `text`, `search`, `rename`), passed to the chat's page as a `ui` event, layers from 0 |
 | `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events |
 | `POST /rewind` | `{chat, text}`: cut the chat back to before its last message (a Claude Code session is backed up first), for "edit" and "ask again" |
+| `POST /restart` | `{chat}`: end its process and everything in its group, any commands it left running too (409 while it answers), so the next message resumes it on its files as they now stand → `{ended, note}` |
 | `POST /upload` | `{name, type, data (base64)}` (at most 25 MB) → `{id}`, for `attachments` |
 | `GET /prompt?agent` | the system prompt as built |
 

@@ -12,6 +12,7 @@ import {
   openEvents,
   openPast,
   removePending,
+  restartChat,
   rewindLast,
   send,
   setPick,
@@ -182,6 +183,8 @@ const PartView: React.FC<{ p: Part; box: number }> = ({ p, box }) => {
       );
     case "error":
       return <p className="error-line atlas-small">{p.text}</p>;
+    case "note":
+      return <p className="muted atlas-small">{p.text}</p>;
     case "stopped":
       return <p className="muted atlas-small">stopped</p>;
     case "usename":
@@ -370,6 +373,7 @@ const BackendPick: React.FC = () => {
 export const Scientist: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   const busy = useScientist((s) => s.busy);
+  const stale = useScientist((s) => s.stale);
   const input = useScientist((s) => s.input);
   const pending = useScientist((s) => s.pending);
   const past = useScientist((s) => s.past);
@@ -456,6 +460,18 @@ export const Scientist: React.FC = () => {
             }}
           >
             I understand: let it run here
+          </button>
+        </div>
+      ) : null}
+      {stale ? (
+        // the server ends its process only when asked: commands it left running in the background would end with it
+        <div className="atlas-stale" role="status">
+          <p className="atlas-small" style={{ margin: 0 }}>
+            This chat started before its instructions or tools last changed, and runs those it started with. Restart it to take them up; that
+            also stops any commands it left running.
+          </p>
+          <button type="button" className="btn-ghost plain" disabled={busy} title={busy ? "stop the reply first" : undefined} onClick={() => void restartChat()}>
+            restart
           </button>
         </div>
       ) : null}

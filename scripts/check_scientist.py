@@ -15,8 +15,13 @@ so the chat is driven over real connections):
    its cost), what the person had open told in the pages' count, attachments, a message sent mid-turn, an interrupt,
    past chats and their history from the session file, and a rewind; the environment both CLIs start with: no
    endpoint's key, no Hugging Face or cloud credential, each CLI's own login (and Claude Code's cloud login on Bedrock);
+   then its instructions changed (prompt.local.md): not taken up mid-turn (nor restarted on request then: 409), taken
+   up at the next message by starting it again with --resume and the new prompt file, with a note, and only once;
+   under the home reach marked stale instead;
 5. Codex, played by a fake `codex app-server`: its home, the thread and its instructions, a turn's events, an
-   approval it asks for declined, an interrupt, history from the log, a rewind (thread/revert);
+   approval it asks for declined, an interrupt, history from the log, a rewind (thread/revert); then its instructions
+   changed: marked stale, once, with no new process, the first state event saying so; POST /restart ends it, saying it
+   ended any commands left running, and the next message resumes the thread with the new developerInstructions;
 6. an OpenAI-compatible endpoint, played by a fake server: its models; the tool loop (the request: the model, the
    tools, the key from its environment variable, the system prompt without the shell section; the tool calls
    streamed in pieces and run against the atlas in this process; the result sent back; the answer); arguments that
@@ -596,8 +601,62 @@ def run_checks() -> int:
     ev.wait(lambda e: e["t"] == "done", 90, i3)
     starts = [x for x in flog() if x["kind"] == "start"]
     check(len(starts) == 2 and starts[1]["resumed"] and starts[1]["sid"] == chat, "after a rewind the session is resumed")
+    # its instructions changed (prompt.local.md, beside the work folder): never taken up mid-turn; at the folder reach
+    # the next message starts it again on them, resuming its session, and says so
+    local = sc.scientist_dir() / "prompt.local.md"
+    i4 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "Go slow again."})
+    ev.wait(lambda e: e["t"] == "text", 30, i4)
+    local.write_text("## This machine\n\nCite the census beside every reading.\n", encoding="utf-8")
+    hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "And N7 too."})
+    r = hc.post("/api/atlas/scientist/restart", json={"chat": chat})
+    check(r.status_code == 409 and "still answering" in r.json()["detail"], f"/restart refused while it answers: {r.status_code} {r.text[:120]}")
+    time.sleep(0.3)
+    hc.post("/api/atlas/scientist/interrupt", json={"chat": chat})
+    ev.wait(lambda e: e["t"] == "done", 30, i4)
+    check(len([x for x in flog() if x["kind"] == "start"]) == 2 and any(x["kind"] == "midturn" and x["text"] == "And N7 too." for x in flog())
+          and not any(e["t"] in ("note", "stale") for e in ev.since(i4)), "files changed mid-turn: the message joins the turn, and the chat is not started again")
+    old = sc._chats[chat]["proc"]
+    i5 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "Read it again."})
+    ev.wait(lambda e: e["t"] == "done", 90, i5)
+    kinds = [e["t"] for e in ev.since(i5)]
+    note = next((e for e in ev.since(i5) if e["t"] == "note"), None)
+    starts = [x for x in flog() if x["kind"] == "start"]
+    check(len(starts) == 3 and starts[2]["resumed"] and starts[2]["sid"] == chat and "Cite the census beside every reading." in starts[2]["prompt"]
+          and [x for x in flog() if x["kind"] == "user"][-1]["text"] == "Read it again.",
+          "at the folder reach the next message starts it again, resuming its session, the new prompt file holding the local text")
+    check(old.returncode is not None and sc._chats[chat]["proc"] is not old, "and the process that ran the old files has ended")
+    check(note is not None and note["text"] == sc.RESTARTED_WORDS and kinds.index("note") < kinds.index("sent") and "stale" not in kinds and "done" in kinds,
+          f"a note says so before the message goes in: {kinds}")
+    i6 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "And once more."})
+    ev.wait(lambda e: e["t"] == "done", 90, i6)
+    check(len([x for x in flog() if x["kind"] == "start"]) == 3 and not any(e["t"] == "note" for e in ev.since(i6)), "taken up once: the next message goes to the same process")
     ev.stop = True
-    section("Claude Code: the command, a turn, attachments, mid-turn, interrupt, history, rewind", before)
+    # under the home reach a chat may have left a command running in its process group: marked stale, not started again
+    os.environ[sc.REACH_ENV] = "home"
+    try:
+        chat_h = str(uuid.uuid4())
+        evh = Events(srv.url, chat_h)
+        j0 = evh.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_h, "message": "Hello.", "agent": "claude"})
+        evh.wait(lambda e: e["t"] == "done", 90, j0)
+        local.write_text(local.read_text(encoding="utf-8") + "\nSay which lens each word went through.\n", encoding="utf-8")
+        j1 = evh.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat_h, "message": "Hello again."})
+        evh.wait(lambda e: e["t"] == "done", 90, j1)
+        seq = evh.since(j1)
+        check(len([x for x in flog() if x["kind"] == "start" and x["sid"] == chat_h]) == 1 and [e for e in seq if e["t"] == "stale"] == [
+              {"t": "stale", "stale": True, "text": sc.STALE_WORDS}] and "note" not in [e["t"] for e in seq] and "done" in [e["t"] for e in seq],
+              "under THEODOLITE_SCIENTIST_REACH=home Claude Code is not started again: it is marked stale, and the message answered")
+        evh.stop = True
+    finally:
+        if old_reach is None:
+            os.environ.pop(sc.REACH_ENV, None)
+        else:
+            os.environ[sc.REACH_ENV] = old_reach
+    section("Claude Code: the command, a turn, attachments, mid-turn, interrupt, history, rewind, changed instructions", before)
 
     # ------------------------------------------------------------------------------------------------- 5. Codex
     before = len(failures)
@@ -645,8 +704,43 @@ def run_checks() -> int:
     check(r == {"ok": True, "cut": True} and rev and rev[-1]["params"] == {"threadId": "thr_1", "beforeTurnId": "turn_1"}, "a rewind reverts the thread's last turn")
     check(hc.get("/api/atlas/scientist/history", params={"chat": chat2}).json()["events"] == [] and
           json.loads((sc.scientist_dir() / "chats.json").read_text())[chat2]["turns"] == [], "and cuts the log")
+    # its instructions changed: Codex may have left a command running (nohup keeps it in the process group), so the
+    # chat is marked stale, not started again; POST /restart ends it, and the next message resumes the thread on them
+    i1 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat2, "message": "Read L3 N5 again."})
+    ev.wait(lambda e: e["t"] == "done", 60, i1)
+    n_up = len([x for x in clog() if x["kind"] == "start"])
+    local = sc.scientist_dir() / "prompt.local.md"
+    local.write_text(local.read_text(encoding="utf-8") + "\nName the census run each rank comes from.\n", encoding="utf-8")
+    i2 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat2, "message": "And L4 N9?"})
+    ev.wait(lambda e: e["t"] == "done", 60, i2)
+    seq = ev.since(i2)
+    check(len([x for x in clog() if x["kind"] == "start"]) == n_up and [e for e in seq if e["t"] == "stale"] == [{"t": "stale", "stale": True, "text": sc.STALE_WORDS}]
+          and "note" not in [e["t"] for e in seq] and "Done." in "".join(e.get("text", "") for e in seq if e["t"] == "text"),
+          "codex: marked stale and no new process; the message answered by the one running")
+    ev2 = Events(srv.url, chat2)
+    check(ev2.events[0]["t"] == "state" and ev2.events[0]["stale"] is True, f"the first state event carries it: {ev2.events[0]}")
+    ev2.stop = True
+    i3 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat2, "message": "And L4 N10?"})
+    ev.wait(lambda e: e["t"] == "done", 60, i3)
+    check(not any(e["t"] == "stale" for e in ev.since(i3)) and len([x for x in clog() if x["kind"] == "start"]) == n_up, "marked once, still not started again")
+    i4 = ev.mark()
+    r = hc.post("/api/atlas/scientist/restart", json={"chat": chat2}).json()
+    check(r == {"ok": True, "ended": True, "note": sc.ENDED_WORDS} and "any commands it had left running" in r["note"] and sc._chats[chat2]["proc"] is None,
+          f"/restart ends it, and says it ended any commands left running: {r}")
+    check(ev.wait(lambda e: e["t"] == "stale", 10, i4) == {"t": "stale", "stale": False}, "and the chat is no longer stale")
+    hc.post("/api/atlas/scientist/send", json={"chat": chat2, "message": "Now with the new instructions."})
+    ev.wait(lambda e: e["t"] == "done", 60, i4)
+    resumed = [x for x in clog() if x["kind"] == "rpc" and x["method"] == "thread/resume"]
+    check(len([x for x in clog() if x["kind"] == "start"]) == n_up + 1 and resumed[-1]["params"]["threadId"] == "thr_1"
+          and "Name the census run each rank comes from." in resumed[-1]["params"]["developerInstructions"]
+          and "Name the census run each rank comes from." not in resumed[-2]["params"]["developerInstructions"],
+          "the next message resumes the thread with the new developerInstructions")
+    check(hc.post("/api/atlas/scientist/restart", json={"chat": str(uuid.uuid4())}).json() == {"ok": True, "ended": False}, "/restart on a chat with no process")
     ev.stop = True
-    section("Codex: its home, the thread, a turn, an approval declined, history, rewind", before)
+    section("Codex: its home, the thread, a turn, an approval declined, history, rewind, changed instructions", before)
 
     # --------------------------------------------------------------------------- 6. an OpenAI-compatible endpoint
     before = len(failures)

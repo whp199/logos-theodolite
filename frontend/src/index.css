@@ -2092,3 +2092,13 @@ textarea.atlas-note-box {
   padding: 8px 10px;
   margin: 6px 0;
 }
+/* a chat running instructions or tools older than their files, with its restart */
+.atlas-stale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  border: 1px solid var(--hair);
+  padding: 6px 10px;
+  margin: 6px 0;
+}

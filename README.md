@@ -512,7 +512,9 @@ or `$THEODOLITE_LMSTUDIO_URL`), Ollama (`http://127.0.0.1:11434/v1`, or `$THEODO
 `$OPENROUTER_API_KEY`), or any other (`$THEODOLITE_OPENAI_BASE_URL`, `$THEODOLITE_OPENAI_API_KEY`,
 `$THEODOLITE_OPENAI_MODEL`, or `endpoints.json` in the scientist’s folder, ARCHITECTURE §4.8). Pick the backend, and for an
 endpoint its model, in the scientist’s tab; a key is read from the environment and never reaches a page. Choose a model
-that takes tool calls.
+that takes tool calls. An edit to its instructions (`prompt.local.md` in its folder) or tools reaches a Claude Code chat
+at the default reach with your next message; any other chat says it runs the old ones and offers a restart, since that
+also ends any commands it left running.
 
 > [!WARNING]
 > By default, under Claude Code the scientist reads, writes and edits files only in its own work folder and has no

@@ -34,8 +34,18 @@ Every route answers only the instrument's own pages (`atlas.local_pages_only`); 
 scientist folder (`$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scientist`: `work/` is its working folder, beside
 `uploads/`, `logs/` (the codex and openai chats' events and messages), `chats.json` and the system prompt built from
 backend/scientist_prompt.md, backend/scientist_methodology.md and `prompt.local.md` there). Events reach the page as
-NDJSON (GET /events): state, sent, text, thinking, tool, tool_result, ui, error, done, ping. The routes are in
-ARCHITECTURE.md §4.8.
+NDJSON (GET /events): state, sent, text, thinking, tool, tool_result, ui, error, done, note, stale, ping. The routes are
+in ARCHITECTURE.md §4.8.
+
+A Claude Code or Codex chat reads its instructions and tools when its process starts (`agent_files`: the prompt, its
+methodology, `prompt.local.md`, the MCP server and the tools it serves). When they have changed since, the person's next
+message to a live, idle chat takes them up only where that cannot end anything else (`_take_up_changes`): a Claude Code
+chat at the folder reach has no shell, so only its MCP server lives in its process group, and it is ended and started
+again, resuming its session (a `note` event). Any other (Codex at either reach, Claude Code at "home") may have left a
+command running in the background, in the same group, so it is not ended unasked: it is marked stale (a `stale` event,
+and the first `state` event of a stream carries it), and the page offers POST /restart, which ends it, those commands
+too, so that the next message resumes it with the files as they now stand. An openai chat's prompt is built afresh
+every round; its tools are this process's, and change only when the server starts again.
 """
 
 from __future__ import annotations
@@ -69,6 +79,8 @@ logger = logging.getLogger("theodolite.scientist")
 ROOT_DIR = Path(__file__).resolve().parent.parent
 PROMPT_FILES = (ROOT_DIR / "backend" / "scientist_prompt.md", ROOT_DIR / "backend" / "scientist_methodology.md")
 MCP_SCRIPT = ROOT_DIR / "backend" / "scientist_mcp.py"
+# what a Claude Code or Codex chat's process reads when it starts, besides prompt.local.md (`agent_files`)
+AGENT_FILES = (*PROMPT_FILES, MCP_SCRIPT, ROOT_DIR / "backend" / "scientist_tools.py")
 SCIENTIST_DIR_ENV = "THEODOLITE_SCIENTIST_DIR"
 AGENTS = ("claude", "codex", "openai")
 FILE_TOOLS = ["Read", "Glob", "Grep", "Write", "Edit", "Bash"]
@@ -89,6 +101,13 @@ TOOL_CUT = 16000  # characters of a tool's reply an openai-compatible model read
 SHOWN_CUT = 1500  # characters of a tool's reply the page shows
 MAX_UPLOAD = 25 << 20
 MAX_MESSAGE = 100_000
+# what the events and /restart say when a chat takes up changed instructions or tools (`_take_up_changes`)
+RESTARTED_WORDS = ("Its instructions or tools had changed since this chat's process started, so it was started again, resuming "
+                   "the conversation, to take them up.")
+STALE_WORDS = ("This chat's process started before its instructions or tools last changed, and it runs those it started "
+               "with. Restarting it takes them up, and also ends any commands it left running.")
+ENDED_WORDS = ("Ended the chat's process and any commands it had left running; the next message starts it again, resuming "
+               "the conversation with its instructions and tools as they now stand.")
 
 router = APIRouter(prefix="/api/atlas/scientist", dependencies=[Depends(local_pages_only)])
 _app: Any = None
@@ -155,6 +174,26 @@ def child_env(agent: str = "claude", **extra: str) -> Dict[str, str]:
     own = tuple(p for flag, ps in CLAUDE_CLOUD_LOGINS.items() if agent == "claude" and on(os.environ.get(flag)) for p in ps)
     secret = lambda k: (k in SECRET_ENV or k.startswith(SECRET_PREFIXES)) and not k.startswith(own)  # noqa: E731
     return {**{k: v for k, v in os.environ.items() if k not in keys and not secret(k)}, **extra}
+
+
+def agent_files() -> List[Path]:
+    """The files a Claude Code or Codex chat takes its instructions and tools from when its process starts: the prompt
+    and its methodology, the MCP server and the tools it serves, and the person's `prompt.local.md` beside the work
+    folder."""
+    return [*AGENT_FILES, scientist_dir() / "prompt.local.md"]
+
+
+def _agent_files_stamp() -> Tuple[Any, ...]:
+    """Each of `agent_files` by its modification time and size (None for one not there, so a prompt.local.md made or
+    removed shows too)."""
+    out: List[Any] = []
+    for p in agent_files():
+        try:
+            s = p.stat()
+            out.append((s.st_mtime_ns, s.st_size))
+        except OSError:
+            out.append(None)
+    return tuple(out)
 
 
 # ------------------------------------------------------------------------------------------------------- the prompt
@@ -342,7 +381,9 @@ def _chat(cid: str, agent: Optional[str] = None) -> Dict[str, Any]:
     if c is None:
         kind = known or (agent if agent in AGENTS else "claude")
         c = _chats[cid] = {"session": cid, "agent": kind, "proc": None, "listeners": listeners or set(), "turn": [], "busy": False,
-                           "last": time.time(), "pending": [], "cancel": asyncio.Event(), "task": None, "lock": asyncio.Lock()}
+                           "last": time.time(), "pending": [], "cancel": asyncio.Event(), "task": None, "lock": asyncio.Lock(),
+                           # the agent files and the reach its process started with, and whether they have changed since
+                           "files": None, "reach": None, "stale": False}
     return c
 
 
@@ -396,6 +437,37 @@ async def _end_chat(c: Dict[str, Any]) -> None:
     proc = c.get("proc")
     c["proc"] = None
     await _stop_proc(proc)
+
+
+def _started(c: Dict[str, Any], files: Tuple[Any, ...]) -> None:
+    """A chat's process has just started, on the agent files as `files` stamps them (taken before it read them)."""
+    c["files"], c["reach"] = files, reach()
+    _mark_stale(c, False)
+
+
+def _mark_stale(c: Dict[str, Any], stale: bool) -> None:
+    """Whether the chat's process runs instructions or tools older than the files', said to the page when it changes."""
+    if bool(c.get("stale")) != stale:
+        c["stale"] = stale
+        _emit(c, {"t": "stale", "stale": stale, **({"text": STALE_WORDS} if stale else {})})
+
+
+async def _take_up_changes(c: Dict[str, Any]) -> None:
+    """Before a message goes into a Claude Code or Codex chat whose process is live and idle and started before its
+    agent files last changed (module docstring): a Claude Code chat at the folder reach is ended, so that the message
+    starts it again on them, resuming its session (it has no shell, so nothing but its MCP server lives in its process
+    group); any other is marked stale, once, and ended only when the person asks (POST /restart), since ending its
+    process group would also end any command it left running in the background. A chat mid-turn is never ended."""
+    proc = c.get("proc")
+    if proc is None or proc.returncode is not None or c["busy"] or c.get("files") is None:
+        return
+    if c["files"] == _agent_files_stamp():
+        return
+    if c["agent"] == "claude" and c.get("reach") == "folder":
+        await _end_chat(c)
+        _emit(c, {"t": "note", "text": RESTARTED_WORDS})
+    else:
+        _mark_stale(c, True)
 
 
 def _ensure_reaper() -> None:
@@ -544,10 +616,12 @@ async def _ensure_claude(c: Dict[str, Any], self_url: str) -> Any:
         return proc
     if not shutil.which(_bin("claude")):
         raise RuntimeError("Claude Code (the `claude` command) is not installed where the server runs.")
+    files = _agent_files_stamp()  # before the prompt file is built from them
     # its own process group, so ending a chat also ends what it started (the MCP server, its scripts)
     proc = c["proc"] = await asyncio.create_subprocess_exec(*_claude_cmd(c["session"], self_url), cwd=str(work_dir()), env=child_env("claude"),
                                                             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                                                             stderr=asyncio.subprocess.PIPE, limit=1 << 24, start_new_session=True)
+    _started(c, files)
     c["pump"] = asyncio.create_task(_pump_claude(c, proc))
     return proc
 
@@ -694,10 +768,12 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
     if not shutil.which(_bin("codex")):
         raise RuntimeError("Codex (the `codex` command) is not installed where the server runs.")
     env = child_env("codex", CODEX_HOME=_codex_home())
+    files = _agent_files_stamp()  # before its instructions are built from them
     proc = c["proc"] = await asyncio.create_subprocess_exec(_bin("codex"), "app-server", cwd=str(work_dir()), env=env,
                                                             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
                                                             stderr=asyncio.subprocess.DEVNULL, limit=1 << 24, start_new_session=True)
-    c["rpc"] = {"next": 0, "pending": {}}
+    _started(c, files)
+    c["rpc"], c["turn_id"], c["msg_item"] = {"next": 0, "pending": {}}, None, None  # a new process: no turn of the last runs on
     c["pump"] = asyncio.create_task(_pump_codex(c, proc))
     await _rpc(c, "initialize", {"clientInfo": {"name": "logos-theodolite", "version": "1"}})
     # in its sandbox Codex asks before every MCP tool call, and this chat never asks (approvalPolicy "never"): the
@@ -1044,7 +1120,9 @@ async def models(profile: str) -> Dict[str, Any]:
 async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
     """A message into a chat (starting its backend when it is not running). While the scientist works, the message
     reaches it between tool calls. `layer` and `n` (or `head`), counted from 0, say what the person has open: the
-    scientist is told, in the pages' count. Events arrive on GET /events."""
+    scientist is told, in the pages' count. A Claude Code or Codex chat idle on instructions or tools that have changed
+    since its process started is first started again on them, or marked stale (`_take_up_changes`). Events arrive on
+    GET /events."""
     cid = _check_chat(req.chat)
     if req.agent is not None and req.agent not in AGENTS:
         raise HTTPException(status_code=400, detail=f"The scientist's backends are {', '.join(AGENTS)}.")
@@ -1081,6 +1159,7 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
             c["cancel"].clear()
             c["task"] = asyncio.create_task(_openai_turn(c, self_url))
             return {"ok": True}
+        await _take_up_changes(c)
         if c["agent"] == "codex":
             try:
                 await _ensure_codex(c, self_url)
@@ -1097,8 +1176,10 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
                 except Exception:
                     pass  # the turn ended meanwhile: start a new one
             r = await _rpc(c, "turn/start", {"threadId": c["thread"], "input": items})
-            c["turn_id"] = (r.get("turn") or {}).get("id")
-            _meta_set(cid, turns=_meta().get(cid, {}).get("turns", []) + [c["turn_id"]])
+            tid = (r.get("turn") or {}).get("id")
+            if c["busy"]:  # a quick turn can be over before its start is answered here: then no turn runs
+                c["turn_id"] = tid
+            _meta_set(cid, turns=_meta().get(cid, {}).get("turns", []) + [tid])
             return {"ok": True}
         try:
             proc = await _ensure_claude(c, self_url)
@@ -1134,8 +1215,9 @@ async def interrupt(req: ChatRequest) -> Dict[str, Any]:
 
 @router.get("/events")
 async def events(chat: str) -> StreamingResponse:
-    """The chat's events as NDJSON: {t: "state", busy, running} and the current turn's events so far, then each as it
-    comes: text, thinking, tool, tool_result, ui, error, done (a turn ended), sent (a message went in), ping."""
+    """The chat's events as NDJSON: {t: "state", busy, running, agent, stale} and the current turn's events so far, then
+    each as it comes: text, thinking, tool, tool_result, ui, error, done (a turn ended), sent (a message went in), note
+    (the chat was started again on changed instructions or tools), stale ({stale}: whether it runs older ones), ping."""
     c = _chat(_check_chat(chat))
     q: asyncio.Queue = asyncio.Queue()
     c["listeners"].add(q)
@@ -1143,7 +1225,8 @@ async def events(chat: str) -> StreamingResponse:
     async def gen():
         try:
             running = bool(c.get("proc") and c["proc"].returncode is None) or c.get("task") is not None
-            yield json.dumps({"t": "state", "busy": c["busy"], "running": running, "agent": c["agent"]}) + "\n"
+            state = {"t": "state", "busy": c["busy"], "running": running, "agent": c["agent"], "stale": bool(c.get("stale"))}
+            yield json.dumps(state) + "\n"
             for ev in list(c["turn"]):
                 yield json.dumps(ev, ensure_ascii=False) + "\n"
             while True:
@@ -1329,6 +1412,26 @@ def _cut_log(cid: str) -> None:
     last = max((i for i, e in enumerate(ev) if e.get("t") == "user"), default=None)
     if last is not None:
         path.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in ev[:last]), encoding="utf-8")
+
+
+@router.post("/restart")
+async def restart(req: ChatRequest) -> Dict[str, Any]:
+    """Ends a chat's process, and with it everything in its process group (its MCP server, and any command it left
+    running in the background), so that the next message starts it again, resuming the conversation on its
+    instructions and tools as they now stand: what a stale chat is offered (`_take_up_changes`). Refused while the
+    scientist answers, as /rewind is. A chat with no process running (an openai chat has none) is left as it is."""
+    c = _chats.get(_check_chat(req.chat))
+    if c is None:
+        return {"ok": True, "ended": False}
+    async with c["lock"]:
+        if c["busy"]:
+            raise HTTPException(status_code=409, detail="The scientist is still answering; stop it first.")
+        proc = c.get("proc")
+        ended = proc is not None and proc.returncode is None
+        if ended:
+            await _end_chat(c)
+        _mark_stale(c, False)
+    return {"ok": True, "ended": True, "note": ENDED_WORDS} if ended else {"ok": True, "ended": False}
 
 
 @router.post("/upload")

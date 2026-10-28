@@ -3,7 +3,8 @@
  * time, its thread kept in this browser, its events read from one stream (GET /api/atlas/scientist/events). Messages
  * go in any time: mid-reply they reach the scientist between tool calls. Stop ends the reply only. A chat runs on the
  * backend it started with (Claude Code, Codex, or an OpenAI-compatible endpoint and model); the pick applies to the next
- * new chat.
+ * new chat. A chat whose instructions or tools changed after it started says so (`note` when it was started again on
+ * them, `stale` when it runs the old ones until it is restarted: restartChat).
  */
 import { create } from "zustand";
 import { AtlasError, get, post, streamLines, type Backends, type ChatEvent, type PastChat } from "./api";
@@ -18,6 +19,7 @@ export type Part =
   | { t: "thinking"; text: string }
   | { t: "tool"; id: string | null; name: string; input: unknown; output?: string; error?: boolean }
   | { t: "error"; text: string }
+  | { t: "note"; text: string }
   | { t: "stopped" }
   | { t: "usename"; name: string; layer: number; n: number };
 export type Item = { kind: "user"; msg: string; shown: string; atts: Att[] } | { kind: "assistant"; parts: Part[] };
@@ -42,6 +44,8 @@ interface SciState {
   items: Item[];
   box: number | null;
   busy: boolean;
+  /** the chat's process runs instructions or tools older than the files' (the server's `stale`) */
+  stale: boolean;
   pending: Att[];
   past: PastChat[] | "loading" | null;
   pastError: string | null;
@@ -75,6 +79,7 @@ export const useScientist = create<SciState>(() => ({
   items: (kept?.items ?? []).filter((x, i, a) => !(x.kind === "assistant" && !x.parts.length && i === a.length - 1)),
   box: null,
   busy: false,
+  stale: false,
   pending: [],
   past: null,
   pastError: null,
@@ -205,6 +210,7 @@ export function closeEvents() {
 
 function onEvent(e: ChatEvent) {
   if (e.t === "state") {
+    set({ stale: e.stale === true });
     if (e.busy) {
       // (re)connected mid-turn: the turn so far comes again, so what was drawn of it is drawn again
       const b = st().box;
@@ -216,6 +222,7 @@ function onEvent(e: ChatEvent) {
     return;
   }
   if (e.t === "ping" || e.t === "sent" || e.t === "user") return;
+  if (e.t === "stale") return void set({ stale: e.stale === true });
   if (e.t === "ui") return void scientistUi(e).catch(() => undefined);
   if (e.t === "done") return finishTurn();
   if (!st().busy) set({ busy: true }); // a turn the scientist began itself (a background command finished)
@@ -228,6 +235,7 @@ function onEvent(e: ChatEvent) {
   else if (e.t === "tool_result")
     editParts(b, (parts) => parts.map((p) => (p.t === "tool" && p.id === e.id ? { ...p, output: String(e.output ?? ""), error: !!e.error } : p)));
   else if (e.t === "error") pushPart(b, { t: "error", text: String(e.error ?? "") });
+  else if (e.t === "note") pushPart(b, { t: "note", text: String(e.text ?? "") });
 }
 
 function finishTurn() {
@@ -307,8 +315,24 @@ export function send(): boolean {
 export function newChat() {
   closeEvents();
   if (st().busy) finishTurn();
-  set({ chat: null, chatPick: null, items: [], box: null, past: null });
+  set({ chat: null, chatPick: null, items: [], box: null, past: null, stale: false });
   clearScientistMarks();
+  save();
+}
+
+/** Ends the chat's process, and any commands it left running, so that the next message starts it again on its
+ * instructions and tools as they now stand (POST /restart, refused while it answers); the server's note goes in the
+ * thread. */
+export async function restartChat() {
+  const chat = st().chat;
+  if (!chat || st().busy) return;
+  try {
+    const r = await post<{ ended: boolean; note?: string }>("/api/atlas/scientist/restart", { chat });
+    set({ stale: false });
+    if (r.ended && r.note) setItems([...st().items, { kind: "assistant", parts: [{ t: "note", text: r.note }] }]);
+  } catch (e) {
+    setItems([...st().items, { kind: "assistant", parts: [{ t: "error", text: errText(e) }] }]);
+  }
   save();
 }
 
@@ -354,7 +378,7 @@ export async function openPast(c: PastChat) {
     } else if (e.t === "error") box.parts.push({ t: "error", text: String(e.error ?? "") });
   }
   const chatPick: Pick = { agent: r.agent ?? c.agent, profile: r.profile ?? null, model: r.model ?? null };
-  set({ chat: c.chat, chatPick, items, box: null, past: null });
+  set({ chat: c.chat, chatPick, items, box: null, past: null, stale: false }); // its stream's state says whether it is stale
   clearScientistMarks();
   save();
   void openEvents();
