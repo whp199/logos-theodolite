@@ -35,8 +35,12 @@ so the chat is driven over real connections):
    are not JSON; a message sent mid-turn answered in the same turn; an interrupt leaving a valid conversation; a
    profile without streaming; an endpoint's error and a missing key in plain words; a profile file holding a key
    refused; history, past chats, rewind;
-7. who may ask: the chat's routes refuse a page from another machine;
-8. a stop: scripts/atlas_stand_in.py --serve in a process of its own, a chat's event stream held open (it never ends
+7. a line cut off mid-write (the server stopped while writing it; here cut inside a character), at the end of a codex
+   and an openai chat's log and of a Claude Code session: the reader leaves it out, and any line that does not parse;
+   the history reads as before, the chat is among the past ones, a rewind works; the next event is logged on a line
+   of its own, the torn one cut off first;
+8. who may ask: the chat's routes refuse a page from another machine;
+9. a stop: scripts/atlas_stand_in.py --serve in a process of its own, a chat's event stream held open (it never ends
    of itself), then SIGINT: the server exits within 6 s (its graceful-shutdown limit is 3 s; with none it would wait
    for as long as the stream stays open).
 
@@ -883,33 +887,33 @@ def run_checks() -> int:
 
     chat7 = str(uuid.uuid4())
     ev7 = Events(srv.url, chat7)
-    msgs = ["Read L3 N5.", "Now read L3 N6 slowly.", "And compare it with L3 N7."]
+    asked = ["Read L3 N5.", "Now read L3 N6 slowly.", "And compare it with L3 N7."]
     k0 = ev7.mark()
-    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[0], "agent": "codex"})
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": asked[0], "agent": "codex"})
     ev7.wait(lambda e: e["t"] == "done", 60, k0)
     k1 = ev7.mark()
-    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[1]})
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": asked[1]})
     ev7.wait(lambda e: e["t"] == "text", 30, k1)
-    r = hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[2]}).json()
+    r = hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": asked[2]}).json()
     ev7.wait(lambda e: e["t"] == "done", 60, k1)
     steered = [x for x in clog() if x["kind"] == "rpc" and x["method"] == "turn/steer"]
-    check(r == {"ok": True} and steered and steered[-1]["params"]["input"][0]["text"] == msgs[2] and len(meta_of(chat7)["turns"]) == 2
-          and said(chat7) == msgs == thread_of(chat7), "a message sent mid-turn joins the turn (turn/steer): two turns, three messages, in the log as in the thread")
-    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7, "text": msgs[2]}).json()
-    check(r == {"ok": True, "cut": True, "messages": 2} and said(chat7) == msgs[:1] == thread_of(chat7) and len(meta_of(chat7)["turn_at"]) == 1,
+    check(r == {"ok": True} and steered and steered[-1]["params"]["input"][0]["text"] == asked[2] and len(meta_of(chat7)["turns"]) == 2
+          and said(chat7) == asked == thread_of(chat7), "a message sent mid-turn joins the turn (turn/steer): two turns, three messages, in the log as in the thread")
+    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7, "text": asked[2]}).json()
+    check(r == {"ok": True, "cut": True, "messages": 2} and said(chat7) == asked[:1] == thread_of(chat7) and len(meta_of(chat7)["turn_at"]) == 1,
           f"a rewind of that turn reverts it whole, and the log loses both its messages, as the thread does: {r} {said(chat7)} {thread_of(chat7)}")
     k2 = ev7.mark()
-    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[2]})  # asked again: the last message alone
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": asked[2]})  # asked again: the last message alone
     ev7.wait(lambda e: e["t"] == "done", 60, k2)
-    check(said(chat7) == [msgs[0], msgs[2]] == thread_of(chat7), "asked again, the log and the thread agree")
-    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7, "text": msgs[2]}).json()
-    check(r == {"ok": True, "cut": True, "messages": 1} and said(chat7) == msgs[:1] == thread_of(chat7), f"and a second rewind stays in step: {r}")
+    check(said(chat7) == [asked[0], asked[2]] == thread_of(chat7), "asked again, the log and the thread agree")
+    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7, "text": asked[2]}).json()
+    check(r == {"ok": True, "cut": True, "messages": 1} and said(chat7) == asked[:1] == thread_of(chat7), f"and a second rewind stays in step: {r}")
     k3 = ev7.mark()
-    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": msgs[2]})
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": asked[2]})
     ev7.wait(lambda e: e["t"] == "done", 60, k3)
     sc._meta_set(chat7, turn_at=None)  # a chat whose turns were taken before the log said where each began
     r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7}).json()
-    check(r == {"ok": True, "cut": True, "messages": 1} and said(chat7) == msgs[:1] == thread_of(chat7),
+    check(r == {"ok": True, "cut": True, "messages": 1} and said(chat7) == asked[:1] == thread_of(chat7),
           f"without where its turns began, the log is cut at its last message, as before: {r}")
     ev7.stop = True
     section("Codex: its home, the thread, a turn, an approval declined, history, rewind, changed instructions, a steered turn rewound", before)
@@ -1042,7 +1046,44 @@ def run_checks() -> int:
     fake.stop()
     section("an OpenAI-compatible endpoint: the tool loop, mid-turn, interrupt, errors, profiles, history", before)
 
-    # ----------------------------------------------------------------------------------------------- 7. who may ask
+    # ------------------------------------------------------------------------------ 7. a line cut off mid-write
+    # the server stopped while writing a line (here cut inside a character, so even decoding it fails): the history, the
+    # past chats and a rewind read on without it, and the next event is logged on a line of its own
+    before = len(failures)
+    torn = (sc.logs_dir() / "torn.jsonl", b'{"t": "user", "text": "one"}\n{"t": "text", "text": "two"}\nnot json\n{"t": "text", "text": "cut \xe2\x80')
+    torn[0].write_bytes(torn[1])
+    check([e for _, e in sc._jsonl(torn[0])] == [{"t": "user", "text": "one"}, {"t": "text", "text": "two"}] and [p for p, _ in sc._jsonl(torn[0])] == [0, 29],
+          "the reader: a line that does not parse and a last line cut inside a character left out, each line where it begins")
+    cut_line = '{"t": "text", "text": "a reply cut in the middle of a word…"}'.encode("utf-8")[:-4]
+    rows = {}
+    for cid_, path_ in ((chat7, sc.logs_dir() / f"{chat7}.jsonl"), (chat3, sc.logs_dir() / f"{chat3}.jsonl"), (chat, Path(sc._session_file(chat)))):
+        hist_ = hc.get("/api/atlas/scientist/history", params={"chat": cid_}).json()["events"]
+        with open(path_, "ab") as f:
+            f.write(cut_line if cid_ != chat else b'{"type": "assistant", "message": {"content": [{"type": "text", "text": "cut \xe2\x80')
+        r1 = hc.get("/api/atlas/scientist/history", params={"chat": cid_})
+        r2 = hc.get("/api/atlas/scientist/chats")
+        rows[cid_] = r1.status_code == 200 and r1.json()["events"] == hist_ and r2.status_code == 200 and any(x["chat"] == cid_ for x in r2.json())
+    check(all(rows.values()), f"with a torn last line the history reads as before and the chat is among the past ones (codex, openai, Claude Code): {rows}")
+    log7 = sc.logs_dir() / f"{chat7}.jsonl"
+    ev7 = Events(srv.url, chat7)
+    k4 = ev7.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat7, "message": "After the cut line."})
+    ev7.wait(lambda e: e["t"] == "done", 60, k4)
+    lines_ = log7.read_bytes().split(b"\n")
+    check(said(chat7) == [asked[0], "After the cut line."] and lines_[-1] == b"" and all(json.loads(x) for x in lines_[:-1]),
+          f"the next message is logged on a line of its own, the torn one cut off first: {said(chat7)}")
+    r = hc.post("/api/atlas/scientist/rewind", json={"chat": chat7, "text": "After the cut line."})
+    check(r.status_code == 200 and r.json()["messages"] == 1 and said(chat7) == asked[:1] == thread_of(chat7), f"a Codex rewind after it: {r.text[:200]}")
+    ev7.stop = True
+    for cid_, text_ in ((chat3, None), (chat, "Then N9.")):
+        r = hc.post("/api/atlas/scientist/rewind", json={"chat": cid_, "text": text_})
+        check(r.status_code == 200 and r.json()["cut"], f"a rewind with a torn last line ({cid_ == chat and 'Claude Code' or 'openai'}): {r.status_code} {r.text[:200]}")
+    session = Path(sc._session_file(chat))
+    check(not any(x.strip() and b"cut \xe2\x80" in x for x in session.read_bytes().split(b"\n")) and session.read_bytes().endswith(b"\n"),
+          "the Claude Code session cut back whole, its torn line gone with what came after the message")
+    section("a line cut off mid-write: the history, the past chats and a rewind read on, the next line starts afresh", before)
+
+    # ----------------------------------------------------------------------------------------------- 8. who may ask
     before = len(failures)
     for hdrs in ({"Origin": "http://evil.example"}, {"Sec-Fetch-Site": "cross-site"}):
         r = hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "x"}, headers=hdrs)
@@ -1061,7 +1102,7 @@ def run_checks() -> int:
                 pass
     srv.stop()
 
-    # ------------------------------------------------------------------- 8. a stop with a chat's event stream open
+    # ------------------------------------------------------------------- 9. a stop with a chat's event stream open
     before = len(failures)
     port = free_port()
     with open(TMP / "serve.log", "w") as serve_log:

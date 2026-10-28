@@ -784,7 +784,9 @@ stream, headers, params}}`). A profile names the environment variable its key is
 one is refused); a page picks a profile by name and never sees a key.
 
 The scientist folder is `$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scientist`: `work/` (the chat's working folder),
-`uploads/`, `logs/` (the codex and openai chats' events and messages), `chats.json`, and the system prompt, built from
+`uploads/`, `logs/` (the codex and openai chats' events and messages; a line cut off mid-write, by a server stopped while
+writing it, is left out wherever a log or a Claude Code session is read, and cut off before the next event is written),
+`chats.json`, and the system prompt, built from
 `backend/scientist_prompt.md`, `backend/scientist_methodology.md` and the person's own `prompt.local.md` there (for
 `openai`, without the shell's section).
 

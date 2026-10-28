@@ -77,6 +77,7 @@ from pydantic import BaseModel, Field
 
 from backend import scientist_tools as st
 from backend.atlas import local_pages_only
+from backend.census import drop_partial_tail
 from backend.saved_prompts import LOCAL_HOSTS
 
 logger = logging.getLogger("theodolite.scientist")
@@ -395,12 +396,35 @@ def _chat(cid: str, agent: Optional[str] = None) -> Dict[str, Any]:
 
 
 def _log(cid: str, ev: Dict[str, Any]) -> int:
-    """An event added to a codex or openai chat's replay log (`logs/<chat>.jsonl`); the byte its line begins at."""
-    logs_dir().mkdir(parents=True, exist_ok=True)
-    with open(logs_dir() / f"{cid}.jsonl", "ab") as f:
+    """An event added to a codex or openai chat's replay log (`logs/<chat>.jsonl`); the byte its line begins at. A last
+    line cut off mid-write (the server stopped while writing it) is cut off first, as a census run's is before it goes
+    on, so that this one is a line of its own."""
+    path = logs_dir() / f"{cid}.jsonl"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    drop_partial_tail(path)
+    with open(path, "ab") as f:
         at = f.seek(0, os.SEEK_END)
         f.write((json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8"))
     return at
+
+
+def _jsonl(path: Any) -> List[Tuple[int, Dict[str, Any]]]:
+    """A chat's replay log, or Claude Code's session file, as its records, each with the byte its line begins at. A last
+    line cut off mid-write is left out, as the census's readers leave one out (`tolerate_tail`), and so is any other
+    line that does not parse, rather than the history, the past chats or a rewind failing on it; a line is decoded
+    only once it is whole, so one cut inside a character fails nothing either."""
+    out: List[Tuple[int, Dict[str, Any]]] = []
+    pos = 0
+    with open(path, "rb") as f:
+        for raw in f:
+            try:
+                e = json.loads(raw) if raw.strip() else None
+            except ValueError:  # a torn line (UnicodeDecodeError is one too)
+                e = None
+            if isinstance(e, dict):
+                out.append((pos, e))
+            pos += len(raw)
+    return out
 
 
 def _emit(c: Dict[str, Any], ev: Dict[str, Any]) -> None:
@@ -1292,16 +1316,11 @@ def _summary(cid: str, m: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if hit and hit[0] == mt:
         return hit[1]
     title, turns = None, 0
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            try:
-                e = json.loads(line)
-            except ValueError:
-                continue
-            t = _user_text(e) if agent == "claude" else (e.get("text") if e.get("t") == "user" else None)
-            if t is not None:
-                turns += 1
-                title = title or _shown_text(t).strip()[:120]
+    for _, e in _jsonl(path):
+        t = _user_text(e) if agent == "claude" else (e.get("text") if e.get("t") == "user" else None)
+        if t is not None:
+            turns += 1
+            title = title or _shown_text(t).strip()[:120]
     out = {"chat": cid, "agent": agent, "t": int(mt), "title": title, "turns": turns,
            **({"profile": m.get("profile"), "model": m.get("model")} if agent == "openai" else {})}
     _chat_list[path] = (mt, out)
@@ -1325,11 +1344,7 @@ async def history(chat: str) -> Dict[str, Any]:
         path = logs_dir() / f"{cid}.jsonl"
         ev = []
         if path.exists():
-            for line in path.read_text(encoding="utf-8").splitlines():
-                try:
-                    e = json.loads(line)
-                except ValueError:
-                    continue
+            for _, e in _jsonl(path):
                 if e.get("t") in ("user", "text", "tool", "tool_result", "error"):
                     # the log keeps each streamed fragment; a reply is their run joined, as the live page shows it (a
                     # fragment boundary can fall inside a number or a citation)
@@ -1342,29 +1357,24 @@ async def history(chat: str) -> Dict[str, Any]:
     if not path:
         return {"chat": cid, "agent": agent, "events": []}
     ev, seen = [], set()
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            try:
-                msg = json.loads(line)
-            except ValueError:
-                continue
-            if msg.get("isSidechain") or msg.get("isMeta"):
-                continue
-            t = _user_text(msg)
-            if t is not None:
-                ev.append({"t": "user", "text": _shown_text(t)})
-            elif msg.get("type") == "assistant":
-                r = _refusal(msg)
-                if r and r["id"] not in seen:
-                    seen.add(r["id"])
-                    ev.append({"t": "error", "error": r["text"]})
-                for blk in (msg.get("message") or {}).get("content", []):
-                    if blk.get("type") == "text" and blk.get("text"):
-                        ev.append({"t": "text", "text": blk["text"]})
-                    elif blk.get("type") == "tool_use":
-                        ev.append({"t": "tool", "id": blk.get("id"), "input": blk.get("input"), "name": str(blk.get("name", "")).removeprefix(MCP_PREFIX)})
-            elif msg.get("type") == "user":
-                ev += _tool_results(msg)
+    for _, msg in _jsonl(path):
+        if msg.get("isSidechain") or msg.get("isMeta"):
+            continue
+        t = _user_text(msg)
+        if t is not None:
+            ev.append({"t": "user", "text": _shown_text(t)})
+        elif msg.get("type") == "assistant":
+            r = _refusal(msg)
+            if r and r["id"] not in seen:
+                seen.add(r["id"])
+                ev.append({"t": "error", "error": r["text"]})
+            for blk in (msg.get("message") or {}).get("content", []):
+                if blk.get("type") == "text" and blk.get("text"):
+                    ev.append({"t": "text", "text": blk["text"]})
+                elif blk.get("type") == "tool_use":
+                    ev.append({"t": "tool", "id": blk.get("id"), "input": blk.get("input"), "name": str(blk.get("name", "")).removeprefix(MCP_PREFIX)})
+        elif msg.get("type") == "user":
+            ev += _tool_results(msg)
     return {"chat": cid, "agent": agent, "events": ev}
 
 
@@ -1407,25 +1417,21 @@ async def rewind(req: ChatRequest, request: Request) -> Dict[str, Any]:
     path = _session_file(cid)
     if not path:
         return {"ok": True, "cut": False}
-    lines = open(path, encoding="utf-8").read().splitlines(True)
+    recs = _jsonl(path)
     at = None
-    for i in range(len(lines) - 1, -1, -1):
-        try:
-            t = _user_text(json.loads(lines[i]))
-        except ValueError:
-            continue
+    for pos, msg in reversed(recs):
+        t = _user_text(msg)
         if t is not None and (not text or t.strip() == text or t.strip().endswith("\n\n" + text) or t.split("\n\n", 1)[-1].strip() == text):
-            at = i
+            at = pos
             break
     if at is None:
         return {"ok": True, "cut": False}
     shutil.copy(path, f"{path}.bak-{int(time.time())}")
-    keep = lines[:at]
-    if not any(_user_text(json.loads(x)) is not None for x in keep if x.strip()):
+    if not any(_user_text(msg) is not None for pos, msg in recs if pos < at):
         os.remove(path)  # nothing the person said is left: the next turn starts the session afresh
     else:
-        with open(path, "w", encoding="utf-8") as f:
-            f.writelines(keep)
+        with open(path, "rb+") as f:  # what came before, byte for byte
+            f.truncate(at)
     return {"ok": True, "cut": True}
 
 
@@ -1436,12 +1442,7 @@ def _cut_log(cid: str, at: Optional[int] = None) -> int:
     path = logs_dir() / f"{cid}.jsonl"
     if not path.exists():
         return 0
-    users, pos = [], 0
-    with open(path, "rb") as f:
-        for raw in f:
-            if raw.strip() and json.loads(raw).get("t") == "user":
-                users.append(pos)
-            pos += len(raw)
+    users = [pos for pos, e in _jsonl(path) if e.get("t") == "user"]
     cut = at if at in users else (users[-1] if users else None)
     if cut is None:
         return 0
