@@ -9,10 +9,12 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
 4. the live readings: both faces' words (the vault's own reading, each face's label check), the steer lens read live,
    the push chat's three voices (one neuron, several, a conversation carried on, refusals before the stream opens), the
    whole-text steer, both written greedily or with the instrument's sampler (the voices those of atlas_ops.write_rows
-   with the same sampler, a seed drawn and echoed when none is given, several samples of a steer as lists, each
-   sample's unpushed voice the steer of one sample with seed + s, every push at dose 0 writing the three voices alike,
-   every reply saying how it was written, the sampler's refusals in plain words; /arch's card), reads (pushes and head scales in the same pass; a push at or after the neuron's own block leaves
-   it as it was), the next piece's odds (KL, what rose and fell), compare, fires (the whole text and one unit);
+   with the same sampler, a seed drawn and echoed when none is given, several samples of a steer as lists, each sample's
+   unpushed voice the steer of one sample with seed + s, an add at dose 0 writing the three voices alike, every reply
+   saying how it was written, the sampler's refusals in plain words, a temperature with no chances to draw from among
+   them, and several samples refused past their word-pieces; /arch's card), reads (pushes and head scales in the same
+   pass; a push at or after the neuron's own block leaves it as it was), the next piece's odds (KL, what rose and fell),
+   compare, fires (the whole text and one unit);
 5. the run view: scores at a word-piece and at each neuron's strongest, the filters, the map; heads' writes; one
    head's row, its pattern, its wiring, its profile, its attention; the drive of a neuron, whose parts add up;
 6. with every index built (backend/atlas_build.py into the temporary atlas folder): the scales come from the stats
@@ -337,15 +339,25 @@ def main() -> int:
                       ({"sampler": {"presence_penalty": 0.5}}, "only with a temperature above 0"), ({"samples": 3}, "would all be the same"),
                       ({"sampler": {"temperature": 0.7, "min_p": 0.05}}, "has no min_p"),
                       ({"sampler": {"temperature": 0.7, "repetition_penalty": 1.1}}, "has no repetition_penalty"),
-                      ({"sampler": {"temp": 0.7}}, "not 'temp'"), ({"sampler": {"temperature": 0.7, "seed": 2**53 - 2}, "samples": 4}, "at most 2^53 - 4")]:
+                      ({"sampler": {"temp": 0.7}}, "not 'temp'"), ({"sampler": {"temperature": 0.7, "seed": 2**53 - 2}, "samples": 4}, "at most 2^53 - 4"),
+                      ({"sampler": "greedy"}, "The sampler is an object"), ({"sampler": {"temperature": 0.7, "seed": True}}, "seed is a whole number"),
+                      # the logits over so small a temperature overflow: no chances to draw from, where the race would take piece 0
+                      ({"sampler": {"temperature": 1e-39, "seed": 1}}, "no chances to draw from"),
+                      # 24 rows of the prompt and 512 written are past the 6,144 word-pieces several samples may hold
+                      ({"sampler": {"temperature": 0.7}, "samples": 8, "max_new": 512}, "Ask for at most 3 samples at this length")]:
         r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": "x", **bad})
         check(r.status_code == 400 and says in r.json()["detail"], f"/steer refused: {bad} -> {r.status_code} {r.text[:160]}")
-    for bad, says in [({"sampler": {"presence_penalty": -0.5}}, "only with a temperature above 0"), ({"sampler": {"temperature": 3}}, "temperature is from 0 to 2")]:
+    for bad, says in [({"sampler": {"presence_penalty": -0.5}}, "only with a temperature above 0"), ({"sampler": {"temperature": 3}}, "temperature is from 0 to 2"),
+                      ({"sampler": [0.7]}, "The sampler is an object")]:
         r = c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": "x", **bad})
         check(r.status_code == 400 and says in r.json()["detail"], f"/push refused before streaming: {bad} -> {r.status_code} {r.text[:160]}")
+    evs = events(c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": "x", "max_new": 6, "sampler": {"temperature": 1e-39, "seed": 1}}).text)
+    check(not voices(evs)[0] and "no chances to draw from" in (evs[-1].get("error") or ""),
+          f"/push at temperature 1e-39: nothing written, the error in plain words ({evs[-1:]})")
     card = c.get("/api/atlas/arch").json()["push"]["sampler"]
     check(card["default"] == "greedy" and set(card["fields"]) == {"temperature", "top_k", "top_p", "presence_penalty", "seed"}
-          and card["not_offered"] == ["min_p", "repetition_penalty"] and shared in card["draw"] and "1 to 8" in card["samples"],
+          and card["not_offered"] == ["min_p", "repetition_penalty"] and shared in card["draw"] and "1 to 8" in card["samples"]
+          and f"at most {atlas_routes.MAX_STEER_ROW_PIECES:,} word-pieces" in card["samples"],
           f"/arch: the push card names the sampler, its limits and the shared draw ({card})")
 
     # reads

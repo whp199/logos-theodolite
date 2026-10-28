@@ -56,8 +56,12 @@ MAX_RUN_POSITIONS = 256  # a text whose every activation is kept for the run vie
 MAX_HEAD_POSITIONS = 512  # a text whose attention is kept head by head (about 2.5 GB on the CPU at 512 on the 31B)
 MAX_PUSH_NEW = 512
 # whole-text steer samples: 3 rows each in one batch (on the 31B a step costs about the same for 1 to 64 rows; each row
-# keeps about 0.8 MB a word-piece of context, so 24 rows of 200 are about 3.8 GB)
+# keeps about 0.8 MB a word-piece of context, so 24 rows of 200 are about 3.8 GB, but 24 of 512 written would be about
+# 10 GB: inferred from the census pilot's 3.1 GiB for 32 rows, not measured). Several samples are written only while
+# their rows hold at most what the push chat's three voices may (3 x 2,048 word-pieces, prompt and answer, about 4.9 GB);
+# one sample is taken as before
 MAX_STEER_SAMPLES = 8
+MAX_STEER_ROW_PIECES = 3 * MAX_TEXT_POSITIONS
 MAX_COMPARE_NEURONS = 300
 MAX_COMPARE_TEXTS = 24
 CACHE_SIZE = 256
@@ -399,8 +403,8 @@ class PushChatRequest(BaseModel):
     max_new: int = Field(160, ge=1, le=MAX_PUSH_NEW)
     spare_bos: bool = True
     # how the voices are written: greedy unless a temperature above 0 is given (backend/sampler_request.py, read in
-    # plain words there); the last event says how they were written
-    sampler: Optional[Dict[str, Any]] = None
+    # plain words there, a sampler that is not an object among them); the last event says how they were written
+    sampler: Any = None
 
 
 class ReadRequest(BaseModel):
@@ -477,7 +481,7 @@ class SteerRequest(BaseModel):
     dose: float = 0.8
     mode: str = Field("add", max_length=8)
     max_new: int = Field(150, ge=1, le=MAX_PUSH_NEW)
-    sampler: Optional[Dict[str, Any]] = None  # as the push chat's
+    sampler: Any = None  # as the push chat's
     samples: StrictInt = 1  # 1 to MAX_STEER_SAMPLES, sampled only: sample s drawn with seed + s, 3 rows each in one batch
 
 
@@ -548,7 +552,8 @@ async def arch() -> Dict[str, Any]:
             "sampler": {"fields": sr.FIELDS, "default": "greedy", "draw": f"{sr.SHARED_DRAW}: each step one exponential "
                         "race over the vocabulary, its noise from a CPU generator seeded seed + s for sample s, so the voices "
                         "part only where the push moves the odds", "samples": f"POST /steer: 1 to {MAX_STEER_SAMPLES}, three "
-                        "rows each in one batch; the push chat writes one", "not_offered": sorted(sr.NOT_OFFERED)}},
+                        f"rows each in one batch, several only while their rows hold at most {MAX_STEER_ROW_PIECES:,} "
+                        "word-pieces in all (prompt and answer); the push chat writes one", "not_offered": sorted(sr.NOT_OFFERED)}},
         "limits": {"text": MAX_TEXT_POSITIONS, "run": MAX_RUN_POSITIONS, "heads": MAX_HEAD_POSITIONS, "push_new": MAX_PUSH_NEW},
         "label_gate": LABEL_GATE_CARD,
         "lens": a.rt.lens_card(),
@@ -1253,8 +1258,15 @@ def _sampler(req: Union[PushChatRequest, "SteerRequest"]) -> Tuple[Any, Union[st
 def _steer_whole(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.HeadScale], smp: Any,
                  sampling: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
     k = int(req.samples)
-    iv, echo = a.interventions(ps, hs, ao.THREE_VOICES * k)
     ids = a.chat_ids([{"role": "user", "content": req.prompt}])
+    n = len(ids) + int(req.max_new)
+    if k > 1 and 3 * k * n > MAX_STEER_ROW_PIECES:
+        most = MAX_STEER_ROW_PIECES // (3 * n)
+        raise ValueError(f"{k} samples are {3 * k} rows of up to {n:,} word-pieces (the prompt's {len(ids):,} and {req.max_new} "
+                         f"written), {3 * k * n:,} in all; several samples are written only while their rows hold at most "
+                         f"{MAX_STEER_ROW_PIECES:,}. Ask for " + (f"at most {most} samples" if most > 1 else "one sample")
+                         + " at this length, or a shorter answer (max_new).")
+    iv, echo = a.interventions(ps, hs, ao.THREE_VOICES * k)
     rows = [ids] * (3 * k)
     td = ao.TextDeltas(a.rt.tokenizer, 3 * k)
     texts = [""] * (3 * k)
@@ -1271,8 +1283,9 @@ def _steer_whole(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.Hea
 @router.post("/steer")
 async def steer(req: SteerRequest) -> Dict[str, Any]:
     """The three voices as whole texts (the scientist's `steer`): pushed up, as it is, pushed down; greedily, or with
-    the instrument's sampler, `samples` of them (each a list then, sample s drawn with seed + s), the three voices of a
-    sample sharing each draw. `sampling` says how they were written."""
+    the instrument's sampler, `samples` of them (each voice a list when more than one, sample s drawn with seed + s, and
+    several only while their rows hold at most MAX_STEER_ROW_PIECES word-pieces), the three voices of a sample sharing
+    each draw. `sampling` says how they were written."""
     a = atlas()
     ps, hs = off_gpu(a.parse_pushes, _push_items(req))
     smp, sampling = off_gpu(_sampler, req)

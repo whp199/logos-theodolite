@@ -72,6 +72,8 @@ def sampler_of(given: Any) -> SamplerRequest:
             raise ValueError(NOT_OFFERED[k])
         if k not in FIELDS:
             raise ValueError(f"The sampler takes temperature, top_k, top_p, presence_penalty and seed, not {k!r}.")
+        if isinstance(given[k], bool):  # pydantic would read true as 1
+            raise ValueError(f"The sampler's {k} is {FIELDS[k]}: not {given[k]!r}.")
     try:
         return SamplerRequest.model_validate(given)
     except ValidationError as exc:
