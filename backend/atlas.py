@@ -999,9 +999,11 @@ async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, befo
     position, and its display units ([text, is_peak], the window's word-pieces `span` [s, e)) cut at the window's start
     or end, a boundary between documents (an end mark, or a start mark inside the window) or a turn mark, else where
     `before` or `after` (each at most 128) runs out (`cut`: why each side stops; a character split over byte pieces is
-    kept whole); `ids`, the window up to the span's end, for POST /reads. `reads` and `follows`: the word-pieces at the peaks and just after them, counted over the k with their
-    lift over the corpus's base rate, which are leads (`words_note`), not labels the gate has checked. `ready: false`,
-    saying which build makes it, without the index; `stale` when a vault edit in force could have changed them."""
+    kept whole); `ids`, the window up to the span's end, for POST /reads. `reads` and `follows`: the word-pieces at the
+    peaks and just after them, counted over the k with their lift over the corpus's base rate, which are leads
+    (`words_note`), not labels the gate has checked. `rel_to`: what `rel` is a share of (the stats index's extreme,
+    naming its corpus, or saying it is another corpus's). `ready: false`, saying which build makes it, without the
+    index; `stale` when a vault edit in force could have changed them."""
     a = atlas()
     _check_neuron(a, layer, n)
     face = {"+": "+", " ": "+", "pos": "+", "-": "-", "neg": "-"}.get(face, face)  # a bare "+" in a URL arrives as a space

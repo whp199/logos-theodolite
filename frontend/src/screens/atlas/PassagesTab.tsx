@@ -1,8 +1,9 @@
 /**
  * The open neuron's stored passages (GET /api/atlas/neuron/passages, the passages index built by scripts/atlas_build.py
- * passages): for each face its strongest windows of the corpus it was built on, one event a window, the peak word-piece in gilt,
- * with its share of the face's extreme and the regime GeGLU fired in there; then a few events drawn at random above
- * half its extreme; and the word-pieces each face reads and that follow, with their lift over the corpus's base rate.
+ * passages): for each face its strongest windows of the corpus it was built on, one event a window, the peak
+ * word-piece in gilt, with its share of the face's extreme and the regime GeGLU fired in there; then a few events
+ * drawn at random above half its extreme; and the word-pieces each face reads and that follow, with their lift over
+ * the corpus's base rate.
  * Those words are counted over a few passages and no test has checked them: they are leads, not labels, and the page
  * says so. "read again" posts a passage's own ids to POST /reads (the model runs) and gives its activation now.
  */
