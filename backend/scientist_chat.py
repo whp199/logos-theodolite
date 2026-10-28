@@ -855,9 +855,10 @@ class InProcessApi:
     def __init__(self, app: Any) -> None:
         import httpx
 
-        # a route's own failure comes back as its 500, for the model to read, not as an exception here
-        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app, raise_app_exceptions=False), base_url="http://127.0.0.1",
-                                        timeout=None)
+        # a route's own failure comes back as its 500, for the model to read, not as an exception here; no socket carries
+        # these calls, so the client names itself rather than an address the server's guard would look for a socket of
+        transport = httpx.ASGITransport(app=app, raise_app_exceptions=False, client=("in-process", 0))
+        self.client = httpx.AsyncClient(transport=transport, base_url="http://127.0.0.1", timeout=None)
 
     @staticmethod
     def _json(r: Any) -> Any:

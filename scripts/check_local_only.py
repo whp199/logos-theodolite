@@ -27,7 +27,18 @@ temporary directory:
    launch, "Bearer None" too) refused (401) and the code not run, with it run; the token file written whole, readable
    by its user only (0600), where labd.token_path says; labclient.py sends it (a job run end to end on uvicorn), and
    says in plain words when there is none; a second launch of labd.py on the port that labd is serving stops in plain
-   words before its model loads, and leaves the running launch's token file, and its jobs, alone.
+   words before its model loads, and leaves the running launch's token file, and its jobs, alone;
+9. which account asks (Linux; the server on uvicorn): `peer_uid` reads the forms /proc/net/tcp and tcp6 print (IPv4,
+   ::1, a mapped IPv4 address; from written tables, as this machine may have no tcp6) and says None for no such socket,
+   no such tables (not Linux) or no address; on a live connection it finds this process's own uid (the lookup's cost
+   is printed), and this account's requests, its socket and a script in a process of its own pass, logging nothing;
+   with `peer_uid` made to name another uid, a request gets 403 and the socket's handshake 403 too, unless
+   THEODOLITE_PEER_CHECK=off; a server run as uid 1000 answers uid 1000 and root (who can act as anyone already), not
+   uid 1001; a request carrying X-Forwarded-For is refused (uvicorn would take the client from it); a
+   connection it cannot place passes, the log saying so once; the openai backend's calls in this process name
+   themselves and are looked up nowhere; and, run as root, a client that drops to uid 65534 before it connects gets 403
+   and a refused handshake, and with THEODOLITE_PEER_CHECK=off gets in, as every account did before (skipped, saying
+   so, when not root).
 
 Run: .venv/bin/python -I scripts/check_local_only.py   (exits 0 when every check holds)
 """
@@ -411,6 +422,170 @@ def main() -> int:
     check(len(labd.LOG.read_text().splitlines()) == 3, "each job that ran logged once (here, not in the repository)")
     section("labd: the Host and any browser refused on every route, /exec and /reload only with the launch's token, labclient sends it, "
             "a second launch leaves it alone", before)
+
+    # ------------------------------------------------------------------------------- 9. which account asks (Linux)
+    before = len(failures)
+    import asyncio
+    import json
+    import logging
+    import statistics
+    import struct
+
+    import httpx
+
+    import backend.local_only as lo
+    import backend.scientist_chat as sc
+
+    tables = TMP / "tables"
+    tables.mkdir()
+    t4, t6 = tables / "tcp", tables / "tcp6"
+    head = "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode\n"
+    line = "   {i}: {l} {r} 01 00000000:00000000 00:00000000 00000000  {u}        0 {i}0 1 0000000000000000 20 4 30 10 -1\n"
+    v6_lo = "00000000000000000000000001000000"  # ::1 as tcp6 prints it on a little-endian machine
+    mapped = "".join("%08X" % w for w in struct.unpack("=4I", bytes(10) + b"\xff\xff\x7f\x00\x00\x01"))  # ::ffff:127.0.0.1
+    v4_lo = "%08X" % struct.unpack("=I", bytes([127, 0, 0, 1]))[0]  # 127.0.0.1 as tcp prints it
+    t4.write_text(head + line.format(i=0, l=f"{v4_lo}:1388", r=f"{v4_lo}:223D", u=99))  # ports 5000 and 8765
+    t6.write_text(head + line.format(i=0, l=f"{v6_lo}:1388", r=f"{v6_lo}:223D", u=1234) + line.format(i=1, l=f"{mapped}:1389", r=f"{mapped}:223D", u=4321))
+    tb = (str(t4), str(t6))
+    check(lo.peer_uid(("127.0.0.1", 5000), ("127.0.0.1", 8765), tb) == 99 and lo.peer_uid(("::1", 5000), ("::1", 8765), tb) == 1234
+          and lo.peer_uid(("::ffff:127.0.0.1", 5001), ("::ffff:127.0.0.1", 8765), tb) == 4321,
+          "the tables' forms: IPv4 in tcp, ::1 and a mapped IPv4 address in tcp6, each port after it")
+    check(lo.peer_uid(("127.0.0.1", 5002), ("127.0.0.1", 8765), tb) is None and lo.peer_uid(("127.0.0.1", 5000), ("127.0.0.1", 8765), ("/nonexistent/tcp", "/nonexistent/tcp6")) is None
+          and lo.peer_uid(("testclient", 50000), ("testserver", 80)) is None, "no such socket, no such tables (not Linux), not an address: None")
+    port = free_port()
+    server.get_app_state = lambda: (None, None)  # type: ignore[assignment]
+    srv = uvicorn.Server(uvicorn.Config(server.app, host="127.0.0.1", port=port, log_level="warning", lifespan="off",
+                                        timeout_graceful_shutdown=3))
+    th = threading.Thread(target=srv.run, daemon=True)
+    th.start()
+    for _ in range(200):
+        if srv.started:
+            break
+        time.sleep(0.05)
+    url = f"http://127.0.0.1:{port}/api/atlas/scientist/backends"
+    hx = httpx.Client(trust_env=False, timeout=30)  # a socket of this process; no proxy
+
+    def shake(origin: str) -> str:
+        """The status line uvicorn answers a WebSocket handshake to the server here with."""
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as sk:
+            sk.sendall((f"GET /ws/theodolite HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                        f"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\nOrigin: {origin}\r\n\r\n").encode())
+            return sk.recv(4096).decode("latin-1").split("\r\n", 1)[0]
+
+    heard: List[logging.LogRecord] = []
+    catch = logging.Handler()
+    catch.emit = heard.append  # type: ignore[assignment]
+    logging.getLogger("theodolite.local_only").addHandler(catch)
+    real_uid = lo.peer_uid
+    ms, n_sockets = float("nan"), 0
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as sk:
+            times = []
+            for _ in range(20):
+                t0 = time.perf_counter()
+                got = lo.peer_uid(sk.getsockname(), sk.getpeername())
+                times.append((time.perf_counter() - t0) * 1e3)
+        n_sockets = sum(len(Path(p).read_text().splitlines()) - 1 for p in lo.NET_TABLES if Path(p).exists())
+        ms = statistics.median(times)
+        check(got == os.geteuid(), f"a live connection of this process: its own uid, {got} ({ms:.2f} ms a lookup over {n_sockets} sockets)")
+        r = hx.get(url, timeout=30)
+        check(r.status_code == 200 and shake(f"http://127.0.0.1:{port}").startswith("HTTP/1.1 101") and not heard,
+              f"its own requests and socket pass, and nothing is logged: {r.status_code}")
+        res = subprocess.run([sys.executable, "-I", "-c", f"import urllib.request as u; print(u.build_opener(u.ProxyHandler({{}})).open({url!r}).status)"],
+                             capture_output=True, text=True, timeout=60)
+        check(res.stdout.strip() == "200", f"a script of the same account in a process of its own passes: {res.stdout.strip()} {res.stderr[-200:]}")
+        lo.peer_uid = lambda *a, **k: os.geteuid() + 1  # type: ignore[assignment]
+        r = hx.get(url, timeout=30)
+        line_ = shake(f"http://127.0.0.1:{port}")
+        check(r.status_code == 403 and r.json().get("detail") == lo.OTHER_ACCOUNT and line_.startswith("HTTP/1.1 403"),
+              f"another account's connection: 403, and its socket's handshake refused ({r.status_code}, {line_!r})")
+        real_euid = os.geteuid
+        try:  # a server run as uid 1000: its own account's connections and root's pass, another's not
+            os.geteuid = lambda: 1000  # type: ignore[assignment]
+            codes = []
+            for uid_ in (1000, 0, 1001):
+                lo.peer_uid = lambda *a, u=uid_, **k: u  # type: ignore[assignment]
+                codes.append(hx.get(url, timeout=30).status_code)
+        finally:
+            os.geteuid = real_euid  # type: ignore[assignment]
+        check(codes == [200, 200, 403], f"a server run as uid 1000 answers uid 1000 and root, not uid 1001: {codes}")
+        lo.peer_uid = lambda *a, **k: os.geteuid() + 1  # type: ignore[assignment]
+        os.environ[lo.PEER_CHECK_ENV] = "off"
+        r = hx.get(url, timeout=30)
+        check(r.status_code == 200 and shake(f"http://127.0.0.1:{port}").startswith("HTTP/1.1 101"), f"THEODOLITE_PEER_CHECK=off lets it in: {r.status_code}")
+        r = hx.get(url, headers={"X-Forwarded-For": "127.0.0.1"}, timeout=30)
+        check(r.status_code == 200, f"and with it off, a forwarded request from loopback is as before: {r.status_code}")
+        os.environ.pop(lo.PEER_CHECK_ENV)
+        lo.peer_uid = real_uid  # type: ignore[assignment]
+        for fwd in ("127.0.0.1", f"127.0.0.1:{port}", "testclient"):
+            r = hx.get(url, headers={"X-Forwarded-For": fwd}, timeout=30)
+            check(r.status_code == 403 and r.json().get("detail") == lo.FORWARDED, f"X-Forwarded-For: {fwd} (uvicorn would take the client from it): {r.status_code}")
+        lo.peer_uid = lambda *a, **k: None  # type: ignore[assignment]
+        lo._told["unknown"] = False
+        rs = [hx.get(url, timeout=30).status_code for _ in range(2)]
+        warned = [x for x in heard if x.levelno == logging.WARNING]
+        check(rs == [200, 200] and len(warned) == 1 and "Could not tell which account" in warned[0].getMessage(),
+              f"a connection it cannot place passes, the log saying so once: {rs}, {len(warned)} warning(s)")
+        lo.peer_uid = real_uid  # type: ignore[assignment]
+        heard.clear()
+
+        async def in_process() -> Any:
+            api = sc.InProcessApi(server.app)
+            try:
+                return await api.get("/api/atlas/scientist/backends")
+            finally:
+                await api.close()
+
+        lo._told["unknown"] = False
+        check("claude" in asyncio.run(in_process()) and not heard, "the openai backend's calls in this process name themselves: no socket looked for, none logged")
+        if os.geteuid() != 0:
+            print("  skip  a client of another account for real: it needs root here (a client started as root drops to uid 65534)")
+        else:
+            child = (
+                "import json, os, socket, sys\n"
+                "os.setgroups([]); os.setgid(65534); os.setuid(65534)\n"
+                "port, out = int(sys.argv[1]), []\n"
+                "for req in ('GET /api/atlas/scientist/backends HTTP/1.1\\r\\nHost: 127.0.0.1:%d\\r\\nConnection: close\\r\\n\\r\\n' % port,\n"
+                "            'GET /ws/theodolite HTTP/1.1\\r\\nHost: 127.0.0.1:%d\\r\\nUpgrade: websocket\\r\\nConnection: Upgrade\\r\\n'\n"
+                "            'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\\r\\nSec-WebSocket-Version: 13\\r\\n\\r\\n' % port):\n"
+                "    with socket.create_connection(('127.0.0.1', port), timeout=10) as sk:\n"
+                "        sk.sendall(req.encode())\n"
+                "        data = b''\n"
+                "        while b'\\r\\n\\r\\n' not in data or (req.startswith('GET /api') and not data.endswith(b'}')):\n"
+                "            chunk = sk.recv(65536)\n"
+                "            if not chunk:\n"
+                "                break\n"
+                "            data += chunk\n"
+                "    out.append(data.decode('latin-1'))\n"
+                "print(json.dumps({'uid': os.getuid(), 'http': out[0], 'ws': out[1].split('\\r\\n', 1)[0]}))\n")
+
+            def as_nobody() -> Dict[str, Any]:
+                res = subprocess.run([sys.executable, "-I", "-c", child, str(port)], capture_output=True, text=True, timeout=60)
+                try:
+                    return json.loads(res.stdout)
+                except ValueError:
+                    return {"error": res.stderr[-300:]}
+
+            got_ = as_nobody()
+            check(got_.get("uid") == 65534 and got_.get("http", "").startswith("HTTP/1.1 403") and lo.OTHER_ACCOUNT in got_.get("http", "")
+                  and got_.get("ws", "").startswith("HTTP/1.1 403"), f"a process that dropped to uid 65534: 403, its socket's handshake too: {json.dumps(got_)[:300]}")
+            os.environ[lo.PEER_CHECK_ENV] = "off"
+            got_ = as_nobody()
+            os.environ.pop(lo.PEER_CHECK_ENV)
+            check(got_.get("uid") == 65534 and got_.get("http", "").startswith("HTTP/1.1 200") and got_.get("ws", "").startswith("HTTP/1.1 101"),
+                  f"with THEODOLITE_PEER_CHECK=off it gets in, as every account did before: {json.dumps(got_)[:200]}")
+            r = hx.get(url, timeout=30)
+            check(r.status_code == 200, f"and this account's next request still passes: {r.status_code}")
+    finally:
+        lo.peer_uid = real_uid  # type: ignore[assignment]
+        os.environ.pop(lo.PEER_CHECK_ENV, None)
+        hx.close()
+        logging.getLogger("theodolite.local_only").removeHandler(catch)
+        srv.should_exit = True
+        th.join(timeout=10)
+        server.get_app_state = real_state  # type: ignore[assignment]
+    section("which account asks: its own passes, another's is refused (403, and on the socket), a forwarded request refused, "
+            f"THEODOLITE_PEER_CHECK=off; a lookup took {ms:.2f} ms over {n_sockets} sockets", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

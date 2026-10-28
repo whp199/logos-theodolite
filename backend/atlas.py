@@ -68,8 +68,9 @@ def local_pages_only(request: Request) -> None:
     Origin when there is one: `saved_prompts.same_machine`) a request a browser marks as sent from another site is
     refused even without an Origin (a page's <img> or <script> sends none), unless it is a plain navigation (a link
     opened from elsewhere reads nothing back), as the reference's `local_only` does. The peer itself must be this machine
-    too, whatever the headers say, should the server ever listen beyond loopback. A process of another account on this
-    machine still passes: what the scientist's processes may do is bounded by their reach (backend/scientist_chat.py)."""
+    too, whatever the headers say, should the server ever listen beyond loopback. Which account on this machine asks
+    is not this rule's: the server's guard asks that too, on Linux (backend/local_only.py `other_account`), before any
+    route; what the scientist's processes may do is bounded by their reach (backend/scientist_chat.py)."""
     peer = request.client.host if request.client else None
     try:
         ip = ipaddress.ip_address(peer) if peer else None

@@ -249,7 +249,17 @@ whole app, outside CORS, applying the atlas's `local_pages_only`, §4.7). The pe
 the handshake. CORS (`allow_origin_regex`) lets only those origins read a reply, and governs no WebSocket: the guard is
 what covers the socket, the older routes (`/api/larql`, `/api/scientist/*`), the docs and the static pages. Vite's dev
 proxy passes (`/api` with the server's Host, `/ws` with its own, 127.0.0.1:5173; both with the page's own Origin).
-Another account on this machine is not refused. The MCP servers (`backend/scientist_mcp.py`, and
+On Linux the guard also asks which account made the connection, and refuses another's (403, or 1008 on the socket;
+`other_account`; root's pass, since root can act as any account already and a container's port-forwarder connects as
+root): it finds the client's end of the connection in /proc/net/tcp or tcp6 (local end the client's address
+and port, remote end the server's) and reads its owner, afresh for every request and socket, keeping nothing (about
+1 ms over some 80 sockets here; more where thousands are open). A connection it cannot place (not Linux, the socket not
+found, a Unix socket) passes, and the log says so once; a request carrying `X-Forwarded-For` is refused, since uvicorn
+takes the client's address and port from that header on a loopback connection; an in-process client that names
+itself (TestClient, the openai backend's calls) has no socket and passes. Vite's dev proxy runs as the person, so its
+connections pass, and so does what another account sends through it while `npm run dev` runs (tried: a uid-65534
+client through it was answered); the check guards the server's port only. `THEODOLITE_PEER_CHECK=off` turns this off.
+The MCP servers (`backend/scientist_mcp.py`, and
 `backend/mcp_scientist.py` run alone, on FastMCP's default stdio transport) listen on no port. `scripts/check_local_only.py`
 checks every route and the socket.
 
@@ -800,6 +810,10 @@ a stream also carries, until its process ends), and the page offers `POST /resta
 far as its events tell: Claude Code answers from its first streamed event, thinking included, and one whose last turn
 took a message mid-turn may yet run that message as a turn of its own, so until its next turn begins it is marked stale
 instead. An `openai` chat's prompt is built afresh every round; its tools change only when the server starts again.
+
+The routes answer only this machine's pages and scripts (§4), and on Linux only the account the server runs as, so
+another account on the machine can no longer send a chat a message that it takes as the person's own turn (except
+through `npm run dev`'s proxy while it runs, §4).
 
 | route | |
 |---|---|

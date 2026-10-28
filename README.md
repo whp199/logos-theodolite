@@ -448,7 +448,10 @@ lets a stop end it after 3 s instead of waiting for every such page to close.
 The server answers only its own pages, served from this machine, and scripts run on it: a request or a WebSocket whose
 Host or Origin names another machine, or that a browser marks as sent from another site (a plain link excepted), is
 refused (`backend/local_only.py`). So a page elsewhere, or one rebinding its name to 127.0.0.1, cannot run sweeps or
-edit the vault through your browser. Another account on this machine is not refused.
+edit the vault through your browser. On Linux another account on this machine is refused too: for each connection the
+server asks the kernel's table of them (/proc/net/tcp) which account made it; `THEODOLITE_PEER_CHECK=off` turns that
+off (for a proxy in front, say). Elsewhere it cannot tell, and says so once in its log. While `npm run dev` runs, its
+proxy reaches the server as you, so another account can go through it.
 
 The same sighting, asked of the server directly over its WebSocket, `/ws/theodolite` (every field below the first three
 is optional, and each default reproduces the instrument as first built):
