@@ -787,10 +787,12 @@ def run_checks(tmp: Path) -> int:
           and um["jobs"] == cz.jobs_digest(u_jobs) and um["neuron_ids"] == "0-6" and um["d_ff"] == w.d_ff and "shard" not in um,
           "an unbroken run: its meta records the batch, the plan and the job list it was made from")
     rtm = um.get("runtime") or {}
-    check(set(rtm) == {"device", "torch", "cuda", "transformers", "interp_engine", "compressed_tensors", "unpacker", "git", "git_clean",
+    check(set(rtm) == {"device", "torch", "cuda", "transformers", "interp_engine", "compressed_tensors", "git", "git_clean",
                        "act_scale_sha256"} and rtm["device"] == "cpu" and rtm["torch"] == torch.__version__
-          and rtm["unpacker"] == "backend.engine_runtime.dequantize_w4a16_full" and rtm["act_scale_sha256"] is None
-          and (rtm["git"] is None or len(rtm["git"]) == 40), f"the runtime record: {rtm}")
+          and rtm["act_scale_sha256"] is None and (rtm["git"] is None or len(rtm["git"]) == 40), f"the runtime record: {rtm}")
+    # the unpacker beside the class, not in it (every unpacker gives the same bits): the meta's own record
+    check((um.get("unpacker") or {}).get("mode") == "reference" and "unpacker" not in rtm,
+          f"the unpacker recorded beside the runtime class, not in it: {um.get('unpacker')}")
     check(cz.runtime_record(None, fa)["act_scale_sha256"] == hashlib.sha256(fa.read_bytes()).hexdigest(), "the runtime record: the stats index's sha256")
     calls = [0]
 

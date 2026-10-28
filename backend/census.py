@@ -835,10 +835,12 @@ def file_sha256(path: Path) -> str:
 
 def runtime_record(device: Any = None, act_scale: Optional[Path] = None) -> Dict[str, Any]:
     """The runtime class a run's bits come from, as its meta keeps it: the card ("cpu", or the GPU's name), torch and
-    its CUDA, transformers, interp-engine and compressed-tensors, the W4A16 unpacker the runtime calls (a module may
-    rebind it), the code's git commit and whether its tracked files are as committed, and the sha256 of the stats index
-    the push's unit was read from. A run continued, or a shard joined, on another class is said and recorded
-    (`mixed_runtime`), never refused: each class's readings are valid; their bits are not alike."""
+    its CUDA, transformers, interp-engine and compressed-tensors, the code's git commit and whether its tracked files
+    are as committed, and the sha256 of the stats index the push's unit was read from. A run continued, or a shard
+    joined, on another class is said and recorded (`mixed_runtime`), never refused: each class's readings are valid;
+    their bits are not alike. The W4A16 unpacker is recorded beside the class, not in it (the meta's `unpacker` and
+    `unpacker_sessions`, backend/w4a16_fast.py): every unpacker gives the reference's bits (scripts/check_dequant.py,
+    and its self-test at install on the card), so a run continued under another is not of another class."""
     import importlib.metadata as md
     import subprocess
 
@@ -851,13 +853,6 @@ def runtime_record(device: Any = None, act_scale: Optional[Path] = None) -> Dict
             return None
 
     dev = torch.device(device) if device is not None else torch.device("cpu")
-    try:
-        from backend import engine_runtime as er
-
-        fn = er.dequantize_w4a16_full
-        unpacker: Optional[str] = f"{fn.__module__}.{fn.__qualname__}"
-    except Exception:  # noqa: BLE001  (a runtime without its W4A16 path; the stand-in reads plain Linear modules)
-        unpacker = None
     root = Path(__file__).resolve().parent.parent
     sha: Optional[str] = None
     clean: Optional[bool] = None
@@ -873,7 +868,7 @@ def runtime_record(device: Any = None, act_scale: Optional[Path] = None) -> Dict
     return {
         "device": torch.cuda.get_device_name(dev) if dev.type == "cuda" else "cpu",
         "torch": torch.__version__, "cuda": torch.version.cuda, "transformers": version("transformers"),
-        "interp_engine": version("interp-engine"), "compressed_tensors": version("compressed-tensors"), "unpacker": unpacker,
+        "interp_engine": version("interp-engine"), "compressed_tensors": version("compressed-tensors"),
         "git": sha, "git_clean": clean, "act_scale_sha256": file_sha256(Path(act_scale)) if act_scale else None,
     }
 
