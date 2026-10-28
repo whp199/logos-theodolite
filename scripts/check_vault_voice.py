@@ -37,10 +37,10 @@ the real MCP server (`fastmcp.Client`, in memory, on the same stand-in). It chec
    both answers written in a worker thread under the tools' own lock and not the server's; a voice it refuses is
    refused in plain words (one that is not an object, by FastMCP's check of the tool's types), and a failed voice
    before edits nothing; inspect_pole asked while the voice before is written waits, and is logged after the voice
-   after, never between; a call cancelled meanwhile (as the MCP SDK cancels one) keeps its turn until its thread
-   ends, its edit made and heard; bound as the server binds it, the tools' lock is a no-op and the same two calls
-   interleave (the server's _GPU_LOCK keeps them apart there); every tool is async and runs in its turn, its
-   parameters as a client sees them its function's.
+   after, never between, its read made off the event loop; a call cancelled meanwhile (as the MCP SDK cancels one)
+   keeps its turn until its thread ends, its edit made and heard; bound as the server binds it, the tools' lock is a
+   no-op and the same two calls interleave (the server's _GPU_LOCK keeps them apart there); every tool is async and
+   runs in its turn, its parameters as a client sees them its function's, and the voice's schema VoiceRequest's.
 
 Run: .venv/bin/python -I scripts/check_vault_voice.py   (exits 0 when every check holds)
 """
@@ -189,6 +189,7 @@ class StandInRuntime(TheodoliteRuntime):
         self.events: List[Tuple[str, Any]] = []  # ("voice", overlays, lock held) | ("edit", statement) | ("pole", layer)
         self.voice_on_loop: List[bool] = []  # for each write_voice call: was it made on a running event loop's thread?
         self.voice_turn: List[bool] = []  # for each write_voice call: did the MCP tools' own lock (mcp_scientist) hold?
+        self.pole_on_loop: List[bool] = []  # for each DESCRIBE POLE or inspect_pole read: on an event loop's thread?
         self.gate: Optional[threading.Event] = None  # when set, the next write_voice call waits for it, once
         self.composed: List[Dict[str, Any]] = []
         self.closed = 0
@@ -286,6 +287,11 @@ def stand_in_vault() -> Tuple[StandInRuntime, LarqlVaultEngine]:
 
     def pole(**kw: Any) -> Dict[str, Any]:  # DESCRIBE POLE and inspect_pole, logged
         rt.events.append(("pole", kw["layer_idx"]))
+        try:
+            asyncio.get_running_loop()
+            rt.pole_on_loop.append(True)
+        except RuntimeError:
+            rt.pole_on_loop.append(False)
         return {"layer": kw["layer_idx"], "poles": []}
 
     vault.inspect_bipolar_slot = pole  # type: ignore[assignment]
@@ -651,6 +657,18 @@ async def mcp_turns(rt: StandInRuntime, vault: LarqlVaultEngine) -> None:
                   f"{name}: async and run in its turn, its parameters as a client sees them {shown}")
         check(list(inspect.signature(mcp_scientist.query_larql_vault).parameters) == ["lql_query", "voice"],
               "query_larql_vault(lql_query, voice=None)")
+        # the voice as a client sees it: VoiceRequest's own fields, defaults and bounds, or none (taken as a mapping all
+        # the same, so that one that does not fit is refused in the tool's own plain words, below)
+        vault_tool = tools.get("query_larql_vault")
+        vs = vault_tool.input_schema.get("properties", {}).get("voice", {}) if vault_tool else {}
+        shape = next((x for x in vs.get("anyOf", []) if x.get("type") == "object"), {})
+        props = shape.get("properties", {})
+        n_new = props.get("max_new_tokens", {})
+        check(list(props) == list(larql_vault.VoiceRequest.model_fields) and shape.get("required") == ["prompt"]
+              and props.get("chat", {}).get("default") is True and n_new.get("default") == 12
+              and (n_new.get("minimum"), n_new.get("maximum")) == (1, 64)
+              and {"type": "null"} in vs.get("anyOf", []) and vs.get("default", "unset") is None,
+              f"MCP: the voice's schema is VoiceRequest's, or null: {list(props)} {shape.get('required')}")
 
         # without a voice: today's reply; with one: the routes' defaults, "voice" before "lens", kept on the record,
         # both answers written in a worker thread under the tools' own lock (the server's is not involved)
@@ -705,6 +723,8 @@ async def mcp_turns(rt: StandInRuntime, vault: LarqlVaultEngine) -> None:
         check(not isinstance(r_edit, BaseException) and list(r_edit.data) == HEARD_REPLY[:-1]
               and not isinstance(r_pole, BaseException) and r_pole.data["layer"] == 45
               and list(r_pole.data)[-2:] == ["label_gate", "lens"], "both replies whole")
+        check(rt.pole_on_loop[-1:] == [False],
+              f"inspect_pole's read is made off the event loop, as the vault's statements are: {rt.pole_on_loop[-1:]}")
 
         # a call cancelled while its voice is written (the MCP SDK cancels a call's task when its client says so)
         # keeps its turn until its thread ends: the edit is still made and heard, and the next tool runs after it

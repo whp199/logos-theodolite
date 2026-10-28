@@ -313,7 +313,7 @@ export const ConsolePanel: React.FC = () => {
           />
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px 20px" }}>
-          <button className="btn-primary" type="button" onClick={run}>
+          <button className="btn-primary" type="button" onClick={run} disabled={!!heard.problem}>
             run it
           </button>
           <button

@@ -563,12 +563,13 @@ keeps answering its health route and other sockets while the two answers are wri
 in plain words (HTTP 400; over the WebSocket `larql_result` ok false, as is a voice the request model refuses, which
 over HTTP is 422). If the answer after cannot be written, the edit stays in force with `after` null and `error` set.
 VoiceRequest is backend/larql_vault.py's (the server imports it). The MCP tool `query_larql_vault(lql_query, voice)`
-takes the same voice, refused in plain words (`voice_request`; one that is not an object, by FastMCP's check of the
-tool's types), and replies the same way. Run on its own (`python -m backend.mcp_scientist`), the MCP server's tools
-take turns: each runs whole under one lock of backend/mcp_scientist.py's (`_turn`), and the vault's statement runs in a
-worker thread under it (anyio's, so a call its client cancels keeps the lock until the thread ends, its edit made), so
-no other tool's call lands between an edit's two answers. When the server binds its runtime (`bind_runtime`), that
-lock is a no-op: the routes hold `_GPU_LOCK` around every tool they call.
+takes the same voice (its schema, as a client sees it, VoiceRequest's), refused in plain words (`voice_request`; one
+that is not an object, by FastMCP's check of the tool's types), and replies the same way. Run on its own (`python -m
+backend.mcp_scientist`), the MCP server's tools take turns: each runs whole under one lock of backend/mcp_scientist.py's
+(`_turn`), and the vault's statement (as `inspect_pole`'s read) runs in a worker thread under it (anyio's, so a call
+its client cancels keeps the lock until the thread ends, its edit made), so no other tool's call lands between an
+edit's two answers. When the server binds its runtime (`bind_runtime`), that lock is a no-op: the routes hold
+`_GPU_LOCK` around every tool they call.
 
 Reply: today's keys plus `voice`, after `patch` and before `lens` (UPDATE, INSERT: `status, patch,
 active_patches_count, voice, lens`; DELETE without `lens`). `voice` = `{prompt, chat, system, assistant_prefix,

@@ -16,9 +16,9 @@ question the likeliest way just before the edit and again just after, with no ot
 The tools take turns on the model. Run on its own (`python -m backend.mcp_scientist`, which loads its own runtime),
 FastMCP answers a client's calls concurrently: a sync tool in a worker thread, an async one interleaved with the next at
 each await. So every tool is async and runs whole under this module's one lock (`_turn`), and the vault's statements
-run in a worker thread under it, the event loop answering meanwhile: a call waits behind the whole of the one before,
-a heard edit's two answers and the edit included. When the server binds its runtime (`bind_runtime`), the lock is a
-no-op, since its routes hold the server's own `_GPU_LOCK` around every call.
+and `inspect_pole`'s read run in a worker thread under it, the event loop answering meanwhile: a call waits behind the
+whole of the one before, a heard edit's two answers and the edit included. When the server binds its runtime
+(`bind_runtime`), the lock is a no-op, since its routes hold the server's own `_GPU_LOCK` around every call.
 
 The first three scientist tools decode words through the J++ lens, and each reply names it under "lens"
 (`TheodoliteRuntime.lens_card`: what it was fitted on, what it reads, its source, and a `caution` on how far to trust
@@ -49,18 +49,19 @@ import itertools
 import math
 import time
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Tuple
+from typing import Annotated, Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Tuple
 
 import anyio
 import numpy as np
 import torch
 from fastmcp import FastMCP
 from interp_engine import Address
+from pydantic import WithJsonSchema
 
 from backend import causal_check as cc
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
 from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids, writes_nothing
-from backend.larql_vault import LarqlVaultEngine, voice_request
+from backend.larql_vault import LarqlVaultEngine, VoiceRequest, voice_request
 from backend.runtime_factory import make_runtime
 from backend.theodolite_math import (
     D_FF,
@@ -161,12 +162,16 @@ async def inspect_pole(
     `lens`, so the keys come in the order of the WebSocket's DESCRIBE POLE reply).
     """
     rt, vault = get_runtime_and_vault()
-    reply = vault.inspect_bipolar_slot(
+    read = functools.partial(
+        vault.inspect_bipolar_slot,
         layer_idx=int(layer),
         neuron_idx=int(neuron_idx),
         polarity=float(polarity),
         top_k_tokens=8,
     )
+    # in a worker thread under the turn, as the vault's statements run, so the event loop answers meanwhile (a sync tool
+    # ran in FastMCP's own worker thread)
+    reply = await anyio.to_thread.run_sync(read)
     return {**reply, "label_gate": LABEL_GATE_CARD, "lens": rt.lens_card()}
 
 
@@ -1081,9 +1086,16 @@ async def causal_spot_check(
     }
 
 
+# `voice` as a client sees it: VoiceRequest's fields, defaults and bounds; taken as a mapping all the same, so that
+# `voice_request` refuses one that does not fit in plain words, as the WebSocket does, and not in pydantic's
+_Voice = Annotated[
+    Optional[Dict[str, Any]], WithJsonSchema({"anyOf": [VoiceRequest.model_json_schema(), {"type": "null"}]})
+]
+
+
 @mcp.tool()
 @_taking_turns
-async def query_larql_vault(lql_query: str, voice: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def query_larql_vault(lql_query: str, voice: _Voice = None) -> Dict[str, Any]:
     """Execute a LARQL / VINDEX3 query or declarative `.patch` edit statement. An edit (`UPDATE`, `INSERT`, `DELETE`)
     moves one column of one layer's down_proj, rank one, with nothing solved for: the statements are named after
     MEMIT, but it is not MEMIT.
