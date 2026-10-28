@@ -622,8 +622,11 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
         def load(self) -> Any:
             return rt
 
-    true_rt, true_env = server.TheodoliteRuntime, os.environ.get(wf.UNPACKER_ENV)
+    # the server builds its runtime through runtime_factory.make_runtime (THEODOLITE_GGUF / THEODOLITE_DEVICE), so both
+    # names it could reach are stood in for
+    true_rt, true_make, true_env = server.TheodoliteRuntime, server.make_runtime, os.environ.get(wf.UNPACKER_ENV)
     server.TheodoliteRuntime = Loads  # type: ignore[assignment,misc]
+    server.make_runtime = Loads  # type: ignore[assignment]
     try:
         os.environ[wf.UNPACKER_ENV] = "resident"
         with TestClient(server.app) as client:
@@ -645,6 +648,7 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
         check(un.get("mode") == "reference", f"without $THEODOLITE_UNPACKER, the reference: {un}")
     finally:
         server.TheodoliteRuntime = true_rt  # type: ignore[misc]
+        server.make_runtime = true_make  # type: ignore[assignment]
         if true_env is None:
             os.environ.pop(wf.UNPACKER_ENV, None)
         else:
