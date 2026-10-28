@@ -5,18 +5,22 @@ which labels each neuron by what the model writes when it is pushed, beside what
 when a random direction of the same size is pushed instead. "Sweep" already names a sighting in this instrument, so
 the steering sweep is called a census here. This module holds what the runs, the ranking, the server and the checks
 share: the questions, the designs, the push sizes, taking a run (`take_census`, which scripts/census_run.py calls on
-the GPU), the ranking and its null (`compute_units`, `shift_scores`), how a layer's run is found and read, and the
-tools over finished runs (`merge_runs`, `depth_report`, `build_spread`: scripts/census_tools.py).
+the GPU) and planning its batches (`plan_batches`), the ranking and its null (`compute_units`, `shift_scores`), a
+calibration run's dose window (`dose_curves`, `dose_window`), how a layer's run is found and read, and the tools over
+finished runs (`merge_runs`, `depth_report`, `build_spread`: scripts/census_tools.py).
 
 A push here is the atlas's "add" push (backend/atlas_ops.py): `dose * p50_l * u`, added to the stream leaving layer l
 (resid_post) at every word-piece but the start mark, with u the neuron's write direction as the stream receives it,
 unit(w_post (.) W_down[:, n]), and p50_l the median length of that stream over the reference texts. So a dose is a share
 of the stream's own typical length, the reference's `--dose-unit rel`, and every neuron and every control gets the same
-push size. Gemma 4 differs from the reference's model in one way that matters here: its feed-forward output passes a
-norm (post_feedforward_layernorm) and the layer's `layer_scalar` before it joins the stream, so turning the neuron's own
-activation up is squashed by that norm (erratum E47); the push is added after both, along the direction the neuron
-writes, which is what the reference's push at `mlp_out` amounted to on a model without them (its research log, "What
-the hook can and can't express").
+push size: the "stream" unit. In the "ceiling" unit (`DOSE_UNITS`) a dose is instead a multiple of each neuron's write
+ceiling, the most it can write by itself (`atlas_ops.Weights.write_ceiling`), a control pushed by the ceiling of the
+neuron it is paired with (`control_refs`), so one dose is the same share of each neuron's most at every layer; the
+calib_ceil ladder is taken in it. Gemma 4 differs from the reference's model in one way that matters here: its
+feed-forward output passes a norm (post_feedforward_layernorm) and the layer's `layer_scalar` before it joins the
+stream, so turning the neuron's own activation up is squashed by that norm (erratum E47); the push is added after both,
+along the direction the neuron writes, which is what the reference's push at `mlp_out` amounted to on a model without
+them (its research log, "What the hook can and can't express").
 
 The same norm shapes the controls. The reference rotates a neuron's down column to a random direction; on Gemma that
 column passes w_post before it joins the stream, and w_post is near zero on the ~180 dimensions the next layer's norms
@@ -27,15 +31,27 @@ is drawn as unit(w_post (.) r), r isotropic, which matches the neurons' read siz
 
 The doses are neuron-explorer's, chosen on Qwen3.5-4B (`DOSES_FROM`); on Gemma-4-31B they are not yet calibrated, and a
 dose of 0.8 there is already longer than the most a single neuron can write at most layers
-(`atlas_ops.Weights.write_ceiling`).
+(`atlas_ops.Weights.write_ceiling`). The calibration ladders (calib_rel in the stream, calib_ceil in the ceiling) are
+read by `dose_curves`: per dose, neurons against controls, the share of answers that part from the unpushed one and
+where, the share cut off, distinct 4-grams, and the push over each neuron's ceiling, with a hedged verdict per sign.
 Every page and tool that shows a census says so. With 256 controls and 21,504 neurons about 84 neurons land above every
 control by chance alone (N / (C + 1)), so a rank is a lead, not a finding: each unit carries an empirical p against the
-controls and a layer-wide false-discovery q (`compute_units`).
+controls and a layer-wide false-discovery q (`compute_units`). A second stage retests a screen's strongest neurons
+against fresh controls (`retest_of`), its p and q taken over those alone.
+
+A run's batches are planned from its whole job list and the batch size (`plan_batches`), and written whole, so a run
+continued after a stop or a torn write, and a run taken in shards (`shard_batches`, each but shard 0 with a canary
+batch), write every answer in the same batch as an unbroken run: on the GPU a row's numbers depend on its batch's size.
+The meta records the batch and the plan (resume keys), the job list, and the runtime class (`runtime_record`; a change
+is warned and recorded, never refused). `merge_runs` joins shards only whole, and a shard is never read as a layer's
+census.
 
 Rows (one JSON line per answer) keep: layer, kind ("neuron" | "random" | "baseline"), neuron (the control's own index
-for "random", -1 for a baseline), prompt, dose, push (the length added, `dose * p50`), rel_push (push / p50), text,
-finish ("stop" at an end mark | "length"), n_gen, token_ids, logprob (each written piece's own log-probability),
-top_ids, top_lps (the five likeliest at each step), and, for a control, the seed its direction was drawn from.
+for "random", -1 for a baseline), prompt, dose, push (the length added: `dose * p50`, or `dose * ceiling` in the ceiling
+unit), rel_push (that length over p50), ceiling (the unit's write ceiling: a control's is its paired neuron's; not on a
+baseline, nor on rows written before it was kept), text, finish ("stop" at an end mark | "length"), n_gen, token_ids,
+logprob (each written piece's own log-probability), top_ids, top_lps (the five likeliest at each step), and, for a
+control, the seed its direction was drawn from and the neuron it is paired with (ref_neuron).
 """
 
 from __future__ import annotations
@@ -1002,6 +1018,9 @@ def take_census(
     all_jobs = census_jobs(neurons, controls, design)
     meta["jobs"] = jobs_digest(all_jobs)
     plan = plan_batches(all_jobs, batch, meta["plan"])
+    if shard and [int(n) for n in neurons] != sorted({int(n) for n in neurons}):
+        raise ValueError("A run taken in shards takes its neurons in order, each once (as parse_neurons gives them), so the "
+                         "merge can rebuild its job list.")
     b0, b1 = shard_batches(plan, *shard) if shard else (0, len(plan))
     if shard:
         meta["shard"] = {"i": int(shard[0]), "n": int(shard[1]), "chunks": [plan[b0][0], plan[b1 - 1][0] + 1], "batches": [b0, b1]}

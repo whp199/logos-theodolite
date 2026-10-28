@@ -849,6 +849,11 @@ def run_checks(tmp: Path) -> int:
         check(False, "a shard's neurons cannot change")
     except ValueError as exc:
         check("shard of a run with other neurons" in str(exc), f"refusal: {exc}")
+    try:
+        cz.take_census(rt, 3, [5, 0, 6], cz.shard_path(pdir / "L3-unsorted.jsonl", 0, 1), **kp, shard=(0, 1))
+        check(False, "a sharded run's neurons out of order are refused")
+    except ValueError as exc:
+        check("in order" in str(exc), f"refusal: {exc}")
     # a run begun before batch plans (its meta has no batch, plan, dose unit, runtime or job list), its rows regrouped
     old_run = pdir / "L3-old.jsonl"
     old_run.write_text("".join(u_lines[:3] + u_lines[6:40] + u_lines[41:57]))

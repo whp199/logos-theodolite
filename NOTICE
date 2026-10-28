@@ -136,8 +136,8 @@ Exception: MIT (neuron-explorer)
   - backend/atlas_ops.py and backend/atlas_build.py, from explorer/runtime.py
     and explorer/build_layout.py and build_connections.py;
   - backend/census.py, scripts/census_run.py and scripts/census_tools.py, from
-    sweep/steer_sweep.py, sweep/rank.py, sweep/depth_report.py and
-    sweep/merge_runs.py;
+    sweep/steer_sweep.py, sweep/rank.py, sweep/depth_report.py,
+    sweep/merge_runs.py and sweep/peek.py (its dose-response curves);
   - frontend/src/screens/atlas/ (map.ts above all), from explorer/static/.
 
   MIT License

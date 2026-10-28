@@ -8,6 +8,8 @@ ranked (scripts/census_tools.py rank).
     .venv/bin/python scripts/census_run.py --layer 45 --neurons all
     .venv/bin/python scripts/census_run.py --layer 45 --design calib_rel --neurons random:32 --random-controls 16 --run L45-calib
     .venv/bin/python scripts/census_run.py --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons all --batch 96 --max-new 64 --shard 1/4     # one of four shards
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons-from L45-r384.units.jsonl --top 32 --seed 1 --random-controls 1024
     .venv/bin/python scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
 
 The model is the W4A16 checkpoint on cuda:0 unless THEODOLITE_GGUF names a GGUF of Gemma 4 or THEODOLITE_DEVICE=cpu
@@ -23,28 +25,46 @@ run taken with other settings is refused, not mixed). The atlas page reads the m
 before others, then the largest) as soon as it has rows. Once the model is loaded the J++ lens is freed from the card:
 the census reads none of it (each run's meta still names it).
 
-The push is the atlas's "add": dose x p50 along the neuron's write direction at the stream leaving the layer, p50 the
-median length of that stream (from the stats index when built, else read here over the study's 36 texts; the run's
-meta records which). Designs: main_rel, {who, snake, orange} x {-0.7, +0.5, +0.8} and {free} x {+3}, neuron-explorer's
-doses, chosen on Qwen3.5-4B and not yet calibrated on this model; calib_rel, a ladder ±{0.1, 0.25, 0.5, 1, 2, 4} on
-{who, orange, free}, for finding where effects begin and text breaks on this model: take it on a few layers before a
-full main_rel run. The meta also records how loudly the next layer reads the controls against the neurons (read_gain;
-a fair null is near 1, and the run warns when it is not).
+The push is the atlas's "add", along the neuron's write direction at the stream leaving the layer, in one of two units
+(--dose-unit): stream, dose x p50, p50 the median length of that stream (from the stats index when built, else read
+here over the study's 36 texts; the run's meta records which), the same push for every neuron and control; ceiling,
+dose x the neuron's write ceiling, the most it can write by itself, a control pushed by the ceiling of the neuron it is
+paired with. Every answer records its unit's ceiling and its push's real share of the stream (rel_push). Designs:
+main_rel, {who, snake, orange} x {-0.7, +0.5, +0.8} and {free} x {+3}, neuron-explorer's doses, chosen on Qwen3.5-4B
+and not yet calibrated on this model; calib_rel, a ladder ±{0.1, 0.25, 0.5, 1, 2, 4} of the stream on {who, orange,
+free}, and calib_ceil, ±{0.5, 1, 2, 4, 8} x each neuron's ceiling on the same questions (taken in the ceiling unit),
+for finding where effects begin and text breaks on this model: take them on a few layers and read them with
+census_tools.py curves before a full main_rel run. The meta also records how loudly the next layer reads the controls
+against the neurons (read_gain; a fair null is near 1, and the run warns when it is not).
+
+A run's batches are planned from its whole job list and the batch size (chunks of 10 x batch answers, each grouped by
+question), and written whole: a run continued after a stop, or after a kill that tore its last batch, and a run taken
+in shards write every answer in the same batch as an unbroken run. The meta records the batch and the plan (a run
+continued with another --batch is refused) and the runtime it was written on (the card, torch, CUDA, transformers,
+interp-engine, compressed-tensors, the commit, the stats index's sha256; continued on another, it is warned and
+recorded, not refused). --shard i/n takes shard i of n of the plan's chunks into <run>.s<i>of<n>.jsonl, and every
+shard but 0 writes the plan's first batch again (<run>.s<i>of<n>.canary.jsonl, one batch's time) for census_tools.py
+merge to compare with shard 0's; the merge refuses a run with a shard or an answer missing unless --partial, and the
+ranking comes after it. --neurons-from <run>.units.jsonl --top M retests a screen's M strongest neurons against fresh
+controls (another --seed), the census's second stage: its p and q are taken over those M alone.
 
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
-answers / batch x (max_new + 1) x 0.71 s and the batch should be as large as the card holds. That 0.71 s is
-the reference unpacker's (--unpacker reference, the default): lut and compiled give the same bits in a step two
-to five times shorter on a 5090 by the arithmetic, not yet timed. Memory: the model and lens take 21.2 GiB; each
-row costs about 0.8 MB per word-piece of context on top (a batch of 32 at --max-new 64 peaked 3.1 GiB above the
-model), so at --max-new 256 a batch of 32 needs some 7 GiB more and may not fit beside a desktop: lower
---batch or --max-new. A calib_rel run of 8 neurons and 8 controls (580 answers) at --batch 32 --max-new 64 took about 16
-minutes. answers = (neurons + controls) x 10 + 4 for main_rel: a whole layer is (21,504 + 256) x 10 + 4 = 217,604
-answers, about 3.6 days at --batch 32 --max-new 64 and about two weeks at --max-new 256; the reference's depth curve
-used 384 neurons and 64 controls a layer (4,484 answers, about 2 hours at --batch 32 --max-new 64). On disk a whole
-layer is about 5 to 6 GB (each answer keeps its five likeliest pieces at every step, some 25 kB an answer at 256
-pieces); ranking it reads one answer at a time and keeps only each answer's word ids, well under a gigabyte. Run one GPU
-process at a time: this loads the model, as the server and the lab daemon do.
+answers / batch x (max_new + 1) x 0.71 s and the batch should be as large as the card holds. That 0.71 s is the
+reference unpacker's (--unpacker reference, the default): lut and compiled give the same bits in a step two to five
+times shorter on a 5090 by the arithmetic, not yet timed. Memory: the model and lens took 21.2 GiB; each row costs
+about 0.8 MB per word-piece of context on top (a batch of 32 at --max-new 64 peaked 3.1 GiB above the model), so at
+--max-new 256 a batch of 32 needs some 7 GiB more and may not fit beside a desktop: lower --batch or --max-new.
+Freeing the lens leaves about 3.2 GiB more for rows (worked out from its 59 matrices of 5,376 x 5,376 in bf16, not yet
+measured). A calib_rel run of 8 neurons and 8 controls (580 answers) at --batch 32 --max-new 64 took about 16 minutes.
+answers = (neurons + controls) x 10 + 4 for main_rel: a whole layer is (21,504 + 256) x 10 + 4 = 217,604 answers,
+about 3.6 days at --batch 32 --max-new 64 and about two weeks at --max-new 256; the reference's depth curve used 384
+neurons and 64 controls a layer (4,484 answers, about 2 hours at --batch 32 --max-new 64). The batch and the plan now
+fix a run's determinism class (on the GPU a row's numbers depend on the size of its batch), the unpacker does not:
+measure what the card holds once, then keep that --batch for every continuation and every shard of the run. On disk a
+whole layer is about 5 to 6 GB (each answer keeps its five likeliest pieces at every step, some 25 kB an answer at 256
+pieces); ranking it reads one answer at a time and keeps only each answer's word ids, well under a gigabyte. Run one
+GPU process at a time: this loads the model, as the server and the lab daemon do.
 """
 
 from __future__ import annotations
@@ -178,7 +198,10 @@ def main(argv=None) -> int:
     stage = None
     try:
         if a.neurons_from:
-            neurons, stage = cz.retest_of(Path(a.neurons_from), a.top)
+            src = Path(a.neurons_from)
+            if not src.exists():  # a screen's ranking named within the census folder
+                src = (Path(a.out_dir) if a.out_dir else cz.census_dir()) / a.neurons_from
+            neurons, stage = cz.retest_of(src, a.top)
             if stage["screen_layer"] is not None and stage["screen_layer"] != layers[0]:
                 raise SystemExit(f"{stage['screen']} screened layer {stage['screen_layer']}, not layer {layers[0]}.")
             if stage["screen_seed"] == a.seed:
