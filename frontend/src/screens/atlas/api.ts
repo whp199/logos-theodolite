@@ -169,6 +169,39 @@ export interface Wiring {
   up: Link[];
   note: string;
 }
+/** One earlier neuron's share of a drive: its direct write into the neuron's layer, on the face it fired on. */
+export interface DriveNeuron {
+  layer: number;
+  n: number;
+  act: number;
+  face: "+" | "-";
+  contribution: number;
+  share: number | null;
+  words: FaceWords;
+  name: string;
+  name_by?: "reader" | "scientist" | null;
+}
+/** POST /attn_drive: what drives a neuron at one word-piece, its activation linearised where it reads the stream and
+ * split over every head, every earlier feed-forward block (and each block over its neurons) and the embedding. */
+export interface Drive {
+  layer: number;
+  n: number;
+  read: "ids" | "text";
+  token: string;
+  index: number;
+  read_pos: number;
+  act: number;
+  linearised_total: number;
+  attention_sum: number;
+  mlp_sum: number;
+  embedding: number;
+  rest: number;
+  heads: { layer: number; head: number; contribution: number; share: number | null; from?: [string, number][] }[];
+  mlps: { layer: number; contribution: number; neurons_sum?: number }[];
+  neurons?: DriveNeuron[];
+  note: string;
+  neurons_note?: string;
+}
 export interface Hover {
   layer: number;
   n: number;

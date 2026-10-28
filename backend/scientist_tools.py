@@ -254,10 +254,13 @@ TOOLS: List[Dict[str, Any]] = [
      "layers see only a window back; first_unit_weight is the mean weight on the first unit (the start mark, the attention sink).",
      "inputSchema": {"type": "object", "properties": {**HEAD, "text": {"type": "string"}, "token": {"type": "string"}, "at": AT,
                                                        "chat": {"type": "boolean", "default": False}}, "required": ["layer", "head", "text"]}},
-    {"name": "attn_drive", "description": "Live: which attention heads (and feed-forward blocks) drive a neuron at one unit of a text (the "
-     "first holding `token`; `at`; else where it fires hardest), and which earlier units each top head read that from. The "
-     "activation gelu(gate) up is linearised in the stream entering its block; the parts (heads, blocks, the embedding) add up "
-     "to linearised_total; `share` is a head's fraction of it; `from` splits a head's part over the units it read.",
+    {"name": "attn_drive", "description": "Live: which attention heads, feed-forward blocks and earlier neurons drive a neuron at one unit "
+     "of a text (the first holding `token`; `at`; else where it fires hardest), and which earlier units each top head read that "
+     "from. The activation gelu(gate) up is linearised in the stream entering its block; the parts (heads, blocks, the embedding) "
+     "add up to linearised_total; `share` is a part's fraction of it; `from` splits a head's part over the units it read; each "
+     "block's part splits over its neurons (neurons_sum), and `neurons` names the 12 strongest across every block, each on the "
+     "face it fired on with its words and the gate's verdict: a neuron's direct write only (what it does through the layers "
+     "between is in those layers' parts), so leads to test with a push, not causes.",
      "inputSchema": {"type": "object", "properties": {**LN, "text": {"type": "string"}, "token": {"type": "string"}, "at": AT,
                                                        "chat": {"type": "boolean", "default": False}, "top": {"type": "integer", "default": 8}},
                      "required": ["layer", "n", "text"]}},
@@ -524,9 +527,12 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         _need(a, "layer", "n", "text")
         r = await api.post("/api/atlas/attn_drive", {k: a[k] for k in ("layer", "n", "text", "token", "at", "chat", "top") if a.get(k) is not None})
         heads = [{"head": cite_head(h["layer"], h["head"]), **{k: v for k, v in h.items() if k not in ("layer", "head")}} for h in r["heads"]]
-        mlps = [{"block": f"L{m['layer'] + 1} feed-forward", "contribution": m["contribution"]} for m in r["mlps"]]
-        rest = {k: v for k, v in r.items() if k not in ("layer", "n", "heads", "mlps")}
-        return {"neuron": cite(a["layer"], a["n"]), **rest, "heads": heads, "blocks": mlps}
+        mlps = [{"block": f"L{m['layer'] + 1} feed-forward", "contribution": m["contribution"], "neurons_sum": m.get("neurons_sum")} for m in r["mlps"]]
+        writers = [{"neuron": cite(x["layer"], x["n"]), "act": x["act"], "face": x["face"], "contribution": x["contribution"], "share": x["share"],
+                    **face_words(x.get("words"), 5), **({"name": x["name"], "name_by": x.get("name_by")} if x.get("name") else {})}
+                   for x in r.get("neurons", [])]
+        rest = {k: v for k, v in r.items() if k not in ("layer", "n", "heads", "mlps", "neurons")}
+        return {"neuron": cite(a["layer"], a["n"]), **rest, "heads": heads, "blocks": mlps, "neurons": writers}
     if name == "head":
         _need(a, "layer", "head")
         r = await api.get("/api/atlas/head", layer=a["layer"], head=a["head"])

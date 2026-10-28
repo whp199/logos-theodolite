@@ -1185,6 +1185,11 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     dr = await st.call("attn_drive", {"layer": 5, "n": 9, "text": CORPUS[4], "token": "Bob"}, api)
     check(dr["neuron"] == "L5 N9" and all(h["head"][:2] in ("L1", "L2", "L3", "L4", "L5") for h in dr["heads"]) and dr["blocks"][0]["block"].endswith("feed-forward"),
           "attn_drive: heads and blocks in page layers")
+    raw = hc.post("/api/atlas/attn_drive", json={"layer": 4, "n": 9, "text": CORPUS[4], "token": "Bob"}).json()
+    check([x["neuron"] for x in dr["neurons"]] == [st.cite(x["layer"], x["n"]) for x in raw["neurons"]] and len(dr["neurons"]) == 12
+          and all(x["neuron"][:2] in ("L1", "L2", "L3", "L4") and x["face"] in ("+", "-") and set(x) >= {"act", "contribution", "share"} for x in dr["neurons"])
+          and all(b["neurons_sum"] is not None for b in dr["blocks"]),
+          f"attn_drive: the earlier neurons that drive it, in page layers, each on the face it fired on ({[x['neuron'] for x in dr['neurons'][:3]]})")
     hd = await st.call("head", {"layer": 4, "head": 1}, api)
     check(hd["head"] == "L4 h1" and all(x["neuron"].startswith("L") for r_ in ("q", "k", "v", "o") for x in hd[r_]["neurons"]) and "profile" in hd, "head")
     nh = await st.call("neuron_heads", {"layer": 3, "n": 5}, api)

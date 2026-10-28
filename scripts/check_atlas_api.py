@@ -16,7 +16,11 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    pass; a push at or after the neuron's own block leaves it as it was), the next piece's odds (KL, what rose and fell),
    compare, fires (the whole text and one unit);
 5. the run view: scores at a word-piece and at each neuron's strongest, the filters, the map; heads' writes; one
-   head's row, its pattern, its wiring, its profile, its attention; the drive of a neuron, whose parts add up;
+   head's row, its pattern, its wiring, its profile, its attention; the drive of a neuron, whose parts add up, each
+   earlier block's part split over its neurons (each block's shares adding up to its part to float error, worked out
+   here from the weights and a capture alone; the twelve strongest with their activations, faces, words and names; the
+   top one's share against a direct-path finite difference, the neuron's activation moved along that neuron's write
+   with the norms held), the ids of a text giving the text's own drive, refusals in plain words;
 6. with every index built (backend/atlas_build.py into the temporary atlas folder): the scales come from the stats
    index, the tooltip and the wiring from the indexes, the search finds a face by its first word-piece, the cone and
    the web come back as the index has them, the layout and the active paths; a face's stored passages (the index's
@@ -123,6 +127,11 @@ def voices(evs: List[Dict[str, Any]]) -> List[str]:
 
 def close(a: float, b: float, tol: float = 1e-3) -> bool:
     return abs(float(a) - float(b)) <= tol * max(1.0, abs(float(a)), abs(float(b)))
+
+
+def near(a: float, b: float, tol: float) -> bool:
+    """Equal to `tol` of the larger, however small both are (`close` floors its scale at 1)."""
+    return abs(float(a) - float(b)) <= tol * max(abs(float(a)), abs(float(b)), 1e-30)
 
 
 def main() -> int:
@@ -512,6 +521,60 @@ def main() -> int:
     a49 = np.abs(np.array(ao.read_neuron(lm, ids_text, 4, 9))[1:])
     check(dr2["read_pos"] in units_text[next(i for i, (_, idx) in enumerate(units_text) if int(a49.argmax()) + 1 in idx)][1],
           "/attn_drive: without a token, the unit where it fires hardest")
+    # each earlier block's part split over its neurons, worked out here from the weights and the capture alone
+    cap_b = ao.capture_heads(lm, ids_text, w, streams=True)
+    acts_b = ao.activations_at(lm, ids_text, pos_bob).double()  # [L, N], a forward of its own
+    s64 = w.scalars.double()
+    carried = lambda src: float(torch.prod(s64[src:4]))  # noqa: E731
+    mid = cap_b.mid[4][pos_bob].double()
+    w_pre = w.norm(4, "pre_feedforward").double()
+    rms0 = float((mid.pow(2).mean() + w.eps(4, "pre_feedforward")).sqrt())
+    mlp4 = lm.layers[4].mlp
+    Wg9, Wu9 = mlp4.gate_proj.weight[9].double(), mlp4.up_proj.weight[9].double()
+    act9 = lambda m: float(mlp4.act_fn(Wg9 @ (w_pre * m / rms0)) * (Wu9 @ (w_pre * m / rms0)))  # noqa: E731  the norm held
+    g9 = float(Wg9 @ (w_pre * mid / rms0))
+    J = (ao.gelu_tanh_grad(g9) * float(Wu9 @ (w_pre * mid / rms0)) * Wg9 + float(mlp4.act_fn(torch.tensor(g9, dtype=torch.float64))) * Wu9) * w_pre / rms0
+    shares, part, ends = {}, {}, {}
+    for ll in range(4):
+        w_post = w.norm(ll, "post_feedforward").double()
+        ym = cap_b.y_mlp[ll][pos_bob].double()
+        r_ll = float((ym.pow(2).mean() + w.eps(ll, "post_feedforward")).sqrt())
+        Wd = lm.layers[ll].mlp.down_proj.weight.double()  # [D, N]
+        shares[ll] = carried(ll) * acts_b[ll] * (((w_post * J) / r_ll) @ Wd)
+        part[ll] = carried(ll) * float(J @ (w_post * ym / r_ll))
+        ends[ll] = carried(ll) * w_post / r_ll  # one unit of a neuron's write, as the stream entering layer 4 receives it
+    check(all(abs(float(shares[ll].sum()) - part[ll]) <= 1e-5 * max(1e-3, float(shares[ll].abs().sum())) for ll in range(4)),
+          f"/attn_drive: each block's neurons add up to the block's part, to float error "
+          f"({[(round(float(shares[ll].sum()), 6), round(part[ll], 6)) for ll in range(4)]})")
+    got_sums = {m_["layer"]: m_["neurons_sum"] for m_ in dr["mlps"]}
+    check(set(got_sums) == set(range(4)) and all(near(got_sums[ll], part[ll], 1e-4) and abs(m_["contribution"] - part[ll]) <= 1e-5
+                                                  for ll in range(4) for m_ in dr["mlps"] if m_["layer"] == ll),
+          f"/attn_drive: each block's neurons_sum, its part's, to the reply's six figures ({dr['mlps']})")
+    every = sorted(((float(v_), ll, i) for ll in range(4) for i, v_ in enumerate(shares[ll].tolist())), key=lambda x: -abs(x[0]))[:12]
+    got_n = dr.get("neurons", [])
+    check([(x["layer"], x["n"]) for x in got_n] == [(ll, i) for _, ll, i in every]
+          and all(near(x["contribution"], v_, 1e-4) and near(x["act"], float(acts_b[ll, i]), 1e-4) for x, (v_, ll, i) in zip(got_n, every)),
+          "/attn_drive: the twelve strongest neurons across every earlier block, with their activations and shares")
+    check(all(x["face"] == ("+" if x["act"] > 0 else "-") and set(x["words"]) >= {"lens", "eye", "check"} and "name" in x
+              and abs(x["share"] - x["contribution"] / dr["linearised_total"]) <= 1e-4 for x in got_n),
+          "/attn_drive: each neuron on the face it fired on, that face's words with their check, its name and its share of the total")
+    # the top neuron's share against a finite difference of the neuron's activation along that neuron's direct write
+    top_n = got_n[0]
+    la, na, aa = top_n["layer"], top_n["n"], float(acts_b[top_n["layer"], top_n["n"]])
+    d_a = ends[la] * lm.layers[la].mlp.down_proj.weight[:, na].double()
+    h_ = 1e-3
+    fd = aa * (act9(mid + h_ * d_a) - act9(mid - h_ * d_a)) / (2 * h_)
+    check(near(fd, top_n["contribution"], 1e-4) and abs(top_n["contribution"]) > 1e-4,
+          f"/attn_drive: the top neuron's share, as a direct-path finite difference gives it ({fd:.8g} vs {top_n['contribution']})")
+    atlas_routes.atlas().caps.clear()  # the ids read afresh, not from the text's capture
+    dr_ids = c.post("/api/atlas/attn_drive", json={"layer": 4, "n": 9, "ids": ids_text, "token": "Bob"}).json()
+    check(dr_ids["read"] == "ids" and dr["read"] == "text" and {k_: v_ for k_, v_ in dr_ids.items() if k_ != "read"} == {k_: v_ for k_, v_ in dr.items() if k_ != "read"},
+          "/attn_drive: the text's own ids give the same drive as the text")
+    for bad, says in [({"layer": 4, "n": 9}, "one of the two"), ({"layer": 4, "n": 9, "text": text, "ids": ids_text}, "one of the two"),
+                      ({"layer": 4, "n": 9, "ids": [ids_text[1]] * 600}, "at most 512"),
+                      ({"layer": 4, "n": 9, "ids": [len(vocab) + 5]}, f"Word-piece {len(vocab) + 5} does not exist")]:
+        r = c.post("/api/atlas/attn_drive", json=bad)
+        check(r.status_code == 400 and says in r.json()["detail"], f"/attn_drive refused {str(bad)[:60]}: {r.status_code} {r.text[:120]}")
     roles = c.get("/api/atlas/neuron/heads", params={"layer": 2, "n": 5}).json()
     want_r = ao.neuron_head_roles(ao.HeadSpaces(w, shapes), 2, 5, k=8)
     check(all(roles["roles"][k_] == want_r[k_] for k_ in ("q", "k", "v", "o")) and roles["z_by_layer"] == want_r["z_by_layer"],

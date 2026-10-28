@@ -536,10 +536,10 @@ const Practices: React.FC = () => (
       <Practice
         numeral="v"
         asks="Look upstream at what builds a neuron, and downstream at what reads it."
-        here="Downstream: the threads on the rings, and who listens to it on a neuron’s folio. Both ways, in the atlas, as leads rather than findings: what could drive a neuron and what it could write into, through the weights alone, read from rest and weighed by how strongly each link arrives once Gemma has scaled the stream at every layer between; its web hop by hop; the heads that read it and feed it. What actually drives it on a text is the attention drive, one word-piece at a time."
+        here="Downstream: the threads on the rings, and who listens to it on a neuron’s folio. Upstream, on the folio too, what builds it: at the sighting’s own word-piece, the heads, the earlier feed-forward blocks and the earlier neurons whose writes make up its activation there, and by the weights alone its strongest writers, each on the face that opens its gate. Both ways, in the atlas, as leads rather than findings: what could drive a neuron and what it could write into, through the weights alone, read from rest and weighed by how strongly each link arrives once Gemma has scaled the stream at every layer between; its web hop by hop; the heads that read it and feed it. What actually drives it on a text is the attention drive, one word-piece at a time."
         links={[
           ["instrument", "threads →"],
-          ["neuron", "who listens →"],
+          ["neuron", "who listens, and what builds it →"],
           ["atlas", "its web in the atlas →"],
         ]}
       />
@@ -592,8 +592,17 @@ const Practices: React.FC = () => (
         <sub>down</sub>, w<sub>gate</sub>⟩ · |a| over the next six layers. A weak guide (ρ ≈ 0.41); the direct-path
         estimate in V7’s notes reaches 0.87 (§3.4 bug 4). Both ways, from the weights alone: the atlas’s{" "}
         <M>neuron_wiring</M> (a writer’s w<sub>post</sub> ⊙ w<sub>down</sub> read by a later neuron’s gate and up rows
-        through its norm, |g · u| z-scored per pair of layers; <M>backend/atlas_ops.py</M>) and its cone through the
-        wiring index (<M>backend/atlas_index.py</M>).
+        through its norm, P = g · u, ranked by |P| f² across layers, f the layer scalars and the norms’ usual scales
+        between the two; <M>backend/atlas_ops.py</M>) and its cone through the wiring index (
+        <M>backend/atlas_index.py</M>).
+      </dd>
+      <dt>upstream</dt>
+      <dd>
+        a neuron’s folio, iii, what builds it: <M>attention_drive</M> at the sighting’s own word-piece ids (
+        <M>POST /api/atlas/attn_drive</M>), its activation linearised where it reads the stream and split over every
+        head, every earlier feed-forward block and the embedding, each block’s part over its neurons, a<sub>A</sub> (J′
+        <sub>k</sub> · W<sub>down,k</sub>[:, A]), one mat-vec a layer; and <M>neuron_wiring</M>’s writers, each on the
+        face that opens its gate. A neuron’s share there is its direct write only, the norms held at their scale.
       </dd>
       <dt>steer</dt>
       <dd>

@@ -467,7 +467,8 @@ class HeadTextRequest(BaseModel):
 class DriveRequest(BaseModel):
     layer: StrictInt
     n: StrictInt
-    text: str = Field(..., min_length=1, max_length=64000)
+    text: Optional[str] = Field(None, min_length=1, max_length=64000)
+    ids: Optional[List[StrictInt]] = Field(None, max_length=65536)  # word-piece ids read exactly (at most 512: `_drive`)
     chat: bool = False
     token: Optional[str] = Field(None, max_length=200)
     at: Optional[StrictInt] = None
@@ -1682,13 +1683,13 @@ async def run_view(pos: int = -1, sign: str = "both", lo: int = 0, hi: int = 999
     return await asyncio.to_thread(work)
 
 
-def _capture(a: Atlas, ids: List[int], streams: bool = False) -> ao.HeadCapture:
-    key = (tuple(ids), streams, a.edit_key())
+def _capture(a: Atlas, ids: List[int], streams: bool = False, act_pos: Optional[int] = None) -> ao.HeadCapture:
+    key = (tuple(ids), streams, a.edit_key(), act_pos)
     hit = a.caps.get(key)
     if hit is None:
         if len(ids) > MAX_HEAD_POSITIONS:
             raise ValueError(f"The text is {len(ids)} word-pieces; heads are read on at most {MAX_HEAD_POSITIONS}.")
-        hit = a.caps.put(key, ao.capture_heads(a.lm, ids, a.w, streams=streams))
+        hit = a.caps.put(key, ao.capture_heads(a.lm, ids, a.w, streams=streams, act_pos=act_pos))
     return hit
 
 
@@ -1895,10 +1896,19 @@ async def attention(req: HeadTextRequest) -> Dict[str, Any]:
     return await on_gpu(_attention, atlas(), req)
 
 
-def _drive(a: Atlas, req: DriveRequest) -> Dict[str, Any]:
+DRIVE_NEURONS = 12  # the earlier neurons a drive names, the strongest shares across every block
+
+
+def _drive(a: Atlas, req: DriveRequest, notes: Dict[str, Any]) -> Dict[str, Any]:
     _check_neuron(a, req.layer, req.n)
-    ids = a.ids_of(req.text, req.chat, limit=MAX_HEAD_POSITIONS)
-    cap = _capture(a, ids, streams=True)
+    if (req.text is None) == (req.ids is None):
+        raise ValueError("Give a text to read (text) or its word-piece ids (ids), one of the two.")
+    if req.ids is not None:
+        ids = read_ids(a, req.ids)
+        if len(ids) > MAX_HEAD_POSITIONS:
+            raise ValueError(f"The ids are {len(ids)} word-pieces; heads are read on at most {MAX_HEAD_POSITIONS}. Give the last {MAX_HEAD_POSITIONS} or fewer.")
+    else:
+        ids = a.ids_of(req.text, req.chat, limit=MAX_HEAD_POSITIONS)
     units = a.units(ids)
     toks = [u for u, _ in units]
     unit_of = {i: k for k, (_, idx) in enumerate(units) for i in idx}
@@ -1907,7 +1917,9 @@ def _drive(a: Atlas, req: DriveRequest) -> Dict[str, Any]:
         acts = ao.read_neuron(a.lm, ids, req.layer, req.n)
         k = unit_of[int(np.abs(np.array(acts[1:])).argmax()) + 1] if len(acts) > 1 else 0
     pos = units[k][1][-1]
-    d = ao.attention_drive(cap, a.w, a.shapes, req.layer, req.n, pos, top=req.top)
+    # every neuron's activation at the word-piece read, kept in the same forward: each block's part split over them
+    cap = _capture(a, ids, streams=True, act_pos=pos)
+    d = ao.attention_drive(cap, a.w, a.shapes, req.layer, req.n, pos, top=req.top, neurons=DRIVE_NEURONS)
     attn = sum(c for _, _, c in d["heads"])
     heads = []
     for l, h, c in sorted(d["heads"], key=lambda r: -abs(r[2]))[: max(req.top, 12)]:
@@ -1919,20 +1931,39 @@ def _drive(a: Atlas, req: DriveRequest) -> Dict[str, Any]:
             row["from"] = [[toks[u], round(v, 5)] for u, v in sorted(per.items(), key=lambda x: -abs(x[1]))[:5]]
         heads.append(row)
     mlps = sorted(d["mlps"], key=lambda r: -abs(r[1]))[:8]
-    return {"layer": req.layer, "n": req.n, "token": toks[k], "index": k, "read_pos": pos, "act": round(d["act"], 5),
+    sums = dict(d.get("block_sums", []))
+    edited = a.edited()
+    neurons = []
+    for l, m, act, c in d.get("neurons", []):
+        face = "+" if act > 0 else "-"
+        e = notes.get(fn.note_key(l, m)) or {}
+        neurons.append({"layer": l, "n": m, "act": float(f"{act:.6g}"), "face": face, "contribution": float(f"{c:.6g}"),
+                        "share": round(c / d["total"], 4) if d["total"] else None, "words": a.face(l, m, face, 5, edited),
+                        "name": e.get("name", ""), "name_by": e.get("name_by") if e.get("name") else None})
+    return {"layer": req.layer, "n": req.n, "read": "ids" if req.ids is not None else "text", "token": toks[k], "index": k,
+            "read_pos": pos, "act": round(d["act"], 5),
             "act_range": a.act_range(req.layer, req.n), "linearised_total": round(d["total"], 5),
             "attention_sum": round(attn, 5), "mlp_sum": round(sum(c for _, c in d["mlps"]), 5), "embedding": round(d["embed"], 5),
             "rest": round(d["rest"], 6), "heads": heads,
-            "mlps": [{"layer": l, "contribution": round(c, 5)} for l, c in mlps],
+            "mlps": [{"layer": l, "contribution": round(c, 5), "neurons_sum": float(f"{sums[l]:.6g}")} for l, c in mlps],
+            "neurons": neurons,
             "note": ("the activation gelu(g) u linearised in the stream entering its feed-forward block, the norm's rms held "
-                     "at its value there; the parts (heads, feed-forward blocks, the embedding) add up to the total")}
+                     "at its value there; the parts (heads, feed-forward blocks, the embedding) add up to the total"),
+            "neurons_note": ("each earlier block's part split over its neurons: a neuron's direct write through its block's norm, "
+                             "held at its scale there, read along the same line; its share of the total. What it does through "
+                             "the layers between is in those layers' parts, not its own: leads to test, not causes found")}
 
 
 @router.post("/attn_drive")
 async def attn_drive(req: DriveRequest) -> Dict[str, Any]:
-    """Which attention heads (and feed-forward blocks) drive a neuron at one unit of a text, and which earlier units each
-    top head read that from (atlas_ops.attention_drive)."""
-    return await on_gpu(_drive, atlas(), req)
+    """Which attention heads, feed-forward blocks and earlier neurons drive a neuron at one unit of a text
+    (atlas_ops.attention_drive): the unit holding `token`, the unit `at`, else where it fires hardest; `text` read as
+    POST /reads reads it, or `ids` exactly as given (a sighting's own word-pieces; at most 512). Which earlier units each
+    top head read its part from; each block's part split over its neurons (`neurons_sum`), and the twelve strongest
+    neurons across every block (`neurons`), each on the face it fired on, with that face's words, their check and its
+    name."""
+    notes = (await fn.all_notes())["neurons"]
+    return await on_gpu(_drive, atlas(), req, notes)
 
 
 # -- the scientist's whole-neuron views

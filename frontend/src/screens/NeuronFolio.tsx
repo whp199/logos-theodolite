@@ -31,6 +31,7 @@ import {
 } from "../store/useTheodoliteStore";
 import { andList, agreement, cap, count, glossFor, scoresText, shortToken, signedRaw, type Agreement } from "./NeuronFolio/util";
 import { splitAtPeak, usePassages } from "./NeuronFolio/passages";
+import { get as atlasGet, post as atlasPost, type Drive, type FaceWords, type Wiring } from "./atlas/api";
 import { comma, faceWord, ms, numberWord, pct, pieceWord, signed, wp } from "../lib/words";
 import { HeldBackWords } from "../components/HeldBack";
 import {
@@ -43,6 +44,7 @@ import {
   labelCheckJson,
   labelGate,
   layerIdx,
+  parseLabelCheck,
   overlapLine,
   sharedLine,
   trustLine,
@@ -115,6 +117,8 @@ import {
  * A neuron's folio (canvas: Neuron.dc.html, "folio iii"). Works for any neuron in the route:
  *   per-sighting values come from sighting.layers[idx];
  *   both faces come from inspect_pole (called on arrival), the threads from trace_readers (on request),
+ *   what builds it from the atlas's attn_drive at the sighting's own word-piece ids, its heads, blocks and earlier
+ *   neurons, and from the atlas's wiring, its writers by the weights alone (on request),
  *   the test of a label from causal_spot_check (on request: at the sighting's word-piece, or on the study's 36 texts),
  *   the guess from test_motif_hypothesis;
  *   the canvas's recorded neuron (layer 54, neuron 15491, positive face) shows the study's recorded extras
@@ -3149,7 +3153,240 @@ const Listen: React.FC<{ m: Model }> = ({ m }) => {
           if (a.score !== undefined) setScore(a.score);
         }}
       />
+      <Builds m={m} />
     </section>
+  );
+};
+
+/* ------------------------------------------------------ iii · what builds it */
+
+/** "+12%", "−3.4%": a part's share of the drive, signed. */
+const sharePct = (x: number | null | undefined) => (x == null ? "" : (x >= 0 ? "+" : "−") + pct(Math.abs(x)));
+
+/** An earlier neuron's words on one face, under the label gate (its own layer's rule and its index check). */
+const WriterWords: React.FC<{ layer: number; w: FaceWords | undefined }> = ({ layer, w }) => {
+  if (!w || !w.lens || !w.lens.length) return null;
+  const gate = labelGate(layerIdx(layer), parseLabelCheck(w.check));
+  return (
+    <span style={{ fontSize: "14px", fontStyle: "italic", color: MUTED, overflowWrap: "anywhere", paddingBottom: "6px" }}>
+      {gate.heldBack ? <HeldBackWords gate={gate} words={w.lens} eye={w.eye} compact /> : <>writes {w.lens.slice(0, 5).map(wp).join(" ")}</>}
+    </span>
+  );
+};
+
+interface BuildsRead {
+  sightingId: number | null;
+  drive: Drive | null;
+  driveWhy: string | null;
+  wiring: Wiring | null;
+  wiringWhy: string | null;
+}
+
+/**
+ * What builds the neuron, beside who listens to it (Lineage practice v): in use, at the sighting's own word-piece, the
+ * drive (POST /api/atlas/attn_drive with the sighting's ids), which splits its activation over the heads, the earlier
+ * feed-forward blocks and their neurons, and the embedding; by the weights alone, its strongest writers (GET
+ * /api/atlas/neuron/wiring, `up`), each on the face that opens its gate. Read when asked: the drive runs the model.
+ */
+const Builds: React.FC<{ m: Model }> = ({ m }) => {
+  const s = m.sighting;
+  const ids = s?.source === "live" && s.contextIds?.length ? s.contextIds : null;
+  const [got, setGot] = useState<BuildsRead | null>(null);
+  const [busy, setBusy] = useState(false);
+  const mine = got && (got.sightingId === (s?.id ?? null) || !got.drive) ? got : null;
+  const read = async () => {
+    setBusy(true);
+    const noIds = !s
+      ? "no sighting is loaded"
+      : s.source !== "live"
+        ? "the recorded sighting keeps no word-piece ids to read again; take a live sighting"
+        : "this server did not send the sighting’s word-piece ids";
+    const [d, w] = await Promise.allSettled([
+      ids ? atlasPost<Drive>("/api/atlas/attn_drive", { layer: m.idx, n: m.neuron, ids, at: -1, top: 8 }) : Promise.reject(new Error(noIds)),
+      atlasGet<Wiring>("/api/atlas/neuron/wiring", { layer: m.idx, n: m.neuron, k: 24 }),
+    ]);
+    setGot({
+      sightingId: s?.id ?? null,
+      drive: d.status === "fulfilled" ? d.value : null,
+      driveWhy: d.status === "rejected" ? String((d.reason as Error)?.message ?? d.reason) : null,
+      wiring: w.status === "fulfilled" ? w.value : null,
+      wiringWhy: w.status === "rejected" ? String((w.reason as Error)?.message ?? w.reason) : null,
+    });
+    setBusy(false);
+  };
+  const d = mine?.drive ?? null;
+  const writers = (mine?.wiring?.up ?? []).slice(0, 8);
+  const row: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 0.5fr) minmax(0, 0.8fr) minmax(0, 0.6fr)",
+    gap: "0 16px",
+    alignItems: "baseline",
+    padding: "4px 0",
+    borderBottom: `1px solid ${HAIR_FAINT}`,
+    fontSize: "17px",
+    ...NUM,
+  };
+  const head: React.CSSProperties = {
+    ...row,
+    fontSize: "13px",
+    fontVariantCaps: "all-small-caps",
+    letterSpacing: "0.16em",
+    color: MUTED,
+    borderBottom: `1px solid ${HAIR}`,
+    padding: "0 0 4px",
+  };
+  const neuronRow = (l: number, n: number, face: "+" | "-", amount: string, w: FaceWords | undefined, name: string | undefined, key: string) => (
+    <div key={key} style={row}>
+      <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <a href={href.neuron(l + 1, n, face === "+" ? 1 : -1)} style={{ display: "inline-flex", alignItems: "center", minHeight: "44px" }}>
+          neuron {n}
+          {name ? <span style={{ fontStyle: "italic", color: MUTED }}>&nbsp;· {name}</span> : null}
+        </a>
+        <WriterWords layer={l} w={w} />
+      </span>
+      <span>{l + 1}</span>
+      <span style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "16px" }}>
+        <FaceMark filled={face === "+"} />
+        {faceWord(face === "+" ? 1 : -1)}
+      </span>
+      <span style={{ textAlign: "right" }}>{amount}</span>
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", paddingTop: "18px", borderTop: `1px solid ${HAIR_FAINT}` }}>
+      <div className="row-between">
+        <h3 className="h-sub" id="builds-head">
+          what builds it
+        </h3>
+        <span style={ASIDE}>looking upstream</span>
+      </div>
+      <p style={{ margin: 0, maxWidth: "760px" }}>
+        Earlier parts of the model write what this neuron reads. In use, at this very word-piece, its activation splits over every attention head,
+        every earlier feed-forward block, and each block over its neurons. By the weights alone, its strongest writers are leads to test, whatever
+        the text.
+      </p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 20px", alignItems: "center" }}>
+        <button className="btn-ghost" type="button" disabled={busy} onClick={() => void read()}>
+          {busy ? "reading…" : mine ? "read it again" : "read what builds it"}
+        </button>
+        <span style={{ fontSize: "16px", color: MUTED }}>
+          {ids
+            ? `reads this very text, its ${numberWord(ids.length)} word-pieces, at the one read${m.readAt ? `, ${m.readAt}${m.inReply}` : ""}`
+            : "the weights alone: no word-piece ids of a live sighting to read the drive on"}
+        </span>
+      </div>
+      {got && !mine ? (
+        <p className="status-line" style={{ margin: 0 }}>
+          What builds it was read for another sighting, so it is set aside. Read it again for this one.
+        </p>
+      ) : null}
+      {mine ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "24px 56px", alignItems: "flex-start" }}>
+          <div style={{ flex: "999 1 560px", minWidth: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+            <h4 style={{ margin: 0, ...SC_LABEL }}>in use at this word-piece</h4>
+            {d ? (
+              <>
+                <p style={{ margin: 0 }}>
+                  At “{d.token}” it reads a = {signed(d.act, 3)}; linearised where it reads the stream, {signed(d.linearised_total, 3)}, of which
+                  the attention heads give {sharePct(d.linearised_total ? d.attention_sum / d.linearised_total : null)}, the earlier feed-forward
+                  blocks {sharePct(d.linearised_total ? d.mlp_sum / d.linearised_total : null)} and the word-piece’s own embedding{" "}
+                  {sharePct(d.linearised_total ? d.embedding / d.linearised_total : null)}.
+                </p>
+                <p style={{ margin: 0, fontSize: "16px", color: MUTED }}>
+                  heads:{" "}
+                  {d.heads
+                    .slice(0, 5)
+                    .map((h) => `layer ${h.layer + 1} head ${h.head} ${sharePct(h.share)}${h.from?.length ? `, reading “${h.from[0][0]}”` : ""}`)
+                    .join(" · ")}
+                </p>
+                <p style={{ margin: 0, fontSize: "16px", color: MUTED }}>
+                  blocks:{" "}
+                  {d.mlps
+                    .slice(0, 4)
+                    .map((b) => `layer ${b.layer + 1} ${sharePct(d.linearised_total ? b.contribution / d.linearised_total : null)}`)
+                    .join(" · ")}
+                </p>
+                {d.neurons?.length ? (
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={head}>
+                      <span>earlier neuron</span>
+                      <span>layer</span>
+                      <span>fired on</span>
+                      <span style={{ textAlign: "right" }}>share</span>
+                    </div>
+                    {d.neurons.map((x) => neuronRow(x.layer, x.n, x.face, sharePct(x.share), x.words, x.name, `d${x.layer}/${x.n}`))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="status-line" style={{ margin: 0 }}>
+                The drive was not read: {mine.driveWhy}
+              </p>
+            )}
+          </div>
+          <div style={{ flex: "1 1 380px", minWidth: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
+            <h4 style={{ margin: 0, ...SC_LABEL }}>by the weights alone, as leads</h4>
+            {writers.length ? (
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={head}>
+                  <span>writer</span>
+                  <span>layer</span>
+                  <span>opens it on</span>
+                  <span style={{ textAlign: "right" }}>strength</span>
+                </div>
+                {writers.map((c) =>
+                  neuronRow(c.layer, c.n, c.face ?? (c.gate != null && c.gate < 0 ? "-" : "+"), c.w != null ? pct(c.w) : "", c.words, c.name, `w${c.layer}/${c.n}`),
+                )}
+              </div>
+            ) : (
+              <p className="status-line" style={{ margin: 0 }}>
+                {mine.wiringWhy ? `Its writers were not read: ${mine.wiringWhy}` : m.idx === 0 ? "Nothing writes into the first layer’s neurons." : "No writers came back."}
+              </p>
+            )}
+            <span style={{ fontSize: "15px", color: MUTED }}>
+              each writer on the face that opens this neuron’s gate, read from rest; the strength as it arrives, over the strongest
+            </span>
+          </div>
+        </div>
+      ) : null}
+      <Rubric style={{ maxWidth: "760px" }}>
+        Both are leads, not causes. The drive is exact arithmetic at one word-piece, but a neuron’s share counts only its own write straight into
+        this layer, the norms held at their scale there; what it does through the layers between is in those layers’ parts. The weights alone know
+        nothing of the text. Test a lead by silencing it and reading this neuron again.
+      </Rubric>
+      <Apparatus title="what builds it" label="Apparatus for what builds it">
+        <dl className="dl num">
+          <dt>the drive</dt>
+          <dd>
+            a = gelu(g) · u, g = W<sub>gate</sub>[n] · x̂, u = W<sub>up</sub>[n] · x̂, x̂ = w<sub>pre</sub> ⊙ mid / rms(mid), linearised in mid,
+            the stream entering the neuron’s feed-forward block, with the rms held: J = (gelu′(g) u W<sub>gate</sub>[n] + gelu(g) W<sub>up</sub>[n])
+            ⊙ w<sub>pre</sub> / rms(mid). mid is a sum of parts, each carried by the layer scalars it passed, so J · mid splits exactly over every
+            head (and the word-pieces it read), every earlier block and the embedding. Block k’s part is J · (s-carried w<sub>post,k</sub> ⊙ y
+            <sub>k</sub> / rms(y<sub>k</sub>)), y<sub>k</sub> = Σ<sub>A</sub> a<sub>A</sub> W<sub>down,k</sub>[:, A], so neuron A’s share is a
+            <sub>A</sub> (J′<sub>k</sub> · W<sub>down,k</sub>[:, A]), J′<sub>k</sub> = s-carried (w<sub>post,k</sub> ⊙ J) / rms(y<sub>k</sub>):
+            one mat-vec a layer (<span className="mono">backend/atlas_ops.py attention_drive</span>, <span className="mono">block_split</span>). The
+            twelve strongest across every block are listed; each block’s shares add up to its part, to the rounding of the block’s own output.
+          </dd>
+          <dt>read on</dt>
+          <dd>
+            <span className="mono">POST /api/atlas/attn_drive</span> with the sighting’s own word-piece ids (
+            <span className="mono">ids</span>, at most 512) and the last of them read (<span className="mono">at: -1</span>), so a word-piece of
+            the answer is read where it was read
+            {mine?.drive ? `; read at position ${mine.drive.read_pos}${s?.readPos != null ? ` (the sighting’s ${s.readPos})` : ""}` : ""}.
+          </dd>
+          <dt>by the weights</dt>
+          <dd>
+            <span className="mono">GET /api/atlas/neuron/wiring</span> <span className="mono">up</span>: a writer A at layer i writes w<sub>post,i</sub>{" "}
+            ⊙ W<sub>down,i</sub>[:, A], read through this neuron’s gate and up rows; P = g · u, ranked by |P| f² across layers (the layer scalars
+            and the norms at their usual scale between the two), shown on the face that opens the gate (sign g){" "}
+            {mine?.wiring ? `; ${mine.wiring.source === "index" ? "from the wiring index" : "read from the weights just now"}` : ""}. Leads, not
+            circuits.
+          </dd>
+          <dt>labels</dt>
+          <dd>each neuron’s words pass the label gate, by its own layer and its index check, as every label on these pages does.</dd>
+        </dl>
+      </Apparatus>
+    </div>
   );
 };
 

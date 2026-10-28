@@ -1059,7 +1059,8 @@ class HeadCapture:
     y[l] [H, T, hd] each head's output (o_proj's input), o_rms[l] [T] the rms the post-attention norm divides by,
     writes[l] [T, H] each head's write into the stream leaving the layer, s * |w_pa (.) W_O[:, h] y_h| / rms(o);
     with `streams`, mid[l] [T, D] the stream entering the feed-forward block, y_mlp[l] [T, D] the feed-forward output
-    before its norm, and embed [T, D] the scaled embedding (what `attention_drive` reads)."""
+    before its norm, and embed [T, D] the scaled embedding (what `attention_drive` reads); with `act_pos`, acts_at
+    [L, N] every neuron's activation at that one word-piece (what `attention_drive` splits each block's part over)."""
 
     ids: List[int]
     q: Dict[int, torch.Tensor] = field(default_factory=dict)
@@ -1072,6 +1073,8 @@ class HeadCapture:
     y_mlp: Dict[int, torch.Tensor] = field(default_factory=dict)
     embed: Optional[torch.Tensor] = None
     acts: Optional[torch.Tensor] = None  # [L, T, N] float16, when asked for
+    act_pos: Optional[int] = None
+    acts_at: Optional[torch.Tensor] = None  # [L, N] float32 at act_pos, when asked for
 
     @property
     def T(self) -> int:
@@ -1080,17 +1083,20 @@ class HeadCapture:
 
 @torch.no_grad()
 def capture_heads(
-    lm: nn.Module, ids: Sequence[int], weights: Weights, *, streams: bool = False, with_acts: bool = False
+    lm: nn.Module, ids: Sequence[int], weights: Weights, *, streams: bool = False, with_acts: bool = False,
+    act_pos: Optional[int] = None,
 ) -> HeadCapture:
     """Read `ids` once and keep what the head readings need (`HeadCapture`), from hooks on each layer's attention (its
     rotary cos/sin), q_norm, k_norm, v_norm and o_proj (input and output); with `streams`, the pre- and post-feed-forward
-    norms' inputs and the embedding; with `with_acts`, every neuron's activation too."""
+    norms' inputs and the embedding; with `with_acts`, every neuron's activation too; with `act_pos`, every neuron's
+    activation at that word-piece alone (float32)."""
     from transformers.models.gemma4.modeling_gemma4 import apply_rotary_pos_emb
 
     dev = model_device(lm)
     x = torch.tensor([[int(t) for t in ids]], dtype=torch.long, device=dev)
-    cap = HeadCapture(ids=[int(t) for t in ids])
+    cap = HeadCapture(ids=[int(t) for t in ids], act_pos=None if act_pos is None else int(act_pos))
     rope: Dict[int, Tuple[torch.Tensor, torch.Tensor]] = {}
+    acts_at: Dict[int, torch.Tensor] = {}
     qn: Dict[int, torch.Tensor] = {}
     kn: Dict[int, torch.Tensor] = {}
     acts: Dict[int, torch.Tensor] = {}
@@ -1143,6 +1149,12 @@ def capture_heads(
                         lambda _m, args, l=l: acts.__setitem__(l, args[0][0].detach().to("cpu", dtype=torch.float16))
                     )
                 )
+            if act_pos is not None:
+                hooks.append(
+                    layer.mlp.down_proj.register_forward_pre_hook(
+                        lambda _m, args, l=l: acts_at.__setitem__(l, args[0][0, int(act_pos)].detach().float().cpu())
+                    )
+                )
         lm(input_ids=x, use_cache=False)
     finally:
         for h in hooks:
@@ -1166,6 +1178,8 @@ def capture_heads(
         cap.writes[l] = float(s[l]) * q2.sqrt() / cap.o_rms[l][:, None]
     if with_acts:
         cap.acts = torch.stack([acts[l] for l in range(len(lm.layers))])
+    if act_pos is not None:
+        cap.acts_at = torch.stack([acts_at[l] for l in range(len(lm.layers))])
     return cap
 
 
@@ -1279,8 +1293,26 @@ def head_profiles(lm: nn.Module, weights: Weights, tokenizer: Any, texts_ids: Se
     return {"tokens": tokens, "heads": heads}
 
 
+DOWN_CHUNK = 4096  # W_down's columns read at a time in float32 by `block_split` (88 MB a chunk on the 31B)
+
+
 @torch.no_grad()
-def attention_drive(cap: HeadCapture, weights: Weights, shapes: Sequence[AttnShape], layer: int, neuron: int, pos: int, top: int = 8) -> Dict[str, Any]:
+def block_split(weights: Weights, layer: int, direction: torch.Tensor, acts: torch.Tensor) -> torch.Tensor:
+    """A feed-forward block's part of a reading split over its neurons: neuron A's share a_A (direction . W_down[:, A]),
+    one mat-vec of the layer's down projection (vault edits included), in float32 a chunk of columns at a time; [N]
+    float64 on the CPU. The shares add up to direction . (W_down a), the block's output read along `direction`."""
+    Wd = weights.w_down(int(layer))  # [D, N]
+    d = direction.to(device=Wd.device, dtype=torch.float32)
+    N = Wd.shape[1]
+    proj = torch.empty(N, dtype=torch.float64)
+    for i in range(0, N, DOWN_CHUNK):
+        proj[i : i + DOWN_CHUNK] = (d @ Wd[:, i : i + DOWN_CHUNK].float()).double().cpu()
+    return acts.double().cpu() * proj
+
+
+@torch.no_grad()
+def attention_drive(cap: HeadCapture, weights: Weights, shapes: Sequence[AttnShape], layer: int, neuron: int, pos: int, top: int = 8,
+                    neurons: int = 12) -> Dict[str, Any]:
     """How the stream drives neuron (layer, neuron) at word-piece `pos` of the captured text, part by part.
 
     The activation a = gelu_tanh(g) u, g = W_gate[n] . x, u = W_up[n] . x, x = w_pre (.) mid / rms(mid), is linearised in
@@ -1290,9 +1322,15 @@ def attention_drive(cap: HeadCapture, weights: Weights, shapes: Sequence[AttnSha
     mid is a sum of parts: the embedding, each earlier layer's attention and feed-forward writes, and this layer's
     attention, each carried by the layer scalars it passed (s_k for each layer k from where it was written to l - 1). A
     head's part is its write through the post-attention norm, s-carried, `w_pa (.) W_O[:, h] y_h / rms(o)`; it splits
-    exactly over the word-pieces the head read, y_h = sum_j A[h, pos, j] v_j. Returns act, total, every head's
-    contribution J . part [(layer, head, c)], each feed-forward block's [(layer, c)], the embedding's, the share they
-    leave unexplained (`rest`, float error only), and for the `top` heads by |c| their split over source pieces."""
+    exactly over the word-pieces the head read, y_h = sum_j A[h, pos, j] v_j. A block's part, s-carried
+    J . (w_post (.) y_k / rms(y_k)), splits over its neurons the same way when the capture holds every activation at
+    `pos` (`capture_heads(act_pos=pos)`): y_k = sum_A a_A W_down_k[:, A], so neuron A's share is a_A (J'_k . W_down_k[:,
+    A]), J'_k = s-carried (w_post_k (.) J) / rms(y_k), its direct write with the block's norm held at its scale there
+    (`block_split`, one mat-vec a layer). Returns act, total, every head's contribution J . part [(layer, head, c)], each
+    feed-forward block's [(layer, c)], the embedding's, the share they leave unexplained (`rest`, float error only), and
+    for the `top` heads by |c| their split over source pieces; with the activations, `neurons`, the `neurons` strongest
+    shares across every earlier block [(layer, neuron, a, share)], and `block_sums`, each block's shares added up
+    [(layer, sum)], which equal its part up to the rounding of the block's own output (float error on the CPU)."""
     import torch.nn.functional as Fn
 
     l, n, p = int(layer), int(neuron), int(pos)
@@ -1328,11 +1366,19 @@ def attention_drive(cap: HeadCapture, weights: Weights, shapes: Sequence[AttnSha
         y = cap.y[ll][:, p].double()  # [H, hd]
         heads += [(ll, h, float(v)) for h, v in enumerate((t * y).sum(-1).tolist())]
     mlps: List[Tuple[int, float]] = []
+    split = cap.acts_at is not None and cap.act_pos == p
+    best: List[Tuple[int, int, float, float]] = []
+    block_sums: List[Tuple[int, float]] = []
     for ll in range(l):
         w_post = weights.norm(ll, "post_feedforward").cpu().double()
         ym = cap.y_mlp[ll][p].double()
         r = float((ym.pow(2).mean() + weights.eps(ll, "post_feedforward")).sqrt())
         mlps.append((ll, float(carried(ll) * (J @ (w_post * ym / r)))))
+        if split:
+            shares = block_split(weights, ll, carried(ll) * (w_post * J) / r, cap.acts_at[ll])
+            block_sums.append((ll, float(shares.sum())))
+            for i in torch.topk(shares.abs(), k=min(int(neurons), shares.numel())).indices.tolist():
+                best.append((ll, int(i), float(cap.acts_at[ll][i]), float(shares[i])))
     embed = float(carried(0) * (J @ cap.embed[p].double())) if cap.embed is not None else 0.0
     explained = sum(c for _, _, c in heads) + sum(c for _, c in mlps) + embed
     src: Dict[Tuple[int, int], List[float]] = {}
@@ -1351,6 +1397,7 @@ def attention_drive(cap: HeadCapture, weights: Weights, shapes: Sequence[AttnSha
         "embed": embed,
         "rest": total - explained,
         "src": src,
+        **({"neurons": sorted(best, key=lambda r: -abs(r[3]))[: int(neurons)], "block_sums": block_sums} if split else {}),
     }
 
 
