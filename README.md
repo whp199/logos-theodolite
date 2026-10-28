@@ -374,7 +374,7 @@ REPORT §3.4). Where each fault stands now:
 - About 22 GB of disk for the model and 6.4 GB for the two lenses; up to about 27 GB more to regenerate every cached
   activation.
 - Versions used: torch 2.14.1+cu130, transformers 5.20.0, interp-engine 1.14.0, compressed-tensors 0.19.0,
-  fastapi 0.143.2, fastmcp 4.1.0.
+  fastapi 0.143.2, fastmcp 4.1.0; for a GGUF, gguf 0.19.0 (checked with transformers 5.21.0).
 
 > [!IMPORTANT]
 > Run one GPU process at a time: the lab daemon, the instrument server and a standalone `mcp_scientist` each load the 31B model.
@@ -396,6 +396,21 @@ uv pip install -r pyproject.toml
 
 The study used model snapshot `52f3f65bc7a02d555763bc923bd1d9094898219d` and lens snapshot
 `e166deb5ad540932100ef803c8c9bcc2a5453694`.
+
+**On the CPU, or from a GGUF** (ARCHITECTURE §5; checked on the CPU stand-in only, not yet on the 31B)
+
+```bash
+uv pip install "gguf>=0.19"                            # reads GGUF files (the optional "gguf" extra)
+THEODOLITE_GGUF=~/models/gemma-4-31b-it-q4_0.gguf .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765
+THEODOLITE_DEVICE=cpu .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765        # the checkpoint, on the CPU
+THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=resident THEODOLITE_GGUF_LENS=none \
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons random:8 --random-controls 8 --max-new 32
+.venv/bin/python -I scripts/compare_gguf_ct.py <file>  # does the GGUF hold the checkpoint's weights?
+```
+
+On the CPU, packed 4-bit weights take about 20 GB of RAM and unpack at every forward (minutes a forward on a small
+machine); resident bf16 (`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a word-piece in seconds; the
+J++ lens adds 3.4 GB. Those speeds are inferred from one 4-core machine: time a pilot first.
 
 **Take a first sighting**
 

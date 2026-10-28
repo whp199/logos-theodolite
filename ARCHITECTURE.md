@@ -19,6 +19,10 @@ theodolite2/
 │   ├── theodolite_math.py           # Four core vectorized mathematical modules + contrasts + CKA + unembed
 │   ├── engine_runtime.py            # interp-engine + J++ / JLens loader + 4-bit weight dequantizer
 │   ├── w4a16_fast.py                # faster unpackers of those weights, the same bits (lut, compiled, resident; §2)
+│   ├── gguf_weights.py              # GGUF block unpackers (CPU/GPU), GGUFLinear, dense/dense_cols/dense_rows (§5)
+│   ├── gguf_model.py                # a Gemma 4 from a GGUF: config, tensors, tokenizer, provenance; a writer (§5)
+│   ├── gguf_runtime.py              # GGUFRuntime: the pinned runtime on a GGUF, its packing accessors replaced (§5)
+│   ├── runtime_factory.py           # make_runtime(): the runtime from THEODOLITE_GGUF / THEODOLITE_DEVICE (§5)
 │   ├── larql_vault.py               # LARQL / VINDEX3 FFN vault indexer, LQL parser, .patch edits & their voice
 │   ├── label_gate.py                # the label gate: label_check, LABEL_GATE_CARD (which neuron labels pages hold back)
 │   ├── causal_check.py              # the causal spot-check: one neuron turned up at one word-piece (N1A's protocol)
@@ -50,6 +54,8 @@ theodolite2/
 │   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)
 │   ├── check_vault_voice.py         # an edit's voice: order, failures, reply keys, over HTTP and the WebSocket (CPU only)
 │   ├── check_dequant.py             # the faster unpackers against the runtime's, bit for bit, on a 4-bit stand-in (CPU only)
+│   ├── check_gguf.py                # the GGUF path against gguf-py and the stand-in, bit for bit (CPU only)
+│   ├── compare_gguf_ct.py           # does a GGUF hold the W4A16 checkpoint's weights? tensor by tensor (CPU)
 │   ├── export_E3_background_mu.py   # writes experiments/results/E3_background_mu.npy (+ .json) from E3's caches (CPU)
 │   ├── verify_causal_check.py       # the causal spot-check against N1A's and N1V's figures on the real model (GPU)
 │   ├── verify_e2e_ui_and_mcp.py     # server, MCP tools and headless-Chrome pages end to end (GPU)
@@ -709,3 +715,114 @@ and call the atlas's routes: reading the atlas (`overview`, `neuron`, `rollouts`
 person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highlight_neurons`, `annotate_neurons`,
 `show_text`, `show_search`). scripts/check_scientist.py checks the tools, the MCP server and all three backends against
 fakes, over real connections.
+
+---
+
+## 5. CPU and GGUF
+
+The instrument was built for the W4A16 checkpoint on one GPU. Since 28 October 2026 it can also read a GGUF of Gemma 4
+(llama.cpp's format), and run on the CPU; this is the first layer of that work, checked on the CPU only
+(`scripts/check_gguf.py`, on the stand-in of `scripts/atlas_stand_in.py` written to tiny GGUF files). Nothing here has
+run on Gemma-4-31B itself, from either a GGUF or the checkpoint on the CPU.
+
+**Choosing the runtime** (`backend/runtime_factory.py`, `make_runtime()`; the server, `scripts/census_run.py` and
+`scripts/atlas_build.py` call it):
+
+| variable | values | |
+|---|---|---|
+| `THEODOLITE_GGUF` | a `.gguf` file | `GGUFRuntime` on it; unset: the pinned `TheodoliteRuntime` on the W4A16 checkpoint, as before |
+| `THEODOLITE_DEVICE` | `cpu`, `cuda:N` | where the model runs (default `cuda:0`); `cpu` hides the GPUs from the process (`CUDA_VISIBLE_DEVICES=""`) |
+| `THEODOLITE_GGUF_LINEARS` | `packed`, `resident`, `dense` | how a GGUF's quantised layers are held (default `packed`) |
+| `THEODOLITE_GGUF_CONFIG` | a `config.json` | build from this config, checked against the file's metadata (refused where they disagree) |
+| `THEODOLITE_DTYPE` | `bfloat16`, `float32` | a GGUF model's dtype (default `bfloat16`, as the instrument runs) |
+| `THEODOLITE_GGUF_LENS` | `jpp`, `none` | load the J++ lens beside a GGUF model (default), or leave it out (3.4 GB) |
+
+`GET /api/health` now also sends `device` and `weights` (a GGUF's provenance; `null` for the checkpoint).
+
+**What works now**
+
+- `backend/gguf_weights.py`: torch unpackers for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K and
+  Q6_K, on the CPU or a GPU, each equal to gguf-py's own dequantiser (gguf 0.19) bit for bit: exhaustively for F16,
+  BF16, Q8_0 (every code under every fp16 scale) and Q4_0, over every fp16 scale field of every other type, and on random
+  blocks. `GGUFLinear` holds a tensor's blocks; `dense`, `dense_cols` and `dense_rows` read any linear layer's own
+  weight (plain, W4A16 through the pinned unpackers, or GGUF) with the pinned unpackers' shapes. `atlas_ops.dense_weight`
+  and the vault's column read go through them.
+- `backend/gguf_model.py`: a `Gemma4ForCausalLM` built from the file without allocating random weights, its config from
+  the metadata llama.cpp's converter writes (or a matching `config.json`), its tensors by gguf-py's name map, and a
+  provenance record. `GGUFRuntime` (`backend/gguf_runtime.py`) subclasses the pinned runtime: its `load()` does what the
+  pinned one does once its model is built, and the seven accessors that read `weight_packed` read through the
+  accessors above; everything else is the pinned code. On the stand-in its accessors, a push in three voices, a neuron
+  read, a sighting's row capture and naked-eye readout, a vault DELETE on a packed layer and a census equal the stand-in
+  runtime's, bit for bit in float32.
+- The model id of a GGUF reading is `gguf:<file>#<fingerprint>`, so every index, census run and lens card records which
+  file it was taken on, and the server never reads one file's index as another's or as the checkpoint's.
+- `scripts/compare_gguf_ct.py` says whether a GGUF holds the checkpoint's weights, tensor by tensor; for Q4_0 against
+  W4A16 (both group-32 symmetric 4-bit) also the codes and the scales. Its self-test runs on the CPU.
+
+**Packed or dense.** `packed` keeps each quantised layer's blocks (on the CPU read in place through the file's memory
+map) and unpacks the whole weight at every forward, as the W4A16 forward unpacks the checkpoint; `resident` unpacks once
+at load and drops the blocks; `dense` builds plain `nn.Linear` layers, as transformers' own GGUF loader would. A tensor
+stored as F32, F16 or BF16 is a plain layer in every mode. All three hear the vault's overlays as `_w4a16_forward` lays
+them (column overlays, then row overlays, on a clone), and the forward is the same numbers in every mode. The embedding
+(which is also the tied lm_head), the norms and the layer scalars are unpacked to the model's dtype.
+
+**The norm convention.** `Gemma4RMSNorm` multiplies by its stored weight, which already holds what Gemma 2 and 3 write as
+1 + w; a Gemma 4 GGUF stores that same number. Read in llama.cpp's converter (`conversion/gemma.py`, master of
+28 October 2026: `Gemma4Model.norm_shift` returns 0, where its Gemma 3 adds 1) and in transformers (its GGUF reader
+subtracts 1 for gemma2 and gemma3 and has no rule for gemma4). The check writes the stand-in with its norms as they are,
+reads them back unchanged, gets the stand-in's own forward, and shows a file holding w + 1 would not;
+`compare_gguf_ct.py` names a file whose norms sit exactly 1 above the checkpoint's.
+
+**Provenance** (`gguf_model.provenance`, the `weights` card): the file's name and size, sha256 of its header (every key
+and every tensor's name, type, shape and offset), of its first MiB and of its last MiB, a fingerprint of the four, the
+count of each tensor type, the arch and the metadata that matter, and how the model was built (config source, linear
+layers, dtype, device) and where its tokenizer came from. The whole file is not hashed: the fingerprint moves with any
+key, tensor table or byte at either end, not with a change in the middle.
+
+**The tokenizer.** From `google/gemma-4-31B-it-qat-w4a16-ct` or `google/gemma-4-31b-it` when cached here and its pieces
+are the file's; else from the file's own metadata through transformers' GGUF tokenizer converter. transformers'
+`AutoTokenizer.from_pretrained(..., gguf_file=...)` cannot be used for a llama.cpp Gemma 4: it first builds a config,
+and `Gemma4TextConfig` refuses the per-layer `head_count_kv` list llama.cpp writes. Whether the GGUF-built tokenizer
+splits text exactly as the repo's `tokenizer.json` is not checked (no Gemma 4 tokenizer is cached on the machine this was
+written on); on the stand-in it does, and transformers' converter adds GPT-2's `<|endoftext|>` past the model's rows.
+
+**transformers' own GGUF loader** (5.21) does not build a llama.cpp Gemma 4 correctly: besides the config above, its name
+map looks for `layer_output_scale`, where llama.cpp writes `layer_output_scale.weight`, so the layer scalars are left out.
+That is why `gguf_model.py` builds the model itself.
+
+**The CPU path** (`THEODOLITE_DEVICE=cpu`; measured on 4 vCPUs of a 2.1 GHz Xeon with AMX and AVX512-BF16, the rest
+inferred):
+
+| | memory | a forward |
+|---|---|---|
+| packed 4-bit (a Q4_0 GGUF, or the W4A16 checkpoint) | about 20 GB (the 4-bit weights and the bf16 embedding) | every weight unpacked: 7.8 ns a weight for Q4_0, 11.4 for Q4_K, 10.0 for the pinned W4A16 unpacker (measured on a 5,376 × 21,504 layer), so about 4 to 6 minutes a forward on that machine for 29.3 billion weights |
+| resident bf16 | about 62 GB | a plain product: bf16 at 12 GB/s of weights for one row, 306 GFLOP/s at 32 rows there, so about 5 s a written word-piece for one row and 6–7 s for 32 |
+| the J++ lens | 3.4 GB more (bf16, in RAM) | — |
+
+A machine with more cores and memory bandwidth should be some times faster (inferred, not measured). Either way the CPU
+suits reading weights (the wiring, the lens build, `compare_gguf_ct.py`), single forwards (a sighting's capture) and
+pilots, not a census of a layer (217,604 answers would take weeks). bf16 on the CPU runs through oneDNN, fast with AMX or
+AVX512-BF16 and emulated without; its sums are not the GPU's, so a reading taken on the CPU is its own determinism class,
+and `device` says which.
+
+**CUDA assumptions, audited.** In the unpinned code: GET /api/health asked the card's memory whenever CUDA was available
+(now only for a runtime on a GPU); the server, the atlas, the vault, the causal check and the scientist's tools catch
+`torch.cuda.OutOfMemoryError`, which the CPU never raises (an allocation the CPU cannot make is a `RuntimeError` or the
+kernel's out-of-memory killer, so it is not refused in plain words); `_GPU_LOCK` is named for the GPU but serialises the
+model wherever it runs; `scripts/verify_*.py` are GPU checks by design. In the pinned `engine_runtime.py`, left as it is:
+`load()` (`:833`) and every sighting (`:2393`) call `torch.cuda.max_memory_allocated(self.device)` whenever CUDA is
+available, which for a CPU device on a machine with a GPU would raise (read from torch's code, not seen: there is no GPU
+here), hence the hidden GPUs; the default device is `cuda:0` (`:741`); the J++ lens always goes to the runtime's device
+(`:879`); the norm loop counts 60 layers (`:818`); the accessors read `weight_packed` (`:990-1077`, `:1252`); the sweep's
+shapes are the 31B's (`N_LAYERS`, `D_MODEL`, `D_FF` from the pinned `theodolite_math.py`). Changing any of these in the
+pinned file would make `R4_common.pinned_differ()` name it, and R4 reruns would then go from R4's registered commit, as
+R3's go from `it-jpp-refit`.
+
+**Not supported yet:** the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4 and Q1_0 (refused in plain words); Gemma 4's
+mixture-of-experts (26B-A4B), per-layer embeddings (E2B, E4B) and shared key-value layers (refused); a fused unpack-and-
+multiply kernel (every packed forward unpacks the whole weight); the CPU's out-of-memory refusals; split GGUF files
+(`-00001-of-0000N`); the standalone `mcp_scientist` server, the lab daemon, the study's scripts and the lens fits
+(`experiments/lab/labkit.py` has its own W4A16 autograd function), which still build the pinned runtime on the
+checkpoint and the GPU. interp-engine takes the model as built (its own dtype argument is not used for a model handed to
+it); it ran the stand-in on this CPU-only machine without complaint, which cannot show what it asks of a GPU that is
+there but not used.
