@@ -576,6 +576,31 @@ def main() -> int:
           and seen.get("p50_source", "").startswith(f"the study's 36 texts (the stats index refused: {want}"),
           f"census_run.py: a stats index refused for its weights is said so, and the push unit's source names it "
           f"({seen.get('p50_source', '')[:110]})")
+
+    # one folder holds one model's indexes: a build that would write over another model's is refused unless --replace
+    import subprocess
+
+    env = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "HF_HUB_OFFLINE": "1"}
+    build = [sys.executable, "-I", str(ROOT_DIR / "scripts" / "atlas_build.py"), "layout", "--stand-in", "--layout-method", "pca",
+             "--out", str(out / "replace")]
+    r = subprocess.run(build, env=env, capture_output=True, text=True, timeout=600)
+    lay = out / "replace" / "layout_writes.npz"
+    if r.returncode == 0 and lay.exists():
+        z = dict(np.load(lay))
+        m_ = json.loads(str(z["meta"]))
+        m_["model"] = "google/gemma-4-31B-it-qat-w4a16-ct"
+        z["meta"] = np.array(json.dumps(m_))
+        np.savez(lay, **z)
+    before_bytes = lay.read_bytes() if lay.exists() else b""
+    r = subprocess.run(build, env=env, capture_output=True, text=True, timeout=600)
+    said = r.stderr.strip().splitlines()[-1] if r.stderr.strip() else ""
+    check(r.returncode != 0 and "was built for google/gemma-4-31B-it-qat-w4a16-ct" in said and "--replace" in said
+          and lay.read_bytes() == before_bytes,
+          f"atlas_build.py: an index of another model is not written over, in plain words ({said[:120]})")
+    r = subprocess.run(build + ["--replace"], env=env, capture_output=True, text=True, timeout=600)
+    now = json.loads(str(np.load(lay)["meta"])).get("model") if lay.exists() else None
+    check(r.returncode == 0 and "replacing" in r.stdout and now != "google/gemma-4-31B-it-qat-w4a16-ct",
+          f"atlas_build.py --replace: the other model's index replaced, and said ({now})")
     section("provenance: each index names its weights; one from other weights refused, in plain words, and not resumed", before)
 
     shutil.rmtree(out, ignore_errors=True)

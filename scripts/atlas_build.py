@@ -151,6 +151,8 @@ def main() -> int:
     ap.add_argument("--keep-parts", action="store_true", help="passages: keep the parts after merging them")
     ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward")
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
+    ap.add_argument("--replace", action="store_true", help="replace an index built for another model or other weights "
+                    "(by default refused: build into another folder, --out or $THEODOLITE_ATLAS_DIR, to keep both)")
     ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
                     "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
@@ -193,6 +195,16 @@ def main() -> int:
     # the stats index read for the push's unit and the norms' scales only when built on this model and its weights
     here = AtlasIndex(out, model=getattr(rt, "model_id", None), shape=(L, ao.ffn_width(lm, 0)), weights=weights_card(rt))
     steps = ["lens", "stats", "wiring", "layout"] if a.what == "all" else [a.what]
+    # one folder holds one model's indexes: a build for another model id (the checkpoint on the CPU, a GGUF) or other
+    # weights would write over the files the server reads for the first, so it is refused unless asked for
+    for step in steps:
+        name = {"stats": "act_scale", "steer": "steer_lens"}.get(step, step)
+        if here.get(name) is None and (here.refused(name) or "").startswith(("built for ", "built from other weights")):
+            if not a.replace:
+                raise SystemExit(f"{step}: {here.path(name)} was {here.refused(name).split(': rebuild it')[0]}, and this build "
+                                 "would replace it. Build into another folder (--out, or $THEODOLITE_ATLAS_DIR) to keep both, "
+                                 "or give --replace.")
+            print(f"{step}: replacing {here.path(name)}, {here.refused(name).split(': rebuild it')[0]} (--replace)", flush=True)
     def scales() -> dict:
         """The push's unit (p50) and the feed-forward norms' scales, from the stats index when built, else read over the
         study's 36 texts."""
