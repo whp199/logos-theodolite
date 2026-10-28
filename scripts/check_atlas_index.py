@@ -9,9 +9,12 @@ with the same quantity read live, one neuron at a time:
    kept in float32 buffers giving exactly the quantiles of the Python lists they replace;
 4. passages.d: by brute force over the same windows (`all_activations` a window, the gate and up values by hooks),
    each face's stored K are the K largest per-window peaks, the same windows and positions in order (ties, which the
-   stand-in's sliding layers make, to the lower window), their activation, gate and up values as float16 keeps them, the first the stats index's extreme; each
-   stored window read again (`read_neurons`) gives the stored activation; two part sizes, and a run stopped after its
-   first part and resumed, merge to the same arrays, and a run with other settings is refused; the sampled events lie
+   stand-in's sliding layers make, to the lower window), their activation, gate and up values as float16 keeps them, the first the stats index's extreme;
+   a face peaking on two word-pieces of one window (made so by copying one's gate and up values to the other) keeps the
+   first; each stored window read again (`read_neurons`) gives the stored activation; three part sizes (one of a
+   single window, which puts every tie between windows across a part's edge), and a run stopped after its first part
+   and resumed, merge to the same arrays, and a run with other settings is refused; a folder missing an array is
+   refused in plain words; the sampled events lie
    above half the face's extreme, at most one a window, as many as such windows allow; the unigram counts add up to
    the word-pieces read; the server reads the arrays memory-mapped;
 5. wiring.npz: each neuron's links each way are `neuron_wiring`'s, the same neurons, z (as float16 keeps it) and sign;
@@ -263,6 +266,29 @@ def main() -> int:
     # the stand-in's sliding layers read only the last eight word-pieces, so equal stretches of text in two windows tie
     # exactly: the rule for ties is tested, not only stated
     check(ties > 0, "passages: some faces' top K hold exact ties between windows, which the lower window wins")
+    # and a tie within a window: the gate and up outputs at one word-piece copied to a later one at every layer, so every
+    # neuron's activation is the same at both; where a face peaks on that pair, the first of the two is kept
+    t1, t2 = 3, 9
+    seen: dict = {}
+
+    def copy_row(_m, _a, o):
+        o = o.clone()
+        o[:, t2] = o[:, t1]
+        return o
+
+    hooks = [h for layer in lm.layers for h in (layer.mlp.gate_proj.register_forward_hook(copy_row), layer.mlp.up_proj.register_forward_hook(copy_row))]
+    hooks += [layer.mlp.down_proj.register_forward_pre_hook(lambda _m, a_, l=l: seen.__setitem__(l, a_[0][0].float().numpy().copy()))
+              for l, layer in enumerate(lm.layers)]
+    try:
+        E = ao.passage_events(lm, [wins[1]], k=1)
+    finally:
+        for h in hooks:
+            h.remove()
+    on_pair = [(f, l, n) for f, sgn in (("pos", 1.0), ("neg", -1.0)) for l in range(L) for n in range(N)
+               if sgn * seen[l][t1, n] > 0 and sgn * seen[l][t1, n] == (sgn * seen[l][1:, n]).max()]
+    check(all(np.array_equal(seen[l][t1], seen[l][t2]) for l in range(L)) and bool(on_pair)
+          and all(int(E[f"{f}_at"][l, n, 0]) == t1 for f, l, n in on_pair),
+          f"passages: a face peaking on two word-pieces of one window keeps the first ({len(on_pair)} such faces)")
     check(all(P["pos_act"][l, n, 0] == h16(s["pos"][l, n]) for l in range(L) for n in range(N) if s["pos"][l, n] > 0)
           and all(P["neg_act"][l, n, 0] == h16(s["neg"][l, n]) for l in range(L) for n in range(N) if s["neg"][l, n] < 0),
           "passages: each face's strongest passage is the stats index's extreme over the same windows")
@@ -286,7 +312,8 @@ def main() -> int:
         if "part 1 of" in msg:
             raise Stop("stopped")
 
-    for chunk in (7, 3):
+    # (parts of one window put every tie between two windows across a part's edge, where merge_events decides it)
+    for chunk in (7, 1, 3):
         d_ = out / f"passages-{chunk}"
         if chunk == 3:
             said = raises(ab.build_passages, rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=7, chunk=3, log=stop)
@@ -302,7 +329,14 @@ def main() -> int:
             check(not (d_ / "passages.d" / "parts").exists(), "passages: the parts are removed once merged")
         Q = AtlasIndex(d_).get("passages")
         check(Q is not None and sorted(k_ for k_ in Q if k_ != "meta") == names and all(np.array_equal(P[k_], Q[k_]) for k_ in names),
-              f"passages: parts of {chunk} windows{' (stopped and resumed)' if chunk == 3 else ''} merge to the same arrays as parts of 4")
+              f"passages: parts of {chunk} window{'s' if chunk > 1 else ''}{' (stopped and resumed)' if chunk == 3 else ''} merge to the same arrays as parts of 4")
+    # a folder with its meta.json but without one of its arrays (copied or removed in part) is refused, not read in part
+    (out / "passages-7" / "passages.d" / "unigram.npy").unlink()
+    (out / "passages-1" / "passages.d" / "neg_smp_g.npy").unlink()
+    cut7, cut1 = AtlasIndex(out / "passages-7"), AtlasIndex(out / "passages-1")
+    check(cut7.get("passages") is None and "lacks unigram" in (cut7.refused("passages") or "") and cut1.get("passages") is None
+          and "lacks neg_smp_g" in (cut1.refused("passages") or "") and "atlas_build.py passages" in (cut1.refused("passages") or ""),
+          f"passages: a folder missing an array refused in plain words ({cut7.refused('passages')}; {cut1.refused('passages')})")
     # the sampled events: above half the face's extreme, at most one a window, as many as such windows allow
     bad_s = []
     for f, sgn, e_ in (("pos", 1.0, s["pos"]), ("neg", -1.0, s["neg"])):

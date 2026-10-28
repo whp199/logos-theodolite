@@ -73,6 +73,10 @@ NEEDS = {
     "act_scale": ("mid_rms_q", "built before it kept the feed-forward norms' scales, which weigh the wiring"),
     "wiring": ("down_lw", "built before links were weighed across layers (Gemma's layer scalars and norms) and kept their gate"),
 }
+# the arrays a folder index must hold beside its meta.json (with a sampled build, its samples' too): a folder copied or
+# removed in part is refused, not read in part
+PASSAGE_ARRAYS = tuple(f"{f}_{x}" for f in ("pos", "neg") for x in ("win", "at", "act", "g", "u"))
+FOLDER_NEEDS = {"passages": ("windows", "unigram") + PASSAGE_ARRAYS}
 
 
 def atlas_dir() -> Path:
@@ -161,6 +165,13 @@ class AtlasIndex:
         need = NEEDS.get(name)
         if need and need[0] not in data:
             return f"{need[1]}: rebuild it (scripts/atlas_build.py)"
+        want = list(FOLDER_NEEDS.get(name, ()))
+        if name == "passages" and int(meta.get("sample") or 0):
+            want += [x.replace("_", "_smp_", 1) for x in PASSAGE_ARRAYS]
+        missing = [x for x in want if x not in data]
+        if missing:
+            return (f"its folder lacks {', '.join(missing[:3])}{' and more' if len(missing) > 3 else ''} (copied or removed in "
+                    f"part): rebuild it (scripts/atlas_build.py {name})")
         return None
 
     def refused(self, name: str) -> Optional[str]:
