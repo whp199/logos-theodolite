@@ -67,15 +67,27 @@ PROMPTS: Dict[str, str] = {
 DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     "main_rel": [(p, d) for p in ("who", "snake", "orange") for d in (-0.7, 0.5, 0.8)] + [("free", 3.0)],
     "calib_rel": [(p, s * d) for p in ("who", "orange", "free") for d in (0.1, 0.25, 0.5, 1.0, 2.0, 4.0) for s in (-1.0, 1.0)],
+    # the same ladder's purpose in each neuron's own unit (dose_unit "ceiling"): half of the most it can write by itself
+    # up to eight times it
+    "calib_ceil": [(p, s * d) for p in ("who", "orange", "free") for d in (0.5, 1.0, 2.0, 4.0, 8.0) for s in (-1.0, 1.0)],
 }
 DEFAULT_DESIGN = "main_rel"
-CALIBRATION_DESIGNS = ("calib_rel",)
+CALIBRATION_DESIGNS = ("calib_rel", "calib_ceil")
 # where the doses come from, said wherever a census is shown or handed to the scientist
 DOSES_FROM = {
     "main_rel": "neuron-explorer's doses, chosen on Qwen3.5-4B; not yet calibrated on this model (take a calib_rel run "
                 "first), and one nominal dose is a different push at each layer",
     "calib_rel": "a calibration ladder, for finding where effects begin and text breaks on this model",
+    "calib_ceil": "a calibration ladder in each neuron's own write ceiling, for finding where effects begin and text breaks "
+                  "on this model",
 }
+# The push's unit: "stream", dose x p50, the same push for every neuron and control (the reference's `--dose-unit
+# rel`); "ceiling", dose x the neuron's write ceiling (`atlas_ops.Weights.write_ceiling`, the most it can write by
+# itself), a control pushed by the ceiling of the neuron it is paired with (`control_refs`), so the null's lengths follow
+# the neurons' and one dose is the same share of each neuron's most at every layer. A design whose doses only mean
+# something in one unit names it.
+DOSE_UNITS = ("stream", "ceiling")
+DESIGN_UNITS = {"calib_ceil": "ceiling"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -673,12 +685,16 @@ def census_jobs(neurons: Sequence[int], controls: int, design: Sequence[Tuple[st
 
 # what must agree for a run to be continued (a rerun of the same command resumes; anything else is a different run)
 RESUME_KEYS = ("model", "layer", "design_name", "design", "prompt_ids", "max_new", "top_k", "seed", "random_controls", "push",
-               "controls", "version")
+               "controls", "version", "dose_unit")
+# what a key missing from an older meta means: it was taken before the key was recorded
+RESUME_DEFAULTS: Dict[str, Any] = {"dose_unit": "stream"}
 
 
 def settings_differ(old: Dict[str, Any], new: Dict[str, Any]) -> List[str]:
-    """The settings two runs' metas disagree on (RESUME_KEYS, and the push's unit p50 beyond float noise)."""
-    differ = [k for k in RESUME_KEYS if json.dumps(old.get(k)) != json.dumps(new.get(k))]
+    """The settings two runs' metas disagree on (RESUME_KEYS, a key an older meta lacks read as RESUME_DEFAULTS says,
+    and the push's unit p50 beyond float noise)."""
+    differ = [k for k in RESUME_KEYS
+              if json.dumps(old.get(k, RESUME_DEFAULTS.get(k))) != json.dumps(new.get(k, RESUME_DEFAULTS.get(k)))]
     p_old, p_new = old.get("p50"), new.get("p50")
     if p_old is not None and p_new is not None and abs(float(p_old) - float(p_new)) > 1e-4 * max(1.0, abs(float(p_new))):
         differ.append("p50")
@@ -700,14 +716,16 @@ def take_census(
     top_k: int = 5,
     batch: int = 32,
     neurons_spec: str = "",
+    dose_unit: str = "",
     log: Any = print,
     cancel: Any = None,
 ) -> Dict[str, Any]:
     """Take (or continue) a census of layer `layer` into `out_path` (JSON lines; its `.meta.json` beside it): each
     neuron and each control pushed on every (question, dose) of the design, and the questions unpushed, one greedy
     answer each of at most `max_new` word-pieces, `batch` answers at a time (`atlas_ops.write_rows`, each row its own
-    push; the rows of a batch share their question, so none is padded). Rows already in the file are skipped; a batch
-    is written whole or not at all (`cancel()` stops between steps). Returns counts."""
+    push; the rows of a batch share their question, so none is padded). A dose is in `dose_unit` (DOSE_UNITS; "" for
+    the design's own, "stream" but for calib_ceil). Rows already in the file are skipped; a batch is written whole or
+    not at all (`cancel()` stops between steps). Returns counts."""
     import time
 
     import torch
@@ -718,6 +736,13 @@ def take_census(
 
     if design_name not in DESIGNS:
         raise ValueError(f"The census's designs are {', '.join(DESIGNS)}, not {design_name!r}.")
+    unit = dose_unit or DESIGN_UNITS.get(design_name, "stream")
+    if unit not in DOSE_UNITS:
+        raise ValueError(f"The census's dose units are {', '.join(DOSE_UNITS)}, not {unit!r}.")
+    if DESIGN_UNITS.get(design_name, unit) != unit:
+        raise ValueError(f"{design_name}'s doses are multiples of each neuron's write ceiling: take it with the "
+                         f"{DESIGN_UNITS[design_name]} unit, not the {unit} unit.")
+    by_ceiling = unit == "ceiling"
     lm = language_model(rt.hf_model)
     w = ao.Weights(lm, rt)
     L, N, D = w.n_layers, w.d_ff, w.d_model
@@ -736,13 +761,22 @@ def take_census(
     sample = gain_sample(seed, N)
     w_next = (w.norm(layer + 1, "input") if layer + 1 < L else rt.final_norm_weight.detach().float()).cpu().numpy()
     gain = read_gain(w.write_dirs(layer, sample.tolist()).cpu().numpy(), ctrl_np, w_next)
+    refs = control_refs(seed, controls, N)
+    ref_ceiling = dict(zip(sorted(set(refs)), w.write_ceiling(layer, sorted(set(refs))).tolist())) if refs else {}
     meta = {
         "model": getattr(rt, "model_id", None), "layer": int(layer), "prompts": PROMPTS, "prompt_ids": prompt_ids,
         "design_name": design_name, "design": [[p, d] for p, d in design], "max_new": int(max_new), "top_k": int(top_k),
         "seed": int(seed), "random_controls": int(controls), "neurons": neurons_spec or f"{len(neurons)} neurons",
-        "push": "add: dose x p50 along unit(w_post * W_down[:, n]) (a control: along unit(w_post * r), r isotropic), at "
-                "the stream leaving the layer, every word-piece but the start mark",
+        "push": ("add: dose x the neuron's write ceiling (s_l sqrt(D) ||w_post * unit(W_down[:, n])||, the most it can "
+                 "write by itself) along unit(w_post * W_down[:, n]) (a control: dose x the ceiling of the neuron it is "
+                 "paired with, along unit(w_post * r), r isotropic), at the stream leaving the layer, every word-piece but "
+                 "the start mark") if by_ceiling else
+                ("add: dose x p50 along unit(w_post * W_down[:, n]) (a control: along unit(w_post * r), r isotropic), at "
+                 "the stream leaving the layer, every word-piece but the start mark"),
         "controls": "unit(w_post * r), r isotropic: the reference's random down column through the post-feed-forward norm",
+        "dose_unit": unit,
+        "ceilings": "each pushed answer records its unit's write ceiling (`ceiling`; a control's is that of the neuron it is "
+                    "paired with, `ref_neuron`)" + (", the push's own unit" if by_ceiling else ", for the dose window alone"),
         "version": CENSUS_VERSION, "read_gain": gain, "doses_from": DOSES_FROM.get(design_name),
         "p50": float(p50), "p50_source": p50_source, "stop_ids": stop, "greedy": True, "chat": "thinking off",
         "lens": (rt.lens_card() or {}).get("id") if hasattr(rt, "lens_card") else None,
@@ -773,21 +807,26 @@ def take_census(
     ctrl = torch.from_numpy(ctrl_np)
     jobs = [j for j in census_jobs(neurons, controls, design) if row_key(j) not in done]
     log(f"layer {layer}: {len(neurons)} neurons + {controls} controls, {len(jobs)} answers to write ({len(done)} already "
-        f"written), push unit p50 {p50:.2f} ({p50_source})")
+        f"written), push unit " + ("each neuron's write ceiling, " if by_ceiling else "") + f"p50 {p50:.2f} ({p50_source})")
     softcap = ao.softcap_of(rt.hf_model)
     written, pieces, t0 = 0, 0, time.time()
 
     def write_batch(bj: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
         B = len(bj)
         delta = torch.zeros(B, D, dtype=torch.float32, device=w.device)
+        ceil: List[Optional[float]] = [None] * B  # each pushed row's write ceiling (a control's: its paired neuron's)
         rows_n = [i for i, j in enumerate(bj) if j["kind"] == "neuron"]
         if rows_n:
-            u = w.write_dirs(layer, [bj[i]["neuron"] for i in rows_n])
+            ids_n = [bj[i]["neuron"] for i in rows_n]
+            u = w.write_dirs(layer, ids_n)
+            c_n = w.write_ceiling(layer, ids_n).tolist()
             for k, i in enumerate(rows_n):
-                delta[i] = u[k] * (bj[i]["dose"] * p50)
+                ceil[i] = float(c_n[k])
+                delta[i] = u[k] * (bj[i]["dose"] * (ceil[i] if by_ceiling else p50))
         for i, j in enumerate(bj):
             if j["kind"] == "random":
-                delta[i] = ctrl[j["neuron"]].to(w.device) * (j["dose"] * p50)
+                ceil[i] = float(ref_ceiling[refs[j["neuron"]]])
+                delta[i] = ctrl[j["neuron"]].to(w.device) * (j["dose"] * (ceil[i] if by_ceiling else p50))
         iv = ao.Interventions(rows=B, adds={int(layer): delta}) if bool(delta.abs().sum() > 0) else None
         gen: List[List[int]] = [[] for _ in range(B)]
         lps: List[List[float]] = [[] for _ in range(B)]
@@ -806,12 +845,20 @@ def take_census(
         out = []
         for i, j in enumerate(bj):
             ids = gen[i][:-1] if ended[i] else gen[i]
+            c = ceil[i]
+            if by_ceiling and c is not None:  # the push's real share of the stream, which max_rel filters on
+                push, rel = round(j["dose"] * c, 4), round(abs(j["dose"]) * c / p50, 6)
+            else:
+                push, rel = round(j["dose"] * p50, 4), abs(j["dose"]) if j["kind"] != "baseline" else 0.0
             rec = {"layer": int(layer), "kind": j["kind"], "neuron": int(j["neuron"]), "prompt": j["prompt"], "dose": j["dose"],
-                   "push": round(j["dose"] * p50, 4), "rel_push": abs(j["dose"]) if j["kind"] != "baseline" else 0.0,
-                   "text": tok.decode(ids, skip_special_tokens=True), "finish": "stop" if ended[i] else "length",
-                   "n_gen": len(gen[i]), "token_ids": gen[i], "logprob": lps[i], "top_ids": tids[i], "top_lps": tlps[i]}
+                   "push": push, "rel_push": rel}
+            if c is not None:
+                rec["ceiling"] = round(c, 6)
+            rec.update({"text": tok.decode(ids, skip_special_tokens=True), "finish": "stop" if ended[i] else "length",
+                        "n_gen": len(gen[i]), "token_ids": gen[i], "logprob": lps[i], "top_ids": tids[i], "top_lps": tlps[i]})
             if j["kind"] == "random":
                 rec["seed"] = int(seed)
+                rec["ref_neuron"] = int(refs[j["neuron"]])
             out.append(rec)
         return out
 
@@ -880,9 +927,15 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
     than `neurons` neurons or `controls` controls is subsampled to that pool (seeded by the layer), so the mass, which
     grows with the pool, compares across layers. The layers are pushed at one nominal dose each, a share of each
     layer's own stream; how hard that pushes the next layer differs from layer to layer (by about sixteen-fold across
-    the 31B's layers), so the curve compares doses that are not alike (`dose_note` in each entry)."""
+    the 31B's layers), so the curve compares doses that are not alike (`dose_note` in each entry); a run taken in each
+    neuron's write ceiling (`dose_unit` "ceiling") compares like with like, the same share of each neuron's most at
+    every layer."""
     report: List[Dict[str, Any]] = []
     for l, path in sorted(runs.items()):
+        try:
+            unit = json.loads(meta_path_of(Path(path)).read_text(encoding="utf-8")).get("dose_unit", "stream")
+        except (OSError, ValueError):
+            unit = "stream"
         rows = read_slim(Path(path))
         nn = sorted({int(r["neuron"]) for r in rows if r["kind"] == "neuron"})
         cc = sorted({int(r["neuron"]) for r in rows if r["kind"] == "random"})
@@ -900,7 +953,11 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
         neu = [r for r in recs if r["kind"] == "neuron"]
         m = np.array([r["mass"] for r in neu], np.float64)
         entry: Dict[str, Any] = {"layer": int(l), "run": Path(path).name, "subsampled": sub, "n_neurons": len(m), "n_controls": len(null),
-                                 "dose_note": "one nominal dose, a different push at each layer; doses not yet calibrated on this model"}
+                                 "dose_unit": unit,
+                                 "dose_note": ("one nominal dose, a multiple of each neuron's own write ceiling, the same share of "
+                                               "each neuron's most at every layer; doses not yet calibrated on this model")
+                                 if unit == "ceiling" else
+                                 "one nominal dose, a different push at each layer; doses not yet calibrated on this model"}
         if not len(null) or not len(m):
             entry["note"] = "a depth reading needs neurons and controls in the run"
             report.append(entry)

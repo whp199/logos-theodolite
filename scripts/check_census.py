@@ -19,8 +19,13 @@ Gemma 4 of scripts/atlas_stand_in.py:
    spread on it;
 7. the dose window: where an answer first parts from the unpushed one, the curves per dose and kind and the verdict per
    sign on answers worked out by hand, the write ceilings read from a W4A16 checkpoint in two files, the Hugging Face
-   cache found through huggingface_hub, and a stand-in calib_rel run read back by census_tools.py curves;
-8. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
+   cache found through huggingface_hub, and a stand-in calib_rel run read back by census_tools.py curves, with the
+   ceilings read from the stand-in's weights for answers that keep none;
+8. the dose in each neuron's own ceiling: each push measured as write_rows receives it (dose x the neuron's write
+   ceiling; a control, dose x its paired neuron's), each row's ceiling, push and real share of the stream, a unit
+   change refused, an older meta read as the stream unit, a ceiling run ranked and in the depth report, and a stand-in
+   calib_ceil run read back by census_tools.py curves;
+9. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
    next layer reads the census's controls about as loudly as the layer's neurons, and an isotropic control far louder.
 
 Run: .venv/bin/python -I scripts/check_census.py   (exits 0 when every check holds)
@@ -508,13 +513,109 @@ def run_checks(tmp: Path) -> int:
     check(sorted({e["dose"] for e in ents if e["kind"] == "neuron"}) == doses and sorted({e["dose"] for e in ents if e["kind"] == "random"}) == doses
           and all(e["n"] == 12 for e in ents if e["kind"] != "baseline"), "curves: every dose of the design, for neurons and controls, 12 answers each")
     check(all(e["over_ceiling"] is not None and e["over_ceiling"] > 0 for e in ents if e["kind"] != "baseline")
-          and cjs.get("ceilings_from", "").endswith("else the weights") and set(cjs.get("window", {})) == {"+", "-"},
-          "curves --weights: the push over each unit's ceiling, read from the stand-in's weights; a verdict per sign")
+          and set(cjs.get("window", {})) == {"+", "-"}, "curves: the push over each unit's ceiling, a verdict per sign")
+    # a run whose answers keep no ceiling (taken before they did): --weights reads the same from the stand-in's weights
+    bare = calib.with_name("L3-calib_bare.jsonl")
+    bare.write_text("".join(json.dumps({k_: v_ for k_, v_ in r_.items() if k_ not in ("ceiling", "ref_neuron")}) + "\n" for r_ in cz.read_rows(calib)))
+    shutil.copy(cz.meta_path_of(calib), cz.meta_path_of(bare))
+    cjb = tmp / "curves-bare.json"
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "curves", str(bare), "--json", str(cjb)],
+                       env=env, capture_output=True, text=True, timeout=300)
+    no_w = json.loads(cjb.read_text()) if cjb.exists() else {}
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "curves", str(bare), "--weights", "--json", str(cjb)],
+                       env=env, capture_output=True, text=True, timeout=300)
+    by_w = json.loads(cjb.read_text()) if cjb.exists() else {}
+    check(all(e["over_ceiling"] is None for e in no_w.get("curves", [])) and "add --weights" in subprocess.run(
+              py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "curves", str(bare)], env=env, capture_output=True, text=True,
+              timeout=300).stdout, "curves: without the answers' record or --weights, no ceilings, and it says so")
+    check(r.returncode == 0 and by_w.get("ceilings_from", "").endswith("else the weights") and len(by_w.get("curves", [])) == len(ents)
+          and all(abs(a_["over_ceiling"] - b_["over_ceiling"]) < 1e-4 * b_["over_ceiling"] for a_, b_ in zip(by_w["curves"], ents) if b_["kind"] != "baseline"),
+          f"curves --weights: the ceilings read from the stand-in's weights, as the answers record them ({r.stderr[-300:]})")
     base_e = next((e for e in ents if e["kind"] == "baseline"), {})
     check(base_e.get("n") == 4 and base_e.get("moved") == 0.0, f"curves: the four unpushed answers depart nowhere ({base_e})")
     section("the dose window: departures, curves and the verdict by hand, ceilings from a checkpoint, a calib_rel run read back", before)
 
-    # ------------------------------------------------------------- 8. the null on the real checkpoint's own weights
+    # ------------------------------------------------------------------------- 8. the dose against each neuron's ceiling
+    before = len(failures)
+    refs = cz.control_refs(3, 2, w.d_ff)
+    check(refs == [int(x) for x in cz.gain_sample(3, w.d_ff)[:2]] and cz.control_refs(3, 600, w.d_ff)[w.d_ff] == refs[0],
+          "control_refs: control k paired with the k-th neuron of the read gain's sample, cycling")
+    norms: List[float] = []
+    real_write = ao.write_rows
+
+    def spy(lm_: Any, W_U: Any, rows_ids: Any, iv: Any, **kw_: Any) -> Any:  # each row's added push, as write_rows gets it
+        d_ = iv.adds[3] if iv is not None and 3 in iv.adds else torch.zeros(len(rows_ids), D)
+        norms.extend(d_.norm(dim=-1).tolist())
+        yield from real_write(lm_, W_U, rows_ids, iv, **kw_)
+
+    ceil_run = tmp / "runs" / "L3-ceil.jsonl"
+    kc = {**kw, "dose_unit": "ceiling", "max_new": 6}
+    ao.write_rows = spy
+    try:
+        res = cz.take_census(rt, 3, [0, 5, 9], ceil_run, **kc)
+    finally:
+        ao.write_rows = real_write
+    crows = list(cz.read_rows(ceil_run))
+    wc = {n: float(c_) for n, c_ in zip(range(w.d_ff), w.write_ceiling(3, list(range(w.d_ff))).tolist())}
+    own = [wc[r_["neuron"]] if r_["kind"] == "neuron" else wc[refs[r_["neuron"]]] if r_["kind"] == "random" else 0.0 for r_ in crows]
+    check(res["written"] == 54 and len(norms) == len(crows) == 54, f"a ceiling run: {res}, {len(norms)} pushes seen")
+    check(all(abs(nm - abs(r_["dose"]) * c_) <= 1e-5 * max(abs(r_["dose"]) * c_, 1e-6) for nm, r_, c_ in zip(norms, crows, own)),
+          "dose_unit ceiling: each neuron pushed by exactly dose x its write ceiling, each control by dose x its paired neuron's "
+          f"(the added delta measured; worst {max(abs(nm - abs(r_['dose']) * c_) for nm, r_, c_ in zip(norms, crows, own)):.2e})")
+    near = lambda a_, b_: abs(a_ - b_) <= 1e-5 * max(abs(b_), 1.0)  # noqa: E731  (a ceiling read in another batch: float32's last bit)
+    check(all(near(r_["ceiling"], c_) and near(r_["push"], r_["dose"] * c_) and near(r_["rel_push"], abs(r_["dose"]) * c_ / p50)
+              for r_, c_ in zip(crows, own) if r_["kind"] != "baseline")
+          and all(r_.get("ref_neuron") == refs[r_["neuron"]] for r_ in crows if r_["kind"] == "random")
+          and all("ceiling" not in r_ and r_["push"] == 0.0 and r_["rel_push"] == 0.0 for r_ in crows if r_["kind"] == "baseline"),
+          "each row records its ceiling, its push and its real share of the stream; a control its paired neuron")
+    cm = json.loads(cz.meta_path_of(ceil_run).read_text())
+    check(cm["dose_unit"] == "ceiling" and "write ceiling" in cm["push"] and "push's own unit" in cm["ceilings"], f"the ceiling run's meta: {cm['push'][:60]}")
+    try:
+        cz.take_census(rt, 3, [0, 5, 9], ceil_run, **{**kc, "dose_unit": "stream"})
+        check(False, "a run taken in the ceiling unit is not continued in the stream's")
+    except ValueError as exc:
+        check("dose_unit" in str(exc), f"refusal: {exc}")
+    try:
+        cz.take_census(rt, 3, [0], tmp / "runs" / "cc.jsonl", **{**kw, "design_name": "calib_ceil", "dose_unit": "stream"})
+        check(False, "calib_ceil in the stream unit is refused")
+    except ValueError as exc:
+        check("ceiling" in str(exc), f"refusal: {exc}")
+    srow = [r_ for r_ in got if r_["kind"] != "baseline"]
+    check(all(near(r_["ceiling"], wc[r_["neuron"]] if r_["kind"] == "neuron" else wc[refs[r_["neuron"]]]) for r_ in srow),
+          "a stream run records each answer's ceiling too, its push unchanged")
+    says_c = cz.dose_window(cz.dose_curves(hand, ceil), "ceiling")["+"]["says"]
+    check("from +2 x each neuron's ceiling (a median 2 of the stream)" in says_c, f"dose_window in the ceiling unit: {says_c}")
+    old_meta = json.loads(cz.meta_path_of(out2).read_text())
+    old_meta.pop("dose_unit")
+    cz.meta_path_of(out2).write_text(json.dumps(old_meta))
+    check(cz.take_census(rt, 3, [0, 5, 9], out2, **kw)["written"] == 0 and cz.settings_differ(old_meta, {**old_meta, "dose_unit": "stream"}) == []
+          and cz.settings_differ(old_meta, {**old_meta, "dose_unit": "ceiling"}) == ["dose_unit"],
+          "a meta that records no dose unit was taken in the stream's, and still continues")
+    urecs = list(cz.read_rows(cz.write_units(ceil_run)))
+    check(len(urecs) == 5 and all(set(u_["dose"]) == {"-0.7", "+0.5", "+0.8", "+3"} for u_ in urecs),
+          "compute_units ranks a ceiling run, the push's share per dose its mean")
+    rep = cz.depth_report({3: ceil_run, 2: out})
+    check(rep[1]["dose_unit"] == "ceiling" and "write ceiling" in rep[1]["dose_note"] and rep[0]["dose_unit"] == "stream"
+          and "different push at each layer" in rep[0]["dose_note"], "the depth report names each run's unit")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "3", "--design", "calib_ceil", "--neurons",
+                             "random:4", "--random-controls", "4", "--max-new", "8", "--batch", "16", "--no-rank"],
+                       env=env, capture_output=True, text=True, timeout=600)
+    cc = tmp / "atlas" / "stand-in" / "census" / "runs" / "L3-calib_ceil.jsonl"
+    check(r.returncode == 0 and len(list(cz.read_rows(cc))) == 8 * 30 + 4 and json.loads(cz.meta_path_of(cc).read_text())["dose_unit"] == "ceiling",
+          f"census_run.py --design calib_ceil: taken in the ceiling unit by default ({r.stderr[-300:]})")
+    cj2 = tmp / "curves-ceil.json"
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "curves", str(cc), "--json", str(cj2)],
+                       env=env, capture_output=True, text=True, timeout=300)
+    cjs = json.loads(cj2.read_text()) if cj2.exists() else {}
+    ents = [e for e in cjs.get("curves", []) if e["kind"] != "baseline"]
+    check(r.returncode == 0 and cjs.get("dose_unit") == "ceiling" and "multiples of each neuron's write ceiling" in r.stdout
+          and sorted({e["dose"] for e in ents}) == sorted({d_ for _, d_ in cz.DESIGNS["calib_ceil"]}),
+          f"census_tools.py curves on a calib_ceil run: every dose, in the ceiling unit ({r.stderr[-300:]})")
+    check(all(abs(e["over_ceiling"] - abs(e["dose"])) < 1e-3 * abs(e["dose"]) for e in ents) and cjs.get("ceilings_from") == "the answers' own record"
+          and set(cjs.get("window", {})) == {"+", "-"}, "curves: a ceiling run's push is its dose times the ceiling, from its own record")
+    section("the dose against each neuron's own ceiling: pushes measured, rows and meta, refusals, old metas, ranking, calib_ceil read back", before)
+
+    # ------------------------------------------------------------- 9. the null on the real checkpoint's own weights
     before = len(failures)
     real = real_read_gain()
     if real is None:

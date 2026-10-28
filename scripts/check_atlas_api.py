@@ -768,7 +768,7 @@ def main() -> int:
           "/census/unit: its nine answers, the three unpushed, its rank")
     check(un["prompts"] == cz.PROMPTS and "ocean" in [w_ for w_, _, _ in un["stats"]["words"]], "/census/unit: the questions and its words")
     card = un.get("card") or {}
-    check(card.get("doses_from") == cz.DOSES_FROM["main_rel"] and "36 texts" in (card.get("p50_source") or "")
+    check(card.get("doses_from") == cz.DOSES_FROM["main_rel"] and "36 texts" in (card.get("p50_source") or "") and card.get("dose_unit") == "stream"
           and card.get("null") == {"neurons": 2, "controls": 4, "above_all": 2, "above_all_by_chance": 0.4, "q05": 0}
           and un["stats"]["p"] == 0.2 and un["stats"]["q"] == 0.2,
           f"/census/unit: the card says where the doses and the unit come from and what the null can single out ({card}, p {un['stats'].get('p')})")

@@ -639,11 +639,13 @@ def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
 
 
 def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
-    """What every census reply says of its run: where its doses and its push unit come from, how loudly the next layer
-    reads its controls against its neurons, and what its null can and cannot single out."""
+    """What every census reply says of its run: where its doses and its push unit come from, the unit a dose is counted
+    in (`dose_unit`: "stream", a share of the stream's median length, or "ceiling", a multiple of each neuron's write
+    ceiling; a run that records none was taken in the stream's), how loudly the next layer reads its controls against
+    its neurons, and what its null can and cannot single out."""
     m = d["meta"]
     return {"run": d["path"].name, "design": m.get("design_name"), "doses_from": m.get("doses_from") or cz.DOSES_FROM.get(m.get("design_name")),
-            "p50_source": m.get("p50_source"), "read_gain": m.get("read_gain"), "null": d["null"]}
+            "dose_unit": m.get("dose_unit", "stream"), "p50_source": m.get("p50_source"), "read_gain": m.get("read_gain"), "null": d["null"]}
 
 
 @router.get("/census/units")

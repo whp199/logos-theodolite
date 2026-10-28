@@ -27,12 +27,19 @@ export const CensusTab: React.FC = () => {
 };
 
 /** The census's doses against the most this neuron can ever write by itself (NeuronLens.ceiling). */
-const CeilingNote: React.FC = () => {
+const CeilingNote: React.FC<{ unit?: "stream" | "ceiling" }> = ({ unit }) => {
   const f = useAtlas((s) => s.focus);
   const lens = useAtlas((s) => s.lens);
   const c = f && lens && lens.layer === f.layer && lens.n === f.n ? lens.ceiling : null;
   const o5 = overCeiling(0.5, c);
   const o8 = overCeiling(0.8, c);
+  if (unit === "ceiling")
+    return (
+      <p className="muted atlas-small" style={{ margin: "0 0 8px" }}>
+        In this census a dose is a multiple of the most this neuron can ever write by itself: above 1, the answers say what a push this large
+        does, not what the neuron does when it fires.
+      </p>
+    );
   if (o5 == null || o8 == null) return null;
   return (
     <p className="muted atlas-small" style={{ margin: "0 0 8px" }}>
@@ -107,11 +114,12 @@ const Grid: React.FC<{ unit: CensusUnit; open: Set<string>; toggle: (k: string) 
     <div className="atlas-census">
       <Rubric style={{ fontSize: 15, margin: "0 0 8px" }}>
         Each row is one of the census's questions; the first column is the model left alone, the others with this neuron pushed along its
-        own write direction by the dose shown (a share of the stream's usual length, its push measured beside it). Click an answer to read
-        all of it. <a href={href.lexicon("census")}>What the census is.</a>
+        own write direction by the dose shown (
+        {unit.card?.dose_unit === "ceiling" ? "a multiple of the most it can write by itself" : "a share of the stream's usual length"}, its push
+        measured beside it as a share of the stream). Click an answer to read all of it. <a href={href.lexicon("census")}>What the census is.</a>
       </Rubric>
       <CensusProvenance card={unit.card} style={{ margin: "0 0 8px" }} />
-      <CeilingNote />
+      <CeilingNote unit={unit.card?.dose_unit} />
       <div className="atlas-grid" style={{ gridTemplateColumns: `56px repeat(${1 + doses.length}, minmax(0, 1fr))` }}>
         {out}
       </div>

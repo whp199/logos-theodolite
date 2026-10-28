@@ -270,6 +270,8 @@ export interface CensusCard {
   run: string;
   design: string | null;
   doses_from: string | null;
+  /** what a dose counts: a share of the stream's median length, or a multiple of each neuron's write ceiling */
+  dose_unit?: "stream" | "ceiling";
   p50_source: string | null;
   read_gain: { neurons: number; controls: number; ratio: number | null } | null;
   null: { neurons: number; controls: number; above_all: number; above_all_by_chance: number | null; q05: number };

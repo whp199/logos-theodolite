@@ -64,7 +64,10 @@ def main(argv=None) -> int:
                                  epilog=__doc__.split("\n\n", 1)[1])
     ap.add_argument("--layer", type=int, required=True, help="the layer to take, counting from 0")
     ap.add_argument("--neurons", default="all", help='"all", "random:384", "2742", "0-99" or "1,5,9-12"')
-    ap.add_argument("--design", default="main_rel", help="main_rel | calib_rel")
+    ap.add_argument("--design", default="main_rel", help="main_rel | calib_rel | calib_ceil")
+    ap.add_argument("--dose-unit", default="", choices=["", "stream", "ceiling"],
+                    help="stream: dose x p50, the same push for every unit; ceiling: dose x each neuron's write ceiling "
+                         "(default: the design's own, ceiling for calib_ceil, else stream)")
     ap.add_argument("--random-controls", type=int, default=256, help="random-direction controls spread through the run")
     ap.add_argument("--seed", type=int, default=0, help="draws the controls' directions and random:K's neurons")
     ap.add_argument("--max-new", type=int, default=256, help="word-pieces per answer at most (pushed answers often loop)")
@@ -137,7 +140,7 @@ def main(argv=None) -> int:
     try:
         res = cz.take_census(rt, a.layer, neurons, out, p50=p50, p50_source=source, design_name=a.design,
                              controls=a.random_controls, seed=a.seed, max_new=a.max_new, top_k=a.top_k, batch=a.batch,
-                             neurons_spec=a.neurons, cancel=stop.is_set, log=lambda s: print(s, flush=True))
+                             neurons_spec=a.neurons, dose_unit=a.dose_unit, cancel=stop.is_set, log=lambda s: print(s, flush=True))
     except ValueError as exc:
         raise SystemExit(str(exc))
     print(f"-> {out} ({res['written']} answers written, {res['skipped']} were there)")
