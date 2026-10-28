@@ -1,0 +1,309 @@
+{
+ "schema": "R4_00_replication/1",
+ "written_at": "2026-10-28T00:39:16",
+ "ok": true,
+ "reread": {
+  "path": "experiments/results/R4_00_reread.json",
+  "sha256": "aaa07cf2906eba8d9f4830e2477548a6f556d3ac2c647ae1d354f57290560c4d"
+ },
+ "made_with": {
+  "pinned_unchanged": {
+   "experiments/scripts/R1_common.py": "9a8ad1f21a6291855e15fe768eae79671413e53696f9bf4fa313057de2590d95",
+   "experiments/scripts/R2_common.py": "a3fe4ab44edbce3eeba01efa1428c82b7abb5f8b0555d7485fb2d008d78b762d",
+   "experiments/scripts/R2_03_analyze.py": "9293011e96b3a132a915b306b2835846cc284e073fa5644124f20048cc377ecd",
+   "experiments/scripts/R2_prompts.json": "623a7fb73e6a082335653bb02c8e22d7e6d731ef343ff299af57709a772d01fd",
+   "experiments/scripts/R3_common.py": "b2dc742295a84c73c9538b068a07e78e8bd1ffab65483b6adb117f5f307ec2c9",
+   "experiments/scripts/R3_05_eval.py": "354273c5cec2937d7b87a2b49fa6120ec08c905a43ac056f07851af100f83974",
+   "experiments/scripts/R3_06_analyze.py": "f952e0ebdc89ffb8f8ce4fac654858f3da4bde43c71d97e56ad231f91ac2c8f2",
+   "experiments/scripts/R3_gpu.py": "3a2148a99a2d1451178b771c987229d816f4f0b2f06685e58a206c7f054118f9",
+   "experiments/scripts/R3_fitlib.py": "2276111dd64aa392e3a8a8362798181e1c3d50528a7481edd5d5986deba0dc47",
+   "experiments/scripts/R3_lrp.py": "97e96f218cad63c56619f9679d0174e0726e18cf67e0e55ec5518bcbb70f25bb",
+   "experiments/scripts/R3_prompts.json": "e3cae4b1becbd1fd4ac120e69e9c06dd2baf3dc6b0b4ae067d11b019957f4329",
+   "experiments/scripts/R3_sources.json": "39f8340a03008ecda0b528ffa5208a3b4d267b9239fb376f8c43e39780b667d6",
+   "experiments/results/R2_01_check.json": "9baad05e2d0057b2f7621fb389400cd5c24e119151b292648ca81343a8181581",
+   "experiments/results/R2_02_eval.json": "6e277f60987c88a70f85355e2e749aac8cfa18f5480a5b044befedc3626f9c70",
+   "experiments/results/R2_03_analysis.json": "94a632527ce6d1f356c836272ef5e1c32d8bef549cb62d6a8136dae83a22a75e",
+   "experiments/results/R3_05_eval.json": "d2fe1a334f6ae1a65e61d716a6a40c3e1ba56e6a1cc1aa196281618275fa80e1",
+   "experiments/results/R3_06_analysis.json": "a843c309eed0aa5461e1fc7c823169f20413f6573bd4c6691ce132138c609d50",
+   "backend/__init__.py": "4af5cefc7edd058ef3353b6992f42cf22fa8d3a7cd8e4a8b3ecca376808293c0",
+   "backend/theodolite_math.py": "d738dc2ff14d428ad3ba01e7789b301dbff137d3f707e3af04862b504a1479fb",
+   "backend/engine_runtime.py": "69eed1b4f1a319bad35dcf604d0e3cdd48aa2b1f4287a9c5e7efeb1c04605256",
+   "backend/label_gate.py": "83a998b746249b07a52e29b0dd1a06e999206d27a518f2f8271f439b946c136e"
+  },
+  "pinned_differ": [],
+  "snapshot_blobs": {
+   ".gitattributes": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "README.md": "0ee90185c9704ad1743b898d6e6c9fcaa32bf7ab",
+   "chat_template.jinja": "4741bf6e4132ba23a5537f9d6e74e9a6d613d7cd",
+   "config.json": "e8beda78f4e93f78a5d9d8f2b78cd9bc272d35e5",
+   "generation_config.json": "f6bc6f4146a610a3881015c90d36a78beb1333bb",
+   "model.safetensors": "1b9b1d622a93f02c0d33f98e502f233b5d707443af6ddc464ed0bf5498506c20",
+   "processor_config.json": "5465974d23e1eca2c46c2809b26c997946ce0d90",
+   "tokenizer.json": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+   "tokenizer_config.json": "b22e2c5c05597a7e8c0cb1cebdb7d45570772005"
+  },
+  "versions": {
+   "torch": "2.14.1+cu130",
+   "transformers": "5.20.0"
+  },
+  "environment": {
+   "numpy": "2.5.4",
+   "compressed-tensors": "0.19.0",
+   "accelerate": "1.15.0",
+   "safetensors": "0.8.0",
+   "tokenizers": "0.23.3",
+   "huggingface-hub": "2.2.0",
+   "interp-engine": "1.14.0",
+   "gpu": "NVIDIA GeForce RTX 5090, 595.104.02"
+  },
+  "r4_scripts": {
+   "R4_common.py": "5e9934b521f599eba6d1bd42146afe5ce276c943285c8353d34ae321a7c79e8b",
+   "R4_02_eval.py": "f82f7f99facdc9bf45237d8ffab5ebf219db3321777abe1779670186c17aea66",
+   "R4_00_replicate.py": "dbb782686ee86b0d2337edb86846e77a7db290e5d6458a192e375aedd49a3f37",
+   "R4_03_analyze.py": "d0842992712a527c4a0c3cc16ab99bdf6e5ee8456df412968d55ac11f3d4f1a8"
+  },
+  "runtime_ok": true,
+  "loaded_code": {
+   ".venv/lib/python3.12/site-packages/interp_engine/__init__.py": "034406f4c72bf2dcc017aa3b567711567f9c2eac71da4fb04cc977e2c466e3e2",
+   ".venv/lib/python3.12/site-packages/interp_engine/_loop.py": "80940e82e99061f6c48a9b19b920c20bfcfa09f838db5b060dea700e1ee257ad",
+   ".venv/lib/python3.12/site-packages/interp_engine/address.py": "9328e3bde87136af3cfd1d74198f52e9a86254a49983d1355187af600008e301",
+   ".venv/lib/python3.12/site-packages/interp_engine/api.py": "d12158ccd1fbd1d32b5e20a1ff445c75fa31d737535f0b7383f6b76e9d18eb9b",
+   ".venv/lib/python3.12/site-packages/interp_engine/arch.py": "c8299fb84232c8164de38d891cc448f44b7439ff57fd08e2d54ca8aca8ba28ee",
+   ".venv/lib/python3.12/site-packages/interp_engine/attn_config.py": "50e21a1614b8229b70c00859353ce92b0894b18a6c0a28d327f9d93bd6de6e90",
+   ".venv/lib/python3.12/site-packages/interp_engine/attn_scores.py": "17bb2a9136607404bdbf712c2f9029a5c48e0946dd952b5d6dc9bb2290c015ff",
+   ".venv/lib/python3.12/site-packages/interp_engine/autograd_support.py": "65e935cded1c544b851c5cdfde436ed284120ea52ca8ade66fdc1fb764607052",
+   ".venv/lib/python3.12/site-packages/interp_engine/capture.py": "015dcde3b2ab09fe335130edc1cb94f8ccb99d106aaa6b73bea5329ba9911c81",
+   ".venv/lib/python3.12/site-packages/interp_engine/chat_compose.py": "40a0de03af49650f88c8e19e1c90f759db37db4ba2ff8dc03df42698fe05e1ec",
+   ".venv/lib/python3.12/site-packages/interp_engine/chat_conventions.py": "7bc3417f21c2fe61f1b90cccecba2eed833bcceb8d5028631dcdfc07c0c9fac0",
+   ".venv/lib/python3.12/site-packages/interp_engine/chat_formatters.py": "bb263a84dd709d15b3b15fb3d67a1d1386c76a2a7e0baf52275cfcf097b7be61",
+   ".venv/lib/python3.12/site-packages/interp_engine/cuda_preflight.py": "9e9b6e3f43450142b93ce55ba5e40fbaafea92861f49a325c9dcca20cb04980a",
+   ".venv/lib/python3.12/site-packages/interp_engine/describe.py": "2c9af37dd30d7b5077605ef3dd20277dcf4d0290b97caaab7a31aa298ec817ba",
+   ".venv/lib/python3.12/site-packages/interp_engine/directions.py": "42feb9432f4d1fc5ff082ff999a0764bd4a297a135e1ed9679bb7b7adac2b8ec",
+   ".venv/lib/python3.12/site-packages/interp_engine/dispatch.py": "4b498b0831e827a2bbabed863644112fc57009dacbff12b7c54b392f9441b969",
+   ".venv/lib/python3.12/site-packages/interp_engine/facts.py": "a7f668f4928d449c2ee21cbebf13ed18dcc44285a24a0fe14827e6a1cddaf90c",
+   ".venv/lib/python3.12/site-packages/interp_engine/hooks.py": "27b777e299073f2fd45b31584c1be4313af0a0a2c6d665a39a90469a5a7f9fe0",
+   ".venv/lib/python3.12/site-packages/interp_engine/lens.py": "3f70adb47145492f79d638f228fd94ad226cb47355401ca9ea26f3217e0dd471",
+   ".venv/lib/python3.12/site-packages/interp_engine/lens_topk.py": "06772db7380c961cb83452188205e86a363cd9fbd43f0afa4acd7b19d310e790",
+   ".venv/lib/python3.12/site-packages/interp_engine/load.py": "187853f065b339f3c4c0b10423ab61f7055ce2ef000e5bc40dc8bc8b022afe96",
+   ".venv/lib/python3.12/site-packages/interp_engine/mappers.py": "eb9bd58414b4c12c4f0540ae359cbf45715cb289ffbe1b62a59557112be0cf3c",
+   ".venv/lib/python3.12/site-packages/interp_engine/model.py": "968eeaf16c4fe4222d4bf5cdd18baeac9f8b562194422222770851ab3a2d7964",
+   ".venv/lib/python3.12/site-packages/interp_engine/moe_routing.py": "72e7fa074800edbf3699360c29093bd8c6c4ed2f8df412ea7d90410b21b19137",
+   ".venv/lib/python3.12/site-packages/interp_engine/notebook_stdout.py": "7cb0d1fdbd5f302cc022cda804947f7e2f9d46743ffda309ddc2e43a263ac87a",
+   ".venv/lib/python3.12/site-packages/interp_engine/points.py": "1eea21ab5f768de24098bab05ddbf2d0b89d7ece12f99cc1721e538e4db5bf74",
+   ".venv/lib/python3.12/site-packages/interp_engine/protocol.py": "261802d0a41cbc950525131e7dd4fd71b0dbed6ec731f075dd1d24d9e49ff6f6",
+   ".venv/lib/python3.12/site-packages/interp_engine/residual_basis.py": "1ce10390bff53e143c83b3bd6fc65e8ada9db49bc8c838ab2617e221c9229c57",
+   ".venv/lib/python3.12/site-packages/interp_engine/sampling.py": "c538509c10f3f45a5f0de24858c0a4d4d1dfc37acee913ecb0510fff25619c4e",
+   ".venv/lib/python3.12/site-packages/interp_engine/select.py": "4d7f3bfc9761fe78e1bf6e91f60bf8fdf11704f8d10b3f8551b6c210a281f4d6",
+   ".venv/lib/python3.12/site-packages/interp_engine/steer.py": "286559d7a848efbfd1df880f42edd47012773acd13f9a6bdf46d6f7bbd5d4cab",
+   ".venv/lib/python3.12/site-packages/interp_engine/steer_specs.py": "5a14ffffcf8586ce87271b8bf2214921a0b3ba576294f4fb040ab0c07a4cd0b5",
+   ".venv/lib/python3.12/site-packages/interp_engine/sync.py": "748d1df050dd928d3457f31716feb5cabb98047bdae3346913c95b4cd73c9a6f",
+   ".venv/lib/python3.12/site-packages/interp_engine/tokenize.py": "447618ae4d154585286a7e7d4b923788b55cddf229dabc74abac81a2fcc407f4",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_backend.py": "ad0bfb61cb6d037cf5996c2565d3e44d799491eaae6b0faa7dfc63f248414508",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/__init__.py": "b96a37f5cafdd89e93706183bef2e649d260b018e9b4502290ccc9d3781299f2",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/_demux.py": "adaea3e725c999fdd35bee4053793982a421c783353c0d004b333bbcf09f9bf3",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/_hooks.py": "6e11c026052527d848324abbb543a4c9b6bd37af9f80b974fa4de1d833433fc8",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/_payload.py": "2449f57be6e84b3e1842f6b7fe2c073d431d13279a2afc7f62673d8f2546c1be",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/_tp.py": "3163a6b64475e4ebbe4e20927ee5f87d7d75c43bb732aace78c5facbedb060d1",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/_tree.py": "33856da5878399940789d99d192ab11a816515994044d977719a07ea5a7cbaa9",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/attn.py": "85134399462f910778e33ef7f3a94209f71a0ce8f7150e379963b92086fdc10d",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/capture.py": "8afb6d4ba7a5ae62194f75577dd05c7841d5850555df287cbb9474d02d970b09",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/graphs.py": "5e21920e399520b40f8d7562c04d714e1d0454e6ca7c895ab1e83ae40b44112a",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/lens/__init__.py": "4a64c549440a52dee1203d0b82d02421ef0a53a01474b985fbb5564d1c645ed8",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/lens/intervene.py": "a4a8b0c2803b4e3bf62fd7442a9a8122c10b138bb8bda2772fcdf7fd5e77d215",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/lens/readout.py": "1f656334690afd6f27a2bcc4a4f3eb75bfb307669de3da9bf01d05eedd28c37a",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/lens/unembed.py": "adfe3f95ab07aa6f249b7c3197826af3d4c1bab390389b43403f5b85a2eb324e",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/mhc.py": "a5974a6460dd4ff9e993b292c5d3cfd9d33704ac0e22aa7591504f2c2162a426",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/native.py": "ebd38244ef631f4d568e6c00e412c788efb842d119d5f4f9cd44ea956b3d3965",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/project.py": "edda04a42a00ca952ccb8e6d1c11ecbd5a9075f0ffb5097fc193c674851545d3",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/requests.py": "c4ad4e14e6cec20411459e66b2d07d5ae4904255001f4363904c86d52043aa69",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/static.py": "d2774499812294ad4814d5de5ea12814cf714791f5648272798948bfcb55abad",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/static_program.py": "9a665fb24844a9e899b5360bcf70c487450d6f83e1dcd1df82323b773bef73b9",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_capture/steering.py": "a33732c8a6176fad3c9c2391338627efdea28ca47cc4b5772f1fa455a4b748be",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_plugin.py": "b4152e14fb33cd9348fec6ee62af752469da979f0f29dd10217846639b0d77f2",
+   ".venv/lib/python3.12/site-packages/interp_engine/vllm_seq_fit.py": "2e0b04037fa1dec45dd93ba77ae1e69daea81d882eef7a47050b2038aa51633f",
+   "backend/__init__.py": "4af5cefc7edd058ef3353b6992f42cf22fa8d3a7cd8e4a8b3ecca376808293c0",
+   "backend/engine_runtime.py": "69eed1b4f1a319bad35dcf604d0e3cdd48aa2b1f4287a9c5e7efeb1c04605256",
+   "backend/label_gate.py": "83a998b746249b07a52e29b0dd1a06e999206d27a518f2f8271f439b946c136e",
+   "backend/theodolite_math.py": "d738dc2ff14d428ad3ba01e7789b301dbff137d3f707e3af04862b504a1479fb",
+   "experiments/scripts/R2_common.py": "a3fe4ab44edbce3eeba01efa1428c82b7abb5f8b0555d7485fb2d008d78b762d",
+   "experiments/scripts/R3_05_eval.py": "354273c5cec2937d7b87a2b49fa6120ec08c905a43ac056f07851af100f83974",
+   "experiments/scripts/R3_common.py": "b2dc742295a84c73c9538b068a07e78e8bd1ffab65483b6adb117f5f307ec2c9",
+   "experiments/scripts/R3_fitlib.py": "2276111dd64aa392e3a8a8362798181e1c3d50528a7481edd5d5986deba0dc47",
+   "experiments/scripts/R3_gpu.py": "3a2148a99a2d1451178b771c987229d816f4f0b2f06685e58a206c7f054118f9",
+   "experiments/scripts/R3_lrp.py": "97e96f218cad63c56619f9679d0174e0726e18cf67e0e55ec5518bcbb70f25bb"
+  }
+ },
+ "compared_with": {
+  "R4_common.py": "5e9934b521f599eba6d1bd42146afe5ce276c943285c8353d34ae321a7c79e8b",
+  "R4_02_eval.py": "f82f7f99facdc9bf45237d8ffab5ebf219db3321777abe1779670186c17aea66",
+  "R4_00_replicate.py": "dbb782686ee86b0d2337edb86846e77a7db290e5d6458a192e375aedd49a3f37",
+  "R4_03_analyze.py": "d0842992712a527c4a0c3cc16ab99bdf6e5ee8456df412968d55ac11f3d4f1a8"
+ },
+ "same_code_for_reading_and_comparison": true,
+ "git_at_run": {
+  "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
+  "branch": "main",
+  "dirty": [
+   "experiments/results/R4_01_check.json",
+   "experiments/results/R4_03_r3_reproduction.json",
+   "experiments/results/R4_PREREG.md",
+   "experiments/results/R4_power.json",
+   "experiments/results/R4_selftests.json",
+   "experiments/scripts/R4_00_replicate.py",
+   "experiments/scripts/R4_01_check.py",
+   "experiments/scripts/R4_02_eval.py",
+   "experiments/scripts/R4_03_analyze.py",
+   "experiments/scripts/R4_common.py",
+   "experiments/scripts/R4_power.py",
+   "experiments/scripts/R4_prompts.json"
+  ]
+ },
+ "a_teacher_forced": {
+  "ok": true,
+  "readouts": {
+   "jpp@55": {
+    "positions": 930,
+    "filtered_top1_same": 930,
+    "filtered_share": 1.0,
+    "unfiltered_share": 1.0,
+    "ok": true
+   },
+   "jpp@58": {
+    "positions": 930,
+    "filtered_top1_same": 930,
+    "filtered_share": 1.0,
+    "unfiltered_share": 1.0,
+    "ok": true
+   },
+   "naive@55": {
+    "positions": 930,
+    "filtered_top1_same": 930,
+    "filtered_share": 1.0,
+    "unfiltered_share": 1.0,
+    "ok": true
+   },
+   "naive@58": {
+    "positions": 930,
+    "filtered_top1_same": 930,
+    "filtered_share": 1.0,
+    "unfiltered_share": 1.0,
+    "ok": true
+   },
+   "naive@59": {
+    "positions": 930,
+    "filtered_top1_same": 930,
+    "filtered_share": 1.0,
+    "unfiltered_share": 1.0,
+    "ok": true
+   },
+   "r1@55": {
+    "positions": 930,
+    "filtered_top1_same": 930,
+    "filtered_share": 1.0,
+    "unfiltered_share": 1.0,
+    "ok": true
+   },
+   "r1@58": {
+    "positions": 930,
+    "filtered_top1_same": 930,
+    "filtered_share": 1.0,
+    "unfiltered_share": 1.0,
+    "ok": true
+   }
+  },
+  "tolerance": 0.99,
+  "all_identical": true,
+  "read_token_differs": [],
+  "n_read_token_differs": 0,
+  "mismatches_listed": []
+ },
+ "b_regenerated": {
+  "ok": true,
+  "r3_positions": 930,
+  "found_again": 930,
+  "found_share": 1.0,
+  "by_condition": {
+   "chat-no-answer": {
+    "r3": 80,
+    "found": 80
+   },
+   "chat-begun": {
+    "r3": 80,
+    "found": 80
+   },
+   "bare": {
+    "r3": 80,
+    "found": 80
+   },
+   "mid-reply": {
+    "r3": 690,
+    "found": 690
+   }
+  },
+  "tolerance": 0.95,
+  "lost": [],
+  "readouts_at_found_positions": {
+   "jpp@55": {
+    "positions": 930,
+    "filtered_share": 1.0
+   },
+   "jpp@58": {
+    "positions": 930,
+    "filtered_share": 1.0
+   },
+   "naive@55": {
+    "positions": 930,
+    "filtered_share": 1.0
+   },
+   "naive@58": {
+    "positions": 930,
+    "filtered_share": 1.0
+   },
+   "naive@59": {
+    "positions": 930,
+    "filtered_share": 1.0
+   },
+   "r1@55": {
+    "positions": 930,
+    "filtered_share": 1.0
+   },
+   "r1@58": {
+    "positions": 930,
+    "filtered_share": 1.0
+   }
+  }
+ },
+ "c_verdicts": {
+  "verdict_same": true,
+  "mismatches": [],
+  "exact": true,
+  "rows": [
+   {
+    "band": "55",
+    "page": 56,
+    "r3_passes": true,
+    "r4_design_passes_on_raw_p": true,
+    "diff_naive_mean": 0.0709,
+    "r3_diff_naive_mean": 0.0709,
+    "diff_jpp_mean": 0.1067,
+    "r3_diff_jpp_mean": 0.1067,
+    "p_sign": 1.5542609311973226e-10,
+    "r3_p_sign": 1.5542609311973226e-10
+   },
+   {
+    "band": "58",
+    "page": 59,
+    "r3_passes": true,
+    "r4_design_passes_on_raw_p": true,
+    "diff_naive_mean": 0.0578,
+    "r3_diff_naive_mean": 0.0578,
+    "diff_jpp_mean": 0.0834,
+    "r3_diff_jpp_mean": 0.0834,
+    "p_sign": 3.11088070817394e-08,
+    "r3_p_sign": 3.11088070817394e-08
+   }
+  ],
+  "exact_required": true,
+  "ok": true
+ }
+}

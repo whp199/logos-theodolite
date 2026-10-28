@@ -1,0 +1,539 @@
+{
+ "schema": "R4_power/1",
+ "written_at": "2026-10-28T00:26:06",
+ "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
+ "input": {
+  "R2_02_eval.json": "6e277f60987c88a70f85355e2e749aac8cfa18f5480a5b044befedc3626f9c70",
+  "R3_05_eval.json": "d2fe1a334f6ae1a65e61d716a6a40c3e1ba56e6a1cc1aa196281618275fa80e1",
+  "R2_03_analysis.json": "94a632527ce6d1f356c836272ef5e1c32d8bef549cb62d6a8136dae83a22a75e",
+  "R3_06_analysis.json": "a843c309eed0aa5461e1fc7c823169f20413f6573bd4c6691ce132138c609d50"
+ },
+ "ok": true,
+ "check": "the sign counts recomputed here equal R2_03's bands.r1 and R3_06's reference_bands.r1",
+ "sign_counts": [
+  {
+   "set": "R2",
+   "band": "55",
+   "baseline": "jpp",
+   "recomputed": [
+    39,
+    7
+   ],
+   "recorded": [
+    39,
+    7
+   ]
+  },
+  {
+   "set": "R2",
+   "band": "55",
+   "baseline": "naive",
+   "recomputed": [
+    36,
+    12
+   ],
+   "recorded": [
+    36,
+    12
+   ]
+  },
+  {
+   "set": "R2",
+   "band": "58",
+   "baseline": "jpp",
+   "recomputed": [
+    41,
+    8
+   ],
+   "recorded": [
+    41,
+    8
+   ]
+  },
+  {
+   "set": "R2",
+   "band": "58",
+   "baseline": "naive",
+   "recomputed": [
+    31,
+    8
+   ],
+   "recorded": [
+    31,
+    8
+   ]
+  },
+  {
+   "set": "R3",
+   "band": "55",
+   "baseline": "jpp",
+   "recomputed": [
+    72,
+    8
+   ],
+   "recorded": [
+    72,
+    8
+   ]
+  },
+  {
+   "set": "R3",
+   "band": "55",
+   "baseline": "naive",
+   "recomputed": [
+    64,
+    11
+   ],
+   "recorded": [
+    64,
+    11
+   ]
+  },
+  {
+   "set": "R3",
+   "band": "58",
+   "baseline": "jpp",
+   "recomputed": [
+    67,
+    17
+   ],
+   "recorded": [
+    67,
+    17
+   ]
+  },
+  {
+   "set": "R3",
+   "band": "58",
+   "baseline": "naive",
+   "recomputed": [
+    60,
+    14
+   ],
+   "recorded": [
+    60,
+    14
+   ]
+  }
+ ],
+ "population_sizes": {
+  "chat-no-answer": {
+   "R2": 60,
+   "R3": 80,
+   "together": 140
+  },
+  "chat-begun": {
+   "R2": 60,
+   "R3": 80,
+   "together": 140
+  },
+  "bare": {
+   "R2": 39,
+   "R3": 43,
+   "together": 82
+  },
+  "mid-reply": {
+   "R2": 40,
+   "R3": 80,
+   "together": 120
+  }
+ },
+ "r4_expected_valid": {
+  "chat-no-answer": 160,
+  "chat-begun": 160,
+  "bare": 86,
+  "mid-reply": 160
+ },
+ "n_sim": 4000,
+ "sim_seed": 20261030,
+ "intervals": "rules 1 and 2 by the normal approximation of the stratified prompt bootstrap (mean +/- 1.96 SE); the registered rule takes 2,000 bootstrap resamples",
+ "s6": {
+  "why": "without the positions whose content target is a function word (R2_common.FUNCTION_WORDS), which R2's filter counts as content",
+  "population_with_a_score": {
+   "chat-no-answer": 40,
+   "chat-begun": 115,
+   "bare": 63,
+   "mid-reply": 120
+  },
+  "note": "drawn on the same prompts as R2's rule; a drawn prompt whose every target is a function word has no S6 score and drops out of S6 in that draw"
+ },
+ "decision": "a band is served only if R1 passes R2's five rules there (Holm over the 2 bands) AND passes them again under S6, without function-word targets (Holm over the 2 bands within S6); the owner's choice of 28 October 2026 (R4_PREREG.md \u00a72, \u00a75)",
+ "record_means": {
+  "55": {
+   "r2_jpp": {
+    "by_condition": {
+     "chat-no-answer": 0.1143,
+     "chat-begun": 0.0786,
+     "bare": 0.0732,
+     "mid-reply": 0.1169
+    },
+    "together": 0.0987,
+    "r2_alone": 0.0859,
+    "r3_alone": 0.1067
+   },
+   "r2_naive": {
+    "by_condition": {
+     "chat-no-answer": 0.0143,
+     "chat-begun": 0.0571,
+     "bare": 0.0488,
+     "mid-reply": 0.1228
+    },
+    "together": 0.0623,
+    "r2_alone": 0.0502,
+    "r3_alone": 0.0709
+   },
+   "s6_jpp": {
+    "by_condition": {
+     "chat-no-answer": -0.125,
+     "chat-begun": 0.0435,
+     "bare": 0.0476,
+     "mid-reply": 0.0531
+    },
+    "together": 0.0289,
+    "r2_alone": 0.0023,
+    "r3_alone": 0.0463
+   },
+   "s6_naive": {
+    "by_condition": {
+     "chat-no-answer": -0.125,
+     "chat-begun": 0.0087,
+     "bare": 0.0317,
+     "mid-reply": 0.0679
+    },
+    "together": 0.0208,
+    "r2_alone": 0.004,
+    "r3_alone": 0.0328
+   }
+  },
+  "58": {
+   "r2_jpp": {
+    "by_condition": {
+     "chat-no-answer": 0.0071,
+     "chat-begun": 0.1286,
+     "bare": 0.0732,
+     "mid-reply": 0.1128
+    },
+    "together": 0.0814,
+    "r2_alone": 0.0795,
+    "r3_alone": 0.0834
+   },
+   "r2_naive": {
+    "by_condition": {
+     "chat-no-answer": -0.0071,
+     "chat-begun": 0.05,
+     "bare": 0.0854,
+     "mid-reply": 0.105
+    },
+    "together": 0.0548,
+    "r2_alone": 0.0494,
+    "r3_alone": 0.0578
+   },
+   "s6_jpp": {
+    "by_condition": {
+     "chat-no-answer": 0.05,
+     "chat-begun": 0.0957,
+     "bare": 0.0635,
+     "mid-reply": 0.0807
+    },
+    "together": 0.0793,
+    "r2_alone": 0.0669,
+    "r3_alone": 0.0899
+   },
+   "s6_naive": {
+    "by_condition": {
+     "chat-no-answer": 0.0,
+     "chat-begun": 0.0,
+     "bare": 0.0317,
+     "mid-reply": 0.0542
+    },
+    "together": 0.0267,
+    "r2_alone": 0.0076,
+    "r3_alone": 0.041
+   }
+  }
+ },
+ "point": {
+  "r2_rule": {
+   "55": {
+    "page": 56,
+    "rule_shares": {
+     "1": 0.9962,
+     "2": 0.989,
+     "3": 1.0,
+     "4": 1.0,
+     "5": 0.8185
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.9998,
+     "r1_minus_naked_eye": 0.8185
+    },
+    "passes_all_five": 0.8173,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0992,
+     "naive": 0.0625
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0142,
+     "naive": 0.0139
+    }
+   },
+   "58": {
+    "page": 59,
+    "rule_shares": {
+     "1": 0.998,
+     "2": 0.9375,
+     "3": 1.0,
+     "4": 1.0,
+     "5": 0.6605
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.9872,
+     "r1_minus_naked_eye": 0.6635
+    },
+    "passes_all_five": 0.6425,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0814,
+     "naive": 0.0549
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0144,
+     "naive": 0.0118
+    }
+   },
+   "both_bands_pass": 0.5282,
+   "at_least_one_band_passes": 0.9315,
+   "mean_valid_prompts": 566.0
+  },
+  "s6": {
+   "55": {
+    "page": 56,
+    "rule_shares": {
+     "1": 0.3175,
+     "2": 0.1165,
+     "3": 1.0,
+     "4": 0.934,
+     "5": 0.014
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.062,
+     "r1_minus_naked_eye": 0.0205
+    },
+    "passes_all_five": 0.0055,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0293,
+     "naive": 0.0211
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0139,
+     "naive": 0.0139
+    }
+   },
+   "58": {
+    "page": 59,
+    "rule_shares": {
+     "1": 0.5333,
+     "2": 0.9485,
+     "3": 1.0,
+     "4": 0.7555,
+     "5": 0.0415
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.9685,
+     "r1_minus_naked_eye": 0.0415
+    },
+    "passes_all_five": 0.0415,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0792,
+     "naive": 0.0268
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0161,
+     "naive": 0.0132
+    }
+   },
+   "both_bands_pass": 0.0005,
+   "at_least_one_band_passes": 0.0465,
+   "mean_valid_prompts": 403.0045
+  },
+  "served": {
+   "55": {
+    "page": 56,
+    "served": 0.0055
+   },
+   "58": {
+    "page": 59,
+    "served": 0.0413
+   },
+   "both_bands": 0.0005,
+   "at_least_one_band": 0.0462
+  }
+ },
+ "predictive": {
+  "r2_rule": {
+   "55": {
+    "page": 56,
+    "rule_shares": {
+     "1": 0.9597,
+     "2": 0.935,
+     "3": 1.0,
+     "4": 1.0,
+     "5": 0.7362
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.9935,
+     "r1_minus_naked_eye": 0.7362
+    },
+    "passes_all_five": 0.7262,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0988,
+     "naive": 0.0623
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0207,
+     "naive": 0.0199
+    }
+   },
+   "58": {
+    "page": 59,
+    "rule_shares": {
+     "1": 0.9732,
+     "2": 0.806,
+     "3": 1.0,
+     "4": 1.0,
+     "5": 0.5933
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.93,
+     "r1_minus_naked_eye": 0.6128
+    },
+    "passes_all_five": 0.5315,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0819,
+     "naive": 0.055
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0211,
+     "naive": 0.0168
+    }
+   },
+   "both_bands_pass": 0.3927,
+   "at_least_one_band_passes": 0.865,
+   "mean_valid_prompts": 566.0
+  },
+  "s6": {
+   "55": {
+    "page": 56,
+    "rule_shares": {
+     "1": 0.3503,
+     "2": 0.1975,
+     "3": 0.9972,
+     "4": 0.8175,
+     "5": 0.0537
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.156,
+     "r1_minus_naked_eye": 0.0688
+    },
+    "passes_all_five": 0.0265,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0292,
+     "naive": 0.0211
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0205,
+     "naive": 0.0202
+    }
+   },
+   "58": {
+    "page": 59,
+    "rule_shares": {
+     "1": 0.5347,
+     "2": 0.8047,
+     "3": 0.9912,
+     "4": 0.6795,
+     "5": 0.1047
+    },
+    "rule5_half": {
+     "r1_minus_jpp": 0.8902,
+     "r1_minus_naked_eye": 0.1065
+    },
+    "passes_all_five": 0.1003,
+    "mean_of_pooled_diff": {
+     "jpp": 0.0794,
+     "naive": 0.0264
+    },
+    "sd_of_pooled_diff": {
+     "jpp": 0.0239,
+     "naive": 0.0191
+    }
+   },
+   "both_bands_pass": 0.003,
+   "at_least_one_band_passes": 0.1237,
+   "mean_valid_prompts": 403.1698
+  },
+  "served": {
+   "55": {
+    "page": 56,
+    "served": 0.026
+   },
+   "58": {
+    "page": 59,
+    "served": 0.0897
+   },
+   "both_bands": 0.0022,
+   "at_least_one_band": 0.1135
+  }
+ },
+ "operating_characteristic": {
+  "55": {
+   "se_r1_minus_naked_at_640": 0.0139,
+   "p_estimate_reaches_0.05": {
+    "+0.03": {
+     "320 prompts": 0.1545,
+     "640 prompts": 0.0751
+    },
+    "+0.04": {
+     "320 prompts": 0.3055,
+     "640 prompts": 0.2359
+    },
+    "+0.05": {
+     "320 prompts": 0.5,
+     "640 prompts": 0.5
+    },
+    "+0.06": {
+     "320 prompts": 0.6945,
+     "640 prompts": 0.7641
+    },
+    "+0.07": {
+     "320 prompts": 0.8455,
+     "640 prompts": 0.9249
+    }
+   }
+  },
+  "58": {
+   "se_r1_minus_naked_at_640": 0.0118,
+   "p_estimate_reaches_0.05": {
+    "+0.03": {
+     "320 prompts": 0.1154,
+     "640 prompts": 0.045
+    },
+    "+0.04": {
+     "320 prompts": 0.2745,
+     "640 prompts": 0.1984
+    },
+    "+0.05": {
+     "320 prompts": 0.5,
+     "640 prompts": 0.5
+    },
+    "+0.06": {
+     "320 prompts": 0.7255,
+     "640 prompts": 0.8016
+    },
+    "+0.07": {
+     "320 prompts": 0.8846,
+     "640 prompts": 0.955
+    }
+   }
+  }
+ }
+}

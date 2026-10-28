@@ -1,0 +1,224 @@
+{
+ "schema": "R4_selftests/1",
+ "scripts": {
+  "R4_02_eval.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R4_02_eval.py --selftest --out <scratch> --limit 3",
+   "at": "2026-10-28T00:26:14",
+   "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R4_00_replicate.py",
+    "experiments/scripts/R4_01_check.py",
+    "experiments/scripts/R4_02_eval.py",
+    "experiments/scripts/R4_03_analyze.py",
+    "experiments/scripts/R4_common.py",
+    "experiments/scripts/R4_power.py"
+   ],
+   "seconds": 6.3,
+   "ok": true,
+   "n_checks": 6,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "every check before the model passes on the CPU (sizes only here); waiting for: ['R4_00_replication.json is not written yet (\u00a74.2)']; failed: []"
+    },
+    {
+     "ok": true,
+     "check": "the mid-reply draws are default_rng([20261028, mid-reply index, draw]) with draw 0 content_next (3) and draw 1 any (6)"
+    },
+    {
+     "ok": true,
+     "check": "33 read positions in every condition: J++ and R1 at 55 and 58, the naked eye at 55, 58 and 59, each with top-5 unfiltered and under R2's filter (content ids only), the ranks, no J++-filtered readout"
+    },
+    {
+     "ok": true,
+     "check": "R3_06's rule reads the output under R4's design: R1 at bands 55 and 58, Holm over 2, nothing reference-only"
+    },
+    {
+     "ok": true,
+     "check": "teacher forcing rebuilds every stored input (the prompt, and the stored reply for mid-reply), keeps the stored targets, and reads the stored positions again with the same readouts (the stand-in ignores batching, so this says nothing about batch invariance on the GPU)"
+    },
+    {
+     "ok": true,
+     "check": "teacher forcing refuses a stored reading whose prompt ids differ from the rebuilt ones"
+    }
+   ],
+   "env": {
+    "python": "3.12.15",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R4_00_replicate.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R4_00_replicate.py --selftest",
+   "at": "2026-10-28T00:26:27",
+   "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R4_00_replicate.py",
+    "experiments/scripts/R4_01_check.py",
+    "experiments/scripts/R4_02_eval.py",
+    "experiments/scripts/R4_03_analyze.py",
+    "experiments/scripts/R4_common.py",
+    "experiments/scripts/R4_power.py"
+   ],
+   "seconds": 11.8,
+   "ok": true,
+   "n_checks": 9,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "R3's own reading against itself: all seven readouts identical, every position found again, R1's record reproduced exactly"
+    },
+    {
+     "ok": true,
+     "check": "24 changed top-1s of R1 at 58 fail that readout's 99% and no other"
+    },
+    {
+     "ok": true,
+     "check": "(c) fails when R1's top-1 changes at 24 of R3's positions at code 58: R1's margin over the naked eye there falls below 0.05 and rule 5's verdict differs from R3's"
+    },
+    {
+     "ok": true,
+     "check": "(c) with R1's top-1 changed at 4 positions of code 55: the verdicts still match, which is all (c) asks when (a) found changed top-1s; the 9 numbers that moved at 55 are listed, and the same file fails when every number must match"
+    },
+    {
+     "ok": true,
+     "check": "(b) fails when 7% of R3's positions are not found again, and when every mid-reply reply differs"
+    },
+    {
+     "ok": true,
+     "check": "(a) refuses teacher-forced positions that are not R3's, in R3's order"
+    },
+    {
+     "ok": true,
+     "check": "on the stand-in, all 930 of R3's positions are rebuilt (the token read is R3's at each, as (a) requires) and read; the stand-in's readouts and words are not the model's, and the comparison says so"
+    },
+    {
+     "ok": true,
+     "check": "(a) fails when a rebuilt input reads another token than R3 read at that position"
+    },
+    {
+     "ok": true,
+     "check": "the record keeps the runtime, the environment and the sha256 of R4_common, R4_02_eval, R4_00_replicate and R4_03_analyze (the reading and the comparison)"
+    }
+   ],
+   "env": {
+    "python": "3.12.15",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  },
+  "R4_03_analyze.py": {
+   "command": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python -I experiments/scripts/R4_03_analyze.py --selftest",
+   "at": "2026-10-28T00:26:32",
+   "head": "efb72fd4472269a18e7a4b2cf3fe42ffc823aa7a",
+   "scripts_uncommitted_then": [
+    "experiments/scripts/R4_00_replicate.py",
+    "experiments/scripts/R4_01_check.py",
+    "experiments/scripts/R4_02_eval.py",
+    "experiments/scripts/R4_03_analyze.py",
+    "experiments/scripts/R4_common.py",
+    "experiments/scripts/R4_power.py"
+   ],
+   "seconds": 3.3,
+   "ok": true,
+   "n_checks": 21,
+   "n_failed": 0,
+   "checks": [
+    {
+     "ok": true,
+     "check": "R4's design: R1 alone at bands 55 and 58, precedence r1, Holm always over both, seed 20261029, R2's constants"
+    },
+    {
+     "ok": true,
+     "check": "R1 55 as 'win': failed rules [] (expected [])"
+    },
+    {
+     "ok": true,
+     "check": "R1 58 as 'small': failed rules ['5'] (expected ['5'])"
+    },
+    {
+     "ok": true,
+     "check": "R1 55 as 'worse': failed rules ['2'] (expected ['2'])"
+    },
+    {
+     "ok": true,
+     "check": "R1 58 as 'stuck': failed rules ['3'] (expected ['3'])"
+    },
+    {
+     "ok": true,
+     "check": "R1 55 as 'split': failed rules ['4'] (expected ['4'])"
+    },
+    {
+     "ok": true,
+     "check": "R1 58 as 'none': failed rules ['1', '4', '5'] (expected ['1', '4', '5'])"
+    },
+    {
+     "ok": true,
+     "check": "a pass at 55 alone, by R2's rule and by S6 (no target there is a function word), serves R1 at code 55 only: {'55': {'page': 56, 'r2_rule_passes': True, 's6_passes': True, 'served': True, 's6_failed_rules': []}, '58': {'page': 59, 'r2_rule_passes': False, 's6_passes': False, 'served': False, 's6_failed_rules': ['5']}}"
+    },
+    {
+     "ok": true,
+     "check": "rule 4 is Holm over the two bands: raw p 0.02 and 0.02 both fail (adjusted 0.04), 0.01 and 0.02 both pass"
+    },
+    {
+     "ok": true,
+     "check": "R1 missing at code 58 fails rule 2 there (p = 1) and the family stays the 2 registered tests"
+    },
+    {
+     "ok": true,
+     "check": "a family of one test is refused before anything is written (['Holm family of 1 tests, registered 2', 'r1 58: no test'])"
+    },
+    {
+     "ok": true,
+     "check": "S1-S4 and S6 are run (S1 drops the 64 prompts about the model; S6 changes nothing where no target is a function word) and S5 is reported as not run"
+    },
+    {
+     "ok": true,
+     "check": "S6 makes function-word targets no target: where R1 wins only on them, both bands pass R2's rule and fail S6, so neither is served (R4's decision), though R2's rule alone would serve both"
+    },
+    {
+     "ok": true,
+     "check": "the report leads with R4's decision (R2's rule, S6, served), shows the function-word split, why S6 fails, and a forced run as a deviation at the top"
+    },
+    {
+     "ok": true,
+     "check": "the analysis refuses an R4_common.py or a replication record other than the run's, and the rule's code (R2_common, R2_03, R3_common, R3_06) has its pinned sha256"
+    },
+    {
+     "ok": true,
+     "check": "the input check: R4's prompt counts (160 a condition) and the prompts' sha256"
+    },
+    {
+     "ok": true,
+     "check": "refused: no run logged, a last run that failed, an input other than the last finished run's output, a missing or failed replication record, prompts R4_01_check.json did not pass"
+    },
+    {
+     "ok": true,
+     "check": "self-test data is never written into experiments/results"
+    },
+    {
+     "ok": true,
+     "check": "the comparison with R3's record of R1: equal to itself; a changed rule and a changed interval are both listed"
+    },
+    {
+     "ok": true,
+     "check": "the report renders, with the self-test banner"
+    },
+    {
+     "ok": true,
+     "check": "the bootstrap is deterministic"
+    }
+   ],
+   "env": {
+    "python": "3.12.15",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.20.0",
+    "cuda_visible": ""
+   }
+  }
+ }
+}

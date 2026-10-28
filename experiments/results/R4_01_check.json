@@ -1,0 +1,218 @@
+{
+ "schema": "R4_01/1",
+ "written_at": "2026-10-28T00:25:49",
+ "r1_lens": {
+  "found": "/home/eric/.local/share/theodolite/lenses/R1_18_it_lens.pt",
+  "candidates": [
+   {
+    "path": "/home/eric/.local/share/theodolite/lenses/R1_18_it_lens.pt",
+    "exists": true,
+    "size_ok": true,
+    "sha256_ok": true
+   }
+  ]
+ },
+ "jpp_lens": {
+  "path": "/home/eric/.cache/huggingface/hub/models--neuronpedia--jacobian-lens/snapshots/e166deb5ad540932100ef803c8c9bcc2a5453694/gemma-4-31b/jpp/Salesforce-wikitext/gemma-4-31B_jpp_lens.pt",
+  "exists": true,
+  "size_ok": true,
+  "sha256_ok": null
+ },
+ "runtime": {
+  "pinned_differ": [],
+  "snapshot_differ": [],
+  "versions": {
+   "torch": "2.14.1+cu130",
+   "transformers": "5.20.0"
+  },
+  "versions_ok": true,
+  "environment": {
+   "numpy": "2.5.4",
+   "compressed-tensors": "0.19.0",
+   "accelerate": "1.15.0",
+   "safetensors": "0.8.0",
+   "tokenizers": "0.23.3",
+   "huggingface-hub": "2.2.0",
+   "interp-engine": "1.14.0",
+   "gpu": "NVIDIA GeForce RTX 5090, 595.104.02"
+  },
+  "ok": true
+ },
+ "filter": {
+  "counts": {
+   "content": 247973,
+   "special": 24,
+   "blank": 104,
+   "punct_symbol": 7746,
+   "html_tag": 6297
+  },
+  "spot_checks_ok": true
+ },
+ "freshness": {
+  "sources": {
+   "checkouts": [
+    "/home/eric/bin/ai/theodolite2",
+    "/home/eric/bin/ai/theodolite2/.claude/worktrees/compassionate-chandrasekhar-7c8f8b",
+    "/home/eric/bin/ai/theodolite2/.claude/worktrees/distracted-feynman-1c1472",
+    "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit",
+    "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-second-reading",
+    "/home/eric/bin/ai/theodolite2/.claude/worktrees/modest-montalcini-277b7a",
+    "/home/eric/bin/ai/theodolite2/.claude/worktrees/prompts-tokens-sampler",
+    "/home/eric/bin/ai/theodolite2/.claude/worktrees/roadmap-instrument"
+   ],
+   "scripts_py_files": 401,
+   "scripts_strings": 4257,
+   "results_json_files": 768,
+   "results_strings": 33455,
+   "r2_r3_prompt_strings": 820,
+   "n1b_corpus_strings": 1218,
+   "n1b_corpus_present": true,
+   "wikitext_rows": 2893,
+   "jpp_item_strings": 1743,
+   "r3_cache": "/home/eric/bin/ai/theodolite2/.claude/worktrees/it-jpp-refit/experiments/R3_cache"
+  },
+  "n_corpus_strings": 27261,
+  "planted": {
+   "planted:wikitext": true,
+   "planted:jpp_item": true,
+   "planted:r2_prompt": true,
+   "planted:r3_prompt": true,
+   "planted:fresh": false
+  },
+  "n_queries": 960,
+  "flags": [],
+  "internal_flags": [],
+  "closest_10": [
+   {
+    "query": "r4-cna-045:user",
+    "ratio": 0.796,
+    "match": "How many players does a basketball team have on the court?",
+    "source": "results/R3_05_eval_r2set.json"
+   },
+   {
+    "query": "r4-cna-014:user",
+    "ratio": 0.793,
+    "match": "Do you have a favorite subject?",
+    "source": "scripts/E4_causal_common.py"
+   },
+   {
+    "query": "r4-cb-060:user",
+    "ratio": 0.783,
+    "match": "Write the opening paragraph of a mystery novel set in Venice.",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r4-mid-139:user",
+    "ratio": 0.773,
+    "match": "What is the Monty Hall problem and why is switching better?",
+    "source": "scripts/N1B_prompts.py"
+   },
+   {
+    "query": "r4-cb-086:user",
+    "ratio": 0.769,
+    "match": "Do you have a dog?",
+    "source": "scripts/V4_latent_identity_07_nameslot_ctrl.py"
+   },
+   {
+    "query": "r4-mid-068:user",
+    "ratio": 0.736,
+    "match": "What is the difference between a crocodile and an alligator?",
+    "source": "scripts/R1_common.py"
+   },
+   {
+    "query": "r4-mid-125:user",
+    "ratio": 0.735,
+    "match": "How do you decide how long your answers should be?",
+    "source": "results/R1_01_corpus_part1.json"
+   },
+   {
+    "query": "r4-cb-015:user",
+    "ratio": 0.733,
+    "match": "What does a barometer measure?",
+    "source": "scripts/R3_prompts.json"
+   },
+   {
+    "query": "r4-mid-106:user",
+    "ratio": 0.733,
+    "match": "Explain how a compass works.",
+    "source": "results/R3_05_eval.json"
+   },
+   {
+    "query": "r4-cb-016:user",
+    "ratio": 0.732,
+    "match": "What kind of animal is a Komodo dragon?",
+    "source": "results/R3_05_eval.json"
+   }
+  ],
+  "max_ratio": 0.796,
+  "rule": "R2_common.freshness_check: exact | contained | contains | similar (difflib >= 0.80 or word Jaccard >= 0.75), after NFKC, case folding and dropping punctuation"
+ },
+ "prompts_file": "experiments/scripts/R4_prompts.json",
+ "prompts_sha256": "ead4c2d17f4f7e60abcdda5098731752eebae2f31d045d4241dec9bbc7851393",
+ "validation": {
+  "ok": true,
+  "problems": [],
+  "stats": {
+   "chat-no-answer": {
+    "n": 160,
+    "about_model": 20
+   },
+   "chat-begun": {
+    "n": 160,
+    "about_model": 18,
+    "kinds": {
+     "factual": 40,
+     "creative": 22,
+     "advice": 18,
+     "self": 18,
+     "list": 18,
+     "opinion": 10,
+     "empathy": 10,
+     "howto": 8,
+     "code": 6,
+     "language": 6,
+     "math": 4
+    },
+    "format_likely": 38
+   },
+   "bare": {
+    "n": 160,
+    "about_model": 10
+   },
+   "mid-reply": {
+    "n": 160,
+    "about_model": 16
+   },
+   "n_tokens": {
+    "chat-no-answer": [
+     17,
+     34
+    ],
+    "chat-begun": [
+     27,
+     56
+    ],
+    "bare": [
+     9,
+     31
+    ],
+    "mid-reply": [
+     19,
+     40
+    ]
+   }
+  }
+ },
+ "fit_overlap": {
+  "n": 151,
+  "by_condition": {
+   "chat-no-answer": 28,
+   "chat-begun": 40,
+   "bare": 45,
+   "mid-reply": 38
+  }
+ },
+ "ok": true,
+ "failures": [],
+ "before_prompts": false
+}

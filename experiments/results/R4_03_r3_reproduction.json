@@ -1,0 +1,44 @@
+{
+ "schema": "R4_03_r3_reproduction/1",
+ "written_at": "2026-10-28T00:26:07",
+ "input": {
+  "path": "experiments/results/R3_05_eval.json",
+  "sha256": "d2fe1a334f6ae1a65e61d716a6a40c3e1ba56e6a1cc1aa196281618275fa80e1"
+ },
+ "reference": {
+  "path": "experiments/results/R3_06_analysis.json",
+  "sha256": "a843c309eed0aa5461e1fc7c823169f20413f6573bd4c6691ce132138c609d50"
+ },
+ "design": "R4's (R1 at bands 55 and 58, J++ and the naked eye) with R3's bootstrap seed 20261022",
+ "not_compared": "the Holm-adjusted p (R3 took R1's p outside a Holm family, holm_m 1; R4 adjusts over 2) and sensitivity verdicts (R3_06 runs them for candidates only)",
+ "ok": true,
+ "verdict_same": true,
+ "mismatches": [],
+ "exact": true,
+ "rows": [
+  {
+   "band": "55",
+   "page": 56,
+   "r3_passes": true,
+   "r4_design_passes_on_raw_p": true,
+   "diff_naive_mean": 0.0709,
+   "r3_diff_naive_mean": 0.0709,
+   "diff_jpp_mean": 0.1067,
+   "r3_diff_jpp_mean": 0.1067,
+   "p_sign": 1.5542609311973226e-10,
+   "r3_p_sign": 1.5542609311973226e-10
+  },
+  {
+   "band": "58",
+   "page": 59,
+   "r3_passes": true,
+   "r4_design_passes_on_raw_p": true,
+   "diff_naive_mean": 0.0578,
+   "r3_diff_naive_mean": 0.0578,
+   "diff_jpp_mean": 0.0834,
+   "r3_diff_jpp_mean": 0.0834,
+   "p_sign": 3.11088070817394e-08,
+   "r3_p_sign": 3.11088070817394e-08
+  }
+ ]
+}
