@@ -101,6 +101,16 @@ pod_python() {
     fi
 }
 
+# One GPU job holds the card at a time: the card's lock (logs/gpu.lock, flock on fd 9) taken and held until this shell
+# ends (its children hold it with it), or the script refused in plain words while another job holds it. A census
+# shard's job, the pilot and setup.sh's self-test each take it, so none is measured, or runs out of memory, on a card
+# another shares.
+hold_card() {
+    exec 9>"$ROOT/logs/gpu.lock"
+    flock -n 9 || die "another GPU job holds this pod's card (logs/gpu.lock: a census shard, logs/*.started without an end, a pilot or" \
+        "setup.sh's self-test): one at a time"
+}
+
 # where census runs land: the stand-in's own folder on a dry run, as census_run.py --stand-in puts them
 census_runs_dir() {
     if [ "${DRY:-0}" = 1 ]; then

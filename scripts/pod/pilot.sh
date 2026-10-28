@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The one-hour pilot on a rented card, before any budget is asked for (the plan's budget rule: a pilot on the same card
-# class projects the job, x 1.25, against the approval). Run it on the pod after setup.sh, with nothing else on the card:
+# class projects the job, x 1.25, against the approval). Run it on the pod after setup.sh, with nothing else on the card
+# (it holds the card's lock, logs/gpu.lock, as a census shard does, and is refused while another job holds it):
 #
 #     scripts/pod/pilot.sh                                           # layer 45, the defaults below
 #     scripts/pod/pilot.sh --home-canary ~/L45-main_rel.canary.jsonl --approved-hours 12 --jobs whole_layer:2,steer_lens:1
@@ -14,8 +15,9 @@
 #     the fastest that fit is the pilot's own (unless --unpacker and --batch are given): the batch fixes a run's
 #     determinism class, so it is measured here, not assumed in a job's command (critic D5);
 #  3. the writer's floor (scripts/verify_atlas_writer.py: with no push, how far answers written in census batches of 32
-#     and 64, as /steer's as-it-is row and by interp-engine's loop agree with the same answer written alone; about 18
-#     minutes with the reference unpacker on a 5090, less with a faster one) (atlas_writer_floor.json);
+#     and 64 and of the pilot's own batch, as /steer's as-it-is row and by interp-engine's loop agree with the same
+#     answer written alone; about 18 minutes for 32 and 64 with the reference unpacker on a 5090, more for a larger
+#     batch, less with a faster unpacker) (atlas_writer_floor.json);
 #  4. a calib_rel run (--calib-neurons and --calib-controls, at the pilot's batch, unpacker and --max-new) timed (its wall
 #     time, the model's load with it), and its dose window (census_tools.py curves) (census/, calib.json, curves.json);
 #  5. one steer-lens layer (atlas_build.py steer --layers --steer-layer) timed as the build logs it, into the pilot's own
@@ -96,14 +98,18 @@ if [ -n "$HOME_CANARY" ]; then
     [ -f "$HOME_CANARY" ] || die "there is no canary $HOME_CANARY"
     HOME_CANARY=$(cd "$(dirname "$HOME_CANARY")" && pwd)/$(basename "$HOME_CANARY")
 fi
-for x in "$LAYER" "$SL" "$MAXNEW" "$CC" "$KC"; do [[ "$x" =~ ^[0-9]+$ ]] || die "a layer or count is a whole number, not $x"; done
+for x in "$LAYER" "$SL" "$MAXNEW" "$CC" "$KC" ${BATCH:+"$BATCH"}; do
+    [[ "$x" =~ ^[0-9]+$ ]] || die "a layer, count or batch is a whole number, not $x"
+done
 
 resolve_root
 load_env
 pod_python
+hold_card
 P=$ROOT/pilot/$(date -u +%Y%m%dT%H%M%SZ)
 mkdir -p "$P"
-exec > >(tee -a "$P/pilot.log") 2> >(tee -a "$P/pilot.log" >&2)
+# the log's tees leave the card's lock to this shell and its steps
+exec > >(tee -a "$P/pilot.log" 9>&-) 2> >(tee -a "$P/pilot.log" 9>&- >&2)
 cd "$REPO"
 say "$(stamp): the pilot, into $P (layer $LAYER, batches $BATCHES, unpackers $UNPS, --max-new $MAXNEW)"
 FAILED=()
@@ -133,7 +139,7 @@ if ! skipped steps; then
         --max-new "$MAXNEW" --out "$P/steps.json"
 fi
 if [ -z "$UNP" ] || [ -z "$BATCH" ]; then
-    read -r best_u best_b < <("$PY" -I -c '
+    read -r best_u best_b < <(scrubbed "$PY" -I -c '
 import json, sys
 try:
     b = json.load(open(sys.argv[1])).get("best") or {}
@@ -148,10 +154,12 @@ print(b.get("unpacker") or "reference", b.get("batch") or 0)' "$P/steps.json")
 fi
 say "the pilot's unpacker $UNP and batch $BATCH (steps 4 and 6)"
 
-# 3. the writer's floor
+# 3. the writer's floor, at census batches of 32 and 64 and at the pilot's own (a run's bits depend on its batch: critic D5)
 if ! skipped floor; then
+    FB=32,64
+    if [ "$BATCH" -ge 3 ]; then FB=$FB,$BATCH; fi
     step floor "$PY" -I scripts/verify_atlas_writer.py "${STAND[@]}" --layer "$LAYER" --max-new "$MAXNEW" --unpacker "$UNP" \
-        --out "$P/atlas_writer_floor.json"
+        --batches "$FB" --out "$P/atlas_writer_floor.json"
 fi
 
 # 4. a calib_rel run, timed, and its dose window
@@ -186,7 +194,7 @@ fi
 # 6. a canary: the home card's batch written here, or the whole-layer job's own
 if ! skipped canary; then
     if [ -n "$HOME_CANARY" ]; then
-        mapfile -t CARGS < <("$PY" -I "$POD_DIR/pod_tool.py" canary-args "$HOME_CANARY")
+        mapfile -t CARGS < <(scrubbed "$PY" -I "$POD_DIR/pod_tool.py" canary-args "$HOME_CANARY")
         [ ${#CARGS[@]} -gt 0 ] || FAILED+=(canary-args)
     else
         CARGS=(--layer "$LAYER" --design main_rel --neurons all --random-controls "$KC" --batch "$BATCH" --max-new "$MAXNEW"

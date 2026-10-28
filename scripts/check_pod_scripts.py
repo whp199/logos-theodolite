@@ -10,17 +10,24 @@ script's --dry-run end to end on the tiny random Gemma 4 of scripts/atlas_stand_
    HF_HUB_OFFLINE=1; the download (a fake `hf` that refuses a request without a token) is tried without one first,
    then with the one given, which is in no file under the root and in nothing printed; without one the setup stops in
    plain words; the venv is checked against the constraints offline (and a pin it does not hold refused); the last line
-   is the self-test's: the card, the versions, the unpacker's test and the runtime class;
-4. census_shard.sh --dry-run: two shards of one stand-in layer, detached, each with its log and sentinels, shard 1 with
-   its canary; a job refused while another holds the card; merged by census_tools.py merge (the canary identical),
-   ranked, and the curves read; a job stopped by its time limit (CENSUS_TIMEOUT, only whole answers kept) and
-   finished by the same command; the stop hook run only when asked, with the pod's own environment;
-5. sync.sh --dry-run (against rsync, or a stand-in for it where rsync is not installed): a periodic pull (rows with
-   --append-verify, the rest whole), then the final pull, checked by the pod's listing and what each meta names; the
+   is the self-test's: the card, the versions, the unpacker's test and the runtime class; the self-test refused while
+   another job holds the card;
+4. census_shard.sh --dry-run: two shards of one stand-in layer, detached (the job a session's leader, SIGHUP ignored,
+   as it records itself), each with its log and sentinels, shard 1 with its canary; census_run.py handed no key or
+   token (a Python that records its environment); a job refused while another holds the card; merged by
+   census_tools.py merge (the canary identical), ranked, and the curves read; a job stopped by its time limit
+   (CENSUS_TIMEOUT, only whole answers kept) and finished by the same command; the stop hook run only when asked, with
+   the pod's own environment;
+5. sync.sh --dry-run (against rsync, or a stand-in for it where rsync is not installed, which reads its paths as rsync
+   does: the last of several the destination, never two remote): a periodic pull (rows with --append-verify, the rest
+   whole), then the final pull, checked by the pod's listing (every source's files in it) and what each meta names; the
    check (pod_tool.py listing) names a file missing, one cut short, one a meta names and no one has, and jobs not ended;
-6. pilot.sh --dry-run: every step on the stand-in into pilot.json: the self-test, the steps per unpacker and batch, the
-   writer's floor, a calib_rel run and its curves, one steer-lens layer, a canary set against a home canary taken alone
-   (identical, and a changed one differing), the zstd ratio or why not, the projections, "proceed" and "stop";
+   with the stand-in rsync, the pod's own command lines too (over "SSH", the pod's layout);
+6. pilot.sh --dry-run: refused while another job holds the card; every step on the stand-in into pilot.json: the
+   self-test, the steps per unpacker and batch, the writer's floor (at 32, 64 and the pilot's own batch), a calib_rel
+   run and its curves, one steer-lens layer, a canary set against a home canary taken alone (identical, and a changed
+   one differing), the zstd ratio or why not, the projections, "proceed" and "stop"; every Python it runs handed no
+   key or token;
 7. gpu_log.py: approvals, starts and stops summed by hand (GPU-hours over pods and their cards, cost at each pod's
    rate), deviations named, a pod still running counted to now, an overspent approval exiting 1, and the refusals.
 
@@ -75,8 +82,10 @@ sys.exit(0 if (tok == os.environ.get("FAKE_HF_WANTS", tok)) and (tok or os.envir
 FAKE_RSYNC = '''#!{python}
 """A stand-in for rsync where it is not installed (scripts/check_pod_scripts.py): local copies only, with the options
 sync.sh uses: -a, -r, --relative (a source's /./), --append-verify, --include/--exclude (first match, on a name),
---list-only and --no-human-readable; -e is taken and left unused. Each call's arguments are logged."""
-import fnmatch, os, shutil, sys, time
+--list-only and --no-human-readable; -e is taken and left unused, and a path's "user@host:" is read as this machine.
+As rsync (main.c, start_client), the last of several paths is the destination, never listed or read, and a remote
+source with a remote destination is refused; a lone source is listed. Each call's arguments are logged."""
+import fnmatch, os, re, shutil, sys, time
 args = sys.argv[1:]
 if os.environ.get("FAKE_RSYNC_LOG"):
     with open(os.environ["FAKE_RSYNC_LOG"], "a") as f:
@@ -98,8 +107,20 @@ while i < len(args):
     else:
         paths.append(a)
     i += 1
-listing = "--list-only" in flags
-srcs, dest = (paths, None) if listing else (paths[:-1], paths[-1])
+def host(p):  # rsync's check_for_hostspec, near enough: a colon before any slash
+    m = re.match(r"^([^/:]+):(.*)$", p)
+    return (m.group(1), m.group(2)) if m else (None, p)
+
+if not paths:
+    print("rsync: no source given", file=sys.stderr)
+    sys.exit(1)
+srcs, dest = (paths, None) if len(paths) == 1 else (paths[:-1], paths[-1])
+listing = "--list-only" in flags or dest is None
+if dest is not None and host(srcs[0])[0] and host(dest)[0]:
+    print("The source and destination cannot both be remote.", file=sys.stderr)
+    print("rsync error: syntax or usage error (code 1)", file=sys.stderr)
+    sys.exit(1)
+srcs = [host(s)[1] for s in srcs]
 
 def wanted(name, is_dir):
     for keep, pat in rules:
@@ -195,6 +216,13 @@ def run_checks(tmp: Path) -> int:
         (fakebin / "rsync").chmod(0o755)
         env["PATH"] = f"{fakebin}:{env['PATH']}"
     (tmp / "fake_hf.py").write_text(FAKE_HF)
+    # the check's Python, where a test asks what a script hands its Python: each run's environment and arguments, then the venv's
+    wrap = fakebin / "python-env"
+    wrap.write_text("#!/usr/bin/env bash\n"
+                    '{ env; echo "-- argv: $*"; } >>"${CHECK_ENV_DUMP:-/dev/null}"\n'
+                    f"exec {py} \"$@\"\n")
+    wrap.chmod(0o755)
+    secret_line = re.compile(r"^(RUNPOD_API_KEY|HF_TOKEN|HUGGING_FACE_HUB_TOKEN)=", re.M)
 
     # ---------------------------------------------------------------------------------------- 1. the scripts as text
     before = len(failures)
@@ -295,6 +323,14 @@ def run_checks(tmp: Path) -> int:
     dl3 = (tmp / "pod-open" / "logs" / "download.log").read_text() if (tmp / "pod-open" / "logs" / "download.log").exists() else ""
     check(r.returncode == 0 and "again with the one given" not in dl3 and dl3.count("without a token\n") == 2,
           f"an open repository: downloaded without the token, which is never used ({dl3[-300:]})")
+    r_lock = tmp / "pod-locked"
+    (r_lock / "logs").mkdir(parents=True)
+    with open(r_lock / "logs" / "gpu.lock", "w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        r = run([POD / "setup.sh", "--dry-run", "--root", r_lock, "--no-download"], env)
+        fcntl.flock(held, fcntl.LOCK_UN)
+    check(r.returncode != 0 and "another GPU job holds this pod's card" in r.stderr and not (r_lock / "logs" / "selftest.json").exists(),
+          f"setup.sh's self-test refused while another job holds the card ({r.stderr[-200:]})")
     section("setup.sh --dry-run: the env file on the volume, downloads without a token first, the token nowhere, the self-test line", before)
 
     # ------------------------------------------------------------------------------------------ 4. census_shard.sh
@@ -308,7 +344,9 @@ def run_checks(tmp: Path) -> int:
         r = run(shard + ["--shard", "0/2"] + small, env)
         fcntl.flock(held, fcntl.LOCK_UN)
     check(r.returncode != 0 and "another GPU job holds this pod's card" in r.stderr, f"a job refused while another holds the card ({r.stderr[-200:]})")
-    r = run(shard + ["--shard", "0/2", "--stop-cmd", f"env > {r1 / 'stop_env.txt'}"] + small, {**env, "RUNPOD_API_KEY": "rk_check"})
+    sdump = tmp / "shard_env.txt"
+    r = run(shard + ["--shard", "0/2", "--stop-cmd", f"env > {r1 / 'stop_env.txt'}"] + small,
+            {**env, "RUNPOD_API_KEY": "rk_check", "HF_TOKEN": "hf_check_shard", "POD_PYTHON": str(wrap), "CHECK_ENV_DUMP": str(sdump)})
     detached = r.returncode == 0 and "detached" in r.stdout
     done0 = wait_for([logs / "L3-main_rel.s0of2.done", logs / "L3-main_rel.s0of2.failed"])
     r = run(shard + ["--shard", "1/2", "--wait"] + small, env)
@@ -317,8 +355,17 @@ def run_checks(tmp: Path) -> int:
     log0 = (logs / "L3-main_rel.s0of2.log").read_text()
     job0 = (logs / "L3-main_rel.s0of2.job.sh").read_text()
     check(all(w in log0 for w in ("CENSUS_JOB", "CENSUS_START", "CENSUS_DONE rc=0", "time limit 450s (0.1 h projected x 1.25)", "--shard 0/2", "--stand-in"))
-          and (logs / "L3-main_rel.s0of2.started").exists() and "setsid nohup" in job0 and "rk_check" not in job0,
+          and (logs / "L3-main_rel.s0of2.started").exists() and "rk_check" not in job0 and "hf_check_shard" not in job0,
           "each job's log, its start and end sentinels, its time limit, and its script with no secret in it")
+    # "<time> pid P session S sigign HEX", as the job wrote it of itself
+    st0 = (logs / "L3-main_rel.s0of2.started").read_text().split()
+    st0 = dict(zip(st0[1::2], st0[2::2]))
+    check(st0.get("pid") is not None and st0.get("session") == st0.get("pid") and st0.get("session") != str(os.getsid(0))
+          and bool(int(st0.get("sigign") or "0", 16) & 1),
+          f"the job detached: the leader of a session of its own (setsid), SIGHUP ignored (nohup) ({st0})")
+    dumped = sdump.read_text() if sdump.exists() else ""
+    check("census_run.py" in dumped and "--shard 0/2" in dumped and not secret_line.search(dumped) and "rk_check" not in dumped
+          and "hf_check_shard" not in dumped, "census_run.py, as the job runs it, is handed no key or token (the stop hook alone has the pod's)")
     stop_env = (r1 / "stop_env.txt").read_text() if (r1 / "stop_env.txt").exists() else ""
     check("RUNPOD_API_KEY=rk_check" in stop_env and "stopping the pod" in log0
           and "stopping the pod" not in (logs / "L3-main_rel.s1of2.log").read_text(),
@@ -373,16 +420,23 @@ def run_checks(tmp: Path) -> int:
         check(len(calls) == 2 and "--append-verify" in calls[0] and "--include=*.jsonl" in calls[0] and "--exclude=*" in calls[0]
               and "--exclude=*.jsonl" in calls[1] and "--append-verify" not in calls[1] and all("/./" in c for c in calls),
               f"a round: the rows with --append-verify, then the rest whole ({calls})")
-    # the pod goes on writing: a row appended to a run, a meta rewritten; the final pull takes both, checked
+    # the pod goes on writing: a row appended to a run, a steer-lens layer built; the final pull takes both, checked
     with open(runs / "L3-t.jsonl", "a") as f:
         f.write(json.dumps({"kind": "baseline", "neuron": -1, "prompt": "extra", "dose": 0.0}) + "\n")
+    (r1 / "atlas_data" / "stand-in" / "index" / "steer_lens.d" / "L3.check.txt").write_text("a steer-lens layer, as the check writes one\n")
     r = run([POD / "sync.sh", "--dry-run", "--root", r1, "--to", home, "--final"], senv)
     lj = json.loads((home / "listing.json").read_text()) if (home / "listing.json").exists() else {}
     check(r.returncode == 0 and lj.get("ok") is True and lj.get("metas", 0) >= 4 and lj.get("running") == []
           and (hruns / "L3-t.jsonl").read_bytes() == (runs / "L3-t.jsonl").read_bytes() and (home / "remote.list").exists(),
           f"sync.sh --final: everything pulled, checked against the pod's listing and every meta ({lj.get('says')}; {r.stderr[-300:]})")
+    listed = (home / "remote.list").read_text().splitlines() if (home / "remote.list").exists() else []
+    check(all(any(ln.endswith(" " + p) for ln in listed) for p in ("atlas_data/stand-in/census/runs/L3-main_rel.jsonl", "logs/L3-t.log",
+                                                                   "atlas_data/stand-in/index/steer_lens.d/L3.check.txt")),
+          f"the pod's listing names the files under each source, the last one named too ({len(listed)} lines)")
     if not have_rsync:
-        check("--list-only" in rlog.read_text().splitlines()[-1], "the final check lists the pod's files with rsync --list-only")
+        last_call = rlog.read_text().splitlines()[-1]
+        check("--list-only" in last_call and last_call.split()[-1] == f"{home.resolve()}/",
+              f"the final check lists the pod's files with rsync --list-only, the copy given as the destination ({last_call[-200:]})")
     listing = [py, "-I", POD / "pod_tool.py", "listing", "--local", home, "--remote-list", home / "remote.list"]
     (hruns / "L3-main_rel.s1of2.canary.jsonl").unlink()
     with open(hruns / "L3-t.jsonl", "r+b") as f:
@@ -410,6 +464,22 @@ def run_checks(tmp: Path) -> int:
     r = run([POD / "sync.sh", "--dry-run", "--root", r1, "--to", home, "--until-done", "--every", "0.01"], senv)
     check(r.returncode == 0 and "every job on the pod has ended" in r.stderr and json.loads((home / "listing.json").read_text())["ok"] is True,
           f"--until-done: pulls until every job has ended, then the final pull ({r.stderr[-300:]})")
+    if not have_rsync:
+        # the pod's own command lines, over "SSH" in the pod's layout, the stand-in rsync reading check@pod: as this machine
+        podlike = tmp / "podlike"
+        (podlike / "atlas_data").mkdir(parents=True)
+        for link, to in (("atlas_data/census", "atlas_data/stand-in/census"), ("atlas_data/index", "atlas_data/stand-in/index"),
+                         ("logs", "logs"), ("pilot", "pilot")):
+            (podlike / link).symlink_to(r1 / to)
+        home2 = tmp / "home-ssh"
+        n_calls = len(rlog.read_text().splitlines())
+        r = run([POD / "sync.sh", "--from", "check@pod", "--port", "22022", "--remote-root", podlike, "--to", home2, "--final"], senv)
+        calls = rlog.read_text().splitlines()[n_calls:]
+        lj2 = json.loads((home2 / "listing.json").read_text()) if (home2 / "listing.json").exists() else {}
+        check(r.returncode == 0 and lj2.get("ok") is True and lj2.get("metas", 0) >= 4 and len(calls) == 2
+              and all("ssh -p 22022" in c and c.split()[-1] == f"{home2.resolve()}/" and f"check@pod:{podlike}/./atlas_data/index/steer_lens.d/" in c
+                      for c in calls) and (home2 / "atlas_data" / "index" / "steer_lens.d" / "L3.check.txt").exists(),
+              f"sync.sh --final from a pod: its sources, then the copy as the destination, never two remote paths ({lj2.get('says')}; {r.stderr[-300:]})")
     r = run([POD / "sync.sh", "--to", home, "--final"], senv)
     check(r.returncode != 0 and "--from" in r.stderr, "sync.sh without a pod to pull from is refused")
     section("sync.sh --dry-run: periodic pulls, the final pull checked by listing and by what each meta names", before)
@@ -422,8 +492,17 @@ def run_checks(tmp: Path) -> int:
     home_can = hc / "L3-main_rel.canary.jsonl"
     check(r.returncode == 0 and home_can.exists() and (hc / "L3-main_rel.canary.json").exists(), f"a home canary taken alone ({r.stderr[-200:]})")
     r2 = tmp / "pod2"
+    (r2 / "logs").mkdir(parents=True)
+    with open(r2 / "logs" / "gpu.lock", "w") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        r = run([POD / "pilot.sh", "--dry-run", "--root", r2], env)
+        fcntl.flock(held, fcntl.LOCK_UN)
+    check(r.returncode != 0 and "another GPU job holds this pod's card" in r.stderr and not any((r2 / "pilot").glob("*")),
+          f"the pilot refused while another job holds the card, before it writes anything ({r.stderr[-200:]})")
+    pdump = tmp / "pilot_env.txt"
     r = run([POD / "pilot.sh", "--dry-run", "--root", r2, "--home-canary", home_can, "--approved-hours", "100", "--jobs",
-             "whole_layer:2,steer_lens:1"], env, timeout=1800)
+             "whole_layer:2,steer_lens:1"], {**env, "HF_TOKEN": TOKEN, "RUNPOD_API_KEY": "rk_check", "POD_PYTHON": str(wrap),
+                                            "CHECK_ENV_DUMP": str(pdump)}, timeout=1800)
     pj_path = next(iter(sorted((r2 / "pilot").glob("*/pilot.json"))), None)
     pj = json.loads(pj_path.read_text()) if pj_path else {}
     pdir = pj_path.parent if pj_path else tmp
@@ -433,9 +512,17 @@ def run_checks(tmp: Path) -> int:
     check(len(rows) == 9 and {x["unpacker"] for x in rows} == {"reference", "lut", "compiled"} and {x["batch"] for x in rows} == {2, 4, 8}
           and all(x["fits"] and x["step_s"] and x["steps"] == 8 for x in rows) and pj.get("chosen") in rows,
           f"the decode step for each unpacker at each batch, the fastest that fit chosen ({len(rows)} rows)")
+    pdumped = pdump.read_text() if pdump.exists() else ""
+    leaked = [str(p.relative_to(r2)) for p in r2.rglob("*") if p.is_file() and TOKEN.encode() in p.read_bytes()]
+    check(pdumped.count("-- argv: ") >= 10 and all(t in pdumped for t in ("pod_tool.py selftest", "pod_tool.py canary-args", "verify_atlas_writer.py",
+                                                                        "census_run.py", "atlas_build.py steer", "census_tools.py"))
+          and not secret_line.search(pdumped) and TOKEN not in pdumped and "rk_check" not in pdumped and not leaked and TOKEN not in r.stdout + r.stderr,
+          f"every Python the pilot runs is handed no key or token, and the token is in nothing it writes ({pdumped.count('-- argv: ')} runs; {leaked})")
     wf = pj.get("writer_floor") or {}
-    check(wf.get("alone_twice_same") is True and wf.get("census_floor") == {"32": None, "64": None} and (pdir / "atlas_writer_floor.json").exists(),
-          f"the writer's floor (none on the stand-in, in float32 on the CPU) ({wf})")
+    pb = (pj.get("chosen") or {}).get("batch") or 0
+    check(wf.get("alone_twice_same") is True and wf.get("census_floor") == {"32": None, "64": None, **({str(pb): None} if pb >= 3 else {})}
+          and (pdir / "atlas_writer_floor.json").exists(),
+          f"the writer's floor at census batches of 32 and 64 and the pilot's own {pb} (none parts on the stand-in, in float32 on the CPU) ({wf})")
     cr = pj.get("calib_rel") or {}
     check(cr.get("answers") == (4 + 2) * 36 + 4 and cr.get("batch") == pj["chosen"]["batch"] and cr.get("wall_s") is not None
           and (pj.get("curves") or {}).get("window") is not None, f"a calib_rel run timed at the chosen batch, its dose window read ({cr})")

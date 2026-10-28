@@ -133,7 +133,9 @@ running_jobs() {  # jobs started on the pod and not ended, by the copy of its lo
 final() {
     note "the final pull: everything, whole"
     pull -a --relative "${SRCS[@]}" "$TO/" || return 1
-    pull -r --relative --list-only --no-human-readable "${SRCS[@]}" >"$TO/remote.list" || return 1
+    # the copy named as the destination, as rsync wants with several sources (it takes the last of several paths for
+    # that, and refuses a remote one there): --list-only then lists every source, and writes nothing
+    pull -r --relative --list-only --no-human-readable "${SRCS[@]}" "$TO/" >"$TO/remote.list" || return 1
     # the listing needs no package beyond Python's own
     if [ -n "${POD_PYTHON:-}" ]; then PY=$POD_PYTHON; elif [ -x "$REPO/.venv/bin/python" ]; then PY=$REPO/.venv/bin/python; else PY=python3; fi
     if "$PY" -I "$POD_DIR/pod_tool.py" listing --local "$TO" --remote-list "$TO/remote.list" --json "$TO/listing.json" \

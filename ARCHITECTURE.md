@@ -51,7 +51,7 @@ theodolite2/
 │   │   ├── census_shard.sh          #   one shard detached, logged, under a time limit, the pod stopped only when asked
 │   │   ├── sync.sh                  #   pulls to this machine every N minutes, and a final pull checked by listing
 │   │   ├── pod_tool.py              #   their Python: the self-test, the steps, the listing check, the pilot's summary
-│   │   └── common.sh                #   the volume root, the env file, a child's environment kept clear of secrets
+│   │   └── common.sh                #   the volume root, the env file, the card's lock, a child's environment free of secrets
 │   ├── export_constraints.sh        # the home venv's exact versions in a dated constraints file, for a pod (CPU)
 │   ├── gpu_log.py                   # rented cards' approvals, starts and stops, summed against the approval (CPU)
 │   ├── check_pod_scripts.py         # every pod script's --dry-run end to end on the stand-in, gpu_log's sums (CPU only)

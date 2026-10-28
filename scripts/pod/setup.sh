@@ -16,7 +16,8 @@
 # export_constraints.sh on the home machine: the pins are part of a run's runtime class), torch fetched for the backend
 # the file names, then checked to hold every pinned version; the stats index's sha256 (the census reads its push unit
 # there, and shards must share it); and last a self-test line: the card, the versions, the unpacker's test against the
-# reference on every 4-bit linear, and the runtime class.
+# reference on every 4-bit linear, and the runtime class (the self-test holds the card's lock, logs/gpu.lock, as a
+# census shard and the pilot do, and is refused while another job holds it).
 #
 # Secrets: whether the checkpoint is gated is not settled here (the plan for rented cards, §6), so the download goes
 # first with no token at all. HF_TOKEN (or HUGGING_FACE_HUB_TOKEN) is read from this script's environment only, then
@@ -250,6 +251,7 @@ if [ "$SELFTEST" = 0 ]; then
 fi
 STAND=()
 [ "$DRY" = 1 ] && STAND=(--stand-in) && export CUDA_VISIBLE_DEVICES=
+hold_card
 cd "$REPO"
 say "7. the self-test (the model loads; on a network volume this takes longer than the 16 s measured from a local disk)"
 scrubbed "$PY" -I "$POD_DIR/pod_tool.py" selftest "${STAND[@]}" --unpacker "$UNP" --out "$ROOT/logs/selftest.json"

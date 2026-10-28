@@ -548,12 +548,13 @@ pod restarts ready; the downloads are pinned to the snapshots above and tried wi
 from its environment for that alone and never written. `pilot.sh` times the decode step and the memory for each
 unpacker at several batches, measures the writer's floor (`scripts/verify_atlas_writer.py`), takes a `calib_rel` run
 and one steer-lens layer, sets a canary batch against the home card's (`census_run.py --canary-only`), and projects
-each job × 1.25 against an approval. `census_shard.sh` runs one shard detached, logged and under a time limit;
-`sync.sh` pulls the runs, metas, canaries and logs every few minutes and checks the final copy by listing; and
-`scripts/gpu_log.py` logs each pod against the approval it counts against. Each takes `--dry-run`, the whole flow on
-the CPU stand-in (`scripts/check_pod_scripts.py`); none has yet run on a rented card. The server on a pod is reached
-through an SSH tunnel to its 127.0.0.1:8765, never through a provider's public URL (it binds 127.0.0.1, and refuses a
-Host that is not this machine's).
+each job × 1.25 against an approval. `census_shard.sh` runs one shard detached, logged and under a time limit, one
+GPU job on the card at a time (`logs/gpu.lock`, which the pilot and the self-test take too); `sync.sh` pulls the runs,
+metas, canaries and logs every few minutes and checks the final copy by listing; and `scripts/gpu_log.py` logs each
+pod against the approval it counts against. Each takes `--dry-run`, the whole flow on the CPU stand-in
+(`scripts/check_pod_scripts.py`); none has yet run on a rented card. The server on a pod is reached through an SSH
+tunnel to its 127.0.0.1:8765, never through a provider's public URL (it binds 127.0.0.1, and refuses a Host that is
+not this machine's).
 
 **Reproduce the study**
 

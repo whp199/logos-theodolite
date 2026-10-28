@@ -14,16 +14,18 @@
 # L<layer>-<design>) and shard: logs/<job>.log holds census_run.py's output between CENSUS_START and CENSUS_DONE,
 # CENSUS_FAILED or CENSUS_TIMEOUT lines; logs/<job>.started is written at its start and logs/<job>.done, .failed or
 # .timeout at its end (sync.sh --until-done waits for them; pod_tool.py listing names jobs not ended); logs/<job>.job.sh
-# is the script it ran, with no secret in it. One GPU job holds the card at a time (logs/gpu.lock): a second is refused
-# while one runs. The timeout sends census_run.py SIGINT at --projected-hours x --margin (1.25, the budget rule's), so
-# it stops between steps and keeps every whole batch; the same command continues it. Run it again after a stop, a
-# timeout or a lost pod to finish the shard: rows written are skipped, a torn batch written again whole.
+# is the script it ran, with no secret in it. One GPU job holds the card at a time (logs/gpu.lock, which pilot.sh and
+# setup.sh's self-test take too): a second is refused while one runs. The timeout sends census_run.py SIGINT at
+# --projected-hours x --margin (1.25, the budget rule's), so it stops between steps and keeps every whole batch; the
+# same command continues it. Run it again after a stop, a timeout or a lost pod to finish the shard: rows written are
+# skipped, a torn batch written again whole.
 #
 # --stop-pod (off by default) runs `runpodctl stop pod "$RUNPOD_POD_ID"` at the end, whatever the job's end (an idle pod is
-# the likeliest waste); --stop-cmd CMD runs CMD instead (e.g. "runpodctl remove pod \$RUNPOD_POD_ID" to terminate it;
-# its volume stays). The stop runs with the pod's own environment, where the provider puts its key; census_run.py runs
-# with every variable naming a token, key or secret left out of its environment. --dry-run runs the job on the CPU
-# stand-in (census_run.py --stand-in) in a temporary root (or --root), and only names the default stop command.
+# the likeliest waste); --stop-cmd CMD runs CMD instead (e.g. "runpodctl remove pod \$RUNPOD_POD_ID" to terminate it: a
+# network volume stays, but a pod's own volume disk goes with the pod, so pull first, sync.sh --final). The stop runs
+# with the pod's own environment, where the provider puts its key; census_run.py runs with every variable naming a
+# token, key or secret left out of its environment. --dry-run runs the job on the CPU stand-in (census_run.py
+# --stand-in) in a temporary root (or --root), and only names the default stop command.
 
 # shellcheck disable=SC2016  # the job script's lines are single-quoted on purpose: the job expands them, not this
 set -euo pipefail
@@ -114,10 +116,7 @@ LOG=$LOGS/$JOB.log
 JOBF=$LOGS/$JOB.job.sh
 CMD=("$PY" -I -u scripts/census_run.py "${WHERE[@]}" --design "$DESIGN" --run "$RUN" "${STAND[@]}" "${EXTRA[@]}")
 
-exec 9>"$LOGS/gpu.lock"
-if ! flock -n 9; then
-    die "another GPU job holds this pod's card (logs/gpu.lock; see logs/*.started without an end): one at a time"
-fi
+hold_card  # refused here while another job holds the card; let go at once, the job taking it for itself
 exec 9>&-
 
 if [ "$STOP" = 1 ]; then
@@ -145,7 +144,9 @@ rm -f "$LOGS/$JOB.done" "$LOGS/$JOB.failed" "$LOGS/$JOB.timeout"
     printf 'exec 9>%q\n' "$LOGS/gpu.lock"
     printf 'if ! flock -n 9; then echo "CENSUS_REFUSED $(date -u +%%FT%%TZ): another GPU job holds the card" >>"$LOG"; '
     printf 'date -u +%%FT%%TZ >%q; exit 1; fi\n' "$LOGS/$JOB.failed"
-    printf 'printf "%%s pid %%s\\n" "$(date -u +%%FT%%TZ)" "$$" >%q\n' "$LOGS/$JOB.started"
+    # its start, with its session and the signals it ignores (setsid makes it a session's leader, nohup ignores SIGHUP)
+    printf 'printf "%%s pid %%s session %%s sigign %%s\\n" "$(date -u +%%FT%%TZ)" "$$" "$(cut -d" " -f6 /proc/$$/stat 2>/dev/null)" '
+    printf '"$(sed -n "s/^SigIgn:[[:space:]]*//p" /proc/$$/status 2>/dev/null)" >%q\n' "$LOGS/$JOB.started"
     printf 'echo "CENSUS_START $(date -u +%%FT%%TZ)" >>"$LOG"\n'
     if [ "$NOTIME" = 1 ]; then
         printf 'echo "no time limit (--no-timeout)" >>"$LOG"\n'
