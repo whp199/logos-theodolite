@@ -65,7 +65,7 @@ theodolite2/
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
 │   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)
-│   ├── check_vault_voice.py         # an edit's voice: order, failures, reply keys, over HTTP and the WebSocket (CPU only)
+│   ├── check_vault_voice.py         # an edit's voice: order, failures, reply keys, over HTTP, the WebSocket and MCP (CPU only)
 │   ├── check_dequant.py             # the faster unpackers against the runtime's, bit for bit, on a 4-bit stand-in (CPU only)
 │   ├── check_gguf.py                # the GGUF path against gguf-py and the stand-in, bit for bit (CPU only)
 │   ├── compare_gguf_ct.py           # does a GGUF hold the W4A16 checkpoint's weights? tensor by tensor (CPU)
@@ -556,7 +556,13 @@ keeps answering its health route and other sockets while the two answers are wri
 12.6 s on the GPU); the lock still keeps every sweep and other GPU route out. If the answer before cannot be written, nothing is edited and the statement is refused
 in plain words (HTTP 400; over the WebSocket `larql_result` ok false, as is a voice the request model refuses, which
 over HTTP is 422). If the answer after cannot be written, the edit stays in force with `after` null and `error` set.
-The MCP tool `query_larql_vault` takes no voice, since it does not hold the GPU lock.
+VoiceRequest is backend/larql_vault.py's (the server imports it). The MCP tool `query_larql_vault(lql_query, voice)`
+takes the same voice, refused in plain words (`voice_request`; one that is not an object, by FastMCP's check of the
+tool's types), and replies the same way. Run on its own (`python -m backend.mcp_scientist`), the MCP server's tools
+take turns: each runs whole under one lock of backend/mcp_scientist.py's (`_turn`), and the vault's statement runs in a
+worker thread under it (anyio's, so a call its client cancels keeps the lock until the thread ends, its edit made), so
+no other tool's call lands between an edit's two answers. When the server binds its runtime (`bind_runtime`), that
+lock is a no-op: the routes hold `_GPU_LOCK` around every tool they call.
 
 Reply: today's keys plus `voice`, after `patch` and before `lens` (UPDATE, INSERT: `status, patch,
 active_patches_count, voice, lens`; DELETE without `lens`). `voice` = `{prompt, chat, system, assistant_prefix,
@@ -570,11 +576,14 @@ when they are the same, or after failed). Every patch record (the reply's `patch
 `voice` (null when not heard), `edit_kind` ("one_neuron_column") and `replaces_patch` (the id of the edit in force on
 the same neuron that this one replaced, else null); DESCRIBE gains `edit_method`: one down_proj column per edit, rank
 one, no covariance solve, named after MEMIT but not MEMIT. The voice is one question, written by the model itself: it
-shows what the edit did to that answer only. scripts/check_vault_voice.py checks all of this on a stand-in runtime.
+shows what the edit did to that answer only. scripts/check_vault_voice.py checks all of this on a stand-in runtime,
+over HTTP, the WebSocket and MCP (`fastmcp.Client`, in memory), the tools' turns among it.
 
 On the pages: the vault's edit tab hears every edit unless the reader turns hearing off (`executeLarql(query, voice)`,
 `voicePayload`: the instrument page's question, begun answer, chat setting and system prompt unless typed there, at
-`VOICE_LENGTH` = 12 word-pieces); ROLLBACK, the console and every other statement are sent without one. The store
+`VOICE_LENGTH` = 12 word-pieces), and so does the console for an UPDATE, INSERT or DELETE typed there, with the same
+question (`consoleVoice`, on the kind the page's parser gives the statement; hearing on by default, and a blank
+question said, not an edit made unheard); ROLLBACK and every other statement are sent without one. The store
 keeps each voice heard in `editVoices`, keyed `${patch_id}:${timestamp}` (patch ids start again with the server): a
 DESCRIBE keeps only those of records the vault still holds, ROLLBACK forgets them all, and a sighting's cut-down
 `larql_status` is merged with the full records already held, so the ledger keeps each edit's time, norms and voice.

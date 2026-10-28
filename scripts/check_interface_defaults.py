@@ -32,7 +32,12 @@ itself, not a copy of it. It checks:
 8. the vault's voice: the question an edit is heard by is sent as the instrument sends its own (a chat with its system
    prompt and begun answer, or bare text whose begun answer the server puts on a new line, as composeText does), and the
    server's VoiceRequest takes it; executeLarql sends a voice only when given; the reply's voice is kept by patch and
-   time, a DESCRIBE keeps only the voices of records it still holds, and ROLLBACK forgets them all;
+   time, a DESCRIBE keeps only the voices of records it still holds, and ROLLBACK forgets them all; in the console
+   (`consoleVoice`, on the kind the vault page's own parser, screens/vault/lql.ts, gives each statement typed), an
+   UPDATE, INSERT or DELETE goes with the instrument page's question as its voice, hearing on by default, and every
+   other statement (a search, DESCRIBE POLE, DESCRIBE, ROLLBACK, an edit whose strength is no number, a statement the
+   vault does not read) goes without one, as does any edit with hearing off; a blank question is a problem said, not
+   an edit made unheard;
 9. what the pages say of these readings: every study figure section vii quotes (the average state's share, raw and
    centred scores through the lens, its naked-eye background, E3 (b)'s agreement at the lowest layers) is the one in
    E3's files, rounded as shown; the record of E3's average state in this server's coordinates
@@ -92,6 +97,7 @@ def check(cond: bool, what: str) -> None:
 # presets, and with a centring chosen. Every request is the store's own sweepPayload.
 ENTRY = r"""
 import * as T from "./useTheodoliteStore";
+import { parseLql } from "../screens/vault/lql";
 const st = () => T.useTheodoliteStore.getState();
 const send = (over = {}) => {
   const s = { ...st(), ...over };
@@ -193,7 +199,32 @@ reply = { status: "rolled_back", cleared_patches: 1, active_patches_count: 0 };
 st().executeLarql("ROLLBACK");
 await settle(); await settle();
 out.voice.afterRollback = Object.keys(st().editVoices);
-out.voice.posted = posted;
+out.voice.posted = posted.slice();  // as it stood: the console's posts follow
+// the console: whether a statement typed there goes with a voice is the store's decision (consoleVoice), on the kind
+// the vault page's own parser gives it (screens/vault/lql.ts), with the instrument page's question
+const TYPED = ["UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+  "INSERT INTO LAYER 35 (subject, object) VALUES ('spider', 'eight')", "delete from layer 50 where slot = 5313;",
+  "SELECT * FROM POLES NEAREST 'she' WHERE layer = 50 LIMIT 10", "DESCRIBE POLE LAYER 50 SLOT 5313 POLARITY -",
+  "DESCRIBE", "ROLLBACK", "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH -1",
+  "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 1.2.3", "not a statement"];
+const s0 = st();
+const asks = (t, hear = true, question = s0.question) =>
+  T.consoleVoice(parseLql(t).kind, hear, question, s0.answerBegins, s0.chat, s0.system);
+out.console = {
+  heardKinds: T.HEARD_KINDS,
+  kinds: TYPED.map((t) => parseLql(t).kind),
+  heard: TYPED.map((t) => asks(t)),
+  off: TYPED.map((t) => asks(t, false)),
+  blank: TYPED.map((t) => asks(t, true, "   ")),
+  instrument: T.voicePayload(s0.question, s0.answerBegins, s0.chat, s0.system),
+};
+const sentBefore = posted.length;
+reply = { command: "stand-in" };
+for (const t of TYPED) {
+  st().executeLarql(t, asks(t).voice);
+  await settle(); await settle();
+}
+out.console.posted = posted.slice(sentBefore);
 st().setFrame({ centre: true });
 st().setReadingPreset("as_built");
 out.centreKeptAsBuilt = st().frame.centre;
@@ -380,6 +411,33 @@ def check_voice(out: Dict[str, Any]) -> None:
     check(v["afterRestart"] == [], f"a DESCRIBE with no records kept {v['afterRestart']}")
     check(v["afterRollback"] == [], f"ROLLBACK kept {v['afterRollback']}")
 
+    # the console: an edit typed there carries the voice (the instrument page's question), its other statements none
+    con = out["console"]
+    heard = [True, True, True, False, False, False, False, True, False, False]
+    check(con["heardKinds"] == ["delete", "update", "insert"], f"HEARD_KINDS {con['heardKinds']}")
+    check(con["kinds"] == ["update", "insert", "delete", "select", "pole", "describe", "rollback", "update", "error",
+                           "error"], f"the statements typed are read as {con['kinds']}")
+    want = con["instrument"]
+    check(isinstance(want.get("prompt"), str) and want["prompt"] != "", f"the instrument page's question: {want}")
+    for i, (h, d) in enumerate(zip(heard, con["heard"])):
+        check(d == {"voice": want if h else None, "problem": None}, f"console statement {i + 1}, hearing on: {d}")
+    check(all(d == {"voice": None, "problem": None} for d in con["off"]), f"hearing off: {con['off']}")
+    for i, (h, d) in enumerate(zip(heard, con["blank"])):
+        ok = d["voice"] is None and (("needs a question" in (d["problem"] or "")) if h else d["problem"] is None)
+        check(ok, f"console statement {i + 1}, a blank question: {d}")
+    posted = con["posted"]
+    check([p["path"] for p in posted] == ["/api/larql"] * len(heard), f"the console posted to {[p['path'] for p in posted]}")
+    if len(posted) == len(heard):
+        for i, (h, p) in enumerate(zip(heard, posted)):
+            check((p["body"].get("voice") == want) if h else ("voice" not in p["body"]),
+                  f"console statement {i + 1} ({con['kinds'][i]}) sent {p['body']}")
+    try:
+        ok = voice_spec(server.LarqlRequest(query="DESCRIBE", voice=want).voice)["prompt"] == want["prompt"]
+    except Exception as exc:  # noqa: BLE001
+        ok = False
+        print(f"    console voice: {type(exc).__name__}: {exc}")
+    check(ok, "the server's VoiceRequest does not take the voice the console sends")
+
 
 def check_text() -> None:
     print("4. the text the checks and pages lean on")
@@ -519,16 +577,20 @@ def check_contrast_text() -> None:
                                                  "it reads +2.3 toward", "none of these bands is about it",
                                                  "[NOT YET IN THE SERVER]", "Read in fp32 on the pair rows"),
         "screens/lexicon/Cautions.tsx": ("Contrastive axes are not built", "every reply names", "it is no longer offered"),
-        "screens/vault/EditPanel.tsx": ("“before” is that edit’s voice", "the scientist’s tools"),
+        "screens/vault/EditPanel.tsx": ("“before” is that edit’s voice", "the scientist’s tools",
+                                        "in the console, through the MCP tool,", "and it is made without its voice"),
+        "screens/vault/ConsolePanel.tsx": ("Typed here, it is made without its voice", "make it on the edit tab"),
         "screens/Lexicon.tsx": ("the scientist’s tools",),
     }
     for name, phrases in gone.items():
         text = re.sub(r"\s+", " ", (FRONTEND / "src" / name).read_text(encoding="utf-8"))
         for phrase in phrases:
             check(phrase not in text, f"{name}: still says {phrase!r}")
-    for name, phrases in {"README.md": ("is not yet checked", "every pair names"),
+    for name, phrases in {"README.md": ("is not yet checked", "every pair names", "the tool does not hold the GPU lock"),
                           "ROADMAP.md": ("is not yet checked", "every pair names", "layers 1–10 as never tested"),
-                          "ARCHITECTURE.md": ("is not yet checked", "DESCRIBE, DELETE and ROLLBACK reply as before"),
+                          "ARCHITECTURE.md": ("is not yet checked", "DESCRIBE, DELETE and ROLLBACK reply as before",
+                                              "takes no voice, since it does not hold the GPU lock",
+                                              "the console and every other statement are sent without one"),
                           "REFERENCES.md": ("column overwrite",)}.items():
         text = re.sub(r"\s+", " ", (ROOT_DIR / name).read_text(encoding="utf-8"))
         for phrase in phrases:

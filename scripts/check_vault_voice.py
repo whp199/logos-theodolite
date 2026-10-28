@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""A CPU-only check of the vault's voice (backend/larql_vault.py `_heard`, backend/engine_runtime.py `write_voice`,
-backend/server.py `VoiceRequest`): no model, no GPU, no running server.
+"""A CPU-only check of the vault's voice (backend/larql_vault.py `_heard` and `VoiceRequest`, backend/engine_runtime.py
+`write_voice`, the MCP tool backend/mcp_scientist.py `query_larql_vault`): no model, no GPU, no running server.
 
 An edit (DELETE, UPDATE, INSERT) can be heard: given a voice, the vault has the model write its answer to one
 question the likeliest way just before the edit and again just after, under the GPU lock the route holds. Here the
 runtime is a stand-in: a real `TheodoliteRuntime` (so `write_voice`, `_written_step` and the overlays the real
 `apply_patch_surgery` writes are the real code) over tiny weights (8 wide, 64 word-pieces), whose writing loop
 (interp_engine's `generate_stream`, replaced) gives logits that depend on the column overlays in force, as the real
-model's forward does (engine_runtime `_w4a16_forward`). The real `LarqlVaultEngine.execute_lql` is driven directly
-and through the app's real routes (`fastapi.testclient.TestClient`, HTTP and WebSocket, the lifespan replaced). It
-checks:
+model's forward does (engine_runtime `_w4a16_forward`). The real `LarqlVaultEngine.execute_lql` is driven directly,
+through the app's real routes (`fastapi.testclient.TestClient`, HTTP and WebSocket, the lifespan replaced), and through
+the real MCP server (`fastmcp.Client`, in memory, on the same stand-in). It checks:
 1. `write_voice` itself: greedy, stopping at an end mark or the length, its generator closed, step 0's five
    likeliest and the watched word's odds and rank, the log-softmax it returns, and its plain-words refusals (a
    question too long for one go, an answer of no word-pieces);
@@ -31,7 +31,16 @@ checks:
 7. the routes: HTTP and WebSocket pass the voice with its defaults (a chat, 12 word-pieces), and write both answers
    in a worker thread, off the event loop, still under the GPU lock; a voice the request
    model refuses comes back over the WebSocket as larql_result ok false in plain words, and over HTTP as 422, with no
-   edit made; the MCP tool `query_larql_vault` takes no voice (it does not hold the GPU lock).
+   edit made; the server's VoiceRequest is the vault's own;
+8. the MCP tool, through fastmcp.Client: `query_larql_vault(lql_query, voice)` replies as before without a voice and
+   with one replies with it as the routes do (VoiceRequest's defaults, "voice" before "lens", kept on the record),
+   both answers written in a worker thread under the tools' own lock and not the server's; a voice it refuses is
+   refused in plain words (one that is not an object, by FastMCP's check of the tool's types), and a failed voice
+   before edits nothing; inspect_pole asked while the voice before is written waits, and is logged after the voice
+   after, never between; a call cancelled meanwhile (as the MCP SDK cancels one) keeps its turn until its thread
+   ends, its edit made and heard; bound as the server binds it, the tools' lock is a no-op and the same two calls
+   interleave (the server's _GPU_LOCK keeps them apart there); every tool is async and runs in its turn, its
+   parameters as a client sees them its function's.
 
 Run: .venv/bin/python -I scripts/check_vault_voice.py   (exits 0 when every check holds)
 """
@@ -48,6 +57,9 @@ if __name__ == "__main__":
 import asyncio
 import inspect
 import json
+import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -57,12 +69,17 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+import anyio
 import torch
 import torch.nn.functional as F
 from fastapi.testclient import TestClient
+from fastmcp import Client
+from fastmcp.exceptions import ToolError
 from interp_engine.sampling import resolve_sampling
 
 import backend.engine_runtime as engine_runtime
+import backend.larql_vault as larql_vault
+import backend.mcp_scientist as mcp_scientist
 import backend.server as server
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
 from backend.larql_vault import EDIT_METHOD, LarqlVaultEngine, PatchOperationRecord, kl_nats, parted_at, voice_spec
@@ -169,8 +186,10 @@ class StandInRuntime(TheodoliteRuntime):
         self.deaf = False
         self.fail_calls: Dict[int, Exception] = {}  # the n-th write_voice call (from 1) raises this
         self.n_voice_calls = 0
-        self.events: List[Tuple[str, Any]] = []  # ("voice", overlays, lock held) | ("edit", statement)
+        self.events: List[Tuple[str, Any]] = []  # ("voice", overlays, lock held) | ("edit", statement) | ("pole", layer)
         self.voice_on_loop: List[bool] = []  # for each write_voice call: was it made on a running event loop's thread?
+        self.voice_turn: List[bool] = []  # for each write_voice call: did the MCP tools' own lock (mcp_scientist) hold?
+        self.gate: Optional[threading.Event] = None  # when set, the next write_voice call waits for it, once
         self.composed: List[Dict[str, Any]] = []
         self.closed = 0
 
@@ -206,6 +225,11 @@ class StandInRuntime(TheodoliteRuntime):
             self.voice_on_loop.append(True)
         except RuntimeError:
             self.voice_on_loop.append(False)
+        turn = mcp_scientist._TURN
+        self.voice_turn.append(turn is not None and turn[1].locked())
+        gate, self.gate = self.gate, None
+        if gate is not None:
+            gate.wait(30)  # held while the check asks for another tool meanwhile
         if self.n_voice_calls in self.fail_calls:
             raise self.fail_calls[self.n_voice_calls]
         return super().write_voice(prompt_text, **kw)
@@ -259,7 +283,12 @@ def stand_in_vault() -> Tuple[StandInRuntime, LarqlVaultEngine]:
     # NEAREST (and so INSERT's choice of neuron) reads the full gate and down matrices: a stand-in answer here
     vault.query_nearest_edges = lambda **kw: {  # type: ignore[assignment]
         "command": "NEAREST", "results": [{"neuron_idx": 7, "polarity_num": 1.0}]}
-    vault.inspect_bipolar_slot = lambda **kw: {"layer": kw["layer_idx"], "poles": []}  # type: ignore[assignment]
+
+    def pole(**kw: Any) -> Dict[str, Any]:  # DESCRIBE POLE and inspect_pole, logged
+        rt.events.append(("pole", kw["layer_idx"]))
+        return {"layer": kw["layer_idx"], "poles": []}
+
+    vault.inspect_bipolar_slot = pole  # type: ignore[assignment]
     return rt, vault
 
 
@@ -492,8 +521,6 @@ def check_ignored() -> None:
 
 def check_routes() -> None:
     print("7. the routes: HTTP and WebSocket, under the GPU lock")
-    import backend.mcp_scientist as mcp_scientist
-
     rt, vault = stand_in_vault()
     server._RUNTIME = rt  # type: ignore[assignment]
     server._VAULT = vault
@@ -558,14 +585,173 @@ def check_routes() -> None:
         ws.send_json({"action": "larql", "query": "ROLLBACK"})
         check(ws.receive_json()["data"]["active_patches_count"] == 0, "WS ROLLBACK")
 
-    params = list(inspect.signature(mcp_scientist.query_larql_vault).parameters)
-    check(params == ["lql_query"], f"the MCP tool takes no voice: {params}")
     check(list(inspect.signature(LarqlVaultEngine.execute_lql).parameters) == ["self", "query", "voice"],
           "execute_lql(query, voice=None)")
+    check(server.VoiceRequest is larql_vault.VoiceRequest, "the server takes the vault's own VoiceRequest")
     check(voice_spec(server.VoiceRequest(prompt="Q")) == {"prompt": "Q", "chat": True, "system": None,
                                                           "assistant_prefix": "", "max_new_tokens": 12},
           "VoiceRequest and voice_spec agree on the defaults")
     check(json.dumps(body) is not None, "the reply is JSON")
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# 8. the MCP tool, and the tools taking turns
+# --------------------------------------------------------------------------------------------------------------------
+
+TOOLS = ["causal_spot_check", "inspect_pole", "query_larql_vault", "test_motif_hypothesis", "trace_downstream_readers"]
+HEARD_REPLY = ["status", "patch", "active_patches_count", "voice", "lens"]
+
+
+async def until(cond: Any, timeout: float = 10.0) -> bool:
+    """Wait (on the event loop) until `cond()` holds, at most `timeout` seconds; whether it did."""
+    t0 = time.monotonic()
+    while not cond():
+        if time.monotonic() - t0 > timeout:
+            return False
+        await asyncio.sleep(0.01)
+    return True
+
+
+async def refused(client: Client, args: Dict[str, Any]) -> Optional[str]:
+    """The tool's refusal of `args` in its own words, or None when it was not refused."""
+    try:
+        await client.call_tool("query_larql_vault", args)
+    except ToolError as exc:
+        return str(exc)
+    return None
+
+
+async def asked_meanwhile(client: Client, rt: StandInRuntime, edit: Any) -> Tuple[Any, Any, bool]:
+    """Start `edit` (a coroutine whose statement is heard), hold its voice before in its worker thread, ask for
+    inspect_pole meanwhile, give it half a second, then let the voice go on. Returns the two replies, and whether
+    inspect_pole had answered before the voice was let go."""
+    rt.events.clear()
+    gate = threading.Event()
+    rt.gate = gate
+    edit_task = asyncio.ensure_future(edit)
+    began = await until(lambda: any(e[0] == "voice" for e in rt.events))
+    pole_task = asyncio.ensure_future(client.call_tool("inspect_pole", {"layer": 45, "neuron_idx": 7}))
+    await until(pole_task.done, timeout=0.5)
+    early = pole_task.done()
+    gate.set()
+    replies = await asyncio.gather(edit_task, pole_task, return_exceptions=True)
+    check(began, "the voice before was begun")
+    return replies[0], replies[1], early
+
+
+async def mcp_turns(rt: StandInRuntime, vault: LarqlVaultEngine) -> None:
+    async with Client(mcp_scientist.mcp) as client:
+        tools = {t.name: t for t in await client.list_tools()}
+        check(sorted(tools) == TOOLS, f"the MCP tools {sorted(tools)}")
+        for name in TOOLS:
+            fn = getattr(mcp_scientist, name)
+            shown = list(tools[name].input_schema.get("properties", {})) if name in tools else None
+            check(inspect.iscoroutinefunction(fn) and hasattr(fn, "__wrapped__")
+                  and shown == list(inspect.signature(fn).parameters),
+                  f"{name}: async and run in its turn, its parameters as a client sees them {shown}")
+        check(list(inspect.signature(mcp_scientist.query_larql_vault).parameters) == ["lql_query", "voice"],
+              "query_larql_vault(lql_query, voice=None)")
+
+        # without a voice: today's reply; with one: the routes' defaults, "voice" before "lens", kept on the record,
+        # both answers written in a worker thread under the tools' own lock (the server's is not involved)
+        r = await client.call_tool("query_larql_vault", {"lql_query": UPD})
+        check(list(r.data) == edit_keys(UPD) and r.data["patch"]["voice"] is None and rt.n_voice_calls == 0,
+              f"MCP, no voice: {list(r.data)}")
+        r = await client.call_tool("query_larql_vault", {"lql_query": UPD, "voice": {"prompt": "How many legs?"}})
+        body = r.data
+        check(list(body) == HEARD_REPLY, f"MCP with a voice: {list(body)}")
+        v = body.get("voice") or {}
+        check(v.get("chat") is True and v.get("max_new_tokens") == 12 and v.get("system") is None
+              and list(v) == HEARD_KEYS, f"MCP: VoiceRequest's defaults reach the vault: {v.get('chat')} "
+              f"{v.get('max_new_tokens')}")
+        # the same neuron's overlay replaced by its like: one overlay in force before and after, so nothing moves
+        check(body["patch"]["voice"] == v and body["patch"]["replaces_patch"] == 1 and v["edits_in_force_before"] == [1]
+              and v["parted_at"] is None and v["before"]["token_ids"] == v["after"]["token_ids"] == [10] + [41] * 11,
+              f"MCP: the second edit of the neuron is heard over the first, and replaces it: {v.get('before')}")
+        check(rt.voice_on_loop[-2:] == [False, False], f"MCP: both voices written off the event loop: {rt.voice_on_loop[-2:]}")
+        check(rt.voice_turn[-2:] == [True, True] and [e[2] for e in rt.events if e[0] == "voice"][-2:] == [False, False],
+              f"MCP: both voices under the tools' own lock, not the server's: {rt.voice_turn[-2:]}")
+        d = await client.call_tool("query_larql_vault", {"lql_query": "DESCRIBE", "voice": {"prompt": "Q"}})
+        check("voice" not in d.data and d.data["active_patches"][-1]["voice"] == v,
+              "MCP DESCRIBE ignores a voice, and its records carry the one heard")
+
+        # refusals: in plain words where the tool's own check refuses, and nothing written or edited either way
+        n_records, n_calls = len(vault.active_patches), rt.n_voice_calls
+        for bad, words in (({"prompt": ""}, "voice.prompt: "), ({"prompt": "Q", "max_new_tokens": 65},
+                                                                "voice.max_new_tokens: "),
+                           ({"chat": True}, "voice.prompt: ")):
+            for statement in (UPD, "DESCRIBE"):
+                said = await refused(client, {"lql_query": statement, "voice": bad})
+                check(said is not None and "The voice was refused, and no edit was made. " + words in said,
+                      f"MCP voice {bad!r} with {statement.split()[0]}: {said}")
+        for bad in ("Q?", [1]):  # not an object: FastMCP refuses it by the tool's own parameter types, first
+            said = await refused(client, {"lql_query": UPD, "voice": bad})
+            check(said is not None and "voice" in said, f"MCP voice {bad!r}: {said}")
+        rt.fail_calls = {rt.n_voice_calls + 1: RuntimeError("down")}
+        said = await refused(client, {"lql_query": UPD, "voice": {"prompt": "Q"}})
+        check(said is not None and "could not be written: RuntimeError: down; no edit was made." in said,
+              f"MCP, a failed voice before: {said}")
+        rt.fail_calls = {}
+        check(len(vault.active_patches) == n_records and rt.n_voice_calls == n_calls + 1,
+              "MCP: nothing edited by a refused or failed voice")
+
+        # a concurrent tool waits its turn: inspect_pole, asked while the voice before is written, is logged after
+        # the voice after, never between
+        r_edit, r_pole, early = await asked_meanwhile(client, rt, client.call_tool(
+            "query_larql_vault", {"lql_query": DEL, "voice": {"prompt": "Q", "max_new_tokens": 3}}))
+        order = [e[0] for e in rt.events]
+        check(not early and order == ["voice", "edit", "voice", "pole"],
+              f"inspect_pole, asked meanwhile, waits for the voice after: {order}")
+        check(not isinstance(r_edit, BaseException) and list(r_edit.data) == HEARD_REPLY[:-1]
+              and not isinstance(r_pole, BaseException) and r_pole.data["layer"] == 45
+              and list(r_pole.data)[-2:] == ["label_gate", "lens"], "both replies whole")
+
+        # a call cancelled while its voice is written (the MCP SDK cancels a call's task when its client says so)
+        # keeps its turn until its thread ends: the edit is still made and heard, and the next tool runs after it
+        n_records = len(vault.active_patches)
+        scope = anyio.CancelScope()
+
+        async def cancelled_edit() -> None:
+            with scope:
+                await mcp_scientist.query_larql_vault(UPD, voice={"prompt": "Q", "max_new_tokens": 2})
+
+        async def then_cancel() -> None:
+            await until(lambda: any(e[0] == "voice" for e in rt.events))
+            scope.cancel()
+
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(then_cancel)
+            _r, _p, early = await asked_meanwhile(client, rt, cancelled_edit())
+        order = [e[0] for e in rt.events]
+        check(scope.cancel_called and not early and order == ["voice", "edit", "voice", "pole"]
+              and len(vault.active_patches) == n_records + 1 and vault.active_patches[-1].voice is not None,
+              f"a cancelled call keeps its turn until its thread ends, the edit made and heard: {order}")
+
+        # bound as the server binds it (its routes hold _GPU_LOCK around every call), the tools' lock is a no-op:
+        # the same two calls interleave, which is what the server's lock keeps apart there
+        mcp_scientist.bind_runtime(rt, vault)  # type: ignore[arg-type]
+        try:
+            _r, _p, early = await asked_meanwhile(client, rt, client.call_tool(
+                "query_larql_vault", {"lql_query": DEL, "voice": {"prompt": "Q", "max_new_tokens": 3}}))
+            order = [e[0] for e in rt.events]
+            check(early and order == ["voice", "pole", "edit", "voice"] and rt.voice_turn[-2:] == [False, False],
+                  f"bound by the server, the tools take no lock of their own: {order}")
+        finally:
+            mcp_scientist.bind_runtime(rt, vault, caller_holds_lock=False)  # type: ignore[arg-type]
+
+
+def check_mcp() -> None:
+    print("8. the MCP tool: query_larql_vault hears an edit, and the tools take turns")
+    # a refusal is logged by FastMCP with its traceback; the check reads the refusal itself
+    logging.getLogger("fastmcp").setLevel(logging.CRITICAL)
+    rt, vault = stand_in_vault()
+    # standalone, the module loads its own runtime and takes turns on it: here it is given the stand-in instead
+    mcp_scientist.bind_runtime(rt, vault, caller_holds_lock=False)  # type: ignore[arg-type]
+    try:
+        asyncio.run(mcp_turns(rt, vault))
+    finally:
+        mcp_scientist._SHARED_RUNTIME = None
+        mcp_scientist._SHARED_VAULT = None
 
 
 def main() -> int:
@@ -576,6 +762,7 @@ def main() -> int:
     check_failures()
     check_ignored()
     check_routes()
+    check_mcp()
     if failures:
         print(f"\nvault voice: {len(failures)} of {passed + len(failures)} checks FAILED")
         return 1

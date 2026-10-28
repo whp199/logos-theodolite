@@ -33,6 +33,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
+import asyncio
 import json
 import re
 import types
@@ -424,8 +425,9 @@ def check_vault() -> None:
         vault = stand_in_vault(rt)
         mcp_scientist.bind_runtime(rt, vault)
         for statement, reached, through, labels in STATEMENTS:
+            # the MCP tool is async (it takes turns on the model; a no-op here, bound as the server binds it)
             for via, run in (("execute_lql", vault.execute_lql),
-                             ("query_larql_vault", mcp_scientist.query_larql_vault)):
+                             ("query_larql_vault", lambda s: asyncio.run(mcp_scientist.query_larql_vault(s)))):
                 reply = run(statement)
                 what = f"{label}, {via}({statement!r})"
                 check(reply.get("reached") == reached, f"{what}: reached {reply.get('reached')!r}, not {reached}")

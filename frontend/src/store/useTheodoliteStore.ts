@@ -402,6 +402,34 @@ export function voicePayload(question: string, answerBegins: string, chat: boole
   };
 }
 
+/** The statements the vault hears (larql_vault.py execute_lql: DELETE, UPDATE and INSERT; every other one ignores a
+ * voice), by the kind the vault page's parser gives a statement (screens/vault/lql.ts parseLql). */
+export const HEARD_KINDS = ["delete", "update", "insert"] as const;
+
+/**
+ * What a statement typed in the vault's console is sent with, decided here so that the bundle check can read it: with
+ * hearing on (the console's default, as the edit tab's), an edit (`kind` as parseLql gives it) goes with the voice it
+ * is heard by (`voicePayload` of the question given, the edit tab's: the instrument page's own unless typed there), and
+ * a blank question is a problem to show, not an edit made unheard; with hearing off, or for any other statement, no
+ * voice goes, and the statement is sent exactly as before.
+ */
+export function consoleVoice(
+  kind: string,
+  hear: boolean,
+  question: string,
+  answerBegins: string,
+  chat: boolean,
+  system: string,
+): { voice: VoicePayload | null; problem: string | null } {
+  if (!hear || !(HEARD_KINDS as readonly string[]).includes(kind)) return { voice: null, problem: null };
+  if (!question.trim())
+    return {
+      voice: null,
+      problem: "to hear it, the model needs a question to answer: write one on the instrument page or the edit tab, or turn hearing off",
+    };
+  return { voice: voicePayload(question, answerBegins, chat, system), problem: null };
+}
+
 /** Where an edit's voice is kept: by patch id and the moment the vault made it (patch ids start again with the server). */
 export const voiceKey = (e: Pick<ActiveEdit, "patch_id" | "timestamp">) => `${e.patch_id}:${e.timestamp ?? ""}`;
 

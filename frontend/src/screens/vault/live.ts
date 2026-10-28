@@ -2,9 +2,18 @@
  * Reading the vault's live replies out of the store's log (useTheodoliteStore().larqlLog, newest first).
  * Shapes: backend/larql_vault.py (query_nearest_edges, apply_patch_surgery, rollback_patches, describe_vault).
  */
-import type { ActiveEdit, LarqlEntry } from "../../store/useTheodoliteStore";
+import { type ActiveEdit, type EditVoice, type LarqlEntry, type VoiceAnswer, voiceWords } from "../../store/useTheodoliteStore";
 import { clampL, clampN, parseLql, type Parsed } from "./lql";
 import { sharedShown } from "../../lib/labels";
+
+/** A voice's answer in quotes, its end mark left out; an answer that only ended its turn says so. */
+export const said = (a: VoiceAnswer) => {
+  const w = voiceWords(a);
+  return w ? "“" + w + "”" : a.stopReason === "end_mark" ? "nothing, ending its turn at once" : "“”";
+};
+/** The question a voice asked, with its begun answer when it had one. */
+export const asked = (v: Pick<EditVoice, "prompt" | "assistantPrefix">) =>
+  "“" + v.prompt.trim() + "”" + (v.assistantPrefix.trim() ? " (its answer begun “" + v.assistantPrefix.trim() + "”)" : "");
 
 export interface TokenLogit {
   token: string;

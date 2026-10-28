@@ -98,7 +98,8 @@ Runs inside a single process/network namespace to verify:
    while /api/health still answers (the statement runs off the event loop);
    DESCRIBE keeps each voice and names the edit method, and ignores a voice sent with it; a DELETE has no word to
    watch; a voice refused (HTTP 422, 400; WebSocket ok false) leaves nothing edited; ROLLBACK restores the answer; the
-   default edit's voice agrees with the sightings too; the MCP tool's edits are unheard. On the vault page, the edit
+   default edit's voice agrees with the sightings too; the MCP tool's edits are unheard without a voice, and with one
+   heard as over HTTP, the same two answers. On the vault page, the edit
    tab hears its default edit by default, its status line quotes the two answers the server recorded in the wording
    for an answer that changed or did not; the heard edit, typed into the tab with the spider question, is said to
    have changed the answer, as the server heard it; and "undo every edit" rolls each back.
@@ -608,7 +609,8 @@ def assert_voice(v: Any, spec: Dict[str, Any], in_force: List[int], what: str) -
 
 async def check_vault_voice_transports(client: Any) -> None:
     """An edit's voice (ARCHITECTURE §4.6; the module docstring, item 11) over HTTP and the WebSocket, against sightings
-    of the same question before the edit, with it in force and after ROLLBACK; the MCP tool's edits unheard."""
+    of the same question before the edit, with it in force and after ROLLBACK; the MCP tool's edits unheard without a
+    voice, and with one heard as over HTTP."""
     spec = {"prompt": VOICE_Q, "chat": True, "system": None, "assistant_prefix": "", "max_new_tokens": 12}
     sight = {"prompt": VOICE_Q, "chat": True, "max_new_tokens": 12}
     r0 = await client.post("/api/larql", json={"query": "ROLLBACK"})
@@ -724,15 +726,28 @@ async def check_vault_voice_transports(client: Any) -> None:
         assert (await client.post("/api/larql", json={"query": "ROLLBACK"})).status_code == 200
         print(f"  • voice, the edit tab's default edit: parted at {v_d['parted_at']}, KL "
               f"{v_d['first_step']['kl_before_after']:.3g} nats (not heard, as on the first GPU run, when None)")
-    # the MCP tool takes no voice (it does not hold the GPU lock): its edits are made unheard, said so on the record
-    upd = query_larql_vault(VOICE_EDIT)
-    try:
-        assert "voice" not in upd and upd["patch"]["voice"] is None and upd["patch"]["edit_kind"] == "one_neuron_column", upd
-    finally:
-        query_larql_vault("ROLLBACK")
+    # the MCP tool, called as the server's routes call the tools, under _GPU_LOCK (the server bound the runtime, so the
+    # tool's own turn is a no-op): without a voice its edit is made unheard, said so on the record; with one it is heard
+    # as the route hears it, the same two answers from the same model as the heard edit over HTTP
+    async with _GPU_LOCK:
+        upd = await query_larql_vault(VOICE_EDIT)
+        try:
+            assert "voice" not in upd and upd["patch"]["voice"] is None and upd["patch"]["edit_kind"] == "one_neuron_column", upd
+        finally:
+            await query_larql_vault("ROLLBACK")
+        h_m = await query_larql_vault(edit, voice=spec)
+        try:
+            v_m = assert_voice(h_m["voice"], spec, [], "MCP UPDATE")
+            assert list(h_m) == list(h1) and h_m["patch"]["voice"] == v_m, list(h_m)
+            assert v_m["before"]["token_ids"] == v1["before"]["token_ids"] and v_m["after"]["token_ids"] == v1["after"]["token_ids"], (
+                f"the MCP tool heard {voice_said(v_m['before'])} → {voice_said(v_m['after'])}, the route "
+                f"{voice_said(v1['before'])} → {voice_said(v1['after'])}")
+        finally:
+            await query_larql_vault("ROLLBACK")
     print("  • voice, WS: the same edit again replaces the first (before = its after, KL ~0), and /api/health answered "
           f"in {dt_h * 1000:.0f} ms while it was heard; a DELETE has no word to watch; refusals leave nothing edited "
-          "(HTTP 422/400, WS ok false); ROLLBACK restores the answer; MCP unheard")
+          "(HTTP 422/400, WS ok false); ROLLBACK restores the answer; MCP unheard without a voice, and with one heard as "
+          "over HTTP")
 
 
 def runtime_word_id(word: str) -> int:
@@ -924,7 +939,7 @@ CAUSAL_FACE_KEYS = ["delta", "kl_mean", "kl_median", "kl_by_context", "kl_over_f
                     "tracked", "floor_top100_overlap", "linear", "label_overlap"]
 
 
-def assert_causal_reply(r: Any, sent: Dict[str, Any], lens: Dict[str, Any], model_id: str, what: str) -> None:
+async def assert_causal_reply(r: Any, sent: Dict[str, Any], lens: Dict[str, Any], model_id: str, what: str) -> None:
     """A causal spot-check's reply (ARCHITECTURE §4.5) to the request `sent`, at the route's defaults (k = 10, the
     activation write, max|a| over the study's texts, the floor on, ten words a list): read without a nudge and with no
     vault edit in force, both faces measured and each above its floor, each face's label_check the one inspect_pole
@@ -970,8 +985,8 @@ def assert_causal_reply(r: Any, sent: Dict[str, Any], lens: Dict[str, Any], mode
             assert len(lo[side]["label_ids"]) == 10 and abs(lo[side]["p10"] - sum(lo[side]["in_top100"]) / 10) < 1e-9, (
                 f"{what} face {face} {side}: {lo[side]}")
         check = assert_label_check(lo["label_check"], r["layer"], lens["id"], f"{what} face {face}")
-        assert check == inspect_pole(layer=r["layer"], neuron_idx=r["neuron_idx"], polarity=sign)[pole]["label_check"], (
-            f"{what} face {face}: its label_check is not inspect_pole's")
+        pole_reply = await inspect_pole(layer=r["layer"], neuron_idx=r["neuron_idx"], polarity=sign)
+        assert check == pole_reply[pole]["label_check"], f"{what} face {face}: its label_check is not inspect_pole's"
 
 
 # Set one of the "How to read these pages" switches ("rubrics", "apparatus") on or off, whatever it was: (name, on)
@@ -1187,7 +1202,7 @@ async def main() -> int:
         # -------------------------------------------------------------------------
         print("\n[2/4] Verifying FastMCP Scientist Tools (`backend/mcp_scientist.py`)...")
         # Tool 1: inspect_pole on Layer 53 (1-based L54) Neuron 16383 (- South Pole)
-        pole_res = inspect_pole(layer=53, neuron_idx=16383, polarity=-1.0)
+        pole_res = await inspect_pole(layer=53, neuron_idx=16383, polarity=-1.0)
         south_toks = [t["token"] for t in pole_res["south_pole"]["j_vindex_tokens"][:4]]
         north_toks = [t["token"] for t in pole_res["north_pole"]["j_vindex_tokens"][:4]]
         gate_toks = [t["token"] for t in pole_res["gate_trigger_tokens"][:4]]
@@ -1207,18 +1222,18 @@ async def main() -> int:
         print(f"  • inspect_pole(L53, N16383): shares {pole_res['north_pole']['label_check']['shared_top10']} (+) and "
               f"{pole_res['south_pole']['label_check']['shared_top10']} (-) of ten with the naked eye")
         # at layer 59 the lens is the identity: the two readings are one, so they share all ten and are shown
-        top_pole = inspect_pole(layer=59, neuron_idx=12584, polarity=1.0)
+        top_pole = await inspect_pole(layer=59, neuron_idx=12584, polarity=1.0)
         for face in ("north_pole", "south_pole"):
             c = assert_label_check(top_pole[face]["label_check"], 59, lens["id"], f"inspect_pole(59, 12584) {face}")
             assert c["shared_top10"] == 10 and c["band"] == "one_reading" and not c["held_back"], c
         # below layer 40 a label is held back by the layer, whatever it shares
-        low_pole = inspect_pole(layer=35, neuron_idx=21189, polarity=-1.0)
+        low_pole = await inspect_pole(layer=35, neuron_idx=21189, polarity=-1.0)
         for face in ("north_pole", "south_pole"):
             c = assert_label_check(low_pole[face]["label_check"], 35, lens["id"], f"inspect_pole(35, 21189) {face}")
             assert c["held_back"] and "below_layer_40" in c["reasons"] and c["band"] == "not_sampled", c
         print("  • inspect_pole: layer 59 shares ten of ten and is shown; layer 35 is held back below layer 40")
         # the folio's neuron, 15491 at layer 54 (index 53), positive face: its check decides what the page shows
-        folio_face = inspect_pole(layer=53, neuron_idx=15491, polarity=1.0)["north_pole"]
+        folio_face = (await inspect_pole(layer=53, neuron_idx=15491, polarity=1.0))["north_pole"]
         folio_check = assert_label_check(folio_face["label_check"], 53, lens["id"], "inspect_pole(53, 15491) north_pole")
         folio_word = wp(folio_face["j_vindex_tokens"][0]["token"])
         # the server's count is the study's: N1's own overlap (its static caches) for four neurons per sampled layer
@@ -1231,7 +1246,7 @@ async def main() -> int:
             for l in [int(x) for x in neu["layers"] if BAND[0] <= int(x) <= BAND[1]]:
                 st = torch.load(cache / f"static_L{l}.pt", weights_only=True)
                 for n in neu["neurons"][str(l)][:4]:
-                    rep_n = inspect_pole(layer=l, neuron_idx=n, polarity=1.0)
+                    rep_n = await inspect_pole(layer=l, neuron_idx=n, polarity=1.0)
                     ni = st["neurons"].index(n)
                     for face, s in (("north_pole", 1.0), ("south_pole", -1.0)):
                         study = len(set((s * st["jpp"][ni].float()).topk(10).indices.tolist())
@@ -1271,8 +1286,8 @@ async def main() -> int:
         # must be what inspect_pole reads for that neuron and face, and its naked-eye words inspect_pole's first four
         for r in top_readers:
             face = "north_pole" if r["dst_polarity"] == "+" else "south_pole"
-            again = inspect_pole(layer=r["dst_layer"], neuron_idx=r["dst_neuron_idx"],
-                                 polarity=1.0 if r["dst_polarity"] == "+" else -1.0)[face]
+            again = (await inspect_pole(layer=r["dst_layer"], neuron_idx=r["dst_neuron_idx"],
+                                        polarity=1.0 if r["dst_polarity"] == "+" else -1.0))[face]
             what = f"reader L{r['dst_layer']}:N{r['dst_neuron_idx']}{r['dst_polarity']}"
             assert again["label_check"] == r["dst_label_check"], (
                 f"{what}: {r['dst_label_check']} != inspect_pole's {again['label_check']}")
@@ -1408,8 +1423,8 @@ async def main() -> int:
                     if not e["label_check"]:
                         continue
                     face = "north_pole" if e["polarity"] == "+" else "south_pole"
-                    again = inspect_pole(layer=int(l_str), neuron_idx=e["neuron_idx"],
-                                         polarity=1.0 if e["polarity"] == "+" else -1.0)[face]["label_check"]
+                    again = (await inspect_pole(layer=int(l_str), neuron_idx=e["neuron_idx"],
+                                                polarity=1.0 if e["polarity"] == "+" else -1.0))[face]["label_check"]
                     n_cross += 1
                     if again != e["label_check"]:
                         differ.append((l_str, e["rank"], e["neuron_idx"], e["polarity"], e["label_check"], again))
@@ -1577,7 +1592,7 @@ async def main() -> int:
         # statements that touch no lens (DESCRIBE, ROLLBACK) reply exactly as before.
         nearest_keys = ["command", "concept", "resolved_token_id", "resolved_token_str", "layer", "matrix", "use_jpp",
                         "elapsed_ms", "results"]
-        vault_pole = query_larql_vault("DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -")
+        vault_pole = await query_larql_vault("DESCRIBE POLE LAYER 53 SLOT 16383 POLARITY -")
         assert list(vault_pole) == list(pole_res), f"MCP DESCRIBE POLE keys {list(vault_pole)} != {list(pole_res)}"
         assert vault_pole["lens"] == lens, "query_larql_vault DESCRIBE POLE names a different lens"
         assert vault_pole["label_gate"] == LABEL_GATE_CARD
@@ -1601,13 +1616,13 @@ async def main() -> int:
         r_desc = await client.post("/api/larql", json={"query": "DESCRIBE"})
         assert r_desc.status_code == 200 and r_desc.json()["command"] == "DESCRIBE", r_desc.text
         assert "lens" not in r_desc.json(), "DESCRIBE reads no words through the lens, yet names one"
-        upd = query_larql_vault("UPDATE LAYER 35 SLOT 9482 SET object = 'she' STRENGTH 0.5")
+        upd = await query_larql_vault("UPDATE LAYER 35 SLOT 9482 SET object = 'she' STRENGTH 0.5")
         try:
             # an edit reads no label: no label_gate in its reply
             assert list(upd) == ["status", "patch", "active_patches_count", "lens"], f"UPDATE keys {list(upd)}"
             assert upd["status"] == "applied" and upd["lens"] == lens, upd
         finally:
-            rolled = query_larql_vault("ROLLBACK")
+            rolled = await query_larql_vault("ROLLBACK")
         assert list(rolled) == ["status", "cleared_patches", "active_patches_count"], f"ROLLBACK keys {list(rolled)}"
         assert rolled["status"] == "rolled_back" and rolled["cleared_patches"] >= 1, rolled
         print("  • vault: MCP DESCRIBE POLE and UPDATE, HTTP NEAREST name the lens; DESCRIBE and ROLLBACK as before")
@@ -1646,7 +1661,7 @@ async def main() -> int:
         cc_body = {"layer": 50, "neuron_idx": 5313, "polarity": -1.0, "contexts": "given",
                    "token_ids": json_msg["prompt_token_ids"], "track_ids": json_msg["answer"]["token_ids"][:1]}
         cc_mcp = await causal_spot_check(**cc_body)
-        assert_causal_reply(cc_mcp, cc_body, lens, health["model_id"], "MCP causal_spot_check")
+        await assert_causal_reply(cc_mcp, cc_body, lens, health["model_id"], "MCP causal_spot_check")
         assert cc_mcp["polarity"] == "-" and [w["token_id"] for w in cc_mcp["faces"]["-"]["tracked"]] == cc_body["track_ids"]
         # the study max|a| is computed by the first test since the server started, and kept for the next
         assert cc_mcp["max_abs_act_cached"] is False, "the study max|a| was cached before any test ran"
@@ -1686,7 +1701,7 @@ async def main() -> int:
             await ws_cc.send(json.dumps({"action": "causal_check", **study_body}))
             m_st = json.loads(await asyncio.wait_for(ws_cc.recv(), timeout=900))
             assert m_st["type"] == "causal_check", str(m_st)[:300]
-            assert_causal_reply(m_st["data"], study_body, lens, health["model_id"], "WS causal_check (study)")
+            await assert_causal_reply(m_st["data"], study_body, lens, health["model_id"], "WS causal_check (study)")
             assert m_st["data"]["max_abs_act_cached"] is True and m_st["data"]["max_abs_act"] == cc_mcp["max_abs_act"]
         fm = cc_mcp["faces"]["-"]
         print(f"  • causal_check (MCP, HTTP, WS): one reply; L50 n5313 − at the sweep's last word-piece: "
@@ -1931,7 +1946,7 @@ async def main() -> int:
                 if row["count"] is None and not row["held"]:
                     continue  # not labelled in this sighting
                 face = "north_pole" if row["positive"] else "south_pole"
-                c = inspect_pole(layer=54, neuron_idx=row["neuron"], polarity=1.0 if row["positive"] else -1.0)[face]["label_check"]
+                c = (await inspect_pole(layer=54, neuron_idx=row["neuron"], polarity=1.0 if row["positive"] else -1.0))[face]["label_check"]
                 k = c["shared_top10"]
                 what = f"layer 55's leaf, live, neuron {row['neuron']} ({face})"
                 if c["held_back"]:

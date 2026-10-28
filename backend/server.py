@@ -60,7 +60,7 @@ from backend.engine_runtime import (
     study_mean_problem,
 )
 from backend.label_gate import LABEL_GATE_CARD
-from backend.larql_vault import VOICE_MAX_NEW_TOKENS_DEFAULT, VOICE_MAX_NEW_TOKENS_LIMIT, LarqlVaultEngine
+from backend.larql_vault import LarqlVaultEngine, VoiceRequest
 from backend.mcp_scientist import (
     bind_runtime,
     causal_spot_check,
@@ -249,19 +249,10 @@ class SweepRequest(BaseModel):
     contrast_backgrounds: List[Annotated[str, Field(max_length=64)]] = Field(default_factory=list, max_length=2)
 
 
-class VoiceRequest(BaseModel):
-    # The question an edit is heard by: just before it and again just after, the model writes its answer the likeliest
-    # way (LarqlVaultEngine._heard). Sent as compose_prompt sends a sweep's: as a chat (the default) or bare text.
-    prompt: str = Field(..., min_length=1, max_length=32000)
-    chat: bool = True
-    system: Optional[str] = Field(None, max_length=32000)
-    assistant_prefix: str = Field("", max_length=32000)
-    max_new_tokens: int = Field(VOICE_MAX_NEW_TOKENS_DEFAULT, ge=1, le=VOICE_MAX_NEW_TOKENS_LIMIT)
-
-
 class LarqlRequest(BaseModel):
     query: str = "DESCRIBE"
-    # optional: hear an edit (DELETE, UPDATE, INSERT) before and after; every other statement ignores it
+    # optional: hear an edit (DELETE, UPDATE, INSERT) before and after; every other statement ignores it. VoiceRequest
+    # is backend/larql_vault.py's, which the MCP tool query_larql_vault takes too.
     voice: Optional[VoiceRequest] = None
 
 
@@ -1474,7 +1465,7 @@ async def api_inspect_pole(req: PoleInspectRequest) -> Dict[str, Any]:
     # the scientist tools name their lens themselves ("lens"); these routes pass their replies on unchanged
     _runtime, _vault = get_app_state()
     async with _GPU_LOCK:
-        return inspect_pole(layer=req.layer, neuron_idx=req.neuron_idx, polarity=req.polarity)
+        return await inspect_pole(layer=req.layer, neuron_idx=req.neuron_idx, polarity=req.polarity)
 
 
 @app.post("/api/scientist/trace_readers")
@@ -1596,7 +1587,7 @@ async def ws_theodolite(websocket: WebSocket) -> None:
                     n_idx = int(raw_msg.get("neuron_idx", 0))
                     pol = float(raw_msg.get("polarity", 1.0))
                     async with _GPU_LOCK:
-                        res = inspect_pole(layer=l_idx, neuron_idx=n_idx, polarity=pol)
+                        res = await inspect_pole(layer=l_idx, neuron_idx=n_idx, polarity=pol)
                     await out.json({"type": "pole_inspection", "data": res})
 
                 elif action == "trace_readers":

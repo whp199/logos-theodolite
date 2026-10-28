@@ -360,10 +360,11 @@ REPORT §3.4). Where each fault stands now:
   down-projection column (rank one, no covariance solve; DELETE sets it to zero): it is not MEMIT, and the pages call it
   an edit. Each edit can be heard before and after on a question of your choosing (`voice` on the `larql` request,
   ARCHITECTURE §4.6): the vault writes the answer the likeliest way, up to 12 word-pieces by default (1–64), just
-  before the edit and again just after, under the one GPU lock, and the vault page asks for it by default. An edit
-  made in the console or through the MCP tool is not heard (the tool does not hold the GPU lock). The voice is one
-  question, so it shows what an edit did to that answer only; the study tested only DELETE by cause and effect (E6
-  §2.3).
+  before the edit and again just after, under the one GPU lock, and the vault page asks for it by default, on its
+  edit tab and for an edit typed in its console. The MCP tool `query_larql_vault` takes the same `voice`; run on its
+  own, the MCP server’s tools take turns under a lock of their own, so no other call lands between an edit’s two
+  answers. The voice is one question, so it shows what an edit did to that answer only; the study tested only DELETE
+  by cause and effect (E6 §2.3).
 
 <br>
 

@@ -6,15 +6,13 @@ import {
   voiceKey,
   voiceOf,
   voicePayload,
-  voiceWords,
   type ActiveEdit,
   type EditVoice,
   type LarqlEntry,
-  type VoiceAnswer,
 } from "../../store/useTheodoliteStore";
 import { pct } from "../../lib/words";
 import { INSERT_EXAMPLE, isFloat } from "./lql";
-import { editDescription, num, replyTo } from "./live";
+import { asked, editDescription, num, replyTo, said } from "./live";
 import { FaceMark, MONO, OwnWords, roman, sentenceInput, smallCaps } from "./bits";
 import { toConsole, useVaultUi } from "./ui";
 
@@ -31,13 +29,6 @@ const fieldsetStyle: React.CSSProperties = {
   gap: "2px 28px",
 };
 
-/** A voice's answer in quotes, its end mark left out; an answer that only ended its turn says so. */
-const said = (a: VoiceAnswer) => {
-  const w = voiceWords(a);
-  return w ? "“" + w + "”" : a.stopReason === "end_mark" ? "nothing, ending its turn at once" : "“”";
-};
-/** The question a voice asked, with its begun answer when it had one. */
-const asked = (v: EditVoice) => "“" + v.prompt.trim() + "”" + (v.assistantPrefix.trim() ? " (its answer begun “" + v.assistantPrefix.trim() + "”)" : "");
 /** Why the answer after an edit could not be written, from the vault's sentence. */
 const afterWhy = (v: EditVoice) =>
   (v.error ?? "the vault gave no reason").replace(/^The voice after the edit could not be written: /, "").replace(/; the edit is in force\.?$/, "");
@@ -50,7 +41,8 @@ const VoiceLine: React.FC<{ e: ActiveEdit; v: EditVoice | null }> = ({ e, v }) =
   if (!v)
     return (
       <span style={{ fontSize: 16, lineHeight: 1.45, fontStyle: "italic", color: "var(--muted)" }}>
-        Not heard: made without its voice (with hearing off, in the console, through the MCP tool, or by an older server).
+        Not heard: made without its voice (with hearing off here or in the console, through the MCP tool without one, or by an
+        older server).
       </span>
     );
   const replaced = typeof e.replaces_patch === "number" ? e.replaces_patch : null;
@@ -485,7 +477,7 @@ export const EditPanel: React.FC = () => {
               INSERT chooses the neuron itself, the one whose input side W<sub>gate</sub>[i] lies nearest the subject’s pullback (largest
               |cos|, whose sign sets p), then writes the object as UPDATE does. Only the down-projection column changes: the docstring the
               study audited said gate_proj was edited too, and now says it is not (E6 §3, item 12). The reader’s form above has no INSERT;
-              write one by hand, and it is made without its voice.
+              write one by hand in the console, where it is heard as an edit made here is, unless hearing is turned off there.
             </dd>
             <dt>this edit</dt>
             <dd className="num">{read}</dd>

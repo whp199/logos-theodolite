@@ -31,7 +31,9 @@ An edit (DELETE, UPDATE, INSERT) can be heard: given a `voice` (a question, how 
 between (`TheodoliteRuntime.write_voice`; the caller holds the GPU lock around all three). The reply then carries
 "voice" after "patch" and before "lens", and the edit's record keeps it. Without a voice, and for every other
 statement, the reply is exactly as before. Each record also says what kind of edit it is (`edit_kind`) and which
-earlier edit of the same neuron, if any, it replaces (`replaces_patch`).
+earlier edit of the same neuron, if any, it replaces (`replaces_patch`). The voice's request model, `VoiceRequest`, is
+kept here, beside the bounds it shares with `voice_spec`: POST /api/larql and the WebSocket take it (backend/server.py
+imports it from here), and so does the MCP tool `query_larql_vault` (`voice_request`, its refusals in plain words).
 """
 
 from __future__ import annotations
@@ -46,6 +48,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple
 
 import torch
 import torch.nn.functional as F
+from pydantic import BaseModel, Field, ValidationError
 
 from backend.engine_runtime import TheodoliteRuntime
 from backend.gguf_weights import dense_cols
@@ -61,10 +64,36 @@ from backend.theodolite_math import (
 
 # What an edit is, for DESCRIBE (and the pages): E6 §3, item 12; REPORT §3.3
 EDIT_METHOD = "one down_proj column per edit, rank one, no covariance solve: named after MEMIT, not MEMIT"
-# A voice's answer: how long it may run (VoiceRequest in backend/server.py takes the same bounds), and its default.
+# A voice's answer: how long it may run (VoiceRequest below takes the same bounds), and its default.
 # V7 judged steering by 12-word-piece greedy answers (V7_tool_bugs_NOTES.md), hence 12.
 VOICE_MAX_NEW_TOKENS_DEFAULT = 12
 VOICE_MAX_NEW_TOKENS_LIMIT = 64
+
+
+class VoiceRequest(BaseModel):
+    # The question an edit is heard by: just before it and again just after, the model writes its answer the likeliest
+    # way (LarqlVaultEngine._heard). Sent as compose_prompt sends a sweep's: as a chat (the default) or bare text.
+    prompt: str = Field(..., min_length=1, max_length=32000)
+    chat: bool = True
+    system: Optional[str] = Field(None, max_length=32000)
+    assistant_prefix: str = Field("", max_length=32000)
+    max_new_tokens: int = Field(VOICE_MAX_NEW_TOKENS_DEFAULT, ge=1, le=VOICE_MAX_NEW_TOKENS_LIMIT)
+
+
+def voice_request(voice: Any) -> VoiceRequest:
+    """`voice` (a mapping, or a `VoiceRequest`) as POST /api/larql's request model takes it, its defaults filled in, for
+    a caller with no request model of its own (the MCP tool `query_larql_vault`). One the model refuses is refused in
+    plain words, where and what, as the WebSocket refuses it (ValueError), before anything is written or edited."""
+    if isinstance(voice, VoiceRequest):
+        return voice
+    try:
+        return VoiceRequest.model_validate(voice)
+    except ValidationError as exc:
+        parts = []
+        for err in exc.errors():
+            where = ".".join(["voice", *(str(p) for p in err.get("loc", ()))])
+            parts.append(f"{where}: {err.get('msg', 'not accepted')}")
+        raise ValueError("The voice was refused, and no edit was made. " + "; ".join(parts)) from exc
 
 
 def voice_spec(voice: Any) -> Dict[str, Any]:

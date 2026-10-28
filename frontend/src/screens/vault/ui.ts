@@ -49,6 +49,10 @@ interface VaultUi {
   // write LQL
   conRun: string | null;
   conRunAt: number | null;
+  /** hear an edit typed in the console before and after (on by default, as on the edit tab), and the voice the
+   * statement run was sent with (null: none) */
+  conHear: boolean;
+  conVoice: VoicePayload | null;
   set: (p: Partial<Omit<VaultUi, "set">>) => void;
 }
 
@@ -77,6 +81,8 @@ export const useVaultUi = create<VaultUi>((set) => ({
   undoAt: null,
   conRun: null,
   conRunAt: null,
+  conHear: true,
+  conVoice: null,
   set: (p) => set(p),
 }));
 

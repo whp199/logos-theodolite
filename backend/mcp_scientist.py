@@ -8,10 +8,17 @@ Exposes four core mechanistic interpretability tools via FastMCP:
    sentences a side to judge)
 4. `causal_spot_check(layer, neuron_idx, contexts, token_ids | prompt, k, write)`: the label tested causally (the
    study's N1A protocol at k = 10, `backend/causal_check.py`)
-Plus `query_larql_vault(lql_query)` for declarative VINDEX3 queries and `.patch` edits (each one neuron's down_proj
-column, rank one, with no covariance solve: named after MEMIT in the code, not MEMIT). It takes no voice: the server's
-routes can hear an edit before and after (`LarqlRequest.voice`) because they hold the GPU lock around it, and this tool
-does not take that lock.
+Plus `query_larql_vault(lql_query, voice)` for declarative VINDEX3 queries and `.patch` edits (each one neuron's
+down_proj column, rank one, with no covariance solve: named after MEMIT in the code, not MEMIT). Given a `voice`, an
+edit is heard as POST /api/larql hears it (`VoiceRequest`, backend/larql_vault.py): the model writes its answer to one
+question the likeliest way just before the edit and again just after, with no other tool's work between.
+
+The tools take turns on the model. Run on its own (`python -m backend.mcp_scientist`, which loads its own runtime),
+FastMCP answers a client's calls concurrently: a sync tool in a worker thread, an async one interleaved with the next at
+each await. So every tool is async and runs whole under this module's one lock (`_turn`), and the vault's statements
+run in a worker thread under it, the event loop answering meanwhile: a call waits behind the whole of the one before,
+a heard edit's two answers and the edit included. When the server binds its runtime (`bind_runtime`), the lock is a
+no-op, since its routes hold the server's own `_GPU_LOCK` around every call.
 
 The first three scientist tools decode words through the J++ lens, and each reply names it under "lens"
 (`TheodoliteRuntime.lens_card`: what it was fitted on, what it reads, its source, and a `caution` on how far to trust
@@ -36,11 +43,15 @@ action, which pass its reply on unchanged.
 
 from __future__ import annotations
 
+import asyncio
+import functools
 import itertools
 import math
 import time
-from typing import Any, Dict, List, Optional
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Tuple
 
+import anyio
 import numpy as np
 import torch
 from fastmcp import FastMCP
@@ -49,7 +60,7 @@ from interp_engine import Address
 from backend import causal_check as cc
 from backend.engine_runtime import MAX_SWEEP_POSITIONS, TheodoliteRuntime
 from backend.label_gate import LABEL_GATE_CARD, label_check, label_top_ids, writes_nothing
-from backend.larql_vault import LarqlVaultEngine
+from backend.larql_vault import LarqlVaultEngine, voice_request
 from backend.runtime_factory import make_runtime
 from backend.theodolite_math import (
     D_FF,
@@ -66,13 +77,25 @@ mcp = FastMCP("Logos Theodolite Circuit Scientist")
 
 _SHARED_RUNTIME: Optional[TheodoliteRuntime] = None
 _SHARED_VAULT: Optional[LarqlVaultEngine] = None
+# Whether whoever bound the runtime runs every tool under a lock of its own (the server's routes, _GPU_LOCK): then
+# `_turn` takes none. False until bind_runtime says so: standalone, this module loads its own runtime and takes turns.
+_CALLER_HOLDS_LOCK = False
+# The tools' one lock, with the event loop it serves (an asyncio.Lock serves only the loop it first waits on; a new
+# loop, as each asyncio.run makes, gets a new one)
+_TURN: Optional[Tuple[asyncio.AbstractEventLoop, asyncio.Lock]] = None
 
 
-def bind_runtime(runtime: TheodoliteRuntime, vault: Optional[LarqlVaultEngine] = None) -> None:
-    """Bind an already-loaded `TheodoliteRuntime` and `LarqlVaultEngine` (e.g. from `server.py`)."""
-    global _SHARED_RUNTIME, _SHARED_VAULT
+def bind_runtime(
+    runtime: TheodoliteRuntime, vault: Optional[LarqlVaultEngine] = None, *, caller_holds_lock: bool = True
+) -> None:
+    """Bind an already-loaded `TheodoliteRuntime` and `LarqlVaultEngine` (e.g. from `server.py`). `caller_holds_lock`
+    (default True, as the server binds it): the caller holds a lock of its own around every tool it calls (the
+    server's `_GPU_LOCK`), so the tools' own lock is a no-op; False binds a runtime the tools still take turns on, as
+    when this module loads its own."""
+    global _SHARED_RUNTIME, _SHARED_VAULT, _CALLER_HOLDS_LOCK
     _SHARED_RUNTIME = runtime
     _SHARED_VAULT = vault if vault is not None else LarqlVaultEngine(runtime)
+    _CALLER_HOLDS_LOCK = bool(caller_holds_lock)
 
 
 def get_runtime_and_vault() -> tuple[TheodoliteRuntime, LarqlVaultEngine]:
@@ -87,8 +110,41 @@ def get_runtime_and_vault() -> tuple[TheodoliteRuntime, LarqlVaultEngine]:
     return _SHARED_RUNTIME, _SHARED_VAULT
 
 
+def _turn_lock() -> asyncio.Lock:
+    """The tools' lock for the running event loop."""
+    global _TURN
+    loop = asyncio.get_running_loop()
+    if _TURN is None or _TURN[0] is not loop:
+        _TURN = (loop, asyncio.Lock())
+    return _TURN[1]
+
+
+@asynccontextmanager
+async def _turn() -> AsyncIterator[None]:
+    """One tool's turn on the model: under the tools' one lock when this module runs standalone; no lock when the
+    server bound its runtime, whose routes already hold `_GPU_LOCK` around the call."""
+    if _CALLER_HOLDS_LOCK:
+        yield
+        return
+    async with _turn_lock():
+        yield
+
+
+def _taking_turns(tool: Callable[..., Awaitable[Dict[str, Any]]]) -> Callable[..., Awaitable[Dict[str, Any]]]:
+    """`tool`, run whole inside `_turn()`. FastMCP reads its name, docstring and parameters through the wrapper
+    (functools.wraps), so a client sees the tool as before."""
+
+    @functools.wraps(tool)
+    async def run(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+        async with _turn():
+            return await tool(*args, **kwargs)
+
+    return run
+
+
 @mcp.tool()
-def inspect_pole(
+@_taking_turns
+async def inspect_pole(
     layer: int,
     neuron_idx: int,
     polarity: float = 1.0,
@@ -115,6 +171,7 @@ def inspect_pole(
 
 
 @mcp.tool()
+@_taking_turns
 async def trace_downstream_readers(
     layer: int,
     neuron_idx: int,
@@ -470,6 +527,7 @@ def motif_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAW
 
 
 @mcp.tool()
+@_taking_turns
 async def test_motif_hypothesis(
     layer: int,
     neuron_idx: int,
@@ -665,6 +723,7 @@ def _sig(x: Optional[float], n: int = 6) -> Optional[float]:
 
 
 @mcp.tool()
+@_taking_turns
 async def causal_spot_check(
     layer: int,
     neuron_idx: int,
@@ -1023,11 +1082,22 @@ async def causal_spot_check(
 
 
 @mcp.tool()
-def query_larql_vault(lql_query: str) -> Dict[str, Any]:
+@_taking_turns
+async def query_larql_vault(lql_query: str, voice: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Execute a LARQL / VINDEX3 query or declarative `.patch` edit statement. An edit (`UPDATE`, `INSERT`, `DELETE`)
     moves one column of one layer's down_proj, rank one, with nothing solved for: the statements are named after
-    MEMIT, but it is not MEMIT. This tool takes no voice (the model's answer before and after an edit): only POST
-    /api/larql and the WebSocket "larql" action, which hold the GPU lock around the edit, offer one.
+    MEMIT, but it is not MEMIT.
+
+    `voice` (optional) hears an edit, as POST /api/larql's `voice` does: `{"prompt": the question (required), "chat":
+    true, "system": null, "assistant_prefix": "", "max_new_tokens": 12 (1-64)}`, sent as a sweep's question is sent (a
+    chat by default). Just before the edit and again just after, the model writes its answer the likeliest way, with
+    nothing between (no nudge, no other tool's call), and the reply carries `voice` after `patch` and before `lens`:
+    both answers, the first word-piece's KL(before || after) and the edit's target word's odds there, and where the
+    two answers part (`parted_at`); the edit's record keeps it. It is one question, written by the model itself, so it
+    shows what the edit did to that answer only. Every other statement ignores it, and without one every reply is as
+    before. A voice that does not fit is refused in plain words, and one whose answer before cannot be written leaves
+    the model unedited; if the answer after cannot be written, the edit stays in force with `after` null and `error`
+    saying why.
 
     The statements that read words through the J++ lens (`SELECT * FROM EDGES|POLES NEAREST`, `DESCRIBE POLE`) or
     write an edit along a direction pulled back through it (`UPDATE`, `INSERT`) also return `lens`, naming that lens;
@@ -1035,8 +1105,15 @@ def query_larql_vault(lql_query: str) -> Dict[str, Any]:
     The two that read neuron labels mark each one under `label_check` (each NEAREST row, each DESCRIBE POLE face) and
     return the rule under `label_gate`, just before `lens`.
     """
+    heard = None if voice is None else voice_request(voice)  # refused in plain words before anything is touched
     _rt, vault = get_runtime_and_vault()
-    return vault.execute_lql(lql_query)
+    run = functools.partial(vault.execute_lql, lql_query)
+    if heard is not None:
+        run = functools.partial(vault.execute_lql, lql_query, voice=heard.model_dump())
+    # in a worker thread, as the server's route runs it (a heard edit writes for seconds), under the turn: anyio's,
+    # whose call, if cancelled meanwhile (an MCP client may cancel one), waits for the thread to end, so the turn is
+    # never given up while the model is being edited
+    return await anyio.to_thread.run_sync(run)
 
 
 if __name__ == "__main__":

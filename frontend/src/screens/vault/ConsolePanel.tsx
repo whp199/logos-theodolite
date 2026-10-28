@@ -1,9 +1,9 @@
 import React from "react";
 import { Apparatus, Rubric } from "../../components/kit";
-import { useTheodoliteStore } from "../../store/useTheodoliteStore";
+import { HEARD_KINDS, VOICE_LENGTH, consoleVoice, useTheodoliteStore, voiceOf } from "../../store/useTheodoliteStore";
 import { DESCRIBE_RECORDED, RAW_LISTS, VAULT_ANSWERS } from "./recorded";
 import { FORMS, QUICK, clampL, clampN, esc, mutates, parseLql, pyRepr, type Parsed } from "./lql";
-import { clock, heldBackIn, prettyJson, replyTo } from "./live";
+import { asked, clock, heldBackIn, prettyJson, replyTo, said } from "./live";
 import { labelGate, layerIdx, vaultCheck } from "../../lib/labels";
 import { EmptyAnswer, MONO, rawJson, smallCaps } from "./bits";
 import { useVaultUi } from "./ui";
@@ -30,6 +30,17 @@ const slotTxt = (s: string) => {
   const i = clampN(s);
   return String(i) + (parseInt(s, 10) !== i ? " (written " + s + ")" : "");
 };
+/** A JSON value as Python writes it, for the MCP call shown. */
+const pyValue = (v: unknown): string =>
+  v === null || v === undefined
+    ? "None"
+    : typeof v === "boolean"
+      ? (v ? "True" : "False")
+      : typeof v === "string"
+        ? pyRepr(v)
+        : typeof v === "object"
+          ? "{" + Object.entries(v as Record<string, unknown>).map(([k, x]) => pyRepr(k) + ": " + pyValue(x)).join(", ") + "}"
+          : String(v);
 
 /** "how the vault reads it" (board: parsedRows). */
 function parsedRows(p: Parsed, inForce: number, live: boolean): { k: string; v: string }[] {
@@ -103,16 +114,27 @@ export const ConsolePanel: React.FC = () => {
   const larqlPending = useTheodoliteStore((s) => s.larqlPending);
   const inForce = useTheodoliteStore((s) => s.activeEdits.length);
   const live = conn === "open";
+  // the question an edit typed here is heard by: the edit tab's, which is the instrument page's own unless typed there
+  const sQuestion = useTheodoliteStore((s) => s.question);
+  const sBegins = useTheodoliteStore((s) => s.answerBegins);
+  const sChat = useTheodoliteStore((s) => s.chat);
+  const sSystem = useTheodoliteStore((s) => s.system);
+  const vQuestion = ui.vQuestion ?? sQuestion;
+  const vChat = ui.vChat ?? sChat;
+  const vSystem = ui.vSystem ?? sSystem;
 
   const conP = parseLql(text);
   const R = ui.conRun === null ? null : parseLql(ui.conRun);
   const entry = ui.conRun !== null ? replyTo(larqlLog, ui.conRun, ui.conRunAt) : null;
   const pending = larqlPending && ui.conRun !== null && entry === null;
+  // whether this statement goes with a voice (the store decides: an edit, with hearing on), and why it cannot go
+  const heard = consoleVoice(conP.kind, ui.conHear, vQuestion, ui.vBegins ?? sBegins, vChat, vSystem);
+  const isEdit = (HEARD_KINDS as readonly string[]).includes(conP.kind);
 
   const run = () => {
-    if (!text.trim()) return;
-    ui.set({ conRun: text, conRunAt: Date.now() });
-    executeLarql(text);
+    if (!text.trim() || heard.problem) return;
+    ui.set({ conRun: text, conRunAt: Date.now(), conVoice: heard.voice });
+    executeLarql(text, heard.voice);
   };
 
   // ---------- the vault's reply: the running instrument's, else what the study recorded (labelled as such)
@@ -125,10 +147,27 @@ export const ConsolePanel: React.FC = () => {
   // says so (the server's own label_check marks them; a recorded search carries none, so its rows go by their layer)
   let held = 0;
   let heldCaption = "";
+  // what the edit run was heard to say, when it went with a voice
+  let heardLine = "";
   if (R !== null) {
     if (entry && entry.ok) {
       json = esc(prettyJson(entry.data));
       held = heldBackIn(entry.data);
+      const v = ui.conVoice ? voiceOf((entry.data as { voice?: unknown } | null)?.voice) : null;
+      // in the edit tab's words: an answer that did not change is said so
+      if (ui.conVoice && v)
+        heardLine =
+          "Asked " +
+          asked(v) +
+          " and written the likeliest way, " +
+          (!v.after
+            ? "it answered " + said(v.before) + " before the edit; its answer after could not be written (" + (v.error ?? "the vault gave no reason") + ")"
+            : v.partedAt === null
+              ? "its answer did not change: " + said(v.before)
+              : "it answered " + said(v.before) + " before the edit and " + said(v.after) + " after") +
+          ". The reply’s voice holds both answers, and the edit tab’s ledger keeps them beside the edit.";
+      else if (ui.conVoice && (entry.data as { status?: string } | null)?.status === "applied")
+        heardLine = "Its voice was asked for, but this server did not send it: it is older than this page.";
       if (held)
         heldCaption =
           "This is the server’s raw reply, every word included; label_check marks the labels the reading pages hold back (below layer 41, or sharing none of ten): " +
@@ -210,9 +249,11 @@ export const ConsolePanel: React.FC = () => {
   }
 
   const stale = ui.conRun !== null && ui.conRun !== text;
-  const restBody = '{"query": ' + JSON.stringify(text) + "}";
-  const wsBody = '{"action": "larql", "query": ' + JSON.stringify(text) + "}";
-  const mcpCall = "query_larql_vault(lql_query=" + pyRepr(text) + ")";
+  // the voice goes only with an edit to be heard: every other statement is sent as before
+  const voiceJson = heard.voice ? ', "voice": ' + JSON.stringify(heard.voice) : "";
+  const restBody = '{"query": ' + JSON.stringify(text) + voiceJson + "}";
+  const wsBody = '{"action": "larql", "query": ' + JSON.stringify(text) + voiceJson + "}";
+  const mcpCall = "query_larql_vault(lql_query=" + pyRepr(text) + (heard.voice ? ", voice=" + pyValue(heard.voice) : "") + ")";
   const use = (t: string) => () => {
     setText(t);
     ui.set({ conRun: null, conRunAt: null });
@@ -305,10 +346,34 @@ export const ConsolePanel: React.FC = () => {
           <p style={{ margin: 0, fontSize: 16, color: "var(--muted)", maxWidth: 760 }}>
             {conP.kind === "rollback"
               ? "Running this undoes every edit in force."
-              : "Running this changes the model: the edit joins the edits in force, which you can undo on the edit tab or with ROLLBACK. " +
-                "Typed here, it is made without its voice: the model is not asked a question before and after, and the ledger marks it " +
-                "as not heard. To hear an UPDATE or DELETE, make it on the edit tab."}
+              : "Running this changes the model: the edit joins the edits in force, which you can undo on the edit tab or with ROLLBACK."}
           </p>
+        ) : null}
+        {isEdit ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 760 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, minHeight: 44, fontSize: 17, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={ui.conHear}
+                onChange={(e) => ui.set({ conHear: e.target.checked })}
+                style={{ width: 18, height: 18, accentColor: "var(--rubric)", margin: 0 }}
+              />
+              hear it before and after the edit
+            </label>
+            {ui.conHear && !heard.problem && heard.voice ? (
+              <p style={{ margin: 0, fontSize: 16, color: "var(--muted)" }}>
+                Just before the edit and again just after, the vault will ask the model {asked({ prompt: heard.voice.prompt, assistantPrefix: heard.voice.assistant_prefix })}
+                {heard.voice.chat ? " as a chat" + (heard.voice.system ? ", after the system prompt “" + heard.voice.system + "”" : "") : " as bare text"}, and
+                write each answer the likeliest way, up to {VOICE_LENGTH} word-pieces. The question is the edit tab’s: the instrument
+                page’s own, unless typed there.
+              </p>
+            ) : !ui.conHear ? (
+              <p style={{ margin: 0, fontSize: 16, color: "var(--muted)" }}>It will be made without its voice; the ledger will say so.</p>
+            ) : null}
+          </div>
+        ) : null}
+        {heard.problem ? (
+          <p style={{ margin: 0, fontStyle: "italic", fontSize: 17, color: "var(--rubric)" }}>Before you run it: {heard.problem}.</p>
         ) : null}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, paddingTop: 14, borderTop: "1px solid var(--hair-soft)" }}>
           <h3 className="h-sub" style={{ margin: "0 0 4px" }}>
@@ -341,6 +406,11 @@ export const ConsolePanel: React.FC = () => {
             </p>
           ) : null}
           {caption ? <p style={{ margin: 0, fontSize: 15, color: "var(--muted)", maxWidth: 820 }}>{caption}</p> : null}
+          {heardLine ? (
+            <p className="status-line" role="status" style={{ maxWidth: 820 }}>
+              {heardLine}
+            </p>
+          ) : null}
           {held && json ? (
             <>
               <p style={{ margin: 0, fontSize: 15, color: "var(--muted)", maxWidth: 820 }}>{heldCaption}</p>
@@ -422,7 +492,7 @@ export const ConsolePanel: React.FC = () => {
         <dl className="dl">
           <dt>technical name</dt>
           <dd>
-            <span className="mono-wrap">LarqlVaultEngine.execute_lql(query)</span>. The statement is trimmed and closing semicolons dropped.
+            <span className="mono-wrap">LarqlVaultEngine.execute_lql(query, voice)</span>. The statement is trimmed and closing semicolons dropped.
             DESCRIBE (or SHOW LAYERS, STATUS) and ROLLBACK must then stand alone; the other five forms are found, in turn, by a
             regular-expression search, so stray words before or after them are passed over. The name follows LARQL’s LQL [10]; the grammar
             is this project’s own.
@@ -438,6 +508,12 @@ export const ConsolePanel: React.FC = () => {
             </span>
             <span>
               to the MCP scientist, <code style={monoSmall}>{mcpCall}</code>
+            </span>
+            <span>
+              An edit to be heard (DELETE, UPDATE, INSERT, with hearing on) goes with its <span className="mono-wrap">voice</span>, the
+              question it is heard by; every other statement, and an edit with hearing off, goes without one, and the vault replies to it
+              exactly as before. The MCP tool takes the same voice, and its edits are heard as these are, under its own lock when it runs
+              apart from the server.
             </span>
           </dd>
           <dt>refusals</dt>

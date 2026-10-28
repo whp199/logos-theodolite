@@ -53,6 +53,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
+import asyncio
 import hashlib
 import importlib.util
 import json
@@ -384,7 +385,7 @@ def check_vault() -> None:
     mcp_scientist.bind_runtime(rt, vault)  # type: ignore[arg-type]
     try:
         ws = vault.execute_lql("DESCRIBE POLE LAYER 45 SLOT 7")
-        mcp = mcp_scientist.inspect_pole(layer=45, neuron_idx=7, polarity=1.0)
+        mcp = asyncio.run(mcp_scientist.inspect_pole(layer=45, neuron_idx=7, polarity=1.0))  # async: it takes turns
         check(list(mcp) == list(ws), f"inspect_pole's keys are DESCRIBE POLE's: {list(mcp)} vs {list(ws)}")
         check(mcp["north_pole"]["label_check"] == ws["north_pole"]["label_check"], "inspect_pole's checks")
     finally:
@@ -405,7 +406,7 @@ def check_vault() -> None:
         check(ids_j == ids_of(reply["north_pole"]["naive_tokens"]),
               "a silenced neuron's two readings tie the same way (the artefact the mark keeps out)")
         mcp_scientist.bind_runtime(rt, vault)  # type: ignore[arg-type]
-        mcp = mcp_scientist.inspect_pole(layer=45, neuron_idx=11, polarity=1.0)
+        mcp = asyncio.run(mcp_scientist.inspect_pole(layer=45, neuron_idx=11, polarity=1.0))
         check(mcp["north_pole"]["label_check"] == reply["north_pole"]["label_check"], "inspect_pole marks it the same way")
     finally:
         rt._w_down[45][:, 11] = saved
