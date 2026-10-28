@@ -257,8 +257,8 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "select_head", "description": "Open an attention head on the person's screen: its q / k / v / o panel, and its links on the map.",
      "inputSchema": {"type": "object", "properties": HEAD, "required": ["layer", "head"]}},
     {"name": "open_tab", "description": "Switch the open neuron's panel to a tab: census (its census answers), push (the person's own "
-     "three-voice push chat) or details (words, wiring, heads).",
-     "inputSchema": {"type": "object", "properties": {"tab": {"type": "string", "enum": ["census", "push", "details"]}}, "required": ["tab"]}},
+     "three-voice push chat), details (words, wiring, heads) or passages (both faces' stored passages).",
+     "inputSchema": {"type": "object", "properties": {"tab": {"type": "string", "enum": ["census", "push", "details", "passages"]}}, "required": ["tab"]}},
     {"name": "camera", "description": "Move the person's 3D view: 'home' (the whole model), 'layer' (one layer's sheet face-on; give layer), "
      "'neuron' (close to one neuron; give layer and n; closeness 0.1 very close, 0.5 wide).",
      "inputSchema": {"type": "object", "properties": {"mode": {"type": "string", "enum": ["home", "layer", "neuron"]}, **LN,

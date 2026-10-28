@@ -1723,6 +1723,26 @@ pre.raw {
   padding: 0 4px;
   white-space: pre;
 }
+/* the passages tab: each passage as it was read, its peak in gilt */
+.atlas-passages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.atlas-passage-text {
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.atlas-peak {
+  color: var(--gilt-text);
+  font-weight: 600;
+  border-bottom: 2px solid var(--gilt);
+}
 .atlas-dtable {
   border-collapse: collapse;
   font-size: 14px;

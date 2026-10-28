@@ -391,6 +391,63 @@ export interface ReadsReply {
   units: { text: string; act: number; pieces: number[]; pos: number }[];
   act_range: ActRange | null;
 }
+/** One stored passage (GET /neuron/passages): the event's activation, its share of the face's extreme, GeGLU's regime
+ * there and its gate and up values; its window and position; the display units of `span` [s, e) of the window, the
+ * peak marked; why each side stops (`cut`: "start", "document", "turn", "end", or null where the count ran out); and
+ * `ids`, the window up to the span's end, which POST /reads takes to read it again. */
+export interface Passage {
+  kind: "top" | "sample";
+  act: number;
+  rel: number | null;
+  regime: "pp" | "nn" | "pn" | "np";
+  g: number;
+  u: number;
+  window: number;
+  at: number;
+  units: [string, boolean][];
+  span: [number, number];
+  next: string | null;
+  cut: [string | null, string | null];
+  ids: number[];
+}
+export interface PassageWord {
+  tok: string;
+  id: number;
+  n: number;
+  lift: number | null;
+}
+/** One face's stored passages; `reads` and `follows` are counted over the top `k` with their lift over the corpus's
+ * base rate: leads (`words_note`), not labels the gate has checked. Not `ready` without the passages index. */
+export interface Passages {
+  layer: number;
+  n: number;
+  face: "+" | "-";
+  ready: boolean;
+  note?: string;
+  corpus?: string;
+  tokens?: number;
+  windows?: number;
+  built_at?: string;
+  k?: number;
+  K?: number;
+  sampled?: number;
+  sample_threshold?: string | null;
+  extreme?: number | null;
+  rel_to?: string | null;
+  passages?: Passage[];
+  reads?: PassageWord[];
+  follows?: PassageWord[];
+  words_note?: string;
+  stale?: string;
+}
+/** A passage's activation at its peak as POST /reads gives it now, from the reads' units (each unit's pieces end at `pos`). */
+export function actAt(r: ReadsReply, at: number): number | null {
+  for (const u of r.units) {
+    const first = u.pos - u.pieces.length + 1;
+    if (at >= first && at <= u.pos) return u.pieces[at - first];
+  }
+  return null;
+}
 
 /* -------------------------------------------------------------------------------------------------- the scientist */
 

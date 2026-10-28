@@ -30,6 +30,7 @@ import {
   useTheodoliteStore,
 } from "../store/useTheodoliteStore";
 import { andList, agreement, cap, count, glossFor, scoresText, shortToken, signedRaw, type Agreement } from "./NeuronFolio/util";
+import { splitAtPeak, usePassages } from "./NeuronFolio/passages";
 import { comma, faceWord, ms, numberWord, pct, pieceWord, signed, wp } from "../lib/words";
 import { HeldBackWords } from "../components/HeldBack";
 import {
@@ -1368,19 +1369,55 @@ const PolesApparatus: React.FC<{ m: Model }> = ({ m }) => {
     "# the vault (this project’s LQL-like dialect)\n" +
     `DESCRIBE POLE LAYER ${m.idx} SLOT ${m.neuron} POLARITY ${sign}`;
   const ins = m.inspection;
-  const ctxCol = (title: string) => (
-    <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
-      <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", color: INK }}>{title}</span>
-      <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "minmax(0, 170px) minmax(0, 1fr)", gap: "4px 14px" }}>
-        {["top passages", "word-pieces it reads", "word-pieces that follow"].map((k) => (
-          <React.Fragment key={k}>
-            <dt style={{ color: MUTED }}>{k}</dt>
-            <dd style={{ margin: 0, ...PH }}>[CONTEXTS NOT YET COLLECTED]</dd>
-          </React.Fragment>
-        ))}
-      </dl>
-    </div>
-  );
+  // the atlas's passages index, when it is built: each pole's strongest passages and the word-pieces it reads and that follow
+  const pas = usePassages(m.idx, m.neuron);
+  const stored = pas && pas["+"].ready ? pas : null;
+  const wordsOf = (list: { tok: string; n: number; lift: number | null }[] | undefined) =>
+    list && list.length ? list.slice(0, 6).map((t) => `${wp(t.tok)} ${t.n}${t.lift != null ? ` (×${t.lift})` : ""}`).join(", ") : "none";
+  const ctxCol = (title: string, face: "+" | "-") => {
+    const r = stored ? stored[face] : null;
+    const tops = (r?.passages ?? []).filter((p) => p.kind === "top").slice(0, 5);
+    const cells: [string, React.ReactNode][] = r
+      ? [
+          [
+            "top passages",
+            tops.length ? (
+              <ol style={{ margin: 0, paddingLeft: "1.2em", display: "flex", flexDirection: "column", gap: "4px" }}>
+                {tops.map((p, i) => {
+                  const [pre, peak, post] = splitAtPeak(p.units);
+                  return (
+                    <li key={i} style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                      {p.cut[0] ? "" : "…"}
+                      {pre}
+                      <b style={{ color: GILT_TEXT }}>{peak}</b>
+                      {post}
+                      {p.cut[1] ? "" : "…"} <span style={{ color: MUTED }}>{p.act.toFixed(2)}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              "it never fired on this face over the corpus"
+            ),
+          ],
+          ["word-pieces it reads", wordsOf(r.reads)],
+          ["word-pieces that follow", wordsOf(r.follows)],
+        ]
+      : ["top passages", "word-pieces it reads", "word-pieces that follow"].map((k) => [k, <span style={PH}>[CONTEXTS NOT YET COLLECTED]</span>]);
+    return (
+      <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
+        <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", color: INK }}>{title}</span>
+        <dl style={{ margin: 0, display: "grid", gridTemplateColumns: "minmax(0, 170px) minmax(0, 1fr)", gap: "4px 14px" }}>
+          {cells.map(([k, v]) => (
+            <React.Fragment key={k}>
+              <dt style={{ color: MUTED }}>{k}</dt>
+              <dd style={{ margin: 0 }}>{v}</dd>
+            </React.Fragment>
+          ))}
+        </dl>
+      </div>
+    );
+  };
   return (
     <Apparatus title="the two poles" label="Apparatus for the two poles" style={{ gap: "10px" }}>
       <dl className="dl num">
@@ -1421,12 +1458,18 @@ const PolesApparatus: React.FC<{ m: Model }> = ({ m }) => {
         <dt>the fix</dt>
         <dd>
           stored activation contexts per pole: the top passages, and the word-pieces each pole reads and is followed by, kept for each pole
-          separately from one streaming pass over a corpus (REPORT §3.3, §3.5 item 5).
+          separately from one streaming pass over a corpus (REPORT §3.3, §3.5 item 5). The atlas keeps them in its passages index (
+          <span className="mono">scripts/atlas_build.py passages</span>: each pole’s sixteen strongest windows, one event a window, with the gate
+          and up values there);{" "}
+          {stored
+            ? `they are below, read over ${stored["+"].tokens?.toLocaleString()} word-pieces of ${stored["+"].corpus}; the words each pole reads and that follow are counted ${stored["+"].words_note}.`
+            : "it is not built on this server, so they are not collected below."}
+          {stored?.["+"].stale ? <span style={{ color: RED }}> {stored["+"].stale}.</span> : null}
         </dd>
       </dl>
       <div
         role="group"
-        aria-label="Stored contexts per pole, not yet collected"
+        aria-label={stored ? "Stored contexts per pole, from the atlas's passages index" : "Stored contexts per pole, not yet collected"}
         style={{
           display: "flex",
           flexWrap: "wrap",
@@ -1436,8 +1479,8 @@ const PolesApparatus: React.FC<{ m: Model }> = ({ m }) => {
           borderBottom: `1px solid ${HAIR_SOFT}`,
         }}
       >
-        {ctxCol("positive pole · σ = +1")}
-        {ctxCol("negative pole · σ = −1")}
+        {ctxCol("positive pole · σ = +1", "+")}
+        {ctxCol("negative pole · σ = −1", "-")}
       </div>
       <dl className="dl">
         <dt>by hand</dt>
@@ -4110,6 +4153,8 @@ const DoMore: React.FC<{ m: Model }> = ({ m }) => {
 const JOBS: Record<Jobs, string> = { one: "one job", two: "two related jobs", unknown: "not yet understood" };
 
 const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, saved, update }) => {
+  const pas = usePassages(m.idx, m.neuron);
+  const stored = pas && pas["+"].ready ? pas : null;
   const [face, setFace] = useState<"pos" | "neg">(m.focusFace > 0 ? "pos" : "neg");
   const nf = saved.notes[face];
   const setNote = (patch: Partial<FaceNotes>) =>
@@ -4212,7 +4257,17 @@ const Notes: React.FC<{ m: Model; saved: FolioSaved; update: Upd }> = ({ m, save
             {top ? (m.agr ? <>, and the two readings {m.focusGate.sharedTop10 != null ? verdictOfTen(m.focusGate.sharedTop10) : m.agr.verdict}. </> : <>. </>) : <>What its faces write has not been read yet. </>}
           </>
         )}
-        What wakes either face is <i>not yet understood</i>: no passages have been gathered for this neuron
+        {stored ? (
+          <>
+            What wakes either face is <i>not yet understood</i>: its passages are stored (each face’s strongest from{" "}
+            {stored["+"].tokens?.toLocaleString()} word-pieces, in the apparatus of i), with the word-pieces each face reads and that follow, which
+            no test has checked yet
+          </>
+        ) : (
+          <>
+            What wakes either face is <i>not yet understood</i>: no passages have been gathered for this neuron
+          </>
+        )}
         {m.other?.lens ? "." : `, and its ${faceWord(m.otherFace)} face has not been read.`}
       </p>
       <div role="group" aria-label="Which face these notes are about" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px 10px" }}>

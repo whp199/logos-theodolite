@@ -31,7 +31,7 @@ import {
 import type { AtlasMap, Mark, MapNote } from "./map";
 
 export type Focus = { kind: "neuron" | "head"; layer: number; n: number };
-export type RightTab = "census" | "push" | "details" | "scientist";
+export type RightTab = "census" | "push" | "details" | "passages" | "scientist";
 export type LeftTab = "web" | "run";
 
 export interface RunState {
@@ -609,7 +609,7 @@ export async function scientistUi(e: Record<string, unknown>) {
       else if (e.mode === "neuron") map?.flyToNeuron(num("layer"), num("n"), Number(e.closeness) || 0.22);
       break;
     case "tab":
-      if (st().focus && ["census", "push", "details"].includes(String(e.tab))) set({ rightTab: e.tab as RightTab });
+      if (st().focus && ["census", "push", "details", "passages"].includes(String(e.tab))) set({ rightTab: e.tab as RightTab });
       break;
     case "search":
       setQuery(String(e.query ?? ""), "lens");

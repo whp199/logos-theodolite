@@ -377,8 +377,12 @@ const Keep: React.FC = () => (
         condition="Labels grounded in what wakes a neuron: the passages that make each face fire, stored with it."
       >
         A neuron’s folio shows only what a neuron writes, because the instrument’s input-side labels carried just 6 to
-        8% of the signal. Stored passages for each face, the study’s fix (§3.4, bug 7): <NotInInstrument />. Meanwhile,
-        on a <To dest="neuron">neuron’s folio</To> you can put your own guess about what wakes it to the test.
+        8% of the signal. Stored passages for each face, the study’s fix (§3.4, bug 7), are built but not yet gathered
+        on the model: the atlas’s passages index (<M>scripts/atlas_build.py passages</M>) keeps each face’s sixteen
+        strongest windows of a corpus, one a window, with the word-pieces each face reads and that follow, and{" "}
+        <To dest="atlas">the atlas</To>’s passages tab and a neuron’s folio show them once it is built; no test has
+        checked those words yet. Meanwhile, on a <To dest="neuron">neuron’s folio</To> you can put your own guess about
+        what wakes it to the test.
       </KeepRow>
       <KeepRow n={2} state="yes" condition="Output labels trusted only from layer 41 upward.">
         Below layer 41 no page sets a neuron’s words in its main reading: <To dest="instrument">the instrument</To>,{" "}
@@ -509,7 +513,8 @@ const Practices: React.FC = () => (
           <>
             In part. Write whole sentences into a neuron’s guess test, and tick “read it in long contexts” in its field
             notes only once you have; in the atlas, “reads you” shades a whole text of yours by how hard a neuron fires.
-            Stored passages for each face, which the study recommends (§3.5): <NotInInstrument />
+            Stored passages for each face, which the study recommends (§3.5), are built but not yet gathered on the
+            model; once the atlas’s passages index is, its passages tab shows each face’s strongest windows whole.
           </>
         }
         links={[
