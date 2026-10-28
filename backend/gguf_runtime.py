@@ -7,8 +7,9 @@ checkpoint's packing:
 - `load()` builds the model from the GGUF, then does everything the pinned `load()` does once its model is built, in
   the same order: `ie_missing_keys`, the EagerModel, the cached layers, final norm, lm_head and feed-forward norms, the
   J++ lens (and the Jacobian lens when asked) registered on interp_engine's lens stream, the allocator's settings and
-  the log line. Two things differ: the lenses can be left out (`load_jpp=False`: nothing a census or an atlas build
-  reads needs them, and they cost 3.4 GB), and the feed-forward norms are read for every layer the model has (the
+  the log line. Two things differ: the lenses can be left out (`load_jpp=False`: a census and the atlas's stats,
+  wiring, layout and steer builds do not read them, and they cost 3.4 GB; the sightings, the lens build and the vault's
+  UPDATE and INSERT do, and fail without them), and the feed-forward norms are read for every layer the model has (the
   pinned loop counts 60, which only the 31B has).
 - `slice_w_down`, `slice_w_gate`, `slice_w_up`, `get_full_w_down`, `get_full_w_gate`, `get_full_w_up` and
   `write_col_norms`, the seven accessors that read `weight_packed`, read through `gguf_weights.dense`, `dense_cols` and

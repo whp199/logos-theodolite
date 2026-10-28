@@ -116,8 +116,18 @@ def row_bytes(qtype: QType, n: int) -> int:
 _U8 = torch.uint8
 
 
+_SHIFTS_CACHE: Dict[Tuple[Tuple[int, ...], Tuple[int, ...], torch.device], torch.Tensor] = {}
+
+
 def _shifts(values: Tuple[int, ...], shape: Tuple[int, ...], device: torch.device) -> torch.Tensor:
-    return torch.tensor(values, dtype=_U8, device=device).reshape(shape)
+    """A small uint8 tensor of shift amounts on `device`, made once per device (as the pinned unpacker's nibble shifts
+    are), so a forward on a GPU copies nothing from the host."""
+    key = (values, shape, device)
+    t = _SHIFTS_CACHE.get(key)
+    if t is None:
+        t = torch.tensor(values, dtype=_U8, device=device).reshape(shape)
+        _SHIFTS_CACHE[key] = t
+    return t
 
 
 def _f16(b: torch.Tensor) -> torch.Tensor:

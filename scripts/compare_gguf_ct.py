@@ -159,20 +159,58 @@ def hf_name_of(ct_name: str) -> Optional[str]:
 # ------------------------------------------------------------------------------------------------- the comparison
 
 
-def compare_pair(name: str, g: torch.Tensor, c: torch.Tensor) -> Dict[str, Any]:
-    """Bit for bit, else the largest |difference| and the share equal; for a norm, whether g = c + 1 exactly."""
-    rec: Dict[str, Any] = {"shape": list(g.shape)}
-    if tuple(g.shape) != tuple(c.shape):
-        rec.update(equal=False, problem=f"shapes differ: GGUF {list(g.shape)}, checkpoint {list(c.shape)}")
-        return rec
-    gb, cb = g.contiguous().view(torch.int32), c.contiguous().view(torch.int32)
-    same = gb == cb
-    rec["equal"] = bool(same.all())
+CHUNK_ROWS = 2048  # rows compared at a time, so a 262,144-row embedding never sits whole in float32 twice
+
+
+def compare_tensor(name: str, t: Any, shape: Tuple[int, ...], packed: Optional[torch.Tensor],
+                   scale: Optional[torch.Tensor], plain: Optional[torch.Tensor]) -> Dict[str, Any]:
+    """One GGUF tensor against its checkpoint tensor, a chunk of rows at a time: bit for bit, else the largest
+    |difference| and the share equal; for a norm, whether the GGUF's is the checkpoint's + 1 exactly; for Q4_0 against
+    W4A16, the codes and the scales."""
+    from backend.gguf_weights import type_name, unpack
+
+    rows = shape[0] if len(shape) > 1 else 1
+    raw = torch.from_numpy(np.asarray(t.data).view(np.uint8).reshape(rows, -1))
+    rec: Dict[str, Any] = {"shape": list(shape)}
+    if packed is None:
+        if plain is None or plain.numel() != int(np.prod(shape)):
+            rec.update(equal=False, problem=f"shapes differ: GGUF {list(shape)}, checkpoint {list(plain.shape) if plain is not None else None}")
+            return rec
+        plain = plain.reshape(rows, -1)
+    q4 = packed is not None and type_name(t.tensor_type) == "Q4_0"
+    n = n_eq = codes_eq = n_codes = scales_eq = n_scales = bf16_ok = fp16_ok = 0
+    max_diff, plus_one = 0.0, True
+    for r0 in range(0, rows, CHUNK_ROWS):
+        r1 = min(r0 + CHUNK_ROWS, rows)
+        g = unpack(raw[r0:r1], t.tensor_type)
+        c = ct_dense(packed[r0:r1], scale[r0:r1]) if packed is not None else plain[r0:r1].to(torch.float32)
+        if tuple(g.shape) != tuple(c.shape):
+            rec.update(equal=False, problem=f"shapes differ: GGUF {list(shape)}, checkpoint rows of {c.shape[-1]}")
+            return rec
+        same = g.contiguous().view(torch.int32) == c.contiguous().view(torch.int32)
+        n += same.numel()
+        n_eq += int(same.sum())
+        if not bool(same.all()):
+            max_diff = max(max_diff, float((g - c).abs().max()))
+        plus_one = plus_one and bool(torch.equal(g, c + 1.0))
+        if q4:
+            gc, gs = q4_0_codes_scales(raw[r0:r1])
+            cc, cs = ct_codes(packed[r0:r1]), scale[r0:r1].to(torch.float32)
+            codes_eq += int((gc == cc).sum())
+            n_codes += gc.numel()
+            scales_eq += int((gs == cs).sum())
+            n_scales += gs.numel()
+            bf16_ok += int(representable(gs, torch.bfloat16).sum())
+            fp16_ok += int(representable(cs, torch.float16).sum())
+    rec["equal"] = n_eq == n
     if not rec["equal"]:
-        rec["share_equal"] = float(same.float().mean())
-        rec["max_abs_diff"] = float((g - c).abs().max())
-        if name.endswith("norm.weight") and torch.equal(g, c + 1.0):
+        rec["share_equal"] = n_eq / n
+        rec["max_abs_diff"] = max_diff
+        if name.endswith("norm.weight") and plus_one:
             rec["norm_plus_one"] = True
+    if q4:
+        rec.update(codes_equal=codes_eq == n_codes, codes_share_equal=codes_eq / n_codes, scales_equal=scales_eq == n_scales,
+                   gguf_scales_bf16_exact=bf16_ok / n_scales, ct_scales_fp16_exact=fp16_ok / n_scales)
     return rec
 
 
@@ -180,7 +218,7 @@ def compare(gguf_path: Path, ckpt: Checkpoint, *, layers: Optional[List[int]] = 
             log: Any = print) -> Dict[str, Any]:
     """The report: one entry per GGUF tensor, the counts, and the tensors either side lacks."""
     from backend import gguf_model as gm
-    from backend.gguf_weights import type_name, unpack
+    from backend.gguf_weights import type_name
 
     reader = gm.open_gguf(gguf_path)
     tensors = gm.tensor_table(reader)
@@ -213,31 +251,15 @@ def compare(gguf_path: Path, ckpt: Checkpoint, *, layers: Optional[List[int]] = 
             rec.update(equal=False, problem="not in the checkpoint")
             report["tensors"][name] = rec
             continue
-        shape = gm.logical_shape(t)
-        g = unpack(torch.from_numpy(np.asarray(t.data).view(np.uint8).reshape(shape[0] if len(shape) > 1 else 1, -1)),
-                   t.tensor_type).reshape(shape)
         packed = ckpt.get(base + ".weight_packed")
-        if packed is not None:
-            scale = ckpt.get(base + ".weight_scale")
-            c = ct_dense(packed, scale)
-            rec["ct_type"] = "W4A16"
-        else:
-            plain = ckpt.get(base)
-            c = plain.to(torch.float32) if plain is not None else None
-            rec["ct_type"] = str(plain.dtype).replace("torch.", "") if plain is not None else None
-        if c is None:
+        scale = ckpt.get(base + ".weight_scale") if packed is not None else None
+        plain = ckpt.get(base) if packed is None else None
+        rec["ct_type"] = "W4A16" if packed is not None else (str(plain.dtype).replace("torch.", "") if plain is not None else None)
+        if packed is None and plain is None:
             rec.update(equal=False, problem="not in the checkpoint")
         else:
-            rec.update(compare_pair(name, g, c.reshape(g.shape) if c.numel() == g.numel() else c))
-            if packed is not None and rec["gguf_type"] == "Q4_0":
-                raw = torch.from_numpy(np.asarray(t.data).view(np.uint8).reshape(shape[0], -1))
-                gc, gs = q4_0_codes_scales(raw)
-                cc, cs = ct_codes(packed), scale.to(torch.float32)
-                rec["codes_equal"] = bool(torch.equal(gc, cc))
-                rec["codes_share_equal"] = float((gc == cc).float().mean())
-                rec["scales_equal"] = bool(torch.equal(gs, cs))
-                rec["gguf_scales_bf16_exact"] = float(representable(gs, torch.bfloat16).float().mean())
-                rec["ct_scales_fp16_exact"] = float(representable(cs, torch.float16).float().mean())
+            rec.update(compare_tensor(name, t, gm.logical_shape(t), packed, scale, plain))
+        del packed, scale, plain
         report["tensors"][name] = rec
         if log and (not rec.get("equal") or i % 50 == 0):
             log(f"  {name:<36} {rec['gguf_type']:>5} vs {rec.get('ct_type')}: "
