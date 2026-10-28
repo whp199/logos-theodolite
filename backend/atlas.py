@@ -172,7 +172,9 @@ class Atlas:
         self.L, self.N, self.D = self.w.n_layers, self.w.d_ff, self.w.d_model
         self.shapes = [ao.attn_shape(self.lm, l) for l in range(self.L)]
         self.spaces = ao.HeadSpaces(self.w, self.shapes)
-        self.index = AtlasIndex(model=getattr(rt, "model_id", None), shape=(self.L, self.N))
+        from backend.runtime_factory import weights_card  # an index built from other weights is refused, not read
+
+        self.index = AtlasIndex(model=getattr(rt, "model_id", None), shape=(self.L, self.N), weights=weights_card(rt))
         self.W_U = rt.lm_head_weight
         self._vocab: Optional[List[str]] = None
         self._vocab_lock = threading.Lock()

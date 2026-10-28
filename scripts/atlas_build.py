@@ -188,11 +188,15 @@ def main() -> int:
     lm = language_model(rt.hf_model)
     L = len(lm.layers)
     layers = parse_layers(a.layers, L) if a.layers else None
+    from backend.runtime_factory import weights_card
+
+    # the stats index read for the push's unit and the norms' scales only when built on this model and its weights
+    here = AtlasIndex(out, model=getattr(rt, "model_id", None), shape=(L, ao.ffn_width(lm, 0)), weights=weights_card(rt))
     steps = ["lens", "stats", "wiring", "layout"] if a.what == "all" else [a.what]
     def scales() -> dict:
         """The push's unit (p50) and the feed-forward norms' scales, from the stats index when built, else read over the
         study's 36 texts."""
-        stats = AtlasIndex(out).get("act_scale")
+        stats = here.get("act_scale")
         if stats is not None:
             return {"p50": [float(x) for x in stats["resid_q"][:, 1]], "mlp_rms": [float(x) for x in stats["mlp_rms_q"][:, 1]],
                     "mid_rms": [float(x) for x in stats["mid_rms_q"][:, 1]], "source": f"the stats index ({stats['meta'].get('corpus')})"}
@@ -220,7 +224,7 @@ def main() -> int:
         elif step == "passages":
             texts, name = corpus_texts(a, rt)
             wins = ab.windows(rt, texts, a.seq, a.tokens)
-            stats = AtlasIndex(out).get("act_scale")
+            stats = here.get("act_scale")
             if a.sample and stats is None:
                 print("passages: no stats index here, so no events are drawn at random (their threshold is half of each "
                       "face's extreme): build stats first to draw them")

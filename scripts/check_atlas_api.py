@@ -18,7 +18,9 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    events in order, the peak unit marked, each side cut where the window starts or ends, at a boundary between
    documents (an end mark, or a start mark inside the window) or a turn mark, or where the count runs out, `rel`, the
    regime, reads and follows counted with their lift; `rel_to` naming the stats index's corpus, or saying it is
-   another), refusals in plain words, and /reads given a passage's ids reading it again as the index has it;
+   another), refusals in plain words, and /reads given a passage's ids reading it again as the index has it; each
+   index's provenance naming the weights it was built from, the server's own in /api/health, and a server whose
+   weights are another file's refusing every index in plain words;
 7. a vault edit in force: the wiring is read live again, the faces say their index words are stale, the caches keyed by
    the edits in force are not reused, the passages of the edited neuron and of later layers are marked stale;
 8. the field notes: kept, shown on the tooltip and the wiring, forgotten, refused in plain words, a corrupt file moved
@@ -475,6 +477,23 @@ def main() -> int:
     check(all(v_["built"] for k_, v_ in arch["indexes"].items() if k_ != "folder"), "/arch: every index built")
     check(arch["push"]["scale_source"]["kind"] == "index" and arch["push"]["scale_source"]["corpus"] == "check", "/arch: the scales from the stats index")
     check(all(c.get("/api/health").json()["atlas"]["indexes"].values()), "/api/health: every index on disk")
+    stand_in_card = {"format": "stand-in", "model": rt.model_id, "runtime": "TheodoliteRuntime"}
+    check(c.get("/api/health").json()["weights"] == stand_in_card
+          and all(v_.get("weights") == stand_in_card for k_, v_ in arch["indexes"].items() if k_ != "folder"),
+          "/api/health names the server's weights, and /arch each index's, built from them")
+    # the same model id, another file's weights (as a GGUF runtime's card would say): every index refused, in words
+    rt.weights_card = {"format": "gguf", "file": "other.gguf", "id": "00ff00ff00ff00ff", "sha256_header": "ab" * 32}
+    atlas_routes._atlas = None
+    try:
+        other = c.get("/api/atlas/arch").json()["indexes"]
+    finally:
+        del rt.weights_card
+        atlas_routes._atlas = None
+    check(all(not v_["built"] and "built from other weights (the stand-in, not the GGUF other.gguf (fingerprint "
+              "00ff00ff00ff00ff))" in v_.get("refused", "") for k_, v_ in other.items() if k_ != "folder"),
+          f"/arch on other weights: every index refused in plain words ({other.get('lens')})")
+    check(all(v_["built"] for k_, v_ in c.get("/api/atlas/arch").json()["indexes"].items() if k_ != "folder"),
+          "/arch: the stand-in's weights again, every index read")
     cl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()["ceiling"]
     want_c = float(w.write_ceiling(2, [5])[0])
     check(abs(cl["write"] - want_c) < 1e-4 and abs(cl["p50"] - float(stats["resid_q"][2, 1])) < 1e-4 and abs(cl["rel"] - want_c / float(stats["resid_q"][2, 1])) < 1e-4

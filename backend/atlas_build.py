@@ -2,7 +2,10 @@
 index file (backend/atlas_index.py names them). Each reads the model through `atlas_ops.Weights` (the runtime's
 accessors on the real model, so W4A16 dequantized on the fly and any vault edit in force included; a fresh process has
 none) and writes its file atomically with its provenance under `meta`. scripts/check_atlas_index.py runs every one on the
-CPU stand-in and compares what it wrote with the same quantity read live, one neuron at a time.
+CPU stand-in and compares what it wrote with the same quantity read live, one neuron at a time. Every file's meta names
+the weights it was built from (`weights`, `runtime_factory.weights_card`: a GGUF's fingerprint and tensor types, or
+the checkpoint's repo id and snapshot), beside the model id, and the server reads it only for the same
+(`atlas_index.weights_differ`).
 
 What each costs on Gemma-4-31B is estimated in scripts/atlas_build.py's help from the arithmetic, not measured: the
 lens index and the wiring index are dense matrix products over every layer (minutes), the activation extremes one
@@ -25,7 +28,7 @@ import numpy as np
 import torch
 
 from backend import atlas_ops as ao
-from backend.atlas_index import FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, WIRING_K, save_npz
+from backend.atlas_index import FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, WIRING_K, save_npz, weights_differ
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right
 from backend.label_gate import label_top_ids, writes_nothing
 from backend.theodolite_math import unembed_gemma4
@@ -37,12 +40,18 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def _weights_here(rt: Any) -> Dict[str, Any]:
+    from backend.runtime_factory import weights_card  # the file, or the checkpoint's snapshot, the model was read from
+
+    return weights_card(rt)
+
+
 def _meta(rt: Any, **kw: Any) -> np.ndarray:
     from backend.w4a16_fast import describe  # how the 4-bit weights were unpacked (all unpackers give the same bits)
 
     card = rt.lens_card() if hasattr(rt, "lens_card") else None
     m = {"model": getattr(rt, "model_id", None), "built_at": _now(), "lens_id": (card or {}).get("id"),
-         "stand_in": bool(getattr(rt, "atlas_stand_in", False)), "unpacker": describe(rt), **kw}
+         "stand_in": bool(getattr(rt, "atlas_stand_in", False)), "unpacker": describe(rt), "weights": _weights_here(rt), **kw}
     return np.array(json.dumps(m))
 
 
@@ -73,7 +82,7 @@ def build_lens(rt: Any, out_dir: Path, *, chunk: int = 512, k: int = LENS_K, lay
             old = {key: z[key] for key in z.files}
         m = json.loads(str(old.get("meta", "{}")))
         if ("built" in old and m.get("model") == getattr(rt, "model_id", None) and m.get("lens_id") == lens_id
-                and old["lens_pos"].shape == (L, N, k)):
+                and old["lens_pos"].shape == (L, N, k) and weights_differ(m.get("weights"), _weights_here(rt)) is None):
             arrays = {key: old[key] for key in keys}
             silenced, built = old["silenced"], old["built"].astype(bool)
             log(f"lens: adding to the file there ({int(built.sum())} of {L} layers read)")
@@ -180,11 +189,14 @@ def build_passages(rt: Any, out_dir: Path, texts_ids: Sequence[Sequence[int]], c
     sample = int(sample) if extremes is not None else 0
     plan = {"model": getattr(rt, "model_id", None), "k": int(k), "sample": sample, "seed": int(seed), "chunk": int(chunk),
             "windows": W, "seq": seq, "windows_sha256": _sha(wins),
-            "extremes_sha256": _sha(np.stack([np.asarray(x, np.float32) for x in extremes])) if sample else None}
+            "extremes_sha256": _sha(np.stack([np.asarray(x, np.float32) for x in extremes])) if sample else None,
+            "weights": _weights_here(rt)}
     plan_path = parts / "plan.json"
     if plan_path.exists():
         old = json.loads(plan_path.read_text(encoding="utf-8"))
-        differ = [key for key in plan if old.get(key) != plan[key]]
+        # the weights compared by weights_differ (parts begun before plans named them, by the model id alone)
+        differ = [key for key in plan if key != "weights" and old.get(key) != plan[key]]
+        differ += ["weights"] if weights_differ(old.get("weights"), plan["weights"]) else []
         if differ:
             raise ValueError(f"The parts in {parts} were begun with other settings ({', '.join(differ)}): build with the same "
                              "ones to resume, or remove that folder to start again.")
@@ -406,14 +418,39 @@ def build_steer_layer(rt: Any, layer: int, p50: float, *, dose: float = ao.STEER
     return {"up": up, "down": down, "up_kl": up_kl, "down_kl": down_kl}
 
 
+def _shard_refusal(rt: Any, shard: Path) -> Optional[str]:
+    """Why a steer lens layer already built (`steer_lens.d/L{l}.npz`) was not built on this runtime's model and weights,
+    in plain words; None when it was, or when it was built before the layers kept a meta (it is then kept, as before)."""
+    with np.load(shard, allow_pickle=False) as z:
+        m = json.loads(str(z["meta"])) if "meta" in z.files else None
+    if m is None:
+        return None
+    here = getattr(rt, "model_id", None)
+    other = weights_differ(m.get("weights"), _weights_here(rt))
+    if m.get("model") != here:
+        why = f"built for {m.get('model')}, not {here}"
+    elif other:
+        why = f"built from other weights ({other})"
+    else:
+        return None
+    return (f"{shard} was {why}: build the steer lens for this model into another folder (--out), or remove "
+            f"{shard.parent.name} from {shard.parent.parent} to build it again here")
+
+
 def build_steer_lens(rt: Any, out_dir: Path, p50: Sequence[float], *, layers: Optional[Sequence[int]] = None,
                      dose: float = ao.STEER_LENS_DOSE, k: int = 12, batch: int = 64, log: Log = print) -> Path:
     """The steer lens of every neuron, a layer at a time into `steer_lens.d/L{l}.npz` beside the index (a run stopped
-    part-way resumes at the first missing layer), merged into steer_lens.npz once every layer is there."""
+    part-way resumes at the first missing layer), merged into steer_lens.npz once every layer is there. Each layer's
+    file names the model and weights it was built on (`meta`), and a run on another model or other weights is refused
+    in plain words (`_shard_refusal`), not resumed into the same folder."""
     lm = language_model(rt.hf_model)
     L, N = len(lm.layers), ao.ffn_width(lm, 0)
     shard_dir = Path(out_dir) / "steer_lens.d"
     shard_dir.mkdir(parents=True, exist_ok=True)
+    for l in range(L):
+        why = _shard_refusal(rt, shard_dir / f"L{l}.npz") if (shard_dir / f"L{l}.npz").exists() else None
+        if why:
+            raise ValueError(why)
     todo = list(range(L)) if layers is None else [int(l) for l in layers]
     t0 = time.time()
     for l in todo:
@@ -421,7 +458,7 @@ def build_steer_lens(rt: Any, out_dir: Path, p50: Sequence[float], *, layers: Op
         if shard.exists():
             continue
         res = build_steer_layer(rt, l, float(p50[l]), dose=dose, k=k, batch=batch)
-        save_npz(shard, **res, p50=np.array(float(p50[l])))
+        save_npz(shard, **res, p50=np.array(float(p50[l])), meta=_meta(rt, layer=l, dose=float(dose)))
         log(f"steer lens: layer {l} done ({time.time() - t0:.0f} s)")
     missing = [l for l in range(L) if not (shard_dir / f"L{l}.npz").exists()]
     if missing:

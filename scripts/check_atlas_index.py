@@ -24,7 +24,12 @@ with the same quantity read live, one neuron at a time:
    each side and start from the neuron; the web summary pools the steer lens when built and, without it, only faces
    the label gate lets through (on the stand-in's six layers every face is held back, so it pools nothing and says how
    many it left out); the active paths join only neurons that fired; the scores scale by each side's extreme;
-9. head profiles: each head's shares of weight add up to one per read, and its pairs read more than one unit back.
+9. head profiles: each head's shares of weight add up to one per read, and its pairs read more than one unit back;
+10. provenance: every index's meta names the weights it was built from (runtime_factory.weights_card), and an index
+   built for another model, of another shape, by an older build or from other weights (another GGUF behind the same
+   model id, another snapshot of the checkpoint: atlas_index.weights_differ) is not read, in plain words; one built
+   before metas named their weights is read on the model id alone; a steer lens layer or a passages part from other
+   weights is refused, not resumed into.
 
 Run: .venv/bin/python -I scripts/check_atlas_index.py   (exits 0 when every check holds)
 """
@@ -38,6 +43,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""
     os.environ["HF_HUB_OFFLINE"] = "1"
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -54,7 +60,8 @@ import torch
 import backend.atlas_build as ab
 import backend.atlas_ops as ao
 from atlas_stand_in import stand_in
-from backend.atlas_index import AtlasIndex, match_ids, scale_scores
+from backend import runtime_factory as rf
+from backend.atlas_index import AtlasIndex, match_ids, scale_scores, weights_differ
 from backend.causal_check import language_model, pad_right
 from backend.label_gate import label_top_ids
 from backend.theodolite_math import unembed_gemma4
@@ -120,6 +127,10 @@ def read_window(lm: torch.nn.Module, ids: List[int]) -> tuple:
         for h in hooks:
             h.remove()
     return A, np.stack(g), np.stack(u)
+
+
+# a GGUF's card, as runtime_factory.weights_card gives one (abridged): what an index built on another file names
+OTHER_GGUF = {"format": "gguf", "file": "other.gguf", "id": "00ff00ff00ff00ff", "sha256_header": "ab" * 32, "linears": "packed"}
 
 
 def raises(fn, *args, **kw) -> str:
@@ -321,6 +332,13 @@ def main() -> int:
                   and AtlasIndex(d_).get("passages") is None, "passages: a run stopped after its first part leaves that part and no index")
             said = raises(ab.build_passages, rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=8, chunk=3, log=quiet)
             check("other settings (seed)" in said, f"passages: a resume with another seed refused in plain words ({said})")
+            here = ab._weights_here
+            ab._weights_here = lambda _rt: OTHER_GGUF
+            try:
+                said = raises(ab.build_passages, rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=7, chunk=3, log=quiet)
+            finally:
+                ab._weights_here = here
+            check("other settings (weights)" in said, f"passages: a resume on other weights refused in plain words ({said})")
             lines: List[str] = []
             ab.build_passages(rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=7, chunk=3, log=lines.append)
             check(bool(lines) and "part 2 of" in lines[0] and not any("part 1 of" in x for x in lines), f"passages: the resumed run begins at its second part ({lines[:1]})")
@@ -474,6 +492,45 @@ def main() -> int:
     check(pidx.get("wiring") is None and "weighed across layers" in pidx.status()["wiring"]["refused"],
           "a wiring index built before links were weighed across layers is refused")
     section("an index built for another model, of another shape, or by an older build, is not read", before)
+
+    before = len(failures)
+    card = rf.weights_card(rt)
+    metas = {k_: mine.get(k_)["meta"] for k_ in ("lens", "act_scale", "wiring", "steer_lens", "layout", "passages")}
+    check(card == {"format": "stand-in", "model": rt.model_id, "runtime": "TheodoliteRuntime"}
+          and all(m_.get("weights") == card for m_ in metas.values()),
+          f"every index's meta names the weights it was built from (the stand-in's card): {[k_ for k_, m_ in metas.items() if m_.get('weights') != card]}")
+    theirs = AtlasIndex(out, model=rt.model_id, shape=(L, N), weights=OTHER_GGUF)
+    st2 = theirs.status()
+    want = "built from other weights (the stand-in, not the GGUF other.gguf (fingerprint 00ff00ff00ff00ff)): rebuild it"
+    check(all(theirs.get(k_) is None and want in (st2[k_]["refused"] or "") for k_ in metas),
+          f"the same model id, other weights: every index refused in plain words ({st2['lens'].get('refused')})")
+    old_lens = dict(np.load(out / "lens.npz"))
+    m_old = json.loads(str(old_lens["meta"]))
+    del m_old["weights"]
+    old_lens["meta"] = np.array(json.dumps(m_old))
+    (out / "older").mkdir()
+    np.savez(out / "older" / "lens.npz", **old_lens)
+    check(AtlasIndex(out / "older", model=rt.model_id, shape=(L, N), weights=OTHER_GGUF).get("lens") is not None,
+          "an index built before metas named their weights: read on the model id alone, as before")
+    ct = lambda snap: {"format": "compressed-tensors W4A16", "repo": "google/gemma-4-31B-it-qat-w4a16-ct", "snapshot": snap}
+    check(weights_differ(ct("a" * 40), ct("b" * 40)) == ("google/gemma-4-31B-it-qat-w4a16-ct at snapshot aaaaaaaaaaaa, "
+                                                          "not google/gemma-4-31B-it-qat-w4a16-ct at snapshot bbbbbbbbbbbb")
+          and weights_differ(ct("a" * 40), ct("a" * 40)) is None and weights_differ(ct("a" * 40), ct(None)) is None
+          and weights_differ(None, ct("a" * 40)) is None and weights_differ(OTHER_GGUF, {**OTHER_GGUF, "linears": "resident"}) is None
+          and weights_differ(OTHER_GGUF, {**OTHER_GGUF, "id": "1" * 16}) is not None
+          and weights_differ(OTHER_GGUF, {**OTHER_GGUF, "sha256_header": "cd" * 32}) is not None
+          and weights_differ(OTHER_GGUF, ct("a" * 40)) is not None,
+          "weights_differ: another snapshot or fingerprint differs; an unknown snapshot or a card missing compares the model "
+          "id alone; how a GGUF's layers are held does not count")
+    here = ab._weights_here
+    ab._weights_here = lambda _rt: OTHER_GGUF
+    try:
+        said = raises(ab.build_steer_lens, rt, out, p50, layers=[2], batch=9, log=quiet)
+    finally:
+        ab._weights_here = here
+    check("L0.npz was built from other weights (the stand-in, not the GGUF other.gguf" in said and "another folder (--out)" in said,
+          f"steer: a run on other weights refused before it builds a layer, not resumed into the stand-in's ({said})")
+    section("provenance: each index names its weights; one from other weights refused, in plain words, and not resumed", before)
 
     shutil.rmtree(out, ignore_errors=True)
     print(f"\n{passed} checks passed, {len(failures)} failed")

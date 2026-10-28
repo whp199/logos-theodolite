@@ -230,7 +230,9 @@ def main(argv=None) -> int:
     except ValueError as exc:
         raise SystemExit(str(exc))
 
-    index = AtlasIndex(model=getattr(rt, "model_id", None), shape=(L, N))
+    from backend.runtime_factory import weights_card
+
+    index = AtlasIndex(model=getattr(rt, "model_id", None), shape=(L, N), weights=weights_card(rt))
     stats = index.get("act_scale")
     p50_file = None
     if stats is not None:

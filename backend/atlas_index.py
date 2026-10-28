@@ -98,6 +98,39 @@ def save_npz(path: Path, compressed: bool = False, **arrays: Any) -> None:
     os.replace(tmp, path)
 
 
+def _weights_name(card: Dict[str, Any]) -> str:
+    if card.get("format") == "gguf":
+        return f"the GGUF {card.get('file')} (fingerprint {card.get('id')})"
+    if card.get("format") == "stand-in":
+        return "the stand-in"
+    snap = card.get("snapshot")
+    return f"{card.get('repo') or card.get('format')}" + (f" at snapshot {str(snap)[:12]}" if snap else "")
+
+
+def weights_differ(built: Optional[Dict[str, Any]], here: Optional[Dict[str, Any]]) -> Optional[str]:
+    """How the weights an index was built from (`built`: its meta's "weights", `runtime_factory.weights_card` of the
+    runtime that built it) differ from the runtime's here (`here`), in plain words; None when they are the same as far
+    as the two cards tell, or when either is unknown (an index built before its meta named its weights, or a
+    checkpoint whose snapshot the cache did not name), so that the model id alone is compared, as before. A GGUF is
+    compared by its fingerprint and the sha256 of its header (`gguf_model.provenance`), the checkpoint by its repo id
+    and snapshot; how a GGUF's layers are held (packed, resident, dense) is not compared: the three give the same
+    forward bit for bit (scripts/check_gguf.py), and a way of computing that does not is in the model id."""
+    if not built or not here:
+        return None
+    a, b = built.get("format"), here.get("format")
+    if a != b:
+        return f"{_weights_name(built)}, not {_weights_name(here)}"
+    if a == "gguf":
+        same = (built.get("id"), built.get("sha256_header")) == (here.get("id"), here.get("sha256_header"))
+        return None if same else f"{_weights_name(built)}, not {_weights_name(here)}"
+    if a == "stand-in":
+        return None
+    if built.get("repo") != here.get("repo") or (built.get("snapshot") and here.get("snapshot")
+                                                 and built.get("snapshot") != here.get("snapshot")):
+        return f"{_weights_name(built)}, not {_weights_name(here)}"
+    return None
+
+
 def meta_of(z: Any) -> Dict[str, Any]:
     try:
         return json.loads(str(z["meta"]))
@@ -118,14 +151,18 @@ def load_folder(meta_path: Path) -> Dict[str, Any]:
 class AtlasIndex:
     """The index files of one folder, each loaded on first need and loaded again when it changes on disk (by mtime).
 
-    Given the model read here (`model`, its runtime's model_id; `shape`, its (layers, neurons)), a file built for
-    another model or of another shape is not used: it reads as not built, and `status()` says why (`refused`). A
-    stand-in's indexes (scripts/atlas_stand_in.py) are never read for the model, nor the model's for a stand-in."""
+    Given the model read here (`model`, its runtime's model_id; `shape`, its (layers, neurons); `weights`, its weights
+    card, `runtime_factory.weights_card`), a file built for another model, of another shape or from other weights
+    (`weights_differ`: another GGUF behind the same model id, another snapshot of the checkpoint) is not used: it reads
+    as not built, and `status()` says why (`refused`). A stand-in's indexes (scripts/atlas_stand_in.py) are never read
+    for the model, nor the model's for a stand-in."""
 
-    def __init__(self, root: Optional[Path] = None, model: Optional[str] = None, shape: Optional[Tuple[int, int]] = None) -> None:
+    def __init__(self, root: Optional[Path] = None, model: Optional[str] = None, shape: Optional[Tuple[int, int]] = None,
+                 weights: Optional[Dict[str, Any]] = None) -> None:
         self.root = Path(root) if root is not None else index_dir()
         self.model = model
         self.shape = tuple(int(x) for x in shape) if shape is not None else None
+        self.weights = weights
         self._lock = threading.Lock()
         self._cache: Dict[str, Tuple[float, Optional[Dict[str, Any]], Optional[str]]] = {}
         self._base: Dict[str, Tuple[Tuple[float, int], np.ndarray]] = {}
@@ -158,6 +195,9 @@ class AtlasIndex:
         meta = data["meta"]
         if self.model is not None and meta.get("model") is not None and meta.get("model") != self.model:
             return f"built for {meta.get('model')}, not {self.model}: rebuild it (scripts/atlas_build.py)"
+        other = weights_differ(meta.get("weights"), self.weights)
+        if other:
+            return f"built from other weights ({other}): rebuild it (scripts/atlas_build.py)"
         arr = data.get(SHAPE_KEY.get(name, ""))
         if self.shape is not None and arr is not None and tuple(arr.shape[:2]) != self.shape:
             return (f"shaped for {arr.shape[0]} layers x {arr.shape[1]} neurons, not {self.shape[0]} x {self.shape[1]}: "
