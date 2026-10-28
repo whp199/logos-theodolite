@@ -125,7 +125,9 @@ could drive it up and down and what it could drive when it fires each way, the h
 answers (the model answering fixed questions with this neuron pushed at several doses, ranked against pushes along
 random directions), and a **push**: ask anything and read three answers at once, the neuron pushed up, left alone and
 pushed down. Run a text to see which neurons fire hardest on each word-piece, search every neuron’s words, lay a layer’s
-census answers out by what they say, and keep a name and a note beside a neuron. A **scientist** in the side panel reads
+census answers out by what they say, and keep a name and a note beside a neuron. Its **passages** keep each face’s
+strongest windows of a corpus whole, with what the face reads and what follows it (built, not yet gathered on the
+model). A **scientist** in the side panel reads
 the atlas with the same tools, runs pushes and texts, names what it finds and points at it on the map; it runs on Claude
 Code or Codex where they are installed, or on any OpenAI-compatible endpoint: LM Studio or Ollama on this machine,
 OpenRouter, or one you name.
@@ -142,7 +144,7 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | `fires`: run your text, filter neurons by activation over their usual range, token paths | “run a text”: the same filters (layers, sign, score, words), the links among what fires at a word-piece, the heads lit by their write |
 | steered rollouts per prompt and dose | the census tab |
 | a three-column multi-turn steered chat (−, 0, +), add or ×, “reads you” | the push tab, the same |
-| lens, connections, a name | the details: both faces under the gate, the steer lens, the activation range with GeGLU’s four sign regimes, wiring and head tables; a name and a note kept on the server |
+| lens, connections, a name | the details: both faces under the gate, the steer lens, the activation range with GeGLU’s four sign regimes, wiring and head tables; a name and a note kept on the server; and each face’s stored passages in a tab of their own, with the regime at each and the word-pieces each face reads and that follow, which the reference does not keep |
 | embeddings: UMAP of a layer’s rollouts by neuron, prompt, dose or kind | the spread, the same colourings |
 | attention heads with q / k / v / o roles; head tools | the same, with each head’s profile over eight texts, its pattern on a text and the heads driving a neuron at a word-piece |
 | a Claude chat (the `claude` CLI with the explorer as an MCP server), Codex as an option, past chats, attachments, edit and reroll, “explain” | the same with 30 tools, plus any OpenAI-compatible endpoint (the server runs the tool loop); the tools count layers as the pages do |
@@ -287,7 +289,7 @@ REPORT §3.4). Where each fault stands now:
 | **4** | The thread score C is a weak guide: ρ ≈ 0.41 with measured effects, against 0.87 for a direct-path estimate | **Mended in the instrument**: `thread_score="direct"` chooses and ranks threads by the direct-path estimate, and the interface sends it by default; the server’s own default stays C for old callers. Each binary row carries the one score it was chosen by; the JSON's `filaments_meta` (its first 60 threads, in source-layer order) carries both |
 | **5** | No chat template: the instruct model ran as a raw language model | **Mended**: `chat`, `system`, `assistant_prefix`; on by default in the interface |
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
-| **7** | One input label for a neuron’s two faces | Open |
+| **7** | One input label for a neuron’s two faces | **Built, not yet gathered on the model.** The atlas keeps each face’s own passages, with the word-pieces it reads and that follow (`scripts/atlas_build.py passages`), shown on the atlas’s passages tab and in the folio’s apparatus; they are counts over sixteen passages, not yet validated as labels |
 | **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **Mended in the instrument**: `pole_ranking="write"` lists each layer’s fifteen biggest writers, \|a\| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, and the interface sends it by default; the server’s own default stays \|a\| for old callers. Every layer reports each listed neuron’s write size and the share of the feed-forward write the fifteen explain. That share is a sample either way: in E3 (12 prompts, last word-piece; indicative only), the fifteen loudest explained 10–41% at layers 21, 31, 41, 51 and 59 and 70–74% at layers 3 and 11, the seven sampled, and so did the fifteen biggest writers, within half a percentage point. The threads join the listed neurons, so they follow the ranking; V7 measured thread scores only among neurons ranked by \|a\| |
 | **9** | The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is applied to the instruct model (4-bit QAT), where it agrees with the model’s own average gradients at only cos 0.15–0.33 for the pronoun direction (layers 31–59) | **Open, and the largest accuracy fault left; now labelled.** Everywhere the instrument uses the lens, it still reads through this base-fitted J++: the words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. R1 refitted a lens on the instruct model ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)): its directional form is stable from layer 31; its full matrix exists at only 11 layers (11, 16, …, 56, 59) and is usable at only five of them, 41, 46, 51, 56 and 59, where it beats J++ (top-1 on the model’s own reply at layer 51: 25% → 45%); below layer 31 no averaged lens tested was reliable. The instrument does not load it. The head and the foot of every page name the lens and say it was fitted on the base model, a red line beside each layer's words says what the reading can bear there, and `/api/health` and every sweep reply carry a `lens` object (`id`, `fitted_on`, `method`, `applied_to`, `caution`). R2’s pre-registered test served no second lens at any layer, and R3, J++’s recipe fitted on the instruct model, served none either. R4 tested R1’s lens at layers 56 and 59 on 640 fresh prompts and served it at neither. Its lead over the naked eye was in function words (“the”, “of”, which R2’s filter counts as content), and without them it beat neither baseline ([ROADMAP §i](ROADMAP.md#i--the-lens-the-largest-fault-left)) |
 
@@ -465,6 +467,7 @@ process at a time):
 .venv/bin/python scripts/atlas_build.py all                          # words, activation ranges, wiring, layout (minutes)
 .venv/bin/python scripts/atlas_build.py stats --hf <dataset> --tokens 2000000   # optional: ranges over a corpus of your choosing
 .venv/bin/python scripts/atlas_build.py steer --layers 40-59         # the steer lens, a range of layers at a time (hours)
+.venv/bin/python scripts/atlas_build.py passages --hf <dataset> --tokens 2000000   # each face's strongest passages, over the stats corpus
 .venv/bin/python scripts/census_run.py --layer 53 --neurons all --random-controls 256   # a layer's census, ranked (layers from 0)
 .venv/bin/python scripts/census_tools.py spread 53                   # its answers laid out by what they say (CPU)
 ```
@@ -481,6 +484,13 @@ runtime’s own unpacker at load on a GPU and refused in plain words on any diff
 unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit weights (an 80 GB card holds it, with
 little left for a batch). The 0.71 s a decode step in `census_run.py`’s help was measured with the default, `reference`
 (ARCHITECTURE §2).
+
+`atlas_build.py passages --hf <dataset> --tokens 2000000` keeps, for every neuron and face, its sixteen strongest windows
+of the corpus (one event a window) with the gate and up values there, for the atlas’s passages tab, the folio and the
+scientist’s `passages`; give it the corpus `stats` read (with the stats index there it also draws six a face at random
+above half its extreme, `--sample`). It is one forward a window, as `stats` is, so it should cost about what stats
+costs, some 29 minutes a million word-pieces on one RTX 5090 (measured for stats; passages not yet run on the model).
+The windows it keeps are the corpus’s own text: they stay in the atlas folder and are never committed.
 
 The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model) or
 Codex (`codex`) where the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,
