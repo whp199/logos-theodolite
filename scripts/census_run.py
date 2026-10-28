@@ -9,6 +9,7 @@ ranked (scripts/census_tools.py rank).
     .venv/bin/python scripts/census_run.py --layer 45 --design calib_rel --neurons random:32 --random-controls 16 --run L45-calib
     .venv/bin/python scripts/census_run.py --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16
     .venv/bin/python scripts/census_run.py --layer 45 --neurons all --batch 96 --max-new 64 --shard 1/4     # one of four shards
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons all --batch 96 --max-new 64 --canary-only   # its first batch alone
     .venv/bin/python scripts/census_run.py --layer 45 --neurons-from L45-r384.units.jsonl --top 32 --seed 1 --random-controls 1024
     .venv/bin/python scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
 
@@ -47,7 +48,10 @@ another, it is warned and recorded, not refused). --shard i/n takes shard i of n
 <run>.s<i>of<n>.jsonl, and every shard but 0 writes the plan's first batch again (<run>.s<i>of<n>.canary.jsonl, one
 batch's time) for census_tools.py merge to compare with shard 0's (the merge leaves the canaries out of the join); a
 shard is continued only as the same shard, the merge refuses a run with a shard or an answer missing unless
---partial, and the ranking comes after it. --neurons-from <run>.units.jsonl --top M retests a screen's M strongest
+--partial, and the ranking comes after it. --canary-only writes that first batch alone (<run>.canary.jsonl, and
+<run>.canary.json with the settings and the runtime it was written with) and stops, the run itself not begun: take it
+on the home card and on a rented one with the same arguments, and census_tools.py canary says whether the two cards
+write the same bits (scripts/pod/pilot.sh --home-canary). --neurons-from <run>.units.jsonl --top M retests a screen's M strongest
 neurons against fresh controls (another --seed), the census's second stage: its p and q are taken over those M alone,
 and its neurons are fixed when it is begun (a screen ranked again since is a new retest, under another --run).
 
@@ -139,6 +143,9 @@ def main(argv=None) -> int:
     ap.add_argument("--batch", type=int, default=32, help="answers written together (fixed for the run: its rows' bits depend on it)")
     ap.add_argument("--shard", default="", help="i/n: take shard i of n of the run's planned chunks, into <run>.s<i>of<n>.jsonl "
                                                 "(join them with census_tools.py merge, then rank)")
+    ap.add_argument("--canary-only", action="store_true", help="write only the run's plan batch 0, to <run>.canary.jsonl (its "
+                    "settings and runtime beside it, <run>.canary.json), as a shard's canary, and stop: for comparing one "
+                    "card with another before a run (census_tools.py canary)")
     ap.add_argument("--run", default="", help="the run's name (default L<layer>-<design>); with several layers it names each "
                                               "by {layer}, e.g. L{layer}-r384")
     ap.add_argument("--out-dir", default="", help="the census folder (default: the atlas's)")
@@ -164,6 +171,8 @@ def main(argv=None) -> int:
         raise SystemExit("--neurons-from retests one layer's screen: give it --top M and one --layer, and no --neurons.")
     if a.top and not a.neurons_from:
         raise SystemExit("--top goes with --neurons-from, the screen whose strongest neurons it retests.")
+    if a.canary_only and shard:
+        raise SystemExit("A canary is the plan's first batch whatever the shard: give --canary-only without --shard.")
 
     if a.stand_in:
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -250,14 +259,18 @@ def main(argv=None) -> int:
             res = cz.take_census(rt, layer, neurons, out, p50=float(p50s[layer]), p50_source=source, design_name=a.design,
                                  controls=a.random_controls, seed=a.seed, max_new=a.max_new, top_k=a.top_k, batch=a.batch,
                                  neurons_spec=spec, dose_unit=a.dose_unit or "", shard=shard, p50_file=p50_file, lens_id=lens_id,
-                                 stage=stage, cancel=stop.is_set, log=lambda s: print(s, flush=True))
+                                 stage=stage, canary_only=a.canary_only, cancel=stop.is_set, log=lambda s: print(s, flush=True))
         except ValueError as exc:
             raise SystemExit(str(exc))
-        print(f"-> {out} ({res['written']} answers written, {res['skipped']} were there)")
+        if a.canary_only:
+            print(f"-> {res['canary']} ({res['written']} answers written, {res['skipped']} were there): compare it with the same "
+                  "batch from another card by census_tools.py canary")
+        else:
+            print(f"-> {out} ({res['written']} answers written, {res['skipped']} were there)")
         if shard:
             print(f"a shard is ranked only once its run is joined: census_tools.py merge {run_path.stem}.s*of{shard[1]}.jsonl --out "
                   f"{run_path.name} (in {out_dir}; a canary named among them is left out of the join), then rank")
-        elif not a.no_rank and out.exists():
+        elif not a.no_rank and not a.canary_only and out.exists():
             units = cz.write_units(out)
             print(f"-> {units}")
         if res["stopped"]:

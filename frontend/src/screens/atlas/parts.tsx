@@ -123,6 +123,7 @@ export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: 
       {card.stage
         ? ` A retest of the ${card.stage.top} strongest of the ${card.stage.of} neurons of ${card.stage.screen}, against fresh controls: its p and q are taken over these ${card.stage.top} alone.`
         : ""}
+      {card.writer_floor ? ` ${card.writer_floor.says}` : ""}
     </p>
   ) : null;
 

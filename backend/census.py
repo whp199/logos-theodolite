@@ -656,6 +656,79 @@ def write_json_atomic(path: Path, data: Any, indent: Optional[int] = 1) -> None:
     os.replace(tmp, path)
 
 
+# ---------------------------------------------------------------------------------------------- the writer's floor
+
+# The writer's floor (scripts/verify_atlas_writer.py, on the model): with no push, how far an answer written in a census
+# batch agrees with the same answer written alone, the rows of other batch shapes not being bit-identical on a GPU
+# (N1A). A floor holds for the runtime class it was measured on: these fields of a runtime record (the code's commit
+# and the stats index are left out, neither moving an unpushed answer's numbers).
+WRITER_FLOOR_ENV = "THEODOLITE_WRITER_FLOOR"
+FLOOR_CLASS = ("device", "torch", "cuda", "transformers", "interp_engine", "compressed_tensors")
+
+
+def writer_floor_files() -> List[Path]:
+    """The writer's floors on disk: `$THEODOLITE_WRITER_FLOOR` (a file, or a folder of atlas_writer_floor*.json), else
+    experiments/results/atlas_writer_floor*.json in this checkout (where scripts/verify_atlas_writer.py writes them)."""
+    env = os.environ.get(WRITER_FLOOR_ENV, "").strip()
+    if env:
+        p = Path(env).expanduser()
+        return sorted(p.glob("atlas_writer_floor*.json")) if p.is_dir() else ([p] if p.exists() else [])
+    return sorted((Path(__file__).resolve().parent.parent / "experiments" / "results").glob("atlas_writer_floor*.json"))
+
+
+def writer_floor(meta: Dict[str, Any], files: Optional[Sequence[Path]] = None) -> Optional[Dict[str, Any]]:
+    """What the writer's floor says of a run, from its meta: among the floors measured on the run's model
+    (`writer_floor_files`), one on the run's runtime class (FLOOR_CLASS) first, else the first; its floor for the run's
+    batch size where that was measured, else the smallest over the census batches it measured. `k` is how many
+    word-pieces an unpushed answer written in such a batch kept in common with the same answer written alone before
+    they first parted (None: they did not part within the `max_new` measured); `says` puts it in words, a guide for
+    reading a pushed answer's departure from an unpushed one written in another shape. None where no floor of the run's
+    model is on disk."""
+    found = []
+    for p in writer_floor_files() if files is None else files:
+        try:
+            d = json.loads(Path(p).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, dict) and d.get("model") == meta.get("model") and isinstance(d.get("census_floor"), dict):
+            found.append((Path(p), d))
+    if not found:
+        return None
+    mine = meta.get("runtime") or {}
+
+    def differ(d: Dict[str, Any]) -> List[str]:
+        theirs = d.get("runtime") or {}
+        return [f for f in FLOOR_CLASS if theirs.get(f) != mine.get(f)]
+
+    path, d = next(((p, d) for p, d in found if mine and not differ(d)), found[0])
+    floors = {int(b): (None if v is None else int(v)) for b, v in d["census_floor"].items()}
+    batch = meta.get("batch")
+    if batch in floors:
+        batches, k = [int(batch)], floors[int(batch)]
+    else:
+        batches = sorted(floors)
+        ks = [v for v in floors.values() if v is not None]
+        k = min(ks) if ks else None
+    moved = differ(d) if mine else None
+    device = (d.get("runtime") or {}).get("device")
+    shape = (f"census batches of {batches[0]}, as this run's" if batch in floors else
+             f"census batches of {' and '.join(map(str, batches))}" + (f" (this run's are of {batch}, not measured)" if batch else ""))
+    where = f"on {device}, the census's {len(d.get('questions') or PROMPTS)} questions, {d.get('max_new')} word-pieces"
+    if k is None:
+        says = (f"Writer's floor: with no push, answers written in {shape} did not part from the same answers written alone "
+                f"within the word-pieces measured ({where}): no departure there came from the batch's shape alone.")
+    else:
+        says = (f"Writer's floor: with no push, answers written in {shape} first part from the same answer written alone after "
+                f"{k} word-pieces in common ({where}): a departure that late or later from an answer written in another "
+                "shape may be the batch's shape alone, and is not by itself evidence of a push.")
+    if moved:
+        says += f" It was measured on another runtime than this run's ({', '.join(moved)} differ): a guide, not this run's own floor."
+    elif moved is None:
+        says += " This run records no runtime to set it against."
+    return {"k": k, "batches": batches, "this_batch": batch in floors, "max_new": d.get("max_new"), "device": device,
+            "same_runtime": None if moved is None else not moved, "runtime_differ": moved, "file": path.name, "says": says}
+
+
 # ------------------------------------------------------------------------------------------------- taking a census
 
 
@@ -826,6 +899,58 @@ def canary_path_of(run_path: Path) -> Path:
     return Path(str(run_path)[: -len(".jsonl")] + ".canary.jsonl")
 
 
+def canary_about_path_of(canary_path: Path) -> Path:
+    """Beside a canary taken alone (`take_census(..., canary_only=True)`), what it was taken with: `<run>.canary.json`,
+    the meta its run would begin with (not a `.meta.json`, so no census reads it as a run)."""
+    return Path(str(canary_path)[: -len(".jsonl")] + ".json")
+
+
+def first_difference(rows: Iterable[Dict[str, Any]], by_key: Dict[Any, Dict[str, Any]]) -> Optional[Tuple[Dict[str, Any], str]]:
+    """The first of `rows`, with its first field in sorted order, whose value differs from the row of the same key in
+    `by_key`, as whole JSON values (a row missing there differs in every field); None where every row agrees."""
+    return next(((r, f) for r in rows for f in sorted(set(r) | set(by_key.get(row_key(r), {})))
+                 if r.get(f) != by_key.get(row_key(r), {}).get(f)), None)
+
+
+def compare_canaries(ours: Path, theirs: Path) -> Dict[str, Any]:
+    """Two canaries of one plan batch (a shard's, or one taken alone) compared as whole JSON values, as the merge
+    compares a shard's with shard 0's: whether they are the same (`same`), the first row and field that differ, how many
+    answers differ and the earliest piece at which one's word-pieces part from the other's (`earliest_departure`), the
+    settings their metas disagree on and the runtime fields (card, versions, code) where each canary's about-file is
+    beside it (`canary_about_path_of`). `says` puts it in words."""
+    a, b = list(read_rows(ours, tolerate_tail=True)), list(read_rows(theirs, tolerate_tail=True))
+    out: Dict[str, Any] = {"ours": Path(ours).name, "theirs": Path(theirs).name, "answers": [len(a), len(b)]}
+    abouts = []
+    for p in (ours, theirs):
+        ap = canary_about_path_of(Path(p))
+        abouts.append(json.loads(ap.read_text(encoding="utf-8")).get("meta") if ap.exists() else None)
+    out["settings_differ"] = settings_differ(*abouts) if all(abouts) else None
+    out["runtime_differ"] = runtime_differ(*(m.get("runtime") for m in abouts)) if all(abouts) else None
+    out["runtimes"] = [(m or {}).get("runtime") for m in abouts]
+    if [row_key(r) for r in a] != [row_key(r) for r in b]:
+        out.update({"same": False, "first": None, "rows_differ": None, "earliest_departure": None,
+                    "says": f"not the same batch: {out['answers'][0]} and {out['answers'][1]} answers of other keys (other "
+                            "settings, another batch size or another plan)"})
+        return out
+    other = {row_key(r): r for r in b}
+    diff = first_difference(a, other)
+    rows_differ = sum(1 for r in a if r != other[row_key(r)])
+    deps = [d for d in (first_departure(r.get("token_ids") or [], other[row_key(r)].get("token_ids") or []) for r in a) if d is not None]
+    out.update({"same": diff is None, "rows_differ": rows_differ, "earliest_departure": min(deps) if deps else None,
+                "first": None if diff is None else {"field": diff[1], "kind": diff[0]["kind"], "neuron": diff[0]["neuron"],
+                                                     "prompt": diff[0]["prompt"], "dose": diff[0]["dose"]}})
+    if diff is None:
+        out["says"] = f"identical: {len(a)} answers, every field"
+    else:
+        r, f = diff
+        out["says"] = (f"differ in {rows_differ} of {len(a)} answers (first in {f} of {r['kind']} {r['neuron']} {r['prompt']} "
+                       f"{float(r['dose']):+g}); " + (f"the earliest parts from the other's at piece {min(deps)}" if deps else
+                                                       "every answer writes the same word-pieces"))
+    if out["runtime_differ"]:
+        out["says"] += f"; written on other runtimes ({', '.join(out['runtime_differ'])} differ)"
+    return out
+
+
 def file_sha256(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -949,6 +1074,35 @@ def settings_differ(old: Dict[str, Any], new: Dict[str, Any]) -> List[str]:
     return differ
 
 
+def write_census_batch(rt: Any, layer: int, prompt_ids: Sequence[int], delta: Any, *, max_new: int, stop_ids: Sequence[int],
+                       top_k: int = 5, cancel: Any = None) -> Optional[List[Dict[str, Any]]]:
+    """One census batch: len(delta) answers to one question (`prompt_ids`, the same for every row, so none is padded),
+    row i pushed by delta[i] ([B, D] float32, added to the stream leaving `layer` at every word-piece but the start mark;
+    a row of zeros is a row unpushed), written greedily together (`atlas_ops.write_rows`), at most `max_new` pieces each,
+    a row stopping after the first of `stop_ids` it writes. Per row: token_ids (the end mark among them when one was
+    written), logprob (each piece's, to 4 places), top_ids, top_lps and ended; None when `cancel()` turned true.
+    take_census writes every batch through it, and scripts/verify_atlas_writer.py its census-shaped batches, so the
+    writer's floor is measured on the census's own writer."""
+    from backend import atlas_ops as ao
+    from backend.causal_check import language_model
+
+    B = int(delta.shape[0])
+    iv = ao.Interventions(rows=B, adds={int(layer): delta}) if bool(delta.abs().sum() > 0) else None
+    rows: List[Dict[str, Any]] = [{"token_ids": [], "logprob": [], "top_ids": [], "top_lps": [], "ended": False} for _ in range(B)]
+    for st in ao.write_rows(language_model(rt.hf_model), rt.lm_head_weight, [list(prompt_ids)] * B, iv, max_new=max_new,
+                            stop_ids=stop_ids, bos_id=rt.tokenizer.bos_token_id, spare_bos=True,
+                            softcap=ao.softcap_of(rt.hf_model), top_k=top_k, cancel=cancel):
+        r = rows[st.row]
+        r["token_ids"].append(st.token_id)
+        r["logprob"].append(round(st.logprob, 4))
+        r["top_ids"].append(st.top_ids)
+        r["top_lps"].append(st.top_lps)
+        r["ended"] = r["ended"] or st.end
+    if cancel is not None and cancel():
+        return None
+    return rows
+
+
 def take_census(
     rt: Any,
     layer: int,
@@ -969,6 +1123,7 @@ def take_census(
     p50_file: Optional[Path] = None,
     lens_id: Optional[str] = None,
     stage: Optional[Dict[str, Any]] = None,
+    canary_only: bool = False,
     log: Any = print,
     cancel: Any = None,
 ) -> Dict[str, Any]:
@@ -991,7 +1146,9 @@ def take_census(
     (`shard_batches`) into `out_path` (`shard_path`); every shard but 0 first writes plan batch 0 again beside it
     (`canary_path_of`) for the merge to compare. A shard is continued only as the same shard, and a retest only with the
     neurons it was begun with. A run begun before runtime records, continued, records its earlier answers' runtime as
-    unknown (`RUNTIME_UNKNOWN` in `mixed_runtime`). Returns counts."""
+    unknown (`RUNTIME_UNKNOWN` in `mixed_runtime`). `canary_only` writes plan batch 0 alone, as a shard's canary, beside
+    the run's path (with the meta the run would begin with, `canary_about_path_of`), and nothing else: for comparing
+    two cards before a run (census_tools.py canary). Returns counts."""
     import time
 
     import torch
@@ -1029,6 +1186,53 @@ def take_census(
     gain = read_gain(w.write_dirs(layer, sample.tolist()).cpu().numpy(), ctrl_np, w_next)
     refs = control_refs(seed, controls, N)
     ref_ceiling = dict(zip(sorted(set(refs)), w.write_ceiling(layer, sorted(set(refs))).tolist())) if refs else {}
+    ctrl = torch.from_numpy(ctrl_np)
+
+    def write_batch(bj: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
+        B = len(bj)
+        delta = torch.zeros(B, D, dtype=torch.float32, device=w.device)
+        ceil: List[Optional[float]] = [None] * B  # each pushed row's write ceiling (a control's: its paired neuron's)
+        rows_n = [i for i, j in enumerate(bj) if j["kind"] == "neuron"]
+        if rows_n:
+            ids_n = [bj[i]["neuron"] for i in rows_n]
+            u = w.write_dirs(layer, ids_n)
+            c_n = w.write_ceiling(layer, ids_n).tolist()
+            for k, i in enumerate(rows_n):
+                ceil[i] = float(c_n[k])
+                delta[i] = u[k] * (bj[i]["dose"] * (ceil[i] if by_ceiling else p50))
+        for i, j in enumerate(bj):
+            if j["kind"] == "random":
+                ceil[i] = float(ref_ceiling[refs[j["neuron"]]])
+                delta[i] = ctrl[j["neuron"]].to(w.device) * (j["dose"] * (ceil[i] if by_ceiling else p50))
+        got = write_census_batch(rt, layer, prompt_ids[bj[0]["prompt"]], delta, max_new=max_new, stop_ids=stop, top_k=top_k,
+                                 cancel=cancel)
+        if got is None:
+            return None
+        gen = [g["token_ids"] for g in got]
+        lps = [g["logprob"] for g in got]
+        tids = [g["top_ids"] for g in got]
+        tlps = [g["top_lps"] for g in got]
+        ended = [g["ended"] for g in got]
+        out = []
+        for i, j in enumerate(bj):
+            ids = gen[i][:-1] if ended[i] else gen[i]
+            c = ceil[i]
+            if by_ceiling and c is not None:  # the push's real share of the stream, which max_rel filters on
+                push, rel = round(j["dose"] * c, 4), round(abs(j["dose"]) * c / p50, 6)
+            else:
+                push, rel = round(j["dose"] * p50, 4), abs(j["dose"]) if j["kind"] != "baseline" else 0.0
+            rec = {"layer": int(layer), "kind": j["kind"], "neuron": int(j["neuron"]), "prompt": j["prompt"], "dose": j["dose"],
+                   "push": push, "rel_push": rel}
+            if c is not None:
+                rec["ceiling"] = round(c, 6)
+            rec.update({"text": tok.decode(ids, skip_special_tokens=True), "finish": "stop" if ended[i] else "length",
+                        "n_gen": len(gen[i]), "token_ids": gen[i], "logprob": lps[i], "top_ids": tids[i], "top_lps": tlps[i]})
+            if j["kind"] == "random":
+                rec["seed"] = int(seed)
+                rec["ref_neuron"] = int(refs[j["neuron"]])
+            out.append(rec)
+        return out
+
     meta = {
         "model": getattr(rt, "model_id", None), "layer": int(layer), "prompts": PROMPTS, "prompt_ids": prompt_ids,
         "design_name": design_name, "design": [[p, d] for p, d in design], "max_new": int(max_new), "top_k": int(top_k),
@@ -1065,6 +1269,41 @@ def take_census(
     all_jobs = census_jobs(neurons, controls, design)
     meta["jobs"] = these_jobs = jobs_digest(all_jobs)
     plan = plan_batches(all_jobs, batch, meta["plan"])
+
+    def put_canary(canary: Path) -> Optional[int]:
+        """Plan batch 0 written again into `canary` (atomically), outside the run: how many answers, 0 when it holds them
+        already, None when stopped first."""
+        want = [row_key(all_jobs[i]) for i in plan[0][2]]
+        have = [row_key(r) for r in read_rows(canary, tolerate_tail=True)] if canary.exists() else []
+        if have == want:
+            return 0
+        recs = write_batch([all_jobs[i] for i in plan[0][2]])
+        if recs is None:
+            return None
+        tmp = canary.with_name(canary.name + ".tmp")
+        tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs), encoding="utf-8")
+        os.replace(tmp, canary)
+        return len(recs)
+
+    if canary_only:
+        # plan batch 0 alone, as every shard but 0 writes it, to compare one card with another before a run is begun:
+        # beside the run's path and never in it, the run's own file and meta left as they are
+        if shard:
+            raise ValueError("A canary is the plan's first batch whatever the shard: take it without --shard.")
+        canary = canary_path_of(out_path)
+        n_canary = put_canary(canary)
+        if n_canary is None:
+            log("stopped before the canary was written; the same command writes it")
+            return {"written": 0, "skipped": 0, "stopped": True, "canary": str(canary)}
+        about = canary_about_path_of(canary)
+        if n_canary or not about.exists():
+            write_json_atomic(about, {"what": f"plan batch 0 of {out_path.name}, written alone (census_run.py --canary-only), to "
+                                              "compare with the same batch written on another card (census_tools.py canary)",
+                                      "written_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "answers": len(plan[0][2]),
+                                      "meta": meta})
+        log(f"{canary.name}: plan batch 0 ({len(plan[0][2])} answers) " + ("written" if n_canary else "already there")
+            + f", its settings and runtime in {about.name}")
+        return {"written": n_canary, "skipped": 0 if n_canary else len(plan[0][2]), "stopped": False, "canary": str(canary)}
     if shard and [int(n) for n in neurons] != sorted({int(n) for n in neurons}):
         raise ValueError("A run taken in shards takes its neurons in order, each once (as parse_neurons gives them), so the "
                          "merge can rebuild its job list.")
@@ -1159,7 +1398,6 @@ def take_census(
             "cut off, and written again whole")
         keys = keys[: len(keys) - torn]
     done = set(keys)
-    ctrl = torch.from_numpy(ctrl_np)
     todo = [(b, miss) for b in range(b0, b1) for miss in [[i for i in plan[b][2] if row_key(all_jobs[i]) not in done]] if miss]
     total = sum(len(plan[b][2]) for b in range(b0, b1))
     log(f"layer {layer}: {len(neurons)} neurons + {controls} controls, {sum(len(m) for _, m in todo)} answers to write "
@@ -1168,74 +1406,17 @@ def take_census(
     if left:
         log(f"{out_path.name} has left its batch plan ({left}): its missing answers are written by the plan's batches, a "
             "batch's missing part as a batch of its own")
-    softcap = ao.softcap_of(rt.hf_model)
     written, pieces, t0 = 0, 0, time.time()
-
-    def write_batch(bj: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
-        B = len(bj)
-        delta = torch.zeros(B, D, dtype=torch.float32, device=w.device)
-        ceil: List[Optional[float]] = [None] * B  # each pushed row's write ceiling (a control's: its paired neuron's)
-        rows_n = [i for i, j in enumerate(bj) if j["kind"] == "neuron"]
-        if rows_n:
-            ids_n = [bj[i]["neuron"] for i in rows_n]
-            u = w.write_dirs(layer, ids_n)
-            c_n = w.write_ceiling(layer, ids_n).tolist()
-            for k, i in enumerate(rows_n):
-                ceil[i] = float(c_n[k])
-                delta[i] = u[k] * (bj[i]["dose"] * (ceil[i] if by_ceiling else p50))
-        for i, j in enumerate(bj):
-            if j["kind"] == "random":
-                ceil[i] = float(ref_ceiling[refs[j["neuron"]]])
-                delta[i] = ctrl[j["neuron"]].to(w.device) * (j["dose"] * (ceil[i] if by_ceiling else p50))
-        iv = ao.Interventions(rows=B, adds={int(layer): delta}) if bool(delta.abs().sum() > 0) else None
-        gen: List[List[int]] = [[] for _ in range(B)]
-        lps: List[List[float]] = [[] for _ in range(B)]
-        tids: List[List[List[int]]] = [[] for _ in range(B)]
-        tlps: List[List[List[float]]] = [[] for _ in range(B)]
-        ended = [False] * B
-        for st in ao.write_rows(lm, rt.lm_head_weight, [prompt_ids[bj[0]["prompt"]]] * B, iv, max_new=max_new, stop_ids=stop,
-                                bos_id=tok.bos_token_id, spare_bos=True, softcap=softcap, top_k=top_k, cancel=cancel):
-            gen[st.row].append(st.token_id)
-            lps[st.row].append(round(st.logprob, 4))
-            tids[st.row].append(st.top_ids)
-            tlps[st.row].append(st.top_lps)
-            ended[st.row] = ended[st.row] or st.end
-        if cancel is not None and cancel():
-            return None
-        out = []
-        for i, j in enumerate(bj):
-            ids = gen[i][:-1] if ended[i] else gen[i]
-            c = ceil[i]
-            if by_ceiling and c is not None:  # the push's real share of the stream, which max_rel filters on
-                push, rel = round(j["dose"] * c, 4), round(abs(j["dose"]) * c / p50, 6)
-            else:
-                push, rel = round(j["dose"] * p50, 4), abs(j["dose"]) if j["kind"] != "baseline" else 0.0
-            rec = {"layer": int(layer), "kind": j["kind"], "neuron": int(j["neuron"]), "prompt": j["prompt"], "dose": j["dose"],
-                   "push": push, "rel_push": rel}
-            if c is not None:
-                rec["ceiling"] = round(c, 6)
-            rec.update({"text": tok.decode(ids, skip_special_tokens=True), "finish": "stop" if ended[i] else "length",
-                        "n_gen": len(gen[i]), "token_ids": gen[i], "logprob": lps[i], "top_ids": tids[i], "top_lps": tlps[i]})
-            if j["kind"] == "random":
-                rec["seed"] = int(seed)
-                rec["ref_neuron"] = int(refs[j["neuron"]])
-            out.append(rec)
-        return out
 
     if shard and int(shard[0]) > 0:
         # the canary: plan batch 0 (shard 0's first) written again here, outside the run, for the merge to compare
         canary = canary_path_of(out_path)
-        want = [row_key(all_jobs[i]) for i in plan[0][2]]
-        have = [row_key(r) for r in read_rows(canary, tolerate_tail=True)] if canary.exists() else []
-        if have != want:
-            recs = write_batch([all_jobs[i] for i in plan[0][2]])
-            if recs is None:
-                log("stopped before the canary was written; the same command continues the shard")
-                return {"written": 0, "skipped": len(done), "stopped": True}
-            tmp = canary.with_name(canary.name + ".tmp")
-            tmp.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs), encoding="utf-8")
-            os.replace(tmp, canary)
-            log(f"{canary.name}: plan batch 0 written again ({len(recs)} answers), for the merge to compare with shard 0's")
+        n_canary = put_canary(canary)
+        if n_canary is None:
+            log("stopped before the canary was written; the same command continues the shard")
+            return {"written": 0, "skipped": len(done), "stopped": True}
+        if n_canary:
+            log(f"{canary.name}: plan batch 0 written again ({n_canary} answers), for the merge to compare with shard 0's")
 
     with open(out_path, "a", encoding="utf-8") as f:
         for k, (b, miss) in enumerate(todo):
@@ -1390,8 +1571,7 @@ def _merge_shards(inputs: List[Path], metas: List[Dict[str, Any]], out: Path, pa
             notes.append(f"shard {i} wrote none")
             continue
         rows_c = list(read_rows(cpath, tolerate_tail=True))
-        diff = next(((r, f) for r in rows_c for f in sorted(set(r) | set(first.get(row_key(r), {})))
-                     if r.get(f) != first.get(row_key(r), {}).get(f)), None)
+        diff = first_difference(rows_c, first)
         if diff is None and len(rows_c) == len(canary_keys):
             same += 1
         elif diff is None:

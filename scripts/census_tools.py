@@ -7,6 +7,7 @@ layers, the spread of a run's answers, and a calibration run's dose window.
     .venv/bin/python -I scripts/census_tools.py depth --out depth_report.json
     .venv/bin/python -I scripts/census_tools.py spread 45                          # writes <run>.spread.json
     .venv/bin/python -I scripts/census_tools.py curves 45 --weights --json L45-curves.json   # a layer's calibration run
+    .venv/bin/python -I scripts/census_tools.py canary pod/L45-main_rel.canary.jsonl home/L45-main_rel.canary.jsonl
 
 rank writes `<run>.units.jsonl` (each unit's words, z, mass, null_pct, shift, per-dose coherence) and prints the top
 of it and the controls' null (sweep/rank.py). merge keeps one row per (kind, neuron, prompt, dose) and refuses runs
@@ -26,7 +27,10 @@ start to move more answers than the controls, and where text breaks. The ceiling
 where they keep one, else, with --weights, from the weights the run was taken on (the checkpoint in the Hugging Face
 cache, a few tensors of one layer read on the CPU; the stand-in's with --stand-in). A run is named by its path, or by
 a layer number (counting from 0), for that layer's main run in the census folder (for curves, its calibration run
-first). Add --stand-in to work in the stand-in's folder.
+first). Add --stand-in to work in the stand-in's folder. canary sets two canaries of one plan batch against each other
+as whole JSON values, as the merge sets a shard's against shard 0's (census_run.py --canary-only takes one alone, on
+the home card and on a rented one): the same, or how many answers differ and where the earliest parts, and, from the
+`.canary.json` beside each, the settings and the runtime fields (card, versions, code) that differ.
 """
 
 from __future__ import annotations
@@ -169,6 +173,10 @@ def main(argv=None) -> int:
     c.add_argument("--weights", action="store_true", help="each unit's write ceiling from the weights the run was taken on, "
                    "for runs whose answers do not keep it")
     c.add_argument("--json", default="", help="also write the table and the verdict there")
+    k = sub.add_parser("canary", help="set two canaries of one batch against each other (census_run.py --canary-only, or a shard's)")
+    k.add_argument("ours")
+    k.add_argument("theirs")
+    k.add_argument("--json", default="", help="also write the comparison there")
     a = ap.parse_args(argv)
 
     if a.stand_in:
@@ -267,6 +275,20 @@ def main(argv=None) -> int:
                 cz.write_json_atomic(Path(a.json), {"run": run.name, "layer": meta.get("layer"), "design": meta.get("design_name"),
                                                     "dose_unit": meta.get("dose_unit", "stream"), "ceilings_from": source or None,
                                                     "curves": curves, "window": window})
+                print(f"-> {a.json}")
+        elif a.what == "canary":
+            for p in (a.ours, a.theirs):
+                if not Path(p).exists():
+                    raise SystemExit(f"There is no canary {p}.")
+            res = cz.compare_canaries(Path(a.ours), Path(a.theirs))
+            print(f"{res['ours']} against {res['theirs']}: {res['says']}")
+            for name, r in zip(("ours", "theirs"), res["runtimes"]):
+                print(f"  {name}: " + (f"{r.get('device')}, torch {r.get('torch')} (CUDA {r.get('cuda')}), transformers "
+                                       f"{r.get('transformers')}, commit {str(r.get('git'))[:10]}" if r else "no runtime recorded beside it"))
+            if res["settings_differ"]:
+                print(f"  taken with other settings: {', '.join(res['settings_differ'])}")
+            if a.json:
+                cz.write_json_atomic(Path(a.json), res)
                 print(f"-> {a.json}")
     except ValueError as exc:
         raise SystemExit(str(exc))

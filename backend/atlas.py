@@ -645,15 +645,17 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     its neurons, what its null can and cannot single out, the card it was written on (`device`; None before runs kept
     it, or where its parts name more than one or one unknown), whether its parts were written on more than one runtime
     class (`mixed_runtime`: card, library versions or code, or a part begun before runs recorded theirs; each part's
-    readings valid, their bits not alike), for shards joined with some missing, what is missing (`partial`), and,
+    readings valid, their bits not alike), for shards joined with some missing, what is missing (`partial`),
     for the second stage of a two-stage census, which screen's strongest it retests (`stage`: its p and q are taken over
-    those neurons alone, against fresh controls)."""
+    those neurons alone, against fresh controls), and, where scripts/verify_atlas_writer.py has measured one for the
+    run's model, the writer's floor (`writer_floor`, census.writer_floor: with no push, after how many word-pieces an
+    answer written in batches like this run's parts from the same answer written alone; None where none is on disk)."""
     m = d["meta"]
     devices = {(c or {}).get("device") for c in (m.get("mixed_runtime") or [m.get("runtime")])}
     return {"run": d["path"].name, "design": m.get("design_name"), "doses_from": m.get("doses_from") or cz.DOSES_FROM.get(m.get("design_name")),
             "dose_unit": m.get("dose_unit", "stream"), "p50_source": m.get("p50_source"), "read_gain": m.get("read_gain"), "null": d["null"],
             "device": devices.pop() if len(devices) == 1 else None, "mixed_runtime": bool(m.get("mixed_runtime")), "partial": m.get("partial"),
-            "stage": m.get("stage")}
+            "stage": m.get("stage"), "writer_floor": cz.writer_floor(m)}
 
 
 @router.get("/census/units")

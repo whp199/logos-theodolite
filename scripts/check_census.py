@@ -45,7 +45,14 @@ Gemma 4 of scripts/atlas_stand_in.py:
    alone, the screen still the layer's census, rank and the card naming the stage, and a retest refused with the
    screen's seed, too many neurons, --neurons beside it, another layer, or other neurons once its screen is ranked
    again;
-12. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
+12. the writer's floor's CPU half: in a census-shaped batch written by the census's own writer (write_census_batch),
+   the unpushed row and a neuron's push at dose 0 each write exactly the answer written alone, while the controls'
+   rows at +0.8 part; verify_atlas_writer.py --stand-in finds no shape parting in float32 on the CPU; the census card's
+   writer_floor read from the floors on disk (the run's runtime class first, its batch, another card's said so, none
+   for another model); a canary taken alone (take_census canary_only, census_run.py --canary-only) is plan batch 0 as
+   the unbroken run and a shard write it, beside the run's path with its meta, and compare_canaries says where another
+   card's parts and what differs;
+13. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
    columns (CPU, a few tensors), the next layer reads the census's controls about as loudly as the layer's neurons, and
    an isotropic control far louder.
 
@@ -1097,7 +1104,125 @@ def run_checks(tmp: Path) -> int:
           f"the census card names the stage, the unit and the card ({card})")
     section("a two-stage census: a screen's strongest retested against fresh controls, p and q over them alone; refusals; the card", before)
 
-    # ------------------------------------------------------------ 12. the null on the real checkpoint's own weights
+    # -------------------------------------------------- 12. the writer's floor's CPU half, and a canary taken alone
+    before = len(failures)
+    softcap = ao.softcap_of(rt.hf_model)
+
+    def solo(q: str, max_new: int = 10) -> Dict[str, Any]:
+        s_ = {"token_ids": [], "logprob": [], "top_ids": [], "top_lps": [], "ended": False}
+        for st in ao.write_rows(lm, rt.lm_head_weight, [prompt_ids[q]], None, max_new=max_new, stop_ids=stop, bos_id=tok.bos_token_id,
+                                spare_bos=True, softcap=softcap, top_k=5):
+            s_["token_ids"].append(st.token_id)
+            s_["logprob"].append(round(st.logprob, 4))
+            s_["top_ids"].append(st.top_ids)
+            s_["top_lps"].append(st.top_lps)
+            s_["ended"] = s_["ended"] or st.end
+        return s_
+
+    # a census-shaped batch through the census's own writer, as verify_atlas_writer.py writes it on the model: row 0
+    # unpushed, the last row a neuron's push at dose 0, the rows between pushed by the run's controls at +0.8
+    Bw = 6
+    ctrl_w = torch.from_numpy(cz.control_dirs(3, Bw - 2, w.norm(3, "post_feedforward").numpy()))
+    first_same = last_same = True
+    moved_rows = 0
+    for q in cz.PROMPTS:
+        delta = torch.zeros(Bw, D)
+        delta[1 : Bw - 1] = ctrl_w * (0.8 * p50)
+        delta[Bw - 1] = w.write_dirs(3, [5])[0] * (0.0 * p50)
+        got_w = cz.write_census_batch(rt, 3, prompt_ids[q], delta, max_new=10, stop_ids=stop, top_k=5)
+        s_ = solo(q)
+        first_same = first_same and got_w[0] == s_
+        last_same = last_same and got_w[-1] == s_
+        moved_rows += sum(got_w[i]["token_ids"] != s_["token_ids"] for i in range(1, Bw - 1))
+    check(first_same and last_same, "a census-shaped batch on the stand-in: its unpushed row and a neuron's push at dose 0 each write exactly "
+                                    "the answer written alone (every piece, log-probability and five likeliest)")
+    check(moved_rows > 0, f"...in a batch the controls' +0.8 pushes move ({moved_rows} of {4 * (Bw - 2)} rows part)")
+    wf_dir = tmp / "floors"
+    wf_dir.mkdir()
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "verify_atlas_writer.py"), "--stand-in", "--max-new", "12", "--out",
+                             str(wf_dir / "atlas_writer_floor_cpu.json")], env=env, capture_output=True, text=True, timeout=600)
+    fl = json.loads((wf_dir / "atlas_writer_floor_cpu.json").read_text()) if (wf_dir / "atlas_writer_floor_cpu.json").exists() else {}
+    check(r.returncode == 0 and fl.get("floor") is None and fl.get("census_floor") == {"32": None, "64": None} and fl.get("alone_twice_same") is True
+          and len(fl.get("shapes", [])) == 6 and all(x_["same"] for rs in fl["results"].values() for n_, x_ in rs.items() if n_ != "alone")
+          and fl.get("model") == rt.model_id and fl.get("runtime", {}).get("device") == "cpu" and fl.get("steer_prompt_same") is True,
+          f"verify_atlas_writer.py --stand-in: no shape parts from the answer written alone, in six shapes ({r.stdout[-300:]}{r.stderr[-300:]})")
+    # what the census card says of a run, from floors on disk: the one of the run's runtime class first, the run's batch
+    run_meta = {"model": rt.model_id, "batch": 5, "runtime": um["runtime"]}
+    other_rt = {**um["runtime"], "device": "NVIDIA H100 80GB HBM3"}
+    hand = {"model": rt.model_id, "max_new": 64, "questions": cz.PROMPTS, "census_floor": {"5": 11, "64": None}}
+    (wf_dir / "atlas_writer_floor_a.json").write_text(json.dumps({**hand, "runtime": other_rt, "census_floor": {"5": 3, "64": 2}}))
+    (wf_dir / "atlas_writer_floor_b.json").write_text(json.dumps({**hand, "runtime": um["runtime"]}))
+    (wf_dir / "atlas_writer_floor_c.json").write_text(json.dumps({**hand, "model": "another model", "runtime": um["runtime"]}))
+    os.environ[cz.WRITER_FLOOR_ENV] = str(wf_dir)
+    try:
+        f_ = cz.writer_floor(run_meta)
+        check(f_ is not None and f_["k"] == 11 and f_["batches"] == [5] and f_["this_batch"] and f_["same_runtime"] is True
+              and f_["file"] == "atlas_writer_floor_b.json" and "census batches of 5, as this run's" in f_["says"]
+              and "after 11 word-pieces in common" in f_["says"] and "not by itself evidence of a push" in f_["says"],
+              f"writer_floor: the floor of the run's runtime class and batch ({f_})")
+        f7 = cz.writer_floor({**run_meta, "batch": 7})
+        check(f7["k"] == 11 and f7["batches"] == [5, 64] and not f7["this_batch"] and "(this run's are of 7, not measured)" in f7["says"],
+              f"writer_floor: a batch not measured, the smallest over those that were ({f7['says']})")
+        fo = cz.writer_floor({**run_meta, "runtime": other_rt})
+        check(fo["file"] == "atlas_writer_floor_a.json" and fo["k"] == 3 and fo["same_runtime"] is True, "writer_floor: a run on the other card reads its own")
+        fx = cz.writer_floor({**run_meta, "runtime": {**um["runtime"], "device": "NVIDIA B200"}})
+        check(fx["same_runtime"] is False and fx["runtime_differ"] == ["device"] and "another runtime than this run's (device differ)" in fx["says"],
+              f"writer_floor: measured on no card of this run's class, said so ({fx['says']})")
+        check(cz.writer_floor({**run_meta, "model": "a third model"}) is None, "writer_floor: none for a model with no floor measured")
+        check(cz.writer_floor({**run_meta, "batch": 64})["k"] is None and "did not part" in cz.writer_floor({**run_meta, "batch": 64})["says"],
+              "writer_floor: a batch that never parted within the pieces measured, said so")
+        os.environ[cz.WRITER_FLOOR_ENV] = str(wf_dir / "atlas_writer_floor_cpu.json")
+        fc = cz.writer_floor({"model": rt.model_id, "batch": 32, "runtime": um["runtime"]})
+        check(fc is not None and fc["k"] is None and fc["same_runtime"] is True and "did not part" in fc["says"],
+              f"writer_floor: verify_atlas_writer.py's own file read, a single file named ({fc})")
+        os.environ[cz.WRITER_FLOOR_ENV] = str(wf_dir)
+        card_w = atlas_routes.census_card({"path": retest, "meta": {**rm, "batch": 5, "runtime": um["runtime"]}, "null": {}})
+        check(card_w["writer_floor"] == f_, "the census card carries the writer's floor")
+        os.environ[cz.WRITER_FLOOR_ENV] = str(tmp / "no-floors-here")
+        check(atlas_routes.census_card({"path": retest, "meta": rm, "null": {}})["writer_floor"] is None, "...and none where no floor is on disk")
+    finally:
+        os.environ.pop(cz.WRITER_FLOOR_ENV, None)
+    # a canary taken alone: plan batch 0 as the unbroken run wrote it, beside the run's path, the run not begun
+    alone_run = sdir / "L3-alone.jsonl"
+    said = []
+    res = cz.take_census(rt, 3, NU, alone_run, **{**kp, "log": said.append}, canary_only=True)
+    can = cz.canary_path_of(alone_run)
+    about = json.loads(cz.canary_about_path_of(can).read_text()) if cz.canary_about_path_of(can).exists() else {}
+    n0 = len(u_plan[0][2])
+    check(res == {"written": n0, "skipped": 0, "stopped": False, "canary": str(can)} and list(cz.read_rows(can)) == U[:n0]
+          and not alone_run.exists() and not cz.meta_path_of(alone_run).exists()
+          and about.get("meta", {}).get("batch") == 5 and about["meta"].get("jobs") == um["jobs"] and about["answers"] == n0,
+          f"a canary taken alone: plan batch 0 as the unbroken run wrote it, its meta beside it, no run begun ({res})")
+    check(all(p_.name not in (can.name, cz.canary_about_path_of(can).name) for p_ in cz.layer_runs(sdir).values()),
+          "a canary's about-file is never read as a run")
+    check(cz.take_census(rt, 3, NU, alone_run, **{**kp, "log": said.append}, canary_only=True)["skipped"] == n0, "taken again, it is left as it is")
+    try:
+        cz.take_census(rt, 3, NU, alone_run, **kp, shard=(1, 3), canary_only=True)
+        check(False, "a canary alone with a shard is refused")
+    except ValueError as exc:
+        check("whatever the shard" in str(exc), f"refusal: {exc}")
+    cmp_ = cz.compare_canaries(can, cz.canary_path_of(shards[1]))
+    check(cmp_["same"] and cmp_["says"] == f"identical: {n0} answers, every field" and cmp_["runtimes"][1] is None,
+          f"compare_canaries: a canary taken alone is a shard's canary ({cmp_['says']})")
+    bent = tmp / "bent" / "L3-alone.canary.jsonl"
+    bent.parent.mkdir()
+    rows_b = list(cz.read_rows(can))
+    rows_b[1] = {**rows_b[1], "token_ids": rows_b[1]["token_ids"][:2] + [rows_b[1]["token_ids"][2] + 1] + rows_b[1]["token_ids"][3:]}
+    bent.write_text("".join(json.dumps(r_) + "\n" for r_ in rows_b))
+    cz.write_json_atomic(cz.canary_about_path_of(bent), {**about, "meta": {**about["meta"], "runtime": {**about["meta"]["runtime"], "device": "NVIDIA H200"}}})
+    cmp_ = cz.compare_canaries(can, bent)
+    check(not cmp_["same"] and cmp_["rows_differ"] == 1 and cmp_["earliest_departure"] == 2 and cmp_["first"]["field"] == "token_ids"
+          and cmp_["runtime_differ"] == ["device"] and cmp_["settings_differ"] == [] and "parts from the other's at piece 2" in cmp_["says"]
+          and "device differ" in cmp_["says"], f"compare_canaries: another card's canary, where it parts and what differs ({cmp_['says']})")
+    other_b = sdir / "L3-b4.jsonl"
+    cz.take_census(rt, 3, NU, other_b, **{**kp, "batch": 4, "log": said.append}, canary_only=True)
+    cmp_ = cz.compare_canaries(can, cz.canary_path_of(other_b))
+    check(not cmp_["same"] and cmp_["says"].startswith("not the same batch") and cmp_["settings_differ"] == ["batch"],
+          f"compare_canaries: a canary of another batch size is not the same batch ({cmp_['says']}, {cmp_['settings_differ']})")
+    section("the writer's floor's CPU half: unpushed and dose-0 rows of a pushed batch write the answer alone; the floor on the card; "
+            "a canary taken alone and compared", before)
+
+    # ------------------------------------------------------------ 13. the null on the real checkpoint's own weights
     before = len(failures)
     real = real_read_gain()
     if real is None:

@@ -281,6 +281,19 @@ export interface CensusCard {
   partial?: { missing_shards: number[]; missing_answers: number } | null;
   /** the second stage of a two-stage census: the screen whose strongest neurons it retests against fresh controls */
   stage?: { stage: number; screen: string; top: number; of: number; screen_seed: number | null; screen_controls: number | null } | null;
+  /** with no push, after how many word-pieces an answer written in batches like this run's parts from the same answer
+   * written alone (scripts/verify_atlas_writer.py; k null: not within the pieces measured); null where none is measured */
+  writer_floor?: {
+    k: number | null;
+    batches: number[];
+    this_batch: boolean;
+    max_new: number | null;
+    device: string | null;
+    same_runtime: boolean | null;
+    runtime_differ: string[] | null;
+    file: string;
+    says: string;
+  } | null;
 }
 export interface Rollout {
   prompt: string;
