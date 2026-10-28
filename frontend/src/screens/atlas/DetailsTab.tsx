@@ -233,6 +233,36 @@ const Range: React.FC = () => {
 /** A link's strength as it reaches the other end, over the neuron's strongest. */
 const fmtW = (w: number | undefined) => (w == null ? "" : w >= 0.01 ? `${Math.round(w * 100)}%` : "<1%");
 
+/** The reader's faces on which the sign in use (at its operating point there) is not the sign from rest. */
+const disagreeing = (c: Link): ("+" | "-")[] =>
+  c.use_sign ? (["+", "-"] as const).filter((s) => c.use_sign?.[s] != null && c.use_sign[s] !== c.sign) : [];
+
+/** Where the sign in use differs from the one from rest: the reader's face(s) and where it is pushed there instead. */
+const InUse: React.FC<{ c: Link; side: "down" | "up" }> = ({ c, side }) => {
+  const faces = disagreeing(c);
+  if (!faces.length) return null;
+  const who = side === "down" ? "it" : "this one";
+  const one = faces.length === 2 && c.use_sign?.["+"] === c.use_sign?.["-"];
+  const shown = one ? [faces[0]] : faces;
+  return (
+    <div
+      className="atlas-small"
+      title={`At the reader's operating point (its median gate and up values over its strongest stored passages of that face), the writer firing on its gate face pushes ${who} the other way from the reading from rest. In use the link is odd: fired the other way, it pushes the other way.`}
+    >
+      <span className="muted">in use </span>
+      {shown.map((s) => {
+        const v = c.use_sign?.[s] ?? 0;
+        return (
+          <span key={s}>
+            <span className={`atlas-sgn ${v > 0 ? "up" : "down"}`}>{v > 0 ? "↑" : "↓"}</span>
+            <span className="muted"> {one ? `whichever face ${who} sits on` : `where ${who} sits on its ${s === "+" ? "+" : "−"} face`} </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
 const LinkRows: React.FC<{ list: Link[]; title: string; side: "down" | "up" }> = ({ list, title, side }) => (
   <div>
     <div className="atlas-lab">{title}</div>
@@ -259,6 +289,7 @@ const LinkRows: React.FC<{ list: Link[]; title: string; side: "down" | "up" }> =
               <td>
                 <FaceLine layer={c.layer} face={face} w={c.words} k={4} />
                 {side === "down" && gate ? <div className="muted atlas-small">when this one fires {gate}</div> : null}
+                <InUse c={c} side={side} />
                 {c.name ? (
                   <div className="muted atlas-small">
                     <NameMark layer={c.layer} n={c.n} name={c.name} />
@@ -303,10 +334,23 @@ const Wiring: React.FC = () => {
             that opens the reader's gate (a writer is shown on that face; fired the other way it barely moves the reader), and pushes the reader
             toward one face (↑ its + face, ↓ its − face). Ranked by how strong each is as it arrives, counting how Gemma scales the whole stream at
             the end of every layer and the norms at their usual scale; the number is that strength over the strongest. In use a reader's other
-            inputs decide where it sits. Leads to test with a push, not a circuit found.
+            inputs decide where it sits: where the push read at its usual place on a face (its gate and up values at its strongest stored
+            passages) goes the other way, that is marked "in use" beside it. Leads to test with a push, not a circuit found.
           </Rubric>
           <IfApparatus>
             <p className="muted atlas-small">{w.source === "index" ? "from the wiring index" : "read from the weights just now"} · {w.note}</p>
+            {w.use ? (
+              <p className="muted atlas-small">
+                {w.use.ready
+                  ? `in use: ${[...w.down, ...w.up].reduce((k, c) => k + disagreeing(c).length, 0)} of ${[...w.down, ...w.up].reduce(
+                      (k, c) => k + (c.use_sign ? (["+", "-"] as const).filter((s) => c.use_sign?.[s] != null).length : 0),
+                      0,
+                    )} reader faces of its ${w.down.length + w.up.length} links go the other way · operating points from ${w.use.operating_points?.corpus ?? "the passages index"}${
+                      w.use.operating_points?.tokens ? ` (${w.use.operating_points.tokens.toLocaleString()} word-pieces)` : ""
+                    }${w.use.stale ? ` · ${w.use.stale}` : ""} · ${w.use.note}`
+                  : `not read in use: ${w.use.why}`}
+              </p>
+            ) : null}
           </IfApparatus>
         </>
       ) : !err ? (

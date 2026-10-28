@@ -1426,11 +1426,55 @@ def link_scale(scalars: torch.Tensor, mlp_rms: Sequence[float], mid_rms: Sequenc
 LINK_MODEL = ("from rest, by the weights: a writer opens its reader's gate when it fires on its `gate` face (the sign "
               "of the gate's change), and the reader is then pushed toward its `sign` face; fired the other way, the "
               "writer barely moves it (GeGLU's gate stays near shut). In use, the reader's other inputs set where it "
-              "sits, and the effect can differ.")
+              "sits, and the effect can differ (`model=use` reads it there).")
+# the second reading, at the reader's operating point (`model=use` on the routes that read links)
+LINK_MODEL_USE = ("in use, to first order where the reader sits: at its gate and up values (g0, u0), a writer's change of "
+                  "activation moves the reader by f (alpha g + beta u) times that change, alpha = gelu'(g0) u0, beta = "
+                  "gelu(g0), with g and u the link's weight products and f > 0 its scale across layers; odd in the "
+                  "writer, so fired the other way it pushes the reader the other way, as hard. The reader's operating "
+                  "point on each face is the median alpha and beta over its K strongest stored events of that face (the "
+                  "passages index): where that face fires hardest, not every place it fires. `use_sign` gives, per face "
+                  "of the reader, the face it is pushed toward when the writer fires on its `gate` face, as `sign` does "
+                  "from rest; null where that face has no stored event, or there is no passages index.")
+
+
+def gelu_tanh_grads(x: torch.Tensor) -> torch.Tensor:
+    """`gelu_tanh_grad` elementwise, in the tensor's own dtype."""
+    c = math.sqrt(2.0 / math.pi)
+    t = torch.tanh(c * (x + 0.044715 * x**3))
+    return 0.5 * (1.0 + t) + 0.5 * x * (1.0 - t * t) * c * (1.0 + 3 * 0.044715 * x * x)
+
+
+def operating_points(g: Any, u: Any, filled: Any) -> Tuple[np.ndarray, np.ndarray]:
+    """One face's operating point from its stored events: the gate and up values there (`passage_events`' g and u,
+    [..., K]) and `filled` [..., K], the slots holding an event. Returns (alpha, beta) [...] float32: alpha = gelu'(g0)
+    u0 and beta = gelu(g0), the two coefficients a reader's first-order change is read with (LINK_MODEL_USE), each the
+    median over the face's events (the mean of the middle two for an even count); NaN where the face holds none."""
+    g = torch.as_tensor(np.asarray(g, np.float32))
+    u = torch.as_tensor(np.asarray(u, np.float32))
+    ok = torch.as_tensor(np.asarray(filled, bool))
+    nan = torch.tensor(float("nan"))
+    c = ok.sum(-1, keepdim=True)
+    lo, hi = ((c - 1) // 2).clamp(min=0), (c // 2).clamp(min=0)
+    out = []
+    for x in (gelu_tanh_grads(g) * u, F.gelu(g, approximate="tanh")):
+        x = torch.where(ok, x, nan).sort(-1).values  # NaN sorts last: the events fill the first c places
+        med = 0.5 * (x.gather(-1, lo) + x.gather(-1, hi))
+        out.append(torch.where(c > 0, med, nan)[..., 0].numpy())
+    return out[0], out[1]
+
+
+def use_sign(alpha: float, beta: float, g: float, u: float, gate: int) -> Optional[int]:
+    """The reader's face a writer pushes it toward when it fires on its `gate` face, read in use (LINK_MODEL_USE) at
+    one operating point (alpha, beta) of the reader: gate * sign(alpha g + beta u). None without an operating point."""
+    if not (math.isfinite(float(alpha)) and math.isfinite(float(beta))):
+        return None
+    return int(gate) * (1 if float(alpha) * float(g) + float(beta) * float(u) > 0 else -1)
 
 
 @torch.no_grad()
-def neuron_wiring(weights: Weights, layer: int, neuron: int, scale: torch.Tensor, k: int = 24) -> Dict[str, List[Dict[str, Any]]]:
+def neuron_wiring(weights: Weights, layer: int, neuron: int, scale: torch.Tensor, k: int = 24,
+                  gu: bool = False) -> Dict[str, List[Dict[str, Any]]]:
     """Direct-path links between one neuron and the neurons of every other layer, from the weights alone, as the
     reference's `connections` reads them, with Gemma 4's norms and layer scalars in place: a writer A at layer i writes
     v_A = w_post_i (.) W_down_i[:, A] (its direction through the post-feed-forward norm); a reader B at layer j reads
@@ -1443,7 +1487,8 @@ def neuron_wiring(weights: Weights, layer: int, neuron: int, scale: torch.Tensor
     - `sign` = sign(P), the reader's face the writer pushes it toward from rest; `gate` = sign(g), the writer's face
       that opens the reader's gate (LINK_MODEL).
     A layer the neuron writes nothing into, or reads nothing from (a silenced neuron), gives no links.
-    `down`: readers in later layers; `up`: writers in earlier layers. Each {layer, n, z, w, sign, gate}."""
+    `down`: readers in later layers; `up`: writers in earlier layers. Each {layer, n, z, w, sign, gate}, and with `gu`
+    the link's g and u themselves (float32), which the sign in use is read from (LINK_MODEL_USE)."""
     l, n = int(layer), int(neuron)
     dev = weights.device
     v = (weights.down_cols(l, [n])[0] * weights.norm(l, "post_feedforward").to(dev)).float()  # [D]
@@ -1475,14 +1520,15 @@ def neuron_wiring(weights: Weights, layer: int, neuron: int, scale: torch.Tensor
         top = torch.topk(z, k=min(int(k), z.numel()))
         out[side] += [
             {"layer": j, "n": int(i), "z": round(float(zz), 2), "eff": float(mag[int(i)]) * f * f,
-             "sign": 1 if float(prod[int(i)]) > 0 else -1, "gate": 1 if float(g[int(i)]) > 0 else -1}
+             "sign": 1 if float(prod[int(i)]) > 0 else -1, "gate": 1 if float(g[int(i)]) > 0 else -1,
+             "g": float(g[int(i)]), "u": float(u[int(i)])}
             for zz, i in zip(top.values.tolist(), top.indices.tolist()) if float(mag[int(i)]) > 0
         ]
     for side in out:
         keep = sorted(out[side], key=lambda c: -c["eff"])[: int(k)]
         top_eff = keep[0]["eff"] if keep else 1.0
         out[side] = [{"layer": c["layer"], "n": c["n"], "z": c["z"], "w": float(f"{c['eff'] / top_eff:.4g}") if top_eff > 0 else 0.0,
-                      "sign": c["sign"], "gate": c["gate"]} for c in keep]
+                      "sign": c["sign"], "gate": c["gate"], **({"g": c["g"], "u": c["u"]} if gu else {})} for c in keep]
     return out
 
 

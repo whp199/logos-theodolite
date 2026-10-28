@@ -26,7 +26,12 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   (`all` builds stats before wiring).
 - wiring: for every pair of layers i < j (1,770 pairs), two [21,504 x 5,376] x [5,376 x 21,504] products and a top 24
   each way, weighed across layers by Gemma's layer scalars and the norms' scales (from the stats index, else read over
-  the study's 36 texts first): 4 minutes in all, 4.3 GiB above the model. About 250 MB compressed.
+  the study's 36 texts first): 4 minutes in all, 4.3 GiB above the model. About 250 MB compressed. It also keeps each
+  link's g and u (float16: 248 MB more uncompressed, which compressed to about three quarters on the stand-in, so some
+  180 MB more in the file; about 0.6 GiB more on the card and the same time, inferred), from which the sign in use is
+  read at each reader's operating point in the passages index (ARCHITECTURE §4.7): an older build serves the sign from
+  rest only, so rebuild it once the passages are built. With both there, a wiring or passages step ends by counting
+  how often the sign in use differs from the sign from rest.
 - layout: a principal-component projection and (with umap-learn installed) a UMAP of 21,504 points per layer, on the
   CPU; about a minute a layer with UMAP.
 - steer: for every neuron, both signs and four contexts, a forward of every layer after its own: about 2 x 4 x 21,504
@@ -223,6 +228,17 @@ def main() -> int:
         return {"p50": ao.stream_p50(ex), **ao.norm_scales(ex),
                 "source": f"the study's 36 texts ({'the stats index refused: ' + refused if refused else 'no stats index yet'})"}
 
+    def disagreement() -> None:
+        """How often the sign in use differs from the sign from rest over the whole index (AtlasIndex.sign_disagreement),
+        once the wiring index with its links' g and u and the passages index are both there."""
+        d = AtlasIndex(out).sign_disagreement()
+        if d is None:
+            return
+        f = d["faces"]
+        say = lambda s: f"{f[s]['differ']:,} of {f[s]['read']:,} read on the reader's {s} face ({100 * f[s]['differ'] / max(1, f[s]['read']):.1f}%)"  # noqa: E731
+        print(f"links in use: at each reader's operating point the sign differs from the sign from rest on {say('+')} and "
+              f"{say('-')}; {d['differ_on_both']:,} of {d['links']:,} downstream links differ on both")
+
     for step in steps:
         if step == "lens":
             print("->", ab.build_lens(rt, out, chunk=a.chunk or 512, layers=layers))
@@ -235,6 +251,7 @@ def main() -> int:
             print(f"wiring: links weighed across layers with the norms' scales from {sc['source']}")
             f = ao.link_scale(ao.Weights(lm, rt).scalars, sc["mlp_rms"], sc["mid_rms"])
             print("->", ab.build_wiring(rt, out, f, scale_source=sc["source"], chunk=a.chunk or 4096))
+            disagreement()
         elif step == "layout":
             print("->", ab.build_layout(rt, out, method=a.layout_method))
         elif step == "passages":
@@ -253,6 +270,7 @@ def main() -> int:
             src = f"the stats index ({stats['meta'].get('corpus')}, {int(stats['tokens'])} word-pieces)" if ext is not None else None
             print("->", ab.build_passages(rt, out, wins, name, k=a.k, sample=a.sample, extremes=ext, extremes_source=src,
                                           seed=a.seed, chunk=a.chunk or 1024, keep_parts=a.keep_parts))
+            disagreement()
         elif step == "steer":
             sc = scales()
             print(f"steer: the push's unit is the stream's median length from {sc['source']}")

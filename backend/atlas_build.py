@@ -263,8 +263,11 @@ def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: s
     j are column A of P, |P| z-scored over B; B's links from layer i are row B, |P| z-scored over A (kept as a running
     top k of |P| with the row's sums, which ranks the row as its z does, then turned into z). Across layer pairs the k
     links are chosen and ordered by |P| f[i, j]^2 (`atlas_ops.link_scale`, `scale`: the norms at their usual scale and the
-    layer scalars between), kept as log10 of that over the neuron's strongest (`lw`), with each link's gate sign. Columns
-    go `chunk` at a time, so no [N, N] product is held whole."""
+    layer scalars between), kept as log10 of that over the neuron's strongest (`lw`), with each link's gate sign, and its
+    g and u themselves (float16, held within its finite range, signs kept), which the sign in use is read
+    from when served (`atlas_ops.LINK_MODEL_USE`): 4 more arrays of [L, N, K], 248 MB uncompressed on the 31B, so a
+    new passages index needs no new wiring. Columns go `chunk` at a time, so no [N, N] product is held whole (the up
+    products are kept beside P until the chunk's links are gathered: one more [N, chunk] float32)."""
     lm = language_model(rt.hf_model)
     w = ao.Weights(lm, rt)
     L, N, dev = w.n_layers, w.d_ff, w.device
@@ -277,16 +280,20 @@ def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: s
     bn = {s: torch.zeros((L, N, K), dtype=torch.int32, device=dev) for s in ("down", "up")}
     bs = {s: torch.zeros((L, N, K), dtype=torch.int8, device=dev) for s in ("down", "up")}
     bg = {s: torch.zeros((L, N, K), dtype=torch.int8, device=dev) for s in ("down", "up")}
+    bgv = {s: torch.zeros((L, N, K), dtype=torch.float16, device=dev) for s in ("down", "up")}  # each link's g
+    buv = {s: torch.zeros((L, N, K), dtype=torch.float16, device=dev) for s in ("down", "up")}  # and its u
 
     def merge(side: str, layer: int, rows: slice, le: torch.Tensor, z: torch.Tensor, idx: torch.Tensor, other: int, sign: torch.Tensor,
-              gate: torch.Tensor) -> None:
+              gate: torch.Tensor, gv: torch.Tensor, uv: torch.Tensor) -> None:
         ce = torch.cat([be[side][layer, rows], le], 1)
         top = ce.topk(K, dim=1)
         be[side][layer, rows] = top.values
-        for store, new in ((bz, z), (bl, torch.full_like(idx, other, dtype=torch.int16)), (bn, idx.to(torch.int32)), (bs, sign), (bg, gate)):
+        for store, new in ((bz, z), (bl, torch.full_like(idx, other, dtype=torch.int16)), (bn, idx.to(torch.int32)), (bs, sign), (bg, gate),
+                           (bgv, h16(gv)), (buv, h16(uv))):
             store[side][layer, rows] = torch.cat([store[side][layer, rows], new], 1).gather(1, top.indices)
 
     sgn = lambda x: torch.where(x > 0, 1, -1).to(torch.int8)  # noqa: E731
+    h16 = lambda x: x.clamp(-65504.0, 65504.0).to(torch.float16)  # noqa: E731  float16's finite range, signs kept
     t0 = time.time()
     for j in range(1, L):
         Gj, Uj = w.w_gate(j), w.w_up(j)
@@ -301,10 +308,13 @@ def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: s
             r_idx = torch.zeros((N, K), dtype=torch.long, device=dev)
             r_sgn = torch.zeros((N, K), dtype=torch.int8, device=dev)
             r_gate = torch.zeros((N, K), dtype=torch.int8, device=dev)
+            r_g = torch.zeros((N, K), dtype=torch.float32, device=dev)
+            r_u = torch.zeros((N, K), dtype=torch.float32, device=dev)
             for a0 in range(0, N, int(chunk)):
                 V = (Wd[:, a0 : a0 + chunk].float() * norms).to(Gj.dtype)  # [D, c]
                 G = (Gj @ V).float()
-                P = G * (Uj @ V.to(Uj.dtype)).float()  # [N_j, c]
+                U = (Uj @ V.to(Uj.dtype)).float()
+                P = G * U  # [N_j, c]
                 M = P.abs()
                 c = M.shape[1]
                 # downstream of each A in this chunk: its column over every B of layer j
@@ -313,7 +323,7 @@ def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: s
                 top = zc.topk(kk, dim=0)
                 le = torch.log(M.gather(0, top.indices)) + two_lf  # -inf where the column writes nothing there
                 merge("down", i, slice(a0, a0 + c), le.T, top.values.T, top.indices.T, j, sgn(P.gather(0, top.indices)).T,
-                      sgn(G.gather(0, top.indices)).T)
+                      sgn(G.gather(0, top.indices)).T, G.gather(0, top.indices).T, U.gather(0, top.indices).T)
                 # upstream of each B: its row over every A of layer i, gathered across chunks
                 r_sum += M.sum(1, dtype=torch.float64)
                 r_sq += (M.double() ** 2).sum(1)
@@ -324,13 +334,15 @@ def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: s
                 r_idx = torch.cat([r_idx, tv.indices + a0], 1).gather(1, keep.indices)
                 r_sgn = torch.cat([r_sgn, sgn(P.gather(1, tv.indices))], 1).gather(1, keep.indices)
                 r_gate = torch.cat([r_gate, sgn(G.gather(1, tv.indices))], 1).gather(1, keep.indices)
+                r_g = torch.cat([r_g, G.gather(1, tv.indices)], 1).gather(1, keep.indices)
+                r_u = torch.cat([r_u, U.gather(1, tv.indices)], 1).gather(1, keep.indices)
                 r_top = keep.values
-                del V, G, P, M, zc
+                del V, G, U, P, M, zc
             mean = r_sum / N
             std = ((r_sq - N * mean * mean) / max(N - 1, 1)).clamp(min=0).sqrt()
             z = ((r_top.double() - mean[:, None]) / (std[:, None] + 1e-12)).float()
             z = torch.where(torch.isfinite(r_top), z, torch.full_like(z, ninf))
-            merge("up", j, slice(0, N), torch.log(r_top) + two_lf, z, r_idx, i, r_sgn, r_gate)
+            merge("up", j, slice(0, N), torch.log(r_top) + two_lf, z, r_idx, i, r_sgn, r_gate, r_g, r_u)
         log(f"wiring: layer {j} read against every layer before it ({time.time() - t0:.0f} s)")
     arrays: Dict[str, np.ndarray] = {}
     for side in ("down", "up"):
@@ -344,10 +356,12 @@ def build_wiring(rt: Any, out_dir: Path, scale: torch.Tensor, *, scale_source: s
         arrays[f"{side}_n"] = bn[side].cpu().numpy().astype(np.int16 if N <= 32767 else np.int32)
         arrays[f"{side}_sign"] = bs[side].cpu().numpy()
         arrays[f"{side}_gate"] = bg[side].cpu().numpy()
+        arrays[f"{side}_g"] = bgv[side].cpu().numpy()
+        arrays[f"{side}_u"] = buv[side].cpu().numpy()
     path = Path(out_dir) / FILES["wiring"]
     save_npz(path, compressed=True, **arrays, K=np.array(K),
              meta=_meta(rt, weighed="across layers: |P| f^2, the norms at their usual scale and the layer scalars between",
-                        scale_source=scale_source, link_model=ao.LINK_MODEL))
+                        scale_source=scale_source, link_model=ao.LINK_MODEL, link_model_use=ao.LINK_MODEL_USE))
     return path
 
 

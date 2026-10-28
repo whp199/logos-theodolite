@@ -1319,6 +1319,12 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
           "web_summary pooled from the steer lens, by face each way")
     check(all(("when" in x) == (x["hop"] > 0) and ("drives" in x) == (x["hop"] < 0) and "w" in x for x in cn["nodes"]),
           "cone: a reader with the face the neuron fires on, a writer with the face it drives, each with its strength")
+    cu = await st.call("cone", {"layer": 3, "n": 5, "model": "use"}, api)
+    raw = hc.get("/api/atlas/cone", params={"layer": 2, "n": 5, "model": "use"}).json()
+    wu = await st.call("web_summary", {"layer": 3, "n": 5, "model": "use"}, api)
+    check(cn["read"] == ws["read"] == "rest" and cu["read"] == wu["read"] == "use" and "operating point" in cu["note"]
+          and [x["neuron"] for x in cu["nodes"]] == [st.cite(x["layer"], x["n"]) for x in raw["nodes"]],
+          "cone and web_summary with model use: read at each reader's operating point, as the route reads them")
     word = a_.words(a_.index.face_ids(4, 7, "+", "lens", 1))[0].strip()
     sr = await st.call("search_lens", {"query": word, "limit": 2000}, api)
     check(sr["word_pieces_matched"] > 0 and sr["held_back_by_the_gate"] > 0 and not any(x["matched_in"] in ("lens", "eye") for x in sr["results"]),

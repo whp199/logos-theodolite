@@ -36,7 +36,14 @@ model nor the lens, and hides the GPU. It checks, against brute force:
    neuron that writes nothing has no readers; and a link
    reads the same product from both ends; `HeadSpaces`' shares equal projections on explicit orthonormal bases, and
    `neuron_head_roles` and `head_wiring` rank as those projections do;
-10. `steer_lens`' base rows are the unpushed forwards and its rises are those of separate pushed forwards.
+10. `steer_lens`' base rows are the unpushed forwards and its rises are those of separate pushed forwards;
+11. the sign in use (LINK_MODEL_USE), on a float64 copy of the stand-in, at a reader's stored events (`passage_events`):
+    the operating points are the medians of gelu'(g) u and gelu(g) over each face's events; a writer's write, pushed by
+    +-eps along the direct path alone with both norms held at their values there, moves the reader by exactly
+    f (alpha g + beta u) eps to first order, alpha and beta from that position's own gate and up values, so with that
+    sign; the writer's own activation pushed by +-eps and carried by the direct path alone, the norms free, moves it by
+    the full first-order change (the norms' own response included), whose sign is the link model's at most events
+    (printed, not asserted); the median-based sign agrees with each event's own at most events (printed).
 
 Run: .venv/bin/python -I scripts/check_atlas_ops.py   (exits 0 when every check holds)
 """
@@ -731,6 +738,176 @@ def check_steer_lens(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any) -> Non
     section("the steer lens equals separate pushed forwards (rises and KL, both signs)", before)
 
 
+def check_wiring_use(hf: Any, tok: Any, f: torch.Tensor) -> None:
+    import copy
+
+    import numpy as np
+
+    from atlas_stand_in import CORPUS
+
+    before = len(failures)
+    m64 = copy.deepcopy(hf).double()  # float64, so "exact to first order" can be held to a tight tolerance
+    for mod in m64.modules():
+        if type(mod).__name__ == "Gemma4RMSNorm":  # transformers computes its norms in float32 whatever the model's dtype
+            mod.forward = lambda x, m=mod: m._norm(x) * m.weight if m.with_scale else m._norm(x)
+    lm = language_model(m64)
+    w = ao.Weights(lm)
+    s = w.scalars.double()
+    L, N = w.n_layers, w.d_ff
+    wins = [ids_of(tok, t) for t in CORPUS]
+    K = 4
+    E = ao.passage_events(lm, wins, k=K)
+    c_ = (2.0 / np.pi) ** 0.5
+    gelu = lambda x: 0.5 * x * (1.0 + np.tanh(c_ * (x + 0.044715 * x**3)))  # noqa: E731
+    # the operating points: per face, the median of gelu'(g) u and of gelu(g) over the stored events, as brute force
+    # takes it one neuron at a time
+    ops = {}
+    worst = 0.0
+    for face in ("pos", "neg"):
+        al, be = ao.operating_points(E[f"{face}_g"], E[f"{face}_u"], E[f"{face}_win"] >= 0)
+        ops[face] = (al, be)
+        for l in range(L):
+            for n in range(N):
+                ok = E[f"{face}_win"][l, n] >= 0
+                if not ok.any():
+                    worst = max(worst, 0.0 if np.isnan(al[l, n]) and np.isnan(be[l, n]) else 1.0)
+                    continue
+                g, u = E[f"{face}_g"][l, n][ok].astype(np.float64), E[f"{face}_u"][l, n][ok].astype(np.float64)
+                want = (np.median([ao.gelu_tanh_grad(x) for x in g] * u), np.median(gelu(g)))
+                worst = max(worst, abs(float(al[l, n]) - want[0]) / max(1.0, abs(want[0])), abs(float(be[l, n]) - want[1]) / max(1.0, abs(want[1])))
+    check(worst < 1e-5, f"operating points: the medians of gelu'(g) u and gelu(g) over each face's events ({worst:.1e} off)")
+
+    def at(ids: List[int], p: int, i: int, j: int, b: int, A: int, add_x: Any = None, add_mid: Any = None, push_a: float = 0.0) -> Dict[str, Any]:
+        """One forward of a window, read at word-piece p: layer i's block output (y) and the stream leaving it (h); the
+        stream entering layer j's block (mid); reader b's gate, up and activation there. `add_x` is added to layer j's
+        pre-feed-forward norm's output at p, `add_mid` to its input, `push_a` to writer A's activation."""
+        got: Dict[str, Any] = {}
+        Ls = lm.layers
+
+        def push(_m: Any, a_: Tuple[Any, ...]) -> Any:
+            if not push_a:
+                return None
+            x = a_[0].clone()
+            x[0, p, A] += push_a
+            return (x,)
+
+        def norm_in(_m: Any, a_: Tuple[Any, ...]) -> Any:
+            got["mid"] = a_[0][0, p].clone()
+            if add_mid is None:
+                return None
+            x = a_[0].clone()
+            x[0, p] += add_mid
+            return (x,)
+
+        def norm_out(_m: Any, _a: Any, o: torch.Tensor) -> Any:
+            if add_x is None:
+                return None
+            o = o.clone()
+            o[0, p] += add_x
+            return o
+
+        hs = [Ls[i].mlp.down_proj.register_forward_pre_hook(push),
+              Ls[i].mlp.register_forward_hook(lambda _m, _a, o: got.__setitem__("y", o[0, p].clone())),
+              Ls[i].register_forward_hook(lambda _m, _a, o: got.__setitem__("h", (o[0] if isinstance(o, tuple) else o)[0, p].clone())),
+              Ls[j].pre_feedforward_layernorm.register_forward_pre_hook(norm_in),
+              Ls[j].pre_feedforward_layernorm.register_forward_hook(norm_out),
+              Ls[j].mlp.gate_proj.register_forward_hook(lambda _m, _a, o: got.__setitem__("g0", float(o[0, p, b]))),
+              Ls[j].mlp.up_proj.register_forward_hook(lambda _m, _a, o: got.__setitem__("u0", float(o[0, p, b]))),
+              Ls[j].mlp.down_proj.register_forward_pre_hook(lambda _m, a_: got.__setitem__("a", float(a_[0][0, p, b])))]
+        try:
+            lm(input_ids=torch.tensor([ids]), use_cache=False)
+        finally:
+            for h in hs:
+                h.remove()
+        return got
+
+    held_bad, signs, stored_bad, free_bad, free_agree, events = [], [], 0, [], [], 0
+    for (j, b) in ((3, 10), (3, 77), (4, 100), (5, 21), (5, 64)):
+        links = ao.neuron_wiring(w, j, b, f, k=6, gu=True)["up"][:3]
+        Wg, Wu = lm.layers[j].mlp.gate_proj.weight[b].double(), lm.layers[j].mlp.up_proj.weight[b].double()
+        w_pre = lm.layers[j].pre_feedforward_layernorm.weight.double()
+        e_pre = float(lm.layers[j].pre_feedforward_layernorm.eps)
+        for face in ("pos", "neg"):
+            for e in range(K):
+                wi, p = int(E[f"{face}_win"][j, b, e]), int(E[f"{face}_at"][j, b, e])
+                if wi < 0:
+                    continue
+                ids = wins[wi]
+                for c in links:
+                    i, A = c["layer"], c["n"]
+                    base = at(ids, p, i, j, b, A)
+                    g0, u0 = base["g0"], base["u0"]
+                    events += 1
+                    stored_bad += int(not (E[f"{face}_g"][j, b, e] == np.float16(np.float32(g0)) and E[f"{face}_u"][j, b, e] == np.float16(np.float32(u0))))
+                    alpha, beta = ao.gelu_tanh_grad(g0) * u0, float(gelu(np.float64(g0)))
+                    pred = alpha * c["g"] + beta * c["u"]
+                    scale = max(abs(alpha * c["g"]), abs(beta * c["u"]), 1e-300)
+                    col = lm.layers[i].mlp.down_proj.weight[:, A].double()
+                    w_post = lm.layers[i].post_feedforward_layernorm.weight.double()
+                    y, mid = base["y"], base["mid"]
+                    r_i = float((y.pow(2).mean() + float(lm.layers[i].post_feedforward_layernorm.eps)).sqrt())
+                    r_m = float((mid.pow(2).mean() + e_pre).sqrt())
+                    fp = float(torch.prod(s[i:j])) / (r_i * r_m)
+                    v = w_pre * w_post * col  # what the reader's two rows read of the writer, the norms' weights folded in
+                    if abs(float(Wg @ v) - c["g"]) > 1e-9 * max(1.0, abs(c["g"])) or abs(float(Wu @ v) - c["u"]) > 1e-9 * max(1.0, abs(c["u"])):
+                        held_bad.append((j, b, i, A, "g, u"))
+                    # the direct path alone, both norms held at their values there: the writer's write w_post (.) col / r_i,
+                    # carried by s_i ... s_(j-1), read through w_pre / r_m, added at the reader's own input
+                    h = 1e-6 / max(fp * max(abs(c["g"]), abs(c["u"])), 1e-300)
+                    ap, am = at(ids, p, i, j, b, A, add_x=h * fp * v)["a"], at(ids, p, i, j, b, A, add_x=-h * fp * v)["a"]
+                    meas = (ap - am) / (2 * h * fp)
+                    if abs(meas - pred) > 1e-6 * scale:
+                        held_bad.append((j, b, face, e, i, A, meas, pred))
+                    if abs(pred) > 1e-3 * scale:
+                        signs.append((ap - base["a"] > 0) == (pred > 0) and (am - base["a"] < 0) == (pred > 0))
+                    # the writer's own activation pushed, carried by the direct path alone, the norms free: the change is
+                    # the full first-order one, both norms' own response (a projection off what each reads) included
+                    hp = at(ids, p, i, j, b, A, push_a=1e-6)["h"]
+                    hm = at(ids, p, i, j, b, A, push_a=-1e-6)["h"]
+                    on = float(torch.prod(s[i + 1:j]))
+                    ap2 = at(ids, p, i, j, b, A, add_mid=on * (hp - base["h"]))["a"]
+                    am2 = at(ids, p, i, j, b, A, add_mid=on * (hm - base["h"]))["a"]
+                    D = y.numel()
+                    dN = w_post * (col - y * float(y @ col) / (D * r_i * r_i)) / r_i
+                    dmid = float(torch.prod(s[i:j])) * dN
+                    dx = w_pre * (dmid - mid * float(mid @ dmid) / (D * r_m * r_m)) / r_m
+                    pf = alpha * float(Wg @ dx) + beta * float(Wu @ dx)
+                    if abs((ap2 - am2) / 2e-6 - pf) > 1e-5 * max(abs(alpha * float(Wg @ dx)), abs(beta * float(Wu @ dx)), 1e-300):
+                        free_bad.append((j, b, face, e, i, A, (ap2 - am2) / 2e-6, pf))
+                    if abs(pred) > 1e-3 * scale:
+                        free_agree.append((pf > 0) == (pred > 0))
+    check(events > 20 and stored_bad == 0, f"in use: {events} stored events read again, each its stored gate and up values ({stored_bad} differ)")
+    check(not held_bad, f"in use, the norms held: the change is f (alpha g + beta u) eps to first order ({len(held_bad)} off: {held_bad[:2]})")
+    check(bool(signs) and all(signs), f"in use, the norms held: +eps and -eps move the reader with the sign of alpha g + beta u ({signs.count(False)} of {len(signs)} not)")
+    check(not free_bad, f"the writer's own push, the norms free: the full first-order change ({len(free_bad)} off: {free_bad[:2]})")
+    print(f"        the norms free, the change's sign is that of alpha g + beta u at {sum(free_agree)} of {len(free_agree)} events "
+          f"({100 * sum(free_agree) / max(1, len(free_agree)):.0f}%; the norms' own response is what the link model leaves out)")
+    # the median over a face's events against each event's own: every reader of layers 3 to 5, its six strongest writers
+    agree = total = framed = 0
+    for j in (3, 4, 5):
+        for b in range(N):
+            up = ao.neuron_wiring(w, j, b, f, k=6, gu=True)["up"]
+            for face, sg in (("pos", "+"), ("neg", "-")):
+                al, be = float(ops[face][0][j, b]), float(ops[face][1][j, b])
+                if not np.isfinite(al):
+                    continue
+                for e in range(K):
+                    if int(E[f"{face}_win"][j, b, e]) < 0:
+                        continue
+                    g0, u0 = float(E[f"{face}_g"][j, b, e]), float(E[f"{face}_u"][j, b, e])
+                    a_e, b_e = ao.gelu_tanh_grad(g0) * u0, float(gelu(np.float64(g0)))
+                    for c in up:
+                        mine = ao.use_sign(al, be, c["g"], c["u"], c["gate"])
+                        framed += int(mine != c["gate"] * (1 if al * c["g"] + be * c["u"] > 0 else -1))
+                        agree += int(mine == ao.use_sign(a_e, b_e, c["g"], c["u"], c["gate"]))
+                        total += 1
+    check(total > 1000 and framed == 0 and ao.use_sign(float("nan"), 0.0, 1.0, 1.0, 1) is None,
+          f"use_sign is gate x sign(alpha g + beta u), compared at {total} (link, event) pairs ({framed} not); none without an operating point")
+    print(f"        the median-based sign in use is each event's own at {agree} of {total} (link, event) pairs ({100 * agree / max(1, total):.0f}%)")
+    section("the sign in use: operating points as medians, exactly f (alpha g + beta u) to first order at stored events, the norms "
+            "held; the full first-order change with them free", before)
+
+
 def main() -> int:
     torch.set_grad_enabled(False)
     tok = stand_in_tokenizer()
@@ -748,6 +925,7 @@ def main() -> int:
     check_heads(hf, tok, w)
     f = check_wiring(hf, lm, w, tok)
     check_steer_lens(lm, W_U, w, tok)
+    check_wiring_use(hf, tok, f)
     # the runtime's own weight accessors give the same wiring as the plain modules
     before = len(failures)
     wr = ao.Weights(lm, rt)

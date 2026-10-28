@@ -261,7 +261,21 @@ def main() -> int:
     check(len(wr["down"]) == 24 and len(wr["up"]) == 24, "/neuron/wiring: 24 each way")
     r = c.get("/api/atlas/neuron/wiring", params={"layer": 0, "n": 5})
     check(r.status_code == 200 and r.json()["up"] == [], "/neuron/wiring layer 0: nothing writes into it")
-    section("before any index: says so, and reads the wiring live", before)
+    # in use without the passages index: the links as from rest, each use_sign null, and the reason said once
+    wu = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5, "model": "use"}).json()
+    check(wu["model"] == "use" and wu["source"] == "live" and wu["use"]["ready"] is False and "passages index is not built" in wu["use"]["why"]
+          and "atlas_build.py passages" in wu["use"]["why"] and all(x["use_sign"] is None for x in wu["down"] + wu["up"])
+          and [(x["layer"], x["n"], x["sign"], x["gate"], x["w"]) for x in wu["down"]] == [(x["layer"], x["n"], x["sign"], x["gate"], x["w"]) for x in wr["down"]],
+          f"/neuron/wiring model=use without passages: the same links, use_sign null, and why ({wu.get('use')})")
+    check("model" not in wr and all("use_sign" not in x and "g" not in x and "u" not in x for x in wr["down"] + wr["up"]),
+          "/neuron/wiring: the default reads from rest, as before, with no use_sign, g or u")
+    for path in ("/api/atlas/neuron/wiring", "/api/atlas/web/summary", "/api/atlas/cone", "/api/atlas/run/paths"):
+        r = c.get(path, params={"layer": 2, "n": 5, "pos": 1, "model": "now"})
+        check(r.status_code == 400 and 'model is "rest"' in r.json()["detail"], f"{path} model=now: refused in plain words ({r.text[:120]})")
+    check(c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5, "model": "use"}).json()["missing"] == "wiring"
+          and c.get("/api/atlas/cone", params={"layer": 2, "n": 5, "model": "use"}).json()["ready"] is False,
+          "/web/summary and /cone in use before any index: the wiring index is what is missing")
+    section("before any index: says so, and reads the wiring live (in use, says why the signs are null)", before)
 
     # ---------------------------------------------------------------------------------------- 4. live readings
     before = len(failures)
@@ -702,6 +716,34 @@ def main() -> int:
     act_set = {(int(i) // N, int(i) % N) for i in np.argsort(-np.abs(S4).ravel())[:60]}
     check(r.headers["X-Active"] == "60" and all((int(a_[0]), int(a_[1])) in act_set and (int(a_[2]), int(a_[3])) in act_set for a_ in pa),
           f"/run/paths: {len(pa)} links, both ends among the 60 active")
+    # in use, with the passages index: each link's use_sign per face of its reader, as the index reads it
+    wu = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5, "model": "use"}).json()
+    gl = idx.links(2, 5, 24, gu=True)
+    pm = idx.get("passages")["meta"]
+    check(wu["source"] == "index" and wu["use"]["ready"] and "why" not in wu["use"] and "operating point" in wu["use"]["note"]
+          and wu["use"]["operating_points"] == {"corpus": "check", "tokens": pm["tokens"], "K": 6, "built_at": pm["built_at"]}
+          and [x["use_sign"] for x in wu["down"]] == idx.use_signs(gl["down"], "down", 2, 5)
+          and [x["use_sign"] for x in wu["up"]] == idx.use_signs(gl["up"], "up", 2, 5)
+          and all(set(x["use_sign"]) == {"+", "-"} for x in wu["down"] + wu["up"]),
+          f"/neuron/wiring model=use: each link's use_sign per face of its reader, as the index reads it ({wu['use']})")
+    rest_ = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()
+    check([{k_: v_ for k_, v_ in x.items() if k_ != "use_sign"} for x in wu["down"] + wu["up"]] == rest_["down"] + rest_["up"],
+          "/neuron/wiring model=use: every other field as from rest")
+    n_diff = sum(1 for x in wu["down"] for s_ in ("+", "-") if x["use_sign"][s_] is not None and x["use_sign"][s_] != x["sign"])
+    print(f"        /neuron/wiring L2 N5 in use: {n_diff} of {2 * len(wu['down'])} reader faces read against the sign from rest")
+    wsu = c.get("/api/atlas/web/summary", params={"layer": 2, "n": 5, "model": "use"}).json()
+    check(wsu["ready"] and wsu["model"] == "use" and wsu == {**idx.web_summary(2, 5, vocab, model="use"), "src": wsu["src"]},
+          "/web/summary model=use: the index's web followed in use")
+    cu = c.get("/api/atlas/cone", params={"layer": 2, "n": 5, "model": "use"}).json()
+    walked = {(f_, t): r_["face"] for f_ in ("+", "-") for t, r_ in idx.walk(2, 5, "down", f_, None, 2, model="use").items() if r_["hop"] == 1}
+    check(cu["ready"] and cu["model"] == "use" and "operating point" in cu["note"]
+          and {(x["when"], (x["layer"], x["n"])): x["face"] for x in cu["nodes"] if x["hop"] == 1} == walked
+          and {x["drives"] for x in cu["nodes"] if x["hop"] < 0} <= {"+", "-"}, "/cone model=use: readers on the face the walk in use reaches them on")
+    r = c.get("/api/atlas/run/paths", params={"pos": 4, "top": 60, "min": 0, "model": "use"})
+    pu = np.frombuffer(r.content, np.int16).reshape(-1, 6)
+    want_pu = idx.active_paths(S4, 60, 0.0, "use")[0]
+    check(r.headers["X-Model"] == "use" and "X-Use-Refused" not in r.headers and np.array_equal(np.sort(pu, 0), np.sort(want_pu, 0)) and len(pu) > 0,
+          f"/run/paths model=use: {len(pu)} links, the index's in use")
     nl = c.get("/api/atlas/neuron/lens", params={"layer": 2, "n": 5}).json()
     st = idx.get("steer_lens")
     check(nl["steer"]["source"] == "index" and nl["steer"]["up"] == [vocab[i] for i in st["up"][2, 5]], "/neuron/lens: the steer lens from its index")
@@ -833,6 +875,14 @@ def main() -> int:
                                                      timestamp=time.time(), orig_norm=1.0, new_norm=0.0))
     wr = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5}).json()
     check(wr["source"] == "live" and wr["down"] == [] and len(wr["up"]) == 24, "/neuron/wiring: an edited neuron read live: it writes nothing, so no readers")
+    # in use, read live: g and u from the edited weights, the operating points from the passages index
+    wu = c.get("/api/atlas/neuron/wiring", params={"layer": 2, "n": 5, "model": "use"}).json()
+    live_up = ao.neuron_wiring(w, 2, 5, f_idx, k=24, gu=True)["up"]
+    check(wu["source"] == "live" and wu["use"]["ready"] and [x["use_sign"] for x in wu["up"]] == idx.use_signs(live_up, "up", 2, 5)
+          and "stale" not in wu["use"], "/neuron/wiring model=use, an edited neuron: its links read live, each reader's operating point from the index")
+    wl = c.get("/api/atlas/neuron/wiring", params={"layer": 4, "n": 7, "model": "use"}).json()
+    check(wl["source"] == "index" and "before the vault edits" in wl["use"].get("stale", ""),
+          "/neuron/wiring model=use: operating points read before an edit at an earlier layer are marked stale")
     hv = c.get("/api/atlas/hover", params={"layer": 2, "n": 5}).json()
     check("stale" in hv["faces"]["+"] and hv["faces"]["+"]["check"]["edited"] and not hv["faces"]["+"]["check"]["lens_validated"],
           "/hover: an edited neuron's index words are marked stale")

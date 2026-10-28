@@ -330,7 +330,8 @@ export async function openNeuron(layer: number, n: number, o: { fly?: boolean; f
   })();
   void (async () => {
     try {
-      const w = await get<Wiring>("/api/atlas/neuron/wiring", { layer, n, k: 24 }, ctl.signal);
+      // with the sign in use beside the one from rest, where the passages index lets it be read (the details tab shows both)
+      const w = await get<Wiring>("/api/atlas/neuron/wiring", { layer, n, k: 24, model: "use" }, ctl.signal);
       if (!isFocus(layer, n, "neuron")) return;
       set({ wiring: w });
       map?.setConnections(w.down, w.up);

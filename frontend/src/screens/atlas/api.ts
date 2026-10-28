@@ -148,7 +148,9 @@ export interface FaceWords {
 }
 /** A weight link, read from rest (backend/atlas_ops.py LINK_MODEL): `gate` is the writer's face that opens the reader's
  * gate, `sign` the reader's face it then pushes toward; `w` its strength as it reaches the reader (Gemma's layer
- * scalars and the norms counted) over the neuron's strongest; `z` how unusual it is within its pair of layers. */
+ * scalars and the norms counted) over the neuron's strongest; `z` how unusual it is within its pair of layers. Read
+ * with `model=use` it also carries `use_sign` (LINK_MODEL_USE): per face of the reader, the face it is pushed toward
+ * when the writer fires on its `gate` face, at the reader's operating point on that face (null without one). */
 export interface Link {
   layer: number;
   n: number;
@@ -160,6 +162,7 @@ export interface Link {
   words?: FaceWords;
   census?: string[];
   name?: string;
+  use_sign?: Record<"+" | "-", number | null> | null;
 }
 export interface Wiring {
   layer: number;
@@ -168,6 +171,9 @@ export interface Wiring {
   down: Link[];
   up: Link[];
   note: string;
+  /** with model=use: whether the readers' operating points could be read (`why` when not), and from which passages */
+  model?: "use";
+  use?: { ready: boolean; why?: string; note: string; stale?: string; operating_points?: { corpus: string | null; tokens: number | null } };
 }
 /** One earlier neuron's share of a drive: its direct write into the neuron's layer, on the face it fired on. */
 export interface DriveNeuron {

@@ -78,8 +78,11 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   layers. Signs are read from rest: `gate` is the writer's face that opens the reader's gate (fired the other way it
   barely moves the reader); `sign` is the reader's face it then pushes toward; `face` is the face each linked neuron is
   shown on (a reader's `sign` face, a writer's `gate` face). In use the reader's other inputs decide where it sits, so
-  a sign is a lead. Each linked neuron comes with that face's words, its census words and its name, so you can read a
-  neighbourhood without more calls.
+  a sign is a lead. `cone` and `web_summary` can also read each link where the reader sits (`model: "use"`, with the
+  passages index): to first order at the reader's median gate and up values over its strongest stored passages of a
+  face, a writer moves it whichever face the writer fires on, and the other way when it fires the other way. Where the
+  two readings disagree, neither is a finding until a push tests it. Each linked neuron comes with that face's words,
+  its census words and its name, so you can read a neighbourhood without more calls.
 - **Activation range** (`activation`: act_max, act_min, over_tokens, source): the largest and most negative activation
   over a corpus (the stats index), or, until that is built, over the study's 36 texts (marked provisional). Raw values.
 - **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed by fixed doses on four
@@ -91,14 +94,16 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   on its own. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model (`card` in
   `rollouts`), so a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when
   you work without.
-- **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest and pooled: `downstream`
-  `when_plus` / `when_minus`, what the neurons it drives write when it fires on its + / - face; `upstream`
-  `drives_plus` / `drives_minus`, what the neurons that push it toward its + / - face write. Pooled from the steer lens
-  when built, else from lens labels the gate lets through (`left_out_by_the_gate` counts the rest); the gate was
-  validated for single neurons' labels, not for words pooled over many, so a pool is a lead.
-- **Cone** (`cone`): the wiring chained hop by hop. **Multi-hop paths are guesses from weights**: each link ignores how
-  often the writer fires, attention, and every layer between; the guesswork compounds per hop, and the cone is pruned,
-  so a missing link is not a missing connection. Treat paths past the first hop as leads to check, never as circuits.
+- **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest (or in use, `model: "use"`, as
+  above; `read` says which) and pooled: `downstream` `when_plus` / `when_minus`, what the neurons it drives write when
+  it fires on its + / - face; `upstream` `drives_plus` / `drives_minus`, what the neurons that push it toward its + / -
+  face write. Pooled from the steer lens when built, else from lens labels the gate lets through
+  (`left_out_by_the_gate` counts the rest); the gate was validated for single neurons' labels, not for words pooled
+  over many, so a pool is a lead.
+- **Cone** (`cone`): the wiring chained hop by hop, from rest or in use (`model`). **Multi-hop paths are guesses from
+  weights**: each link ignores how often the writer fires, attention, and every layer between; the guesswork compounds
+  per hop, and the cone is pruned, so a missing link is not a missing connection. Treat paths past the first hop as
+  leads to check, never as circuits.
 
 Test your hypothesis yourself with the live model: `steer` writes pushed-up, unpushed and pushed-down answers to any
 prompt; `activations` gives the neuron's activation at every unit of any text, with other neurons pushed or heads

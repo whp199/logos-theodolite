@@ -20,9 +20,11 @@ git ignores), each with its provenance in a `meta` field (model, lens id, built_
 - act_scale.npz: pos, neg, pp, nn, pn, np [L, N] float32 (`atlas_ops.Extremes`), tokens, corpus, resid_q [L, 3] (the
   stream's length leaving each layer: 10th, 50th, 90th percentile), mlp_rms_q, mid_rms_q [L, 3] (the same of the two
   feed-forward norms' scales, which weigh the wiring across layers).
-- wiring.npz: {down,up}_{layer [L, N, K] int8, n int16, z float16, lw float16, sign int8, gate int8}, K
-  (`atlas_ops.neuron_wiring` for every neuron at once, ordered by strength across layers; lw is log10 of a link's
-  strength over the neuron's strongest; z below -1e4 marks an empty slot).
+- wiring.npz: {down,up}_{layer [L, N, K] int8, n int16, z float16, lw float16, sign int8, gate int8, g float16,
+  u float16}, K (`atlas_ops.neuron_wiring` for every neuron at once, ordered by strength across layers; lw is log10 of a
+  link's strength over the neuron's strongest; z below -1e4 marks an empty slot; g and u, the link's two weight
+  products, which the sign in use is read from, are missing from a build before 28 October 2026, which still serves
+  the sign from rest).
 - steer_lens.npz: up, down [L, N, 12] int32, up_kl, down_kl [L, N] float16, dose, contexts (`atlas_ops.steer_lens`).
 - layout_writes.npz: cell [L, N] int16, side (each neuron's place on its layer's sheet, neighbours writing alike).
 - passages.d/: one .npy per array, memory-mapped (on the 31B about 0.5 GB at K = 16, 0.7 GB with six sampled events a
@@ -41,6 +43,7 @@ Layers count from 0 in every array and field.
 from __future__ import annotations
 
 import json
+import math
 import os
 import threading
 from pathlib import Path
@@ -49,6 +52,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from backend.label_gate import TOPK, label_check
+
+LINK_MODELS = ("rest", "use")  # how a link's sign is read: atlas_ops.LINK_MODEL, atlas_ops.LINK_MODEL_USE
 
 ATLAS_DIR_ENV = "THEODOLITE_ATLAS_DIR"
 LENS_K = 12
@@ -169,6 +174,7 @@ class AtlasIndex:
         self._lock = threading.Lock()
         self._cache: Dict[str, Tuple[float, Optional[Dict[str, Any]], Optional[str]]] = {}
         self._base: Dict[str, Tuple[Tuple[float, int], np.ndarray]] = {}
+        self._ops: Tuple[Optional[float], Dict[Tuple[int, int], Dict[str, Optional[Tuple[float, float]]]]] = (None, {})
 
     def path(self, name: str) -> Path:
         return self.root / FILES[name]
@@ -337,22 +343,27 @@ class AtlasIndex:
 
     # ------------------------------------------------------------------------------------------------------- wiring
 
-    def links(self, layer: int, n: int, k: int = WIRING_K) -> Optional[Dict[str, List[Dict[str, Any]]]]:
+    def links(self, layer: int, n: int, k: int = WIRING_K, gu: bool = False) -> Optional[Dict[str, List[Dict[str, Any]]]]:
         """One neuron's k strongest weight links each way, from the wiring index (each {layer, n, z, w, sign, gate}, as
-        `atlas_ops.neuron_wiring` gives them); None when it is not built."""
+        `atlas_ops.neuron_wiring` gives them, and with `gu` the link's g and u where the build kept them); None when it
+        is not built."""
         w = self.get("wiring")
         if w is None or int(k) > int(w["K"]):
             return None
-        return {side: [self._slot(w, side, int(layer), int(n), i) for i in range(int(k)) if float(w[f"{side}_z"][int(layer), int(n), i]) > EMPTY_Z]
+        return {side: [self._slot(w, side, int(layer), int(n), i, gu) for i in range(int(k)) if float(w[f"{side}_z"][int(layer), int(n), i]) > EMPTY_Z]
                 for side in ("down", "up")}
 
     @staticmethod
-    def _slot(w: Dict[str, Any], side: str, l: int, n: int, i: int) -> Dict[str, Any]:
-        return {"layer": int(w[f"{side}_layer"][l, n, i]), "n": int(w[f"{side}_n"][l, n, i]), "z": round(float(w[f"{side}_z"][l, n, i]), 2),
-                "w": float(f"{10.0 ** float(w[f'{side}_lw'][l, n, i]):.4g}"), "sign": int(w[f"{side}_sign"][l, n, i]),
-                "gate": int(w[f"{side}_gate"][l, n, i])}
+    def _slot(w: Dict[str, Any], side: str, l: int, n: int, i: int, gu: bool = False) -> Dict[str, Any]:
+        out = {"layer": int(w[f"{side}_layer"][l, n, i]), "n": int(w[f"{side}_n"][l, n, i]), "z": round(float(w[f"{side}_z"][l, n, i]), 2),
+               "w": float(f"{10.0 ** float(w[f'{side}_lw'][l, n, i]):.4g}"), "sign": int(w[f"{side}_sign"][l, n, i]),
+               "gate": int(w[f"{side}_gate"][l, n, i])}
+        if gu and f"{side}_g" in w:
+            out["g"], out["u"] = float(w[f"{side}_g"][l, n, i]), float(w[f"{side}_u"][l, n, i])
+        return out
 
-    def _hop_links(self, ci: Dict[str, Any], side: str, a: int, b: int, hop: int, first: Optional[int], k: int, zmin: float) -> List[Dict[str, Any]]:
+    def _hop_links(self, ci: Dict[str, Any], side: str, a: int, b: int, hop: int, first: Optional[int], k: int, zmin: float,
+                   gu: bool = False) -> List[Dict[str, Any]]:
         """The links a node passes on at one hop of a cone, strongest first: on the first hop its top `first` (all K when
         None); past it, its top k among those with z at least zmin."""
         K = int(ci["K"])
@@ -364,7 +375,99 @@ class AtlasIndex:
                 break
             if hop > 1 and z < zmin:
                 continue
-            out.append(self._slot(ci, side, a, b, i))
+            out.append(self._slot(ci, side, a, b, i, gu))
+        return out
+
+    # ------------------------------------------------------------------------------------------------ the sign in use
+
+    def use_refused(self, live: bool = False) -> Optional[str]:
+        """Why links cannot be read in use here (atlas_ops.LINK_MODEL_USE), in plain words; None when they can. The
+        readers' operating points come from the passages index, the links' g and u from the wiring index (unless they
+        are read `live` from the weights)."""
+        if self.get("passages") is None:
+            why = self.refused("passages")
+            return (f"the passages index is not read ({why}): the readers' operating points come from it" if why else
+                    "the passages index is not built: the readers' operating points come from its stored events "
+                    "(scripts/atlas_build.py passages)")
+        w = self.get("wiring")
+        if not live and w is not None and "down_g" not in w:
+            return ("the wiring index was built before it kept each link's g and u: rebuild it (scripts/atlas_build.py wiring, "
+                    "about 4 minutes on the 5090) to read its links in use")
+        return None
+
+    def op_point(self, layer: int, n: int) -> Dict[str, Optional[Tuple[float, float]]]:
+        """A neuron's operating point on each face: (alpha, beta), each the median over its stored events of that face
+        (`atlas_ops.operating_points`); None for a face with none, and without the passages index. {"+": .., "-": ..}"""
+        from backend.atlas_ops import operating_points
+
+        P = self.get("passages")
+        if P is None:
+            return {"+": None, "-": None}
+        mt = self._cache["passages"][0]
+        if self._ops[0] != mt:
+            self._ops = (mt, {})
+        key = (int(layer), int(n))
+        hit = self._ops[1].get(key)
+        if hit is None:
+            hit = {}
+            for face, f in (("+", "pos"), ("-", "neg")):
+                al, be = operating_points(P[f"{f}_g"][key][None], P[f"{f}_u"][key][None], (np.asarray(P[f"{f}_win"][key]) >= 0)[None])
+                hit[face] = (float(al[0]), float(be[0])) if math.isfinite(float(al[0])) else None
+            if len(self._ops[1]) > 200_000:
+                self._ops[1].clear()
+            self._ops[1][key] = hit
+        return hit
+
+    def use_signs(self, rows: List[Dict[str, Any]], side: str, layer: int, n: int) -> List[Optional[Dict[str, Optional[int]]]]:
+        """Each link's `use_sign` (atlas_ops.LINK_MODEL_USE): per face of its reader (each reader on "down", the neuron
+        itself on "up"), the face the writer pushes the reader toward when it fires on its `gate` face, at the reader's
+        operating point there; None for a face with no stored event, and for a link without its g and u."""
+        from backend.atlas_ops import use_sign
+
+        out: List[Optional[Dict[str, Optional[int]]]] = []
+        for c in rows:
+            if "g" not in c:
+                out.append(None)
+                continue
+            op = self.op_point(c["layer"], c["n"]) if side == "down" else self.op_point(layer, n)
+            out.append({face: (use_sign(op[face][0], op[face][1], c["g"], c["u"], c["gate"]) if op[face] else None) for face in ("+", "-")})
+        return out
+
+    def _coupling(self, reader: Tuple[int, int], face: str, c: Dict[str, Any]) -> Optional[float]:
+        """alpha g + beta u of a link at its reader's operating point on `face` (its sign is where the writer's rise
+        pushes the reader); None without one."""
+        op = self.op_point(*reader)[face]
+        return None if op is None or "g" not in c else op[0] * c["g"] + op[1] * c["u"]
+
+    def sign_disagreement(self) -> Optional[Dict[str, Any]]:
+        """How often the sign in use differs from the sign from rest, over the whole index: every neuron's downstream
+        links (its K strongest readers), per face of the reader where it has an operating point (`read`), and of those
+        the links whose `use_sign` there is not `sign` (`differ`); `differ_on_both`, the links that differ on both faces;
+        `by_layer`, the same per writer layer. None without the wiring index's g and u, or the passages index."""
+        from backend.atlas_ops import operating_points
+
+        w, P = self.get("wiring"), self.get("passages")
+        if w is None or P is None or "down_g" not in w:
+            return None
+        live = np.asarray(w["down_z"], np.float32) > EMPTY_Z
+        rl, rn = np.asarray(w["down_layer"], np.int64), np.asarray(w["down_n"], np.int64)
+        g, u = np.asarray(w["down_g"], np.float64), np.asarray(w["down_u"], np.float64)  # as `use_sign` takes them
+        sign, gate = np.asarray(w["down_sign"], np.int8), np.asarray(w["down_gate"], np.int8)
+        per_layer: List[Dict[str, Any]] = [{"layer": l, "links": int(live[l].sum())} for l in range(live.shape[0])]
+        out: Dict[str, Any] = {"links": int(live.sum()), "faces": {}}
+        both = live.copy()
+        for face, f in (("+", "pos"), ("-", "neg")):
+            al, be = operating_points(P[f"{f}_g"], P[f"{f}_u"], np.asarray(P[f"{f}_win"]) >= 0)
+            a, b = al[rl, rn].astype(np.float64), be[rl, rn].astype(np.float64)  # each link's reader's
+            has = live & np.isfinite(a)
+            differ = has & (gate * np.where(a * g + b * u > 0, 1, -1) != sign)
+            both &= differ
+            out["faces"][face] = {"read": int(has.sum()), "differ": int(differ.sum())}
+            for l, row in enumerate(per_layer):
+                row[face] = {"read": int(has[l].sum()), "differ": int(differ[l].sum())}
+        out["differ_on_both"] = int(both.sum())
+        out["by_layer"] = per_layer
+        out["built_at"] = {"wiring": w["meta"].get("built_at"), "passages": P["meta"].get("built_at")}
         return out
 
     def cone(self, layer: int, n: int, k: int = 2, zmin: float = 15.0, cap: int = 20000, first: Optional[int] = None,
@@ -396,7 +499,7 @@ class AtlasIndex:
         return out
 
     def walk(self, layer: int, n: int, side: str, face: Optional[str], first: Optional[int] = 5, k: int = 2, zmin: float = 15.0,
-             hops: Optional[int] = None, cap: int = 10000) -> Dict[Tuple[int, int], Dict[str, Any]]:
+             hops: Optional[int] = None, cap: int = 10000, model: str = "rest") -> Dict[Tuple[int, int], Dict[str, Any]]:
         """The cone followed by the link model (atlas_ops.LINK_MODEL): from rest a writer moves its reader only when it
         fires on the face that opens the reader's gate (`gate`), and pushes it toward one face (`sign`).
         - "down", from the neuron firing on `face`: a link is followed when the face its writer was reached on opens the
@@ -404,21 +507,49 @@ class AtlasIndex:
         - "up" (`face` None): each writer is reached on the face that opens its reader's gate; past the first hop a
           writer counts only when it pushes its reader toward the face that reader must fire on. `drives` is the face of
           the open neuron the chain pushes it toward.
+        With `model` "use" (atlas_ops.LINK_MODEL_USE, which needs the passages index and the links' g and u) a writer
+        moves its reader whichever face it fires on, and where the reader is pushed is read at the reader's operating
+        point on each face:
+        - "down": the reader is reached on a face s where the writer, fired on the face it was reached on, pushes it
+          further toward s at its operating point on s (where both faces are, on the one it is pushed harder at; where
+          neither is, the writer only pushes it back toward rest, and the link is not followed);
+        - "up", toward the open neuron's `face` (given): each writer is reached on the face whose firing pushes its
+          reader toward the face that reader must fire on, at its operating point there.
+        A reader with no operating point on the face asked of it is not followed in use.
         {neuron: {face, hop, w, drives?}}, each reached once (the first way found), w the strength of the link that
         reached it over the strongest of its node's links."""
         ci = self.get("wiring")
         if ci is None:
             return {}
+        use = model == "use"
+        if use and side == "up" and face is None:
+            raise ValueError('In use a cone is walked up toward one face of the neuron: give face "+" or "-".')
         sgn = lambda s: "+" if s > 0 else "-"  # noqa: E731
+        one = lambda f: 1 if f == "+" else -1  # noqa: E731
         reach: Dict[Tuple[int, int], Dict[str, Any]] = {}
         front: List[Tuple[Tuple[int, int], Optional[str], Optional[str]]] = [((int(layer), int(n)), face, None)]
         seen, hop = {(int(layer), int(n))}, 1
         while front and len(reach) < cap and (not hops or hop <= hops):
             nxt = []
             for (a, b), f, drives in front:
-                for c in self._hop_links(ci, side, a, b, hop, first, k, zmin):
+                for c in self._hop_links(ci, side, a, b, hop, first, k, zmin, gu=use):
                     t = (c["layer"], c["n"])
-                    if side == "down":
+                    if use and side == "down":
+                        # each face of the reader the writer's firing on f pushes further, and how hard
+                        best = None
+                        for s in ("+", "-"):
+                            cs = self._coupling(t, s, c)
+                            if cs is not None and one(f) * (1 if cs > 0 else -1) == one(s) and (best is None or abs(cs) > best[1]):
+                                best = (s, abs(cs))
+                        if best is None:
+                            continue  # in use it only pushes the reader back toward rest (or the reader has no operating point)
+                        tf, td = best[0], None
+                    elif use:
+                        cs = self._coupling((a, b), str(f), c)
+                        if cs is None:
+                            continue  # the reader has no operating point on the face it must fire on
+                        tf, td = sgn(one(f) * (1 if cs > 0 else -1)), drives or f
+                    elif side == "down":
                         if sgn(c["gate"]) != f:
                             continue  # fired on this face, the writer leaves the reader's gate near shut
                         tf, td = sgn(c["sign"]), None
@@ -451,13 +582,15 @@ class AtlasIndex:
         return base
 
     def web_summary(self, layer: int, n: int, vocab: Sequence[str], first: int = 5, k: int = 2, top: int = 24,
-                    hops: Optional[int] = None, src: str = "auto") -> Dict[str, Any]:
+                    hops: Optional[int] = None, src: str = "auto", model: str = "rest") -> Dict[str, Any]:
         """What the neuron's web says, in word-pieces (after the reference's /api/web/summary), the cone followed by the
-        link model (`walk`; atlas_ops.LINK_MODEL):
+        link model (`walk`; atlas_ops.LINK_MODEL, or with `model` "use" LINK_MODEL_USE):
         - down `plus` / `minus`: what the neurons it drives write when it fires on its + face / its - face, each read on
           the face the chain pushes it toward;
         - up `plus` / `minus`: what the neurons that push it toward its + face / its - face write, each read on the face
-          that opens its reader's gate.
+          that opens its reader's gate (in use, the face whose firing pushes its reader the way the chain needs).
+        In use it is not ready (`missing` "passages", or "wiring_gu" for a wiring index without its links' g and u)
+        without the readers' operating points, and says why (`why`).
         Each face's first eight word-pieces are pooled, merged across case and a leading space, weighted by the strength
         of the link that reached it (over the strongest of its node's links), times 0.8 per hop past the first, times
         the log of the lift (the share of the web's neurons carrying the word-piece over its share among every neuron of
@@ -471,6 +604,9 @@ class AtlasIndex:
         (`missing`) without the wiring index, or without both the steer-lens and the lens index."""
         if self.get("wiring") is None:
             return {"src": None, "ready": False, "missing": "wiring"}
+        if model == "use" and self.use_refused():
+            why = str(self.use_refused())
+            return {"src": None, "ready": False, "model": "use", "missing": "passages" if "passages" in why else "wiring_gu", "why": why}
         if src == "auto":
             src = "steer" if self.get("steer_lens") is not None else "lens"
         if src == "steer":
@@ -485,11 +621,15 @@ class AtlasIndex:
             pos, neg = lens["lens_pos"], lens["lens_neg"]
         L = pos.shape[0]
         base = self._base_rates(src, (pos, neg), L, len(vocab))
-        walks = {("down", "+"): self.walk(layer, n, "down", "+", first, k, 15.0, hops),
-                 ("down", "-"): self.walk(layer, n, "down", "-", first, k, 15.0, hops)}
-        up = self.walk(layer, n, "up", None, first, k, 15.0, hops)
-        walks[("up", "+")] = {t: r for t, r in up.items() if r["drives"] == "+"}
-        walks[("up", "-")] = {t: r for t, r in up.items() if r["drives"] == "-"}
+        walks = {("down", "+"): self.walk(layer, n, "down", "+", first, k, 15.0, hops, model=model),
+                 ("down", "-"): self.walk(layer, n, "down", "-", first, k, 15.0, hops, model=model)}
+        if model == "use":
+            for sg in ("+", "-"):
+                walks[("up", sg)] = self.walk(layer, n, "up", sg, first, k, 15.0, hops, model="use")
+        else:
+            up = self.walk(layer, n, "up", None, first, k, 15.0, hops)
+            walks[("up", "+")] = {t: r for t, r in up.items() if r["drives"] == "+"}
+            walks[("up", "-")] = {t: r for t, r in up.items() if r["drives"] == "-"}
         gated = {"down": 0, "up": 0}
 
         def pool(nodes: Dict[Tuple[int, int], Dict[str, Any]], side: str) -> List[Dict[str, Any]]:
@@ -526,16 +666,22 @@ class AtlasIndex:
             "up": {sg: {"neurons": len(walks[("up", sg)]), "words": pool(walks[("up", sg)], "up")} for sg in ("+", "-")},
         }
         res["gated"] = {"down": gated["down"], "up": gated["up"]}
+        if model == "use":
+            res["model"] = "use"
         return res
 
-    def active_paths(self, score: np.ndarray, top: int = 300, min_score: float = 1.0) -> Tuple[np.ndarray, int]:
+    def active_paths(self, score: np.ndarray, top: int = 300, min_score: float = 1.0, model: str = "rest") -> Tuple[np.ndarray, int]:
         """The circuit active at one word-piece (the reference's /api/infer/paths): among the `top` neurons with the
         largest |score| there (at least `min_score`), every wiring link whose two ends both fired and whose writer fired
         on the face that opens its reader's gate (atlas_ops.LINK_MODEL; fired the other way it barely moves the reader),
-        its z signed by the face the link pushes the reader toward. Rows int16 (src layer, src neuron, dst layer, dst
-        neuron, round(10 z) * sign, 1); and how many neurons were active."""
+        its z signed by the face the link pushes the reader toward. With `model` "use" (LINK_MODEL_USE) every link whose
+        two ends both fired, whichever face its writer fired on, signed by where the writer's firing pushes the reader
+        at the reader's operating point on the face it fired on (a link whose reader has none there is left out). Rows
+        int16 (src layer, src neuron, dst layer, dst neuron, round(10 z) * sign, 1); and how many neurons were active."""
         ci = self.get("wiring")
         if ci is None:
+            return np.zeros((0, 6), np.int16), 0
+        if model == "use" and self.use_refused():
             return np.zeros((0, 6), np.int16), 0
         flat = np.abs(score).ravel()
         k = min(int(top), max(flat.size - 1, 1))
@@ -551,7 +697,14 @@ class AtlasIndex:
                 if z <= EMPTY_Z:
                     break
                 t = (int(ci["down_layer"][l, n, i]), int(ci["down_n"][l, n, i]))
-                if t in active and int(ci["down_gate"][l, n, i]) == (1 if score[l, n] > 0 else -1):
+                if t not in active:
+                    continue
+                fired = 1 if score[l, n] > 0 else -1
+                if model == "use":
+                    cs = self._coupling(t, "+" if score[t] > 0 else "-", self._slot(ci, "down", l, n, i, gu=True))
+                    if cs is not None:
+                        rows.append((l, n, *t, int(round(z * 10)) * fired * (1 if cs > 0 else -1), 1))
+                elif int(ci["down_gate"][l, n, i]) == fired:
                     rows.append((l, n, *t, int(round(z * 10)) * int(ci["down_sign"][l, n, i]), 1))
         return np.array(rows, np.int16).reshape(-1, 6), len(active)
 

@@ -17,13 +17,21 @@ with the same quantity read live, one neuron at a time:
    refused in plain words; the sampled events lie
    above half the face's extreme, at most one a window, as many as such windows allow; the unigram counts add up to
    the word-pieces read; the server reads the arrays memory-mapped;
-5. wiring.npz: each neuron's links each way are `neuron_wiring`'s, the same neurons, z (as float16 keeps it) and sign;
+5. wiring.npz: each neuron's links each way are `neuron_wiring`'s, the same neurons, z (as float16 keeps it) and sign,
+   and each link's g and u as float16 keeps them; each neuron's operating point on each face is the median over its
+   stored passages' events; each link's sign in use is the same from the index's g and u as from the live ones; the
+   count of signs in use that differ from rest is the count link by link; a wiring index without g and u still serves
+   the sign from rest and says, in use, to rebuild it;
 6. steer_lens.d / steer_lens.npz: each neuron's rises are `steer_lens`'s, KL too; a stopped run resumes and merges;
 7. layout_writes.npz: each layer's cells are distinct places on its sheet;
 8. the queries: a search finds a face by a word-piece of its label at the right rank; the cone's hops move one way
    each side and start from the neuron; the web summary pools the steer lens when built and, without it, only faces
    the label gate lets through (on the stand-in's six layers every face is held back, so it pools nothing and says how
-   many it left out); the active paths join only neurons that fired; the scores scale by each side's extreme;
+   many it left out); the active paths join only neurons that fired; the scores scale by each side's extreme; in use,
+   a reader is reached on the face its writer's firing pushes it further toward (the harder one where both are),
+   a writer upstream on the face whose firing pushes its reader the way asked, the active paths keep every link
+   whose ends both fired, signed at the reader's own face, and the web summary says the passages index is missing
+   without it;
 9. head profiles: each head's shares of weight add up to one per read, and its pairs read more than one unit back;
 10. provenance: every index's meta names the weights it was built from (runtime_factory.weights_card), and an index
    built for another model, of another shape, by an older build or from other weights (another GGUF behind the same
@@ -392,9 +400,80 @@ def main() -> int:
             check(all(abs(c["w"] - zl.get((c["layer"], c["n"]), (0, 1e9))[1]) <= 2e-2 * c["w"] + 1e-30 for c in got[side]),
                   f"wiring: L{l} N{n} {side} w (log10 in float16)")
     check(idx.links(0, 3, 10)["up"] == [] and idx.links(L - 1, 9, 10)["down"] == [], "wiring: the first and last layers' empty sides")
-    check(idx.get("wiring")["meta"].get("scale_source") == "check" and "from rest" in idx.get("wiring")["meta"].get("link_model", ""),
-          "wiring: the scales' source and the link model recorded")
+    check(idx.get("wiring")["meta"].get("scale_source") == "check" and "from rest" in idx.get("wiring")["meta"].get("link_model", "")
+          and "in use" in idx.get("wiring")["meta"].get("link_model_use", ""), "wiring: the scales' source and both link models recorded")
     section("the wiring index is neuron_wiring's, link by link, in order of strength across layers", before)
+
+    before = len(failures)
+    # each link's g and u, kept as float16, are the live ones
+    gu_bad, n_gu, use_bad, n_use = [], 0, [], 0
+    for l in range(L):
+        for n in range(0, N, 9):
+            live = ao.neuron_wiring(w, l, n, f, k=10, gu=True)
+            got = idx.links(l, n, 10, gu=True)
+            for side in ("down", "up"):
+                lv = {(c["layer"], c["n"]): c for c in live[side]}
+                for c in got[side]:
+                    x = lv[(c["layer"], c["n"])]
+                    n_gu += 1
+                    if not all(abs(c[k_] - x[k_]) <= 1e-3 * abs(x[k_]) + 1e-7 for k_ in ("g", "u")):
+                        gu_bad.append((l, n, side, c["g"], x["g"], c["u"], x["u"]))
+                # the sign in use, from the index's g and u and from the live ones
+                a_, b_ = idx.use_signs(got[side], side, l, n), idx.use_signs(live[side], side, l, n)
+                n_use += len(a_)
+                use_bad += [(l, n, side, i_) for i_, (p_, q_) in enumerate(zip(a_, b_)) if p_ != q_]
+    check(n_gu > 500 and not gu_bad, f"wiring: each link's g and u as float16 keeps the live ones ({len(gu_bad)} of {n_gu} differ: {gu_bad[:2]})")
+    check(n_use > 500 and not use_bad, f"in use: the same use_sign from the index's g and u as from the live ones ({len(use_bad)} of {n_use} differ)")
+    # each neuron's operating point on each face: the median over its stored events (brute force, one at a time)
+    P = idx.get("passages")
+    c_ = (2.0 / np.pi) ** 0.5
+    op_bad, faces_none = [], 0
+    for l in range(L):
+        for n in range(0, N, 5):
+            op = idx.op_point(l, n)
+            for face, f_ in (("+", "pos"), ("-", "neg")):
+                ok = np.asarray(P[f"{f_}_win"][l, n]) >= 0
+                if not ok.any():
+                    faces_none += 1
+                    op_bad += [(l, n, face)] if op[face] is not None else []
+                    continue
+                g_, u_ = np.asarray(P[f"{f_}_g"][l, n], np.float64)[ok], np.asarray(P[f"{f_}_u"][l, n], np.float64)[ok]
+                want = (np.median(np.array([ao.gelu_tanh_grad(x) for x in g_]) * u_), np.median(0.5 * g_ * (1 + np.tanh(c_ * (g_ + 0.044715 * g_**3)))))
+                if op[face] is None or any(abs(op[face][i_] - want[i_]) > 1e-5 * max(1.0, abs(want[i_])) for i_ in (0, 1)):
+                    op_bad.append((l, n, face, op[face], want))
+    check(not op_bad, f"in use: each face's operating point is the median of gelu'(g) u and gelu(g) over its stored events ({op_bad[:2]})")
+    # the count of signs in use that differ from rest, over the whole index, is the count link by link
+    dis = idx.sign_disagreement()
+    by_hand = {"+": [0, 0], "-": [0, 0]}
+    links_all = 0
+    for l in range(L):
+        for n in range(N):
+            got = idx.links(l, n, 10, gu=True)["down"]
+            links_all += len(got)
+            for c, us in zip(got, idx.use_signs(got, "down", l, n)):
+                for face in ("+", "-"):
+                    if us[face] is not None:
+                        by_hand[face][0] += 1
+                        by_hand[face][1] += int(us[face] != c["sign"])
+    check(dis is not None and dis["links"] == links_all and all(dis["faces"][s_] == {"read": by_hand[s_][0], "differ": by_hand[s_][1]} for s_ in ("+", "-"))
+          and sum(r_["+"]["differ"] for r_ in dis["by_layer"]) == by_hand["+"][1],
+          f"in use: the count of signs that differ from rest is the count link by link ({dis and dis['faces']} vs {by_hand})")
+    print(f"        on the stand-in the sign in use differs from rest on {by_hand['+'][1]} of {by_hand['+'][0]} links read on the reader's + face "
+          f"and {by_hand['-'][1]} of {by_hand['-'][0]} on its - face")
+    # a wiring index built before it kept g and u still serves the sign from rest, and says, in use, to rebuild it
+    (out / "wiring.npz").rename(out / "wiring.keep")
+    oldw = dict(np.load(out / "wiring.keep"))
+    for side in ("down", "up"):
+        del oldw[f"{side}_g"], oldw[f"{side}_u"]
+    np.savez(out / "wiring.npz", **oldw)
+    old_links = idx.links(2, 60, 10, gu=True)
+    said = idx.use_refused() or ""
+    check(old_links is not None and "g" not in old_links["down"][0] and idx.use_signs(old_links["down"], "down", 2, 60)[0] is None
+          and "rebuild it" in said and idx.use_refused(live=True) is None and idx.sign_disagreement() is None,
+          f"in use: a wiring index without g and u serves the sign from rest, and says to rebuild it ({said})")
+    (out / "wiring.npz").unlink()
+    (out / "wiring.keep").rename(out / "wiring.npz")
+    section("the wiring's g and u kept; operating points as medians; the sign in use alike from the index and live, counted", before)
 
     before = len(failures)
     p50 = [float(x) for x in s["resid_q"][:, 1]]
@@ -462,6 +541,43 @@ def main() -> int:
     check(all(gate_of[("down", int(r[0]), int(r[1]), (int(r[2]), int(r[3])))][0] == (1 if score[int(r[0]), int(r[1])] > 0 else -1)
               and (int(r[4]) > 0) == (gate_of[("down", int(r[0]), int(r[1]), (int(r[2]), int(r[3])))][1] > 0) for r in rows),
           "active paths: only writers that fired on the face opening the gate, signed by the face pushed")
+    # in use (LINK_MODEL_USE): where the writer, fired on a face, pushes its reader at the reader's operating points
+    one = lambda s_: 1 if s_ == "+" else -1  # noqa: E731
+    gl = idx.links(2, 60, 10, gu=True)
+    for face in ("+", "-"):
+        wk = idx.walk(2, 60, "down", face, first=4, model="use")
+        want_w = {}
+        for c in gl["down"][:4]:
+            t = (c["layer"], c["n"])
+            cand = [(s_, abs(cs)) for s_ in ("+", "-") for cs in [idx._coupling(t, s_, c)] if cs is not None and one(face) * (1 if cs > 0 else -1) == one(s_)]
+            if cand:
+                want_w[t] = max(cand, key=lambda x: x[1])[0]
+        check({t: r["face"] for t, r in wk.items() if r["hop"] == 1} == want_w,
+              f"walk down in use from the {face} face: each reader on the face pushed further (the harder of two), none pushed back toward rest only")
+        up_u = idx.walk(4, 30, "up", face, first=6, model="use")
+        want_u = {(c["layer"], c["n"]): ("+" if one(face) * (1 if cs > 0 else -1) > 0 else "-")
+                  for c in idx.links(4, 30, 10, gu=True)["up"][:6] for cs in [idx._coupling((4, 30), face, c)] if cs is not None}
+        check({t: r["face"] for t, r in up_u.items() if r["hop"] == -1} == want_u and all(r["drives"] == face for r in up_u.values()),
+              f"walk up in use toward the {face} face: each writer on the face whose firing pushes the neuron that way")
+    check("give face" in raises(idx.walk, 4, 30, "up", None, model="use"), "walk up in use without a face refused")
+    rows_u, n_u = idx.active_paths(score, top=40, min_score=1.0, model="use")
+    want_rows = []
+    for (l_, n_) in active:
+        for i_, c in enumerate(idx.links(l_, n_, int(ci["K"]), gu=True)["down"]):
+            t = (c["layer"], c["n"])
+            cs = idx._coupling(t, "+" if score[t] > 0 else "-", c) if t in active else None
+            if cs is not None:
+                z10 = int(round(float(ci["down_z"][l_, n_, i_]) * 10))
+                want_rows.append((l_, n_, *t, z10 * (1 if score[l_, n_] > 0 else -1) * (1 if cs > 0 else -1)))
+    check(n_u == n_active and sorted(tuple(int(x) for x in r[:5]) for r in rows_u) == sorted(want_rows) and len(rows_u) > 0,
+          f"active paths in use: every link whose ends both fired, signed where the writer's firing pushes the reader ({len(rows_u)} vs {len(want_rows)})")
+    wsu = idx.web_summary(2, 60, vocab, first=4, model="use")
+    check(wsu["ready"] and wsu["model"] == "use" and set(wsu["down"]) == {"+", "-"}, "web summary in use: pooled by face each way")
+    (out / "passages.d" / "meta.json").rename(out / "passages.meta.off")
+    wsn = idx.web_summary(2, 60, vocab, model="use")
+    check(not wsn["ready"] and wsn["missing"] == "passages" and "atlas_build.py passages" in wsn["why"] and idx.op_point(2, 60) == {"+": None, "-": None}
+          and idx.active_paths(score, top=40, model="use")[0].shape == (0, 6), f"in use without the passages index: says so ({wsn})")
+    (out / "passages.meta.off").rename(out / "passages.d" / "meta.json")
     acts = np.array([[[2.0, -1.0], [0.5, -3.0]]], np.float32)  # [1, T=2, N=2]
     sc = scale_scores(acts, np.array([[4.0, 0.0]]), np.array([[-1.0, -2.0]]))
     check(sc[0, 0].tolist() == [0.0, 0.0] and np.allclose(sc[0, 1], [0.125, -1.5]), f"scores: {sc.tolist()}")

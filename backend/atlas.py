@@ -43,7 +43,7 @@ from backend import atlas_ops as ao
 from backend import census as cz
 from backend import field_notes as fn
 from backend import sampler_request as sr
-from backend.atlas_index import FILES, LENS_K, AtlasIndex, match_ids, scale_scores
+from backend.atlas_index import FILES, LENS_K, LINK_MODELS, AtlasIndex, match_ids, scale_scores
 from backend.causal_check import language_model
 from backend.label_gate import LABEL_GATE_CARD
 from backend.saved_prompts import LOCAL_HOSTS, _hostname
@@ -962,35 +962,79 @@ def _decorate(a: Atlas, rows: List[Dict[str, Any]], notes: Dict[str, Any], edite
 
 
 def _wiring(a: Atlas, layer: int, n: int, k: int) -> Dict[str, Any]:
-    got = a.index.links(layer, n, k)
+    """The links each way with their g and u (where the index kept them; read live always)."""
+    got = a.index.links(layer, n, k, gu=True)
     if got is not None and (layer, n) not in a.edited():
         return {"source": "index", **got}
     key = (a.edit_key(), layer, n, k)
     hit = a.cache["wiring"].get(key)
     if hit is None:
-        hit = a.cache["wiring"].put(key, ao.neuron_wiring(a.w, layer, n, a.link_scale(), k=k))
+        hit = a.cache["wiring"].put(key, ao.neuron_wiring(a.w, layer, n, a.link_scale(), k=k, gu=True))
     return {"source": "live", **hit}
 
 
+def _model(model: str) -> str:
+    if model not in LINK_MODELS:
+        raise HTTPException(status_code=400, detail=f'model is "rest" (the default: signs read from rest) or "use" (read at the '
+                                                    f"reader's operating point), not {model!r}.")
+    return model
+
+
+USE_STALE = ("the readers' operating points come from the passages index, read before the vault edits in force at earlier "
+             "layers, which can move where a reader sits")
+
+
+def _use(a: Atlas, res: Dict[str, Any], layer: int, n: int) -> Dict[str, Any]:
+    """Each link's `use_sign` (AtlasIndex.use_signs: per face of its reader, where the writer fired on its `gate` face
+    pushes it at its operating point there), put on the links of `res` in place, and what the reply says of it."""
+    why = a.index.use_refused(live=res["source"] == "live")
+    for side in ("down", "up"):
+        signs = a.index.use_signs(res[side], side, layer, n) if why is None else [None] * len(res[side])
+        for c, s in zip(res[side], signs):
+            c["use_sign"] = s
+    out: Dict[str, Any] = {"ready": why is None, "note": ao.LINK_MODEL_USE}
+    if why:
+        out["why"] = why
+    else:
+        m = a.index.get("passages")["meta"]
+        out["operating_points"] = {"corpus": m.get("corpus"), "tokens": m.get("tokens"), "K": m.get("K"), "built_at": m.get("built_at")}
+        readers = [c["layer"] for c in res["down"]] + ([layer] if res["up"] else [])
+        if any(l_e < l_r for l_e, _ in a.edited() for l_r in readers):
+            out["stale"] = USE_STALE
+    return out
+
+
 @router.get("/neuron/wiring")
-async def neuron_wiring(layer: int, n: int, k: int = 24) -> Dict[str, Any]:
+async def neuron_wiring(layer: int, n: int, k: int = 24, model: str = "rest") -> Dict[str, Any]:
     """The neuron's strongest weight links each way (atlas_ops.neuron_wiring), by strength across layers: readers in
     later layers ("down") and writers in earlier ones ("up"), each with w, z, sign, gate, the face it is read on
     (`face`, `_decorate`), that face's words with their check, and its name. From the wiring index when built and the
     neuron is not edited, else read live from the weights (`source`). A neuron that writes nothing (silenced in the
-    vault) has no readers."""
+    vault) has no readers. With `model` "use" each link also carries `use_sign` (atlas_ops.LINK_MODEL_USE), per face of
+    its reader, {"+", "-"}: the face the writer fired on its `gate` face pushes the reader toward at its operating
+    point there (comparable with `sign`; null for a face with no stored event), the link's g and u from the index or
+    read live, the operating points always from the passages index; `use` says whether they could be read (`why` when
+    not, every `use_sign` then null), from which passages, and `stale` after a vault edit at an earlier layer."""
     a = atlas()
     _check_neuron(a, layer, n)
+    _model(model)
     k = max(1, min(int(k), 64))
     if await asyncio.to_thread(a.index.links, layer, n, k) is not None and (layer, n) not in a.edited():
         res = await asyncio.to_thread(_wiring, a, layer, n, k)
     else:
         res = await on_gpu(_wiring, a, layer, n, k)
+    res = {"source": res["source"], **{side: [dict(c) for c in res[side]] for side in ("down", "up")}}  # the cache's own stay as they are
+    use = await asyncio.to_thread(_use, a, res, layer, n) if model == "use" else None
+    for side in ("down", "up"):
+        for c in res[side]:
+            c.pop("g", None)
+            c.pop("u", None)
     notes = (await fn.all_notes())["neurons"]
     edited = a.edited()
     down, up = await asyncio.to_thread(lambda: (_decorate(a, res["down"], notes, edited, "down"), _decorate(a, res["up"], notes, edited, "up")))
     return {"layer": layer, "n": n, "source": res["source"], "down": down, "up": up,
-            "note": "weight-only direct-path links, read " + ao.LINK_MODEL + " Leads to check, not circuits."}
+            "note": "weight-only direct-path links, read " + ao.LINK_MODEL + " Leads to check, not circuits.",
+            **({"model": "use", "use": use} if use is not None else {})}
 
 
 def _roles(a: Atlas, layer: int, n: int) -> Dict[str, Any]:
@@ -1257,16 +1301,22 @@ async def web(layer: int, n: int, first: int = 5, k: int = 2, zmin: float = 15.0
 
 
 @router.get("/web/summary")
-async def web_summary(layer: int, n: int, first: int = 5, k: int = 2, top: int = 24, hops: int = 0, src: str = "auto") -> Dict[str, Any]:
+async def web_summary(layer: int, n: int, first: int = 5, k: int = 2, top: int = 24, hops: int = 0, src: str = "auto",
+                      model: str = "rest") -> Dict[str, Any]:
+    """The cone's words pooled (AtlasIndex.web_summary), followed from rest, or with `model` "use" at each reader's
+    operating point (not ready without the passages index, saying why)."""
     a = atlas()
     _check_neuron(a, layer, n)
+    _model(model)
     if src not in ("auto", "steer", "lens"):
         raise HTTPException(status_code=400, detail='src is "auto", "steer" or "lens".')
     vocab = await asyncio.to_thread(a.vocab)
     res = await asyncio.to_thread(a.index.web_summary, layer, n, vocab, max(1, int(first)), max(1, int(k)),
-                                  max(1, min(int(top), 64)), int(hops) or None, src)
+                                  max(1, min(int(top), 64)), int(hops) or None, src, model)
     if (layer, n) in a.edited() and res.get("ready"):
         res["stale"] = STALE_WEB
+    if model == "use" and res.get("ready") and any(l_e < a.L - 1 for l_e, _ in a.edited()):
+        res["use_stale"] = USE_STALE
     return res
 
 
@@ -1714,21 +1764,27 @@ async def run_heads(pos: int) -> Dict[str, Any]:
 
 
 @router.get("/run/paths")
-async def run_paths(pos: int, top: int = 300, min_score: float = Query(1.0, alias="min")) -> Response:
+async def run_paths(pos: int, top: int = 300, min_score: float = Query(1.0, alias="min"), model: str = "rest") -> Response:
     """The circuit active at one word-piece of the text last run (the reference's /api/infer/paths): among the `top`
     neurons with the largest |score| there, every wiring link whose two ends both fired, signed by the push the writer's
-    firing gives the reader. Rows as /web's (hop 1); X-Active counts the neurons that fired. Needs the wiring index."""
+    firing gives the reader: from rest (a link kept only when its writer fired on its `gate` face), or with `model`
+    "use" at the reader's operating point on the face it fired on (AtlasIndex.active_paths). Rows as /web's (hop 1);
+    X-Active counts the neurons that fired, X-Model names the reading, and X-Use-Refused says why none could be read in
+    use. Needs the wiring index."""
     a = atlas()
+    _model(model)
     if not a.run or not 0 <= pos < len(a.run["ids"]):
-        return Response(b"", media_type="application/octet-stream", headers={"X-Web-Total": "0", "X-Active": "0"})
+        return Response(b"", media_type="application/octet-stream", headers={"X-Web-Total": "0", "X-Active": "0", "X-Model": model})
 
     def work() -> Tuple[np.ndarray, int]:
         S, _ = _run_scores(a, pos, "both")
-        return a.index.active_paths(S, max(1, min(int(top), 2000)), float(min_score))
+        return a.index.active_paths(S, max(1, min(int(top), 2000)), float(min_score), model)
 
     rows, n_active = await asyncio.to_thread(work)
+    why = await asyncio.to_thread(a.index.use_refused) if model == "use" else None
     return Response(rows.tobytes(), media_type="application/octet-stream",
-                    headers={"X-Web-Total": str(len(rows)), "X-Active": str(n_active)})
+                    headers={"X-Web-Total": str(len(rows)), "X-Active": str(n_active), "X-Model": model,
+                             **({"X-Use-Refused": why} if why else {})})
 
 
 @router.get("/head/row")
@@ -1988,31 +2044,43 @@ async def neuron(layer: int, n: int) -> Dict[str, Any]:
 
 
 @router.get("/cone")
-async def cone(layer: int, n: int, k: int = 2, limit: int = 120) -> Dict[str, Any]:
+async def cone(layer: int, n: int, k: int = 2, limit: int = 120, model: str = "rest") -> Dict[str, Any]:
     """The neuron's cone as a list of neurons (the scientist's `cone`), followed by the link model
     (atlas_ops.LINK_MODEL, AtlasIndex.walk): downstream from the neuron firing on its + face (`when: "+"`) and on its -
     face (`when: "-"`), upstream to the writers that push it toward either face (`drives`); each reached neuron with its
     hop, the strength of the link that reached it (w, over the strongest of its node's links), z, the face it is read on
-    and that face's words. Multi-hop paths are weight-only guesses: leads to check, not circuits."""
+    and that face's words. With `model` "use" each link is read at its reader's operating point (LINK_MODEL_USE; not
+    ready without the passages index, saying why), upstream toward each face in turn. Multi-hop paths are weight-only
+    guesses: leads to check, not circuits."""
     a = atlas()
     _check_neuron(a, layer, n)
+    _model(model)
     notes = (await fn.all_notes())["neurons"]
     edited = a.edited()
 
     def work() -> Dict[str, Any]:
         if a.index.get("wiring") is None:
             return {"ready": False, "note": "the wiring index is not built: the cone needs every neuron's links (scripts/atlas_build.py wiring)"}
+        if model == "use" and a.index.use_refused():
+            return {"ready": False, "model": "use", "note": a.index.use_refused()}
         reached: List[Tuple[Tuple[int, int], Dict[str, Any]]] = []
         for f in ("+", "-"):
-            reached += [(t, {**r, "when": f}) for t, r in a.index.walk(layer, n, "down", f, None, max(1, int(k))).items()]
-        reached += list(a.index.walk(layer, n, "up", None, None, max(1, int(k))).items())
+            reached += [(t, {**r, "when": f}) for t, r in a.index.walk(layer, n, "down", f, None, max(1, int(k)), model=model).items()]
+        if model == "use":
+            for f in ("+", "-"):
+                reached += list(a.index.walk(layer, n, "up", f, None, max(1, int(k)), model="use").items())
+        else:
+            reached += list(a.index.walk(layer, n, "up", None, None, max(1, int(k))).items())
         per_hop: Dict[int, int] = {}
         for _, r in reached:
             per_hop[r["hop"]] = per_hop.get(r["hop"], 0) + 1
         nodes = sorted(reached, key=lambda kv: (abs(kv[1]["hop"]), -kv[1]["w"]))[: max(1, min(int(limit), 1000))]
+        read = ("read from rest (" + ao.LINK_MODEL + ")") if model == "rest" else ("read " + ao.LINK_MODEL_USE)
         return {"ready": True, "neurons": len(reached), "per_hop": {str(h): c for h, c in sorted(per_hop.items())},
                 **({"stale": STALE_WEB} if (layer, n) in edited else {}),
-                "note": ("weight-only direct-path links chained, read from rest (" + ao.LINK_MODEL + ") Paths past hop 1 are "
+                **({"model": "use"} if model == "use" else {}),
+                **({"use_stale": USE_STALE} if model == "use" and any(l_e < a.L - 1 for l_e, _ in edited) else {}),
+                "note": ("weight-only direct-path links chained, " + read + " Paths past hop 1 are "
                          "leads, not circuits. hop > 0 reads the neuron (when: the face it fires on), hop < 0 feeds it "
                          "(drives: the face it pushes the neuron toward); face is the face each is read on"),
                 "nodes": [{"layer": l, "n": m, "hop": r["hop"], "w": r["w"], "z": r["z"], "face": r["face"],
