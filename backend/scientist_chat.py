@@ -43,9 +43,12 @@ message to a live, idle chat takes them up only where that cannot end anything e
 chat at the folder reach has no shell, so only its MCP server lives in its process group, and it is ended and started
 again, resuming its session (a `note` event). Any other (Codex at either reach, Claude Code at "home") may have left a
 command running in the background, in the same group, so it is not ended unasked: it is marked stale (a `stale` event,
-and the first `state` event of a stream carries it), and the page offers POST /restart, which ends it, those commands
-too, so that the next message resumes it with the files as they now stand. An openai chat's prompt is built afresh
-every round; its tools are this process's, and change only when the server starts again.
+and the first `state` event of a stream carries it), and the page offers POST /restart, which ends that group, any
+commands left running in it too, so that the next message resumes it with the files as they now stand. Idle is as the
+chat's events tell it: Claude Code answers from its first streamed event, thinking included, and after a turn that took
+a message mid-turn it may yet run that message as a turn of its own, so until its next turn begins it is marked stale
+rather than ended. An openai chat's prompt is built afresh every round; its tools are this process's, and change only
+when the server starts again.
 """
 
 from __future__ import annotations
@@ -105,9 +108,9 @@ MAX_MESSAGE = 100_000
 RESTARTED_WORDS = ("Its instructions or tools had changed since this chat's process started, so it was started again, resuming "
                    "the conversation, to take them up.")
 STALE_WORDS = ("This chat's process started before its instructions or tools last changed, and it runs those it started "
-               "with. Restarting it takes them up, and also ends any commands it left running.")
-ENDED_WORDS = ("Ended the chat's process and any commands it had left running; the next message starts it again, resuming "
-               "the conversation with its instructions and tools as they now stand.")
+               "with. Restarting it takes them up, and also ends its process group, with any commands it left running in it.")
+ENDED_WORDS = ("Ended the chat's process group, and with it any commands it had left running in that group; the next message "
+               "starts it again, resuming the conversation with its instructions and tools as they now stand.")
 
 router = APIRouter(prefix="/api/atlas/scientist", dependencies=[Depends(local_pages_only)])
 _app: Any = None
@@ -383,7 +386,9 @@ def _chat(cid: str, agent: Optional[str] = None) -> Dict[str, Any]:
         c = _chats[cid] = {"session": cid, "agent": kind, "proc": None, "listeners": listeners or set(), "turn": [], "busy": False,
                            "last": time.time(), "pending": [], "cancel": asyncio.Event(), "task": None, "lock": asyncio.Lock(),
                            # the agent files and the reach its process started with, and whether they have changed since
-                           "files": None, "reach": None, "stale": False}
+                           "files": None, "reach": None, "stale": False,
+                           # Claude Code: a message went in mid-turn; one may yet run as a turn of its own (`_take_up_changes`)
+                           "queued": False, "waiting": False}
     return c
 
 
@@ -433,15 +438,16 @@ async def _stop_proc(proc: Any) -> None:
 
 
 async def _end_chat(c: Dict[str, Any]) -> None:
-    """Ends a chat's process now (and what it started)."""
+    """Ends a chat's process now (and what it started): nothing runs the old files after it."""
     proc = c.get("proc")
     c["proc"] = None
     await _stop_proc(proc)
+    _mark_stale(c, False)
 
 
 def _started(c: Dict[str, Any], files: Tuple[Any, ...]) -> None:
     """A chat's process has just started, on the agent files as `files` stamps them (taken before it read them)."""
-    c["files"], c["reach"] = files, reach()
+    c["files"], c["reach"], c["queued"], c["waiting"] = files, reach(), False, False
     _mark_stale(c, False)
 
 
@@ -457,13 +463,15 @@ async def _take_up_changes(c: Dict[str, Any]) -> None:
     agent files last changed (module docstring): a Claude Code chat at the folder reach is ended, so that the message
     starts it again on them, resuming its session (it has no shell, so nothing but its MCP server lives in its process
     group); any other is marked stale, once, and ended only when the person asks (POST /restart), since ending its
-    process group would also end any command it left running in the background. A chat mid-turn is never ended."""
+    process group would also end any command it left running in the background there. A chat mid-turn is never ended,
+    as far as its events tell (`busy`); nor is a Claude Code chat whose last turn took a message mid-turn, until its
+    next turn begins (`waiting`): it may yet run that message as a turn of its own, so it is marked stale meanwhile."""
     proc = c.get("proc")
     if proc is None or proc.returncode is not None or c["busy"] or c.get("files") is None:
         return
     if c["files"] == _agent_files_stamp():
         return
-    if c["agent"] == "claude" and c.get("reach") == "folder":
+    if c["agent"] == "claude" and c.get("reach") == "folder" and not c.get("waiting"):
         await _end_chat(c)
         _emit(c, {"t": "note", "text": RESTARTED_WORDS})
     else:
@@ -572,11 +580,11 @@ async def _pump_claude(c: Dict[str, Any], proc: Any) -> None:
         except ValueError:
             continue
         if m.get("type") == "stream_event":
+            c["busy"], c["waiting"] = True, False  # a turn runs, from its first event (thinking too): `_take_up_changes`
             e = m.get("event") or {}
             if e.get("type") == "content_block_delta":
                 d = e.get("delta") or {}
                 if d.get("type") == "text_delta":
-                    c["busy"] = True
                     _emit(c, {"t": "text", "text": d.get("text", "")})
                 elif d.get("type") == "thinking_delta":
                     _emit(c, {"t": "thinking", "text": d.get("thinking", "")})
@@ -596,12 +604,15 @@ async def _pump_claude(c: Dict[str, Any], proc: Any) -> None:
             if m.get("is_error") and m.get("subtype") != "error_during_execution":
                 _emit(c, {"t": "error", "error": str(m.get("result"))[:600]})
             c["busy"] = False
+            # a message that went in mid-turn may yet run as a turn of its own, once this one has ended
+            c["waiting"], c["queued"] = bool(c.get("queued")), False
             _emit(c, {"t": "done", "cost": m.get("total_cost_usd")})
             c["turn"] = []
     err = (await proc.stderr.read()).decode(errors="replace")
     code = await proc.wait()
     if c.get("proc") is proc:
         c["proc"] = None
+        _mark_stale(c, False)  # it ran the old files; the next message starts it on the new
         if c["busy"] or code not in (0, None):
             _emit(c, {"t": "error", "error": err.strip()[-600:] or f"claude exited {code}"})
         if c["busy"]:
@@ -754,6 +765,7 @@ async def _pump_codex(c: Dict[str, Any], proc: Any) -> None:
     await proc.wait()
     if c.get("proc") is proc:
         c["proc"] = None
+        _mark_stale(c, False)  # it ran the old files; the next message starts it on the new
         if c["busy"]:
             c["busy"] = False
             _emit(c, {"t": "error", "error": "codex exited"})
@@ -1186,6 +1198,7 @@ async def send(req: SendRequest, request: Request) -> Dict[str, Any]:
         except Exception as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from None
         content = [{"type": "text", "text": msg}] + [blk for a in req.attachments if (blk := attachment_block(a))]
+        c["queued"] = bool(c.get("queued") or c["busy"])  # mid-turn: it joins this turn, or runs as one of its own after it
         c["busy"], c["last"] = True, time.time()
         _emit(c, {"t": "sent"})
         await _write(proc, {"type": "user", "message": {"role": "user", "content": content}})
@@ -1416,8 +1429,9 @@ def _cut_log(cid: str) -> None:
 
 @router.post("/restart")
 async def restart(req: ChatRequest) -> Dict[str, Any]:
-    """Ends a chat's process, and with it everything in its process group (its MCP server, and any command it left
-    running in the background), so that the next message starts it again, resuming the conversation on its
+    """Ends a chat's process group (the process, its MCP server, and any command it left running in the background in
+    that group; one that started a group of its own is not reached, and whether the real Codex's commands stay in its
+    group is not checked here), so that the next message starts it again, resuming the conversation on its
     instructions and tools as they now stand: what a stale chat is offered (`_take_up_changes`). Refused while the
     scientist answers, as /rewind is. A chat with no process running (an openai chat has none) is left as it is."""
     c = _chats.get(_check_chat(req.chat))

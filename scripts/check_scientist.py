@@ -14,14 +14,18 @@ so the chat is driven over real connections):
    new session then a resumed one), the events of a turn (text, the tool, the screen action, its result, done with
    its cost), what the person had open told in the pages' count, attachments, a message sent mid-turn, an interrupt,
    past chats and their history from the session file, and a rewind; the environment both CLIs start with: no
-   endpoint's key, no Hugging Face or cloud credential, each CLI's own login (and Claude Code's cloud login on Bedrock);
-   then its instructions changed (prompt.local.md): not taken up mid-turn (nor restarted on request then: 409), taken
-   up at the next message by starting it again with --resume and the new prompt file, with a note, and only once;
-   under the home reach marked stale instead;
+   endpoint's key, no Hugging Face or cloud credential, each CLI's own login (and Claude Code's cloud login on
+   Bedrock); then its instructions changed (prompt.local.md): not taken up mid-turn (nor restarted on request then:
+   409); after a message sent mid-turn, marked stale at the next (it may yet run that message as a turn of its own);
+   taken up at the next message to an idle chat by starting it again with --resume and the new prompt file, with a
+   note, and only once; a message left waiting that runs as a turn of its own, a pause and thinking first: not ended
+   in the pause (marked stale) nor while it thinks; under the home reach marked stale instead, and stale no more once
+   its process has ended;
 5. Codex, played by a fake `codex app-server`: its home, the thread and its instructions, a turn's events, an
    approval it asks for declined, an interrupt, history from the log, a rewind (thread/revert); then its instructions
-   changed: marked stale, once, with no new process, the first state event saying so; POST /restart ends it, saying it
-   ended any commands left running, and the next message resumes the thread with the new developerInstructions;
+   changed: marked stale, once, with no new process, the first state event saying so; POST /restart ends its process
+   group, a command it left running in the background with it, and says so, and the next message resumes the thread
+   with the new developerInstructions;
 6. an OpenAI-compatible endpoint, played by a fake server: its models; the tool loop (the request: the model, the
    tools, the key from its environment variable, the system prompt without the shell section; the tool calls
    streamed in pieces and run against the atlas in this process; the result sent back; the answer); arguments that
@@ -112,6 +116,18 @@ def section(title: str, before: int) -> None:
 
 def quiet(_s: str) -> None:
     pass
+
+
+def alive(pid: int) -> bool:
+    """Whether a process runs (one ended but not yet reaped does not)."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    try:
+        return Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0] != "Z"
+    except OSError:
+        return False
 
 
 def free_port() -> int:
@@ -244,6 +260,7 @@ while True:
     keep({"type": "user", "message": {"role": "user", "content": content}})
     if "slow" in text:
         stopped = False
+        later = []
         for i in range(200):
             delta(f"{i} ")
             time.sleep(0.03)
@@ -258,9 +275,20 @@ while True:
                 log("interrupt")
                 stopped = True
                 break
-            if mm.get("type") == "user":
+            if mm.get("type") == "user" and "later" in mm["message"]["content"][0]["text"]:
+                log("deferred", text=mm["message"]["content"][0]["text"])
+                later.append(mm)
+            elif mm.get("type") == "user":
                 log("midturn", text=mm["message"]["content"][0]["text"])
         out({"type": "result", "subtype": "error_during_execution" if stopped else "success", "is_error": stopped})
+        for mm in later:  # left waiting: a turn of its own once this one has ended, a pause and then thinking first
+            time.sleep(1.0)
+            for i in range(10):
+                out({"type": "stream_event", "event": {"type": "content_block_delta", "delta": {"type": "thinking_delta", "thinking": f"{i} "}}})
+                time.sleep(0.1)
+            delta("Thought it over.")
+            out({"type": "result", "subtype": "success", "is_error": False})
+            log("deferred_done", text=mm["message"]["content"][0]["text"])
         continue
     delta("Looking. ")
     use = {"type": "tool_use", "id": "toolu_1", "name": "mcp__atlas__select_neuron", "input": {"layer": 3, "n": 5}}
@@ -282,7 +310,7 @@ mcp.wait()
 '''
 
 FAKE_CODEX = r'''#!{PY} -I
-import json, os, sys
+import json, os, subprocess, sys
 def log(kind, **kw):
     with open(os.environ["FAKE_LOG"], "a") as f:
         f.write(json.dumps({"kind": kind, **kw}) + "\n")
@@ -308,6 +336,8 @@ for line in sys.stdin:
         n += 1
         tid = f"turn_{n}"
         res({"turn": {"id": tid}})
+        if "background" in p["input"][0]["text"]:  # a command left running, in the app-server's process group
+            log("job", pid=subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"]).pid)
         note("turn/started", {"turn": {"id": tid}})
         note("item/agentMessage/delta", {"itemId": "m1", "delta": "Reading "})
         note("item/agentMessage/delta", {"itemId": "m1", "delta": "the neuron."})
@@ -616,23 +646,71 @@ def run_checks() -> int:
     ev.wait(lambda e: e["t"] == "done", 30, i4)
     check(len([x for x in flog() if x["kind"] == "start"]) == 2 and any(x["kind"] == "midturn" and x["text"] == "And N7 too." for x in flog())
           and not any(e["t"] in ("note", "stale") for e in ev.since(i4)), "files changed mid-turn: the message joins the turn, and the chat is not started again")
-    old = sc._chats[chat]["proc"]
+    # a message that went in mid-turn may yet run as a turn of its own, so the next message cannot tell the chat is
+    # idle: it is marked stale, not ended; the one after, once a turn has begun and ended, starts it again
     i5 = ev.mark()
     hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "Read it again."})
     ev.wait(lambda e: e["t"] == "done", 90, i5)
-    kinds = [e["t"] for e in ev.since(i5)]
-    note = next((e for e in ev.since(i5) if e["t"] == "note"), None)
+    seq = ev.since(i5)
+    check(len([x for x in flog() if x["kind"] == "start"]) == 2 and [e for e in seq if e["t"] == "stale"] == [{"t": "stale", "stale": True, "text": sc.STALE_WORDS}]
+          and "note" not in [e["t"] for e in seq] and [x for x in flog() if x["kind"] == "user"][-1]["text"] == "Read it again.",
+          "after a message sent mid-turn the next one marks it stale, and the process running answers it")
+    old = sc._chats[chat]["proc"]
+    i6 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "Read it once more."})
+    ev.wait(lambda e: e["t"] == "done", 90, i6)
+    kinds = [e["t"] for e in ev.since(i6)]
+    note = next((e for e in ev.since(i6) if e["t"] == "note"), None)
     starts = [x for x in flog() if x["kind"] == "start"]
     check(len(starts) == 3 and starts[2]["resumed"] and starts[2]["sid"] == chat and "Cite the census beside every reading." in starts[2]["prompt"]
-          and [x for x in flog() if x["kind"] == "user"][-1]["text"] == "Read it again.",
-          "at the folder reach the next message starts it again, resuming its session, the new prompt file holding the local text")
+          and [x for x in flog() if x["kind"] == "user"][-1]["text"] == "Read it once more.",
+          "at the folder reach the next message to an idle chat starts it again, resuming its session, the new prompt file holding the local text")
     check(old.returncode is not None and sc._chats[chat]["proc"] is not old, "and the process that ran the old files has ended")
-    check(note is not None and note["text"] == sc.RESTARTED_WORDS and kinds.index("note") < kinds.index("sent") and "stale" not in kinds and "done" in kinds,
-          f"a note says so before the message goes in: {kinds}")
-    i6 = ev.mark()
+    check(note is not None and note["text"] == sc.RESTARTED_WORDS and kinds.index("stale") < kinds.index("note") < kinds.index("sent") and "done" in kinds
+          and [e for e in ev.since(i6) if e["t"] == "stale"] == [{"t": "stale", "stale": False}], f"a note says so before the message goes in, and it is no longer stale: {kinds}")
+    i7 = ev.mark()
     hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "And once more."})
-    ev.wait(lambda e: e["t"] == "done", 90, i6)
-    check(len([x for x in flog() if x["kind"] == "start"]) == 3 and not any(e["t"] == "note" for e in ev.since(i6)), "taken up once: the next message goes to the same process")
+    ev.wait(lambda e: e["t"] == "done", 90, i7)
+    check(len([x for x in flog() if x["kind"] == "start"]) == 3 and not any(e["t"] == "note" for e in ev.since(i7)), "taken up once: the next message goes to the same process")
+
+    # a message left waiting by a turn may run as a turn of its own once that turn ends, a pause and thinking first (the
+    # fake defers one that says "later"): the chat is not ended in the pause before that turn begins (it is marked stale
+    # instead), nor while it thinks
+    def deferred_turn(probe: str, in_thought: bool) -> tuple:
+        """A slow turn left a message waiting, then interrupted; the instructions changed; `probe` sent in the pause
+        after it, or while the waiting message's own turn thinks. The events from the slow turn's end, and how many
+        processes have started."""
+        k0 = ev.mark()
+        hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "Go slow once more."})
+        ev.wait(lambda e: e["t"] == "text", 30, k0)
+        hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "Think it over later."})
+        time.sleep(0.3)
+        hc.post("/api/atlas/scientist/interrupt", json={"chat": chat})
+        ev.wait(lambda e: e["t"] == "done", 30, k0)
+        k1 = ev.mark()
+        local.write_text(local.read_text(encoding="utf-8") + f"\nAnswer {probe!r} plainly.\n", encoding="utf-8")
+        if in_thought:
+            ev.wait(lambda e: e["t"] == "thinking", 30, k1)
+        hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": probe})
+        end = time.time() + 60
+        while time.time() < end and sum(e["t"] == "done" for e in ev.since(k1)) < 2:
+            time.sleep(0.05)
+        return ev.since(k1), len([x for x in flog() if x["kind"] == "start"])
+
+    seq, n_starts = deferred_turn("Then N8.", False)
+    kinds = [e["t"] for e in seq]
+    check(n_starts == 3 and [e for e in seq if e["t"] == "stale"] == [{"t": "stale", "stale": True, "text": sc.STALE_WORDS}] and "note" not in kinds
+          and "stale" in kinds and "thinking" in kinds and kinds.index("stale") < kinds.index("thinking") and kinds.count("done") == 2
+          and any(x["kind"] == "deferred_done" for x in flog()) and [x for x in flog() if x["kind"] == "user"][-1]["text"] == "Then N8.",
+          f"in the pause before a waiting message's own turn the chat is marked stale, not ended, and both turns run: {kinds}")
+    i8 = ev.mark()
+    hc.post("/api/atlas/scientist/send", json={"chat": chat, "message": "Then N9."})
+    ev.wait(lambda e: e["t"] == "done", 90, i8)
+    check(len([x for x in flog() if x["kind"] == "start"]) == 4 and any(e["t"] == "note" for e in ev.since(i8)), "once both have ended the next message starts it again")
+    seq, n_starts = deferred_turn("And N10.", True)
+    kinds = [e["t"] for e in seq]
+    check(n_starts == 4 and "stale" not in kinds and "note" not in kinds and kinds.count("done") == 2 and "Thought it over." in "".join(e.get("text", "") for e in seq if e["t"] == "text"),
+          f"while that turn thinks the chat answers, and is neither ended nor marked: {kinds}")
     ev.stop = True
     # under the home reach a chat may have left a command running in its process group: marked stale, not started again
     os.environ[sc.REACH_ENV] = "home"
@@ -650,6 +728,14 @@ def run_checks() -> int:
         check(len([x for x in flog() if x["kind"] == "start" and x["sid"] == chat_h]) == 1 and [e for e in seq if e["t"] == "stale"] == [
               {"t": "stale", "stale": True, "text": sc.STALE_WORDS}] and "note" not in [e["t"] for e in seq] and "done" in [e["t"] for e in seq],
               "under THEODOLITE_SCIENTIST_REACH=home Claude Code is not started again: it is marked stale, and the message answered")
+        # its process ends of itself (as when the server closes an idle chat's input): nothing runs the old files
+        j2 = evh.mark()
+        os.killpg(sc._chats[chat_h]["proc"].pid, signal.SIGTERM)
+        gone = evh.wait(lambda e: e["t"] == "stale", 20, j2)
+        evh2 = Events(srv.url, chat_h)
+        check(gone == {"t": "stale", "stale": False} and evh2.events[0]["running"] is False and evh2.events[0]["stale"] is False,
+              f"a stale chat whose process has ended is stale no more: {gone}, {evh2.events[0]}")
+        evh2.stop = True
         evh.stop = True
     finally:
         if old_reach is None:
@@ -723,13 +809,21 @@ def run_checks() -> int:
     check(ev2.events[0]["t"] == "state" and ev2.events[0]["stale"] is True, f"the first state event carries it: {ev2.events[0]}")
     ev2.stop = True
     i3 = ev.mark()
-    hc.post("/api/atlas/scientist/send", json={"chat": chat2, "message": "And L4 N10?"})
+    hc.post("/api/atlas/scientist/send", json={"chat": chat2, "message": "And L4 N10, with a job left in the background?"})
     ev.wait(lambda e: e["t"] == "done", 60, i3)
     check(not any(e["t"] == "stale" for e in ev.since(i3)) and len([x for x in clog() if x["kind"] == "start"]) == n_up, "marked once, still not started again")
     i4 = ev.mark()
+    old = sc._chats[chat2]["proc"]
+    job = next((x["pid"] for x in clog() if x["kind"] == "job"), None)
+    check(job is not None and alive(job), "a command left running in the background")
     r = hc.post("/api/atlas/scientist/restart", json={"chat": chat2}).json()
-    check(r == {"ok": True, "ended": True, "note": sc.ENDED_WORDS} and "any commands it had left running" in r["note"] and sc._chats[chat2]["proc"] is None,
-          f"/restart ends it, and says it ended any commands left running: {r}")
+    check(r == {"ok": True, "ended": True, "note": sc.ENDED_WORDS} and "any commands it had left running in that group" in r["note"] and sc._chats[chat2]["proc"] is None,
+          f"/restart ends its process group, and says so: {r}")
+    end = time.time() + 10
+    while job is not None and alive(job) and time.time() < end:
+        time.sleep(0.05)
+    check(old.returncode is not None and job is not None and not alive(job),
+          f"and the process that ran the old instructions has ended, the command it left running in its group with it: {old.returncode}")
     check(ev.wait(lambda e: e["t"] == "stale", 10, i4) == {"t": "stale", "stale": False}, "and the chat is no longer stale")
     hc.post("/api/atlas/scientist/send", json={"chat": chat2, "message": "Now with the new instructions."})
     ev.wait(lambda e: e["t"] == "done", 60, i4)

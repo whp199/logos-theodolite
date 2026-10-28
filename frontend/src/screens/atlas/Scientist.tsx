@@ -464,11 +464,11 @@ export const Scientist: React.FC = () => {
         </div>
       ) : null}
       {stale ? (
-        // the server ends its process only when asked: commands it left running in the background would end with it
+        // the server ends its process only when asked: commands it left running in the background in its process group would end with it
         <div className="atlas-stale" role="status">
           <p className="atlas-small" style={{ margin: 0 }}>
             This chat started before its instructions or tools last changed, and runs those it started with. Restart it to take them up; that
-            also stops any commands it left running.
+            also stops its process group, with any commands it left running in it.
           </p>
           <button type="button" className="btn-ghost plain" disabled={busy} title={busy ? "stop the reply first" : undefined} onClick={() => void restartChat()}>
             restart

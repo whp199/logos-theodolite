@@ -754,10 +754,12 @@ A Claude Code or Codex chat reads those files, `scientist_mcp.py` and `scientist
 the server watches them by modification time. At the person's next message to a live, idle chat that started before
 they last changed, a Claude Code chat at the folder reach is ended and started again, resuming its session, with a
 `note` event: it has no shell, so only its MCP server lives in its process group. Any other chat (Codex at either
-reach, Claude Code at "home") is not started again unasked, since ending its process group would also end the commands
-it left running in the background: it is marked stale (a `stale` event, which the first `state` event of a stream also
-carries), and the page offers `POST /restart`. A chat mid-turn is never ended. An `openai` chat's prompt is built
-afresh every round; its tools change only when the server starts again.
+reach, Claude Code at "home") is not started again unasked, since ending its process group would also end any commands
+it left running in the background in that group: it is marked stale (a `stale` event, which the first `state` event of
+a stream also carries, until its process ends), and the page offers `POST /restart`. A chat mid-turn is never ended, as
+far as its events tell: Claude Code answers from its first streamed event, thinking included, and one whose last turn
+took a message mid-turn may yet run that message as a turn of its own, so until its next turn begins it is marked stale
+instead. An `openai` chat's prompt is built afresh every round; its tools change only when the server starts again.
 
 | route | |
 |---|---|
@@ -769,7 +771,7 @@ afresh every round; its tools change only when the server starts again.
 | `POST /ui` | from the tools: a screen action (`select`, `head`, `tab`, `camera`, `highlight`, `annotate`, `text`, `search`, `rename`), passed to the chat's page as a `ui` event, layers from 0 |
 | `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events |
 | `POST /rewind` | `{chat, text}`: cut the chat back to before its last message (a Claude Code session is backed up first), for "edit" and "ask again" |
-| `POST /restart` | `{chat}`: end its process and everything in its group, any commands it left running too (409 while it answers), so the next message resumes it on its files as they now stand → `{ended, note}` |
+| `POST /restart` | `{chat}`: end its process group, with any commands it left running in that group (409 while it answers), so the next message resumes it on its files as they now stand → `{ended, note}` |
 | `POST /upload` | `{name, type, data (base64)}` (at most 25 MB) → `{id}`, for `attachments` |
 | `GET /prompt?agent` | the system prompt as built |
 
