@@ -8,7 +8,17 @@ POST /exec  {"code": "...", "label": "..."}  -> {"ok", "stdout", "result", "erro
   Assign to a variable named `result` to return JSON-serializable data.
 POST /reload  -> reload labkit (after editing labkit.py)
 GET  /health
-Binds 127.0.0.1 only.
+Binds 127.0.0.1 only, on port 8765 unless $LABD_PORT says otherwise: the same port as the instrument's server
+(README §v), so run one or the other (one GPU process at a time), and through an SSH tunnel to a pod either one would
+sit at the browser's own 127.0.0.1:8765.
+
+Who may ask: a script run on this machine by the person who started the daemon. Every route refuses (403) a request
+whose Host is not 127.0.0.1, localhost or [::1] (a page rebinding its own name to 127.0.0.1 sends that name as the
+Host) and any request a browser sends (an Origin or a Sec-Fetch-Site header): no web page has any business here.
+/exec and /reload also want this launch's token (401 otherwise), a fresh random one written at each start to a file
+only its user can read (0600): $LABD_TOKEN_FILE, else ${XDG_RUNTIME_DIR:-~/.cache}/theodolite/labd-<port>.token,
+removed again on a clean exit. labclient.py reads it and sends it as `Authorization: Bearer <token>`; a client on
+another machine (the far end of a tunnel) needs a copy of that file. /health wants no token.
 """
 from __future__ import annotations
 
@@ -20,10 +30,13 @@ import importlib
 import io
 import json
 import os
+import secrets
 import sys
+import tempfile
 import time
 import traceback
 from pathlib import Path
+from urllib.parse import urlsplit
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 REPO = Path(__file__).resolve().parents[2]
@@ -35,14 +48,60 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
 from backend.engine_runtime import TheodoliteRuntime
 import labkit
 
 LOG = REPO / "experiments" / "results" / "labd_exec_log.local.jsonl"  # gitignored; the study's log is labd_exec_log_2026-10-16.jsonl
-app = FastAPI()
+PORT = int(os.environ.get("LABD_PORT", "8765"))
+LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+TOKEN: dict = {"value": None}  # this launch's, set by write_token; until then /exec and /reload refuse every request
+
+
+def token_path(port: int) -> Path:
+    """Where a launch on `port` keeps its token (labclient.py reads the same path)."""
+    if os.environ.get("LABD_TOKEN_FILE"):
+        return Path(os.environ["LABD_TOKEN_FILE"]).expanduser()
+    base = os.environ.get("XDG_RUNTIME_DIR") or str(Path.home() / ".cache")
+    return Path(base) / "theodolite" / f"labd-{port}.token"
+
+
+def write_token(path: Path) -> str:
+    """A fresh token, written whole to `path`, readable by this user only (mkstemp makes the file 0600)."""
+    token = secrets.token_urlsafe(32)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".labd-token-")
+    with os.fdopen(fd, "w") as f:
+        f.write(token + "\n")
+    os.replace(tmp, path)
+    TOKEN["value"] = token
+    return token
+
+
+def local_scripts_only(request: Request) -> None:
+    """Refuse (403) a Host that does not name this machine, and any request a browser sends."""
+    host = request.headers.get("host")
+    try:
+        name = urlsplit("//" + host).hostname if host else None
+    except ValueError:
+        name = None
+    if name not in LOCAL_HOSTS or "origin" in request.headers or "sec-fetch-site" in request.headers:
+        raise HTTPException(status_code=403, detail="labd answers only scripts run on this machine (labclient.py), never a web page.")
+
+
+def launch_token(request: Request) -> None:
+    """Refuse (401) a request without this launch's token."""
+    want = TOKEN["value"]
+    sent = request.headers.get("authorization", "")
+    if not want or not secrets.compare_digest(sent.encode(), f"Bearer {want}".encode()):
+        raise HTTPException(status_code=401, detail="labd wants this launch's token, which labclient.py reads from "
+                                                    f"{token_path(PORT)} and sends.")
+
+
+# every route behind the Host and browser rule; no docs pages
+app = FastAPI(dependencies=[Depends(local_scripts_only)], docs_url=None, redoc_url=None, openapi_url=None)
 LOCK = asyncio.Lock()
 STATE: dict = {}
 STORE: dict = {}
@@ -90,7 +149,7 @@ async def health():
             "vram_alloc_gb": torch.cuda.memory_allocated() / 2**30}
 
 
-@app.post("/reload")
+@app.post("/reload", dependencies=[Depends(launch_token)])
 async def reload():
     async with LOCK:
         importlib.reload(labkit)
@@ -98,7 +157,7 @@ async def reload():
         return {"ok": True}
 
 
-@app.post("/exec")
+@app.post("/exec", dependencies=[Depends(launch_token)])
 async def execute(req: ExecReq):
     WAITING["n"] += 1
     async with LOCK:
@@ -140,4 +199,12 @@ async def execute(req: ExecReq):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("LABD_PORT", "8765")), log_level="warning")
+    token_file = token_path(PORT)
+    mine = write_token(token_file)
+    print(f"[labd] this launch's token: {token_file}", flush=True)
+    try:
+        uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")
+    finally:
+        with contextlib.suppress(OSError):
+            if token_file.read_text().strip() == mine:  # not a later launch's
+                token_file.unlink()

@@ -50,7 +50,7 @@ theodolite2/
 │   ├── check_atlas_api.py           # every atlas route against the operation it serves, the GPU lock, refusals (CPU only)
 │   ├── check_census.py              # the census's statistics, resume, stop, merge and spread (CPU only)
 │   ├── check_scientist.py           # the scientist's tools, MCP server and three backends against fakes (CPU only)
-│   ├── check_local_only.py          # who may ask: every route and the socket, refused or let in (CPU only)
+│   ├── check_local_only.py          # who may ask: every route, the socket and the lab daemon, refused or let in (CPU only)
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
 │   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)

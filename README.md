@@ -382,7 +382,9 @@ REPORT §3.4). Where each fault stands now:
 > Run one GPU process at a time: the lab daemon, the instrument server and a standalone `mcp_scientist` each load the 31B model.
 
 > [!WARNING]
-> Never expose the lab daemon. It executes arbitrary submitted Python, and binds to 127.0.0.1 only.
+> Never expose the lab daemon. It executes arbitrary submitted Python, and binds to 127.0.0.1 only. It refuses web
+> pages and any Host but this machine's, and `/exec` wants the token it writes at each start to a file only you can
+> read (`labclient.py` sends it). Its default port, 8765, is the server's too.
 
 **Install and download**
 

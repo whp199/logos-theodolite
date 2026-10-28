@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """A CPU-only check of who may ask the instrument's server (backend/local_only.py, around backend/server.py's whole
-app): no model, no GPU. The server's app is driven with FastAPI's TestClient without its lifespan, so nothing
-is loaded and a route that would read the model answers 503; its routes are found from the app itself (its own, the
-included routers', FastAPI's docs, and a static mount of pages standing in for frontend/dist when that is not
-built). Folders and files go to a new temporary directory:
+app) and the lab daemon (experiments/lab/labd.py): no model, no GPU. The server's app is driven with FastAPI's
+TestClient without its lifespan, so nothing is loaded and a route that would read the model answers 503; its routes are
+found from the app itself (its own, the included routers', FastAPI's docs, and a static mount of pages standing in for
+frontend/dist when that is not built). labd's app is imported without being started. Folders and files go to a new
+temporary directory:
 1. the routes: every path and method of the app, the socket and the pages' mount, each found;
 2. a foreign Host (a page rebinding its own name to 127.0.0.1 sends that name, also on a same-origin GET with no
    Origin), on every route and method, an unknown path and the socket: 403 with the reason in plain words, and the
@@ -17,7 +18,12 @@ built). Folders and files go to a new temporary directory:
    vite's own, 127.0.0.1:5173, and the page's Origin), a link opened from another site; each reaches its route
    (whatever it answers without a model, never the guard's 403), and the socket is accepted and answers;
 6. CORS: a local page's preflight is answered with its own origin; no reply to any request above names a foreign one;
-7. on uvicorn (a real socket on a free port): a foreign Origin's WebSocket handshake gets HTTP 403, a local one 101.
+7. on uvicorn (a real socket on a free port): a foreign Origin's WebSocket handshake gets HTTP 403, a local one 101;
+8. labd: a foreign Host, and any request a browser sends (an Origin, even a local one, or Sec-Fetch-Site), refused on
+   every route (403), no docs pages; /exec and /reload without this launch's token (none, a wrong one, or before any
+   launch) refused (401) and the code not run, with it run; the token file written whole, readable by its user only
+   (0600), where labd.token_path says; labclient.py sends it (a job run end to end on uvicorn), and says in plain words
+   when there is none.
 
 Run: .venv/bin/python -I scripts/check_local_only.py   (exits 0 when every check holds)
 """
@@ -34,6 +40,8 @@ if __name__ == "__main__":
 import re
 import shutil
 import socket
+import stat
+import subprocess
 import tempfile
 import threading
 import time
@@ -47,11 +55,14 @@ os.environ["THEODOLITE_CENSUS_DIR"] = str(TMP / "census")
 os.environ["THEODOLITE_SCIENTIST_DIR"] = str(TMP / "scientist")
 os.environ["THEODOLITE_SAVED_PROMPTS"] = str(TMP / "saved_prompts.json")
 os.environ["HOME"] = str(TMP / "home")
+os.environ["XDG_RUNTIME_DIR"] = str(TMP / "run")
+os.environ.pop("LABD_TOKEN_FILE", None)
 (TMP / "home").mkdir()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+for p in (ROOT_DIR, ROOT_DIR / "experiments" / "lab"):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
 from fastapi.routing import APIWebSocketRoute
 from fastapi.staticfiles import StaticFiles
@@ -286,6 +297,82 @@ def main() -> int:
         th.join(timeout=10)
         server.get_app_state = real_state  # type: ignore[assignment]
     section("on uvicorn: a refused handshake is an HTTP 403, an accepted one 101", before)
+
+    # ----------------------------------------------------------------------------------------------------- 8. labd
+    before = len(failures)
+    cwd = os.getcwd()
+    import labd  # changes to the repository's root, as it does when run; its startup (the model) runs only under uvicorn
+
+    os.chdir(cwd)
+    labd.LOG = TMP / "labd_exec_log.jsonl"  # not the repository's
+    labd.STATE.update(rt=None, lab=type("Lab", (), {"clear_hooks": lambda self: None})())
+    check(labd.token_path(8765) == TMP / "run" / "theodolite" / "labd-8765.token", f"the token's default place: {labd.token_path(8765)}")
+    os.environ["LABD_TOKEN_FILE"] = str(TMP / "elsewhere" / "t")
+    check(labd.token_path(8765) == TMP / "elsewhere" / "t", "LABD_TOKEN_FILE names another")
+    os.environ.pop("LABD_TOKEN_FILE")
+    lc = TestClient(labd.app, base_url=BASE)
+    job = {"code": "STORE['ran'] = STORE.get('ran', 0) + 1\nresult = 6 * 7", "label": "check_local_only"}
+    labd.TOKEN["value"] = None
+    r = lc.post("/exec", json=job, headers={"Authorization": "Bearer "})
+    check(r.status_code == 401 and "ran" not in labd.STORE, f"before any launch's token, /exec runs nothing: {r.status_code}")
+    tok_file = labd.token_path(labd.PORT)
+    token = labd.write_token(tok_file)
+    mode = stat.S_IMODE(tok_file.stat().st_mode)
+    check(tok_file.read_text() == token + "\n" and len(token) >= 40 and labd.TOKEN["value"] == token, "the token written whole")
+    check(mode == 0o600, f"the token file readable by its user only: {oct(mode)}")
+    check(labd.write_token(tok_file) != token and stat.S_IMODE(tok_file.stat().st_mode) == 0o600 and not list(tok_file.parent.glob(".labd-token-*")),
+          "a new launch, a new token, the file still 0600, nothing left beside it")
+    token = labd.TOKEN["value"]
+    auth = {"Authorization": f"Bearer {token}"}
+    lab_routes = routes_of(labd.app)
+    check(sorted(p for _, p, _ in lab_routes) == ["/exec", "/health", "/reload"], f"labd's routes, no docs pages: {lab_routes}")
+    check(all(lc.get(p).status_code == 404 for p in ("/docs", "/openapi.json", "/redoc")), "no docs pages served")
+    for _, path, methods in lab_routes:
+        for method in methods:
+            for hdrs in ({"Host": "evil.example:8765"}, {"Host": "127.0.0.1.nip.io:8765"}, {"Origin": "https://evil.example"},
+                         {"Origin": "http://127.0.0.1:8765"}, {"Sec-Fetch-Site": "same-origin"}, {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"}):
+                r = lc.request(method, path, headers={**auth, **hdrs}, json=job if method == "POST" else None)
+                check(r.status_code == 403 and "never a web page" in r.json().get("detail", ""), f"labd {method} {path} with {hdrs}: {r.status_code}")
+    check("ran" not in labd.STORE, "no refused job ran")
+    for hdrs in ({}, {"Authorization": "Bearer wrong"}, {"Authorization": token}, {"Authorization": f"Bearer {token}x"}):
+        r = lc.post("/exec", json=job, headers=hdrs)
+        check(r.status_code == 401 and "token" in r.json().get("detail", ""), f"/exec with {hdrs or 'no token'}: {r.status_code}")
+        r = lc.post("/reload", headers=hdrs)
+        check(r.status_code == 401, f"/reload without the token: {r.status_code}")
+    check("ran" not in labd.STORE, "without the token, nothing ran")
+    r = lc.get("/health")
+    check(r.status_code == 200 and r.json()["busy"] is False, f"/health wants no token: {r.status_code}")
+    r = lc.post("/exec", json=job, headers=auth)
+    check(r.status_code == 200 and r.json()["ok"] and r.json()["result"] == 42 and labd.STORE.get("ran") == 1, f"with the token the job runs: {r.text[:200]}")
+    # labclient.py against labd on uvicorn: it reads the token file and sends it
+    port = free_port()
+    srv = uvicorn.Server(uvicorn.Config(labd.app, host="127.0.0.1", port=port, log_level="warning", lifespan="off"))
+    th = threading.Thread(target=srv.run, daemon=True)
+    th.start()
+    for _ in range(200):
+        if srv.started:
+            break
+        time.sleep(0.05)
+    client = str(ROOT_DIR / "experiments" / "lab" / "labclient.py")
+    try:
+        os.rename(tok_file, tok_file.with_name(f"labd-{port}.token"))
+        res = subprocess.run([sys.executable, "-I", client, "-", "--port", str(port), "--label", "check"], input="result = 6 * 7\nprint('hello')",
+                             capture_output=True, text=True, timeout=60)
+        check(res.returncode == 0 and "hello" in res.stdout and res.stdout.strip().endswith("42") and labd.STORE.get("ran") == 1,
+              f"labclient.py reads the token and the job runs: {res.returncode} {res.stdout!r} {res.stderr[-300:]!r}")
+        bad = tok_file.with_name(f"labd-{port}.token")
+        bad.write_text("not-this-launch\n")
+        res = subprocess.run([sys.executable, "-I", client, "-", "--port", str(port)], input="result = 1", capture_output=True, text=True, timeout=60)
+        check(res.returncode != 0 and "refused the job (401)" in res.stderr and "earlier launch" in res.stderr, f"a stale token, in plain words: {res.stderr[-300:]!r}")
+        bad.unlink()
+        res = subprocess.run([sys.executable, "-I", client, "-", "--port", str(port)], input="result = 1", capture_output=True, text=True, timeout=60)
+        check(res.returncode != 0 and "no labd token at" in res.stderr and str(bad) in res.stderr and "Traceback" not in res.stderr,
+              f"no token file, in plain words: {res.stderr[-300:]!r}")
+    finally:
+        srv.should_exit = True
+        th.join(timeout=10)
+    check(len(labd.LOG.read_text().splitlines()) == 2, "each job that ran logged once (here, not in the repository)")
+    section("labd: the Host and any browser refused on every route, /exec and /reload only with the launch's token, labclient sends it", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0
