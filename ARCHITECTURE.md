@@ -754,8 +754,10 @@ A language model beside the atlas, with the atlas's tools. A chat keeps the back
   stdio MCP server `backend/scientist_mcp.py`) and, by its reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the
   default, Read, Write and Edit scoped to its work folder (`Read(//<work>/**)` and so on), no Bash, no other folder;
   "home", set by the person, Read, Glob, Grep, Write, Edit and Bash pre-approved with the home folder added: **it runs
-  commands and edits files there without asking**. The person's own Claude Code settings are not loaded
-  (`--setting-sources project`). `$THEODOLITE_CLAUDE_MODEL` picks the model.
+  commands and edits files there without asking**. At either reach no settings file and no CLAUDE.md is loaded
+  (`--setting-sources ""`): under `project`, as first built, a CLAUDE.md in its work folder, which it may write, or in
+  any folder above it (the home folder's own `.claude/CLAUDE.md` included) reached every later chat as instructions
+  (Claude Code 2.1.312). `$THEODOLITE_CLAUDE_MODEL` picks the model.
 - `codex`: Codex (`codex app-server`, JSON-RPC) with the same MCP tools and its own shell, in a Codex home of its own,
   `approvalPolicy: "never"`; `sandbox: "workspace-write"` by default (writes only in its work folder, no network; it
   can read elsewhere), `"danger-full-access"` under "home" (the same caution).
@@ -817,7 +819,10 @@ and call the atlas's routes: reading the atlas (`overview`, `neuron`, `passages`
 `logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), and the
 person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highlight_neurons`, `annotate_neurons`,
 `show_text`, `show_search`). scripts/check_scientist.py checks the tools, the MCP server and all three backends against
-fakes, over real connections.
+fakes, over real connections. scripts/verify_scientist_cli.py runs both reaches on the real `claude` (where it is on
+PATH) against a stand-in Messages API, with no model, no network and no login: what each allows and refuses, the
+atlas's tools through the real MCP server, and that no planted CLAUDE.md reaches a request (it records the CLI's
+version; 2.1.312 here).
 
 ---
 

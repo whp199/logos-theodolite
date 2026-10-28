@@ -13,9 +13,11 @@ three backends; a chat keeps the one it starts with:
 Reach (`$THEODOLITE_SCIENTIST_REACH`): "folder", the default, keeps Claude Code to reading, writing and editing files in
 its work folder, with no shell, and runs Codex's shell in its workspace-write sandbox (writes only in the work folder,
 no network). "home" is the explorer's own setting, taken only when the person sets it: Claude Code's Read, Glob, Grep,
-Write, Edit and Bash pre-approved over the home folder, Codex with full access and never asking. Either way the
-person's own Claude Code settings are not loaded, neither process is given the endpoints' keys nor the Hugging Face and
-cloud credentials in the server's environment (`child_env`; each keeps its own login), and the page
+Write, Edit and Bash pre-approved over the home folder, Codex with full access and never asking. Either way Claude Code
+loads no settings file and no CLAUDE.md (`--setting-sources ""`: a CLAUDE.md it wrote in its work folder would otherwise
+reach every later chat as instructions, and so would one in any folder above it), neither process is given the
+endpoints' keys nor the Hugging Face and cloud credentials in the server's environment (`child_env`; each keeps its own
+login), and the page
 says what the chosen backend can do (`REACH_WORDS`), asking once before the first chat when it is "home". What a
 scientist reads (model output, census answers, names and notes, attachments) can carry instructions; with a shell
 over the home folder nothing stands between them and it.
@@ -525,9 +527,11 @@ def _claude_cmd(cid: str, self_url: str) -> List[str]:
         w = str(work_dir()).rstrip("/")
         tools = ["--tools", "Read", "Write", "Edit", "--allowedTools", "mcp__atlas", *[f"{t}(/{w}/**)" for t in ("Read", "Write", "Edit")],
                  "--disallowedTools", "Bash"]
+    # no settings file and no CLAUDE.md at all (""): under "project" a CLAUDE.md in its work folder, which it may write,
+    # or in any folder above it reached every later chat as instructions (seen on Claude Code 2.1.312)
     cmd = [_bin("claude"), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
            "--include-partial-messages", "--system-prompt-file", str(prompt_file("claude", self_url)),
-           "--mcp-config", json.dumps(mcp), "--strict-mcp-config", *tools, "--setting-sources", "project"]
+           "--mcp-config", json.dumps(mcp), "--strict-mcp-config", *tools, "--setting-sources", ""]
     if os.environ.get("THEODOLITE_CLAUDE_MODEL"):
         cmd += ["--model", os.environ["THEODOLITE_CLAUDE_MODEL"]]
     return cmd + (["--resume", cid] if _session_file(cid) else ["--session-id", cid])

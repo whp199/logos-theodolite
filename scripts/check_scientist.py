@@ -547,15 +547,16 @@ def run_checks() -> int:
     w_ = str(sc.work_dir()).rstrip("/")
     tools_ = argv[argv.index("--tools") + 1 : argv.index("--allowedTools")]
     check(tools_ == ["Read", "Write", "Edit"] and "--add-dir" not in argv and argv[argv.index("--disallowedTools") + 1] == "Bash"
-          and all(f"{t}(/{w_}/**)" in argv for t in ("Read", "Write", "Edit")) and "--setting-sources" in argv,
-          "by default its files only in its work folder, no shell, no other folder added, the person's settings not loaded")
+          and all(f"{t}(/{w_}/**)" in argv for t in ("Read", "Write", "Edit")) and argv[argv.index("--setting-sources") + 1] == "",
+          "by default its files only in its work folder, no shell, no other folder added, no settings file or CLAUDE.md loaded")
     old_reach = os.environ.get(sc.REACH_ENV)
     os.environ[sc.REACH_ENV] = "home"
     try:
         home_cmd = sc._claude_cmd(str(uuid.uuid4()), srv.url)
         check("Bash" in home_cmd[home_cmd.index("--tools") + 1 : home_cmd.index("--allowedTools")] and home_cmd[home_cmd.index("--add-dir") + 1] == os.path.expanduser("~")
-              and "## Files and scripts" in sc.system_prompt("claude", srv.url) and "<!-- shell -->" not in sc.system_prompt("claude", srv.url),
-              "under THEODOLITE_SCIENTIST_REACH=home: Bash and the home folder, and the shell section")
+              and "## Files and scripts" in sc.system_prompt("claude", srv.url) and "<!-- shell -->" not in sc.system_prompt("claude", srv.url)
+              and home_cmd[home_cmd.index("--setting-sources") + 1] == "",
+              "under THEODOLITE_SCIENTIST_REACH=home: Bash and the home folder, and the shell section; still no settings file or CLAUDE.md")
         check(hc.get("/api/atlas/scientist/backends").json()["reach"]["mode"] == "home", "/backends says the reach is home")
     finally:
         if old_reach is None:
