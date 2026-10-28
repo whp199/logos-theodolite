@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """A CPU check of the GGUF and CPU path's second layer (ARCHITECTURE §5: backend/runtime_factory.py, the lab's
-gradients, the CPU's memory) on the tiny random Gemma 4 of scripts/atlas_stand_in.py written to tiny GGUF files, as
+gradients, the CPU's memory, the int4mm linears) on the tiny random Gemma 4 of scripts/atlas_stand_in.py written to tiny GGUF files, as
 scripts/check_gguf.py writes them:
 1. the entry points build their runtime through runtime_factory.make_runtime: with nothing set, the pinned
    TheodoliteRuntime as each built it before (the lab daemon's with both lenses, the standalone scientist's without the
@@ -23,7 +23,15 @@ scripts/check_gguf.py writes them:
    voice, an atlas reading, the causal check (which halves as on the card) and the scientist's tool, and by
    census_run.py and atlas_build.py as a one-line exit; torch's own failure is recognised, and the card's is not taken
    for the CPU's;
-4. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
+4. int4mm (backend/int4_cpu.py, torch's int4 CPU kernel): a Q4_0 GGUF loaded with it names the mode in its model id
+   (+int4mm) and weights card; its accessors read the file's numbers bit for bit; a layer's product is within bf16 of
+   the exact one but not the reference's bits, and a row's the same alone or in a batch; with a vault edit in force, or
+   turned off, the reference forward bit for bit; `compare_rows` on answers made by hand; the canary census of
+   scripts/compare_int4mm.py (gpu_runtime.md §3.5): the reference's floor between two batches, the kernel's departure
+   from it, and the rule's verdict; a census or an index of the reference refused for it; on a 4-bit stand-in the
+   W4A16 linears through the kernel, an edit on one running the pinned forward, w4a16_fast's resident refused beside
+   it; THEODOLITE_CHECKPOINT_LINEARS=int4mm's model id and card; int4mm off the CPU refused;
+5. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
 
 Run: .venv/bin/python -I scripts/check_gguf_cpu.py   (exits 0 when every check holds)
 """
@@ -51,6 +59,7 @@ for p in (ROOT_DIR, ROOT_DIR / "scripts"):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -103,6 +112,10 @@ class environment:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
+
+def quiet(*_a: Any, **_k: Any) -> None:
+    pass
 
 
 def raises(fn: Any, *args: Any, **kw: Any) -> str:
@@ -499,6 +512,140 @@ def run_checks(tmp: Path) -> int:
                           "written a part or a layer at a time resumes"), f"atlas_build.py: {said[:120]}")
     section("the CPU's memory: a sweep, a census batch, the vault's voice, a causal check and a steer lens batch refused in "
             "plain words when MemAvailable cannot hold their estimate; an allocator's failure answered in the same words", before)
+
+    # ------------------------------------------- 4. torch's int4 CPU kernel (int4mm), not bit-identical, kept apart
+    before = len(failures)
+    import backend.int4_cpu as ic
+    import backend.w4a16_fast as wf
+    import compare_int4mm as c4
+    from backend.atlas_index import AtlasIndex
+
+    check(ic.kernel_missing() is None, f"this torch has the int4 CPU kernel: {ic.kernel_missing()}")
+    q4_0 = files["Q4_0"]
+    rt_ref = GGUFRuntime(q4_0, device="cpu", dtype=torch.bfloat16, tokenizer=tok, load_jpp=False).load()
+    rt_i4 = GGUFRuntime(q4_0, device="cpu", dtype=torch.bfloat16, tokenizer=tok, linears="int4mm", load_jpp=False).load()
+    check(rt_i4.model_id == rt_ref.model_id + "+int4mm" and rt_ref.model_id.endswith("@cpu/bfloat16")
+          and rt_i4.weights_card["linears"] == "int4mm" and rt_i4.weights_card["layers_as"] == {"Q4_0 int4mm": 41},
+          f"int4mm: its model id ends +int4mm ({rt_i4.model_id}), its card names the mode ({rt_i4.weights_card['layers_as']})")
+    lm_r, lm_i = language_model(rt_ref.hf_model), language_model(rt_i4.hf_model)
+    nidx = torch.tensor([5, 0, 127, 64])
+    check(all(torch.equal(getattr(rt_i4, f)(l, nidx), getattr(rt_ref, f)(l, nidx)) for f in ("slice_w_down", "slice_w_gate", "slice_w_up")
+              for l in (0, 5))
+          and all(torch.equal(getattr(rt_i4, f)(3), getattr(rt_ref, f)(3)) for f in ("get_full_w_down", "get_full_w_gate", "get_full_w_up"))
+          and torch.equal(rt_i4.write_col_norms(2), rt_ref.write_col_norms(2)),
+          "the accessors read the file's numbers from the blocks kept, as the packed layers' do, bit for bit")
+    x = torch.randn(5, asi.FFN, generator=torch.Generator().manual_seed(6)).to(torch.bfloat16)
+    d_i, d_r = lm_i.layers[2].mlp.down_proj, lm_r.layers[2].mlp.down_proj
+    yi, yr = d_i(x).float(), d_r(x).float()
+    exact = x.double() @ torch.from_numpy(cg.gg(np.asarray(gm.tensor_table(gm.open_gguf(q4_0))["blk.2.ffn_down.weight"].data),
+                                                "Q4_0")).double().reshape(asi.HIDDEN, asi.FFN).T
+    err_i = float((yi.double() - exact).abs().max() / exact.abs().max())
+    err_r = float((yr.double() - exact).abs().max() / exact.abs().max())
+    check(not torch.equal(yi, yr) and err_i < 2 ** -6 and err_r < 2 ** -6 and torch.equal(d_i(x[:1]), d_i(x)[:1]),
+          f"one layer's product: not the reference's bits, both within bf16 of the exact product (largest relative "
+          f"error {err_i:.1e} through the kernel, {err_r:.1e} unpacked), and a row's the same alone or in a batch")
+    v = torch.randn(asi.HIDDEN, generator=torch.Generator().manual_seed(7))
+    d_i._memit_col_overlays[9], d_r._memit_col_overlays[9] = v.clone(), v.clone()
+    check(torch.equal(d_i(x), d_r(x)), "a vault column in force: the layer runs the reference forward, overlays and all, bit for bit")
+    d_i._memit_col_overlays.clear(), d_r._memit_col_overlays.clear()
+    prompt_i = torch.tensor([rt_ref.tokenize_prompt(rt_ref.compose_prompt("Who are you?", chat=True))])
+    off = ic.enable(rt_i4, False)
+    check(off == 41 and rt_i4.model_id == rt_ref.model_id and torch.equal(rt_i4.hf_model(prompt_i).logits, rt_ref.hf_model(prompt_i).logits),
+          "turned off (int4_cpu.enable): the reference forward bit for bit, and the model id without +int4mm")
+    ic.enable(rt_i4, True)
+    check(rt_i4.model_id.endswith("+int4mm") and not torch.equal(rt_i4.hf_model(prompt_i).logits, rt_ref.hf_model(prompt_i).logits),
+          "on again: +int4mm, and not the reference's logits")
+    # how far it departs, after gpu_runtime.md §3.5: the canary census three times (scripts/compare_int4mm.py)
+    fake_ref = [{"kind": "neuron", "neuron": 1, "prompt": "who", "dose": 0.5, "token_ids": [4, 5, 6, 7], "logprob": [-1.0, -0.5, -0.2, -0.1],
+                 "top_ids": [[4, 1, 2, 3, 9]] * 4},
+                {"kind": "baseline", "neuron": -1, "prompt": "who", "dose": 0.0, "token_ids": [8, 9], "logprob": [-0.3, -0.4],
+                 "top_ids": [[8, 1, 2, 3, 4], [9, 1, 2, 3, 4]]}]
+    fake_new = [{**fake_ref[0], "token_ids": [4, 5, 11, 12], "logprob": [-1.0, -0.6, -2.0, -0.1], "top_ids": [[4, 1, 2, 3, 9], [4, 1, 2, 3, 8],
+                                                                                                         [11, 1, 2, 3, 9], [1, 2, 3, 4, 5]]},
+                dict(fake_ref[1])]
+    cmp_ = ic.compare_rows(fake_ref, fake_new)
+    check(cmp_["answers"] == 2 and cmp_["identical"] == 1 and cmp_["split_steps"] == [2] and abs(cmp_["max_abs_dlogprob"] - 0.1) < 1e-9
+          and cmp_["per_answer"][0]["topk_overlap"] == (1 + 0.8 + 0.8) / 3 and cmp_["shared_share"] == round((2 / 4 + 1) / 2, 4),
+          f"compare_rows on two answers made by hand: a split at step 2, its |delta log-prob| over the shared two, the "
+          f"overlap of the five likeliest there and at the split ({cmp_['per_answer'][0]})")
+    rep = c4.compare(rt_i4, tmp / "int4mm-canary", layer=2, neurons=[0, 1, 2, 3], controls=2, max_new=16, batch=8, floor_batch=3)
+    fl, kn = rep["floor"], rep["kernel"]
+    print(f"  --    {c4.say('floor (the reference at batch 8 against 3)', fl)}")
+    print(f"  --    {c4.say('int4mm against the reference, batch 8', kn)}")
+    check(fl["answers"] == kn["answers"] == 64 and fl["identical"] == 64 and fl["max_abs_dlogprob"] == 0.0
+          and rt_i4.model_id.endswith("+int4mm"),
+          "the canary (64 answers): on the CPU the reference is the same at batch 8 and 3, so its floor is nought")
+    check(kn["identical"] < kn["answers"] and kn["max_abs_dlogprob"] > 0 and rep["verdict"]["stands_for_reference"] is False
+          and kn["topk_overlap"] > 0.8 and kn["shared_share"] > 0.4,
+          f"through the kernel some answers split ({kn['answers'] - kn['identical']} of {kn['answers']}; the stand-in's "
+          f"logits are small and near-tied), so by the rule its readings are their own class; the five likeliest mostly "
+          f"agree ({kn['topk_overlap']})")
+    # kept apart: a census, an index of the reference refused for it
+    run_ref = tmp / "int4mm-canary-2" / "run.jsonl"
+    cz.take_census(rt_ref, 2, [0, 1], run_ref, p50=1.5, p50_source="fixed", controls=1, seed=0, max_new=4, top_k=3, batch=5, log=quiet)
+    said = raises(cz.take_census, rt_i4, 2, [0, 1, 2], run_ref, p50=1.5, p50_source="fixed", controls=1, seed=0, max_new=4, top_k=3,
+                  batch=5, log=quiet)
+    check("model" in said, f"a census begun on the reference, continued through the kernel: refused ({said[:100]})")
+    import backend.atlas_build as ab2
+
+    ab2.build_layout(rt_ref, tmp / "int4mm-index", method="pca", log=quiet)
+    st = AtlasIndex(tmp / "int4mm-index", model=rt_i4.model_id, shape=(6, asi.FFN), weights=rf.weights_card(rt_i4)).status()
+    check(not st["layout"]["built"] and "+int4mm" in st["layout"]["refused"] and "built for" in st["layout"]["refused"],
+          f"an index built on the reference refused for the kernel's runtime: {st['layout'].get('refused')}")
+    # the checkpoint's W4A16 linears through the kernel: their scales exact, the rest as above
+    import check_dequant as cdq
+
+    rt_w, _vault_w, n_w, _patched, _worst = cdq.packed_stand_in()
+    lm_w = language_model(rt_w.hf_model)
+    mod_w = lm_w.layers[2].mlp.down_proj
+    xw = torch.randn(3, asi.FFN, generator=torch.Generator().manual_seed(8)).to(torch.bfloat16)
+    y_pinned = mod_w(xw)
+    before_w = rt_w.slice_w_down(2, nidx)
+    kinds = ic.install_w4a16(rt_w)
+    w_exact = er.dequantize_w4a16_full(mod_w.weight_packed, mod_w.weight_scale).double()
+    y_k = mod_w(xw)
+    check(kinds == {"w4a16 int4mm": n_w} and not torch.equal(y_k, y_pinned)
+          and float((y_k.double() - xw.double() @ w_exact.T).abs().max() / (xw.double() @ w_exact.T).abs().max()) < 2 ** -6
+          and torch.equal(rt_w.slice_w_down(2, nidx), before_w),
+          f"install_w4a16 on a 4-bit stand-in: {kinds}; the product within bf16 of the exact one, not the pinned bits; "
+          "the accessors as before")
+    mod_w._memit_col_overlays[3] = v.clone()
+    pinned = er._make_w4a16_linear_forward(mod_w)
+    check(torch.equal(mod_w(xw), pinned(xw)), "a vault column in force on a W4A16 layer: the pinned forward, bit for bit")
+    mod_w._memit_col_overlays.clear()
+    said = raises(wf.install, rt_w, "resident")
+    check("int4mm" in said and wf.describe(rt_w)["mode"] == "reference",
+          f"w4a16_fast's resident unpacker, which would replace the kernel's forward, refused ({said[:80]})")
+    # the factory: int4mm only on the CPU; the checkpoint's model id and card
+    with environment(**{rf.DEVICE_ENV: "cpu", rf.CHECKPOINT_LINEARS_ENV: "int4mm"}):
+        rt_cc = rf.make_runtime(load_jlens=False)
+    pinned_load = er.TheodoliteRuntime.load
+
+    def stood_in(self: Any) -> Any:  # the checkpoint is not here: its load stood in for by the 4-bit stand-in's model
+        self.hf_model, self.eager_model = rt_w.hf_model, rt_w.eager_model
+        return self
+
+    er.TheodoliteRuntime.load = stood_in
+    try:
+        ic.enable(rt_w, False)
+        rt_cc.load()
+    finally:
+        er.TheodoliteRuntime.load = pinned_load
+    card_cc = rf.weights_card(rt_cc)
+    check(type(rt_cc) is rf.CheckpointRuntime and rt_cc.model_id == er.DEFAULT_W4A16_MODEL_ID + "@cpu/bfloat16+int4mm"
+          and card_cc["linears"] == "int4mm" and card_cc["layers_as"] == {"w4a16 int4mm": n_w},
+          f"THEODOLITE_CHECKPOINT_LINEARS=int4mm on the CPU: {rt_cc.model_id}, {card_cc['layers_as']}")
+    for env_, word in (({rf.GGUF_ENV: q4_0, rf.LINEARS_ENV: "int4mm"}, "set THEODOLITE_DEVICE=cpu"),
+                       ({rf.CHECKPOINT_LINEARS_ENV: "int4mm"}, "set THEODOLITE_DEVICE=cpu"),
+                       ({rf.CHECKPOINT_LINEARS_ENV: "resident"}, "packed (the default) or int4mm")):
+        with environment(**env_):
+            said = raises(rf.make_runtime)
+        check(word in said, f"{env_}: refused in plain words ({said[:90]})")
+    said = raises(gm.build_gemma4, q4_0, device="meta", linears="int4mm")
+    check(said.startswith("The int4mm linears cannot be used: int4mm is torch's CPU kernel, and this model is built on meta"),
+          f"int4mm on another device than the CPU refused by the builder too ({said[:90]})")
+    section("int4mm: torch's int4 CPU kernel on Q4_0 and W4A16 layers, within bf16 of the exact product but not the "
+            "reference's bits, measured against it by the canary, and kept apart by its model id", before)
 
     # ---------------------------------------------------------------- the files R4 pins
     before = len(failures)

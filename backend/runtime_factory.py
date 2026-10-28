@@ -4,7 +4,11 @@ daemon (experiments/lab/labd.py) and the GPU checks scripts/verify_optics.py and
 
     THEODOLITE_GGUF=<file.gguf>        a GGUF of Gemma 4 (backend/gguf_runtime.py), else the W4A16 checkpoint as today
     THEODOLITE_DEVICE=cpu | cuda:N     where the model runs (default cuda:0, as today)
-    THEODOLITE_GGUF_LINEARS=packed | resident | dense   how a GGUF's quantised layers are held (default packed)
+    THEODOLITE_GGUF_LINEARS=packed | resident | dense | int4mm
+                                                        how a GGUF's quantised layers are held (default packed);
+                                                        int4mm (the CPU only) multiplies its Q4_0 layers by torch's
+                                                        int4 CPU kernel, not the reference's bits (backend/int4_cpu.py)
+    THEODOLITE_CHECKPOINT_LINEARS=packed | int4mm       the W4A16 checkpoint's on the CPU: int4mm as for a GGUF
     THEODOLITE_GGUF_CONFIG=<config.json>                build a GGUF's model from this config, checked against all the
                                                         file states (it stands in for any key the file leaves out)
     THEODOLITE_DTYPE=bfloat16 | float32                 a GGUF model's dtype (default bfloat16, as the instrument runs)
@@ -24,7 +28,8 @@ A reading taken off the GPU, or in float32, is its own numeric class, and says s
 the checkpoint on the CPU is `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16` (`CheckpointRuntime`), a GGUF on the CPU
 `gguf:<file>#<fingerprint>@cpu/bfloat16`. Every census run, index and lens card records that id, a run resumes only on
 the same one and the server reads an index only for it, so readings of two classes never mix in one file. bfloat16
-on a GPU, as the instrument has always run, adds nothing.
+on a GPU, as the instrument has always run, adds nothing. The int4mm linears add `+int4mm` after it
+(`gguf:<file>#<fingerprint>@cpu/bfloat16+int4mm`): their sums are the kernel's, so their readings are their own class.
 
 `weights_card(rt)` says what a runtime's readings are taken from, for any runtime: a GGUF's own card (its file's
 provenance and how its model was built), the checkpoint's repo id and the snapshot of it this machine's Hugging Face
@@ -49,6 +54,7 @@ LINEARS_ENV = "THEODOLITE_GGUF_LINEARS"
 CONFIG_ENV = "THEODOLITE_GGUF_CONFIG"
 DTYPE_ENV = "THEODOLITE_DTYPE"
 LENS_ENV = "THEODOLITE_GGUF_LENS"
+CHECKPOINT_LINEARS_ENV = "THEODOLITE_CHECKPOINT_LINEARS"
 DEFAULT_DEVICE = "cuda:0"
 _DTYPES = ("bfloat16", "float32")
 
@@ -88,11 +94,24 @@ def reading_class(device: Any, dtype: Any = None) -> str:
 
 class CheckpointRuntime(TheodoliteRuntime):
     """The pinned runtime on the W4A16 checkpoint, off the GPU: its own `load()`, unchanged, then its model id tagged
-    with where the readings are taken (`reading_class`), so nothing taken on the CPU is read as a GPU reading."""
+    with where the readings are taken (`reading_class`), so nothing taken on the CPU is read as a GPU reading. With
+    `linears="int4mm"` its 4-bit linears are then multiplied by torch's int4 CPU kernel (`int4_cpu.install_w4a16`), and
+    the model id ends `+int4mm`."""
+
+    def __init__(self, *args: Any, linears: str = "packed", **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.linears = linears
+        self.layers_as: Optional[Dict[str, int]] = None  # how the linears are held, once loaded with int4mm
 
     def load(self) -> "CheckpointRuntime":
         super().load()  # loads the weights by self.model_id, the repo id, so the tag goes on after
         self.model_id = f"{self.model_id}{reading_class(self.device)}"
+        if self.linears == "int4mm":
+            from backend import int4_cpu
+
+            self.layers_as = int4_cpu.install_w4a16(self)
+            self.model_id += int4_cpu.SUFFIX
+            logger.info("The checkpoint's linears through torch's int4 CPU kernel: %s", self.layers_as)
         return self
 
 
@@ -118,19 +137,27 @@ def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
         if lens not in ("jpp", "none"):
             raise ValueError(f"{LENS_ENV}={lens!r}: jpp (load the J++ lens) or none.")
         kwargs.setdefault("load_jpp", lens == "jpp")
+        linears = os.environ.get(LINEARS_ENV, "").strip().lower() or "packed"
+        if linears == "int4mm" and device != "cpu":
+            raise ValueError(f"{LINEARS_ENV}=int4mm is torch's int4 kernel for the CPU: set {DEVICE_ENV}=cpu with it.")
         return GGUFRuntime(
             os.path.expanduser(path),
             device=device,
             load_jlens=load_jlens,
-            linears=os.environ.get(LINEARS_ENV, "").strip().lower() or "packed",
+            linears=linears,
             dtype=getattr(torch, dtype_name),
             hf_config=os.environ.get(CONFIG_ENV, "").strip() or None,
             **kwargs,
         )
+    ct_linears = os.environ.get(CHECKPOINT_LINEARS_ENV, "").strip().lower() or "packed"
+    if ct_linears not in ("packed", "int4mm"):
+        raise ValueError(f"{CHECKPOINT_LINEARS_ENV}={ct_linears!r}: packed (the default) or int4mm.")
+    if ct_linears == "int4mm" and device != "cpu":
+        raise ValueError(f"{CHECKPOINT_LINEARS_ENV}=int4mm is torch's int4 kernel for the CPU: set {DEVICE_ENV}=cpu with it.")
     if device == DEFAULT_DEVICE:
         return TheodoliteRuntime(load_jlens=load_jlens)
     if device == "cpu":
-        return CheckpointRuntime(device=device, load_jlens=load_jlens)
+        return CheckpointRuntime(device=device, load_jlens=load_jlens, linears=ct_linears)
     return TheodoliteRuntime(device=device, load_jlens=load_jlens)
 
 
@@ -163,6 +190,9 @@ def weights_card(rt: Any) -> Dict[str, Any]:
         return {"format": "stand-in", "model": model_id, "runtime": type(rt).__name__}
     repo = model_id.split("@", 1)[0]
     snapshot = checkpoint_snapshot(repo)
-    return {"format": "compressed-tensors W4A16", "repo": repo, "snapshot": snapshot,
-            "id": snapshot[:16] if snapshot else None, "linears": "packed", "dtype": "bfloat16",
-            "device": str(getattr(rt, "device", "")), "runtime": type(rt).__name__}
+    card = {"format": "compressed-tensors W4A16", "repo": repo, "snapshot": snapshot,
+            "id": snapshot[:16] if snapshot else None, "linears": getattr(rt, "linears", None) or "packed",
+            "dtype": "bfloat16", "device": str(getattr(rt, "device", "")), "runtime": type(rt).__name__}
+    if getattr(rt, "layers_as", None):
+        card["layers_as"] = dict(rt.layers_as)
+    return card

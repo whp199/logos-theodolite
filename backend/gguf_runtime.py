@@ -24,7 +24,8 @@ must share to be continued, and which the server compares before it reads an ind
 (`runtime_factory.reading_class`: `@cpu/bfloat16`, `@cpu/float32`, `@cuda/float32`), so a reading is not taken for
 another file's (as far as the fingerprint tells files apart: `gguf_model.provenance`), for the W4A16 checkpoint's, or
 for one of another numeric class. How the linear layers are held (packed, resident or dense) is not in it: the three
-hold the same weight, and give the same forward bit for bit (scripts/check_gguf.py). `weights_card` is the file's
+hold the same weight, and give the same forward bit for bit (scripts/check_gguf.py); "int4mm", torch's int4 CPU kernel
+(backend/int4_cpu.py), does not, and its readings' model id ends `+int4mm`. `weights_card` is the file's
 provenance with how the model was built and where its tokenizer came from (the file's name, not its path, which only the
 log names); GET /api/health sends it ("weights").
 
@@ -98,6 +99,10 @@ class GGUFRuntime(er.TheodoliteRuntime):
         # the pinned load records transformers' missing keys here; the GGUF builder refuses a file that leaves any
         setattr(hf_model, "ie_missing_keys", frozenset())
         self.model_id = gm.gguf_stem_id(self.gguf_path, prov) + reading_class(self.device, self.dtype)
+        if self.linears == "int4mm":  # not the reference's bits: its own class of readings (backend/int4_cpu.py)
+            from backend.int4_cpu import SUFFIX
+
+            self.model_id += SUFFIX
         # the file's name, not its path: the card goes out over HTTP (GET /api/health), and the log above names the path
         self.weights_card = {**prov, **built, "tokenizer": tok_rec, "runtime": type(self).__name__}
 

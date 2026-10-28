@@ -9,7 +9,10 @@ on). The seven linear layers of every block are `linears`:
 - "packed": a block-quantised tensor becomes a `gguf_weights.GGUFLinear` that keeps its blocks and unpacks them at
   every forward (memory at rest about the file's size; on the CPU the blocks are read through the file's memory map);
 - "resident": the same layer, unpacked once at load (memory the dense weight's);
-- "dense": a plain `nn.Linear` holding the unpacked weight, as transformers' own GGUF loader would build it.
+- "dense": a plain `nn.Linear` holding the unpacked weight, as transformers' own GGUF loader would build it;
+- "int4mm" (the CPU only): a Q4_0 tensor becomes an `int4_cpu.Int4GGUFLinear`, multiplied by torch's int4 CPU kernel,
+  its blocks kept for the accessors; any other block type is packed. Not bit-identical to the other three: its model
+  id says so (backend/int4_cpu.py).
 A tensor stored as F32, F16 or BF16 is a plain `nn.Linear` in every mode. Every linear layer hears the vault's
 overlays as the W4A16 forward does (`gguf_weights.with_overlays`). Embeddings, norms and layer scalars are unpacked to
 `dtype` (bfloat16 by default, as the instrument runs; float32 for exact CPU checks).
@@ -53,7 +56,8 @@ import torch.nn as nn
 from backend.gguf_weights import GGML_TYPES, GGUFLinear, install_overlay_forward, type_code, type_name, unpack
 
 ARCH = "gemma4"
-LINEAR_MODES = ("packed", "resident", "dense")
+LINEAR_MODES = ("packed", "resident", "dense")  # the three that give the same forward bit for bit
+KERNEL_MODES = ("int4mm",)  # torch's int4 CPU kernel: not the reference's bits (backend/int4_cpu.py)
 MIB = 1 << 20
 # The seven linear layers of a Gemma 4 block, by their transformers names under model.layers.N.
 LINEAR_NAMES = ("self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj",
@@ -395,9 +399,16 @@ def build_gemma4(
     from transformers.models.gemma4.configuration_gemma4 import Gemma4TextConfig
     from transformers.models.gemma4.modeling_gemma4 import Gemma4ForCausalLM
 
-    if linears not in LINEAR_MODES:
-        raise ValueError(f"linears is one of {', '.join(LINEAR_MODES)}, not {linears!r}.")
+    if linears not in LINEAR_MODES + KERNEL_MODES:
+        raise ValueError(f"linears is one of {', '.join(LINEAR_MODES + KERNEL_MODES)}, not {linears!r}.")
     device = torch.device(device)
+    if linears == "int4mm":
+        from backend import int4_cpu
+
+        why = int4_cpu.kernel_missing() or (None if device.type == "cpu" else
+                                            f"int4mm is torch's CPU kernel, and this model is built on {device}")
+        if why:
+            raise ValueError(f"The int4mm linears cannot be used: {why}. Use packed, resident or dense.")
     reader = reader if reader is not None else open_gguf(path)
     meta = read_metadata(reader)
     tensors = tensor_table(reader)
@@ -450,7 +461,11 @@ def build_gemma4(
             if shape != (old.out_features, old.in_features):
                 raise ValueError(f"{t.name} is {list(shape)}, the model's {lname} [{old.out_features}, {old.in_features}].")
             qname = type_name(t.tensor_type)
-            if linears != "dense" and GGML_TYPES[type_code(t.tensor_type)][1] > 1:
+            if linears == "int4mm" and qname == "Q4_0" and int4_cpu.fits(old.out_features, old.in_features):
+                new = int4_cpu.Int4GGUFLinear(_blocks(t, device), old.in_features, old.out_features, dtype=dtype,
+                                              gguf_name=t.name)
+                kinds["Q4_0 int4mm"] += 1
+            elif linears != "dense" and GGML_TYPES[type_code(t.tensor_type)][1] > 1:
                 new: nn.Module = GGUFLinear(_blocks(t, device), t.tensor_type, old.in_features, old.out_features,
                                             dtype=dtype, resident=(linears == "resident"), gguf_name=t.name)
                 kinds[f"{qname} {'resident' if linears == 'resident' else 'packed'}"] += 1

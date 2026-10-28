@@ -417,6 +417,9 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
     if mode not in MODES:
         raise Refused(f"The unpackers are {', '.join(MODES)}, not {mode!r}; the runtime keeps the reference unpacker.")
     linears = packed_linears(model)
+    if mode == "resident" and any(getattr(m, "int4mm", False) for _n, m in linears):
+        raise Refused("These linears are multiplied by torch's int4 CPU kernel (int4mm: backend/int4_cpu.py), whose forward "
+                      "resident would replace; the runtime keeps the reference unpacker for its accessors.")
     t0 = time.perf_counter()
     devices = sorted({str(m.weight_packed.device) for _n, m in linears})
     rec: Dict[str, Any] = {"mode": mode, "linears": len(linears),
