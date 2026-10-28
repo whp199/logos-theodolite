@@ -29,7 +29,7 @@ The push is the atlas's "add", along the neuron's write direction at the stream 
 (--dose-unit): stream, dose x p50, p50 the median length of that stream (from the stats index when built, else read
 here over the study's 36 texts; the run's meta records which), the same push for every neuron and control; ceiling,
 dose x the neuron's write ceiling, the most it can write by itself, a control pushed by the ceiling of the neuron it is
-paired with. Every answer records its unit's ceiling and its push's real share of the stream (rel_push). Designs:
+paired with. Every pushed answer records its unit's ceiling and its push's real share of the stream (rel_push). Designs:
 main_rel, {who, snake, orange} x {-0.7, +0.5, +0.8} and {free} x {+3}, neuron-explorer's doses, chosen on Qwen3.5-4B
 and not yet calibrated on this model; calib_rel, a ladder ±{0.1, 0.25, 0.5, 1, 2, 4} of the stream on {who, orange,
 free}, and calib_ceil, ±{0.5, 1, 2, 4, 8} x each neuron's ceiling on the same questions (taken in the ceiling unit),
@@ -40,13 +40,15 @@ against the neurons (read_gain; a fair null is near 1, and the run warns when it
 A run's batches are planned from its whole job list and the batch size (chunks of 10 x batch answers, each grouped by
 question), and written whole: a run continued after a stop, or after a kill that tore its last batch, and a run taken
 in shards write every answer in the same batch as an unbroken run. The meta records the batch and the plan (a run
-continued with another --batch is refused) and the runtime it was written on (the card, torch, CUDA, transformers,
-interp-engine, compressed-tensors, the commit, the stats index's sha256; continued on another, it is warned and
-recorded, not refused). --shard i/n takes shard i of n of the plan's chunks into <run>.s<i>of<n>.jsonl, and every
-shard but 0 writes the plan's first batch again (<run>.s<i>of<n>.canary.jsonl, one batch's time) for census_tools.py
-merge to compare with shard 0's; the merge refuses a run with a shard or an answer missing unless --partial, and the
-ranking comes after it. --neurons-from <run>.units.jsonl --top M retests a screen's M strongest neurons against fresh
-controls (another --seed), the census's second stage: its p and q are taken over those M alone.
+begun with a batch plan, continued with another --batch, is refused) and the runtime it was written on (the card,
+torch, CUDA, transformers, interp-engine, compressed-tensors, the commit, the stats index's sha256; continued on
+another, it is warned and recorded, not refused). --shard i/n takes shard i of n of the plan's chunks into
+<run>.s<i>of<n>.jsonl, and every shard but 0 writes the plan's first batch again (<run>.s<i>of<n>.canary.jsonl, one
+batch's time) for census_tools.py merge to compare with shard 0's (the merge leaves the canaries out of the join); a
+shard is continued only as the same shard, the merge refuses a run with a shard or an answer missing unless
+--partial, and the ranking comes after it. --neurons-from <run>.units.jsonl --top M retests a screen's M strongest
+neurons against fresh controls (another --seed), the census's second stage: its p and q are taken over those M alone,
+and its neurons are fixed when it is begun (a screen ranked again since is a new retest, under another --run).
 
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
@@ -237,9 +239,8 @@ def main(argv=None) -> int:
     signal.signal(signal.SIGINT, on_signal)
     for layer in layers:
         name = f"L{layer}-{a.design}" + (f"-top{a.top}" if stage else "")
-        out = out_dir / f"{a.run.replace('{layer}', str(layer)) if a.run else name}.jsonl"
-        if shard:
-            out = cz.shard_path(out, *shard)
+        run_path = out_dir / f"{a.run.replace('{layer}', str(layer)) if a.run else name}.jsonl"
+        out = cz.shard_path(run_path, *shard) if shard else run_path
         try:
             res = cz.take_census(rt, layer, neurons, out, p50=float(p50s[layer]), p50_source=source, design_name=a.design,
                                  controls=a.random_controls, seed=a.seed, max_new=a.max_new, top_k=a.top_k, batch=a.batch,
@@ -249,7 +250,8 @@ def main(argv=None) -> int:
             raise SystemExit(str(exc))
         print(f"-> {out} ({res['written']} answers written, {res['skipped']} were there)")
         if shard:
-            print("a shard is ranked only once its run is joined: census_tools.py merge <run>.s*of*.jsonl --out <run>.jsonl, then rank")
+            print(f"a shard is ranked only once its run is joined: census_tools.py merge {run_path.stem}.s*of{shard[1]}.jsonl --out "
+                  f"{run_path.name} (in {out_dir}; a canary named among them is left out of the join), then rank")
         elif not a.no_rank and out.exists():
             units = cz.write_units(out)
             print(f"-> {units}")

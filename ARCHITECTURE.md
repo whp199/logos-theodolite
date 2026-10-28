@@ -656,21 +656,23 @@ layer, every neuron (or a range) and some random directions are pushed as above 
 like." at +3.0, plus one unpushed answer each), greedy, batched by question. A dose counts in one of two units
 (`dose_unit`, in the meta and the card): `stream`, a share of the stream's median length, the same push for every unit,
 or `ceiling`, a multiple of each neuron's write ceiling (a control pushed by the ceiling of the neuron it is paired
-with), so that one dose is the same share of each neuron's most at every layer. Every answer records its unit's ceiling
-and its push's real share of the stream (`rel_push`, which the ranking's 1.6 filters on). Two calibration ladders come
-first: `calib_rel` (±0.1 to 4 of the stream) and `calib_ceil` (±0.5 to 8 × the ceiling). A control is
-unit(w_post ⊙ r), r isotropic from a seed: the reference's random down column carried through the post-feed-forward norm every neuron's write passes,
-so the next layer reads controls about as loudly as neurons (on the 31B's own weights, 1.02× at page 46 and 1.18× at
-page 58, where a plain isotropic direction is read 103× and 236× as loudly; `check_census.py` measures it when the
-checkpoint is cached). The run's meta records that ratio (`read_gain`) and where the doses come from (`doses_from`:
+with), so that one dose is the same share of each neuron's most at every layer. Every pushed answer records its unit's
+ceiling and its push's real share of the stream (`rel_push`, which the ranking's 1.6 filters on). Two calibration
+ladders come first: `calib_rel` (±0.1 to 4 of the stream) and `calib_ceil` (±0.5 to 8 × the ceiling). A control is
+unit(w_post ⊙ r), r isotropic from a seed: the reference's random down column carried through the post-feed-forward
+norm every neuron's write passes, so the next layer reads controls about as loudly as neurons (on the 31B's own
+weights, 1.02× at page 46 and 1.18× at page 58, where a plain isotropic direction is read 103× and 236× as loudly;
+`check_census.py` measures it when the checkpoint is cached). The run's meta records that ratio (`read_gain`) and
+where the doses come from (`doses_from`:
 neuron-explorer's, chosen on Qwen3.5-4B, not yet calibrated here); runs taken with isotropic controls (meta `version`
 below 2) are not read, and `/arch` says why (`census_refused`). Answers go to `$THEODOLITE_CENSUS_DIR`, else `<atlas
 folder>/census/runs`, `L<layer>-<design>.jsonl` with its `.meta.json`, in batches planned from the whole job list and
 the batch size (`plan_batches`: 10 × batch a chunk, each chunk grouped by question), each written whole or not at all.
 So a stopped run, or one killed mid-write, resumes to the rows an unbroken run writes: on the GPU a row's numbers depend
-on its batch's size. A run with other settings, the batch among them, is refused; a half-written last line, and a last
-batch written in part, are cut off first. The meta records the runtime class (the card, the library versions, the
-commit, the stats index's sha256); a change is warned and recorded (`mixed_runtime`), never refused. `--shard i/n`
+on its batch's size. A run with other settings, the batch among them once it has a plan, is refused before anything in
+it is cut; else a half-written last line, and a last batch written in part, are cut off first. The meta records the
+runtime class (the card, the library versions, the commit, the stats index's sha256); a change is warned and recorded
+(`mixed_runtime`), never refused. `--shard i/n`
 takes whole chunks of the plan, and every shard but 0 writes the plan's first batch again as a canary. A shard is never
 read as a layer's census: `census_tools.py merge` joins shards only whole, every shard and every answer (else refused,
 unless `--partial`, which the meta records), with each canary compared with shard 0's answers as whole JSON values. A

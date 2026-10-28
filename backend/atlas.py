@@ -643,14 +643,16 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     in (`dose_unit`: "stream", a share of the stream's median length, or "ceiling", a multiple of each neuron's write
     ceiling; a run that records none was taken in the stream's), how loudly the next layer reads its controls against
     its neurons, what its null can and cannot single out, the card it was written on (`device`; None before runs kept
-    it), whether its parts were written on more than one runtime class (`mixed_runtime`: card or library versions; each
-    part's readings valid, their bits not alike), for shards joined with some missing, what is missing (`partial`), and,
+    it, or where its parts name more than one or one unknown), whether its parts were written on more than one runtime
+    class (`mixed_runtime`: card, library versions or code, or a part begun before runs recorded theirs; each part's
+    readings valid, their bits not alike), for shards joined with some missing, what is missing (`partial`), and,
     for the second stage of a two-stage census, which screen's strongest it retests (`stage`: its p and q are taken over
     those neurons alone, against fresh controls)."""
     m = d["meta"]
+    devices = {(c or {}).get("device") for c in (m.get("mixed_runtime") or [m.get("runtime")])}
     return {"run": d["path"].name, "design": m.get("design_name"), "doses_from": m.get("doses_from") or cz.DOSES_FROM.get(m.get("design_name")),
             "dose_unit": m.get("dose_unit", "stream"), "p50_source": m.get("p50_source"), "read_gain": m.get("read_gain"), "null": d["null"],
-            "device": (m.get("runtime") or {}).get("device"), "mixed_runtime": bool(m.get("mixed_runtime")), "partial": m.get("partial"),
+            "device": devices.pop() if len(devices) == 1 else None, "mixed_runtime": bool(m.get("mixed_runtime")), "partial": m.get("partial"),
             "stage": m.get("stage")}
 
 

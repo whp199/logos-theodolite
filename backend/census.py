@@ -327,6 +327,8 @@ def dose_curves(rows: Iterable[Dict[str, Any]], ceilings: Optional[Dict[Tuple[st
     """A run's dose window (sweep/peek.py --curves): one entry per (dose, kind), the unpushed answers first (kind
     "baseline", dose 0), then every dose of the design for the neurons and for the controls ("random"):
     - n: its answers; units: the units they come from;
+    - questions (the unpushed answers' entry alone): the questions the pushed answers are asked, whose unpushed answers
+      it holds (a run writes one for every question, PROMPTS, and a calibration design pushes on three of the four);
     - rel_push: the median push over the stream's median length;
     - over_ceiling: the median push over the write ceiling of the unit's neuron (`atlas_ops.Weights.write_ceiling`, the
       most it can write by itself; a control is set against the neuron it is paired with, `control_refs`), from each
@@ -334,10 +336,13 @@ def dose_curves(rows: Iterable[Dict[str, Any]], ceilings: Optional[Dict[Tuple[st
       neither gives it;
     - moved: the share of its answers that part from their question's unpushed answer (`first_departure`), and
       moved_se, the standard error of that share with the units as the sample (each unit's share of its answers
-      moved), so a unit's answers on the three questions are not counted as three draws;
+      moved), so a unit's answers on the three questions are not counted as three draws; None from fewer than two
+      units, where no spread can be estimated;
     - departure: the median word-piece where they first part (an answer's length where it never does);
-    - capped: the share cut off at the length limit; distinct4: their mean share of distinct 4-grams; logprob: the mean
-      of each answer's mean log-probability.
+    - capped: the share cut off at the length limit; distinct4: their mean share of distinct 4-grams; distinct4_unpushed:
+      the same of each answer's own question's unpushed answer, averaged as its answers are (the reference
+      `dose_window` sets distinct4 against; None on the unpushed answers' entry); logprob: the mean of each answer's
+      mean log-probability.
     `rows` are a run's whole rows, word-piece ids kept (`read_rows`, not `read_slim`). To read a run once, one line at
     a time, give `base` (`baseline_ids` over the run first); else the unpushed answers are found among `rows`."""
     if base is None:
@@ -345,10 +350,16 @@ def dose_curves(rows: Iterable[Dict[str, Any]], ceilings: Optional[Dict[Tuple[st
         base = baseline_ids(rows)
     cells: Dict[Tuple[float, str], Dict[str, List[float]]] = collections.defaultdict(lambda: collections.defaultdict(list))
     moved_by: Dict[Tuple[float, str], Dict[int, List[bool]]] = collections.defaultdict(lambda: collections.defaultdict(list))
+    unpushed: Dict[str, Dict[str, List[float]]] = collections.defaultdict(lambda: collections.defaultdict(list))  # per question
+    asked: set = set()
     for r in rows:
         kind = str(r["kind"])
         dose = 0.0 if kind == "baseline" else float(r["dose"])
-        c = cells[(dose, kind)]
+        if kind == "baseline":
+            c = unpushed[str(r["prompt"])]
+        else:
+            c = cells[(dose, kind)]
+            asked.add(str(r["prompt"]))
         ids = r.get("token_ids") or []
         lp = r.get("logprob") or []
         c["rel"].append(float(r.get("rel_push") or 0.0))
@@ -365,7 +376,15 @@ def dose_curves(rows: Iterable[Dict[str, Any]], ceilings: Optional[Dict[Tuple[st
             dep = first_departure(ids, b)
             c["moved"].append(dep is not None)
             c["dep"].append(len(ids) if dep is None else dep)
-            moved_by[(dose, kind)][int(r["neuron"])].append(dep is not None)
+            if kind != "baseline":
+                c["d4_ref"].append(distinct4(b))
+                moved_by[(dose, kind)][int(r["neuron"])].append(dep is not None)
+    # the unpushed answers to the questions the doses are asked on (all of them where nothing is pushed)
+    questions = [q for q in list(PROMPTS) + sorted(set(unpushed) - set(PROMPTS)) if q in unpushed and (q in asked or not asked)]
+    for q in questions:
+        for k, v in unpushed[q].items():
+            cells[(0.0, "baseline")][k].extend(v)
+        moved_by[(0.0, "baseline")][-1].extend(unpushed[q]["moved"])
 
     def med(v: List[float]) -> Optional[float]:
         return float(np.median(v)) if v else None
@@ -376,11 +395,13 @@ def dose_curves(rows: Iterable[Dict[str, Any]], ceilings: Optional[Dict[Tuple[st
     out: List[Dict[str, Any]] = []  # unrounded: dose_window compares them
     for dose, kind in sorted(cells, key=lambda k: (k[1] != "baseline", k[0], KINDS.index(k[1]) if k[1] in KINDS else 9)):
         c = cells[(dose, kind)]
-        share = [float(np.mean(v)) for v in moved_by[(dose, kind)].values()]
-        se = float(np.std(share, ddof=1) / math.sqrt(len(share))) if len(share) > 1 else 0.0
+        share = [float(np.mean(v)) for v in moved_by[(dose, kind)].values() if v]
+        se = float(np.std(share, ddof=1) / math.sqrt(len(share))) if len(share) > 1 else None
         out.append({"dose": dose, "kind": kind, "n": len(c["rel"]), "units": len(moved_by[(dose, kind)]) or None,
+                    **({"questions": questions} if kind == "baseline" else {}),
                     "rel_push": med(c["rel"]), "over_ceiling": med(c["over"]), "moved": mean(c["moved"]), "moved_se": se,
-                    "departure": med(c["dep"]), "capped": mean(c["capped"]), "distinct4": mean(c["d4"]), "logprob": mean(c["lp"])})
+                    "departure": med(c["dep"]), "capped": mean(c["capped"]), "distinct4": mean(c["d4"]),
+                    "distinct4_unpushed": mean(c["d4_ref"]), "logprob": mean(c["lp"])})
     return out
 
 
@@ -388,11 +409,12 @@ def dose_window(curves: Sequence[Dict[str, Any]], dose_unit: str = "stream", que
                 breaks_by: float = BREAKS_BY) -> Dict[str, Dict[str, Any]]:
     """Where the window opens and where text breaks, per sign ("+", "-"), read off `dose_curves`:
     - moves: the smallest dose at which the neurons' answers part from the unpushed ones more often than the controls'
-      by more than twice the standard error of the difference (units as the sample); None where none does, or without
-      controls;
-    - breaks: per kind, the smallest dose at which the answers' distinct 4-grams fall more than `breaks_by` below the
-      unpushed answers'; None where none does;
-    - says: the same in plain words, hedged: one run, its units, one question set, one greedy answer each.
+      by more than twice the standard error of the difference (units as the sample); None where none does, without
+      controls, or where fewer than two neurons or two controls leave the spread unknown (a dose is then not tested);
+    - breaks: per kind, the smallest dose at which the answers' distinct 4-grams fall more than `breaks_by` below those
+      of the unpushed answers to the same questions (`distinct4_unpushed`); None where none does;
+    - says: the same in plain words, hedged: one run, its units, one question set, one greedy answer each. Each is the
+      first dose that passes, not a window that stays open: a larger dose may not pass.
     `dose_unit` is the run's ("stream": doses are shares of the stream's median length; "ceiling": multiples of each
     neuron's write ceiling), `questions` the design's."""
     cell = {(c["dose"], c["kind"]): c for c in curves}
@@ -411,11 +433,15 @@ def dose_window(curves: Sequence[Dict[str, Any]], dose_unit: str = "stream", que
     for sign, word in (("+", "up"), ("-", "down")):
         doses = sorted({c["dose"] for c in curves if c["kind"] != "baseline" and (c["dose"] > 0) == (sign == "+") and c["dose"] != 0},
                        key=abs)
-        moves = None
+        moves, tested, untested = None, 0, 0
         if n_ctl:
             for d in doses:
                 a, b = cell.get((d, "neuron")), cell.get((d, "random"))
                 if a and b and a["moved"] is not None and b["moved"] is not None:
+                    if a["moved_se"] is None or b["moved_se"] is None:  # one unit on a side: no spread to set the gap against
+                        untested += 1
+                        continue
+                    tested += 1
                     gap = a["moved"] - b["moved"]
                     if gap > 0 and gap > 2.0 * math.sqrt(a["moved_se"] ** 2 + b["moved_se"] ** 2):
                         moves = d
@@ -423,28 +449,32 @@ def dose_window(curves: Sequence[Dict[str, Any]], dose_unit: str = "stream", que
         breaks: Dict[str, Optional[float]] = {}
         for kind in ("neuron", "random"):
             breaks[kind] = None
-            if base is None or base["distinct4"] is None:
-                continue
             for d in doses:
                 c = cell.get((d, kind))
-                if c and c["distinct4"] is not None and c["distinct4"] < base["distinct4"] - breaks_by:
+                ref = c.get("distinct4_unpushed") if c else None
+                if c and c["distinct4"] is not None and ref is not None and c["distinct4"] < ref - breaks_by:
                     breaks[kind] = d
                     break
         if not doses:
             continue
         if not n_ctl:
             says = f"Pushed {word}, with no controls nothing here is set against chance"
+        elif moves is None and untested and not tested:
+            says = (f"Pushed {word}, with fewer than two neurons or two controls at each dose the spread between units cannot be "
+                    "estimated, so nothing here is set against chance")
         elif moves is None:
-            says = f"Pushed {word}, the neurons move no more answers than the controls at any dose here"
+            says = f"Pushed {word}, the neurons move no more answers than the controls at any dose here" + (
+                f" ({untested} dose{'s' if untested != 1 else ''} not tested: fewer than two units on a side)" if untested else "")
         else:
-            says = f"Pushed {word}, the neurons move more answers than the controls from {at(moves, cell[(moves, 'neuron')])}"
+            says = f"Pushed {word}, the neurons move more answers than the controls first at {at(moves, cell[(moves, 'neuron')])}"
         if base is not None:
             bn, br = breaks["neuron"], breaks["random"]
-            says += (f"; their text breaks (distinct 4-grams more than {breaks_by:g} below the unpushed answers') from "
-                     f"{at(bn, cell[(bn, 'neuron')])}" if bn is not None else
-                     f"; their text does not break (distinct 4-grams more than {breaks_by:g} below the unpushed answers') at these doses")
+            says += (f"; their text breaks (distinct 4-grams more than {breaks_by:g} below the unpushed answers' to the same "
+                     f"questions) first at {at(bn, cell[(bn, 'neuron')])}" if bn is not None else
+                     f"; their text does not break (distinct 4-grams more than {breaks_by:g} below the unpushed answers' to the "
+                     "same questions) at these doses")
             if n_ctl:
-                says += f", the controls' from {br:+g}" if br is not None else ", the controls' at none of them"
+                says += f", the controls' first at {br:+g}" if br is not None else ", the controls' at none of them"
         qs = f" ({', '.join(questions)})" if questions else ""
         says += (f". On {n_neu} neurons and {n_ctl} controls, one question set{qs}, one greedy answer each: a lead for "
                  "choosing doses, not a measurement of them.")
@@ -768,8 +798,8 @@ def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -
 
 
 def jobs_digest(jobs: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
-    """The job list a run's plan is made from, as its meta keeps it: how many answers, and a digest of their keys in
-    order."""
+    """A run's job list as its meta keeps it: how many answers, and a digest of their keys in order. For a run that has
+    kept its plan, the job list its plan is made from; for one that has left it, the job list of every neuron it holds."""
     return {"n": len(jobs), "sha256": hashlib.sha256(json.dumps([list(row_key(j)) for j in jobs]).encode("utf-8")).hexdigest()[:16]}
 
 
@@ -864,8 +894,24 @@ def runtime_classes(records: Iterable[Optional[Dict[str, Any]]]) -> List[Dict[st
     return out
 
 
-def row_keys(path: Path) -> Tuple[List[Tuple[str, int, str, float]], List[int]]:
-    """A JSON-lines run's row keys in file order, and the byte at which each row's line starts."""
+# the runtime class of answers written before runs recorded theirs: unknown, so never taken for the class written after
+RUNTIME_UNKNOWN: Dict[str, Any] = {"device": None, "note": "written before runtime records were kept"}
+
+
+def runtime_parts(meta: Dict[str, Any], has_rows: bool = True) -> List[Dict[str, Any]]:
+    """The runtime classes a run's meta says its answers were written on: its `mixed_runtime`, else its `runtime`, else,
+    for a run begun before runtime records that holds answers, RUNTIME_UNKNOWN."""
+    if meta.get("mixed_runtime"):
+        return list(meta["mixed_runtime"])
+    if meta.get("runtime"):
+        return [meta["runtime"]]
+    return [RUNTIME_UNKNOWN] if has_rows else []
+
+
+def row_keys(path: Path, tolerate_tail: bool = False) -> Tuple[List[Tuple[str, int, str, float]], List[int]]:
+    """A JSON-lines run's row keys in file order, and the byte at which each row's line starts. With `tolerate_tail`, a
+    last line with no newline after it (a run killed mid-write; `drop_partial_tail` cuts it) is left out, the file
+    untouched."""
     keys: List[Tuple[str, int, str, float]] = []
     starts: List[int] = []
     if not Path(path).exists():
@@ -873,6 +919,8 @@ def row_keys(path: Path) -> Tuple[List[Tuple[str, int, str, float]], List[int]]:
     pos = 0
     with open(path, "rb") as f:
         for line in f:
+            if tolerate_tail and not line.endswith(b"\n"):
+                break
             if line.strip():
                 keys.append(row_key(json.loads(line)))
                 starts.append(pos)
@@ -940,11 +988,14 @@ def take_census(
     order, or not at all (`cancel()` stops between steps). Continuing, a planned batch whose answers are all in the file
     is skipped, and a last batch written in part (a run killed mid-write) is cut off and written again whole, so a
     stopped run finishes as an unbroken one would, row for row; a file holding answers its plan did not write is
-    refused. A run begun before batch plans (its meta has none), or whose neurons changed since it was begun, has left
-    its plan (`plan_kept` false, `plan_left` why): its missing answers are written by the plan's batches, a batch's
-    missing part as a batch of its own. `shard` (i, n) takes shard i of n of the plan's chunks (`shard_batches`) into
-    `out_path` (`shard_path`); every shard but 0 first writes plan batch 0 again beside it (`canary_path_of`) for the
-    merge to compare. Returns counts."""
+    refused, before anything in it is cut. A run begun before batch plans (its meta has none), or whose neurons changed
+    since it was begun, has left its plan (`plan_kept` false, `plan_left` why): its missing answers are written by the
+    plan's batches, a batch's missing part as a batch of its own; its meta's `neuron_ids` and `jobs` then name every
+    neuron the run holds, not this call's alone. `shard` (i, n) takes shard i of n of the plan's chunks
+    (`shard_batches`) into `out_path` (`shard_path`); every shard but 0 first writes plan batch 0 again beside it
+    (`canary_path_of`) for the merge to compare. A shard is continued only as the same shard, and a retest only with the
+    neurons it was begun with. A run begun before runtime records, continued, records its earlier answers' runtime as
+    unknown (`RUNTIME_UNKNOWN` in `mixed_runtime`). Returns counts."""
     import time
 
     import torch
@@ -1016,7 +1067,7 @@ def take_census(
     old = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else None
     meta["plan"] = (old.get("plan") or PLAN_BEFORE) if old is not None else PLAN  # a run keeps the plan it was begun with
     all_jobs = census_jobs(neurons, controls, design)
-    meta["jobs"] = jobs_digest(all_jobs)
+    meta["jobs"] = these_jobs = jobs_digest(all_jobs)
     plan = plan_batches(all_jobs, batch, meta["plan"])
     if shard and [int(n) for n in neurons] != sorted({int(n) for n in neurons}):
         raise ValueError("A run taken in shards takes its neurons in order, each once (as parse_neurons gives them), so the "
@@ -1029,28 +1080,54 @@ def take_census(
         if differ:
             raise ValueError(f"{out_path.name} was taken with other settings ({', '.join(differ)}); name another run "
                              "(--run) or remove it.")
-        if shard and old.get("jobs") != meta["jobs"]:
+        was = old.get("shard") or {}
+        if (was.get("i"), was.get("n")) != ((int(shard[0]), int(shard[1])) if shard else (None, None)):
+            raise ValueError(f"{out_path.name} is shard {was['i']} of {was['n']} of a run: it is continued only as that shard "
+                             f"(--shard {was['i']}/{was['n']}, the run named as its other shards are), and joined with "
+                             "census_tools.py merge." if was else
+                             f"{out_path.name} was not taken as a shard: a run is taken in shards from its beginning; name "
+                             "another run (--run).")
+        if shard and old.get("jobs") != these_jobs:
             raise ValueError(f"{out_path.name} is a shard of a run with other neurons, and a shard's answers cannot change: "
                              "take the shards again under another run (--run).")
-        moved = runtime_differ(old.get("runtime"), meta["runtime"])
-        if moved:
-            log(f"warning: {out_path.name} was begun on another runtime ({', '.join(moved)} differ): its answers' bits may "
-                "differ from the earlier ones' (recorded as mixed_runtime)")
-        classes = runtime_classes((old.get("mixed_runtime") or [old.get("runtime")]) + [meta["runtime"]])
-        if len(classes) > 1:
-            meta["mixed_runtime"] = classes
+        if old.get("stage") or stage:
+            if not (old.get("stage") and stage):
+                raise ValueError(f"{out_path.name} is a retest of {old['stage']['screen']}'s strongest, continued only as that "
+                                 "retest (--neurons-from, --top)." if old.get("stage") else
+                                 f"{out_path.name} is not a retest: name the retest another run (--run).")
+            if old.get("neuron_ids") != meta["neuron_ids"]:
+                raise ValueError(f"{out_path.name} retests neurons {old.get('neuron_ids')}, fixed when it was begun, and the "
+                                 f"screen's {stage['top']} strongest are now {meta['neuron_ids']} (ranked again since?): a "
+                                 "retest of the new ones is another run (--run).")
+            meta["stage"] = old["stage"]  # a retest's stage is the one it was begun with
         meta["started_at"] = old.get("started_at")
         meta["neurons"] = old.get("neurons") if neurons_spec in ("", old.get("neurons")) else f"{old.get('neurons')} + {neurons_spec}"
         # every session's unpacker, the first first ("unpacker" is this one's; None where a meta did not record one)
         meta["unpacker_sessions"] = old.get("unpacker_sessions", [old.get("unpacker")]) + [meta["unpacker"]]
     meta["started_at"] = meta.get("started_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
-    if drop_partial_tail(out_path):
-        log(f"{out_path.name}: a half-written last answer was cut off; it is written again")
-    keys, starts = row_keys(out_path)
+    keys, starts = row_keys(out_path, tolerate_tail=True)  # a half-written last line is cut off only once nothing is refused
+    if old is not None:
+        # the run's neurons, every call's that wrote to it: what neuron_ids and the job list describe
+        held = {int(n) for k, n, _, _ in keys if k == "neuron"} | {int(n) for n in neurons}
+        if isinstance(old.get("neuron_ids"), str) and old["neuron_ids"]:
+            held |= set(parse_neurons(old["neuron_ids"], N))
+        if held != {int(n) for n in neurons}:
+            meta["neuron_ids"] = neuron_ranges(held)
+            meta["jobs"] = jobs_digest(census_jobs(sorted(held), controls, design))
+        moved = runtime_differ(old.get("runtime"), meta["runtime"])
+        if moved:
+            log(f"warning: {out_path.name} was begun on another runtime ({', '.join(moved)} differ): its answers' bits may "
+                "differ from the earlier ones' (recorded as mixed_runtime)")
+        elif keys and not old.get("runtime") and not old.get("mixed_runtime"):
+            log(f"warning: {out_path.name} was begun before runs recorded their runtime: the one its answers so far were written "
+                "on is unknown (recorded as mixed_runtime)")
+        classes = runtime_classes(runtime_parts(old, bool(keys)) + [meta["runtime"]])
+        if len(classes) > 1:
+            meta["mixed_runtime"] = classes
     left = None if not keys else ("answers written without a meta" if old is None else
                                   "answers written before batch plans" if "plan_kept" not in old else
-                                  "the run's neurons changed after it was begun" if old.get("jobs") != meta["jobs"] else
+                                  "the run's neurons changed after it was begun" if old.get("jobs") != these_jobs else
                                   (old.get("plan_left") or "answers written off its plan") if not old.get("plan_kept") else None)
     if left and shard:
         raise ValueError(f"{out_path.name} holds a shard's answers its plan did not write ({left}): take the shards again "
@@ -1076,6 +1153,8 @@ def take_census(
     meta["plan_kept"] = not left
     if left:
         meta["plan_left"] = left
+    if drop_partial_tail(out_path):  # nothing refused: the file is touched from here on
+        log(f"{out_path.name}: a half-written last answer was cut off; it is written again")
     write_json_atomic(meta_path, meta)
     if torn:
         with open(out_path, "rb+") as f:
@@ -1184,12 +1263,20 @@ def take_census(
 def merge_runs(inputs: Sequence[Path], out: Path, partial: bool = False) -> Tuple[int, int]:
     """Join runs of one layer taken in parts into one run, a row per (kind, neuron, prompt, dose), the first met kept
     (sweep/merge_runs.py); its meta is the first input's with the parts named (`shards`), their unpackers session by
-    session (`unpacker_sessions`), their neurons joined, and, where they were taken on different runtime classes, each
-    class (`mixed_runtime`). Runs taken with other settings are refused. Shards of one run (census_run.py --shard i/n, each meta naming its `shard`) are joined more strictly: every
-    shard 0..n-1 once, the union of their answers the run's whole job list (what is missing is listed, and refused
-    unless `partial`, which the merged meta then records), each shard's canary compared with shard 0's answers as whole
-    JSON values (`canary`). Returns (rows read, rows kept)."""
+    session (`unpacker_sessions`), their neurons joined (`neurons`, and `neuron_ids` and `jobs` over every part's
+    neurons where each part records them), its plan kept only where every part kept one plan (else `plan_left` says
+    why), and, where they were taken on different runtime classes, each class (`mixed_runtime`; a part begun before
+    runtime records counts as RUNTIME_UNKNOWN). Runs taken with other settings, and a file without its meta (a shard's
+    canary among them), are refused. Shards of one run (census_run.py --shard i/n, each meta naming its `shard`) are
+    joined more strictly: every shard 0..n-1 once, the union of their answers the run's whole job list (what is missing
+    is listed, and refused unless `partial`, which the merged meta then records), each shard's canary compared with
+    shard 0's answers as whole JSON values (`canary`). Returns (rows read, rows kept)."""
     inputs = [Path(p) for p in inputs]
+    lost = [p.name for p in inputs if not meta_path_of(p).exists()]
+    if lost:
+        raise ValueError(f"{', '.join(lost)} {'has' if len(lost) == 1 else 'have'} no meta beside {'it' if len(lost) == 1 else 'them'} "
+                         "(<run>.meta.json), so nothing says how it was taken: only runs census_run.py wrote are joined (a "
+                         "shard's canary is compared by the merge, not joined).")
     metas = [json.loads(meta_path_of(p).read_text(encoding="utf-8")) for p in inputs]
     if any(m.get("shard") for m in metas):
         return _merge_shards(inputs, metas, Path(out), partial)
@@ -1205,7 +1292,21 @@ def merge_runs(inputs: Sequence[Path], out: Path, partial: bool = False) -> Tupl
     specs = list(dict.fromkeys(str(m.get("neurons")) for m in metas))
     if len(specs) > 1:
         meta["neurons"] = " + ".join(specs)
-    classes = runtime_classes(r for m in metas for r in (m.get("mixed_runtime") or [m.get("runtime")]))
+    if all(isinstance(m.get("neuron_ids"), str) and m.get("d_ff") for m in metas):
+        held = sorted({n for m in metas for n in parse_neurons(m["neuron_ids"], int(m["d_ff"]))})
+        meta["neuron_ids"] = neuron_ranges(held)
+        meta["jobs"] = jobs_digest(census_jobs(held, int(meta["random_controls"]), [tuple(x) for x in meta["design"]]))
+    else:  # a part taken before runs recorded them: the joined run's neurons are those its rows hold
+        meta.pop("neuron_ids", None)
+        meta.pop("jobs", None)
+    if any("plan_kept" in m for m in metas):
+        meta.pop("plan_left", None)
+        meta["plan_kept"] = all(m.get("plan_kept") for m in metas) and len({json.dumps(m.get("jobs")) for m in metas}) == 1
+        if not meta["plan_kept"]:
+            meta["plan_left"] = next((m.get("plan_left") or "answers written before batch plans" for m in metas if not m.get("plan_kept")),
+                                     "joined from runs taken in parts, each by its own plan")
+    classes = runtime_classes(r for m in metas for r in runtime_parts(m))
+    meta.pop("mixed_runtime", None)
     if len(classes) > 1:
         meta["mixed_runtime"] = classes
     write_json_atomic(meta_path_of(Path(out)), meta)
@@ -1308,7 +1409,7 @@ def _merge_shards(inputs: List[Path], metas: List[Dict[str, Any]], out: Path, pa
     meta["unpacker_sessions"] = _unpacker_sessions([by_i[i][1] for i in order])
     meta["canary"] = "; ".join([f"identical on {same} of {others} shard{'s' if others != 1 else ''}"] + notes) if others else "one shard: none to compare"
     meta["plan_kept"] = all(bool(by_i[i][1].get("plan_kept")) for i in order)
-    classes = runtime_classes(r for i in order for r in (by_i[i][1].get("mixed_runtime") or [by_i[i][1].get("runtime")]))
+    classes = runtime_classes(r for i in order for r in runtime_parts(by_i[i][1]))
     meta.pop("mixed_runtime", None)
     if len(classes) > 1:
         meta["mixed_runtime"] = classes

@@ -12,8 +12,9 @@ rank writes `<run>.units.jsonl` (each unit's words, z, mass, null_pct, shift, pe
 of it and the controls' null (sweep/rank.py). merge keeps one row per (kind, neuron, prompt, dose) and refuses runs
 taken with other settings (sweep/merge_runs.py); shards of one run (census_run.py --shard i/n) are joined only whole:
 every shard once, every answer of the run's job list (else refused, unless --partial, which the merged meta records),
-each shard's canary compared with shard 0's answers, and the runtime classes they were written on recorded (a
-warning, never a refusal). Rank a sharded run after the merge. depth reads every layer's main run, subsampled to the
+each shard's canary compared with shard 0's answers (a canary named among the inputs, as <run>.s*of*.jsonl names
+them, is left out of the join), and the runtime classes they were written on recorded (a warning, never a refusal).
+A shard is not ranked: rank the joined run. depth reads every layer's main run, subsampled to the
 same pool (--neurons, --controls) so the word-cluster mass compares across layers (sweep/depth_report.py). spread
 embeds each answer (sentence-transformers' BAAI/bge-small-en-v1.5 where installed, as the reference's
 build_embeddings.py, else a download-free word embedding) and lays the answers out in two dimensions (UMAP where
@@ -104,7 +105,9 @@ def print_curves(run: Path, meta: dict, curves: list, window: dict, source: str)
           + (f" (p50 {float(p50):.2f}, {meta.get('p50_source')})" if p50 is not None else ""))
     base = next((c for c in curves if c["kind"] == "baseline"), None)
     if base is not None:
-        print(f"unpushed: {base['n']} answers, cut off {base['capped']:.0%}, distinct-4 {base['distinct4']:.2f}, log-p {base['logprob']:.2f}")
+        print(f"unpushed ({', '.join(base.get('questions') or [])}, the questions the doses are asked on): {base['n']} answers, "
+              f"cut off {base['capped']:.0%}, distinct-4 {base['distinct4']:.2f} (where text breaks is read against each "
+              f"question's own), log-p {base['logprob']:.2f}")
     print(f"x ceil: the push over each neuron's write ceiling ({source or 'not at hand: add --weights'})")
     kinds = [k for k in ("neuron", "random") if any(c["kind"] == k for c in curves)]
     head = f"{'n':>4} {'rel':>5} {'x ceil':>6} {'moved':>6} {'depart':>6} {'cut':>5} {'d4':>5} {'lp':>6}"
@@ -173,9 +176,13 @@ def main(argv=None) -> int:
     try:
         if a.what == "rank":
             run = resolve_run(a.run)
+            rmeta = json.loads(cz.meta_path_of(run).read_text(encoding="utf-8")) if cz.meta_path_of(run).exists() else {}
+            if rmeta.get("shard"):
+                raise SystemExit(f"{run.name} is shard {rmeta['shard']['i']} of {rmeta['shard']['n']} of a run: join its shards first "
+                                 "(census_tools.py merge), then rank the joined run.")
             out = cz.write_units(run, max_rel=a.max_rel, top_words=a.top_words)
             recs = list(cz.read_rows(out))
-            st = json.loads(cz.meta_path_of(run).read_text(encoding="utf-8")).get("stage") if cz.meta_path_of(run).exists() else None
+            st = rmeta.get("stage")
             if st:
                 print(f"a retest (stage {st['stage']}) of the {st['top']} strongest of the {st['of']} neurons of {st['screen']}, "
                       f"against fresh controls: its p and q are taken over these {st['top']} alone")
@@ -204,7 +211,11 @@ def main(argv=None) -> int:
                       f"p {rec.get('p')}, q {rec.get('q')}, {ws}")
             print(f"-> {out}")
         elif a.what == "merge":
-            n_in, n_out = cz.merge_runs([Path(x) for x in a.inputs], Path(a.out), partial=a.partial)
+            inputs = [Path(x) for x in a.inputs]
+            canaries = [p for p in inputs if p.name.endswith(".canary.jsonl")]  # what <run>.s*of*.jsonl also matches
+            if canaries:
+                print(f"left out {', '.join(p.name for p in canaries)}: a shard's canary is compared with shard 0's answers, not joined")
+            n_in, n_out = cz.merge_runs([p for p in inputs if p not in canaries], Path(a.out), partial=a.partial)
             meta = json.loads(cz.meta_path_of(Path(a.out)).read_text(encoding="utf-8"))
             if meta.get("canary"):
                 print(f"canary: {meta['canary']}")

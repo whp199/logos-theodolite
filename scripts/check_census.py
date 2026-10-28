@@ -10,36 +10,41 @@ Gemma 4 of scripts/atlas_stand_in.py:
    write direction, a control along its drawn direction, dose x p50; a baseline unpushed), with its push recorded, and
    the meta records the controls' shape, the doses' source and how loudly the next layer reads controls and neurons;
 3. continuing: a run cut short and rerun ends with the same answers; a rerun with nothing to do writes nothing; more
-   neurons added write only theirs; a run taken with other settings is refused in plain words; a run stopped between
-   steps keeps only whole batches and finishes as the uninterrupted one;
+   neurons added write only theirs, and the meta names every neuron the run holds; a run taken with other settings is
+   refused in plain words; a run stopped between steps keeps only whole batches and finishes as the uninterrupted one;
 4. finding a layer's run: main_rel first, calibration runs, runs of another model and runs taken with the old
    isotropic controls left out (the last with the reason);
 5. merge, the depth report (subsampled to a common pool) and the spread (the words embedder, laid out in the unit square);
 6. the command lines: census_run.py --stand-in into the stand-in's own folder, then census_tools.py rank, depth and
    spread on it;
 7. the dose window: where an answer first parts from the unpushed one, the curves per dose and kind and the verdict per
-   sign on answers worked out by hand, the write ceilings read from a W4A16 checkpoint in two files, the Hugging Face
-   cache found through huggingface_hub, and a stand-in calib_rel run read back by census_tools.py curves, with the
-   ceilings read from the stand-in's weights for answers that keep none;
+   sign on answers worked out by hand (text breaking read against the unpushed answers to the same questions, an
+   unasked question's left out; no spread, and no verdict, from one control), the write ceilings read from a W4A16
+   checkpoint in two files and from a dense one, the Hugging Face cache found through huggingface_hub (one file, or two
+   through their index), and a stand-in calib_rel run read back by census_tools.py curves, with the ceilings read from
+   the stand-in's weights for answers that keep none;
 8. the dose in each neuron's own ceiling: each push measured as write_rows receives it (dose x the neuron's write
    ceiling; a control, dose x its paired neuron's), each row's ceiling, push and real share of the stream, a unit
    change refused, an older meta read as the stream unit, a ceiling run ranked and in the depth report, and a stand-in
    calib_ceil run read back by census_tools.py curves;
 9. batch plans: a whole layer's plan, the 16 x batch plan as the code before plans batched a fresh run; the batch, the
    plan, the job list and the runtime recorded; a run stopped mid-chunk, and one whose last batch was torn, each
-   finish equal to an unbroken run row for row, and a file its plan did not write is refused; another batch refused,
-   another runtime warned and recorded; three shards, each whole chunks with a canary, merged equal the unbroken run
-   row for row, layer_runs reads no shard; the merge names a missing shard (joined with --partial and said so), a
-   changed canary (shard and field), two runtime classes, and refuses a shard given twice; an old meta (no batch, plan,
-   dose unit, runtime or job list) with its rows regrouped still continues and merges; census_run.py --shard and
-   census_tools.py merge from the command line;
+   finish equal to an unbroken run row for row, and a file its plan did not write is refused, left as it was; another
+   batch refused, another runtime warned and recorded; three shards, each whole chunks with a canary, merged equal the
+   unbroken run row for row, layer_runs reads no shard, and a shard is continued only as itself; the merge names a
+   missing shard (joined with --partial and said so), a changed canary (shard and field), two runtime classes, and
+   refuses a shard given twice and a file without its meta; an old meta (no batch, plan, dose unit, runtime or job
+   list) with its rows regrouped still continues, its earlier runtime recorded as unknown, and merges; runs of other
+   neurons merged name every part's neurons and continue; census_run.py --shard and census_tools.py merge from the
+   command line, the printed pattern's canaries left out, and rank refusing a shard;
 10. atlas_ops.write_rows reading each step back in one transfer gives the Steps the per-row reads gave (that code kept
    here), bit for bit; census_run.py frees the J++ lens after load, and a census taken without it writes every answer
    and names it; --layers takes several layers in one process, each its own run;
 11. a two-stage census: a screen's strongest neurons by mass retested against fresh controls (census_run.py
    --neurons-from --top --seed), the stage in the meta, the retest's p against its controls and q over its neurons
    alone, the screen still the layer's census, rank and the card naming the stage, and a retest refused with the
-   screen's seed, too many neurons, --neurons beside it or another layer;
+   screen's seed, too many neurons, --neurons beside it, another layer, or other neurons once its screen is ranked
+   again;
 12. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
    columns (CPU, a few tensors), the next layer reads the census's controls about as loudly as the layer's neurons, and
    an isotropic control far louder.
@@ -357,6 +362,12 @@ def run_checks(tmp: Path) -> int:
     check(cz.take_census(rt, 3, [0, 5, 9], out, **kw) == {"written": 0, "skipped": 54, "stopped": False}, "nothing left to write")
     res = cz.take_census(rt, 3, [0, 5, 9, 12], out, **kw)
     check(res["written"] == 10 and {r["neuron"] for r in cz.read_rows(out) if r["kind"] == "neuron"} == {0, 5, 9, 12}, f"a neuron added: {res}")
+    j4 = cz.jobs_digest(cz.census_jobs([0, 5, 9, 12], 2, cz.DESIGNS["main_rel"]))
+    res = cz.take_census(rt, 3, [12], out, **kw)  # continued with one neuron alone: the meta still names the run's four
+    m3 = json.loads(cz.meta_path_of(out).read_text())
+    check(res["written"] == 0 and m3["neuron_ids"] == "0,5,9,12" and m3["jobs"] == j4 and m3["plan_kept"] is False
+          and m3["plan_left"] == "the run's neurons changed after it was begun",
+          f"the meta's neurons and job list are every neuron the run holds, not the last call's ({m3['neuron_ids']}, {m3['jobs']})")
     try:
         cz.take_census(rt, 3, [0], out, **{**kw, "max_new": 11})
         check(False, "a run taken with other settings is refused")
@@ -516,8 +527,8 @@ def run_checks(tmp: Path) -> int:
             # +2: every neuron loops from the first piece; the controls as unpushed; on "free" too
             *[crow("neuron", n, [7] * 6, 2.0) for n in range(3)], *[crow("neuron", n, [7] * 6, 2.0, prompt="free") for n in range(3)],
             crow("random", 0, B6, 2.0), crow("random", 1, B6, 2.0),
-            # -0.5: one control parts at 4
-            crow("neuron", 0, B6, -0.5), crow("random", 0, [1, 2, 3, 4, 0, 0], -0.5)]
+            # -0.5: one of two controls parts at 4, neither neuron does
+            crow("neuron", 0, B6, -0.5), crow("neuron", 1, B6, -0.5), crow("random", 0, [1, 2, 3, 4, 0, 0], -0.5), crow("random", 1, B6, -0.5)]
     ceil = {("neuron", 0): 2.0, ("neuron", 1): 4.0, ("neuron", 2): 5.0, ("random", 0): 10.0, ("random", 1): 20.0}
     cv = {(c_["dose"], c_["kind"]): c_ for c_ in cz.dose_curves(hand, ceil)}
     n5, r5, n2 = cv[(0.5, "neuron")], cv[(0.5, "random")], cv[(2.0, "neuron")]
@@ -530,7 +541,8 @@ def run_checks(tmp: Path) -> int:
     check(n2["n"] == 6 and n2["units"] == 3 and n2["moved"] == 1.0 and n2["moved_se"] == 0.0 and n2["departure"] == 0.0
           and abs(n2["distinct4"] - 1 / 3) < 1e-12, f"dose_curves +2 neurons: {n2}")
     b0 = cv[(0.0, "baseline")]
-    check(b0["n"] == 2 and b0["moved"] == 0.0 and b0["over_ceiling"] is None and b0["distinct4"] == 1.0, f"a baseline row departs nowhere: {b0}")
+    check(b0["n"] == 2 and b0["moved"] == 0.0 and b0["over_ceiling"] is None and b0["distinct4"] == 1.0 and b0["questions"] == ["who", "free"],
+          f"a baseline row departs nowhere: {b0}")
     check([(c_["dose"], c_["kind"]) for c_ in cz.dose_curves(hand)][:3] == [(0.0, "baseline"), (-0.5, "neuron"), (-0.5, "random")]
           and cz.dose_curves(hand)[1]["over_ceiling"] is None, "dose_curves: the unpushed answers first, then by dose; no ceilings, none")
     streamed = cz.dose_curves(iter(hand), ceil, base=cz.baseline_ids(hand))
@@ -538,11 +550,34 @@ def run_checks(tmp: Path) -> int:
     win = cz.dose_window(cz.dose_curves(hand, ceil), "stream", ["who", "free"])
     # +0.5: the gap 2/3 is exactly twice its standard error, not more; +2: 1 against 0 with no spread
     check(win["+"]["moves"] == 2.0 and win["+"]["breaks"] == {"neuron": 2.0, "random": None}, f"dose_window +: {win['+']}")
-    check("from +2 of the stream" in win["+"]["says"] and "On 3 neurons and 2 controls, one question set (who, free)" in win["+"]["says"]
+    check("first at +2 of the stream" in win["+"]["says"] and "On 3 neurons and 2 controls, one question set (who, free)" in win["+"]["says"]
           and "not a measurement" in win["+"]["says"], f"dose_window says: {win['+']['says']}")
     check(win["-"]["moves"] is None and "no more answers than the controls" in win["-"]["says"], f"dose_window -: {win['-']}")
     no_ctl = cz.dose_window(cz.dose_curves([r_ for r_ in hand if r_["kind"] != "random"]))
     check(no_ctl["+"]["moves"] is None and "no controls" in no_ctl["+"]["says"], "dose_window: without controls nothing is set against chance")
+    # where text breaks, read against the unpushed answers to the same questions: an unpushed answer to a question no
+    # dose is asked on ("snake", which loops) is left out, and a question whose own unpushed answer loops ("orange")
+    # does not break where its pushed answers loop as much; pooled over all four, the reference would be (1 + 1 + 1/3 +
+    # 1/3) / 4 = 2/3, and the controls' orange answers at +4 (1/3) would break
+    loop = [5] * 6
+    hand_q = hand + [crow("baseline", -1, loop, 0.0, prompt="snake"), crow("baseline", -1, loop, 0.0, prompt="orange"),
+                     *[crow("neuron", n, loop, 4.0, prompt="orange") for n in range(3)],
+                     *[crow("random", n, loop, 4.0, prompt="orange") for n in range(2)]]
+    cq = {(c_["dose"], c_["kind"]): c_ for c_ in cz.dose_curves(hand_q)}
+    check(cq[(0.0, "baseline")]["questions"] == ["who", "orange", "free"] and cq[(0.0, "baseline")]["n"] == 3
+          and abs(cq[(4.0, "neuron")]["distinct4_unpushed"] - 1 / 3) < 1e-12 and cq[(2.0, "neuron")]["distinct4_unpushed"] == 1.0
+          and cq[(0.0, "baseline")]["distinct4_unpushed"] is None,
+          f"dose_curves: the unpushed answers to the questions the doses are asked on, each cell's own reference ({cq[(0.0, 'baseline')]})")
+    wq = cz.dose_window(list(cq.values()))
+    check(wq["+"]["breaks"] == {"neuron": 2.0, "random": None} and "to the same questions" in wq["+"]["says"],
+          f"dose_window: text breaks against each question's own unpushed answer, not a pooled one ({wq['+']['breaks']})")
+    # one control: no spread among the controls, so no dose is set against chance
+    one_ctl = [r_ for r_ in hand if not (r_["kind"] == "random" and r_["neuron"] == 1)]
+    c1 = {(c_["dose"], c_["kind"]): c_ for c_ in cz.dose_curves(one_ctl)}
+    w1 = cz.dose_window(list(c1.values()))
+    check(c1[(2.0, "random")]["moved_se"] is None and c1[(2.0, "neuron")]["moved_se"] == 0.0 and w1["+"]["moves"] is None
+          and "spread between units cannot be estimated" in w1["+"]["says"],
+          f"dose_window: from one control no spread is estimated and nothing is set against chance ({w1['+']['says'][:90]})")
     # the ceilings read from a checkpoint: a W4A16 down projection in two safetensors files, as the 31B's are packed
     from safetensors.torch import save_file
 
@@ -562,17 +597,37 @@ def run_checks(tmp: Path) -> int:
     cols = (nib.double() - 8.0) * scale.double().repeat_interleave(32, dim=1)  # [D, N], exact in bf16
     want_c = {n: 0.75 * math.sqrt(Dk) * float((cols[:, n] / cols[:, n].norm() * w_post_k.double()).norm()) for n in (0, 9, 127)}
     check(width == Nk and all(abs(got_c[n] - want_c[n]) < 1e-5 * want_c[n] for n in want_c), f"checkpoint_ceilings: {got_c} vs {want_c}")
+    fd = tmp / "ck-dense.safetensors"  # the same down columns stored dense, as an unquantised checkpoint keeps them
+    save_file({Pk + "mlp.down_proj.weight": cols.float(), Pk + "post_feedforward_layernorm.weight": w_post_k}, str(fd))
+    got_d, width_d = cz.checkpoint_ceilings([fd], lk, [0, 9, 127])
+    check(width_d == Nk and all(abs(got_d[n] - want_c[n] / 0.75) < 1e-5 * want_c[n] for n in want_c),
+          f"checkpoint_ceilings: a dense down projection, no layer scalar ({got_d})")
     cache = tmp / "hf"
     snap = cache / "models--org--tiny" / "snapshots" / "abc"
     snap.mkdir(parents=True)
     (cache / "models--org--tiny" / "refs").mkdir()
     (cache / "models--org--tiny" / "refs" / "main").write_text("abc")
     shutil.copy(fa, snap / "model.safetensors")
-    probe = f"import sys; sys.path.insert(0, {str(ROOT_DIR)!r}); from backend import census as cz; print(cz.cached_checkpoint('org/tiny'), cz.cached_checkpoint('org/none'))"
+    snap2 = cache / "models--org--two" / "snapshots" / "def"  # a checkpoint in two files and their index, as the 31B's
+    snap2.mkdir(parents=True)
+    (cache / "models--org--two" / "refs").mkdir()
+    (cache / "models--org--two" / "refs" / "main").write_text("def")
+    two = ["model-00001-of-00002.safetensors", "model-00002-of-00002.safetensors"]
+    shutil.copy(fa, snap2 / two[1])
+    shutil.copy(fb, snap2 / two[0])
+    (snap2 / "model.safetensors.index.json").write_text(json.dumps({"weight_map": {
+        Pk + "mlp.down_proj.weight_packed": two[1], Pk + "mlp.down_proj.weight_scale": two[1],
+        Pk + "post_feedforward_layernorm.weight": two[0], Pk + "layer_scalar": two[0]}}))
+    probe = (f"import json, sys; sys.path.insert(0, {str(ROOT_DIR)!r}); from backend import census as cz; "
+             "print(json.dumps([[str(p) for p in cz.cached_checkpoint(r)] for r in ('org/tiny', 'org/none', 'org/two')]))")
     r = subprocess.run([sys.executable, "-I", "-c", probe], env={**os.environ, "HF_HUB_CACHE": str(cache), "HF_HUB_OFFLINE": "1"},
                        capture_output=True, text=True, timeout=120)
-    check(r.returncode == 0 and str(snap / "model.safetensors") in r.stdout and r.stdout.strip().endswith("[]"),
+    found = json.loads(r.stdout) if r.returncode == 0 else [[], [], []]
+    check(found[0] == [str(snap / "model.safetensors")] and found[1] == [],
           f"cached_checkpoint: the Hugging Face cache found through huggingface_hub ({r.stdout.strip()} {r.stderr[-300:]})")
+    got_i = cz.checkpoint_ceilings([Path(x) for x in found[2]], lk, [0, 9, 127])[0] if len(found[2]) == 2 else {}
+    check(found[2] == [str(snap2 / x) for x in two] and got_i == got_c,
+          f"cached_checkpoint: a checkpoint in two files found through its index, and its ceilings read across them ({found[2]})")
     # a stand-in calibration run, read back by the command line
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "3", "--design", "calib_rel", "--neurons",
                              "random:4", "--random-controls", "4", "--max-new", "8", "--batch", "16", "--no-rank"],
@@ -584,6 +639,7 @@ def run_checks(tmp: Path) -> int:
                        env=env, capture_output=True, text=True, timeout=300)
     cjs = json.loads(cj.read_text()) if cj.exists() else {}
     doses = sorted({d_ for _, d_ in cz.DESIGNS["calib_rel"]})
+    r0_out = r.stdout
     check(r.returncode == 0 and "L3-calib_rel.jsonl" in r.stdout and "Pushed up" in r.stdout and "Pushed down" in r.stdout,
           f"census_tools.py curves 3: a layer's calibration run read, though layer_runs leaves it out ({r.stderr[-300:]})")
     ents = cjs.get("curves", [])
@@ -609,7 +665,9 @@ def run_checks(tmp: Path) -> int:
           and all(abs(a_["over_ceiling"] - b_["over_ceiling"]) < 1e-4 * b_["over_ceiling"] for a_, b_ in zip(by_w["curves"], ents) if b_["kind"] != "baseline"),
           f"curves --weights: the ceilings read from the stand-in's weights, as the answers record them ({r.stderr[-300:]})")
     base_e = next((e for e in ents if e["kind"] == "baseline"), {})
-    check(base_e.get("n") == 4 and base_e.get("moved") == 0.0, f"curves: the four unpushed answers depart nowhere ({base_e})")
+    check(base_e.get("n") == 3 and base_e.get("questions") == ["who", "orange", "free"] and base_e.get("moved") == 0.0
+          and "unpushed (who, orange, free, the questions the doses are asked on): 3 answers" in r0_out,
+          f"curves: the unpushed answers to calib_rel's three questions (the snake game's left out) depart nowhere ({base_e})")
     section("the dose window: departures, curves and the verdict by hand, ceilings from a checkpoint, a calib_rel run read back", before)
 
     # ------------------------------------------------------------------------- 8. the dose against each neuron's ceiling
@@ -661,7 +719,7 @@ def run_checks(tmp: Path) -> int:
     check(all(near(r_["ceiling"], wc[r_["neuron"]] if r_["kind"] == "neuron" else wc[refs[r_["neuron"]]]) for r_ in srow),
           "a stream run records each answer's ceiling too, its push unchanged")
     says_c = cz.dose_window(cz.dose_curves(hand, ceil), "ceiling")["+"]["says"]
-    check("from +2 x each neuron's ceiling (a median 2 of the stream)" in says_c, f"dose_window in the ceiling unit: {says_c}")
+    check("first at +2 x each neuron's ceiling (a median 2 of the stream)" in says_c, f"dose_window in the ceiling unit: {says_c}")
     old_meta = json.loads(cz.meta_path_of(out2).read_text())
     old_meta.pop("dose_unit")
     cz.meta_path_of(out2).write_text(json.dumps(old_meta))
@@ -764,13 +822,16 @@ def run_checks(tmp: Path) -> int:
           and any("half-written" in s_ for s_ in said) and any("written in part (2 of its 5" in s_ for s_ in said),
           f"a torn last batch (two whole answers and half of a third): cut off, written again whole, row for row as unbroken ({res})")
     straddle = pdir / "L3-straddle.jsonl"
-    straddle.write_text("".join(u_lines[:7] + u_lines[8:30]))
+    straddle.write_text("".join(u_lines[:7] + u_lines[8:30]) + u_lines[30][:30])  # and a half-written last line
     shutil.copy(cz.meta_path_of(unbroken), cz.meta_path_of(straddle))
+    held = (straddle.read_bytes(), cz.meta_path_of(straddle).read_bytes())
     try:
         cz.take_census(rt, 3, NU, straddle, **kp)
         check(False, "a file holding answers its plan did not write is refused")
     except ValueError as exc:
         check("batch plan did not write" in str(exc) and "batch 1 of its plan" in str(exc), f"refusal: {exc}")
+    check((straddle.read_bytes(), cz.meta_path_of(straddle).read_bytes()) == held,
+          "a refused file is left as it was, its half-written last line not cut off")
     try:
         cz.take_census(rt, 3, NU, unbroken, **{**kp, "batch": 6})
         check(False, "a run is not continued at another batch size")
@@ -849,6 +910,21 @@ def run_checks(tmp: Path) -> int:
         check(False, "a shard's neurons cannot change")
     except ValueError as exc:
         check("shard of a run with other neurons" in str(exc), f"refusal: {exc}")
+    held = (shards[1].read_bytes(), cz.meta_path_of(shards[1]).read_bytes())
+    for target, sh_, why in ((shards[1], None, "is shard 1 of 3 of a run"), (shards[1], (0, 3), "is shard 1 of 3 of a run"),
+                             (unbroken, (0, 3), "was not taken as a shard")):
+        try:
+            cz.take_census(rt, 3, NU, target, **kp, shard=sh_)
+            check(False, f"a shard is continued only as itself ({why})")
+        except ValueError as exc:
+            check(why in str(exc), f"refusal: {exc}")
+    check((shards[1].read_bytes(), cz.meta_path_of(shards[1]).read_bytes()) == held and not set(cz.layer_runs(sdir).values()) & set(shards),
+          "a shard continued without --shard is refused, never turned into a layer's census")
+    try:
+        cz.merge_runs([shards[0], shards[1], cz.canary_path_of(shards[1]), shards[2]], sdir / "x.jsonl")
+        check(False, "merge_runs refuses a file without its meta")
+    except ValueError as exc:
+        check("L3-main.s1of3.canary.jsonl has no meta" in str(exc), f"refusal: {exc}")
     try:
         cz.take_census(rt, 3, [5, 0, 6], cz.shard_path(pdir / "L3-unsorted.jsonl", 0, 1), **kp, shard=(0, 1))
         check(False, "a sharded run's neurons out of order are refused")
@@ -867,6 +943,12 @@ def run_checks(tmp: Path) -> int:
           f"an old run (no batch plan in its meta, its rows regrouped by an earlier resume) continues, and ends with the same answers ({res})")
     check(om["plan"] == cz.PLAN_BEFORE and om["batch"] == 5 and om["plan_kept"] is False and om["plan_left"] == "answers written before batch plans"
           and om["dose_unit"] == "stream" and any("left its batch plan" in s_ for s_ in said), f"and its meta says it has left its plan: {om.get('plan_left')}")
+    import backend.atlas as atlas_routes
+
+    card_o = atlas_routes.census_card({"path": old_run, "meta": om, "null": {}})
+    check(om.get("mixed_runtime") == [cz.RUNTIME_UNKNOWN, om["runtime"]] and any("before runs recorded their runtime" in s_ for s_ in said)
+          and card_o["mixed_runtime"] is True and card_o["device"] is None,
+          f"an old run continued: its earlier answers' runtime recorded as unknown, the card naming no single card ({om.get('mixed_runtime')})")
     halves = [pdir / "L3-oa.jsonl", pdir / "L3-ob.jsonl"]
     halves[0].write_text("".join(u_lines[:60]))
     halves[1].write_text("".join(u_lines[40:]))
@@ -874,6 +956,20 @@ def run_checks(tmp: Path) -> int:
         cz.meta_path_of(h_).write_text(json.dumps(stale))
     check(cz.merge_runs(halves, pdir / "L3-oj.jsonl") == (124, 104) and cz.merge_runs([halves[0], unbroken], pdir / "L3-ok.jsonl") == (164, 104),
           "old metas still merge, among themselves and with a new run's")
+    okm = json.loads(cz.meta_path_of(pdir / "L3-ok.jsonl").read_text())
+    check(okm.get("mixed_runtime") == [cz.RUNTIME_UNKNOWN, um["runtime"]] and "neuron_ids" not in okm and "jobs" not in okm,
+          "a merge with an old meta: its runtime unknown, recorded beside the new one; no job list claimed")
+    parts = [pdir / "L3-pa.jsonl", pdir / "L3-pb.jsonl"]
+    cz.take_census(rt, 3, [0, 1], parts[0], **{**kp, "controls": 1}, neurons_spec="0-1")
+    cz.take_census(rt, 3, [2], parts[1], **{**kp, "controls": 1}, neurons_spec="2")
+    joined = pdir / "L3-pj.jsonl"
+    cz.merge_runs(parts, joined)
+    jm = json.loads(cz.meta_path_of(joined).read_text())
+    check(jm["neurons"] == "0-1 + 2" and jm["neuron_ids"] == "0-2" and jm["jobs"] == cz.jobs_digest(cz.census_jobs([0, 1, 2], 1, cz.DESIGNS["main_rel"]))
+          and jm["plan_kept"] is False and jm["plan_left"] == "joined from runs taken in parts, each by its own plan",
+          f"runs of other neurons merged: the meta names every part's neurons, and no one plan kept ({jm.get('neuron_ids')}, {jm.get('plan_left')})")
+    res = cz.take_census(rt, 3, [0, 1], joined, **{**kp, "controls": 1}, neurons_spec="0-1")
+    check(res["written"] == 0 and len(list(cz.read_rows(joined))) == 44, f"and continued with the first part's neurons, not refused ({res})")
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
                              "--max-new", "4", "--batch", "5", "--run", "L2-sh", "--shard", "1/2"], env=env, capture_output=True, text=True, timeout=600)
     sh_dir = tmp / "atlas" / "stand-in" / "census" / "runs"
@@ -885,10 +981,17 @@ def run_checks(tmp: Path) -> int:
     check(r.returncode != 0 and "Shard 0 of 2 is missing" in r.stderr, f"census_tools.py merge: a missing shard said ({r.stderr[-200:]})")
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
                              "--max-new", "4", "--batch", "5", "--run", "L2-sh", "--shard", "0/2"], env=env, capture_output=True, text=True, timeout=600)
-    r2 = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "merge", str(sh_dir / "L2-sh.s0of2.jsonl"), str(s1), "--out",
-                              str(sh_dir / "L2-sh.jsonl")], env=env, capture_output=True, text=True, timeout=300)
-    check(r.returncode == 0 and r2.returncode == 0 and "canary: identical on 1 of 1 shard" in r2.stdout and len(list(cz.read_rows(sh_dir / "L2-sh.jsonl"))) == 124,
-          f"census_tools.py merge: two shards joined, the canary compared ({r2.stdout[-200:]} {r2.stderr[-200:]})")
+    check(r.returncode == 0 and f"census_tools.py merge L2-sh.s*of2.jsonl --out L2-sh.jsonl (in {sh_dir}" in r.stdout,
+          f"census_run.py --shard: the merge's command printed ({r.stdout[-200:]})")
+    globbed = sorted(str(x) for x in sh_dir.glob("L2-sh.s*of*.jsonl"))  # as a shell expands the wider pattern: the canary too
+    r2 = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "merge", *globbed, "--out", str(sh_dir / "L2-sh.jsonl")],
+                        env=env, capture_output=True, text=True, timeout=300)
+    check(len(globbed) == 3 and r2.returncode == 0 and "left out L2-sh.s1of2.canary.jsonl" in r2.stdout and "canary: identical on 1 of 1 shard" in r2.stdout
+          and len(list(cz.read_rows(sh_dir / "L2-sh.jsonl"))) == 124,
+          f"census_tools.py merge <run>.s*of*.jsonl: two shards joined, the canary left out of the join and compared ({r2.stdout[-200:]} {r2.stderr[-200:]})")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "rank", str(s1)], env=env, capture_output=True, text=True, timeout=300)
+    check(r.returncode != 0 and "is shard 1 of 2 of a run: join its shards first" in r.stderr and not cz.units_path_of(s1).exists(),
+          f"census_tools.py rank: a shard is not ranked ({r.stderr[-200:]})")
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--shard", "2/2"], env=env,
                        capture_output=True, text=True, timeout=300)
     check(r.returncode != 0 and "--shard is i/n" in r.stderr, "census_run.py: a shard that does not exist is refused")
@@ -974,8 +1077,19 @@ def run_checks(tmp: Path) -> int:
                        (["--layer", "5", "--top", "4", "--neurons", "0-3"], "no --neurons"), (["--layer", "4", "--top", "4"], "screened layer 5")):
         r = subprocess.run(base_r + ["--neurons-from", str(s_units), "--seed", "9"] + extra, env=env, capture_output=True, text=True, timeout=300)
         check(r.returncode != 0 and why in r.stderr, f"a retest refused ({why}): {r.stderr[-200:]}")
-    import backend.atlas as atlas_routes
-
+    # the screen ranked again (another neuron now among its four strongest): the same retest command is refused, the
+    # retest's neurons fixed when it was begun
+    ranked_text = s_units.read_text()
+    out_of = next(u_["neuron"] for u_ in ranked if u_["neuron"] not in top4)
+    lifted = [json.loads(x_) for x_ in ranked_text.splitlines()]
+    s_units.write_text("".join(json.dumps({**u_, "mass": u_["mass"] + 1000.0} if (u_["kind"], u_["neuron"]) == ("neuron", out_of) else u_) + "\n"
+                               for u_ in lifted))
+    held =(retest.read_bytes(), cz.meta_path_of(retest).read_bytes())
+    r = subprocess.run(cr + ["--neurons-from", str(s_units), "--top", "4", "--seed", "7", "--random-controls", "14"], env=env,
+                       capture_output=True, text=True, timeout=600)
+    s_units.write_text(ranked_text)
+    check(r.returncode != 0 and "fixed when it was begun" in r.stderr and (retest.read_bytes(), cz.meta_path_of(retest).read_bytes()) == held,
+          f"a retest whose screen was ranked again is refused, not grown ({r.stderr[-200:]})")
     card = atlas_routes.census_card({"path": retest, "meta": rm, "null": {}})
     check(card["stage"] == st and card["dose_unit"] == "stream" and card["device"] == "cpu" and card["mixed_runtime"] is False and card["partial"] is None,
           f"the census card names the stage, the unit and the card ({card})")
