@@ -220,31 +220,36 @@ export const ContrastSection: React.FC<{
       </p>
     ) : null;
 
-  const checkbox = (b: ContrastBackground, label: React.ReactNode, enabled: boolean, note?: React.ReactNode) => (
-    <label
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: "10px",
-        minHeight: "44px",
-        paddingTop: "10px",
-        cursor: enabled ? "pointer" : "not-allowed",
-        color: enabled ? "#2B2117" : "#6B5D4D",
-      }}
-    >
-      <input
-        type="checkbox"
-        checked={contrast.backgrounds.includes(b)}
-        disabled={!enabled}
-        onChange={(e) => tick(b, e.target.checked)}
-        style={{ width: "17px", height: "17px", accentColor: "#8F2B1E", margin: "3px 0 0", flex: "none" }}
-      />
-      <span>
-        {label}
-        {note ? <span style={{ display: "block", fontSize: "14px", fontStyle: "italic", color: "#6B5D4D" }}>{note}</span> : null}
-      </span>
-    </label>
-  );
+  const checkbox = (b: ContrastBackground, label: React.ReactNode, enabled: boolean, note?: React.ReactNode) => {
+    const ticked = contrast.backgrounds.includes(b);
+    // one ticked that can no longer be read against can still be unticked, as the radio's "nothing" could always be chosen
+    const usable = enabled || (contrast.on && ticked);
+    return (
+      <label
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "10px",
+          minHeight: "44px",
+          paddingTop: "10px",
+          cursor: usable ? "pointer" : "not-allowed",
+          color: enabled ? "#2B2117" : "#6B5D4D",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={ticked}
+          disabled={!usable}
+          onChange={(e) => tick(b, e.target.checked)}
+          style={{ width: "17px", height: "17px", accentColor: "#8F2B1E", margin: "3px 0 0", flex: "none" }}
+        />
+        <span>
+          {label}
+          {note ? <span style={{ display: "block", fontSize: "14px", fontStyle: "italic", color: "#6B5D4D" }}>{note}</span> : null}
+        </span>
+      </label>
+    );
+  };
 
   const box = (id: string, value: string, ph: string, set: (v: string) => void) => (
     <input
@@ -622,7 +627,8 @@ export const ContrastSection: React.FC<{
         The naked eye needs no lens, but it has a background of its own, leaning the other way: E3 read its average state by
         the naked eye at −4.3 on the six pronoun pairs, toward the male words, at layers 1–20, and −0.9 at layers 41–50. On
         neutral prose the naked eye read −3.8, −6.5 and −3.6 at layers 1–10, 11–20 and 21–30, and centring on the average state
-        still left −4.8 and −5.7 at layers 11–30 (E3 (c), its naked-eye figures). The dashed line is no clean baseline either.
+        still left −4.8 and −5.7 at layers 11–30 (E3 (c), its naked-eye figures). The naked eye’s grey dashed line is no
+        clean baseline either.
       </Rubric>
       {contrast.backgrounds.includes("study_mean") || shownBgs.includes("study_mean") ? (
         <Rubric style={{ maxWidth: "860px" }}>

@@ -416,11 +416,12 @@ the settings' `toward` and `away`, as when the section sent one, the rest `more`
 does not pair, sends none, and the page says why, naming the row ("the second pair: …"). The backgrounds are
 checkboxes, either or both, sent in `CONTRAST_BACKGROUNDS`' order, dropping "controls" when no matched control goes
 with the request and "study_mean" when `/api/health` gives a `study_mean_problem`, so a sighting is never refused for
-them. Ticking the matched control also centres the frame, since the control goes with the request as
-`centre_token_ids`. The chart draws one contrast at a time, picked by a pill for each the sighting read (the first it
-could read until one is picked; one it could not read shows its error), and each background it was read against as a
-line of its own (against the control solid, centred on the average state dashed), with the bands as before. Both keys
-are reading keys: changing them reads the answer shown again from its ids (`answer_token_ids`), nothing written again.
+them; a box ticked that can no longer be sent can still be unticked. Ticking the matched control also centres the
+frame, since the control goes with the request as `centre_token_ids`. The chart draws one contrast at a time, picked
+by a pill for each the sighting read (the first it could read until one is picked; one it could not read shows its
+error), and each background it was read against as a line of its own (against the control solid, centred on the
+average state dashed), with the bands as before. Both keys are reading keys: changing them reads the answer shown again
+from its ids (`answer_token_ids`), nothing written again.
 `Sighting.contrasts` is null when the server sent none (the recorded sighting, an older server) and [] when none was
 asked for.
 
