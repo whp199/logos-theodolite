@@ -11,11 +11,12 @@ model nor the lens, and hides the GPU. It checks, against brute force:
 3. writing three rows at once, each under its own push and left-padded to the longest, writes what each row writes
    alone, and an unpushed row writes what the model writes unpushed; `TextDeltas` adds up to the decoded text, with
    characters split over pieces held back until whole; written with the instrument's sampler: at temperature 0 every
-   Step is the greedy one; a seed draws the same again and another seed other pieces; with every push at dose 0 the
-   voices of a sample write alike (the shared draw); sample s's unpushed row is an unpushed write alone with seed + s;
-   over 4,000 seeds the first piece, and the second after a presence penalty that moves it, come as often as
-   `sampler_chances` says (chi-square), and the race itself on sharper logits; each piece's `sampler_prob` is above 0
-   and its chance replayed; a presence penalty without a temperature, and a sampled write without a seed, are refused;
+   Step is the greedy one; a seed draws the same again and another seed other pieces; with every push an add or an act
+   at dose 0 the voices of a sample write alike (the shared draw); sample s's unpushed row is an unpushed write alone
+   with seed + s; over 4,000 seeds the first piece, and the second after a presence penalty that moves it, come as often
+   as `sampler_chances` says (chi-square), and the race itself on sharper logits; each piece's `sampler_prob` is above 0
+   and its chance replayed; a presence penalty without a temperature, a sampled write without a seed, and a temperature
+   so small that the sampler has no chances to draw from (the race would take piece 0), are refused;
 4. `read_neuron` is the activation a plain hook sees; a push on an earlier layer moves it, a push on the neuron itself
    at its own layer does not (the read comes first); `next_logprobs`' two rows equal two separate forwards;
 5. `all_activations` and `activation_extremes` equal per-text brute force, leaving out the start mark, and the four
@@ -336,11 +337,12 @@ def check_sampling(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any, stop: Li
         worst = max(worst, abs(float(ch[s.token_id]) - s.sampler_prob) / float(ch[s.token_id]))
         so_far.append(s.token_id)
     check(worst < 1e-4, f"sampled write: sampler_prob is not the replayed chance of the piece (worst relative gap {worst:.2e})")
-    # (c) the shared draw: with every push at dose 0 the voices of each sample write alike, here two samples at once
+    # (c) the shared draw: with every push an add or an act at dose 0 the voices of each sample write alike (a mul at
+    # dose 0 would silence its neuron in the pushed rows), here two samples at once
     zero = ao.resolve(w, [ao.Push(3, 40, "add", 0.0), ao.Push(2, 7, "act", 0.0)], [], ao.THREE_VOICES * 2, lambda l: 3.0, lambda l, i: 2.0)
     z = pieces(steps([prompts[0]] * 6, zero, n=20, sampler=hot, samples_of=[0, 0, 0, 1, 1, 1]), 6)
     check(z[0] == z[1] == z[2] and z[3] == z[4] == z[5] and z[0] != z[3],
-          "sampled write: with every push at dose 0 the three voices of a sample did not write alike (or two samples did)")
+          "sampled write: with every push an add or an act at dose 0 the three voices of a sample did not write alike (or two samples did)")
     # (d) sample s's unpushed row is an unpushed write alone with seed + s; a real push moves its voices (at 0.7: on the
     # stand-in's flat odds at 1.5 the shared draw keeps pushed voices with the unpushed one almost everywhere)
     iv3 = ao.resolve(w, pushes, [], ao.THREE_VOICES * 3, lambda l: 3.0, lambda l, i: 1.0)
@@ -400,20 +402,32 @@ def check_sampling(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any, stop: Li
         off, _ = chi_square_p(counts, sampler_chances(sharp, resolve_sampling(None, temperature=1.25 * T, top_k=50, top_p=0.9, presence_penalty=0.0), []))
         check(p > 1e-3 and df >= 10 and off < 1e-6 and torch.equal(at.flatten(), ch[nxt]),
               f"the race at T {T}, top-k 50, top-p 0.9 on sharper logits: p {p:.2g} ({df} df), against T {1.25 * T:g} p {off:.2g}")
+    # the logits over a temperature of 1e-39 overflow and every chance is NaN: refused, where the race's guard would
+    # score every piece 0 and take piece 0 (the pad mark); 1e-38 still draws on the stand-in's logits
     for bad, says in ((SamplerSettings(presence_penalty=0.5), "only with a temperature above 0"),
-                      (SamplerSettings(temperature=0.7), "needs its seed")):
+                      (SamplerSettings(temperature=0.7), "needs its seed"),
+                      (SamplerSettings(temperature=1e-39, seed=1), "no chances to draw from")):
         try:
             steps([ids], None, n=2, sampler=bad)
             check(False, f"sampled write: {bad} was not refused")
         except ValueError as exc:
             check(says in str(exc), f"sampled write refused: {exc}")
+    tiny = steps([ids], None, n=3, sampler=SamplerSettings(temperature=1e-38, seed=1))
+    check(len(tiny) == 3 and all(s.sampler_prob is not None and 0 < s.sampler_prob <= 1 for s in tiny),
+          f"sampled write at temperature 1e-38: drawn, each chance a number ({[(s.token_id, s.sampler_prob) for s in tiny]})")
+    nan_row = torch.stack([sharp, torch.full_like(sharp, float("nan"))])
+    warm = resolve_sampling(None, temperature=0.7, top_k=0, top_p=1.0, presence_penalty=0.0)
+    _, at = ao._Race(warm, 0, [0, 0], torch.device("cpu")).draw(nan_row, [[], []])
+    check(0 < float(at[0, 0]) <= 1 and torch.isnan(at[1, 0]).item(),
+          f"the race: a row whose chances are NaN gets NaN for its chance, the other row its own ({at.flatten().tolist()})")
     try:
         steps([ids] * 2, None, n=2, sampler=hot, samples_of=[0])
         check(False, "sampled write: samples_of for 1 of 2 rows was not refused")
     except ValueError:
         pass
     section("sampled writing: over 4,000 seeds the first piece, and the second under a presence penalty, as sampler_chances "
-            "says (chi-square), the race on sharper logits too; a penalty without a temperature, and a draw without a seed, refused", before)
+            "says (chi-square), the race on sharper logits too; a penalty without a temperature, a draw without a seed, and a "
+            "temperature with no chances to draw from, refused", before)
 
 
 def check_reading(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any) -> None:

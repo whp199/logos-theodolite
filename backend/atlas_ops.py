@@ -457,14 +457,17 @@ class _Race:
     def draw(self, logits: torch.Tensor, written: Sequence[Sequence[int]]) -> Tuple[torch.Tensor, torch.Tensor]:
         """[B] the pieces drawn from [B, V] logits, and [B, 1] float32 the chance each was drawn at. Each row's chances
         are the instrument's sampler's (`sampler_chances`, in the logits' own dtype, as interp_engine draws from them),
-        its presence penalty on the pieces that row has written so far."""
+        its presence penalty on the pieces that row has written so far. A row whose chances are not a distribution (one
+        not finite, or none above 0, as when the logits over a vanishing temperature overflow) gets NaN for its chance,
+        which `write_rows` refuses: interp_engine's own draw (`torch.multinomial`) refuses such chances too."""
         ch = torch.stack([self.chances_of(logits[r], self.settings, written[r]) for r in range(logits.shape[0])]).float()
         V = ch.shape[-1]
         q = torch.stack([torch.empty(V, dtype=torch.float32).exponential_(1.0, generator=g) for g in self.gens]).to(ch.device)
         # a piece the sampler cannot draw scores 0 even where q is 0 (0 / 0 would be NaN, which argmax takes)
         score = torch.where(ch > 0, ch / q[self.of_row], torch.zeros((), dtype=ch.dtype, device=ch.device))
         nxt = score.argmax(-1)
-        return nxt, ch.gather(-1, nxt[:, None])
+        drawable = (torch.isfinite(ch).all(-1) & (ch > 0).any(-1))[:, None]
+        return nxt, torch.where(drawable, ch.gather(-1, nxt[:, None]), torch.full((), float("nan"), device=ch.device))
 
 
 def _model_logits(lm: nn.Module, W_U: torch.Tensor, h: torch.Tensor, softcap: Optional[float]) -> torch.Tensor:
@@ -504,12 +507,14 @@ def write_rows(
     every row's piece from the instrument's own sampler by one exponential race per sample (`_Race`): row r belongs to
     sample `samples_of[r]` (every row to sample 0 when None), drawn with `sampler.seed + s`. The rows of a sample share
     their draw, so a pushed row parts from the unpushed one only where the push moves the odds, and rows whose logits
-    come out alike write alike: with every push at dose 0 the voices are the same, and a sample's unpushed row writes
-    what an unpushed write alone with seed + s does (both checked in float32 on the stand-in; on the GPU the batch's
-    size can move a row's numbers, as it can a greedy row's). Each row's draw follows its own chances exactly but is not
-    interp_engine's own draw (`torch.multinomial`, in sorted order under top-p), so a seed here does not draw what the
-    same seed draws in a sweep. Each Step then carries `sampler_prob`. There is no min-p and no repetition penalty:
-    backend/sampler_request.py says why."""
+    come out alike write alike: with every push an add or an act at dose 0 the voices are the same (a mul at dose 0
+    silences its neuron in the pushed rows), and a sample's unpushed row writes what an unpushed write alone with
+    seed + s does (both checked in float32 on the stand-in; on the GPU the batch's size can move a row's numbers, as it
+    can a greedy row's). Each row's draw follows its own chances exactly but is not interp_engine's own draw
+    (`torch.multinomial`, in sorted order under top-p), so a seed here does not draw what the same seed draws in a
+    sweep. Each Step then carries `sampler_prob`, and a step with no chances to draw from (a temperature so small that
+    the logits over it overflow) is refused. There is no min-p and no repetition penalty: backend/sampler_request.py
+    says why."""
     dev = model_device(lm)
     B = len(rows_ids)
     if iv is not None and iv.rows != B:
@@ -556,6 +561,10 @@ def write_rows(
             if race is not None:
                 cols.append(drawn_at.double())
             host = torch.cat(cols, dim=-1).cpu().tolist()
+            if race is not None and any(not done[r] and not host[r][-1] > 0 for r in range(B)):
+                raise ValueError(f"At temperature {float(sampler.temperature):g} the sampler has no chances to draw from (one is "
+                                 "not a number, or none is above 0: the logits over so small a temperature can overflow). "
+                                 "Write greedily (temperature 0), or at a larger temperature.")
             for r in range(B):
                 if done[r]:
                     continue
