@@ -23,11 +23,13 @@ is the one multiply by the scale; the product of two bf16 values is exact in flo
 route rounds it once, to nearest even, back to bf16. That is an argument, not a measurement, so it is tested twice:
 scripts/check_dequant.py compares "lut" with the reference on every one of the 16 pieces x 65,536 bf16 scale bit
 patterns (NaNs by their bits), and every mode on a 4-bit stand-in (forward, overlays, a pushed answer, a census) byte
-for byte on the CPU; and `install` tests "compiled" and "resident" (and "lut" on CUDA, whose multiply is another
-kernel) against the reference on every linear of the model, by bits, and "compiled" and "lut" on the whole
-piece-by-scale table too, there by bits but for the NaNs' own (Inductor writes a NaN 0x7fc0 where eager torch on the
-CPU writes 0xffff; only a NaN or an infinite scale makes one, and no finite checkpoint holds either), and refuses in
-plain words on any other difference, before anything is read.
+for byte on the CPU; and `install` tests "compiled" and "lut" (this on CUDA, whose multiply is another kernel, or when
+asked) against the reference on every linear of the model, by bits and strides, and on the whole piece-by-scale table
+too, there by bits but for the NaNs' own (Inductor writes a NaN 0x7fc0 where eager torch on the CPU writes 0xffff;
+only a NaN or an infinite scale makes one, and no finite checkpoint holds either); and "resident" by each kept weight
+against a fresh unpacking and each linear's new forward against the pinned one on a fixed two-row probe, by bits and
+strides (one probe's product, not every batch's); and refuses in plain words on any other difference, before anything
+is read.
 
 How it is installed. The pinned forward (`_w4a16_forward`), `dequantize_w4a16_rows` (so `slice_w_gate` and
 `slice_w_up`) and `get_full_w_down`, `_gate` and `_up` look `dequantize_w4a16_full` up as a module global at call
@@ -88,6 +90,12 @@ def same_bits(a: torch.Tensor, b: torch.Tensor) -> bool:
         as_int = {2: torch.int16, 4: torch.int32, 8: torch.int64}[a.element_size()]
         return torch.equal(a.contiguous().view(as_int), b.contiguous().view(as_int))
     return torch.equal(a, b)
+
+
+def same_layout(a: torch.Tensor, b: torch.Tensor) -> bool:
+    """`same_bits` and the same strides too: a weight laid out otherwise (the same numbers, transposed in memory)
+    sends F.linear to another kernel, whose sums may round otherwise."""
+    return same_bits(a, b) and a.stride() == b.stride()
 
 
 def table_agrees(a: torch.Tensor, b: torch.Tensor) -> Tuple[bool, int, int]:
@@ -194,13 +202,27 @@ def _installed_compiled(tested: Set[_Key]) -> Unpacker:
     @torch.no_grad()
     def dequantize_w4a16_full_compiled_tested(packed: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
         """The compiled unpacker for the shapes `install` tested by bits; any other shape (a slice of rows, a weight
-        of another model) through the reference."""
+        of another model) through the reference. Only the graphs compiled at install run: a call whose guards those
+        graphs fail (under torch.inference_mode or autocast, say), which dynamo would compile afresh, untested, goes
+        through the reference instead (`fail_on_recompile`), and is counted (`.fell_back`)."""
         key = _key(packed, scale)
         if key in tested and packed.is_contiguous() and scale.is_contiguous():
-            return _COMPILED[key](packed, _er._get_nibble_shifts(packed.device), scale)
+            try:
+                with torch.compiler.set_stance("fail_on_recompile"):
+                    return _COMPILED[key](packed, _er._get_nibble_shifts(packed.device), scale)
+            except RuntimeError as exc:
+                if "recompile" not in str(exc):
+                    raise
+                dequantize_w4a16_full_compiled_tested.fell_back += 1  # type: ignore[attr-defined]
+                if dequantize_w4a16_full_compiled_tested.fell_back == 1:  # type: ignore[attr-defined]
+                    lines = [ln.strip() for ln in str(exc).splitlines()]
+                    why = next((ln[2:] for ln in lines if ln.startswith("- ")), lines[0] if lines else "")
+                    logger.warning("unpacker: a call the compiled graphs were not tested for (%s) goes through the "
+                                   "reference unpacker, as will any other", why[:200])
         return REFERENCE(packed, scale)
 
     dequantize_w4a16_full_compiled_tested.tested = tested  # type: ignore[attr-defined]
+    dequantize_w4a16_full_compiled_tested.fell_back = 0  # type: ignore[attr-defined]
     return dequantize_w4a16_full_compiled_tested
 
 
@@ -210,7 +232,9 @@ def _installed_compiled(tested: Set[_Key]) -> Unpacker:
 def _make_resident_forward(module: nn.Module) -> Callable[[torch.Tensor], torch.Tensor]:
     """A forward over the kept weight with `_w4a16_forward`'s overlay rules, line for line: the vault's column
     overlays (down_proj) and row overlays (gate_proj, up_proj; none is written today) applied to a clone, never to
-    the kept weight, which nothing writes in place (its version counter is checked on every call)."""
+    the kept weight, which nothing writes in place. Its version counter is checked on every call, which sees any
+    in-place op on it or on a view of it (under torch.no_grad too), though not a write through `.data` or straight
+    into its storage."""
 
     def _w4a16_resident_forward(self: nn.Module, x: torch.Tensor) -> torch.Tensor:
         w = self._resident_w
@@ -235,6 +259,21 @@ def _make_resident_forward(module: nn.Module) -> Callable[[torch.Tensor], torch.
         return F.linear(x.to(dtype=w.dtype), w, bias)
 
     return types.MethodType(_w4a16_resident_forward, module)
+
+
+_PROBES: Dict[Tuple[int, str], torch.Tensor] = {}
+
+
+def _probe(module: nn.Module) -> torch.Tensor:
+    """The fixed input `install` passes through a linear's resident and pinned forwards: two rows of N(0, 1) draws
+    (seed 0) as wide as the linear reads, in bf16 on its device."""
+    key = (int(module.weight_packed.shape[1]) * 8, str(module.weight_packed.device))
+    x = _PROBES.get(key)
+    if x is None:
+        g = torch.Generator().manual_seed(0)
+        x = torch.randn(2, key[0], generator=g).to(torch.bfloat16).to(module.weight_packed.device)
+        _PROBES[key] = x
+    return x
 
 
 def free_bytes(device: Any) -> Optional[int]:
@@ -318,19 +357,25 @@ def _uninstall(model: Optional[nn.Module]) -> None:
 
 
 def _self_test(linears: Sequence[Tuple[str, nn.Module]], fast: Unpacker, *, table: bool,
-               tested: Optional[Set[_Key]] = None) -> Tuple[Dict[str, Any], List[str], Optional[str]]:
-    """Every linear's whole weight through `fast` against the reference, by bits (each shape that matched added to
-    `tested`), and with `table` the piece-by-scale table on each device the linears are on (`table_agrees`: by bits
-    but for the NaNs' own). Returns (the record, the linears that differed, how the table differed or None)."""
+               tested: Optional[Set[_Key]] = None) -> Tuple[Dict[str, Any], List[Tuple[str, str]], Optional[str]]:
+    """Every linear's whole weight through `fast` against the reference, by bits and strides (`same_layout`; each
+    shape that matched added to `tested`), and with `table` the piece-by-scale table on each device the linears are
+    on (`table_agrees`: by bits but for the NaNs' own). Returns (the record, the linears that differed with how, how
+    the table differed or None)."""
     t0 = time.perf_counter()
-    bad: List[str] = []
+    bad: List[Tuple[str, str]] = []
     for name, mod in linears:
         p, s = mod.weight_packed, mod.weight_scale
-        if same_bits(fast(p, s), REFERENCE(p, s)):
+        got, want = fast(p, s), REFERENCE(p, s)
+        if same_layout(got, want):
             if tested is not None:
                 tested.add(_key(p.contiguous(), s.contiguous()))
+        elif same_bits(got, want):
+            bad.append((name, f"the same bits laid out otherwise, strides {tuple(got.stride())} where the reference's "
+                              f"are {tuple(want.stride())}"))
         else:
-            bad.append(name)
+            bad.append((name, "other bits"))
+        del got, want
     table_bad: Optional[str] = None
     payloads = 0
     devices = sorted({str(m.weight_packed.device) for _n, m in linears}) or ["cpu"]
@@ -360,11 +405,12 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
     """Install the unpacker `mode` (MODES) on a loaded runtime (or its model), after putting back whatever was
     installed before, and return the record a reading keeps (`describe()`).
 
-    "compiled" and "resident" are tested first on every 4-bit linear of the model, by bits, against the reference;
+    "compiled" is tested first on every 4-bit linear of the model, by bits and strides, against the reference, and
     "lut" is when the model is on CUDA, or when `self_test` is true ("lut" on the CPU is checked exhaustively by
-    scripts/check_dequant.py); "compiled" and "lut", when tested, on the piece-by-scale table too. "resident" checks
-    first that its kept weights fit where the model is. Any of these failing raises `Refused`, in plain words, with
-    the runtime left on the reference unpacker and nothing read."""
+    scripts/check_dequant.py); each, when tested, on the piece-by-scale table too. "resident" checks first that its
+    kept weights fit where the model is, then each kept weight against a fresh unpacking and each linear's forward
+    against the pinned forward on a fixed probe (`_probe`). Any of these failing raises `Refused`, in plain words,
+    with the runtime left on the reference unpacker and nothing read."""
     say = log or logger.info
     model = _model_of(rt_or_model)
     _uninstall(model)
@@ -398,11 +444,11 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
             if bad or table_bad:
                 what = []
                 if bad:
-                    what.append(f"on {len(bad)} of {len(linears)} linears ({bad[0]} first)")
+                    what.append(f"on {len(bad)} of {len(linears)} linears ({bad[0][0]} first: {bad[0][1]})")
                 if table_bad:
                     what.append(f"on the piece-by-scale table ({table_bad})")
-                raise Refused(f"The {mode} unpacker gave other bits than the reference {' and '.join(what)}; nothing "
-                              "was installed, and the runtime keeps the reference unpacker.")
+                raise Refused(f"The {mode} unpacker's weights differ from the reference's {' and '.join(what)}; "
+                              "nothing was installed, and the runtime keeps the reference unpacker.")
             rec["self_test"] = st
         else:
             rec["self_test"] = None
@@ -433,29 +479,45 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
                 mod._resident_version = w._version
                 mod._resident_name = name
                 mod.forward = _make_resident_forward(mod)
-            # each kept weight against a fresh unpacking, by bits
+            # each kept weight against a fresh unpacking (which says only that the unpacker gives what it gave), and
+            # what differs from the pinned path, the new forward's product over the kept weight, against the pinned
+            # forward's on a fixed probe, by bits and strides, overlays as they stand (none at load)
             t1 = time.perf_counter()
             bad = [name for name, mod in linears
-                   if not same_bits(mod._resident_w, REFERENCE(mod.weight_packed, mod.weight_scale))]
+                   if not same_layout(mod._resident_w, REFERENCE(mod.weight_packed, mod.weight_scale))]
+            fwd_bad = [name for name, mod in linears
+                       if not same_layout(mod.forward(_probe(mod)), _er._make_w4a16_linear_forward(mod)(_probe(mod)))]
         except Exception as exc:
             _uninstall(model)
             raise Refused(f"The resident weights could not be kept ({type(exc).__name__}: {exc}); nothing was "
                           "installed, and the runtime keeps the reference unpacker.") from exc
-        if bad:
+        if bad or fwd_bad:
             _uninstall(model)
-            raise Refused(f"A resident weight differs from the reference unpacker's on {len(bad)} of {len(linears)} "
-                          f"linears ({bad[0]} first); nothing was installed, and the runtime keeps the reference "
-                          "unpacker.")
+            what = []
+            if bad:
+                what.append(f"a kept weight differs from a fresh unpacking on {len(bad)} of {len(linears)} linears "
+                            f"({bad[0]} first)")
+            if fwd_bad:
+                what.append(f"the resident forward's output on a probe differs from the pinned forward's on "
+                            f"{len(fwd_bad)} of {len(linears)} linears ({fwd_bad[0]} first)")
+            raise Refused(f"The resident unpacker failed its test: {' and '.join(what)}; nothing was installed, and the "
+                          "runtime keeps the reference unpacker.")
         rec["self_test"] = {"linears": len(linears), "same_bits": True, "table": None,
+                            "probe": "2 rows of N(0, 1), seed 0, through each linear's resident and pinned forwards",
                             "seconds": round(time.perf_counter() - t1, 2)}
         rec["resident_bytes"] = sum(kept for kept, _p in need.values())
     rec["install_s"] = round(time.perf_counter() - t0, 2)
     _STATE.clear()
     _STATE.update(rec)
     st = rec.get("self_test")
-    say(f"unpacker: {mode} on {len(linears)} linears ({rec['shapes']} shapes) in {rec['install_s']} s; "
-        + (f"the same bits as the reference on every one{' and on the piece-by-scale table' if st.get('table') else ''}"
-           if st else "not tested here (scripts/check_dequant.py checks it exhaustively on the CPU)"))
+    if not st:
+        tested_how = "not tested here (scripts/check_dequant.py checks it exhaustively on the CPU)"
+    elif mode == "resident":
+        tested_how = "every kept weight the reference's bits, and every forward the pinned one's on a probe"
+    else:
+        tested_how = ("the same bits as the reference on every one"
+                      + (" and on the piece-by-scale table" if st.get("table") else ""))
+    say(f"unpacker: {mode} on {len(linears)} linears ({rec['shapes']} shapes) in {rec['install_s']} s; {tested_how}")
     return dict(rec)
 
 

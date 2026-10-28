@@ -5,16 +5,19 @@ them is the same, byte for byte. It loads neither the real model nor the lens, a
 1. the piece-by-scale table, exhaustively: each of the 16 pieces beside each of the 65,536 bf16 scale bit patterns,
    through "lut" and the reference, the same bits (NaNs by their bits, -0 apart from +0); the reference's own product
    is (piece - 8) x scale rounded once to the nearest bf16; through "compiled", the same bits but for the NaNs' own;
+   and table_agrees, which install's table test uses, tells a number one bit off and a NaN moved from a NaN's bits;
 2. where the runtime looks the unpacker up: the pinned forward, dequantize_w4a16_rows (so slice_w_gate and
    slice_w_up), get_full_w_down, _gate and _up, atlas_ops.dense_weight and labkit's gradient linears call whatever
    engine_runtime.dequantize_w4a16_full is bound to at the time; slice_w_down goes through dequantize_w4a16_cols,
    which is never rebound;
 3. random packed matrices of several shapes (bf16 scales, and float32 ones), whole and through the row and column
    slicers, in each mode: the same bits as the reference; and each mode's forward over them, bare and under a column
-   and a row overlay, gives the pinned forward's output;
+   and a row overlay, gives the pinned forward's output; a "compiled" call its graphs were not tested for (under
+   torch.inference_mode) goes through the reference, nothing compiled after install;
 4. refusals, in plain words, the runtime left on the reference: an unpacker that is not one; a "lut" whose bits
-   differ (its self-test); resident weights that do not fit (the bytes needed said); and a resident weight written
-   in place is caught at the next forward;
+   differ on a linear, one whose bits differ only on the piece-by-scale table, and one whose bits are right but laid
+   out otherwise (its self-test); resident weights that do not fit (the bytes needed said); a resident forward one
+   bit off the pinned one on the probe; and a resident weight written in place is caught at the next forward;
 5. a 4-bit stand-in: scripts/atlas_stand_in.py's tiny Gemma 4 in bf16, every block linear quantised to group-32
    symmetric 4-bit with bf16 scales in compressed-tensors' pack-quantized layout (as the dequantizer reads it) and
    patched by patch_compressed_tensors_for_low_vram, as the real checkpoint is; in each mode, byte for byte against
@@ -187,6 +190,22 @@ def check_table(compiled: bool) -> None:
           "the reference: (piece - 8) x scale, exact in float32, rounded once to the nearest bf16")
     one = (s.view(torch.int16).flatten() == 0x3F80).nonzero().item()
     check(ref[one].tolist() == pieces.tolist(), "at scale 1 the pieces minus 8 themselves, in column order 8k + j")
+    # table_agrees, as install's table test reads it: a number one bit off and a NaN moved disagree, a NaN's own bits not
+    nan_at, num_at = int(nan.view(-1).nonzero()[0]), one * 32 + 3
+
+    def edited(at: int, to: Optional[int] = None) -> torch.Tensor:
+        t = ref.clone()
+        flat = t.view(torch.int16).view(-1)
+        flat[at] = (flat[at] ^ 1) if to is None else to
+        return t
+
+    check(wf.table_agrees(ref, ref) == (True, 0, 0), "table_agrees: the reference agrees with itself")
+    check(wf.table_agrees(edited(num_at), ref) == (False, 1, 0), "table_agrees: one product one bit off disagrees")
+    check(wf.table_agrees(edited(nan_at, 0), ref) == (False, 1, 0)
+          and wf.table_agrees(edited(num_at, 0x7FC0), ref) == (False, 1, 0),
+          "table_agrees: a NaN where the reference has a number, or a number where it has a NaN, disagrees")
+    check(int(bits.view(-1)[nan_at]) == -1 and wf.table_agrees(edited(nan_at, 0x7FC0), ref) == (True, 0, 1),
+          "table_agrees: a NaN with other bits (0x7fc0 for 0xffff) agrees, counted apart")
     t0 = time.time()
     for _ in range(3):
         wf.dequantize_w4a16_full_lut(p, s)
@@ -317,6 +336,16 @@ def check_random(modes: List[str]) -> None:
         got = forwards(holder, xs)
         check(all(wf.same_bits(a, b) for a, b in zip(got, ref_out)),
               f"{mode}: every forward the pinned forward's output, bare and under column and row overlays")
+        if mode == "compiled":
+            from torch._dynamo.utils import counters
+
+            graphs = counters["stats"]["unique_graphs"]
+            p, s = random_packed(40, 256, 3)
+            with torch.inference_mode():  # dynamo's guards fail, so it would compile a graph never tested
+                got_im = ER.dequantize_w4a16_full(p, s)
+            new = counters["stats"]["unique_graphs"] - graphs
+            check(wf.same_layout(got_im, wf.REFERENCE(p, s)) and new == 0 and ER.dequantize_w4a16_full.fell_back == 1,
+                  f"compiled: a call its graphs were not tested for, through the reference ({new} compiled after install)")
         if mode == "resident":
             for lin in holder.lins:
                 w = lin._resident_w
@@ -362,13 +391,62 @@ def check_refusals(rt: Any) -> None:
 
     wf.dequantize_w4a16_full_lut = off_by_one_bit
     try:
-        msg = refused(lambda: wf.install(rt, "lut", self_test=True), "other bits than the reference", "linears",
-                      "nothing was installed")
+        msg = refused(lambda: wf.install(rt, "lut", self_test=True), "weights differ from the reference's on", "linears",
+                      "first: other bits", "nothing was installed")
     finally:
         wf.dequantize_w4a16_full_lut = true_lut
     print(f"        e.g. {msg}")
     check(ER.dequantize_w4a16_full is wf.REFERENCE and wf.describe(rt)["mode"] == "reference",
           "a self-test that fails leaves the reference bound")
+
+    def off_on_the_table(packed: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
+        w = true_lut(packed, scale)
+        if tuple(packed.shape) == (65536, 4):  # one product at scale 1.0 one bit off, nowhere a linear reads
+            w = w.clone()
+            w.view(torch.int16)[0x3F80 ^ 0x8000, 3] ^= 1
+        return w
+
+    def laid_out_otherwise(packed: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
+        w = true_lut(packed, scale)
+        return w.t().contiguous().t() if packed.shape == lm.layers[4].mlp.up_proj.weight_packed.shape else w
+
+    for fake, words, what in ((off_on_the_table, ("reference's on the piece-by-scale table",
+                                                   "1 of its 2,097,152 products differ", "(0x3f80)"),
+                               "one product off on the table alone"),
+                              (laid_out_otherwise, ("reference's on", "linears", "the same bits laid out otherwise, strides"),
+                               "the same bits laid out otherwise")):
+        wf.dequantize_w4a16_full_lut = fake
+        try:
+            msg = refused(lambda: wf.install(rt, "lut", self_test=True), *words, "nothing was installed")
+        finally:
+            wf.dequantize_w4a16_full_lut = true_lut
+        print(f"        e.g. {msg}")
+        check(ER.dequantize_w4a16_full is wf.REFERENCE and wf.describe(rt)["mode"] == "reference",
+              f"a lut with {what} refused, the reference left bound")
+    true_make = wf._make_resident_forward
+    odd = lm.layers[3].mlp.down_proj
+
+    def one_bit_off(module: nn.Module) -> Any:
+        f = true_make(module)
+        if module is not odd:
+            return f
+
+        def off(x: torch.Tensor) -> torch.Tensor:
+            y = f(x).clone()
+            y.view(torch.int16).view(-1)[0] ^= 1
+            return y
+
+        return off
+
+    wf._make_resident_forward = one_bit_off
+    try:
+        msg = refused(lambda: wf.install(rt, "resident"), "output on a probe differs from the pinned forward's",
+                      "on 1 of 41 linears", "layers.3.mlp.down_proj first", "nothing was installed")
+    finally:
+        wf._make_resident_forward = true_make
+    print(f"        e.g. {msg}")
+    check(all(pinned_forward(m) and "_resident_w" not in m.__dict__ for _n, m in wf.packed_linears(rt.hf_model)),
+          "a resident forward off the pinned one refused: every forward the pinned one, nothing kept")
     true_free = wf.free_bytes
     wf.free_bytes = lambda device: 4096
     try:
@@ -391,8 +469,9 @@ def check_refusals(rt: Any) -> None:
     except RuntimeError as exc:
         check("written in place" in str(exc) and "layers.1.self_attn.q_proj" in str(exc), f"caught: {exc}")
     wf.install(rt, "reference")
-    section("refusals in plain words, the reference left bound: an unknown unpacker, a lut off by one bit, resident "
-            "weights that do not fit; a kept weight written in place caught", before)
+    section("refusals in plain words, the reference left bound: an unknown unpacker, a lut off by one bit on a linear or "
+            "on the table alone or laid out otherwise, resident weights that do not fit, a resident forward one bit off; "
+            "a kept weight written in place caught", before)
 
 
 # ----------------------------------------------------------------------------------------- 5. the 4-bit stand-in
@@ -463,6 +542,9 @@ def check_stand_in(rt: Any, vault: LarqlVaultEngine, modes: List[str], tmp: Path
                   "compiled: the stand-in's 4 shapes go through the compiled unpacker, each tested at install")
         got = readings(rt, vault, tmp / f"{mode}.jsonl")
         dt = time.time() - t0
+        if mode == "compiled":
+            check(ER.dequantize_w4a16_full.fell_back == 0, "compiled: every reading through the graphs tested at install, "
+                  f"none sent to the reference ({ER.dequantize_w4a16_full.fell_back})")
         for k, v in ref.items():
             if k == "census_meta":
                 strip = lambda m: {a: b for a, b in m.items() if a not in ("unpacker", "started_at")}  # noqa: E731
