@@ -11,7 +11,8 @@ THEODOLITE_CHECKPOINT_LINEARS=int4mm) departs from the reference path, and how m
 64 rows in bf16 on this machine's threads: the best of --reps wall times of the reference (the packed layer's forward:
 unpack, then F.linear), the resident bf16 product and the kernel (`int4_cpu.timed_layer`); about 3 GB of memory.
 
-The comparison, after gpu_runtime.md §3.5 (scripts/check_gguf_cpu.py §4 runs it on the stand-in): a canary census
+The comparison, after neuron-explorer's sweep/check_equivalence.py, judged on what a census reads
+(scripts/check_gguf_cpu.py §4 runs it on the stand-in): a canary census
 (backend/census.py's questions and main_rel's doses, the neurons --neurons of --layer beside --random-controls controls,
 answers of at most --max-new word-pieces, the stream's p50 read once over the study's 36 texts on the reference path),
 taken on one runtime three times: on the reference path at --batch and at --floor-batch (the instrument's own floor:

@@ -4,23 +4,23 @@ unpacked. Opt in with THEODOLITE_GGUF_LINEARS=int4mm (a GGUF) or THEODOLITE_CHEC
 on the CPU only (backend/runtime_factory.py).
 
 Why. Every packed forward of the reference path unpacks every weight (the GGUF unpackers, or the pinned W4A16 one),
-some 7 to 16 ns a weight on the 4 vCPUs this was written on, so minutes a forward for the 31B's 29.3 billion. torch
+some 3 to 16 ns a weight on the 4 vCPUs this was written on, so minutes a forward for the 31B's 29.3 billion. torch
 2.14's CPU kernel reads the 4-bit codes and a scale and zero per 32 in place. Measured there on one 5,376 x 21,504
-layer (ARCHITECTURE §5's table): at one row 2 to 8 ms, against 0.5 to 1.5 s for the reference and 7 to 17 ms for the
-resident bf16 product; at 8 rows about as fast as resident bf16; at 64 rows 3 to 5 times slower than it, still 7 to 14
-times faster than the reference. It needs 0.625 bytes a weight (18 GB for the 31B's linears), where resident bf16
-needs 2 (59 GB).
+layer (ARCHITECTURE §5's table; three runs beside other work, so a spread): at one row 1.7 to 8 ms, against 0.5 to 1.5 s
+for the reference and 7 to 17 ms for the resident bf16 product; at 8 rows about as fast as resident bf16; at 64 rows
+3 to 5 times slower than it, still 4 to 14 times faster than the reference. It needs 0.625 bytes a weight (18 GB for
+the 31B's linears), where resident bf16 needs 2 (59 GB).
 
 What it computes. The kernel's weight is (q - 8) x scale + zero, a scale and zero per group of 32 in the activations'
 dtype, its sums its own. A Q4_0 block is d x (q - 8) with d in fp16: here scale = d rounded to the model's dtype (bf16
 holds 8 of fp16's 11 significant bits), zero 0. A W4A16 group is (q - 8) x scale with scale already bf16: exact. So
 the weight is the file's to within the scale's rounding (Q4_0) or exactly (W4A16), but the products are summed in the
 kernel's order, not F.linear's: the readings are NOT the reference's bits. Every reading taken so says so: the model id
-ends `+int4mm` (`runtime_factory.reading_class`), so a census run, an index or a lens card taken on it is never mixed
-with the reference's, and the weights card names the mode (`linears`, and `layers_as`: "Q4_0 int4mm"). How far it
-departs from the reference is measured by `compare_rows` after scripts/check_gguf_cpu.py §4 (the shared prefix of
-greedy answers, the largest |delta log-prob| over it, the overlap of the five likeliest), on the stand-in there and by
-scripts/compare_int4mm.py on the real model.
+ends `+int4mm` (after `runtime_factory.reading_class`'s `@cpu/bfloat16`), so a census run, an index or a lens card
+taken on it is never mixed with the reference's, and the weights card names the mode (`linears`, and `layers_as`:
+"Q4_0 int4mm"). How far it departs from the reference is measured by `compare_rows` (the shared prefix of greedy
+answers, the largest |delta log-prob| over it, the overlap of the five likeliest): on the stand-in by
+scripts/check_gguf_cpu.py §4, on the real model by scripts/compare_int4mm.py.
 
 What it leaves alone. The accessors (`slice_w_*`, `get_full_w_*`, `write_col_norms`, the atlas's weights, the vault's
 reads) read the layer's own blocks or `weight_packed` as before, so they give the file's numbers, not the kernel's. A
@@ -193,7 +193,8 @@ def enable(rt_or_model: Any, on: bool) -> int:
 
 def compare_rows(ref: Sequence[Dict[str, Any]], new: Sequence[Dict[str, Any]], k: int = 5) -> Dict[str, Any]:
     """Two sets of greedy answers to the same jobs (census rows: `token_ids`, `logprob`, `top_ids`), matched by job,
-    compared as scripts/check_gguf_cpu.py §4 and gpu_runtime.md §3.5 compare an engine against the reference: per
+    compared as neuron-explorer's sweep/check_equivalence.py compares an engine with the reference, on what a census
+    reads (scripts/compare_int4mm.py, scripts/check_gguf_cpu.py §4): per
     answer the shared prefix of word-pieces, the step where they split (None when they do not), the largest
     |delta log-prob| of the chosen piece over the shared prefix, and the overlap of the `k` likeliest over it and at
     the split (whose context is still shared); and over

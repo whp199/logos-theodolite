@@ -409,14 +409,26 @@ THEODOLITE_GGUF=~/models/gemma-4-31b-it-q4_0.gguf .venv/bin/uvicorn backend.serv
 THEODOLITE_DEVICE=cpu .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765 --timeout-graceful-shutdown 3   # the checkpoint, on the CPU
 THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=resident THEODOLITE_GGUF_LENS=none \
     .venv/bin/python scripts/census_run.py --layer 45 --neurons random:8 --random-controls 8 --max-new 32
+THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm .venv/bin/uvicorn backend.server:app \
+    --host 127.0.0.1 --port 8765                       # torch's int4 kernel: fast on the CPU, not the reference's bits
 .venv/bin/python -I scripts/compare_gguf_ct.py <file>  # does the GGUF hold the checkpoint's weights?
+.venv/bin/python -I scripts/compare_int4mm.py --time   # how fast the int4 kernel is here, against the reference
+THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEODOLITE_GGUF_LENS=none \
+    .venv/bin/python -I scripts/compare_int4mm.py --layer 45 --neurons 0-3   # and how far its answers depart from it
 ```
 
-On the CPU, packed 4-bit weights take about 20 GB of RAM and unpack at every forward (minutes a forward on a small
-machine); resident bf16 (`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a word-piece in seconds; the
-J++ lens adds 3.4 GB. Those speeds are inferred from one 4-core machine: time a pilot first. A reading taken on the CPU
-(or in float32) is recorded under its own model id (`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's
-`gguf:<file>#<fingerprint>@cpu/bfloat16`), so no census run or index taken on the GPU is continued or read there.
+The lab daemon (`experiments/lab/labd.py`) and the scientist's MCP server run alone (`backend/mcp_scientist.py`) take
+the same variables. On the CPU, packed 4-bit weights take about 20 GB of RAM and unpack at every forward (minutes a
+forward on a small machine); resident bf16 (`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a
+word-piece in seconds; `int4mm` (a Q4_0 GGUF, or `THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) keeps 4-bit
+weights and multiplies them in place, 70 to 150 times as fast as the packed forward at one row on one 4-core machine (about 2 s
+a written word-piece of the 31B by that arithmetic, not run), but its sums are the kernel's, not the reference's; the
+J++ lens adds 3.4 GB. Those speeds were measured on one layer of one 4-core machine and the rest inferred: time a pilot
+first. A reading taken on the CPU (or in float32, or through int4mm) is recorded under its own model id
+(`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's `gguf:<file>#<fingerprint>@cpu/bfloat16`, with `+int4mm`
+after either), and every index under the weights it was built from, so no census run or index taken on the GPU, or on
+other weights, is continued or read there. A reading that the CPU's memory (MemAvailable) cannot hold is refused in
+plain words before it starts (`THEODOLITE_CPU_MEMORY=off` skips the estimate).
 
 **Take a first sighting**
 

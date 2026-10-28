@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """A CPU check of the GGUF and CPU path's second layer (ARCHITECTURE §5: backend/runtime_factory.py, the lab's
-gradients, the CPU's memory, the int4mm linears) on the tiny random Gemma 4 of scripts/atlas_stand_in.py written to tiny GGUF files, as
-scripts/check_gguf.py writes them:
+gradients, the CPU's memory, the int4mm linears) on the tiny random Gemma 4 of scripts/atlas_stand_in.py written to
+tiny GGUF files, as scripts/check_gguf.py writes them:
 1. the entry points build their runtime through runtime_factory.make_runtime: with nothing set, the pinned
    TheodoliteRuntime as each built it before (the lab daemon's with both lenses, the standalone scientist's without the
    Jacobian lens); on a GGUF on the CPU, the standalone scientist (backend/mcp_scientist.py) and the lab daemon
@@ -27,10 +27,10 @@ scripts/check_gguf.py writes them:
    (+int4mm) and weights card; its accessors read the file's numbers bit for bit; a layer's product is within bf16 of
    the exact one but not the reference's bits, and a row's the same alone or in a batch; with a vault edit in force, or
    turned off, the reference forward bit for bit; `compare_rows` on answers made by hand; the canary census of
-   scripts/compare_int4mm.py (gpu_runtime.md §3.5): the reference's floor between two batches, the kernel's departure
-   from it, and the rule's verdict; a census or an index of the reference refused for it; on a 4-bit stand-in the
-   W4A16 linears through the kernel, an edit on one running the pinned forward, w4a16_fast's resident refused beside
-   it; THEODOLITE_CHECKPOINT_LINEARS=int4mm's model id and card; int4mm off the CPU refused;
+   scripts/compare_int4mm.py (after neuron-explorer's check_equivalence): the reference's floor between two batches,
+   the kernel's departure from it, and the rule's verdict; a census or an index of the reference refused for it; on a
+   4-bit stand-in the W4A16 linears through the kernel, an edit on one running the pinned forward, w4a16_fast's
+   resident refused beside it; THEODOLITE_CHECKPOINT_LINEARS=int4mm's model id and card; int4mm off the CPU refused;
 5. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
 
 Run: .venv/bin/python -I scripts/check_gguf_cpu.py   (exits 0 when every check holds)
@@ -555,7 +555,7 @@ def run_checks(tmp: Path) -> int:
     ic.enable(rt_i4, True)
     check(rt_i4.model_id.endswith("+int4mm") and not torch.equal(rt_i4.hf_model(prompt_i).logits, rt_ref.hf_model(prompt_i).logits),
           "on again: +int4mm, and not the reference's logits")
-    # how far it departs, after gpu_runtime.md §3.5: the canary census three times (scripts/compare_int4mm.py)
+    # how far it departs, after neuron-explorer's check_equivalence: the canary census three times (compare_int4mm.py)
     fake_ref = [{"kind": "neuron", "neuron": 1, "prompt": "who", "dose": 0.5, "token_ids": [4, 5, 6, 7], "logprob": [-1.0, -0.5, -0.2, -0.1],
                  "top_ids": [[4, 1, 2, 3, 9]] * 4},
                 {"kind": "baseline", "neuron": -1, "prompt": "who", "dose": 0.0, "token_ids": [8, 9], "logprob": [-0.3, -0.4],
