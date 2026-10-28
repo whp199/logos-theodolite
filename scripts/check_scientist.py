@@ -5,9 +5,9 @@ scripts/atlas_stand_in.py bound in place of the model, served by uvicorn on a fr
 so the chat is driven over real connections):
 1. the tools' schemas, and the pages' count: layers from 1 in every argument and reply, refused below 1;
 2. each tool against the atlas's routes in this process, its reply the routes' own in the pages' count (a neuron, its
-   links, reads, steering, odds, compare, fires, heads, the drive, the census, names and notes kept without
-   overwriting each other, the cone and the web once the indexes are built), and each screen action reaching the
-   chat's page in the API's count;
+   links, reads, steering (greedy, and sampled with its knobs passed through and its seeds given back), odds, compare,
+   fires, heads, the drive, the census, names and notes kept without overwriting each other, the cone and the web once
+   the indexes are built), and each screen action reaching the chat's page in the API's count;
 3. the MCP server, started as Claude Code starts it: initialize, its tools, a call, refusals in plain words;
 4. Claude Code, played by a fake `claude` that starts the MCP server from the config it is given and calls it: the
    command line (stream-json, the prompt file, the MCP config naming this server and the chat, the tools allowed, a
@@ -1157,7 +1157,22 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check([t for t, _ in act["tokens"]] == [u["text"] for u in raw["units"]] and act["pushed"] == [{"neuron": "L2 N3", "mode": "mul", "dose": 0.0}],
           f"activations: the reads, the push cited in the pages' count ({act['pushed']})")
     stv = await st.call("steer", {"layer": 3, "n": 5, "prompt": "Who are you?", "max_new": 6}, api)
-    check(stv["pushed"] == [{"neuron": "L3 N5", "mode": "add", "dose": 0.8}] and isinstance(stv["up"], str), "steer")
+    check(stv["pushed"] == [{"neuron": "L3 N5", "mode": "add", "dose": 0.8}] and isinstance(stv["up"], str) and stv["sampling"] == "greedy",
+          "steer, written greedily by default")
+    knobs = {"temperature": 0.8, "top_k": 30, "top_p": 0.9, "presence_penalty": 0.2, "seed": 11}
+    sv = await st.call("steer", {"layer": 3, "n": 5, "prompt": "Who are you?", "max_new": 6, **knobs, "samples": 2}, api)
+    raw = hc.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": "Who are you?", "max_new": 6, "sampler": knobs, "samples": 2}).json()
+    check(all(sv[k] == raw[k] and len(sv[k]) == 2 for k in ("up", "baseline", "down")) and sv["sampling"] == raw["sampling"]
+          and sv["sampling"]["seeds"] == [11, 12] and sv["sampling"]["draw"] == "shared across the three voices",
+          f"steer sampled: the knobs passed as the route's sampler, two samples, the seeds given back ({sv['sampling']})")
+    try:
+        await st.call("steer", {"layer": 3, "n": 5, "prompt": "Who are you?", "presence_penalty": 0.5}, api)
+        check(False, "steer: a presence penalty without a temperature was not refused")
+    except st.ToolError as exc:
+        check("only with a temperature above 0" in str(exc), f"steer: a presence penalty without a temperature refused in plain words ({exc})")
+    desc = next(t_["description"] for t_ in st.TOOLS if t_["name"] == "steer")
+    check("Greedy by default" in desc and "Never sample, or add a presence penalty, to make an answer read better" in desc,
+          "steer's description: greedy is the reading, and sampling is never to make an answer read better")
     lp = await st.call("logprobs", {"text": "Who are you?", "k": 3, "neurons": [{"layer": 5, "n": 9, "dose": 2.0}]}, api)
     check(lp["kl"] >= 0 and lp["pushed"] == [{"neuron": "L5 N9", "mode": "add", "dose": 2.0}], "logprobs with a push")
     cmp_ = await st.call("compare", {"neurons": [{"layer": 1, "n": 1}, {"layer": 6, "n": 127}], "texts": ["hello there", "def merge(a, b):"]}, api)

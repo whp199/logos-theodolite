@@ -24,7 +24,10 @@ study found about Gemma-4-31B. It uses the vocabulary above (faces, steer lens, 
    input/output pair.
 2. **Steer on an open prompt** ("Tell me about your weekend.", "Write a short poem about the ocean.") at dose 0.6-0.8,
    then 1.5-2 (doses found on Qwen3.5-4B; see Doses). Steering finds the axis faster than test sentences, above all for neurons that seldom fire. Read both
-   rows: a meaningful negative face writes something recognisable; a meaningless one loops or breaks.
+   rows: a meaningful negative face writes something recognisable; a meaningless one loops or breaks. Greedy is the
+   reading: the census and these notes judge a push by its likeliest answer, and a push that loops is telling you
+   something. Sample (a temperature, a seed, several samples) only to see whether a theme survives the draw, and give
+   the seeds; never sample, or add a penalty, to make a pushed answer read better.
 3. **Find where it fires hard.** `compare` matched sets: target texts, near misses that share the vocabulary but not
    the situation, and distant controls. Push the target until something exceeds the neuron's `act_max`. If nothing
    does, screen 25-50 varied snippets (news, code, recipes, chat, fiction, maths, other languages) with `compare` (24

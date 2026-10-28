@@ -182,16 +182,29 @@ TOOLS: List[Dict[str, Any]] = [
      "inputSchema": {"type": "object", "properties": {**LN, "note": {"type": "string"}}, "required": ["layer", "n", "note"]}},
     {"name": "names", "description": "Every neuron and head named so far, as {\"L54 N15491\": name} and {\"L54 h3\": name}.",
      "inputSchema": {"type": "object", "properties": {}}},
-    {"name": "steer", "description": "Live: the model answers a chat prompt three ways in one batch, pushed up, as it is, and pushed down "
-     "(greedy). One neuron (layer, n) or several (neurons: [{layer, n, dose?, mode?}], all at once, each the other way in the down "
+    {"name": "steer", "description": "Live: the model answers a chat prompt three ways in one batch, pushed up, as it is, and pushed down. "
+     "One neuron (layer, n) or several (neurons: [{layer, n, dose?, mode?}], all at once, each the other way in the down "
      "row). mode add: dose is a share of the stream's median length leaving the layer, along the neuron's write direction (0.8 is "
      "the steer lens's push, already more than most neurons can write by themselves on this model: `neuron`'s ceiling.rel is "
      "that most; 2 to 3 is strong); mul: a factor on its activation (0 silences it); act: a multiple of its largest "
-     "|activation|, added to it.",
+     "|activation|, added to it. Greedy by default, the reading the census and the method use; a loop is part of what a push "
+     "shows. Sample (temperature, a seed, samples up to 8: the three voices share each draw, so they differ only where the push "
+     "moves the odds, and on Gemma-4-31B eight samples cost about the time of one) to see whether a theme survives the draw; say "
+     "which seeds (`sampling` gives them). Never sample, or add a presence penalty, to make an answer read better.",
      "inputSchema": {"type": "object", "properties": {**LN, "prompt": {"type": "string"}, "neurons": PUSHES,
                                                        "dose": {"type": "number", "default": 0.8},
                                                        "mode": {"type": "string", "enum": ["add", "mul", "act"], "default": "add"},
-                                                       "max_new": {"type": "integer", "default": 150}}, "required": ["prompt"]}},
+                                                       "max_new": {"type": "integer", "default": 150},
+                                                       "temperature": {"type": "number", "default": 0, "description": "0 is greedy; up to 2"},
+                                                       "top_k": {"type": "integer", "default": 0, "description": "0 is off"},
+                                                       "top_p": {"type": "number", "default": 1, "description": "1 is off"},
+                                                       "presence_penalty": {"type": "number", "default": 0, "description":
+                                                                            "-2 to 2, off the score of each word-piece already "
+                                                                            "written; only with a temperature"},
+                                                       "seed": {"type": "integer", "description": "left out: one is drawn, and given back"},
+                                                       "samples": {"type": "integer", "default": 1, "description": "1 to 8, sampled only: "
+                                                                   "up, baseline and down then come as lists, sample s drawn with seed + s"}},
+                     "required": ["prompt"]}},
     {"name": "activations", "description": "Live: the neuron's activation at every display unit of a text (chat: true makes it a user turn), "
      "beside its range from `neuron`. `neurons` and `heads` are pushed or scaled in the same pass, to test what drives it: compare "
      "with the same call without them. Only what comes before its own feed-forward block can move it.",
@@ -444,9 +457,13 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         _need(a, "prompt")
         if not a.get("neurons"):
             _need(a, "layer", "n")
-        body = {k: a[k] for k in ("layer", "n", "neurons", "prompt", "dose", "mode", "max_new") if a.get(k) is not None}
+        body = {k: a[k] for k in ("layer", "n", "neurons", "prompt", "dose", "mode", "max_new", "samples") if a.get(k) is not None}
+        sampler = {k: a[k] for k in ("temperature", "top_k", "top_p", "presence_penalty", "seed") if a.get(k) is not None}
+        if sampler:
+            body["sampler"] = sampler
         r = await api.post("/api/atlas/steer", body)
-        return {"prompt": r["prompt"], "pushed": [_cite_push(p) for p in r["pushed"]], "up": r["up"], "baseline": r["baseline"], "down": r["down"]}
+        return {"prompt": r["prompt"], "pushed": [_cite_push(p) for p in r["pushed"]], "up": r["up"], "baseline": r["baseline"], "down": r["down"],
+                "sampling": r.get("sampling")}
     if name == "activations":
         _need(a, "layer", "n", "text")
         body = {k: a[k] for k in ("layer", "n", "text", "chat", "neurons", "heads") if a.get(k) is not None}

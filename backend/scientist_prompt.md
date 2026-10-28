@@ -212,9 +212,10 @@ scripts that call the same routes.
 
 The instrument's HTTP API is at `{API}`; scripts can call it (JSON in, JSON out), with layers counted from 0 there.
 The useful routes, POST unless noted: `/api/atlas/reads` {layer, n, text, chat?, neurons?, heads?}; `/api/atlas/fires`
-{text, token?, at?, limit?, layers?}; `/api/atlas/steer` {prompt, layer, n, dose?, mode?, max_new?}; `/api/atlas/compare`
-{neurons, texts, chat?}; `/api/atlas/logprobs` {text, chat?, prefix?, k?, targets?, neurons?, heads?}; GET
-`/api/atlas/neuron?layer=&n=`, `/api/atlas/web/summary?layer=&n=`, `/api/atlas/cone?layer=&n=`, `/api/atlas/arch`.
+{text, token?, at?, limit?, layers?}; `/api/atlas/steer` {prompt, layer, n, dose?, mode?, max_new?, sampler?
+{temperature, top_k, top_p, presence_penalty, seed}, samples?}; `/api/atlas/compare` {neurons, texts, chat?};
+`/api/atlas/logprobs` {text, chat?, prefix?, k?, targets?, neurons?, heads?}; GET `/api/atlas/neuron?layer=&n=`,
+`/api/atlas/web/summary?layer=&n=`, `/api/atlas/cone?layer=&n=`, `/api/atlas/arch`.
 Every route that runs the model waits for the GPU: one reading at a time on this machine.
 
 The project's Python is `{PYTHON}`. When the person asks you not to read a file's text, write a script that reads it,
