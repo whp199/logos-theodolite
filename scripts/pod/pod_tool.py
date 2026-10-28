@@ -102,7 +102,8 @@ def cmd_selftest(a: argparse.Namespace) -> int:
     try:
         unp = w4a16_fast.install(rt, a.unpacker, self_test=True, log=lambda s: None)
         st = unp.get("self_test") or {}
-        tested = (f"{unp['mode']} on {unp['linears']} linears: " +
+        asked = f"{unp['asked']} asked, " if unp.get("asked") else ""  # a model with no W4A16 linears: the reference
+        tested = (f"{asked}{unp['mode']} on {unp['linears']} linears: " +
                   ("the reference unpacker itself" if unp["mode"] == "reference" else
                    "the same bits as the reference" + (" and on the piece-by-scale table" if st.get("table") else "")
                    if st.get("same_bits") else "not tested"))
