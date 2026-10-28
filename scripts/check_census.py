@@ -1157,11 +1157,11 @@ def run_checks(tmp: Path) -> int:
     try:
         f_ = cz.writer_floor(run_meta)
         check(f_ is not None and f_["k"] == 11 and f_["batches"] == [5] and f_["this_batch"] and f_["same_runtime"] is True
-              and f_["file"] == "atlas_writer_floor_b.json" and "census batches of 5, as this run's" in f_["says"]
+              and f_["file"] == "atlas_writer_floor_b.json" and "census batches of 5 (this run's size) first part" in f_["says"]
               and "after 11 word-pieces in common" in f_["says"] and "not by itself evidence of a push" in f_["says"],
               f"writer_floor: the floor of the run's runtime class and batch ({f_})")
         f7 = cz.writer_floor({**run_meta, "batch": 7})
-        check(f7["k"] == 11 and f7["batches"] == [5, 64] and not f7["this_batch"] and "(this run's are of 7, not measured)" in f7["says"],
+        check(f7["k"] == 11 and f7["batches"] == [5, 64] and not f7["this_batch"] and "census batches of 5 and 64 (not this run's 7)" in f7["says"],
               f"writer_floor: a batch not measured, the smallest over those that were ({f7['says']})")
         fo = cz.writer_floor({**run_meta, "runtime": other_rt})
         check(fo["file"] == "atlas_writer_floor_a.json" and fo["k"] == 3 and fo["same_runtime"] is True, "writer_floor: a run on the other card reads its own")

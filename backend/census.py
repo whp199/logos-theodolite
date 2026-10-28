@@ -711,8 +711,8 @@ def writer_floor(meta: Dict[str, Any], files: Optional[Sequence[Path]] = None) -
         k = min(ks) if ks else None
     moved = differ(d) if mine else None
     device = (d.get("runtime") or {}).get("device")
-    shape = (f"census batches of {batches[0]}, as this run's" if batch in floors else
-             f"census batches of {' and '.join(map(str, batches))}" + (f" (this run's are of {batch}, not measured)" if batch else ""))
+    shape = (f"census batches of {batches[0]} (this run's size)" if batch in floors else
+             f"census batches of {' and '.join(map(str, batches))}" + (f" (not this run's {batch})" if batch else ""))
     where = f"on {device}, the census's {len(d.get('questions') or PROMPTS)} questions, {d.get('max_new')} word-pieces"
     if k is None:
         says = (f"Writer's floor: with no push, answers written in {shape} did not part from the same answers written alone "
