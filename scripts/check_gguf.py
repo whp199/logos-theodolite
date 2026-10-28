@@ -26,7 +26,9 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    forward, seen by every accessor, the blocks untouched), and a census taken row for row alike;
 5. the choice of runtime from the environment (runtime_factory.make_runtime), and census_run.py on a GGUF on the CPU;
 6. scripts/compare_gguf_ct.py's self-test: a checkpoint in the W4A16 layout and a Q4_0 GGUF written from the same
-   codes and scales are found identical, and a changed code, a changed scale and a +1 norm convention are each found;
+   codes and scales are found identical, again with every other block written the other way round (d = -scale, codes
+   16 - q, as llama.cpp's quantiser writes a negative d), and a changed code, a changed scale and a +1 norm convention
+   are each found;
 7. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
 
 Run: .venv/bin/python -I scripts/check_gguf.py   (exits 0 when every check holds)
@@ -710,7 +712,8 @@ def run_checks(tmp: Path) -> int:
     before = len(failures)
     for ok, what in cmp.self_test(tmp / "compare"):
         check(ok, f"compare_gguf_ct: {what}")
-    section("compare_gguf_ct.py: identical pairs found identical, a changed code, scale and norm convention each found", before)
+    section("compare_gguf_ct.py: identical pairs found identical (blocks of either sign), a changed code, scale and norm "
+            "convention each found", before)
 
     before = len(failures)
     sys.path.insert(0, str(ROOT_DIR / "experiments" / "scripts"))

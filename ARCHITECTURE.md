@@ -762,8 +762,10 @@ run on Gemma-4-31B itself, from either a GGUF or the checkpoint on the CPU.
   or the checkpoint's, and readings of two numeric classes are not mixed in one run. How a GGUF's layers are held
   (packed, resident, dense) is not in the id: the three give the same forward bit for bit (in float32 and bf16 on the
   CPU stand-in), and the `weights` card says which.
-- `scripts/compare_gguf_ct.py` says whether a GGUF holds the checkpoint's weights, tensor by tensor; for Q4_0 against
-  W4A16 (both group-32 symmetric 4-bit) also the codes and the scales. Its self-test runs on the CPU.
+- `scripts/compare_gguf_ct.py` says whether a GGUF holds the checkpoint's weights, tensor by tensor and value for value;
+  for Q4_0 against W4A16 (both group-32 symmetric 4-bit) also the codes and the scales, a Q4_0 block read either way
+  round (llama.cpp's quantiser writes d = max / -8, so a block may hold -scale and the codes 16 - q). Its self-test runs
+  on the CPU.
 
 **Packed or dense.** `packed` keeps each quantised layer's blocks (on the CPU read in place through the file's memory
 map) and unpacks the whole weight at every forward, as the W4A16 forward unpacks the checkpoint; `resident` unpacks once

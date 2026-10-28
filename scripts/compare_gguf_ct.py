@@ -9,8 +9,9 @@ Both are streamed, tensor by tensor (the GGUF through gguf-py's memory map, the 
 safe_open, so only one tensor pair is in memory at a time), their names mapped by gguf-py's own map for Gemma 4
 (model.language_model.layers.N.mlp.down_proj -> blk.N.ffn_down), and both dequantised to float32: the checkpoint's
 W4A16 as (nibble - 8) x scale (exact in float32), the GGUF's as gguf-py dequantises it (backend/gguf_weights.py, bit
-for bit). Each pair is compared bit for bit, and where they differ the report gives the largest |difference| and the
-share of elements equal. Equal in float32 means equal in the bfloat16 the instrument computes in too.
+for bit). Each pair is compared value for value (a NaN equal to a NaN; a zero equal to a zero of the other sign, which
+is counted apart, `zero_sign_differs`), and where they differ the report gives the largest |difference| and the share
+of elements equal. Equal in float32 means equal in the bfloat16 the instrument computes in too.
 
 For a Q4_0 tensor against a W4A16 one it also compares the raw codes and the scales, since both are group-32 symmetric
 4-bit, w = (q - 8) x scale:
@@ -20,15 +21,19 @@ For a Q4_0 tensor against a W4A16 one it also compares the raw codes and the sca
 Q4_0's scale is fp16 and the checkpoint's bf16, so the report says how many of the GGUF's scales a bf16 holds exactly
 (the GGUF can be the checkpoint only if every one is) and how many of the checkpoint's an fp16 holds (a Q4_0 copy of
 the checkpoint can be exact only if every one is: fp16 has three more mantissa bits than bf16 but a far narrower
-range, and loses bits below 2^-14).
+range, and loses bits below 2^-14). A Q4_0 block holds the same weights either way round, (q - 8) x d being
+(16 - q - 8) x -d, and llama.cpp's own quantiser writes d = max / -8, so a negative d is ordinary: a block whose scale
+is the checkpoint's negated is read against the codes 16 - q, and counted (`q4_0_blocks_sign_flipped`). Such a block
+cannot hold the checkpoint's code 0 (-8 x scale), and holds -0.0 where the checkpoint's code 8 holds 0.
 
 Norms are compared as stored; a GGUF whose norm weights sit exactly 1 above the checkpoint's is named as holding Gemma 2
 and 3's convention (Gemma 4's GGUFs store w itself: backend/gguf_model.py). The vision and audio towers are not in a
-text GGUF and are counted apart. The exit code is 0 when every tensor of the GGUF is the checkpoint's, bit for bit.
+text GGUF and are counted apart. The exit code is 0 when every tensor of the GGUF is the checkpoint's, value for value.
 
 `--self-test` writes, from the same quantised weights of a tiny random Gemma 4 (scripts/atlas_stand_in.py), a
-checkpoint in the W4A16 layout and a Q4_0 GGUF, and checks that the comparison finds them identical; then that it
-finds one perturbed code, one perturbed scale and a +1 norm convention, each where it was put.
+checkpoint in the W4A16 layout and a Q4_0 GGUF, and checks that the comparison finds them identical, and identical
+again with every other block's sign flipped; then that it finds one perturbed code, one perturbed scale and a +1 norm
+convention, each where it was put.
 """
 
 from __future__ import annotations
@@ -164,9 +169,9 @@ CHUNK_ROWS = 2048  # rows compared at a time, so a 262,144-row embedding never s
 
 def compare_tensor(name: str, t: Any, shape: Tuple[int, ...], packed: Optional[torch.Tensor],
                    scale: Optional[torch.Tensor], plain: Optional[torch.Tensor]) -> Dict[str, Any]:
-    """One GGUF tensor against its checkpoint tensor, a chunk of rows at a time: bit for bit, else the largest
-    |difference| and the share equal; for a norm, whether the GGUF's is the checkpoint's + 1 exactly; for Q4_0 against
-    W4A16, the codes and the scales."""
+    """One GGUF tensor against its checkpoint tensor, a chunk of rows at a time: value for value, else the largest
+    |difference| and the share equal (zeros of opposite sign equal, and counted); for a norm, whether the GGUF's is the
+    checkpoint's + 1 exactly; for Q4_0 against W4A16, the codes and the scales, a block either way round."""
     from backend.gguf_weights import type_name, unpack
 
     rows = shape[0] if len(shape) > 1 else 1
@@ -178,7 +183,7 @@ def compare_tensor(name: str, t: Any, shape: Tuple[int, ...], packed: Optional[t
             return rec
         plain = plain.reshape(rows, -1)
     q4 = packed is not None and type_name(t.tensor_type) == "Q4_0"
-    n = n_eq = codes_eq = n_codes = scales_eq = n_scales = bf16_ok = fp16_ok = 0
+    n = n_eq = zero_sign = codes_eq = n_codes = scales_eq = n_scales = flipped = bf16_ok = fp16_ok = 0
     max_diff, plus_one = 0.0, True
     for r0 in range(0, rows, CHUNK_ROWS):
         r1 = min(r0 + CHUNK_ROWS, rows)
@@ -187,22 +192,28 @@ def compare_tensor(name: str, t: Any, shape: Tuple[int, ...], packed: Optional[t
         if tuple(g.shape) != tuple(c.shape):
             rec.update(equal=False, problem=f"shapes differ: GGUF {list(shape)}, checkpoint rows of {c.shape[-1]}")
             return rec
-        same = g.contiguous().view(torch.int32) == c.contiguous().view(torch.int32)
+        same = (g == c) | (torch.isnan(g) & torch.isnan(c))
         n += same.numel()
         n_eq += int(same.sum())
+        zero_sign += int(((g == 0) & (c == 0) & (torch.signbit(g) != torch.signbit(c))).sum())
         if not bool(same.all()):
             max_diff = max(max_diff, float((g - c).abs().max()))
         plus_one = plus_one and bool(torch.equal(g, c + 1.0))
         if q4:
             gc, gs = q4_0_codes_scales(raw[r0:r1])
-            cc, cs = ct_codes(packed[r0:r1]), scale[r0:r1].to(torch.float32)
-            codes_eq += int((gc == cc).sum())
+            cc, cs = ct_codes(packed[r0:r1]).to(torch.int16), scale[r0:r1].to(torch.float32)
+            flip = (gs == -cs) & (gs != cs)  # the block written the other way round: d = -scale, codes 16 - q
+            want = torch.where(flip.repeat_interleave(32, dim=-1), 16 - cc, cc)
+            codes_eq += int((gc.to(torch.int16) == want).sum())
             n_codes += gc.numel()
-            scales_eq += int((gs == cs).sum())
+            scales_eq += int((gs == torch.where(flip, -cs, cs)).sum())
             n_scales += gs.numel()
+            flipped += int(flip.sum())
             bf16_ok += int(representable(gs, torch.bfloat16).sum())
             fp16_ok += int(representable(cs, torch.float16).sum())
     rec["equal"] = n_eq == n
+    if zero_sign:
+        rec["zero_sign_differs"] = zero_sign
     if not rec["equal"]:
         rec["share_equal"] = n_eq / n
         rec["max_abs_diff"] = max_diff
@@ -210,7 +221,8 @@ def compare_tensor(name: str, t: Any, shape: Tuple[int, ...], packed: Optional[t
             rec["norm_plus_one"] = True
     if q4:
         rec.update(codes_equal=codes_eq == n_codes, codes_share_equal=codes_eq / n_codes, scales_equal=scales_eq == n_scales,
-                   gguf_scales_bf16_exact=bf16_ok / n_scales, ct_scales_fp16_exact=fp16_ok / n_scales)
+                   q4_0_blocks_sign_flipped=flipped, gguf_scales_bf16_exact=bf16_ok / n_scales,
+                   ct_scales_fp16_exact=fp16_ok / n_scales)
     return rec
 
 
@@ -275,6 +287,8 @@ def compare(gguf_path: Path, ckpt: Checkpoint, *, layers: Optional[List[int]] = 
         "norms_plus_one": sorted(n for n, r in done.items() if r.get("norm_plus_one")),
         "q4_0_codes_equal": sum(1 for r in done.values() if r.get("codes_equal")),
         "q4_0_scales_equal": sum(1 for r in done.values() if r.get("scales_equal")),
+        "q4_0_blocks_sign_flipped": sum(int(r.get("q4_0_blocks_sign_flipped", 0)) for r in done.values()),
+        "zero_sign_differs": sorted(n for n, r in done.items() if r.get("zero_sign_differs")),
         "q4_0_gguf_scales_bf16_exact": min((r["gguf_scales_bf16_exact"] for r in done.values() if "gguf_scales_bf16_exact" in r),
                                            default=None),
         "checkpoint_only": sorted(g for g in ct_by_gguf if g not in seen and (layers is None and not limit)),
@@ -286,9 +300,11 @@ def compare(gguf_path: Path, ckpt: Checkpoint, *, layers: Optional[List[int]] = 
 
 
 def write_pair(tmp: Path, *, bad_code: Optional[str] = None, bad_scale: Optional[str] = None,
-               norm_shift: float = 0.0, seed: int = 0) -> Tuple[Path, Path, Dict[str, Any]]:
+               norm_shift: float = 0.0, flip: bool = False, seed: int = 0) -> Tuple[Path, Path, Dict[str, Any]]:
     """A checkpoint folder in the W4A16 layout and a Q4_0 GGUF, written from the same codes, scales and bf16 tensors
-    of the stand-in's shape; `bad_code` / `bad_scale` name a GGUF tensor to perturb (one code, one scale)."""
+    of the stand-in's shape; `bad_code` / `bad_scale` name a GGUF tensor to perturb (one code, one scale); `flip`
+    writes every other Q4_0 block the other way round (d = -scale, codes 16 - q; the codes are then drawn from 1 to
+    15, which such a block can hold)."""
     from safetensors.torch import save_file
 
     from atlas_stand_in import stand_in_hf, stand_in_tokenizer
@@ -309,7 +325,7 @@ def write_pair(tmp: Path, *, bad_code: Optional[str] = None, bad_scale: Optional
             gname = to_gguf(name)
             if p.dim() == 2 and ".layers." in name:
                 out, inn = p.shape
-                codes = torch.randint(0, 16, (out, inn), generator=g, dtype=torch.uint8)
+                codes = torch.randint(1 if flip else 0, 16, (out, inn), generator=g, dtype=torch.uint8)
                 # bf16 scales that an fp16 also holds: 2^-e x (1 + m / 128), e in 6..9
                 e = torch.randint(6, 10, (out, inn // 32), generator=g).float()
                 m = torch.randint(0, 128, (out, inn // 32), generator=g).float()
@@ -324,6 +340,12 @@ def write_pair(tmp: Path, *, bad_code: Optional[str] = None, bad_scale: Optional
                 if gname == bad_scale:
                     gscale[2, 0] = gscale[2, 0] * 2
                     where["scale"] = (gname, 2, 0)
+                if flip:
+                    other = torch.zeros(out, inn // 32, dtype=torch.bool)
+                    other[:, 1::2] = True
+                    gcodes = torch.where(other.repeat_interleave(32, dim=-1), 16 - gcodes, gcodes)
+                    gscale = torch.where(other, -gscale, gscale)
+                    where["flipped"] = where.get("flipped", 0) + int(other.sum())
                 blocks[gname] = (q4_0_blocks(gcodes, gscale), "Q4_0")
                 p.copy_(ct_dense(ct[ct_name.replace(".weight", ".weight_packed")], scale))
             else:
@@ -335,16 +357,16 @@ def write_pair(tmp: Path, *, bad_code: Optional[str] = None, bad_scale: Optional
                 v = b.to(torch.bfloat16)
                 ct[CT_PREFIX + name[len("model."):]] = v.clone()
                 b.copy_(v.float())
-    folder = tmp / f"ct-{seed}-{bad_code}-{bad_scale}-{norm_shift}"
+    folder = tmp / f"ct-{seed}-{bad_code}-{bad_scale}-{norm_shift}-{flip}"
     folder.mkdir(parents=True, exist_ok=True)
     save_file({k: v.contiguous() for k, v in ct.items()}, str(folder / "model.safetensors"))
-    path = gm.write_gemma4_gguf(hf, tmp / f"pair-{seed}-{bad_code}-{bad_scale}-{norm_shift}.gguf", tokenizer=tok,
+    path = gm.write_gemma4_gguf(hf, tmp / f"pair-{seed}-{bad_code}-{bad_scale}-{norm_shift}-{flip}.gguf", tokenizer=tok,
                                 qtype="F32", blocks=blocks, norm_shift=norm_shift)
     return path, folder, where
 
 
 def self_test(tmp: Path, log: Any = None) -> List[Tuple[bool, str]]:
-    """[(held, what)] for the four synthetic cases (see the module's docstring)."""
+    """[(held, what)] for the five synthetic cases (see the module's docstring)."""
     out: List[Tuple[bool, str]] = []
     path, folder, _ = write_pair(tmp)
     rep = compare(path, Checkpoint(folder), log=log)
@@ -355,6 +377,15 @@ def self_test(tmp: Path, log: Any = None) -> List[Tuple[bool, str]]:
     out.append((n_lin > 0 and s["q4_0_codes_equal"] == n_lin and s["q4_0_scales_equal"] == n_lin
                 and s["q4_0_gguf_scales_bf16_exact"] == 1.0 and not s["checkpoint_only"],
                 f"the {n_lin} Q4_0 tensors: codes and scales equal, every scale bf16-exact, nothing left over"))
+    path, folder, where = write_pair(tmp, flip=True)
+    rep = compare(path, Checkpoint(folder), log=log)
+    s = rep["summary"]
+    out.append((not s["differ"] and s["equal"] == s["compared"] and s["q4_0_codes_equal"] == n_lin
+                and s["q4_0_scales_equal"] == n_lin and s["q4_0_blocks_sign_flipped"] == where["flipped"] > 0
+                and bool(s["zero_sign_differs"]),
+                f"every other block written the other way round (d = -scale, codes 16 - q): every tensor equal, codes "
+                f"and scales equal, {s['q4_0_blocks_sign_flipped']} blocks read as flipped, zeros of the other sign "
+                f"counted apart in {len(s['zero_sign_differs'])} tensors"))
     bad = "blk.3.ffn_down.weight"
     path, folder, where = write_pair(tmp, bad_code=bad)
     rep = compare(path, Checkpoint(folder), log=log)
@@ -414,11 +445,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     ckpt = Checkpoint(find_checkpoint(a.ct or DEFAULT_W4A16_MODEL_ID))
     rep = compare(Path(a.gguf), ckpt, layers=parse_layers(a.layers) if a.layers else None, limit=a.limit)
     s = rep["summary"]
-    print(f"\n{s['equal']} of {s['compared']} GGUF tensors are the checkpoint's bit for bit; {len(s['differ'])} differ"
+    print(f"\n{s['equal']} of {s['compared']} GGUF tensors are the checkpoint's value for value; "
+          f"{len(s['differ'])} differ"
           + (f" ({len(s['norms_plus_one'])} of them norms exactly 1 above: Gemma 2/3's convention)" if s["norms_plus_one"] else ""))
     if s["q4_0_gguf_scales_bf16_exact"] is not None:
-        print(f"Q4_0 tensors: codes equal in {s['q4_0_codes_equal']}, scales equal in {s['q4_0_scales_equal']}; the share "
+        print(f"Q4_0 tensors: codes equal in {s['q4_0_codes_equal']}, scales equal in {s['q4_0_scales_equal']} "
+              f"({s['q4_0_blocks_sign_flipped']} blocks read the other way round, d = -scale); the share "
               f"of the GGUF's scales a bf16 holds exactly is at least {s['q4_0_gguf_scales_bf16_exact']:.6f}")
+    if s["zero_sign_differs"]:
+        print(f"Zeros of the other sign (equal as values): in {len(s['zero_sign_differs'])} tensors")
     if s["checkpoint_only"]:
         print(f"In the checkpoint, not the GGUF: {len(s['checkpoint_only'])} tensors ({', '.join(s['checkpoint_only'][:4])} ...)")
     print(f"({rep['checkpoint_tensors_in_other_towers']} checkpoint tensors belong to the vision and audio towers, which a text GGUF leaves out)")
