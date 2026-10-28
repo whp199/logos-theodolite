@@ -2,12 +2,12 @@
 
 *What is still open in Logos Theodolite, gathered from the places that already name it: the README’s fault table, the
 study’s report and its errata, the pages’ own “not yet” marks, and the records of R1’s instruct refit, R2’s test of
-what to serve and R3’s test of J++’s recipe. Nothing here has a date or an owner. Layers are counted 1–60, as on the
-pages; the study’s reports count from 0, so their L50 is layer 51 here.*
+what to serve, R3’s test of J++’s recipe and R4’s test of R1’s lens. Nothing here has a date or an owner. Layers are
+counted 1–60, as on the pages; the study’s reports count from 0, so their L50 is layer 51 here.*
 
 <sub>Gathered on 21 October 2026, at `3cbc4b5`; gathered again on 22 October 2026, at `75ed78a`, after the first round of
 mends (the interface’s defaults, the label gate, the causal test and the smaller pieces) and R3’s registration; section
-i brought up to date at `c15b2d3`, with R3’s result.</sub>
+i brought up to date at `c15b2d3`, with R3’s result, and on 28 October 2026, at `9093dac`, with R4’s.</sub>
 
 <br>
 
@@ -58,20 +58,36 @@ carry a `lens` object; the reading itself is unchanged.
   check, D36). Every change made after the first GPU output is filed as a deviation (D30, D31,
   D33–D36). The run used 5.54 of the 8 GPU-hours the user approved. Whether an instruct lens gives better neuron
   labels is still untested (E45).
-- **A lead: R1’s lens on R3’s prompts.** R1’s lens, read for reference outside the decision and its Holm family, passed
-  all five rules at layers 56 and 59 on R3’s 320 prompts: +0.071 [+0.035, +0.109] and +0.058 [+0.024, +0.091] over the
-  naked eye. It was not a candidate, so this is not a recommendation. On R2’s 220 prompts the same lens still fails: at
-  layer 59 by the minimum-size rule (+0.046), at layer 56 by rules 1 and 5. Serving it would need a test of its own,
-  registered before it sees fresh prompts, under the rules below.
+- **R4 served nothing, and closed R1’s lead.** R1’s lens, read for reference in R3, had passed all five rules at layers
+  56 and 59 on R3’s prompts: +0.071 and +0.058 over the naked eye.
+
+  R4 tested that lead on its own
+  ([`R4_PREREG.md`](experiments/results/R4_PREREG.md),
+  [`R4_03_report_section.md`](experiments/results/R4_03_report_section.md)). It was registered before any data, after
+  its code had re-read R3’s prompts and matched R3 exactly. It had 640 fresh prompts and R1 as the only candidate. It
+  used R2’s rules, and the owner added a gate: R1 must also pass without the targets that are function words.
+  - **What R2’s rule counts.** R2’s filter counts "the", "of" and "is" as content words. On R2’s and R3’s prompts, R1’s
+    lead lay almost wholly in those targets.
+  - **Layer 56.** R1 passed R2’s rule (+0.088 over the naked eye, +0.106 over J++) but failed the gate. Without
+    function-word targets it was +0.015 over the naked eye and +0.025 over J++, and worse than J++ on short questions.
+    It named 57% of function-word targets against the naked eye’s 32%, and 62% of the rest against 59%.
+  - **Layer 59.** R1 failed R2’s rule itself, at +0.038 over the naked eye. On three prompt sets its margin there has
+    been +0.046, +0.058 and +0.038.
+
+  So R1’s lens predicts the model’s next function word better, and its next substantive word no better.
 - **Rules for any lens served later**, from the errata:
   - confirm condition contrasts at layers 31–50 with an instruct reading (E49);
   - show pronoun readings at layers 51–59 only where J++ and the instruct reading agree (E49, E50);
   - keep the caution at layers 11–30 for every averaged lens: none tested was reliable there (E50);
   - re-validate the label gate of ii for the new lens: its AUC of 0.84 was measured for base-fitted J++ labels only
-    (E47).
+    (E47);
+  - judge the lens without function-word targets as well (R4’s S6 gate): R2’s filter counts them as content, and a lens
+    can win on them alone.
 
-R3 serves nothing itself: a pass would only have been a recommendation to later serving work on a branch from `main`
-(R3_PREREG §7.2). With no lens passed by R2 or R3, the serving work on `it-second-reading` stays there as R2’s record.
+R3 and R4 serve nothing themselves: a pass would only have been a recommendation to later serving work on a branch from
+`main` (R3_PREREG §7.2, R4_PREREG §2). With no lens passed by R2, R3 or R4, the serving work on `it-second-reading`
+stays there as R2’s record. Its worktree also holds the only other copy of R1’s pinned lens file (gitignored); R4 copied
+it to `~/.local/share/theodolite/lenses/` and reads it from there.
 R3’s jobs refuse a `backend/` that differs from their registered runtime, `d5405ee` (R3_PREREG §0), so any rerun goes
 from the branch `it-jpp-refit`, not from a `main` that carries this round’s mends. R3’s line cites to the README (D26
 and A9, `README.md:407–408`) are to `d5405ee`’s README; on this tree that passage is the licence paragraph of README
