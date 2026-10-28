@@ -33,6 +33,9 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   all 60 are there.
 `--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
+THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU
+(backend/runtime_factory.py, ARCHITECTURE §5); each file records the model id, a GGUF's naming its file and fingerprint,
+and the server reads an index only for the model it was built on.
 """
 
 from __future__ import annotations
@@ -154,9 +157,9 @@ def main() -> int:
         use_stand_in_atlas()
         rt, _vault = stand_in()
     else:
-        from backend.engine_runtime import TheodoliteRuntime
+        from backend.runtime_factory import make_runtime  # THEODOLITE_GGUF / THEODOLITE_DEVICE, else the W4A16 checkpoint
 
-        rt = TheodoliteRuntime(load_jlens=False).load()
+        rt = make_runtime(load_jlens=False).load()
     from backend import w4a16_fast
 
     try:

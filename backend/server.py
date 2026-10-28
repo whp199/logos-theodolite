@@ -63,6 +63,7 @@ from backend.mcp_scientist import (
     test_motif_hypothesis,
     trace_downstream_readers,
 )
+from backend.runtime_factory import make_runtime
 from backend.saved_prompts import router as saved_prompts_router
 from backend.theodolite_math import (
     CONTRAST_BACKGROUNDS,
@@ -101,7 +102,7 @@ def get_app_state() -> Tuple[TheodoliteRuntime, LarqlVaultEngine]:
 async def lifespan(_app: FastAPI):
     global _RUNTIME, _VAULT
     logger.info("Initializing TheodoliteRuntime (Gemma-4-31B W4A16 + J++ Lens)...")
-    _RUNTIME = TheodoliteRuntime(load_jlens=False).load()
+    _RUNTIME = make_runtime(load_jlens=False).load()  # THEODOLITE_GGUF / THEODOLITE_DEVICE (backend/runtime_factory.py)
     # how the 4-bit weights are unpacked ($THEODOLITE_UNPACKER, backend/w4a16_fast.py: each gives the same bits, tested
     # before anything is read where install tests it: compiled, resident, and lut on CUDA; the reference unless set)
     w4a16_fast.install(_RUNTIME, os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference", log=logger.info)
@@ -1356,8 +1357,9 @@ async def favicon_ico():
 @app.get("/api/health")
 async def api_health() -> Dict[str, Any]:
     runtime, vault = get_app_state()
-    vram_alloc = torch.cuda.memory_allocated(runtime.device) / (1024**3) if torch.cuda.is_available() else 0.0
-    vram_peak = torch.cuda.max_memory_allocated(runtime.device) / (1024**3) if torch.cuda.is_available() else 0.0
+    on_gpu = torch.cuda.is_available() and runtime.device.type == "cuda"  # a CPU runtime has no card to report
+    vram_alloc = torch.cuda.memory_allocated(runtime.device) / (1024**3) if on_gpu else 0.0
+    vram_peak = torch.cuda.max_memory_allocated(runtime.device) / (1024**3) if on_gpu else 0.0
     return {
         "status": "ok",
         "model_id": runtime.model_id,
@@ -1375,6 +1377,10 @@ async def api_health() -> Dict[str, Any]:
         "unpacker": w4a16_fast.describe(runtime),
         # the model's sliding attention window in word-pieces (text_config.sliding_window), as every sighting sends it
         "sliding_window": runtime.sliding_window,
+        # where the model runs, and for a GGUF its file's provenance (backend/gguf_runtime.py; None for the W4A16
+        # checkpoint, which model_id names)
+        "device": str(runtime.device),
+        "weights": getattr(runtime, "weights_card", None) or None,
         "larql_cli": vault.cli_versions(),
         # the causal spot-check (backend/causal_check.py): the WebSocket action "causal_check" and POST
         # /api/scientist/causal_check exist on this server (an older one ignores the action without a word)

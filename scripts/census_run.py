@@ -9,6 +9,10 @@ ranked (scripts/census_tools.py rank).
     .venv/bin/python scripts/census_run.py --layer 45 --design calib_rel --neurons random:32 --random-controls 16 --run L45-calib
     .venv/bin/python scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
 
+The model is the W4A16 checkpoint on cuda:0 unless THEODOLITE_GGUF names a GGUF of Gemma 4 or THEODOLITE_DEVICE=cpu
+puts it on the CPU (backend/runtime_factory.py; THEODOLITE_GGUF_LENS=none leaves out the J++ lens, which a census does
+not read); the run's meta records the model id, a GGUF's carrying its file and fingerprint (ARCHITECTURE §5).
+
 Layers count from 0 (page layer = layer + 1), as every script and field of the atlas. The runs go to the census folder
 (`$THEODOLITE_CENSUS_DIR`, else `<atlas folder>/census/runs`; a stand-in's under its own `stand-in/`), named by --run
 (default `L<layer>-<design>`), with a `.meta.json` beside each. The same command again continues a stopped run (rows
@@ -91,9 +95,9 @@ def main(argv=None) -> int:
         use_stand_in_atlas()
         rt, _vault = stand_in()
     else:
-        from backend.engine_runtime import TheodoliteRuntime
+        from backend.runtime_factory import make_runtime  # THEODOLITE_GGUF / THEODOLITE_DEVICE, else the W4A16 checkpoint
 
-        rt = TheodoliteRuntime(load_jlens=False).load()
+        rt = make_runtime(load_jlens=False).load()
     from backend import w4a16_fast
 
     try:
