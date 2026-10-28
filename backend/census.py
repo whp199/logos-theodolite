@@ -887,6 +887,7 @@ def take_census(
     dose_unit: str = "",
     shard: Optional[Tuple[int, int]] = None,
     p50_file: Optional[Path] = None,
+    lens_id: Optional[str] = None,
     log: Any = print,
     cancel: Any = None,
 ) -> Dict[str, Any]:
@@ -895,7 +896,8 @@ def take_census(
     answer each of at most `max_new` word-pieces, `batch` answers at a time (`atlas_ops.write_rows`, each row its own
     push; the rows of a batch share their question, so none is padded). A dose is in `dose_unit` (DOSE_UNITS; "" for
     the design's own, "stream" but for calib_ceil). `p50_file` is the stats index p50 was read from, if any (its sha256
-    goes in the runtime record).
+    goes in the runtime record); `lens_id` the lens the runtime was loaded with, for a caller that has freed it from the
+    card (census_run.py), else it is read from the runtime.
 
     The batches are planned from the whole job list and the batch size (`plan_batches`), and written whole, in plan
     order, or not at all (`cancel()` stops between steps). Continuing, a planned batch whose answers are all in the file
@@ -959,7 +961,7 @@ def take_census(
                     "paired with, `ref_neuron`)" + (", the push's own unit" if by_ceiling else ", for the dose window alone"),
         "version": CENSUS_VERSION, "read_gain": gain, "doses_from": DOSES_FROM.get(design_name),
         "p50": float(p50), "p50_source": p50_source, "stop_ids": stop, "greedy": True, "chat": "thinking off",
-        "lens": (rt.lens_card() or {}).get("id") if hasattr(rt, "lens_card") else None,
+        "lens": lens_id if lens_id is not None else (rt.lens_card() or {}).get("id") if hasattr(rt, "lens_card") else None,
         "stand_in": bool(getattr(rt, "atlas_stand_in", False)),
         # how this session unpacked the 4-bit weights (backend/w4a16_fast.py): every unpacker gives the same bits, so a
         # run may be continued under another (every session's then kept in "unpacker_sessions"); not a resume key

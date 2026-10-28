@@ -468,19 +468,26 @@ def write_rows(
             logits = _model_logits(lm, W_U, h, softcap)
             nxt = logits.argmax(-1)
             lsm = F.log_softmax(logits.float(), dim=-1)
-            if top_k:
-                tv, ti = torch.topk(lsm, k=int(top_k), dim=-1)
+            # the step's chosen pieces, their log-probabilities and the top k, read back to the CPU in one transfer
+            # rather than a few per row (float64 holds every float32 and every piece id exactly)
+            cols = [nxt[:, None].double(), lsm.gather(-1, nxt[:, None]).double()]
+            k = int(top_k) if top_k else 0
+            if k:
+                tv, ti = torch.topk(lsm, k=k, dim=-1)
+                cols += [ti.double(), tv.double()]
+            host = torch.cat(cols, dim=-1).cpu().tolist()
             for r in range(B):
                 if done[r]:
                     continue
-                t = int(nxt[r])
+                got = host[r]
+                t = int(got[0])
                 end = t in stop
                 yield Step(
                     row=r,
                     token_id=t,
-                    logprob=float(lsm[r, t]),
-                    top_ids=[int(x) for x in ti[r].tolist()] if top_k else [],
-                    top_lps=[round(float(x), 4) for x in tv[r].tolist()] if top_k else [],
+                    logprob=got[1],
+                    top_ids=[int(x) for x in got[2 : 2 + k]],
+                    top_lps=[round(x, 4) for x in got[2 + k :]],
                     end=end,
                 )
                 if end:

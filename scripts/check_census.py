@@ -33,8 +33,12 @@ Gemma 4 of scripts/atlas_stand_in.py:
    changed canary (shard and field), two runtime classes, and refuses a shard given twice; an old meta (no batch, plan,
    dose unit, runtime or job list) with its rows regrouped still continues and merges; census_run.py --shard and
    census_tools.py merge from the command line;
-10. when the 31B's checkpoint is in the Hugging Face cache: on its own norms and down columns (CPU, a few tensors), the
-   next layer reads the census's controls about as loudly as the layer's neurons, and an isotropic control far louder.
+10. atlas_ops.write_rows reading each step back in one transfer gives the Steps the per-row reads gave (that code kept
+   here), bit for bit; census_run.py frees the J++ lens after load, and a census taken without it writes every answer
+   and names it; --layers takes several layers in one process, each its own run;
+11. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
+   columns (CPU, a few tensors), the next layer reads the census's controls about as loudly as the layer's neurons, and
+   an isotropic control far louder.
 
 Run: .venv/bin/python -I scripts/check_census.py   (exits 0 when every check holds)
 """
@@ -95,27 +99,83 @@ def row(kind: str, n: int, text: str, dose: float = 0.5, prompt: str = "who", id
             "top_ids": [], "top_lps": []}
 
 
+@torch.no_grad()
+def write_rows_per_row(lm: Any, W_U: torch.Tensor, rows_ids: Any, iv: Any, *, max_new: int, stop_ids: Any, bos_id: Any,
+                       spare_bos: bool = True, softcap: Any = 30.0, top_k: int = 0, cancel: Any = None) -> Any:
+    """atlas_ops.write_rows as it was before it read each step back in one transfer: the chosen piece, its
+    log-probability and the top k read from the device row by row. Kept here as the reference the one transfer must
+    match, step for step and bit for bit."""
+    import torch.nn.functional as F
+
+    dev = ao.model_device(lm)
+    B = len(rows_ids)
+    T = max(len(r) for r in rows_ids)
+    ids = torch.tensor([[0] * (T - len(r)) + [int(t) for t in r] for r in rows_ids], dtype=torch.long, device=dev)
+    mask = torch.tensor([[0] * (T - len(r)) + [1] * len(r) for r in rows_ids], dtype=torch.long, device=dev)
+    pos = (mask.cumsum(-1) - 1).clamp(min=0)
+    stop = {int(t) for t in stop_ids}
+    done = [False] * B
+    keep = ao._Keep()
+    keep.mask = ao.keep_mask(ids, mask, bos_id, spare_bos)
+    with ao.installed(lm, iv, keep):
+        out = lm(input_ids=ids, attention_mask=mask, position_ids=pos, use_cache=True)
+        cache = out.past_key_values
+        h = out.last_hidden_state[:, -1]
+        for _ in range(int(max_new)):
+            if cancel is not None and cancel():
+                return
+            logits = ao._model_logits(lm, W_U, h, softcap)
+            nxt = logits.argmax(-1)
+            lsm = F.log_softmax(logits.float(), dim=-1)
+            if top_k:
+                tv, ti = torch.topk(lsm, k=int(top_k), dim=-1)
+            for r in range(B):
+                if done[r]:
+                    continue
+                t = int(nxt[r])
+                end = t in stop
+                yield ao.Step(row=r, token_id=t, logprob=float(lsm[r, t]), top_ids=[int(x) for x in ti[r].tolist()] if top_k else [],
+                              top_lps=[round(float(x), 4) for x in tv[r].tolist()] if top_k else [], end=end)
+                if end:
+                    done[r] = True
+            if all(done):
+                return
+            keep.mask = None
+            mask = torch.cat([mask, torch.ones_like(mask[:, :1])], -1)
+            pos = pos[:, -1:] + 1
+            out = lm(input_ids=nxt[:, None], attention_mask=mask, position_ids=pos, past_key_values=cache, use_cache=True)
+            cache = out.past_key_values
+            h = out.last_hidden_state[:, -1]
+
+
 def real_read_gain(layers: tuple = (45, 57), sample: int = 256) -> Any:
     """{layer: (shaped ratio, isotropic ratio)}: how loudly the next layer's input norm reads the census's controls
     against the layer's neurons, on the 31B's own norms and dequantised down columns read from the local checkpoint
-    (CPU, a few tensors); None when the checkpoint is not cached here."""
-    import glob
+    (CPU, a few tensors); None when the checkpoint is not cached here (the cache found through huggingface_hub:
+    $HF_HUB_CACHE, $HF_HOME, else ~/.cache/huggingface)."""
+    import contextlib
 
-    from backend.engine_runtime import dequantize_w4a16_cols
+    from backend.engine_runtime import DEFAULT_W4A16_MODEL_ID, dequantize_w4a16_cols
 
-    hits = glob.glob(os.path.expanduser("~/.cache/huggingface/hub/models--google--gemma-4-31B-it-qat-w4a16-ct/snapshots/*/model.safetensors"))
-    if not hits:
+    files = cz.cached_checkpoint(DEFAULT_W4A16_MODEL_ID)
+    if not files:
         return None
     from safetensors import safe_open
 
     P = "model.language_model.layers."
     out = {}
-    with safe_open(hits[0], "pt") as f:
+    with contextlib.ExitStack() as stack:
+        opened = [stack.enter_context(safe_open(str(p), "pt")) for p in files]
+        where = {k: g for g in opened for k in g.keys()}  # each tensor's file
+
+        def get(k: str) -> torch.Tensor:
+            return where[k].get_tensor(k)
+
         for l in layers:
-            w_post = f.get_tensor(P + f"{l}.post_feedforward_layernorm.weight").float()
-            w_in = f.get_tensor(P + f"{l + 1}.input_layernorm.weight").float().numpy()
+            w_post = get(P + f"{l}.post_feedforward_layernorm.weight").float()
+            w_in = get(P + f"{l + 1}.input_layernorm.weight").float().numpy()
             idx = torch.from_numpy(np.random.default_rng(l).choice(21504, sample, replace=False))
-            U = dequantize_w4a16_cols(f.get_tensor(P + f"{l}.mlp.down_proj.weight_packed"), f.get_tensor(P + f"{l}.mlp.down_proj.weight_scale"), idx).float()
+            U = dequantize_w4a16_cols(get(P + f"{l}.mlp.down_proj.weight_packed"), get(P + f"{l}.mlp.down_proj.weight_scale"), idx).float()
             U = (U * w_post).numpy()
             U /= np.linalg.norm(U, axis=1, keepdims=True)
             iso = np.random.default_rng(0).standard_normal((sample, U.shape[1]))
@@ -826,7 +886,50 @@ def run_checks(tmp: Path) -> int:
     section("batch plans: a stop mid-chunk, a torn batch and three shards each equal an unbroken run row for row; merges, "
             "canaries, refusals, runtimes, old metas", before)
 
-    # ------------------------------------------------------------ 10. the null on the real checkpoint's own weights
+    # ------------------------------------------- 10. one transfer a step, the lens freed, several layers in one process
+    before = len(failures)
+    texts = [prompt_ids["who"], prompt_ids["snake"] + [7, 9, 11], prompt_ids["orange"], prompt_ids["free"]]
+    deltas = torch.stack([w.write_dirs(3, [5])[0] * 2.0 * p50, torch.zeros(D), torch.from_numpy(ctrl[0]) * -0.7 * p50,
+                          w.write_dirs(3, [9])[0] * 0.5 * p50])
+    ivw = ao.Interventions(rows=4, adds={3: deltas})
+    first_piece = next(ao.write_rows(lm, rt.lm_head_weight, [texts[1]], None, max_new=1, stop_ids=stop, bos_id=tok.bos_token_id)).token_id
+    for tk in (5, 0):
+        for iv_ in (ivw, None):
+            args_ = (lm, rt.lm_head_weight, texts, iv_)
+            kw_ = dict(max_new=14, stop_ids=list(stop) + [first_piece], bos_id=tok.bos_token_id, softcap=ao.softcap_of(rt.hf_model), top_k=tk)
+            new_s, old_s = list(ao.write_rows(*args_, **kw_)), list(write_rows_per_row(*args_, **kw_))
+            check(new_s == old_s and len(new_s) > 14 and any(s_.end for s_ in new_s),
+                  f"write_rows, one transfer a step: the same Steps as read row by row, bit for bit (top_k {tk}, "
+                  f"{'pushed' if iv_ is not None else 'unpushed'}; {len(new_s)} steps)")
+    rt2, _ = stand_in()
+    rt2.eager_model._lens_jacobians["jpp"] = rt2.jpp_lenses  # as TheodoliteRuntime.load registers it with interp-engine
+    card2 = rt2.lens_card()
+    sys.path.insert(0, str(ROOT_DIR / "scripts"))
+    import census_run
+
+    lid = census_run.free_lens(rt2)
+    check(lid == card2["id"] and lid is not None and not rt2.jpp_lenses and not rt2.eager_model._lens_jacobians["jpp"] and rt2.lens_card() is None,
+          f"free_lens: the J++ lens freed, interp-engine's handle too, its id kept ({lid})")
+    lr = tmp / "runs" / "L3-nolens.jsonl"
+    cz.take_census(rt2, 3, [0, 5], lr, **{**kw, "max_new": 4}, lens_id=lid)
+    check(len(list(cz.read_rows(lr))) == 4 + 4 * 10 and json.loads(cz.meta_path_of(lr).read_text())["lens"] == lid,
+          "a census taken with the lens freed: every answer written (nothing it calls reads the lens), the lens's id in the meta")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layers", "1,3-4", "--neurons", "0-1", "--random-controls",
+                             "1", "--max-new", "4", "--batch", "8", "--run", "L{layer}-depth", "--no-rank"], env=env, capture_output=True, text=True, timeout=600)
+    runs_d = {l_: tmp / "atlas" / "stand-in" / "census" / "runs" / f"L{l_}-depth.jsonl" for l_ in (1, 3, 4)}
+    metas_d = {l_: json.loads(cz.meta_path_of(p_).read_text()) for l_, p_ in runs_d.items() if p_.exists()}
+    check(r.returncode == 0 and sorted(metas_d) == [1, 3, 4] and all(m_["layer"] == l_ and len(list(cz.read_rows(runs_d[l_]))) == 34 for l_, m_ in metas_d.items())
+          and len({m_["p50"] for m_ in metas_d.values()}) == 3, f"census_run.py --layers 1,3-4: three runs, each its own layer and push unit ({r.stderr[-300:]})")
+    check("freed from the card" in r.stdout and all(m_["lens"] == card2["id"] for m_ in metas_d.values()),
+          "census_run.py frees the lens after load, and each meta names it")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layers", "1,3", "--run", "depth"], env=env,
+                       capture_output=True, text=True, timeout=300)
+    check(r.returncode != 0 and "{layer}" in r.stderr, "census_run.py: several layers under one run name are refused")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layers", "1,9"], env=env, capture_output=True, text=True, timeout=300)
+    check(r.returncode != 0 and "Layer 9 does not exist" in r.stderr, "census_run.py --layers: a layer that does not exist is refused")
+    section("write_rows reads each step back in one transfer, bit for bit; the lens freed; several layers in one process", before)
+
+    # ------------------------------------------------------------ 11. the null on the real checkpoint's own weights
     before = len(failures)
     real = real_read_gain()
     if real is None:
