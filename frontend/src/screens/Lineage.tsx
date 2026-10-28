@@ -514,7 +514,8 @@ const Practices: React.FC = () => (
             In part. Write whole sentences into a neuron’s guess test, and tick “read it in long contexts” in its field
             notes only once you have; in the atlas, “reads you” shades a whole text of yours by how hard a neuron fires.
             Stored passages for each face, which the study recommends (§3.5), are built but not yet gathered on the
-            model; once the atlas’s passages index is, its passages tab shows each face’s strongest windows whole.
+            model; once the atlas’s passages index is, its passages tab shows each face’s strongest passages, up to 24
+            word-pieces before each peak and 6 after, never across a document’s or a turn’s edge.
           </>
         }
         links={[

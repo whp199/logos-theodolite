@@ -34,13 +34,14 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   Each layer is written as its own file under steer_lens.d/ and a stopped run resumes; steer_lens.npz is merged when
   all 60 are there.
 - passages: the same forward per window as stats over the same corpus (give it the same --hf, --tokens and --seq), each
-  neuron's 16 strongest windows a face kept on the card with the gate and up values at each (about 0.8 GiB above the
-  model with --sample 6), so it should cost about what stats costs, some 29 minutes a million word-pieces (measured
-  for stats; passages not yet run on the model, inferred). --sample S also keeps S events a face drawn at random above
-  half its extreme, which the stats index holds (without it no samples are drawn, and the meta says so). A part per
-  --chunk windows (1,024: about 0.8 GB each on the 31B) is written to passages.d/parts/ and a stopped run resumes;
-  the parts are merged into passages.d/ (about 0.7 GB) and removed (--keep-parts keeps them). The windows it keeps are
-  the corpus's own text: the folder stays in the atlas folder, which git ignores; never commit it.
+  neuron's 16 strongest windows a face kept on the card with the gate and up values at each (about 0.8 GiB more than
+  stats needs with --sample 6, as both keep each layer's gate and up outputs to a window's end), so it should cost
+  about what stats costs, some 29 minutes a million word-pieces (measured for stats; passages not yet run on the
+  model, inferred). --sample S also keeps S events a face drawn at random above half its extreme, which the stats
+  index holds (without it no samples are drawn, and the meta says so). A part per --chunk windows (1,024: about
+  0.8 GB each on the 31B) is written to passages.d/parts/ and a stopped run resumes; the parts are merged into
+  passages.d/ (about 0.7 GB) and removed (--keep-parts keeps them). The windows it keeps are the corpus's own text:
+  the folder stays in the atlas folder, which git ignores; never commit it.
 `--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU
