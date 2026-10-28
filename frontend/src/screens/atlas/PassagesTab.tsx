@@ -1,6 +1,6 @@
 /**
  * The open neuron's stored passages (GET /api/atlas/neuron/passages, the passages index built by scripts/atlas_build.py
- * passages): for each face its strongest windows of the stats corpus, one event a window, the peak word-piece in gilt,
+ * passages): for each face its strongest windows of the corpus it was built on, one event a window, the peak word-piece in gilt,
  * with its share of the face's extreme and the regime GeGLU fired in there; then a few events drawn at random above
  * half its extreme; and the word-pieces each face reads and that follow, with their lift over the corpus's base rate.
  * Those words are counted over a few passages and no test has checked them: they are leads, not labels, and the page
@@ -21,7 +21,7 @@ const REGIME: Record<Passage["regime"], string> = {
 };
 const CUT: Record<string, string> = {
   start: "the window's start: the model read nothing before it",
-  document: "a document's end mark: what lies beyond is another document",
+  document: "a boundary between documents (an end mark, or a start mark inside the window): what lies beyond is another document",
   turn: "a turn mark of a chat",
   end: "the window's end",
 };

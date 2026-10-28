@@ -138,7 +138,8 @@ TOOLS: List[Dict[str, Any]] = [
      "(writes_into, reads_from) by strength across layers (w), each read from rest: a reader on the face the link pushes it "
      "toward (sign), a writer on the face that opens the reader's gate (gate), with that face's words, census words and name.",
      "inputSchema": {"type": "object", "properties": LN, "required": ["layer", "n"]}},
-    {"name": "passages", "description": "One face's stored passages, from the passages index (read over the stats corpus): its k "
+    {"name": "passages", "description": "One face's stored passages, from the passages index (over the corpus it was built on; "
+     "rel_to says whose extreme rel is a share of, and when the stats index was read over another corpus): its k "
      "strongest windows, one event each, the peak marked [[like this]], each with its activation, its share of the face's "
      "extreme (rel) and GeGLU's regime there (pp: gate and up both positive; nn: both negative, the double negative; pn, np: "
      "the negative side's two); then a few events drawn at random above half its extreme; and the word-pieces at the peaks "

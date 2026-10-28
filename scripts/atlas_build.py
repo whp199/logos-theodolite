@@ -219,12 +219,17 @@ def main() -> int:
         elif step == "passages":
             texts, name = corpus_texts(a, rt)
             wins = ab.windows(rt, texts, a.seq, a.tokens)
-            stats = AtlasIndex(out).get("act_scale") if a.sample else None
+            stats = AtlasIndex(out).get("act_scale")
             if a.sample and stats is None:
                 print("passages: no stats index here, so no events are drawn at random (their threshold is half of each "
                       "face's extreme): build stats first to draw them")
-            ext = (stats["pos"], stats["neg"]) if stats is not None else None
-            src = f"the stats index ({stats['meta'].get('corpus')}, {int(stats['tokens'])} word-pieces)" if stats is not None else None
+            n_read = sum(max(0, len(wn) - 1) for wn in wins)
+            if stats is not None and (stats["meta"].get("corpus"), int(stats["tokens"])) != (name, n_read):
+                what = "each passage's share of its face's extreme" + (" and the samples' threshold are" if a.sample else " is")
+                print(f"passages: the stats index was read over {stats['meta'].get('corpus')} ({int(stats['tokens']):,} word-pieces), "
+                      f"these windows over {name} ({n_read:,}): {what} taken against the stats index; give both the same corpus")
+            ext = (stats["pos"], stats["neg"]) if stats is not None and a.sample else None
+            src = f"the stats index ({stats['meta'].get('corpus')}, {int(stats['tokens'])} word-pieces)" if ext is not None else None
             print("->", ab.build_passages(rt, out, wins, name, k=a.k, sample=a.sample, extremes=ext, extremes_source=src,
                                           seed=a.seed, chunk=a.chunk or 1024, keep_parts=a.keep_parts))
         elif step == "steer":

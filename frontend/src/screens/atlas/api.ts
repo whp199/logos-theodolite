@@ -393,7 +393,8 @@ export interface ReadsReply {
 }
 /** One stored passage (GET /neuron/passages): the event's activation, its share of the face's extreme, GeGLU's regime
  * there and its gate and up values; its window and position; the display units of `span` [s, e) of the window, the
- * peak marked; why each side stops (`cut`: "start", "document", "turn", "end", or null where the count ran out); and
+ * peak marked; why each side stops (`cut`: "start", the window's own; "document", an end mark or a start mark inside
+ * the window; "turn", "end", or null where the count ran out); and
  * `ids`, the window up to the span's end, which POST /reads takes to read it again. */
 export interface Passage {
   kind: "top" | "sample";

@@ -467,7 +467,7 @@ process at a time):
 .venv/bin/python scripts/atlas_build.py all                          # words, activation ranges, wiring, layout (minutes)
 .venv/bin/python scripts/atlas_build.py stats --hf <dataset> --tokens 2000000   # optional: ranges over a corpus of your choosing
 .venv/bin/python scripts/atlas_build.py steer --layers 40-59         # the steer lens, a range of layers at a time (hours)
-.venv/bin/python scripts/atlas_build.py passages --hf <dataset> --tokens 2000000   # each face's strongest passages, over the stats corpus
+.venv/bin/python scripts/atlas_build.py passages --hf <dataset> --tokens 2000000   # each face's strongest passages (the corpus stats read)
 .venv/bin/python scripts/census_run.py --layer 53 --neurons all --random-controls 256   # a layer's census, ranked (layers from 0)
 .venv/bin/python scripts/census_tools.py spread 53                   # its answers laid out by what they say (CPU)
 ```
@@ -487,10 +487,12 @@ little left for a batch). The 0.71 s a decode step in `census_run.py`’s help w
 
 `atlas_build.py passages --hf <dataset> --tokens 2000000` keeps, for every neuron and face, its sixteen strongest windows
 of the corpus (one event a window) with the gate and up values there, for the atlas’s passages tab, the folio and the
-scientist’s `passages`; give it the corpus `stats` read (with the stats index there it also draws six a face at random
-above half its extreme, `--sample`). It is one forward a window, as `stats` is, so it should cost about what stats
-costs, some 29 minutes a million word-pieces on one RTX 5090 (measured for stats; passages not yet run on the model).
-The windows it keeps are the corpus’s own text: they stay in the atlas folder and are never committed.
+scientist’s `passages`; give it the corpus `stats` read, for each passage’s share of the face’s extreme and the
+samples’ threshold are taken against the stats index (`all` reads the study’s 36 texts unless given a corpus; the
+route and the build say when the two differ). With the stats index there it also draws six a face at random above
+half its extreme (`--sample`). It is one forward a window, as `stats` is, so it should cost about what stats costs,
+some 29 minutes a million word-pieces on one RTX 5090 (measured for stats; passages not yet run on the model). The
+windows it keeps are the corpus’s own text: they stay in the atlas folder and are never committed.
 
 The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model) or
 Codex (`codex`) where the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,

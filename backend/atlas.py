@@ -861,8 +861,9 @@ def regime(g: float, u: float) -> str:
 
 def passage_marks(tok: Any) -> Dict[int, Tuple[str, str]]:
     """The word-pieces a passage is never shown across: {id: (what it marks, "begins" | "ends")}: the start mark (a
-    window's first piece: the model read nothing before it), the end mark (between two documents) and the two turn
-    marks of a chat (`<|turn>` opens a turn, `<turn|>` closes it), where the tokenizer has them."""
+    window's first piece: the model read nothing before it; one further in begins another document, as a chat composed
+    with its own start mark does, and `cut_passage` calls it "document"), the end mark (between two documents) and the
+    two turn marks of a chat (`<|turn>` opens a turn, `<turn|>` closes it), where the tokenizer has them."""
     out: Dict[int, Tuple[str, str]] = {}
     for t, what, side in (("<|turn>", "turn", "begins"), ("<turn|>", "turn", "ends")):
         i = tok.convert_tokens_to_ids(t)
@@ -878,17 +879,19 @@ def passage_marks(tok: Any) -> Dict[int, Tuple[str, str]]:
 def cut_passage(ids: Sequence[int], at: int, before: int, after: int, marks: Dict[int, Tuple[str, str]]) -> Tuple[int, int, Optional[str], Optional[str]]:
     """The span [s, e) of a window shown around its word-piece `at`: at most `before` pieces before it and `after` after,
     never across a mark (`passage_marks`, itself left out); a peak on a mark that begins something shows nothing before
-    it, on one that ends something nothing after. Returns (s, e, why it stops before, why after): the mark's kind, "end"
-    for the window's own end, None where the count ran out first."""
+    it, on one that ends something nothing after. Returns (s, e, why it stops before, why after): the mark's kind
+    ("start" only for the window's own first piece; a start mark further in is a "document" boundary), "end" for the
+    window's own end, None where the count ran out first."""
+    kind = lambda i, m: "document" if m[0] == "start" and i > 0 else m[0]  # noqa: E731
     s, e, why_b, why_a = at, at + 1, None, None
     own = marks.get(int(ids[at]))
     if own and own[1] == "begins":
-        why_b = own[0]
+        why_b = kind(at, own)
     else:
         while at - s < before and s > 0:
             m = marks.get(int(ids[s - 1]))
             if m:
-                why_b = m[0]
+                why_b = kind(s - 1, m)
                 break
             s -= 1
     if own and own[1] == "ends":
@@ -900,7 +903,7 @@ def cut_passage(ids: Sequence[int], at: int, before: int, after: int, marks: Dic
                 break
             m = marks.get(int(ids[e]))
             if m:
-                why_a = m[0]
+                why_a = kind(e, m)
                 break
             e += 1
     return s, e, why_b, why_a
@@ -933,9 +936,15 @@ def _passages(a: Atlas, layer: int, n: int, face: str, k: int, before: int, afte
     marks = passage_marks(tok)
     stats = a.index.get("act_scale")
     ext = float(stats["pos" if face == "+" else "neg"][layer, n]) if stats is not None else 0.0
-    rel_to = f"its extreme in the stats index ({stats['meta'].get('corpus')})" if ext else None
-    if not ext and got["top"]:
-        ext, rel_to = got["top"][0]["act"], "its strongest passage here (no stats index)"
+    rel_to = None
+    if ext:
+        # the build takes whatever corpus it is given: say so when the stats index was read over another
+        sm, st = stats["meta"].get("corpus"), int(stats["tokens"])
+        rel_to = (f"its extreme in the stats index ({sm})" if (sm, st) == (meta.get("corpus"), tokens)
+                  else f"its extreme in the stats index, read over another corpus ({sm}, {st:,} word-pieces)")
+    elif got["top"]:
+        ext, rel_to = got["top"][0]["act"], ("its strongest passage here (no stats index)" if stats is None
+                                             else "its strongest passage here (the stats index never saw this face fire)")
     word = lambda t: vocab[int(t)] if 0 <= int(t) < len(vocab) else ""  # noqa: E731
     out, reads, follows = [], {}, {}
     for kind, slots in (("top", got["top"]), ("sample", sorted(got["sample"], key=lambda x: -abs(x["act"])))):
@@ -988,9 +997,9 @@ async def neuron_passages(layer: int, n: int, face: str = "+", k: int = 16, befo
     events, at most one a window, then those drawn at random above half its extreme, each with its activation, its
     share of the face's extreme (`rel`), GeGLU's regime there (from the gate and up values, `g`, `u`), its window and
     position, and its display units ([text, is_peak], the window's word-pieces `span` [s, e)) cut at the window's start
-    or end, a document's end mark or a turn mark, else where `before` or `after` (each at most 128) runs out (`cut`: why
-    each side stops; a character split over byte pieces is kept whole); `ids`, the window up to the span's end, for
-    POST /reads. `reads` and `follows`: the word-pieces at the peaks and just after them, counted over the k with their
+    or end, a boundary between documents (an end mark, or a start mark inside the window) or a turn mark, else where
+    `before` or `after` (each at most 128) runs out (`cut`: why each side stops; a character split over byte pieces is
+    kept whole); `ids`, the window up to the span's end, for POST /reads. `reads` and `follows`: the word-pieces at the peaks and just after them, counted over the k with their
     lift over the corpus's base rate, which are leads (`words_note`), not labels the gate has checked. `ready: false`,
     saying which build makes it, without the index; `stale` when a vault edit in force could have changed them."""
     a = atlas()

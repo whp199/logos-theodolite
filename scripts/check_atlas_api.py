@@ -15,9 +15,10 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
 6. with every index built (backend/atlas_build.py into the temporary atlas folder): the scales come from the stats
    index, the tooltip and the wiring from the indexes, the search finds a face by its first word-piece, the cone and
    the web come back as the index has them, the layout and the active paths; a face's stored passages (the index's
-   events in order, the peak unit marked, each side cut where the window starts or ends, at a document's end mark or a
-   turn mark, or where the count runs out, `rel`, the regime, reads and follows counted with their lift), refusals in
-   plain words, and /reads given a passage's ids reading it again as the index has it;
+   events in order, the peak unit marked, each side cut where the window starts or ends, at a boundary between
+   documents (an end mark, or a start mark inside the window) or a turn mark, or where the count runs out, `rel`, the
+   regime, reads and follows counted with their lift; `rel_to` naming the stats index's corpus, or saying it is
+   another), refusals in plain words, and /reads given a passage's ids reading it again as the index has it;
 7. a vault edit in force: the wiring is read live again, the faces say their index words are stale, the caches keyed by
    the edits in force are not reused, the passages of the edited neuron and of later layers are marked stale;
 8. the field notes: kept, shown on the tooltip and the wiring, forgotten, refused in plain words, a corrupt file moved
@@ -556,6 +557,12 @@ def main() -> int:
     check(atlas_routes.cut_passage(ids_h, 6, 1, 0, marks) == (5, 7, None, None), "cut_passage: the counts run out first")
     check(atlas_routes.cut_passage([bos, 40, eos, 41, 42], 2, 24, 6, marks) == (1, 3, "start", "document"), "cut_passage: a peak on an end mark, nothing after it")
     check(atlas_routes.cut_passage([bos, 40, t_open, 41], 2, 24, 6, marks) == (2, 4, "turn", "end"), "cut_passage: a peak on a turn's opening, nothing before it")
+    # a start mark inside a window (a chat composed with its own, packed after another document) is a boundary between
+    # documents, not the window's start: the model read what lies before it
+    check(atlas_routes.cut_passage([bos, 40, eos, bos, 41, 42], 4, 24, 6, marks) == (4, 6, "document", "end")
+          and atlas_routes.cut_passage([bos, 40, eos, bos, 41], 3, 24, 6, marks) == (3, 5, "document", "end")
+          and atlas_routes.cut_passage([bos, 40, 41, bos, 42], 1, 24, 6, marks) == (1, 3, "start", "document"),
+          "cut_passage: a start mark inside the window cuts as a document's boundary, on either side or under the peak")
     pr = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "+"}).json()
     want = idx.passages(2, 5, "+")
     tops = [x for x in pr["passages"] if x["kind"] == "top"]
@@ -583,9 +590,10 @@ def main() -> int:
                 ok = (x["ids"] == ids_w[:e_] and s_ <= at < e_
                       and x["units"] == [[t, (at - s_) in i_] for t, i_ in ao.token_units(tok, shown)]
                       and not any(t in marks for i_, t in enumerate(shown) if s_ + i_ != at)
-                      and (why_b != "start" or s_ == 1) and (why_b != "document" or ids_w[s_ - 1] == eos)
+                      and (why_b != "start" or s_ == 1)
+                      and (why_b != "document" or ids_w[s_ - 1] == eos or (ids_w[s_ - 1] == bos and s_ > 1) or (s_ == at > 0 and ids_w[at] == bos))
                       and (why_b is not None or 24 <= at - s_ <= 27)
-                      and (why_a != "end" or e_ == len(ids_w)) and (why_a != "document" or ids_w[e_] == eos)
+                      and (why_a != "end" or e_ == len(ids_w)) and (why_a != "document" or ids_w[e_] in (eos, bos))
                       and (why_a is not None or 6 <= e_ - at - 1 <= 9)
                       and x["regime"] == ("p" if x["g"] > 0 else "n") + ("p" if x["u"] > 0 else "n")
                       and (x["rel"] is None or abs(x["rel"] - x["act"] / ext_) < 2e-3)
@@ -622,6 +630,27 @@ def main() -> int:
                        ({"layer": 2, "n": 5, "ids": []}, "Give the word-piece ids")]:
         r = c.post("/api/atlas/reads", json=body)
         check(r.status_code == 400 and says in r.json()["detail"], f"/reads {str(body)[:60]}: refused in plain words ({r.text[:120]})")
+    # what `rel` is a share of: the stats index's extreme, named with its corpus; said to be another corpus's when the
+    # stats index was read over another; the strongest passage where the stats index never saw the face fire, or is not built
+    check(pr["rel_to"] == "its extreme in the stats index (check)", f"/neuron/passages: rel over the stats index's extreme, its corpus named ({pr['rel_to']})")
+    sp = out / "act_scale.npz"
+    sp.rename(out / "act_scale.keep")
+    with np.load(out / "act_scale.keep") as z:
+        other = {k_: z[k_] for k_ in z.files}
+    other["meta"] = np.array(json.dumps({**json.loads(str(other["meta"])), "corpus": "another"}))
+    other["pos"] = other["pos"].copy()
+    other["pos"][2, 5] = 0.0
+    np.savez(sp, **other)
+    r_other = c.get("/api/atlas/neuron/passages", params={"layer": 0, "n": 9}).json()
+    r_never = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5}).json()
+    sp.unlink()
+    r_none = c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5}).json()
+    (out / "act_scale.keep").rename(sp)
+    check(r_other["rel_to"] == f"its extreme in the stats index, read over another corpus (another, {int(stats['tokens']):,} word-pieces)"
+          and "the stats index never saw this face fire" in r_never["rel_to"] and r_never["passages"][0]["rel"] == 1.0
+          and "(no stats index)" in r_none["rel_to"] and r_none["passages"][0]["rel"] == 1.0
+          and c.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5}).json()["rel_to"] == pr["rel_to"],
+          f"/neuron/passages: rel_to says when the stats index is another corpus's, never saw the face fire, or is not built ({r_other['rel_to']}; {r_never['rel_to']}; {r_none['rel_to']})")
     section("the passages: the index's events, cut at marks, reads and follows, refusals, and /reads with their ids", before)
 
     # ------------------------------------------------------------------------------------------- 7. a vault edit
