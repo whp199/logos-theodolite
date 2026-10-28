@@ -153,17 +153,70 @@ export interface HypRow {
   face: 1 | -1;
 }
 
-export interface Hypothesis {
+/** test_motif_hypothesis's test against chance (`selectivity`, backend/mcp_scientist.py motif_statistics): on the last
+ * word-piece's readings, Welch's t and a p from splitting the sentences between the sides afresh. */
+export interface Selectivity {
+  /** SELECTIVE_NORTH_POLE (+), SELECTIVE_SOUTH_POLE (-), DIFFERS_NOT_AS_GUESSED, NOT_SHOWN or TOO_FEW_TO_JUDGE */
   verdict: string;
+  /** the server's own words for it */
+  words: string | null;
+  nPos: number | null;
+  nNeg: number | null;
+  meanPos: number | null;
+  meanNeg: number | null;
+  /** Cohen's d over the pooled sample variance; null below two sentences a side, or when neither side varies */
+  d: number | null;
+  /** Welch's t and its degrees of freedom; null below two sentences a side, or for a gap with no spread at all */
+  t: number | null;
+  df: number | null;
+  /** two-sided; null below two sentences a side */
+  p: number | null;
+  /** "exact" (every split) or "permutation" (`splits` shuffles, seeded `seed`) */
+  pMethod: string | null;
+  splits: number | null;
+  seed: number | null;
+  /** sentences a side below which it does not judge, and the p it judges by */
+  minN: number | null;
+  alpha: number | null;
+}
+
+export interface Hypothesis {
+  /** as first built (a threshold on `d` at any n, nothing set against chance), kept for old callers: read `test` */
+  verdict: string;
+  /** as first built: Cohen's d over population variances */
   d: number | null;
   meanPos: number | null;
   meanNeg: number | null;
+  /** the test against chance; null from an older server, which sends none */
+  test: Selectivity | null;
   pos: HypRow[];
   neg: HypRow[];
   signature: Tok[] | null;
   /** the server's check of the pole's label (pole_label_check); null = not sent */
   signatureCheck: LabelCheck | null;
   raw: unknown;
+}
+
+function parseSelectivity(v: unknown): Selectivity | null {
+  const s = obj(v);
+  if (!s || typeof s.verdict !== "string") return null;
+  return {
+    verdict: s.verdict,
+    words: str(s.words),
+    nPos: num(s.n_pos),
+    nNeg: num(s.n_neg),
+    meanPos: num(s.mean_pos),
+    meanNeg: num(s.mean_neg),
+    d: num(s.cohens_d),
+    t: num(s.welch_t),
+    df: num(s.welch_df),
+    p: num(s.p),
+    pMethod: str(s.p_method),
+    splits: num(s.splits),
+    seed: num(s.seed),
+    minN: num(s.min_n),
+    alpha: num(s.alpha),
+  };
 }
 
 export function parseHypothesis(d: unknown): Hypothesis | null {
@@ -185,6 +238,7 @@ export function parseHypothesis(d: unknown): Hypothesis | null {
     d: num(o.cohens_d),
     meanPos: num(o.mean_pos_signed_act),
     meanNeg: num(o.mean_neg_signed_act),
+    test: parseSelectivity(o.selectivity),
     pos: rows(o.pos_prompt_results),
     neg: rows(o.neg_prompt_results),
     signature: toks(o.pole_j_vindex_signature),
@@ -193,14 +247,50 @@ export function parseHypothesis(d: unknown): Hypothesis | null {
   };
 }
 
-/** The verdict in plain words. */
+/** The verdict as first built, in plain words: a threshold on d, at any number of sentences, with nothing set against
+ * chance (one sentence a side can pass it), so it is never read as a yes. What an older server, which sends no test,
+ * is shown by. */
 export function verdictWords(v: string): string {
-  if (v.startsWith("CONFIRMED_NORTH_POLE")) return "yes, clearly, on its positive face";
-  if (v.startsWith("CONFIRMED_SOUTH_POLE")) return "yes, clearly, on its negative face";
-  if (v.startsWith("WEAK_SELECTIVITY")) return "only weakly";
-  if (v.startsWith("REJECTED_OR_INCONCLUSIVE")) return "no, not clearly";
+  const old = "an older server’s threshold, with nothing set against chance";
+  if (v.startsWith("CONFIRMED_NORTH_POLE")) return `d at 0.8 or more on its positive face (${old})`;
+  if (v.startsWith("CONFIRMED_SOUTH_POLE")) return `d at −0.8 or less on its negative face (${old})`;
+  if (v.startsWith("WEAK_SELECTIVITY")) return `|d| at 0.5 or more (${old})`;
+  if (v.startsWith("REJECTED_OR_INCONCLUSIVE")) return `|d| under 0.5 (${old})`;
   return v || "";
 }
+
+/** A p as the server writes it: two significant figures, or more where two would round it up to the 0.05 it is judged
+ * by (0.0496 is not 0.05). */
+export function pText(p: number, alpha = 0.05): string {
+  let s = "";
+  for (const k of [2, 3, 4, 6]) {
+    s = String(Number(p.toPrecision(k)));
+    if (!(p < alpha && Number(s) >= alpha)) break;
+  }
+  return s;
+}
+
+/** How many sentences each side had: "4 a side", or "6 and 4" (where it should fire, then where quiet). */
+export const nText = (t: Selectivity): string =>
+  t.nPos !== null && t.nPos === t.nNeg ? `${t.nPos} a side` : `${t.nPos ?? "?"} and ${t.nNeg ?? "?"}`;
+
+/** The test against chance in plain words, hedged as the server's own `words` are: what it found, its p and its n. */
+export function selectivityWords(t: Selectivity): string {
+  const p = t.p === null ? null : pText(t.p, t.alpha ?? 0.05);
+  const n = nText(t);
+  if (t.verdict === "TOO_FEW_TO_JUDGE") return `too few to judge: n = ${n}, and the test needs at least ${t.minN ?? 4} a side`;
+  if (t.verdict === "NOT_SHOWN") return p === null ? `no difference shown: n = ${n}` : `no difference shown: p = ${p}, n = ${n}`;
+  if (t.verdict.startsWith("SELECTIVE_NORTH_POLE")) return `selective on its positive face, p = ${p}, n = ${n}`;
+  if (t.verdict.startsWith("SELECTIVE_SOUTH_POLE")) return `selective on its negative face, p = ${p}, n = ${n}`;
+  if (t.verdict === "DIFFERS_NOT_AS_GUESSED") {
+    const quiet = t.meanPos !== null && t.meanNeg !== null && t.meanPos > t.meanNeg ? "negative" : "positive";
+    return `the sides differ, p = ${p}, n = ${n}, but not as guessed: the quiet sentences fire its ${quiet} face more`;
+  }
+  return t.words ?? t.verdict;
+}
+
+/** What the folio says the test found: the test against chance, or an older server's threshold, hedged. */
+export const hypothesisWords = (h: Hypothesis): string => (h.test ? selectivityWords(h.test) : verdictWords(h.verdict));
 
 /** One word-piece of a causal check: its change of log-probability c and its log-probability before and after (means
  * over the texts in study mode). */

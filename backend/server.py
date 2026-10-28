@@ -1510,15 +1510,18 @@ async def api_causal_check(req: CausalCheckRequest) -> Dict[str, Any]:
 @app.post("/api/scientist/test_hypothesis")
 async def api_test_hypothesis(req: MotifHypothesisRequest) -> Dict[str, Any]:
     _runtime, _vault = get_app_state()
-    async with _GPU_LOCK:
-        return await test_motif_hypothesis(
-            layer=req.layer,
-            neuron_idx=req.neuron_idx,
-            pos_prompts=req.pos_prompts,
-            neg_prompts=req.neg_prompts,
-            chat=req.chat,
-            system=req.system,
-        )
+    try:
+        async with _GPU_LOCK:
+            return await test_motif_hypothesis(
+                layer=req.layer,
+                neuron_idx=req.neuron_idx,
+                pos_prompts=req.pos_prompts,
+                neg_prompts=req.neg_prompts,
+                chat=req.chat,
+                system=req.system,
+            )
+    except ValueError as exc:  # its refusals, in plain words: an empty side, a layer or neuron that does not exist
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.websocket("/ws/theodolite")

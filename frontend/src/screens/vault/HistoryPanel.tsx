@@ -265,8 +265,9 @@ export const HistoryPanel: React.FC = () => {
           <dd className="num">
             <span className="mono-wrap">test_motif_hypothesis</span>, the MCP scientist’s, on neuron 5313 of layer 51:{" "}
             <span className="mono-wrap">CONFIRMED_SOUTH_POLE (-)</span> with d = −22.38 on three sentences against three, and −5.48 on twelve
-            against twelve; on neuron 15381 of layer 59, −1.91 and −1.25. It uses the population variance and no significance test, and says
-            CONFIRMED at |d| ≥ 0.8 for any number of sentences (E6 §3, item 7).
+            against twelve; on neuron 15381 of layer 59, −1.91 and −1.25. That verdict, still sent for old callers, uses the population variance
+            and no significance test, and says CONFIRMED at |d| ≥ 0.8 for any number of sentences (E6 §3, item 7); its test against chance
+            (Welch’s t, a permutation p, at least four sentences a side) came after.
           </dd>
           <dt>other readings</dt>
           <dd style={{ margin: 0, display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>

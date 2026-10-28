@@ -51,6 +51,7 @@ theodolite2/
 │   ├── check_census.py              # the census's statistics, dose window, units, resume, shards, merge and spread (CPU only)
 │   ├── check_scientist.py           # the scientist's tools, MCP server and three backends against fakes (CPU only)
 │   ├── check_local_only.py          # who may ask: every route, the socket and the lab daemon, refused or let in (CPU only)
+│   ├── check_hypothesis_test.py     # test_motif_hypothesis's test against chance, its route and the folio's words (CPU only)
 │   ├── check_causal_check.py        # the causal spot-check on a tiny CPU Gemma 4 (CPU only, run first by verify_e2e)
 │   ├── check_contrast_readings.py   # one word against another: scores, labkit parity, backgrounds, μ's pin (CPU only)
 │   ├── check_think_template.py      # the cached chat template's thinking switch, as measured (CPU only)
@@ -361,6 +362,14 @@ old fields unchanged. Layers in these fields count from 0.
   `trace_downstream_readers` (`trace_readers`) adds to each reader returned `dst_naive_tokens` (four, as through the
   lens) and `dst_label_check`, and `label_gate` to the reply; `test_motif_hypothesis` adds `pole_label_check` (its
   pole's face) and `label_gate`.
+- `test_motif_hypothesis` (`POST /api/scientist/test_hypothesis`) adds `selectivity` after the means: on the last
+  word-piece's unrounded readings, `n_pos`, `n_neg`, the means, sample standard deviations, `cohens_d` over the pooled
+  sample variance, `welch_t` and `welch_df`, a two-sided `p` (`p_method` "exact" over every split of the sentences up
+  to 10,000 of them, else "permutation", 10,000 shuffles under `seed` 0), `min_n` (4) and `alpha` (0.05), its own
+  `verdict` (SELECTIVE_NORTH_POLE (+), SELECTIVE_SOUTH_POLE (-), DIFFERS_NOT_AS_GUESSED, NOT_SHOWN, TOO_FEW_TO_JUDGE
+  below four a side), `face` and `words`. `verdict` and `cohens_d` stay as first built (population variances, a
+  threshold at any n), for old callers; the folio shows `selectivity`. An empty side, or a layer or neuron that does
+  not exist, is refused in plain words (400), where it was read as 0.0 or moved to the nearest layer.
 
 Contrasts (one word against another; V7 bug 3's contrastive axes, E3 (c)'s background; backend/theodolite_math.py
 `contrast_of_state`, engine_runtime `_contrast_readings`; scripts/check_contrast_readings.py). Every pair's JSON adds

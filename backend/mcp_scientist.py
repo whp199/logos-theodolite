@@ -3,7 +3,9 @@
 Exposes four core mechanistic interpretability tools via FastMCP:
 1. `inspect_pole(layer, neuron_idx, polarity)`
 2. `trace_downstream_readers(layer, neuron_idx, prompt)`
-3. `test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts)`
+3. `test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts)`: whether the neuron tells two sets of
+   sentences apart, set against chance (`selectivity`, `motif_statistics`: Welch's t, a permutation p, at least four
+   sentences a side to judge)
 4. `causal_spot_check(layer, neuron_idx, contexts, token_ids | prompt, k, write)`: the label tested causally (the
    study's N1A protocol at k = 10, `backend/causal_check.py`)
 Plus `query_larql_vault(lql_query)` for declarative VINDEX3 queries and `.patch` edits (each one neuron's down_proj
@@ -34,10 +36,12 @@ action, which pass its reply on unchanged.
 
 from __future__ import annotations
 
+import itertools
 import math
 import time
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import torch
 from fastmcp import FastMCP
 from interp_engine import Address
@@ -316,6 +320,147 @@ async def trace_downstream_readers(
     }
 
 
+# test_motif_hypothesis's test against chance (`motif_statistics`, its reply's `selectivity`)
+MOTIF_MIN_N = 4  # sentences a side before it judges: at three against three no split reaches p < 0.05 (the least is 0.1)
+MOTIF_ALPHA = 0.05
+MOTIF_DRAWS = 10_000  # every split of the sentences when there are at most this many, else this many shuffles
+MOTIF_SEED = 0
+MOTIF_CHUNK = 2048  # splits weighed at once
+
+
+def _welch(x: np.ndarray, side: np.ndarray, floor: float) -> tuple:
+    """Welch's t and its degrees of freedom, and the difference of means, for each split of `x` (`side`: [splits,
+    len(x)], True for a + sentence). A difference or a side's spread within `floor` (rounding) counts as none, and a
+    difference with no spread on either side is an infinite t."""
+    n1 = side.sum(1)
+    n2 = side.shape[1] - n1
+    m1 = (side * x).sum(1) / n1
+    m2 = (~side * x).sum(1) / n2
+    v1 = (side * (x - m1[:, None]) ** 2).sum(1) / (n1 - 1)
+    v2 = (~side * (x - m2[:, None]) ** 2).sum(1) / (n2 - 1)
+    v1[v1 <= floor**2] = 0.0
+    v2[v2 <= floor**2] = 0.0
+    diff = m1 - m2
+    diff[np.abs(diff) <= floor] = 0.0
+    se2 = v1 / n1 + v2 / n2
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = np.where(se2 > 0, diff / np.sqrt(se2), np.where(diff == 0, 0.0, np.copysign(np.inf, diff)))
+        df = se2**2 / ((v1 / n1) ** 2 / (n1 - 1) + (v2 / n2) ** 2 / (n2 - 1))
+    return t, df, diff
+
+
+def _p_words(p: float) -> str:
+    """A p to two significant figures, or to more where two would round it up to MOTIF_ALPHA (0.0496 is not 0.05)."""
+    for k in (2, 3, 4, 6):
+        s = f"{p:.{k}g}"
+        if not p < MOTIF_ALPHA <= float(s):
+            break
+    return s
+
+
+def _sides(n: int, n1: int, picks: Any) -> np.ndarray:
+    """Splits as [splits, n] masks, True at each split's + sentences (`picks`: their indices, one row a split)."""
+    picks = np.asarray(picks, dtype=np.int64).reshape(-1, n1)
+    side = np.zeros((len(picks), n), dtype=bool)
+    side[np.arange(len(picks))[:, None], picks] = True
+    return side
+
+
+def motif_statistics(pos: List[float], neg: List[float], draws: int = MOTIF_DRAWS, seed: int = MOTIF_SEED) -> Dict[str, Any]:
+    """Whether a neuron's signed activations on the + sentences (`pos`, where it should fire) and the - sentences
+    (`neg`, where it should stay quiet) differ by more than chance makes: test_motif_hypothesis's `selectivity`.
+
+    It gives the n, mean and sample standard deviation of each side, Cohen's d over the pooled sample variance, and
+    Welch's t with its degrees of freedom. Its p is two-sided, for |t|, from splitting the sentences between the sides
+    afresh: exact over every split when there are at most `draws` (the share of splits whose |t| is at least the
+    observed one, the observed split among them), else from `draws` random splits seeded with `seed`, (1 + as
+    large) / (1 + draws), so never 0. Under the null that a sentence's side does not matter to the neuron the split is
+    arbitrary; Welch's t keeps the test fair when the sides vary unequally. A difference with no spread on either side
+    has an infinite t (sent as null) and is weighed as such. Fewer than two a side leave t and p null.
+
+    `verdict`: TOO_FEW_TO_JUDGE below MOTIF_MIN_N sentences a side, whatever the numbers; else NOT_SHOWN unless
+    p < MOTIF_ALPHA; else SELECTIVE_NORTH_POLE (+) when the + sentences read higher and their mean is above 0,
+    SELECTIVE_SOUTH_POLE (-) when they read lower and their mean is below 0 (`face`), and DIFFERS_NOT_AS_GUESSED when
+    the sides differ the other way: the quiet sentences fire a face more. `words` says it with its p and n. One test is
+    one neuron's: p's from several want correcting together (the study used Benjamini-Hochberg, E6 §2.3). An empty
+    side, or a reading that is not a finite number, is refused in plain words (ValueError)."""
+    a = np.asarray(pos, dtype=np.float64)
+    b = np.asarray(neg, dtype=np.float64)
+    n1, n2 = len(a), len(b)
+    if not n1 or not n2:
+        raise ValueError("The test needs sentences on both sides.")
+    if not (np.isfinite(a).all() and np.isfinite(b).all()):
+        raise ValueError("A reading is not a finite number (the model overflowed on a sentence), so there is nothing to test.")
+    m1, m2 = float(a.mean()), float(b.mean())
+    sd1 = float(a.std(ddof=1)) if n1 > 1 else None
+    sd2 = float(b.std(ddof=1)) if n2 > 1 else None
+    d = t = df = p = method = splits = None
+    if n1 > 1 and n2 > 1:
+        x = np.concatenate([a, b])
+        n = len(x)
+        floor = 4 * n * float(np.finfo(np.float64).eps) * float(np.abs(x).max())
+        t_obs, df_obs, _ = _welch(x, _sides(n, n1, [range(n1)]), floor)
+        t, df = float(t_obs[0]), float(df_obs[0])
+        pooled = ((n1 - 1) * sd1**2 + (n2 - 1) * sd2**2) / (n1 + n2 - 2)
+        d = (m1 - m2) / math.sqrt(pooled) if pooled > floor**2 else None
+        at_least = abs(t) * (1 - 1e-9)  # the observed split's own |t|, and its mirror's, within rounding
+        total = math.comb(n, n1)
+        count = 0
+        if total <= draws:
+            method, splits = "exact", total
+            every = itertools.combinations(range(n), n1)
+            for chunk in iter(lambda: list(itertools.islice(every, MOTIF_CHUNK)), []):
+                count += int((np.abs(_welch(x, _sides(n, n1, chunk), floor)[0]) >= at_least).sum())
+            p = count / total
+        else:
+            method, splits = "permutation", int(draws)
+            rng = np.random.default_rng(seed)
+            for start in range(0, draws, MOTIF_CHUNK):
+                k = min(MOTIF_CHUNK, draws - start)
+                picks = np.argsort(rng.random((k, n)), axis=1)[:, :n1]
+                count += int((np.abs(_welch(x, _sides(n, n1, picks), floor)[0]) >= at_least).sum())
+            p = (1 + count) / (1 + draws)
+    n_words = f"{n1} a side" if n1 == n2 else f"{n1} and {n2}"
+    face = None
+    if n1 < MOTIF_MIN_N or n2 < MOTIF_MIN_N:
+        verdict = "TOO_FEW_TO_JUDGE"
+        words = f"too few to judge: n = {n_words}, and the test needs at least {MOTIF_MIN_N} a side"
+    elif p is None or not p < MOTIF_ALPHA:
+        verdict = "NOT_SHOWN"
+        words = f"no difference shown: {'' if p is None else f'p = {_p_words(p)}, '}n = {n_words}"
+    elif m1 > m2 and m1 > 0:
+        verdict, face = "SELECTIVE_NORTH_POLE (+)", "+"
+        words = f"selective on its + face, p = {_p_words(p)}, n = {n_words}"
+    elif m1 < m2 and m1 < 0:
+        verdict, face = "SELECTIVE_SOUTH_POLE (-)", "-"
+        words = f"selective on its - face, p = {_p_words(p)}, n = {n_words}"
+    else:
+        verdict = "DIFFERS_NOT_AS_GUESSED"
+        words = (f"the sides differ, p = {_p_words(p)}, n = {n_words}, but not as guessed: the quiet sentences fire its "
+                 f"{'-' if m1 > m2 else '+'} face more")
+    return {
+        "read_at": "last word-piece",
+        "n_pos": n1,
+        "n_neg": n2,
+        "mean_pos": _sig(m1),
+        "mean_neg": _sig(m2),
+        "sd_pos": _sig(sd1),
+        "sd_neg": _sig(sd2),
+        "cohens_d": _sig(d),
+        "welch_t": _sig(t),
+        "welch_df": _sig(df),
+        "p": _sig(p),
+        "p_method": method,
+        "splits": splits,
+        "seed": int(seed) if method == "permutation" else None,
+        "min_n": MOTIF_MIN_N,
+        "alpha": MOTIF_ALPHA,
+        "verdict": verdict,
+        "face": face,
+        "words": words,
+    }
+
+
 @mcp.tool()
 async def test_motif_hypothesis(
     layer: int,
@@ -335,18 +480,46 @@ async def test_motif_hypothesis(
     `chat=True` wraps each prompt as the user turn of the chat template (optional `system` turn, thinking
     off); the last token is then the end of the model-turn header.
 
+    `verdict` and `cohens_d` are kept as first built, for old callers: Cohen's d over population variances (plus
+    1e-8), with a verdict at |d| >= 0.8 for any number of sentences and no test against chance, so that one sentence
+    a side reads as "CONFIRMED" (d near 10^4). Quote `selectivity` instead (`motif_statistics`): on the last word-piece's
+    unrounded readings, the n each side, sample variances, Welch's t, a two-sided p for it by splitting the sentences
+    afresh (exact over every split up to MOTIF_DRAWS of them, else MOTIF_DRAWS shuffles seeded MOTIF_SEED), and its own
+    verdict and `words`, which judge nothing below MOTIF_MIN_N sentences a side. The peak is reported but not tested.
+
+    Refusals are plain-word ValueErrors (an empty side, a layer or a neuron that does not exist), all before the model
+    is run; an empty side was once read as one reading of 0.0, and an out-of-range layer moved to the nearest.
+
     `lens` names the lens the `pole_j_vindex_signature` words went through; read its `caution` before trusting them.
     `pole_label_check` marks that pole's label by the study's measure (`label_gate`, the rule, comes before `lens`).
     """
     runtime, vault = get_runtime_and_vault()
     assert runtime.eager_model is not None
+    lm = cc.language_model(runtime.hf_model)
+    n_layers = len(lm.layers)
 
-    l_idx = max(0, min(int(layer), N_LAYERS - 1))
-    n_idx = max(0, min(int(neuron_idx), D_FF - 1))
+    # plain-word refusals, all before the model is run
+    if not _whole(layer) or not 0 <= layer < n_layers:
+        raise ValueError(
+            f"layer is {layer!r}: layers count from 0 to {n_layers - 1} here (the pages count them 1 to {n_layers})."
+        )
+    d_ff = _ffn_width(lm.layers[layer].mlp.down_proj)
+    if not _whole(neuron_idx) or not 0 <= neuron_idx < d_ff:
+        raise ValueError(f"neuron_idx is {neuron_idx!r}: each layer's neurons count from 0 to {d_ff - 1}.")
+    for what, prompts in (("pos_prompts", pos_prompts), ("neg_prompts", neg_prompts)):
+        if isinstance(prompts, (str, bytes)) or not prompts:
+            raise ValueError(
+                f"{what} is empty: the test reads the neuron on sentences where it should fire (pos_prompts) and where "
+                f"it should stay quiet (neg_prompts), one or more on each side, and judges from {MOTIF_MIN_N} a side."
+            )
+
+    l_idx, n_idx = int(layer), int(neuron_idx)
     addr = Address("mlp_act", l_idx)
 
-    async def _eval_prompts(prompts: List[str]) -> List[Dict[str, Any]]:
+    async def _eval_prompts(prompts: List[str]) -> tuple:
+        """Each prompt's record, and its last word-piece's reading unrounded."""
         records: List[Dict[str, Any]] = []
+        lasts: List[float] = []
         for p_text in prompts:
             p_ids = runtime.tokenize_prompt(runtime.compose_prompt(p_text, chat=chat, system=system))
             caps = await runtime.eager_model.capture(p_ids, [addr])
@@ -355,6 +528,7 @@ async def test_motif_hypothesis(
             peak_pos = int(seq_act.abs().argmax().item())
             peak_act = float(seq_act[peak_pos].item())
             peak_tok = runtime.tokenizer.decode([p_ids[peak_pos]])
+            lasts.append(last_act)
             records.append(
                 {
                     "prompt": p_text,
@@ -364,13 +538,14 @@ async def test_motif_hypothesis(
                     "polarity": "+" if last_act >= 0 else "-",
                 }
             )
-        return records
+        return records, lasts
 
-    pos_records = await _eval_prompts(pos_prompts)
-    neg_records = await _eval_prompts(neg_prompts)
+    pos_records, pos_last = await _eval_prompts(pos_prompts)
+    neg_records, neg_last = await _eval_prompts(neg_prompts)
 
-    pos_vals = [r["last_token_signed_act"] for r in pos_records] or [0.0]
-    neg_vals = [r["last_token_signed_act"] for r in neg_records] or [0.0]
+    # as first built, for old callers: the rounded readings, population variances, a threshold on d at any n
+    pos_vals = [r["last_token_signed_act"] for r in pos_records]
+    neg_vals = [r["last_token_signed_act"] for r in neg_records]
 
     mean_pos = sum(pos_vals) / len(pos_vals)
     mean_neg = sum(neg_vals) / len(neg_vals)
@@ -398,6 +573,7 @@ async def test_motif_hypothesis(
         "cohens_d": round(cohens_d, 4),
         "mean_pos_signed_act": round(mean_pos, 4),
         "mean_neg_signed_act": round(mean_neg, 4),
+        "selectivity": motif_statistics(pos_last, neg_last),
         "pos_prompt_results": pos_records,
         "neg_prompt_results": neg_records,
         "pole_j_vindex_signature": pole_info["active_pole"]["j_vindex_tokens"],

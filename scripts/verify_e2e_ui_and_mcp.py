@@ -1310,6 +1310,8 @@ async def main() -> int:
             f"mean_pos={hyp_res['mean_pos_signed_act']:.3f} vs mean_neg={hyp_res['mean_neg_signed_act']:.3f}"
         )
         assert abs(hyp_res["cohens_d"]) > 0.8, f"Expected strong selectivity, got {hyp_res['cohens_d']}"
+        # d as first built clears its threshold on three a side; the test against chance does not judge so few
+        assert hyp_res["selectivity"]["verdict"] == "TOO_FEW_TO_JUDGE" and hyp_res["selectivity"]["n_pos"] == 3, hyp_res["selectivity"]
         assert_base_lens(hyp_res.get("lens"), health["model_id"])
         assert hyp_res["lens"] == lens, "test_motif_hypothesis and /api/health name different lenses"
         assert list(hyp_res)[-2:] == ["label_gate", "lens"] and hyp_res["label_gate"] == LABEL_GATE_CARD

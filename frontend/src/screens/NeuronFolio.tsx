@@ -74,11 +74,13 @@ import {
   type Inspection,
   type Readers,
   type Tok,
+  hypothesisWords,
+  nText,
   parseCausalCheck,
   parseHypothesis,
   parseInspection,
   parseReaders,
-  verdictWords,
+  pText,
 } from "./NeuronFolio/replies";
 import { type FaceNotes, type FolioSaved, type Jobs, useFolioSaved } from "./NeuronFolio/saved";
 import {
@@ -3683,6 +3685,12 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
   const peakPos = res ? mean(res.pos.map((r) => r.peak)) : null;
   const peakNeg = res ? mean(res.neg.map((r) => r.peak)) : null;
   const workFace = res && res.meanPos !== null ? (res.meanPos >= 0 ? 1 : -1) : null;
+  // the test's d, from sample variances; an older server's, from population variances
+  const dShown = res ? (res.test ? res.test.d : res.d) : null;
+  // how its p was counted: over every split, or from seeded shuffles
+  const sel = res?.test;
+  const howP =
+    sel?.pMethod === "exact" ? `, over all ${sel.splits ?? "?"} splits` : sel?.pMethod ? `, from ${sel.splits ?? "?"} shuffles (seed ${sel.seed ?? "?"})` : "";
   // what was (or will be) sent: the folio sends bare text, so each sentence is read at its own last word-piece
   const sentChat = entry?.sent?.chat === true;
   const sentSystem = typeof entry?.sent?.system === "string" ? (entry.sent.system as string) : null;
@@ -3761,10 +3769,28 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
           <h3 className="h-sub">its answer</h3>
           <dl style={{ margin: 0, display: "flex", flexDirection: "column" }}>
             <AnswerRow title="did it tell them apart?" first>
-              {res ? <i>{verdictWords(res.verdict)}</i> : ph}
+              {res ? <i>{hypothesisWords(res)}</i> : ph}
             </AnswerRow>
-            <AnswerRow title="how far apart" sub="(Cohen’s d; from 0.8 up, the instrument calls the gap clear)">
-              {res && res.d !== null ? <span style={NUM}>d = {signed(res.d, 2)}</span> : ph}
+            <AnswerRow
+              title="how far apart"
+              sub={res && !res.test ? "(Cohen’s d as an older server gives it, from population variances)" : "(Cohen’s d, from each side’s sample variance)"}
+            >
+              {res ? dShown !== null ? <span style={NUM}>d = {signed(dShown, 2)}</span> : "—" : ph}
+            </AnswerRow>
+            <AnswerRow
+              title="could chance do it?"
+              sub="(p: how often the sentences, split between the sides afresh, give a Welch’s t as large; under 0.05 counts)"
+            >
+              {res?.test ? (
+                <span style={NUM}>
+                  {res.test.p === null ? "no p" : `p = ${pText(res.test.p)}`}
+                  {res.test.t !== null ? ` · t = ${signed(res.test.t, 2)}` : ""} · n = {nText(res.test)}
+                </span>
+              ) : res ? (
+                "not asked: an older server sets nothing against chance"
+              ) : (
+                ph
+              )}
             </AnswerRow>
             <AnswerRow
               title="strength at the last word"
@@ -3845,28 +3871,59 @@ const TestGuess: React.FC<{ m: Model }> = ({ m }) => {
           </dd>
           <dt>effect size</dt>
           <dd>
-            d = (ā<sub>+</sub> − ā<sub>−</sub>) / √(½ (s<sub>+</sub>
+            d = (ā<sub>+</sub> − ā<sub>−</sub>) / s<sub>p</sub>, Cohen’s d on the last-word-piece values only, with s<sub>p</sub>
+            <sup>2</sup> = ((n<sub>+</sub> − 1) s<sub>+</sub>
+            <sup>2</sup> + (n<sub>−</sub> − 1) s<sub>−</sub>
+            <sup>2</sup>) / (n<sub>+</sub> + n<sub>−</sub> − 2) from sample variances; ā<sub>+</sub> is the mean over the n<sub>+</sub> firing
+            sentences, ā<sub>−</sub> over the n<sub>−</sub> quiet ones. As first built the tool took population variances, d = (ā<sub>+</sub> −
+            ā<sub>−</sub>) / √(½ (s<sub>+</sub>
             <sup>2</sup> + s<sub>−</sub>
-            <sup>2</sup>)), Cohen’s d on the last-word-piece values only, with population variances s<sup>2</sup>; ā<sub>+</sub> is the mean
-            over the firing sentences, ā<sub>−</sub> over the quiet ones.
+            <sup>2</sup>)), and it still sends that d as <span className="mono">cohens_d</span>, for old callers.
+          </dd>
+          <dt>against chance</dt>
+          <dd>
+            Welch’s t = (ā<sub>+</sub> − ā<sub>−</sub>) / √(s<sub>+</sub>
+            <sup>2</sup>/n<sub>+</sub> + s<sub>−</sub>
+            <sup>2</sup>/n<sub>−</sub>). Its p is two-sided: of the ways to split all the sentences into n<sub>+</sub> and n<sub>−</sub>, the share
+            whose |t| is as large as the one observed, counted over every split when there are at most 10,000, else over 10,000 random splits
+            (seed 0) as (1 + as large) / (1 + 10,000), never 0.
+            {res?.test ? (
+              <>
+                {" "}
+                Returned here: {res.test.p === null ? "no p" : `p = ${pText(res.test.p)}`}
+                {howP}
+                , t = {res.test.t === null ? "—" : signedRaw(res.test.t)} on {res.test.df === null ? "—" : res.test.df.toFixed(1)} degrees of freedom, n ={" "}
+                {nText(res.test)}.
+              </>
+            ) : res ? (
+              " An older server sent none."
+            ) : null}
           </dd>
           <dt>verdict</dt>
           <dd>
-            d ≥ 0.8 and ā<sub>+</sub> &gt; 0: <span className="mono">CONFIRMED_NORTH_POLE (+)</span>; d ≤ −0.8 and ā<sub>+</sub> &lt; 0:{" "}
+            under 4 sentences a side: <span className="mono">TOO_FEW_TO_JUDGE</span>, whatever the numbers (at three a side no split reaches p &lt;
+            0.05); p ≥ 0.05: <span className="mono">NOT_SHOWN</span>; else <span className="mono">SELECTIVE_NORTH_POLE (+)</span> when ā<sub>+</sub>{" "}
+            &gt; ā<sub>−</sub> and ā<sub>+</sub> &gt; 0, <span className="mono">SELECTIVE_SOUTH_POLE (-)</span> when ā<sub>+</sub> &lt; ā
+            <sub>−</sub> and ā<sub>+</sub> &lt; 0, and <span className="mono">DIFFERS_NOT_AS_GUESSED</span> otherwise (the quiet sentences
+            fire a face more). The verdict as first built is still sent, for old callers, and is not the answer above: d ≥ 0.8 and ā<sub>+</sub>{" "}
+            &gt; 0: <span className="mono">CONFIRMED_NORTH_POLE (+)</span>; d ≤ −0.8 and ā<sub>+</sub> &lt; 0:{" "}
             <span className="mono">CONFIRMED_SOUTH_POLE (-)</span>; |d| ≥ 0.5: <span className="mono">WEAK_SELECTIVITY</span>; otherwise{" "}
-            <span className="mono">REJECTED_OR_INCONCLUSIVE</span>. It then attaches the top five lens word-pieces of the pole that matches the
-            sign of ā<sub>+</sub>.
+            <span className="mono">REJECTED_OR_INCONCLUSIVE</span>, at any number of sentences (one a side gives d near 10<sup>4</sup>). It then
+            attaches the top five lens word-pieces of the pole that matches the sign of ā<sub>+</sub>.
             {res ? (
               <>
                 {" "}
-                Returned here: <span className="mono">{res.verdict}</span>, d = {res.d === null ? "?" : signedRaw(res.d)}, ā<sub>+</sub> ={" "}
+                Returned here: {res.test ? <span className="mono">{res.test.verdict}</span> : null}
+                {res.test ? "; as first built " : ""}
+                <span className="mono">{res.verdict}</span>, d = {res.d === null ? "?" : signedRaw(res.d)}, ā<sub>+</sub> ={" "}
                 {res.meanPos === null ? "?" : signedRaw(res.meanPos)}, ā<sub>−</sub> = {res.meanNeg === null ? "?" : signedRaw(res.meanNeg)}.
               </>
             ) : null}
           </dd>
           <dt>caveat</dt>
           <dd>
-            the peak is reported but not tested; there is no null, interval or permutation, and “confirmed” marks a threshold crossed, not a cause.
+            the peak is reported but not tested, nor any word-piece but the last. A p is one neuron’s: testing several, correct their p’s together
+            (the study used Benjamini–Hochberg, E6 §2.3). “Selective” marks a gap that chance seldom makes between these sentences, not a cause.
             The sentences go in as the instrument is set: each as the user’s turn of a chat when “send it as a chat” is ticked (the reading is then
             at the end of the model’s turn header), as bare text otherwise{res?.raw && (res.raw as { chat?: boolean }).chat !== undefined ? `; this test was sent ${(res.raw as { chat?: boolean }).chat ? "as chats" : "as bare text"}` : ""}. The
             study reads such tests against a matched control and checks them causally (REPORT §3.3, §3.5).

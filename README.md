@@ -465,6 +465,9 @@ neuron's label tested by the study's N1A protocol at k = 10) are served over HTT
 `backend/mcp_scientist.py`; the WebSocket also takes `inspect_pole`, `trace_readers`, `larql` and `causal_check`, besides
 `sweep` and `cancel_sweep` (ARCHITECTURE §4.5).
 Every neuron label they and the sweep send carries `label_check`, and the replies carry the rule as `label_gate` (§iv).
+`test_motif_hypothesis` sets the gap it finds against chance (`selectivity`: Welch’s t, a permutation p, the n each side,
+no judgement below four sentences a side, `scripts/check_hypothesis_test.py`); its `verdict` as first built, a threshold
+on d at any n, is kept for old callers.
 To check a build end to end, server, tools and pages together: `.venv/bin/python scripts/verify_e2e_ui_and_mcp.py`.
 
 **Map every neuron (the atlas)**

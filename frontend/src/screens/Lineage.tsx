@@ -575,9 +575,12 @@ const Practices: React.FC = () => (
       <dt>hypothesis test</dt>
       <dd>
         <M>test_motif_hypothesis(layer, neuron_idx, pos_prompts, neg_prompts)</M>: records the signed <M>mlp_act</M> at
-        the last word-piece and its peak over the sequence, but computes Cohen’s d on the last word-piece only, with
-        population variance and no significance test, and says “CONFIRMED” at |d| ≥ 0.8 for any n (n = 3 gave d = −22;
-        E6 §3, item 7: add a permutation p-value, a minimum n and multiple-comparison control). Also{" "}
+        the last word-piece and its peak over the sequence. As first built it computed Cohen’s d on the last word-piece
+        only, with population variance and no significance test, and said “CONFIRMED” at |d| ≥ 0.8 for any n (n = 3 gave
+        d = −22; E6 §3, item 7: add a permutation p-value, a minimum n and multiple-comparison control); that verdict is
+        still sent, for old callers. Its <M>selectivity</M> now gives sample variances, Welch’s t, a permutation p (exact
+        up to 10,000 splits, else 10,000 seeded shuffles) and the n each side, and judges nothing below four a side;
+        correcting several neurons’ p’s together is left to the caller. Also{" "}
         <M>POST /api/scientist/test_hypothesis</M>; on screen, a neuron’s folio, v. It tests when a neuron fires, not
         what it causes.
       </dd>
