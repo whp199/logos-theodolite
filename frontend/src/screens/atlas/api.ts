@@ -279,6 +279,8 @@ export interface CensusCard {
   device?: string | null;
   mixed_runtime?: boolean;
   partial?: { missing_shards: number[]; missing_answers: number } | null;
+  /** the second stage of a two-stage census: the screen whose strongest neurons it retests against fresh controls */
+  stage?: { stage: number; screen: string; top: number; of: number; screen_seed: number | null; screen_controls: number | null } | null;
 }
 export interface Rollout {
   prompt: string;

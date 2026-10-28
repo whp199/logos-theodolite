@@ -101,7 +101,10 @@ def main(argv=None) -> int:
     where = ap.add_mutually_exclusive_group(required=True)
     where.add_argument("--layer", type=int, help="the layer to take, counting from 0")
     where.add_argument("--layers", default="", help='several layers in one process, each its own run: "21,31,41-46" (the depth curve)')
-    ap.add_argument("--neurons", default="all", help='"all", "random:384", "2742", "0-99" or "1,5,9-12"')
+    ap.add_argument("--neurons", default=None, help='"all" (the default), "random:384", "2742", "0-99" or "1,5,9-12"')
+    ap.add_argument("--neurons-from", default="", help="a screen's ranking (<run>.units.jsonl): retest its --top strongest neurons "
+                                                       "against fresh controls (another --seed), the census's second stage")
+    ap.add_argument("--top", type=int, default=0, help="with --neurons-from: how many of the screen's strongest to retest")
     ap.add_argument("--design", default="main_rel", help="main_rel | calib_rel | calib_ceil")
     ap.add_argument("--dose-unit", default=None, choices=["stream", "ceiling"],
                     help="stream: dose x p50, the same push for every unit; ceiling: dose x each neuron's write ceiling "
@@ -134,6 +137,10 @@ def main(argv=None) -> int:
     if len(layers) > 1 and a.run and "{layer}" not in a.run:
         raise SystemExit("With several layers each is its own run: name them by {layer} in --run (e.g. --run L{layer}-r384), "
                          "or leave --run out for L<layer>-<design>.")
+    if a.neurons_from and (a.neurons is not None or len(layers) > 1 or a.top < 1):
+        raise SystemExit("--neurons-from retests one layer's screen: give it --top M and one --layer, and no --neurons.")
+    if a.top and not a.neurons_from:
+        raise SystemExit("--top goes with --neurons-from, the screen whose strongest neurons it retests.")
 
     if a.stand_in:
         os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -168,8 +175,18 @@ def main(argv=None) -> int:
     bad = [l for l in layers if not 0 <= l < L]
     if bad:
         raise SystemExit(f"Layer {bad[0]} does not exist: layers count from 0 to {L - 1} (page layers 1 to {L}).")
+    stage = None
     try:
-        neurons = cz.parse_neurons(a.neurons, N, a.seed)
+        if a.neurons_from:
+            neurons, stage = cz.retest_of(Path(a.neurons_from), a.top)
+            if stage["screen_layer"] is not None and stage["screen_layer"] != layers[0]:
+                raise SystemExit(f"{stage['screen']} screened layer {stage['screen_layer']}, not layer {layers[0]}.")
+            if stage["screen_seed"] == a.seed:
+                raise SystemExit(f"A retest draws fresh controls: give it another --seed than its screen's ({a.seed}).")
+            spec = cz.neuron_ranges(neurons)
+        else:
+            spec = a.neurons or "all"
+            neurons = cz.parse_neurons(spec, N, a.seed)
     except ValueError as exc:
         raise SystemExit(str(exc))
 
@@ -196,14 +213,15 @@ def main(argv=None) -> int:
 
     signal.signal(signal.SIGINT, on_signal)
     for layer in layers:
-        out = out_dir / f"{a.run.replace('{layer}', str(layer)) if a.run else f'L{layer}-{a.design}'}.jsonl"
+        name = f"L{layer}-{a.design}" + (f"-top{a.top}" if stage else "")
+        out = out_dir / f"{a.run.replace('{layer}', str(layer)) if a.run else name}.jsonl"
         if shard:
             out = cz.shard_path(out, *shard)
         try:
             res = cz.take_census(rt, layer, neurons, out, p50=float(p50s[layer]), p50_source=source, design_name=a.design,
                                  controls=a.random_controls, seed=a.seed, max_new=a.max_new, top_k=a.top_k, batch=a.batch,
-                                 neurons_spec=a.neurons, dose_unit=a.dose_unit or "", shard=shard, p50_file=p50_file, lens_id=lens_id,
-                                 cancel=stop.is_set, log=lambda s: print(s, flush=True))
+                                 neurons_spec=spec, dose_unit=a.dose_unit or "", shard=shard, p50_file=p50_file, lens_id=lens_id,
+                                 stage=stage, cancel=stop.is_set, log=lambda s: print(s, flush=True))
         except ValueError as exc:
             raise SystemExit(str(exc))
         print(f"-> {out} ({res['written']} answers written, {res['skipped']} were there)")

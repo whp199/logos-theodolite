@@ -505,14 +505,14 @@ def census_dir() -> Path:
 
 def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
                refused: Optional[Dict[int, str]] = None, calibration: bool = False) -> Dict[int, Path]:
-    """layer -> the path of its census run: a main_rel run first, then the largest; calibration runs left out (as the
-    reference's `layer_runs`), or, with `calibration`, only they are read (for the dose window, census_tools.py
-    curves); given the model read here, runs taken on another model left out. A shard of a run (its meta names its
-    `shard`) is never read as a layer's census: only the run `merge_runs` joins from its shards is. Runs taken before
-    the controls were drawn through w_post (CENSUS_VERSION) are not read: given `refused`, each such layer's reason
-    goes there."""
+    """layer -> the path of its census run: a main_rel run first, a screen before a retest of it (`stage`), then the
+    largest; calibration runs left out (as the reference's `layer_runs`), or, with `calibration`, only they are read
+    (for the dose window, census_tools.py curves); given the model read here, runs taken on another model left out. A
+    shard of a run (its meta names its `shard`) is never read as a layer's census: only the run `merge_runs` joins from
+    its shards is. Runs taken before the controls were drawn through w_post (CENSUS_VERSION) are not read: given
+    `refused`, each such layer's reason goes there."""
     runs_dir = Path(runs_dir) if runs_dir is not None else census_dir()
-    best: Dict[int, Tuple[Path, Tuple[bool, int]]] = {}
+    best: Dict[int, Tuple[Path, Tuple[bool, bool, int]]] = {}
     for meta_path in glob.glob(str(runs_dir / "*.meta.json")):
         try:
             meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
@@ -530,7 +530,7 @@ def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
                 refused[meta["layer"]] = (f"{jsonl.name} was taken with isotropic random controls, about 100 times louder to the "
                                           "next layer than any neuron's push on this model: take it again")
             continue
-        key = (meta.get("design_name") == DEFAULT_DESIGN, jsonl.stat().st_size)
+        key = (meta.get("design_name") == DEFAULT_DESIGN, not meta.get("stage"), jsonl.stat().st_size)  # a screen before its retest
         if meta["layer"] not in best or key > best[meta["layer"]][1]:
             best[meta["layer"]] = (jsonl, key)
     return {layer: path for layer, (path, _) in best.items()}
@@ -669,6 +669,26 @@ def control_refs(seed: int, count: int, n: int) -> List[int]:
     neuron's ceiling; the dose window sets a control's push against it under either unit."""
     sample = gain_sample(seed, n)
     return [int(sample[k % len(sample)]) for k in range(int(count))]
+
+
+def retest_of(units_path: Path, top: int) -> Tuple[List[int], Dict[str, Any]]:
+    """Stage two of a two-stage census: the `top` neurons of a screen's ranking (its `.units.jsonl`, strongest mass
+    first), and the stage its meta keeps (`stage`: the screen's run, how many of its neurons were ranked, its seed and
+    its controls). A retest pushes these alone against fresh controls (another seed, and as many controls as can be
+    afforded), so its p and its q, taken over its own run (`compute_units`), are taken over these M neurons alone: the
+    screen's search through every neuron of the layer is not counted against them again, and its controls are not
+    reused."""
+    units_path = Path(units_path)
+    if not units_path.name.endswith(".units.jsonl") or not units_path.exists():
+        raise ValueError(f"A retest is drawn from a screen's ranking, its <run>.units.jsonl (census_tools.py rank), not {units_path}.")
+    run = Path(str(units_path)[: -len(".units.jsonl")] + ".jsonl")
+    meta = json.loads(meta_path_of(run).read_text(encoding="utf-8")) if meta_path_of(run).exists() else {}
+    ranked = sorted((u for u in read_rows(units_path) if u["kind"] == "neuron"), key=lambda u: -float(u["mass"]))
+    if not 0 < int(top) <= len(ranked):
+        raise ValueError(f"{units_path.name} ranks {len(ranked)} neurons, so a retest takes 1 to {len(ranked)} of them, not {top}.")
+    stage = {"stage": 2, "screen": run.name, "top": int(top), "of": len(ranked), "by": "mass", "screen_layer": meta.get("layer"),
+             "screen_seed": meta.get("seed"), "screen_controls": meta.get("random_controls"), "screen_design": meta.get("design_name")}
+    return sorted(int(u["neuron"]) for u in ranked[: int(top)]), stage
 
 
 def unit_order(neurons: Sequence[int], controls: int) -> List[Tuple[str, int]]:
@@ -888,6 +908,7 @@ def take_census(
     shard: Optional[Tuple[int, int]] = None,
     p50_file: Optional[Path] = None,
     lens_id: Optional[str] = None,
+    stage: Optional[Dict[str, Any]] = None,
     log: Any = print,
     cancel: Any = None,
 ) -> Dict[str, Any]:
@@ -897,7 +918,7 @@ def take_census(
     push; the rows of a batch share their question, so none is padded). A dose is in `dose_unit` (DOSE_UNITS; "" for
     the design's own, "stream" but for calib_ceil). `p50_file` is the stats index p50 was read from, if any (its sha256
     goes in the runtime record); `lens_id` the lens the runtime was loaded with, for a caller that has freed it from the
-    card (census_run.py), else it is read from the runtime.
+    card (census_run.py), else it is read from the runtime; `stage` a retest's stage (`retest_of`), kept in the meta.
 
     The batches are planned from the whole job list and the batch size (`plan_batches`), and written whole, in plan
     order, or not at all (`cancel()` stops between steps). Continuing, a planned batch whose answers are all in the file
@@ -969,6 +990,10 @@ def take_census(
         "d_ff": int(N), "neuron_ids": neuron_ranges(neurons), "batch": int(batch),
         "runtime": runtime_record(w.device, p50_file),
     }
+    if stage:
+        if int(seed) == stage.get("screen_seed"):
+            raise ValueError(f"A retest draws fresh controls: give it another seed than its screen's ({seed}).")
+        meta["stage"] = stage
     if controls and gain["ratio"] is not None and not 0.5 <= gain["ratio"] <= 2.0:
         log(f"warning: the next layer reads the controls {gain['ratio']}x as loudly as the neurons (a fair null is near 1)")
     meta_path = meta_path_of(out_path)

@@ -36,7 +36,11 @@ Gemma 4 of scripts/atlas_stand_in.py:
 10. atlas_ops.write_rows reading each step back in one transfer gives the Steps the per-row reads gave (that code kept
    here), bit for bit; census_run.py frees the J++ lens after load, and a census taken without it writes every answer
    and names it; --layers takes several layers in one process, each its own run;
-11. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
+11. a two-stage census: a screen's strongest neurons by mass retested against fresh controls (census_run.py
+   --neurons-from --top --seed), the stage in the meta, the retest's p against its controls and q over its neurons
+   alone, the screen still the layer's census, rank and the card naming the stage, and a retest refused with the
+   screen's seed, too many neurons, --neurons beside it or another layer;
+12. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
    columns (CPU, a few tensors), the next layer reads the census's controls about as loudly as the layer's neurons, and
    an isotropic control far louder.
 
@@ -929,7 +933,50 @@ def run_checks(tmp: Path) -> int:
     check(r.returncode != 0 and "Layer 9 does not exist" in r.stderr, "census_run.py --layers: a layer that does not exist is refused")
     section("write_rows reads each step back in one transfer, bit for bit; the lens freed; several layers in one process", before)
 
-    # ------------------------------------------------------------ 11. the null on the real checkpoint's own weights
+    # --------------------------------------------------------------------------------------- 11. a two-stage census
+    before = len(failures)
+    sdir5 = tmp / "atlas" / "stand-in" / "census" / "runs"
+    base_r = py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--max-new", "4", "--batch", "8"]
+    cr = base_r + ["--layer", "5"]
+    r = subprocess.run(cr + ["--neurons", "0-11", "--random-controls", "3"], env=env, capture_output=True, text=True, timeout=600)
+    screen = sdir5 / "L5-main_rel.jsonl"
+    s_units = cz.units_path_of(screen)
+    check(r.returncode == 0 and s_units.exists(), f"a screen taken and ranked ({r.stderr[-300:]})")
+    ranked = [u_ for u_ in cz.read_rows(s_units) if u_["kind"] == "neuron"]
+    top4 = sorted(u_["neuron"] for u_ in sorted(ranked, key=lambda u_: -u_["mass"])[:4])
+    picked, st = cz.retest_of(s_units, 4)
+    check(picked == top4 and st == {"stage": 2, "screen": "L5-main_rel.jsonl", "top": 4, "of": 12, "by": "mass", "screen_layer": 5,
+                                    "screen_seed": 0, "screen_controls": 3, "screen_design": "main_rel"},
+          f"retest_of: the screen's four strongest by mass, and the stage ({picked}, {st})")
+    r = subprocess.run(cr + ["--neurons-from", str(s_units), "--top", "4", "--seed", "7", "--random-controls", "14"], env=env,
+                       capture_output=True, text=True, timeout=600)
+    retest = sdir5 / "L5-main_rel-top4.jsonl"
+    rm = json.loads(cz.meta_path_of(retest).read_text()) if retest.exists() else {}
+    rrows = list(cz.read_rows(retest)) if retest.exists() else []
+    check(r.returncode == 0 and rm.get("stage") == st and rm.get("seed") == 7 and rm.get("random_controls") == 14
+          and rm.get("neurons") == cz.neuron_ranges(top4) and sorted({r_["neuron"] for r_ in rrows if r_["kind"] == "neuron"}) == top4
+          and len(rrows) == (4 + 14) * 10 + 4, f"census_run.py --neurons-from --top 4 --seed 7: the four retested, the stage in the meta ({r.stderr[-300:]})")
+    ru = [u_ for u_ in cz.read_rows(cz.units_path_of(retest))] if cz.units_path_of(retest).exists() else []
+    rn = sorted((u_ for u_ in ru if u_["kind"] == "neuron"), key=lambda u_: u_["p"])
+    bh = [min(min(rn[j]["p"] * len(rn) / (j + 1) for j in range(i, len(rn))), 1.0) for i in range(len(rn))]
+    check(len(rn) == 4 and sum(u_["kind"] == "random" for u_ in ru) == 14 and all(abs(u_["q"] - round(q_, 5)) < 1e-9 for u_, q_ in zip(rn, bh))
+          and all(u_["p"] >= 1 / 15 for u_ in rn), "the retest's p against its 14 fresh controls, its q over its four neurons alone")
+    check(cz.layer_runs(sdir5)[5] == screen and retest.stat().st_size > screen.stat().st_size,
+          "layer_runs serves the screen as the layer's census, not its larger retest")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "rank", str(retest)], env=env, capture_output=True, text=True, timeout=300)
+    check(r.returncode == 0 and "a retest (stage 2) of the 4 strongest of the 12 neurons of L5-main_rel.jsonl" in r.stdout, "census_tools.py rank names the stage")
+    for extra, why in ((["--layer", "5", "--top", "4", "--seed", "0"], "another --seed"), (["--layer", "5", "--top", "13"], "1 to 12"),
+                       (["--layer", "5", "--top", "4", "--neurons", "0-3"], "no --neurons"), (["--layer", "4", "--top", "4"], "screened layer 5")):
+        r = subprocess.run(base_r + ["--neurons-from", str(s_units), "--seed", "9"] + extra, env=env, capture_output=True, text=True, timeout=300)
+        check(r.returncode != 0 and why in r.stderr, f"a retest refused ({why}): {r.stderr[-200:]}")
+    import backend.atlas as atlas_routes
+
+    card = atlas_routes.census_card({"path": retest, "meta": rm, "null": {}})
+    check(card["stage"] == st and card["dose_unit"] == "stream" and card["device"] == "cpu" and card["mixed_runtime"] is False and card["partial"] is None,
+          f"the census card names the stage, the unit and the card ({card})")
+    section("a two-stage census: a screen's strongest retested against fresh controls, p and q over them alone; refusals; the card", before)
+
+    # ------------------------------------------------------------ 12. the null on the real checkpoint's own weights
     before = len(failures)
     real = real_read_gain()
     if real is None:

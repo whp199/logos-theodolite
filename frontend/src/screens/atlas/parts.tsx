@@ -120,6 +120,9 @@ export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: 
         : " It has no random controls, so nothing in it is set against chance."}
       {card.mixed_runtime ? " Its parts were written on more than one runtime (card or library versions): each part’s readings stand, but their bits are not alike." : ""}
       {card.partial ? ` Joined from shards with ${card.partial.missing_answers} of its answers missing.` : ""}
+      {card.stage
+        ? ` A retest of the ${card.stage.top} strongest of the ${card.stage.of} neurons of ${card.stage.screen}, against fresh controls: its p and q are taken over these ${card.stage.top} alone.`
+        : ""}
     </p>
   ) : null;
 

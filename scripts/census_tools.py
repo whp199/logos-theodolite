@@ -175,6 +175,10 @@ def main(argv=None) -> int:
             run = resolve_run(a.run)
             out = cz.write_units(run, max_rel=a.max_rel, top_words=a.top_words)
             recs = list(cz.read_rows(out))
+            st = json.loads(cz.meta_path_of(run).read_text(encoding="utf-8")).get("stage") if cz.meta_path_of(run).exists() else None
+            if st:
+                print(f"a retest (stage {st['stage']}) of the {st['top']} strongest of the {st['of']} neurons of {st['screen']}, "
+                      f"against fresh controls: its p and q are taken over these {st['top']} alone")
             null = np.sort([u["mass"] for u in recs if u["kind"] == "random"])
             neurons = [u for u in recs if u["kind"] == "neuron"]
             if len(null):
