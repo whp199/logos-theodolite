@@ -820,7 +820,9 @@ def main() -> int:
     async def lock_waits() -> None:
         lock = asyncio.Lock()
         atlas_routes.bind(server.get_app_state, lock)
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url=BASE, timeout=60) as ac:
+        # no socket carries these: the client names itself, or the server's guard would look for its socket on 8765's
+        transport = httpx.ASGITransport(app=app, client=("in-process", 0))
+        async with httpx.AsyncClient(transport=transport, base_url=BASE, timeout=60) as ac:
             await lock.acquire()
             try:
                 t = asyncio.create_task(ac.post("/api/atlas/reads", json={"layer": 3, "n": 7, "text": text}))

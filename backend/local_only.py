@@ -18,20 +18,25 @@ this does. The atlas's, the scientist chat's and the saved prompts' routes keep 
 
 Which account asks: on Linux the guard also refuses a connection from this machine that another account's process
 made (403, or 1008 on the socket), since the scientist's tools, and at the home reach its shell, run as the account
-that runs the server. Root's pass too: root can act as any account already, and a container's port-forwarder connects
-as root. `peer_uid` finds the line of /proc/net/tcp (or tcp6) whose local end is the client's address and port and
-whose remote end is the server's, the client's end of this very connection, and reads its owner. It reads the tables
-afresh for every request and socket and keeps nothing, so nothing it says can go stale: under 1 ms over the 80 or so
-sockets of the machine it was checked on (scripts/check_local_only.py prints it), more where thousands are open. When
-it cannot tell (not Linux, the socket not found, a Unix socket) the request passes, and the log says so once. A request
-carrying X-Forwarded-For is refused: uvicorn
-takes the client's address, port and all, from that header when the peer is loopback (its default), so the address
-the guard is given would be the sender's choice, another socket's even. An in-process client that names itself (not an
-address: Starlette's TestClient, the openai backend's calls) has no socket and passes. vite's dev proxy runs as the
-person, so its connections are theirs and pass (it sends no X-Forwarded-For), and so does whatever another account
-sends through it while `npm run dev` runs: the check guards this server's port, not vite's (tried: a uid-65534 client
-through vite's proxy was answered, 200 and 101). `THEODOLITE_PEER_CHECK=off` turns this check off (to serve through a
-proxy, say).
+that runs the server. Root's connections pass too: root can act as any account already, and a container's
+port-forwarder connects as root. `peer_uid` finds the line of /proc/net/tcp (or tcp6) whose local end is the client's
+address and port and whose remote end is the server's, the client's end of this very connection, and reads its owner,
+from a line some process still holds only: once a client has closed its end, the line left (closing, or time-wait) is
+no process's, inode 0, and printed as root's, and once it has reset it there is none. A request whose sender has so
+gone (or whose client uvicorn could not name, the connection reset before it was taken up) is refused when the tables
+list the server's own listening port, since no live caller on this machine is missing from them; before this, a
+process of uid 65534 that sent a request and reset its socket at once had every such request run, and one that closed
+it got through while the server was busy (tried here, as root dropping to 65534). It reads the tables afresh for every
+request and socket and keeps nothing, so nothing it says can go stale: under 1 ms over the 30 to 110 sockets of the
+machine it was checked on (scripts/check_local_only.py prints it), about 2 ms over 1,000 and 7 ms over 4,500. When it
+cannot tell (not Linux, tables that do not list the server's port, a Unix socket) the request passes, and the log says
+so once. A request carrying X-Forwarded-For is refused: uvicorn takes the client's address, port and all, from that
+header when the peer is loopback (its default), so the address the guard is given would be the sender's choice,
+another socket's even. An in-process client that names itself (not an address: Starlette's TestClient, the openai
+backend's calls) has no socket and passes. vite's dev proxy runs as the person, so its connections are theirs and pass
+(it sends no X-Forwarded-For), and so does whatever another account sends through it while `npm run dev` runs: the
+check guards this server's port, not vite's (tried: a uid-65534 client through vite's proxy was answered, 200 and
+101). `THEODOLITE_PEER_CHECK=off` turns this check off (to serve through a proxy, say); each of its refusals names it.
 
 Before this guard, CORS allowed every origin with credentials, and the older routes (POST /api/larql, the four POST
 /api/scientist/* tools) and /ws/theodolite checked neither Host nor Origin: a page from any site the reader visited, or
@@ -59,11 +64,17 @@ from backend.atlas import local_pages_only
 logger = logging.getLogger("theodolite.local_only")
 
 REFUSED = "The instrument's server answers only its own pages, served from this machine, and scripts run on it."
-OTHER_ACCOUNT = "The instrument's server answers only the account it runs as; this came from another account's process."
-FORWARDED = "The instrument's server cannot tell whose a forwarded request (X-Forwarded-For) is, so it refuses it."
+PEER_CHECK_OFF = " (THEODOLITE_PEER_CHECK=off turns this check off.)"
+OTHER_ACCOUNT = ("The instrument's server answers only the account it runs as; this came from another account's process."
+                 + PEER_CHECK_OFF)
+FORWARDED = ("The instrument's server cannot tell whose a forwarded request (X-Forwarded-For) is, so it refuses it."
+             + PEER_CHECK_OFF)
+GONE_SENDER = ("The instrument's server cannot tell whose this request is: its sender closed or reset the connection "
+               "before the server could look." + PEER_CHECK_OFF)
 POLICY_VIOLATION = 1008  # the WebSocket close code for a refused handshake
 PEER_CHECK_ENV = "THEODOLITE_PEER_CHECK"
 NET_TABLES = ("/proc/net/tcp", "/proc/net/tcp6")
+GONE = -1  # peer_uid's answer for a client end that no process holds any more: no account's
 _told = {"unknown": False}
 
 
@@ -87,33 +98,41 @@ def _table_forms(host: str, port: int) -> Tuple[Optional[str], str]:
     return four, "".join("%08X" % w for w in struct.unpack("=4I", v6.packed)) + ":%04X" % port
 
 
-def peer_uid(client: Sequence[Any], server: Sequence[Any], tables: Sequence[str] = NET_TABLES) -> Optional[int]:
+def peer_uid(client: Optional[Sequence[Any]], server: Sequence[Any],
+             tables: Sequence[str] = NET_TABLES) -> Optional[int]:
     """The account (uid) owning the TCP socket whose local end is `client` and whose remote end is `server`, both
     (address, port): the client's end of a connection to this server, from Linux's /proc/net/tcp and tcp6, read afresh.
-    None when it cannot tell: not Linux (no such tables), no such socket, or an address that is not one."""
+    Only a line some process still holds (its inode not 0) is read: what is left of a closed end says uid 0 whoever
+    closed it. GONE when the tables list `server`'s listening port but no such line, or there is no client to look for
+    (uvicorn names none for a connection reset before it was taken up): its sender has closed or reset it. None when it
+    cannot tell: not Linux (no such tables), tables that do not list `server`'s port, or an address that is not one."""
     try:
-        (c4, c6), (s4, s6) = _table_forms(str(client[0]), int(client[1])), _table_forms(str(server[0]), int(server[1]))
+        s4, s6 = _table_forms(str(server[0]), int(server[1]))
+        c4, c6 = _table_forms(str(client[0]), int(client[1])) if client is not None else (None, None)
     except (ValueError, TypeError, IndexError):
         return None
+    port, listening = ":%04X" % int(server[1]), False
     for path, local, remote in ((tables[0], c4, s4), (tables[1], c6, s6)):
-        if local is None or remote is None:
-            continue
         try:
             with open(path, encoding="ascii") as f:
-                text = f.read()
+                rows = [line.split() for line in f.read().splitlines()[1:]]
         except OSError:
             continue
-        at = text.find(f" {local} {remote} ")  # from there: local, remote, st, tx:rx, tr:when, retrnsmt, uid, ...
-        if at >= 0:
-            end = text.find("\n", at)
-            return int(text[at : end if end >= 0 else None].split()[6])
-    return None
+        for row in rows:  # sl, local, remote, st, tx:rx, tr:when, retrnsmt, uid, timeout, inode, ...
+            if len(row) < 10:
+                continue
+            if row[3] == "0A" and row[1].endswith(port):  # a listening socket on the server's port
+                listening = True
+            elif local is not None and row[1] == local and row[2] == remote and row[9] != "0":
+                return int(row[7])
+    return GONE if listening else None
 
 
 def other_account(scope: Scope) -> Optional[str]:
     """Why a request or socket from this machine is refused for whose it is (module docstring), or None: one carrying
-    X-Forwarded-For, or a connection whose client end another account than the server's, or root, owns. A client that
-    is not an address (an in-process one) passes; one whose socket is not found passes too, and the log says so once."""
+    X-Forwarded-For, a connection whose client end another account than the server's, or root, owns, or one whose
+    sender has gone (`GONE`). A client that is not an address (an in-process one) passes; so does one that `peer_uid`
+    cannot place, and the log says so once."""
     if os.environ.get(PEER_CHECK_ENV, "").strip().lower() in ("off", "0", "false", "no"):
         return None
     if any(k.lower() == b"x-forwarded-for" for k, _ in scope.get("headers") or []):
@@ -124,7 +143,9 @@ def other_account(scope: Scope) -> Optional[str]:
             ipaddress.ip_address(str(client[0]))
         except ValueError:
             return None  # no socket: an in-process client names itself
-    uid = peer_uid(client, server) if client is not None and server is not None else None
+    uid = peer_uid(client, server) if server is not None else None
+    if uid == GONE:
+        return GONE_SENDER
     if uid is None:
         if not _told["unknown"]:
             _told["unknown"] = True

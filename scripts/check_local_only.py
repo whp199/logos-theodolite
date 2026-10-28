@@ -34,11 +34,15 @@ temporary directory:
    is printed), and this account's requests, its socket and a script in a process of its own pass, logging nothing;
    with `peer_uid` made to name another uid, a request gets 403 and the socket's handshake 403 too, unless
    THEODOLITE_PEER_CHECK=off; a server run as uid 1000 answers uid 1000 and root (who can act as anyone already), not
-   uid 1001; a request carrying X-Forwarded-For is refused (uvicorn would take the client from it); a
-   connection it cannot place passes, the log saying so once; the openai backend's calls in this process name
-   themselves and are looked up nowhere; and, run as root, a client that drops to uid 65534 before it connects gets 403
-   and a refused handshake, and with THEODOLITE_PEER_CHECK=off gets in, as every account did before (skipped, saying
-   so, when not root).
+   uid 1001; a request carrying X-Forwarded-For is refused (uvicorn would take the client from it); with the server's
+   port listening, a client end only a time-wait line holds (uid 0, inode 0), none at all, or no client is GONE and
+   refused (403, and on the socket), while tables that do not list the port say None; a connection it cannot place
+   passes, the log saying so once; each refusal names THEODOLITE_PEER_CHECK=off; the openai backend's calls in this
+   process name themselves and are looked up nowhere; and, run as root, a client that drops to uid 65534 before it
+   connects gets 403 and a refused handshake, and with THEODOLITE_PEER_CHECK=off gets in, as every account did before,
+   and one that saves a system prompt without waiting, resetting its socket, or closing it while the guard is held
+   back, is refused as gone and nothing is saved, while this account's own request is (skipped, saying so, when not
+   root).
 
 Run: .venv/bin/python -I scripts/check_local_only.py   (exits 0 when every check holds)
 """
@@ -452,6 +456,19 @@ def main() -> int:
           "the tables' forms: IPv4 in tcp, ::1 and a mapped IPv4 address in tcp6, each port after it")
     check(lo.peer_uid(("127.0.0.1", 5002), ("127.0.0.1", 8765), tb) is None and lo.peer_uid(("127.0.0.1", 5000), ("127.0.0.1", 8765), ("/nonexistent/tcp", "/nonexistent/tcp6")) is None
           and lo.peer_uid(("testclient", 50000), ("testserver", 80)) is None, "no such socket, no such tables (not Linux), not an address: None")
+    listen = "   {i}: {l} 00000000:0000 0A 00000000:00000000 00:00000000 00000000     0        0 {i}9 1 0000000000000000 100 0 0 10 0\n"
+    tw = "   {i}: {l} {r} 06 00000000:00000000 03:00001770 00000000     0        0 0 3 0000000000000000\n"  # as the kernel prints one
+    t4l = tables / "tcp-listening"
+    t4l.write_text(head + listen.format(i=0, l=f"{v4_lo}:223D") + tw.format(i=1, l=f"{v4_lo}:138B", r=f"{v4_lo}:223D")
+                   + tw.format(i=2, l=f"{v4_lo}:138C", r=f"{v4_lo}:223D") + line.format(i=3, l=f"{v4_lo}:138C", r=f"{v4_lo}:223D", u=77))
+    tl = (str(t4l), "/nonexistent/tcp6")
+    check(lo.peer_uid(("127.0.0.1", 5003), ("127.0.0.1", 8765), tl) == lo.GONE and lo.peer_uid(("127.0.0.1", 5002), ("127.0.0.1", 8765), tl) == lo.GONE
+          and lo.peer_uid(None, ("127.0.0.1", 8765), tl) == lo.GONE and lo.peer_uid(("127.0.0.1", 5004), ("127.0.0.1", 8765), tl) == 77,
+          "the server's port listening: a time-wait line (uid 0, inode 0) or none at all is GONE, not root's or unknown, and so is no "
+          "client; a live line with the same ends as a time-wait one is read")
+    check(lo.peer_uid(("127.0.0.1", 5003), ("127.0.0.1", 8766), tl) is None and lo.peer_uid(None, ("/run/theodolite.sock", None), tl) is None,
+          "tables that do not list the server's port, or a Unix socket: None (cannot tell), not GONE")
+    check(all("THEODOLITE_PEER_CHECK=off" in why for why in (lo.OTHER_ACCOUNT, lo.FORWARDED, lo.GONE_SENDER)), "each refusal for whose it is names the switch")
     port = free_port()
     server.get_app_state = lambda: (None, None)  # type: ignore[assignment]
     srv = uvicorn.Server(uvicorn.Config(server.app, host="127.0.0.1", port=port, log_level="warning", lifespan="off",
@@ -488,6 +505,8 @@ def main() -> int:
         n_sockets = sum(len(Path(p).read_text().splitlines()) - 1 for p in lo.NET_TABLES if Path(p).exists())
         ms = statistics.median(times)
         check(got == os.geteuid(), f"a live connection of this process: its own uid, {got} ({ms:.2f} ms a lookup over {n_sockets} sockets)")
+        gone, unlisted = lo.peer_uid(("127.0.0.1", free_port()), ("127.0.0.1", port)), lo.peer_uid(("127.0.0.1", 5000), ("127.0.0.1", free_port()))
+        check(gone == lo.GONE and unlisted is None, f"on this machine's tables: a client end nobody holds is GONE ({gone}); a port nobody listens on, None ({unlisted})")
         r = hx.get(url, timeout=30)
         check(r.status_code == 200 and shake(f"http://127.0.0.1:{port}").startswith("HTTP/1.1 101") and not heard,
               f"its own requests and socket pass, and nothing is logged: {r.status_code}")
@@ -526,6 +545,11 @@ def main() -> int:
         warned = [x for x in heard if x.levelno == logging.WARNING]
         check(rs == [200, 200] and len(warned) == 1 and "Could not tell which account" in warned[0].getMessage(),
               f"a connection it cannot place passes, the log saying so once: {rs}, {len(warned)} warning(s)")
+        lo.peer_uid = lambda *a, **k: lo.GONE  # type: ignore[assignment]
+        r = hx.get(url, timeout=30)
+        line_ = shake(f"http://127.0.0.1:{port}")
+        check(r.status_code == 403 and r.json().get("detail") == lo.GONE_SENDER and line_.startswith("HTTP/1.1 403"),
+              f"a connection whose sender has gone: 403, and on the socket ({r.status_code}, {line_!r})")
         lo.peer_uid = real_uid  # type: ignore[assignment]
         heard.clear()
 
@@ -576,6 +600,51 @@ def main() -> int:
                   f"with THEODOLITE_PEER_CHECK=off it gets in, as every account did before: {json.dumps(got_)[:200]}")
             r = hx.get(url, timeout=30)
             check(r.status_code == 200, f"and this account's next request still passes: {r.status_code}")
+            # a sender that does not wait for the reply: it saves a system prompt and resets its socket, or closes it, at once
+            blind = (
+                "import os, socket, struct, sys\n"
+                "os.setgroups([]); os.setgid(65534); os.setuid(65534)\n"
+                "port, how = int(sys.argv[1]), sys.argv[2]\n"
+                "body = '{\"kind\": \"system\", \"name\": \"planted-%s\", \"text\": \"planted by uid %d\"}' % (how, os.getuid())\n"
+                "sk = socket.create_connection(('127.0.0.1', port), timeout=10)\n"
+                "sk.sendall(('POST /api/saved_prompts HTTP/1.1\\r\\nHost: 127.0.0.1:%d\\r\\nContent-Type: application/json\\r\\n'\n"
+                "            'Content-Length: %d\\r\\n\\r\\n%s' % (port, len(body), body)).encode())\n"
+                "if how == 'reset':\n"
+                "    sk.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))\n"
+                "sk.close()\n"
+                "print(os.getuid())\n")
+            saved = Path(os.environ["THEODOLITE_SAVED_PROMPTS"])
+            reads: List[Any] = []
+
+            def blind_send(how: str, wait: float = 0.0) -> str:
+                """A blind sender as uid 65534; `wait` holds the guard back first (the server busy elsewhere), so that the
+                sender has closed its end before the guard reads the tables."""
+                def read(*a: Any, **k: Any) -> Any:
+                    time.sleep(wait)
+                    reads.append(real_uid(*a, **k))
+                    return reads[-1]
+                lo.peer_uid = read  # type: ignore[assignment]
+                n = len(reads)
+                try:
+                    res = subprocess.run([sys.executable, "-I", "-c", blind, str(port), how], capture_output=True, text=True, timeout=60)
+                    for _ in range(100):  # until the guard has read it, then a moment for the route to have run were it let in
+                        if len(reads) > n:
+                            break
+                        time.sleep(0.05)
+                    time.sleep(0.5)
+                finally:
+                    lo.peer_uid = real_uid  # type: ignore[assignment]
+                return res.stdout.strip() or res.stderr[-200:]
+
+            outs = [blind_send("reset"), blind_send("close", wait=0.5)]
+            text_ = saved.read_text() if saved.exists() else ""
+            check(outs == ["65534", "65534"] and reads[-2:] == [lo.GONE, lo.GONE] and "planted" not in text_,
+                  f"a uid-65534 sender that resets, or closes while the server is busy (its line then no process's, printed as "
+                  f"root's), is refused as gone and the route never runs: {outs}, the guard read {reads[-2:]}, saved: {'planted' in text_}")
+            r = hx.post(f"http://127.0.0.1:{port}/api/saved_prompts", json={"kind": "system", "name": "mine", "text": "saved by this account"}, timeout=30)
+            text_ = saved.read_text() if saved.exists() else ""
+            check(r.status_code == 200 and "saved by this account" in text_ and "planted" not in text_,
+                  f"while this account's own request to the same route is saved: {r.status_code}")
     finally:
         lo.peer_uid = real_uid  # type: ignore[assignment]
         os.environ.pop(lo.PEER_CHECK_ENV, None)
@@ -584,8 +653,8 @@ def main() -> int:
         srv.should_exit = True
         th.join(timeout=10)
         server.get_app_state = real_state  # type: ignore[assignment]
-    section("which account asks: its own passes, another's is refused (403, and on the socket), a forwarded request refused, "
-            f"THEODOLITE_PEER_CHECK=off; a lookup took {ms:.2f} ms over {n_sockets} sockets", before)
+    section("which account asks: its own passes, another's is refused (403, and on the socket), and so are a sender gone "
+            f"before it was looked up and a forwarded request, THEODOLITE_PEER_CHECK=off; a lookup took {ms:.2f} ms over {n_sockets} sockets", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0
