@@ -265,6 +265,13 @@ def main(argv=None) -> int:
                                  stage=stage, canary_only=a.canary_only, cancel=stop.is_set, log=lambda s: print(s, flush=True))
         except ValueError as exc:
             raise SystemExit(str(exc))
+        except RuntimeError as exc:
+            from backend.cpu_memory import is_cpu_oom, plain
+
+            if not is_cpu_oom(exc):
+                raise
+            raise SystemExit(f"{plain(exc, 'the census')} Every whole batch before it is kept: lower --batch or --max-new, "
+                             "and the same command continues the run.")
         if a.canary_only:
             print(f"-> {res['canary']} ({res['written']} answers written, {res['skipped']} were there): compare it with the same "
                   "batch from another card by census_tools.py canary")

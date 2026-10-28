@@ -244,5 +244,21 @@ def main() -> int:
     return 0
 
 
+def run() -> int:
+    """`main()`, with the CPU's memory refused in plain words (backend/cpu_memory.py: a steer lens batch the estimate
+    says MemAvailable cannot hold, or an allocation the CPU's allocator refused) as a one-line exit, not a traceback."""
+    from backend.cpu_memory import CPUMemoryRefused, is_cpu_oom, plain
+
+    try:
+        return main()
+    except CPUMemoryRefused as exc:
+        raise SystemExit(str(exc))
+    except RuntimeError as exc:
+        if not is_cpu_oom(exc):
+            raise
+        raise SystemExit(f"{plain(exc, 'the build')} A build written a part or a layer at a time resumes where it "
+                         "stopped: lower --batch or --chunk, and run it again.")
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run())

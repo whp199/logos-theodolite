@@ -47,6 +47,7 @@ from backend import atlas as atlas_routes
 from backend import scientist_chat
 from backend import w4a16_fast
 from backend import causal_check as cc
+from backend import cpu_memory
 from backend.local_only import LocalOnly
 from backend.engine_runtime import (
     DEFAULT_TRACKED_CONCEPTS,
@@ -794,8 +795,8 @@ def _plain_validation(exc: ValidationError, lead: str = "The sweep was refused."
 
 
 def _plain_error(exc: BaseException) -> str:
-    if isinstance(exc, torch.cuda.OutOfMemoryError):
-        return "The GPU ran out of memory during this sweep. Try a shorter question or answer, or sight fewer word-pieces."
+    if cpu_memory.is_oom(exc):  # the card's, or the CPU allocator's (backend/cpu_memory.py)
+        return f"{cpu_memory.plain(exc, 'this sweep')} Try a shorter question or answer, or sight fewer word-pieces."
     if isinstance(exc, ValueError):
         return str(exc)
     return f"The sweep failed: {type(exc).__name__}: {exc}"
@@ -984,6 +985,16 @@ async def _stream_sweep(
         think_left_out = "bare_text"
     if think_prompt is not None:
         check_sweep_positions(len(runtime.tokenize_prompt(think_prompt)), think_len, "The thinking prompt")
+    # on the CPU, what the sweep will hold against MemAvailable, refused in plain words before it is written
+    cpu_memory.ensure(
+        runtime,
+        lambda: cpu_memory.sweep_need(
+            runtime, len(runtime.tokenize_prompt(text)) + max(int(req.max_new_tokens), len(req.answer_token_ids or [])),
+            thinking=think_prompt is not None,
+        ),
+        "This sweep",
+        "shorten the question, the system prompt or the answer",
+    )
     sampler = SamplerSettings(
         temperature=float(req.sampler.temperature),
         top_k=int(req.sampler.top_k),
@@ -1229,6 +1240,10 @@ async def _run_sweep(
             await _stream_sweep(out, conn, runtime, vault, req, tally)
         except torch.cuda.OutOfMemoryError:
             torch.cuda.empty_cache()
+            raise
+        except RuntimeError as exc:
+            if cpu_memory.is_cpu_oom(exc):  # refused in plain words, the socket kept, as a ValueError is
+                raise ValueError(_plain_error(exc)) from exc
             raise
         return
     rid = req.request_id

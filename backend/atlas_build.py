@@ -383,6 +383,11 @@ def build_steer_layer(rt: Any, layer: int, p50: float, *, dose: float = ao.STEER
     finally:
         hook.remove()
     h_l = seen["h"]  # [C, T, D]
+    from backend import cpu_memory  # on the CPU, a batch's forward against MemAvailable, refused in plain words
+
+    rows = C + 2 * min(int(batch), N) * C
+    cpu_memory.ensure(rt, lambda: cpu_memory.forward_need(rt, rows, int(inp.shape[1])),
+                      f"A steer lens batch of {batch} neurons", "lower --batch")
     keep = ao.keep_mask(inp, att, rt.tokenizer.bos_token_id, spare_bos).to(h_l.dtype)  # [C, T]
     W_U = rt.lm_head_weight
     up = np.zeros((N, k), np.int32)

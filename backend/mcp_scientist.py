@@ -957,12 +957,17 @@ async def causal_spot_check(
             ]
         if study_ids is not None:
             read_pos_by_context = [len(x) - 1 for x in study_ids]
-    except torch.cuda.OutOfMemoryError as exc:
+    except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+        from backend.cpu_memory import is_oom  # the card's, or the CPU allocator's
+
+        if not is_oom(exc):
+            raise
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+        where = "GPU" if isinstance(exc, torch.cuda.OutOfMemoryError) else "CPU"
         raise ValueError(
-            "The GPU ran out of memory during this test, even with its pushed rows split over separate forwards. Try a "
-            "shorter text, or test it on the study's 36 texts."
+            f"The {where} ran out of memory during this test, even with its pushed rows split over separate forwards. "
+            "Try a shorter text, or test it on the study's 36 texts."
         ) from exc
 
     given = contexts == "given"

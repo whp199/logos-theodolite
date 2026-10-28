@@ -22,7 +22,10 @@ Two ways to read (`CAUSAL_CONTEXTS`):
 - "study": the study's 36 texts, right-padded in one forward with every row (slot-major, as N1A_02:91), each pushed at
   its own last word-piece; c is the mean over the texts, with the split-half agreement of even and odd texts.
 If the card runs out of memory, the pushed rows are split over more forwards, halving down to the base and one pushed
-row, each forward with its own base row (N1V_02:87-96); `forwards` and `base_rows_identical` say what happened.
+row, each forward with its own base row (N1V_02:87-96); `forwards` and `base_rows_identical` say what happened. On the
+CPU the split is made before the first forward, from an estimate of each forward's memory against MemAvailable
+(backend/cpu_memory.py), and a CPU allocator's failure halves as the card's does; when even one pushed row does not
+fit, the check is refused in plain words.
 
 Pure torch, importable on the CPU: scripts/check_causal_check.py runs every function here on a tiny random Gemma 4; the
 scientist tool `causal_spot_check` (backend/mcp_scientist.py) runs them on the real model. Layers count from 0.
@@ -336,6 +339,18 @@ def run_check(
 
     pending = list(range(len(deltas)))
     per = len(deltas) if max_slots is None else max(1, min(int(max_slots), len(deltas)))
+    from backend import cpu_memory  # on the CPU, the halving the card makes on running out, made before
+
+    T_rows = int(inp0.shape[1]) if prefix_cache is None else 1
+    cached = len(token_ids) if prefix_cache is not None else 0
+
+    def need(n_slots: int) -> int:
+        return cpu_memory.forward_need(lm, (1 + n_slots) * C, T_rows, cached=cached)
+
+    while per > 1 and not cpu_memory.fits(lm, lambda: need(per)):
+        per = max(1, per // 2)
+    cpu_memory.ensure(lm, lambda: need(1), "The causal check's forward (its base row and one pushed row)",
+                      "test it on a shorter text")
     steered: List[Optional[torch.Tensor]] = [None] * len(deltas)
     bases: List[Optional[torch.Tensor]] = [None] * len(deltas)
     first: Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = None
@@ -345,7 +360,9 @@ def run_check(
         chunk = pending[:per]
         try:
             lsm, act, y = one_forward(chunk)
-        except torch.cuda.OutOfMemoryError:
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+            if not cpu_memory.is_oom(exc):
+                raise
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             if per <= 1:

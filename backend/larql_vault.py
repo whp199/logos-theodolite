@@ -104,6 +104,10 @@ def _plain(exc: BaseException) -> str:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         return "the GPU ran out of memory"
+    from backend.cpu_memory import is_cpu_oom, plain
+
+    if is_cpu_oom(exc):
+        return plain(exc, "the writing").rstrip(".")
     words = str(exc) if isinstance(exc, ValueError) else f"{type(exc).__name__}: {exc}"
     return words.rstrip(". ") or type(exc).__name__
 
@@ -529,6 +533,11 @@ class LarqlVaultEngine:
             text = rt.compose_prompt(
                 spec["prompt"], chat=spec["chat"], system=spec["system"], assistant_prefix=spec["assistant_prefix"]
             )
+            from backend import cpu_memory  # on the CPU, the writing against MemAvailable, before anything is edited
+
+            n_text = len(rt.tokenize_prompt(text))
+            cpu_memory.ensure(rt, lambda: cpu_memory.writing_need(rt, 1, n_text, spec["max_new_tokens"], full_logits=True),
+                              "The voice", "ask for fewer word-pieces (max_new_tokens) or a shorter question")
             watch_id = rt.resolve_concept_token_id(watch_word)[0] if watch_word else None
             write = lambda: rt.write_voice(  # noqa: E731
                 text, max_new_tokens=spec["max_new_tokens"], stop_token_ids=rt.end_of_turn_ids(),

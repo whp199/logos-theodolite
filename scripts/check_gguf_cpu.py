@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """A CPU check of the GGUF and CPU path's second layer (ARCHITECTURE §5: backend/runtime_factory.py, the lab's
-gradients) on the tiny random Gemma 4 of scripts/atlas_stand_in.py written to tiny GGUF files, as
+gradients, the CPU's memory) on the tiny random Gemma 4 of scripts/atlas_stand_in.py written to tiny GGUF files, as
 scripts/check_gguf.py writes them:
 1. the entry points build their runtime through runtime_factory.make_runtime: with nothing set, the pinned
    TheodoliteRuntime as each built it before (the lab daemon's with both lenses, the standalone scientist's without the
@@ -14,7 +14,16 @@ scripts/check_gguf.py writes them:
    with a vault column in force equals the edited stand-in's; the Lab names the model id and weights card; a W4A16
    module through the study's function and a Q4_0 layer of the same codes give the unpacked weight's gradients, and
    every layer's own forward is back after;
-3. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
+3. the CPU's memory (backend/cpu_memory.py): the estimates from the stand-in's config grow as they should, count a
+   packed layer's unpacking and nothing for plain or resident ones, and are never asked on a GPU; with MemAvailable
+   patched small, a sweep (through the server's socket), the vault's voice (POST /api/larql, no edit made), a census
+   batch (nothing written), a steer lens batch and a causal check are refused in plain words, and a causal check with
+   room for one pushed row a forward is split before its first, its readings unchanged; a CPU allocator's failure, as
+   torch raises it, is answered in plain words by the sweep (with and without a request id, the socket kept), the
+   voice, an atlas reading, the causal check (which halves as on the card) and the scientist's tool, and by
+   census_run.py and atlas_build.py as a one-line exit; torch's own failure is recognised, and the card's is not taken
+   for the CPU's;
+4. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
 
 Run: .venv/bin/python -I scripts/check_gguf_cpu.py   (exits 0 when every check holds)
 """
@@ -94,6 +103,15 @@ class environment:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
+
+def raises(fn: Any, *args: Any, **kw: Any) -> str:
+    """What `fn` raised, in words; "" when it raised nothing."""
+    try:
+        fn(*args, **kw)
+    except Exception as exc:  # noqa: BLE001
+        return str(exc) or type(exc).__name__
+    return ""
 
 
 def gguf_env(path: Path, **more: Any) -> Dict[str, Any]:
@@ -289,6 +307,198 @@ def run_checks(tmp: Path) -> int:
         labkit._GGUFLinearFn = twin
     section("labkit's GGUF twin: gradients through packed and resident GGUF layers are the dense stand-in's, bit for bit "
             "(float32 and bf16), with no weight kept for backward", before)
+
+    # ------------------------------------------------------- 3. the CPU's memory, refused in plain words
+    before = len(failures)
+    import backend.atlas as atlas_routes
+    import backend.atlas_build as ab
+    import backend.causal_check as cc
+    import backend.cpu_memory as cm
+    from backend import census as cz
+    from fastapi import HTTPException
+    from fastapi.testclient import TestClient
+
+    rt_c, vault_c = asi.stand_in()
+    lm_c = language_model(rt_c.hf_model)
+    d_c = cm.dims(rt_c)
+    check(d_c == cm.Dims(6, asi.HIDDEN, asi.FFN, rt_c.hf_model.config.vocab_size, rt_c.hf_model.config.num_attention_heads,
+                         d_c.kv_piece, 4) and d_c.kv_piece > 0 and cm.dims(object()) is None,
+          f"the stand-in's sizes from its config ({d_c}); none for an object without one")
+    w1, w2 = cm.writing_need(rt_c, 1, 10, 5), cm.writing_need(rt_c, 2, 10, 5)
+    check(0 < w1 < w2 < cm.writing_need(rt_c, 2, 10, 50) and cm.writing_need(rt_c, 1, 10, 5, full_logits=True) > w1
+          and cm.sweep_need(rt_c, 20, thinking=True) > cm.sweep_need(rt_c, 20) > 0
+          and 0 < cm.forward_need(rt_c, 2, 8) < cm.forward_need(rt_c, 4, 8) < cm.forward_need(rt_c, 4, 8, cached=30),
+          "the estimates grow with rows, word-pieces, logits kept, the thinking comparison and a cache")
+    rt_pk = GGUFRuntime(files["Q4_0"], device="cpu", dtype=torch.float32, tokenizer=tok, load_jpp=False).load()
+    rt_rs = GGUFRuntime(files["Q4_0"], device="cpu", dtype=torch.float32, tokenizer=tok, linears="resident", load_jpp=False).load()
+    widest = max(m.out_features * m.in_features for m in rt_pk.hf_model.modules() if isinstance(m, gw.GGUFLinear))
+    check(cm.unpack_bytes(rt_c) == 0 and cm.unpack_bytes(rt_rs) == 0 and cm.unpack_bytes(rt_pk) >= widest * 4,
+          f"a packed layer's unpacking counted ({cm.unpack_bytes(rt_pk)} bytes), none for plain or resident layers")
+    gpu_like = type("OnTheCard", (), {"device": torch.device("cuda:0")})()
+    cm.ensure(gpu_like, 1 << 60, "A reading on the card", "none")  # never asked off the CPU
+    true_available = cm.available
+    cm.available = lambda: 1 << 10  # 1 KiB available: the estimate of every reading below on the stand-in is larger
+    try:
+        try:
+            cm.ensure(rt_c, lambda: 4 << 20, "This reading", "make it smaller")
+            said, kind = "", None
+        except ValueError as exc:
+            said, kind = str(exc), type(exc)
+        check(said.startswith("This reading needs about 4.0 MiB of memory on the CPU (estimated: backend/cpu_memory.py), "
+                              "and 1 KiB is available (MemAvailable): make it smaller. Nothing was read.")
+              and kind is cm.CPUMemoryRefused, f"refused in plain words, a ValueError: {said}")
+        os.environ[cm.CPU_MEMORY_ENV] = "off"
+        check(raises(cm.ensure, rt_c, 4 << 20, "This reading", "make it smaller") == "", f"{cm.CPU_MEMORY_ENV}=off: not asked")
+        os.environ.pop(cm.CPU_MEMORY_ENV)
+
+        app = asi.bind_server(rt_c, vault_c)
+        with TestClient(app, base_url=BASE) as c:
+            with c.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as ws:
+                ws.send_json({"action": "sweep", "payload": {"prompt": "Who are you?", "max_new_tokens": 4, "request_id": "m1"}})
+                got = [ws.receive_json()]
+                while got[-1].get("type") != "theodolite_sweep_end":
+                    got.append(ws.receive_json())
+                err = next((g for g in got if g.get("type") == "error"), {})
+                check(err.get("request_id") == "m1" and err.get("message", "").startswith("This sweep needs about")
+                      and "MemAvailable" in err["message"] and "shorten the question" in err["message"]
+                      and got[-1]["n_sent"] == 0, f"a sweep on the CPU refused before it is written: {err.get('message')}")
+            r = c.post("/api/larql", json={"query": "DELETE FROM LAYER 2 WHERE slot = 5",
+                                            "voice": {"prompt": "Who are you?", "max_new_tokens": 4}})
+            check(r.status_code == 400 and r.json()["detail"].startswith("The voice before the edit could not be written: "
+                                                                           "The voice needs about")
+                  and r.json()["detail"].endswith("no edit was made.") and not vault_c.active_patches,
+                  f"the vault's voice refused, and no edit made: {r.json().get('detail', '')[:160]}")
+            cm.available = true_available
+            # a CPU allocator's failure, as torch raises it, in plain words: the sweep (with and without a request id,
+            # the socket kept), the voice, an atlas reading
+            alloc = RuntimeError("[enforce fail at alloc_cpu.cpp:127] err == 0. DefaultCPUAllocator: can't allocate memory: "
+                                 "you tried to allocate 3221225472 bytes. Error code 12 (Cannot allocate memory)")
+
+            def full(*_a: Any, **_k: Any) -> Any:
+                raise alloc
+
+            capture, write_voice = rt_c.capture_for_sweep, rt_c.write_voice
+            rt_c.capture_for_sweep, rt_c.write_voice = full, full
+            try:
+                with c.websocket_connect("ws://127.0.0.1:8765/ws/theodolite") as ws:
+                    ws.send_json({"action": "sweep", "payload": {"prompt": "Who are you?", "max_new_tokens": 4, "request_id": "m2"}})
+                    got = [ws.receive_json()]
+                    while got[-1].get("type") != "theodolite_sweep_end":
+                        got.append(ws.receive_json())
+                    err = next((g for g in got if g.get("type") == "error"), {})
+                    ws.send_json({"action": "sweep", "payload": {"prompt": "Who are you?", "max_new_tokens": 4}})
+                    old = ws.receive_json()
+                    ws.send_json({"action": "larql", "query": "DESCRIBE"})
+                    after = ws.receive_json()
+                check(err.get("message") == "The CPU ran out of memory during this sweep (one allocation of 3.0 GiB was "
+                                            "refused). Try a shorter question or answer, or sight fewer word-pieces.",
+                      f"the allocator's failure during a sweep, in plain words: {err.get('message')}")
+                check(old.get("type") == "error" and old.get("recoverable") is True
+                      and old.get("message", "").startswith("The CPU ran out of memory during this sweep")
+                      and after.get("type") == "larql_result", f"without a request id too, the socket kept ({old}, then {after.get('type')})")
+                r = c.post("/api/larql", json={"query": "DELETE FROM LAYER 2 WHERE slot = 5",
+                                                "voice": {"prompt": "Who are you?", "max_new_tokens": 4}})
+                check(r.status_code == 400 and "could not be written: The CPU ran out of memory during the writing (one "
+                      "allocation of 3.0 GiB was refused); no edit was made." in r.json()["detail"] and not vault_c.active_patches,
+                      f"the allocator's failure during the voice: {r.json().get('detail')}")
+            finally:
+                rt_c.capture_for_sweep, rt_c.write_voice = capture, write_voice
+        try:
+            asyncio.run(atlas_routes.on_gpu(full))
+            check(False, "an atlas reading that ran out of memory on the CPU refused")
+        except HTTPException as exc:
+            check(exc.status_code == 400 and exc.detail == "The CPU ran out of memory during this reading (one allocation of "
+                  "3.0 GiB was refused). Try a shorter text.", f"an atlas reading's allocator failure, in plain words: {exc.detail}")
+        cm.available = lambda: 1 << 10
+        out = tmp / "census-m.jsonl"
+        said = raises(cz.take_census, rt_c, 2, [0, 1], out, p50=1.5, p50_source="fixed", controls=1, seed=0, max_new=6, top_k=3,
+                      batch=5, log=lambda _s: None)
+        check(said.startswith("A census batch of 5 answers of up to 6 word-pieces needs about") and "lower --batch or --max-new" in said
+              and not out.exists() and not cz.meta_path_of(out).exists(), f"a census batch refused, nothing written: {said[:100]}")
+        said = raises(ab.build_steer_layer, rt_c, 2, 1.5, batch=8)
+        check(said.startswith("A steer lens batch of 8 neurons needs about") and "lower --batch" in said, f"a steer lens batch refused: {said[:90]}")
+        # the causal check: refused when one pushed row does not fit; split before its first forward when all do not
+        ids_c = [tok.bos_token_id] + tok.encode(asi.CORPUS[4], add_special_tokens=False)[:16]
+        down = lm_c.layers[2].mlp.down_proj
+        args = (lm_c, 2, 5, [3.0, -3.0], "activation", down.weight[:, 5].detach(), lm_c.layers[2].post_feedforward_layernorm.weight.detach(),
+                float(lm_c.layers[2].post_feedforward_layernorm.eps), rt_c.lm_head_weight)
+        said = raises(cc.run_check, *args, token_ids=ids_c)
+        check(said.startswith("The causal check's forward (its base row and one pushed row) needs about") and "shorter text" in said,
+              f"a causal check refused: {said[:100]}")
+        n_c = len(ids_c)
+        cm.available = lambda: (cm.forward_need(lm_c, 2, 1, cached=n_c) + cm.forward_need(lm_c, 3, 1, cached=n_c)) // 2
+        split = cc.run_check(*args, token_ids=ids_c)
+        cm.available = true_available
+        whole = cc.run_check(*args, token_ids=ids_c)
+        check(split.slots_per_forward == [1, 1] and whole.slots_per_forward == [2]
+              and all(torch.allclose(a_, b_, atol=1e-5) for a_, b_ in zip(split.steered, whole.steered)),
+              f"room for one pushed row a forward: split before the first ({split.slots_per_forward}), the same readings")
+
+        def full_rows(_m: Any, args_: Any) -> None:
+            if args_[0].shape[0] > 2:
+                raise alloc
+
+        hk = lm_c.layers[0].register_forward_pre_hook(full_rows)
+        try:
+            halved = cc.run_check(*args, token_ids=ids_c, kv_cache=False)
+        finally:
+            hk.remove()
+        check(halved.slots_per_forward == [1, 1], f"the allocator's failure halves the pushed rows as the card's does ({halved.slots_per_forward})")
+        hk = lm_c.layers[0].register_forward_pre_hook(lambda *_a: full())
+        import backend.mcp_scientist as ms
+
+        bound = (ms._SHARED_RUNTIME, ms._SHARED_VAULT)
+        ms.bind_runtime(rt_c, vault_c)
+        try:
+            said = raises(asyncio.run, ms.causal_spot_check(layer=2, neuron_idx=5, contexts="given", prompt="Who are you?"))
+        finally:
+            hk.remove()
+            ms._SHARED_RUNTIME, ms._SHARED_VAULT = bound
+        check(said.startswith("The CPU ran out of memory during this test, even with its pushed rows split"),
+              f"the scientist's causal check: the allocator's failure in plain words ({said[:90]})")
+    finally:
+        cm.available = true_available
+        os.environ.pop(cm.CPU_MEMORY_ENV, None)
+    real = ""
+    try:
+        torch.empty(1 << 46, dtype=torch.uint8)
+    except RuntimeError as exc:
+        real = cm.plain(exc, "this reading") if cm.is_cpu_oom(exc) else f"not recognised: {exc}"
+    check(real == "The CPU ran out of memory during this reading (one allocation of 65536.0 GiB was refused).",
+          f"torch's own allocator failure is recognised: {real}")
+    check(cm.is_oom(torch.cuda.OutOfMemoryError("x")) and not cm.is_cpu_oom(torch.cuda.OutOfMemoryError("x"))
+          and not cm.is_oom(RuntimeError("shapes do not match")), "a card's out of memory is not the CPU's; another RuntimeError is neither")
+    # the command lines: an allocator failure is a one-line exit in plain words, not a traceback
+    import census_run
+
+    take = cz.take_census
+    cz.take_census = full
+    os.environ["THEODOLITE_ATLAS_DIR"] = str(tmp / "atlas-cli")
+    try:
+        census_run.main(["--stand-in", "--layer", "2", "--neurons", "0-1", "--random-controls", "1", "--max-new", "4", "--no-rank"])
+        said = "no exit"
+    except SystemExit as exc:
+        said = str(exc)
+    finally:
+        cz.take_census = take
+    check(said.startswith("The CPU ran out of memory during the census (one allocation of 3.0 GiB was refused). Every whole "
+                          "batch before it is kept"), f"census_run.py: {said[:120]}")
+    import atlas_build as atlas_build_cli  # scripts/atlas_build.py
+
+    layout, argv = ab.build_layout, sys.argv
+    ab.build_layout = full
+    sys.argv = ["atlas_build.py", "layout", "--stand-in", "--out", str(tmp / "atlas-cli" / "index")]
+    try:
+        atlas_build_cli.run()
+        said = "no exit"
+    except SystemExit as exc:
+        said = str(exc)
+    finally:
+        ab.build_layout, sys.argv = layout, argv
+    check(said.startswith("The CPU ran out of memory during the build (one allocation of 3.0 GiB was refused). A build "
+                          "written a part or a layer at a time resumes"), f"atlas_build.py: {said[:120]}")
+    section("the CPU's memory: a sweep, a census batch, the vault's voice, a causal check and a steer lens batch refused in "
+            "plain words when MemAvailable cannot hold their estimate; an allocator's failure answered in the same words", before)
 
     # ---------------------------------------------------------------- the files R4 pins
     before = len(failures)

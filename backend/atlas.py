@@ -136,6 +136,12 @@ async def on_gpu(fn_: Callable[..., Any], *args: Any) -> Any:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             raise HTTPException(status_code=400, detail="The GPU ran out of memory for this reading; try a shorter text.") from exc
+        except RuntimeError as exc:
+            from backend.cpu_memory import is_cpu_oom, plain
+
+            if not is_cpu_oom(exc):
+                raise
+            raise HTTPException(status_code=400, detail=f"{plain(exc, 'this reading')} Try a shorter text.") from exc
 
 
 def off_gpu(fn_: Callable[..., Any], *args: Any) -> Any:
