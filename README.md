@@ -338,9 +338,10 @@ REPORT §3.4). Where each fault stands now:
   difference of two log-odds, as E3’s first recommendation asks) or against E3’s average state (`"study_mean"`: the
   score of the state less the average, as E3 centred it, which is not a log-odds the model gives;
   [`E3_background_mu.npy`](experiments/results/E3_background_mu.npy), exported from E3’s own caches and pinned by its
-  sha256). The server reads none unless asked (`contrasts: []`); the landmarks page reads one, in its section vii, when
-  the reader turns that section on. Alone, the scores carry a lean that comes from the model’s average state, not from
-  the question, and the lens and the naked eye read it differently. Through the J++ lens, on E3’s neutral prose at
+  sha256). The server reads none unless asked (`contrasts: []`); the landmarks page reads up to four, in its section
+  vii, against either background or both, when the reader turns that section on, and draws one at a time. Alone, the
+  scores carry a lean that comes from the model’s average state, not from the question, and the lens and the naked eye
+  read it differently. Through the J++ lens, on E3’s neutral prose at
   layers 41–50, the average state’s share of the six pronoun pairs’ score was +1.4 toward the female words (the score
   itself +0.8, and −0.7 once centred on the average state; E3 (c)), its size depending partly on how the lens was
   fitted (erratum E34); the average state read alone scores +2.3 there, which is not the lean any reading carries. By

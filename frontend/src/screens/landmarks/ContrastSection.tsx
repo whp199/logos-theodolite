@@ -4,20 +4,28 @@ import { type LensBand, isShippedLens, lensBand, lensPhrase, useReadingLens } fr
 import { signed } from "../../lib/words";
 import {
   type ContrastBackground,
+  type ContrastPair,
   type ContrastReading,
   type ContrastWord,
   type Sighting,
+  CONTRAST_BACKGROUND_ORDER,
+  CONTRAST_MAX_PAIRS,
   CONTRAST_MAX_WORDS,
+  contrastPairProblems,
+  contrastPairs,
   contrastProblem,
   contrastWords,
+  pairName,
   useTheodoliteStore,
+  withContrastPairs,
 } from "../../store/useTheodoliteStore";
 import { cxL, f1 } from "./geometry";
 
 /*
  * Landmarks section vii: one word against another at every layer (the sweep's `contrasts`, read by
- * TheodoliteRuntime._contrast_readings). The chart draws what the sighting shown was read with, never the boxes as
- * set; the boxes go with the next sighting, and only when the section is on with words typed both sides.
+ * TheodoliteRuntime._contrast_readings), up to four contrasts a sighting, against either background or both. The
+ * chart draws what the sighting shown was read with, one contrast at a time (a pill for each it read), never the boxes
+ * as set; the boxes go with the next sighting, and only when the section is on with words typed on both sides of each.
  */
 
 const q = (w: string) => "“" + w + "”";
@@ -84,12 +92,23 @@ function niceBound(v: number): number {
 const linePath = (vals: number[] | null, y: (v: number) => number) =>
   vals ? vals.map((v, l) => (l === 0 ? "M" : " L") + cxL(l) + "," + f1(y(v))).join("") : "";
 
-/** What a background reads, for the number row and the chart's red line. */
+/** What a background reads, for the number row and the chart's red lines. */
 function backgroundSeries(c: ContrastReading, b: ContrastBackground | null) {
   if (b === "controls" && c.controls) return { lens: c.controls.deltaLens, naked: c.controls.deltaNaked };
   if (b === "study_mean" && c.studyMean) return { lens: c.studyMean.centredLens, naked: c.studyMean.centredNaked };
   return null;
 }
+
+/** Each background's red line, solid against the control and dashed centred on the average, and its words. */
+const BACKGROUND_LINE: Record<ContrastBackground, { dash: string | undefined; words: string; row: string }> = {
+  controls: { dash: undefined, words: "against the matched control", row: "against the control" },
+  study_mean: { dash: "9 4", words: "centred on the study’s average state", row: "centred on the study’s average state" },
+};
+
+/** A contrast as the sighting read it, for its pill and its heading. */
+const contrastName = (c: ContrastReading) => sideWords(c.toward) + " against " + sideWords(c.away);
+const readable = (c: ContrastReading) => c.error === null && c.lens !== null;
+const countWord = (n: number) => ["no", "one", "two", "three", "four", "five", "six"][n] ?? String(n);
 
 /** Where the controls were read, from the server's own kind. */
 function controlWhere(kind: string): string {
@@ -128,47 +147,53 @@ export const ContrastSection: React.FC<{
   const card = health?.contrasts ?? null;
   const smProblem = card ? card.study_mean_problem : null;
   const smOk = !!card && smProblem === null;
-  const bg: ContrastBackground | null = contrast.backgrounds[0] ?? null;
-  const problem = contrastProblem(contrast);
+  // how many contrasts one sighting may weigh: the server's own bound, four until its health says
+  const maxPairs = card?.max_contrasts ?? CONTRAST_MAX_PAIRS;
+  const maxWord = countWord(maxPairs);
+  const pairs = contrastPairs(contrast);
+  const pairProblems = contrastPairProblems(contrast);
+  const problem = contrastProblem(contrast, maxPairs);
   const sentBgs = sent.contrast_backgrounds;
   const turnOn = (on: boolean) => {
     // the placeholders become words typed only when the reader turns the section on, so nothing unseen is ever sent
     if (on && !contrast.toward.trim() && !contrast.away.trim()) setContrast({ on, toward: placeholders[0], away: placeholders[1] });
     else setContrast({ on });
   };
-  const choose = (b: ContrastBackground | null) => {
-    setContrast({ backgrounds: b ? [b] : [] });
+  const setPairs = (ps: ContrastPair[]) => setContrast(withContrastPairs(ps));
+  const setPair = (i: number, p: Partial<ContrastPair>) => setPairs(pairs.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const tick = (b: ContrastBackground, on: boolean) => {
+    setContrast({ backgrounds: on ? [...new Set([...contrast.backgrounds, b])] : contrast.backgrounds.filter((x) => x !== b) });
     // the matched control goes with the request as the frame's centring, so reading against it centres the frame too
-    if (b === "controls") setFrame({ centre: true });
+    if (b === "controls" && on) setFrame({ centre: true });
   };
 
-  /* ---- what the sighting shown was read with */
+  /* ---- what the sighting shown was read with: the contrast picked by its pill, else the first it could read */
+  const [picked, setPicked] = React.useState<number | null>(null);
   const list = sighting?.contrasts ?? null;
-  const c = list?.find((x) => x.error === null && x.lens !== null) ?? null;
+  const firstRead = list ? list.findIndex(readable) : -1;
+  const shownIdx = list && picked !== null && picked < list.length ? picked : firstRead;
+  const shown = list && shownIdx >= 0 ? list[shownIdx] : null;
+  const c = shown && readable(shown) ? shown : null;
   const failed = list?.filter((x) => x.error !== null) ?? [];
-  const shownBg: ContrastBackground | null = c ? (c.controls ? "controls" : c.studyMean ? "study_mean" : null) : null;
-  const bgSeries = c ? backgroundSeries(c, shownBg) : null;
+  // the contrast that could not be read, whose words are shown in its place: the one picked, else the first
+  const notRead = shown && !c ? shown : (failed[0] ?? null);
+  const shownBgs = c ? CONTRAST_BACKGROUND_ORDER.filter((b) => (b === "controls" ? c.controls : c.studyMean) !== null) : [];
+  const bgLines = c ? shownBgs.map((b) => ({ b, ...BACKGROUND_LINE[b], s: backgroundSeries(c, b) })) : [];
   const aName = c ? sideWords(c.toward) : "";
   const bName = c ? sideWords(c.away) : "";
-  const pairs = c ? c.toward.length : 0;
+  const nPairs = c ? c.toward.length : 0;
   // the words the rubric names: the sighting's own when it weighed some, else those the boxes will send
   const typed = contrastWords(contrast.toward)[0] ?? placeholders[0];
   const typedAway = contrastWords(contrast.away)[0] ?? placeholders[1];
-  const first = c ? (pairs === 1 ? aName : "the first words") : typed ? q(typed) : "the first word";
-  const second = c ? (pairs === 1 ? bName : "the second") : typedAway ? q(typedAway) : "the second";
+  const first = c ? (nPairs === 1 ? aName : "the first words") : typed ? q(typed) : "the first word";
+  const second = c ? (nPairs === 1 ? bName : "the second") : typedAway ? q(typedAway) : "the second";
 
   /* ---- the chart: 60 layers in nats, symmetric about nought */
-  const plotted = c ? [c.lens, c.naked, bgSeries?.lens ?? null].filter((v): v is number[] => v !== null) : [];
+  const plotted = c ? [c.lens, c.naked, ...bgLines.map((x) => x.s?.lens ?? null)].filter((v): v is number[] => v !== null) : [];
   const bound = niceBound(Math.max(0, ...plotted.flat().map((v) => Math.abs(v))));
   const y = (v: number) => 200 - (Math.max(-bound, Math.min(bound, v)) * 150) / bound;
   const half = 1060 / 59 / 2;
   const at = (vals: number[] | null | undefined, l: number) => (vals ? vals[l] : null);
-  const bgWords =
-    shownBg === "controls"
-      ? "against the matched control"
-      : shownBg === "study_mean"
-        ? "centred on the study’s average state"
-        : null;
 
   const row = (l: number) =>
     c ? (
@@ -176,26 +201,26 @@ export const ContrastSection: React.FC<{
         <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.12em", color: "#6B5D4D" }}>at layer {l + 1}</span>{" "}
         {nats(at(c.lens, l)) ?? <Missing what="not recorded in this sighting" />} through the lens ·{" "}
         {nats(at(c.naked, l)) ?? <Missing what="not recorded in this sighting" />} to the naked eye
-        {shownBg === "controls" ? (
-          <>
+        {bgLines.map((x) => (
+          <React.Fragment key={x.b}>
             {" "}
-            · {nats(at(bgSeries?.lens, l)) ?? <Missing what="no control read here" />} against the control
-          </>
-        ) : null}
-        {shownBg === "study_mean" ? (
-          <>
-            {" "}
-            · {nats(at(bgSeries?.lens, l)) ?? <Missing what="not recorded in this sighting" />} centred on the study’s average state
-          </>
-        ) : null}
+            ·{" "}
+            {nats(at(x.s?.lens, l)) ?? <Missing what={x.b === "controls" ? "no control read here" : "not recorded in this sighting"} />}{" "}
+            {x.row}
+          </React.Fragment>
+        ))}
         <span style={{ color: "#6B5D4D" }}>
           {" "}
-          ({shownBg === "study_mean" ? "the first two in nats of log-odds; the third is the score of the state less the average, as E3 centred it: not a log-odds the model gives" : "nats of log-odds"})
+          (
+          {shownBgs.includes("study_mean")
+            ? "nats of log-odds, but the one centred on the study’s average state is the score of the state less the average, as E3 centred it: not a log-odds the model gives"
+            : "nats of log-odds"}
+          )
         </span>
       </p>
     ) : null;
 
-  const radio = (b: ContrastBackground | null, label: React.ReactNode, enabled: boolean, note?: React.ReactNode) => (
+  const checkbox = (b: ContrastBackground, label: React.ReactNode, enabled: boolean, note?: React.ReactNode) => (
     <label
       style={{
         display: "flex",
@@ -208,11 +233,10 @@ export const ContrastSection: React.FC<{
       }}
     >
       <input
-        type="radio"
-        name="contrast-background"
-        checked={bg === b}
+        type="checkbox"
+        checked={contrast.backgrounds.includes(b)}
         disabled={!enabled}
-        onChange={() => choose(b)}
+        onChange={(e) => tick(b, e.target.checked)}
         style={{ width: "17px", height: "17px", accentColor: "#8F2B1E", margin: "3px 0 0", flex: "none" }}
       />
       <span>
@@ -258,7 +282,8 @@ export const ContrastSection: React.FC<{
         Here two words are weighed against each other at every layer, with no frame to square. Above the line the lens leans
         toward {first}; below it, toward {second}. At layer 60 the lens and the naked eye are the model itself: the line there
         is how much likelier it makes {first} than {second} as its next word-piece, in nats (for one pair, +1 is about 2.7
-        times as likely).
+        times as likely). One sighting can weigh up to {maxWord} such contrasts, each read on
+        its own; the chart draws one at a time.
       </Rubric>
 
       {/* ---- what the next sighting sends */}
@@ -271,24 +296,75 @@ export const ContrastSection: React.FC<{
         />
         weigh one word against another in the next sighting
       </label>
-      <div style={{ fontSize: "28px", lineHeight: 1.8, maxWidth: "900px", color: contrast.on ? "#2B2117" : "#6B5D4D" }}>
-        <label htmlFor="contrast-toward">Weigh</label>{" "}
-        {box("contrast-toward", contrast.toward, placeholders[0], (v) => setContrast({ toward: v }))}{" "}
-        <label htmlFor="contrast-away">against</label>{" "}
-        {box("contrast-away", contrast.away, placeholders[1], (v) => setContrast({ away: v }))}.
+      <div style={{ display: "flex", flexDirection: "column", gap: "2px", maxWidth: "900px" }}>
+        {pairs.map((p, i) => {
+          // the first pair keeps the ids it always had; its boxes show the first two landmarks as placeholders
+          const tid = i === 0 ? "contrast-toward" : `contrast-toward-${i + 1}`;
+          const aid = i === 0 ? "contrast-away" : `contrast-away-${i + 1}`;
+          return (
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "baseline",
+                  gap: "0 12px",
+                  fontSize: "28px",
+                  lineHeight: 1.8,
+                  color: contrast.on ? "#2B2117" : "#6B5D4D",
+                }}
+              >
+                <span>
+                  <label htmlFor={tid}>Weigh</label>{" "}
+                  {box(tid, p.toward, i === 0 ? placeholders[0] : "", (v) => setPair(i, { toward: v }))}{" "}
+                  <label htmlFor={aid}>against</label>{" "}
+                  {box(aid, p.away, i === 0 ? placeholders[1] : "", (v) => setPair(i, { away: v }))}.
+                </span>
+                {pairs.length > 1 ? (
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    disabled={!contrast.on}
+                    onClick={() => setPairs(pairs.filter((_, j) => j !== i))}
+                    aria-label={`Remove ${pairName(i)}`}
+                  >
+                    remove
+                  </button>
+                ) : null}
+              </div>
+              {contrast.on && pairs.length > 1 && pairProblems[i] ? (
+                <p style={{ margin: 0, fontStyle: "italic", fontSize: "16px", color: "#8F2B1E" }}>{pairProblems[i]}</p>
+              ) : null}
+            </div>
+          );
+        })}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 16px", paddingTop: "4px" }}>
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={!contrast.on || pairs.length >= maxPairs}
+            onClick={() => setPairs([...pairs, { toward: "", away: "" }])}
+          >
+            add a pair
+          </button>
+          <span style={{ fontSize: "15px", color: "#6B5D4D" }}>
+            {pairs.length >= maxPairs
+              ? `No more: the server weighs at most ${maxWord} contrasts in one sighting.`
+              : `Each pair is read as its own contrast, up to ${maxWord} in one sighting.`}
+          </span>
+        </div>
       </div>
       <fieldset style={{ border: "0", margin: "0", padding: "0", display: "flex", flexDirection: "column", maxWidth: "900px" }}>
         <legend style={{ padding: "6px 0 0", fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", color: "#6B5D4D" }}>
-          read it against
+          read it also against (either, both, or neither: each is a line of its own)
         </legend>
-        {radio(null, "nothing (as it reads)", contrast.on)}
-        {radio(
+        {checkbox(
           "controls",
           "the matched control kept (this centres the frame above too)",
           contrast.on && canCentre,
           canCentre ? undefined : "Keep a matched control first, in the question’s apparatus on the instrument page.",
         )}
-        {radio(
+        {checkbox(
           "study_mean",
           "the study’s average state (5,000 word-pieces of prose and chat, E3)",
           contrast.on && smOk,
@@ -306,24 +382,27 @@ export const ContrastSection: React.FC<{
           Nothing is weighed yet: {problem}
         </p>
       ) : null}
-      {contrast.on && !problem && bg && !sentBgs.includes(bg) ? (
-        <p role="status" style={{ margin: 0, fontStyle: "italic", fontSize: "17px", color: "#8F2B1E", maxWidth: "900px" }}>
-          {bg === "controls"
-            ? "The next sighting will not be read against the control: none goes with it. Keep a matched control, and centre on it in the frame’s options above."
-            : "The next sighting will not be read against the study’s average state: the server cannot read it."}
-        </p>
-      ) : null}
+      {contrast.on && !problem
+        ? contrast.backgrounds
+            .filter((b) => !sentBgs.includes(b))
+            .map((b) => (
+              <p key={b} role="status" style={{ margin: 0, fontStyle: "italic", fontSize: "17px", color: "#8F2B1E", maxWidth: "900px" }}>
+                {b === "controls"
+                  ? "The next sighting will not be read against the control: none goes with it. Keep a matched control, and centre on it in the frame’s options above."
+                  : "The next sighting will not be read against the study’s average state: the server cannot read it."}
+              </p>
+            ))
+        : null}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px 22px" }}>
         <button className="btn-primary" type="button" onClick={onRead} disabled={isSweeping || !contrast.on || problem !== null}>
           {isSweeping ? "taking a sighting…" : readLabel}
         </button>
         <span style={{ fontSize: "16px", color: "#6B5D4D" }}>
           {sent.contrasts.length
-            ? `It will weigh ${sent.contrasts[0].toward.map(q).join(" · ")} against ${sent.contrasts[0].away.map(q).join(" · ")}${
+            ? `It will weigh ${sent.contrasts.map((x) => `${x.toward.map(q).join(" · ")} against ${x.away.map(q).join(" · ")}`).join("; ")}${
                 sentBgs.length
-                  ? sentBgs.includes("controls")
-                    ? ", and against the matched control"
-                    : ", and centred on the study’s average state"
+                  ? (sent.contrasts.length > 1 ? ", each also " : ", and ") +
+                    sentBgs.map((b) => BACKGROUND_LINE[b as ContrastBackground]?.words ?? b).join(" and ")
                   : ""
               }.`
             : "The next sighting weighs nothing."}
@@ -346,147 +425,188 @@ export const ContrastSection: React.FC<{
             </>
           )}
         </p>
-      ) : !c ? (
-        <p style={{ margin: 0, fontSize: "17px", color: failed.length ? "#8F2B1E" : "#6B5D4D", maxWidth: "900px", fontStyle: failed.length ? "italic" : undefined }}>
-          {failed.length
-            ? `The sighting shown asked for a contrast it could not read. ${failed[0].error}`
-            : "The sighting shown was taken without weighing one word against another. Turn it on above, and read the answer again."}
+      ) : list.length === 0 ? (
+        <p style={{ margin: 0, fontSize: "17px", color: "#6B5D4D", maxWidth: "900px" }}>
+          The sighting shown was taken without weighing one word against another. Turn it on above, and read the answer again.
         </p>
       ) : (
         <>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 22px", fontSize: "15px", color: "#6B5D4D" }}>
-            <span style={{ fontSize: "22px", fontStyle: "italic", color: "#2B2117" }}>
-              {aName} against {bName}
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
-                <path d="M1 5 H21" stroke="#2B2117" strokeWidth="1.6" />
-              </svg>
-              through the lens
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
-                <path d="M1 5 H21" stroke="#6B5D4D" strokeWidth="1.4" strokeDasharray="4 3" />
-              </svg>
-              to the naked eye
-            </span>
-            {bgWords ? (
-              <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
-                  <path d="M1 5 H21" stroke="#8F2B1E" strokeWidth="1.6" />
-                </svg>
-                through the lens, {bgWords}
-              </span>
-            ) : null}
-          </div>
-          <div style={{ overflowX: "auto", paddingBottom: "6px" }}>
-            <div style={{ minWidth: "940px" }}>
-              <svg
-                viewBox="0 0 1280 420"
-                role="img"
-                aria-label={`A line chart across the sixty layers of the sighting shown: ${aName} weighed against ${bName}, in nats, from minus ${bound} to ${bound}; the lens as a solid line, the naked eye dashed${
-                  bgWords ? `, and in red the lens ${bgWords}` : ""
-                }. The chosen layer, ${li + 1}, is marked in red.`}
-                style={{ width: "100%", height: "auto", display: "block" }}
-              >
-                {BANDS.map((b) => (
-                  <rect
-                    key={b.band}
-                    x={f1(cxL(b.from - 1) - half)}
-                    y="44"
-                    width={f1(cxL(b.to - 1) - cxL(b.from - 1) + 2 * half)}
-                    height="312"
-                    fill={bandFill(b.red)}
-                  />
-                ))}
-                <g fontFamily="EB Garamond, Garamond, serif" fontSize="12" fontStyle="italic" textAnchor="middle">
-                  {BANDS.map((b) => (
-                    <text key={b.band} x={f1((cxL(b.from - 1) + cxL(b.to - 1)) / 2)} y="38" fill={b.red ? "#8F2B1E" : "#6B5D4D"}>
-                      {b.from}–{b.to}
-                    </text>
-                  ))}
-                  <text x={cxL(59)} y="38" fill="#2B2117">
-                    60
-                  </text>
-                </g>
-                <path d="M80 50 H1140 M80 125 H1140 M80 275 H1140 M80 350 H1140" fill="none" stroke="#E3DACA" strokeWidth="1" />
-                <path d="M80 200 H1140" fill="none" stroke="#2B2117" strokeOpacity="0.55" strokeWidth="1" />
-                <g fontFamily="EB Garamond, Garamond, serif" fontSize="13" fill="#6B5D4D" textAnchor="end" style={{ fontVariantNumeric: "lining-nums tabular-nums" }}>
-                  <text x="70" y="54">+{bound}</text>
-                  <text x="70" y="129">+{bound / 2}</text>
-                  <text x="70" y="204">0</text>
-                  <text x="70" y="279">−{bound / 2}</text>
-                  <text x="70" y="354">−{bound}</text>
-                </g>
-                <g fontFamily="EB Garamond, Garamond, serif" fontSize="14" fontStyle="italic" fill="#6B5D4D">
-                  <text x="1152" y="54">toward {c.toward.length === 1 ? q(c.toward[0].word.trim()) : "the first"}</text>
-                  <text x="1152" y="204" fill="#2B2117">
-                    even
-                  </text>
-                  <text x="1152" y="354">toward {c.away.length === 1 ? q(c.away[0].word.trim()) : "the second"}</text>
-                </g>
-                <path d={linePath(c.naked, y)} fill="none" stroke="#6B5D4D" strokeWidth="1.4" strokeDasharray="5 4" strokeLinejoin="round" />
-                {bgSeries?.lens ? (
-                  <path d={linePath(bgSeries.lens, y)} fill="none" stroke="#8F2B1E" strokeWidth="1.6" strokeLinejoin="round" />
-                ) : null}
-                <path d={linePath(c.lens, y)} fill="none" stroke="#2B2117" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-                <line x1={cxL(li)} y1="44" x2={cxL(li)} y2="356" stroke="#8F2B1E" strokeOpacity="0.55" strokeWidth="1" />
-                {c.lens ? <circle cx={cxL(li)} cy={f1(y(c.lens[li]))} r="5.5" fill="#F6F0E3" stroke="#8F2B1E" strokeWidth="1.6" /> : null}
-                <g fontFamily="EB Garamond, Garamond, serif" fontSize="13" fill="#6B5D4D" textAnchor="middle" style={{ fontVariantNumeric: "lining-nums tabular-nums" }}>
-                  <text x="80" y="384">
-                    1
-                  </text>
-                  {[5, 11, 17, 23, 29, 35, 41, 47, 53, 59].map((l) => (
-                    <text key={l} x={cxL(l)} y="384">
-                      {l + 1}
-                    </text>
-                  ))}
-                  <text x="1152" y="384" textAnchor="start" fontSize="12" letterSpacing="2">
-                    LAYER
-                  </text>
-                </g>
-                <text
-                  x="22"
-                  y="200"
-                  transform="rotate(-90 22 200)"
-                  textAnchor="middle"
-                  fontFamily="EB Garamond, Garamond, serif"
-                  fontSize="12"
-                  letterSpacing="2.5"
-                  fill="#6B5D4D"
+          {list.length > 1 ? (
+            <div role="group" aria-label="The contrast the chart draws" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 10px" }}>
+              <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em", color: "#6B5D4D" }}>draw</span>
+              {list.map((x, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="btn-ghost plain"
+                  aria-pressed={i === shownIdx}
+                  onClick={() => setPicked(i)}
+                  style={{ fontSize: "16px", fontStyle: "italic" }}
                 >
-                  NATS
-                </text>
-              </svg>
-            </div>
-          </div>
-          {row(li)}
-          {li !== 59 ? row(59) : null}
-          {shownBg === "controls" && c.controls && !c.controls.deltaLens ? (
-            <p style={{ margin: 0, fontSize: "16px", fontStyle: "italic", color: "#8F2B1E", maxWidth: "900px" }}>
-              Not read against the control at this word-piece: {c.controls.why ?? "the server gave no reason."}
-            </p>
-          ) : null}
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxWidth: "900px", fontSize: "15px", color: "#6B5D4D" }}>
-            <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em" }}>the bands, about the lens line</span>
-            {bandLead ? <span>{bandLead}</span> : null}
-            {BANDS.map((b) => (
-              <span key={b.band} style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
-                <span
-                  aria-hidden="true"
-                  style={{ flex: "none", width: "14px", height: "10px", background: bandFill(b.red), border: `1px solid ${bandEdge(b.red)}` }}
-                />
-                <span style={{ color: b.red ? "#8F2B1E" : undefined }}>
-                  layers {b.from}–{b.to}: {bandParts(lens, b.band).words} {b.study}
-                </span>
+                  {contrastName(x)}
+                  {readable(x) ? "" : " (not read)"}
+                </button>
+              ))}
+              <span style={{ fontSize: "15px", color: "#6B5D4D" }}>
+                the {countWord(list.length)} contrasts this sighting was asked for, in the order sent
               </span>
-            ))}
-            <span>
-              Read through {lensPhrase(lens)}.
-              {isShippedLens(lens) ? "" : " The study measured these bands with the shipped J++ lens, fitted on the base model, not with this one."}{" "}
-              The bands are about the lens line; the naked eye has a background of its own, given below.
-            </span>
-          </div>
+            </div>
+          ) : null}
+          {!c ? (
+            <p style={{ margin: 0, fontSize: "17px", color: "#8F2B1E", maxWidth: "900px", fontStyle: "italic" }}>
+              {notRead
+                ? `The sighting shown asked for a contrast it could not read${list.length > 1 ? `, ${contrastName(notRead)}` : ""}. ${notRead.error ?? "The server sent no reading for it."}`
+                : "The sighting shown sent no reading for this contrast."}
+            </p>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 22px", fontSize: "15px", color: "#6B5D4D" }}>
+                <span style={{ fontSize: "22px", fontStyle: "italic", color: "#2B2117" }}>
+                  {aName} against {bName}
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
+                    <path d="M1 5 H21" stroke="#2B2117" strokeWidth="1.6" />
+                  </svg>
+                  through the lens
+                </span>
+                <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
+                    <path d="M1 5 H21" stroke="#6B5D4D" strokeWidth="1.4" strokeDasharray="4 3" />
+                  </svg>
+                  to the naked eye
+                </span>
+                {bgLines.map((x) => (
+                  <span key={x.b} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <svg width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">
+                      <path d="M1 5 H21" stroke="#8F2B1E" strokeWidth="1.6" strokeDasharray={x.dash} />
+                    </svg>
+                    through the lens, {x.words}
+                  </span>
+                ))}
+              </div>
+              <div style={{ overflowX: "auto", paddingBottom: "6px" }}>
+                <div style={{ minWidth: "940px" }}>
+                  <svg
+                    viewBox="0 0 1280 420"
+                    role="img"
+                    aria-label={`A line chart across the sixty layers of the sighting shown: ${aName} weighed against ${bName}, in nats, from minus ${bound} to ${bound}; the lens as a solid line, the naked eye dashed${
+                      bgLines.length
+                        ? `, and in red the lens ${bgLines.map((x) => x.words + (x.dash ? " (dashed)" : bgLines.length > 1 ? " (solid)" : "")).join(" and ")}`
+                        : ""
+                    }. The chosen layer, ${li + 1}, is marked in red.`}
+                    style={{ width: "100%", height: "auto", display: "block" }}
+                  >
+                    {BANDS.map((b) => (
+                      <rect
+                        key={b.band}
+                        x={f1(cxL(b.from - 1) - half)}
+                        y="44"
+                        width={f1(cxL(b.to - 1) - cxL(b.from - 1) + 2 * half)}
+                        height="312"
+                        fill={bandFill(b.red)}
+                      />
+                    ))}
+                    <g fontFamily="EB Garamond, Garamond, serif" fontSize="12" fontStyle="italic" textAnchor="middle">
+                      {BANDS.map((b) => (
+                        <text key={b.band} x={f1((cxL(b.from - 1) + cxL(b.to - 1)) / 2)} y="38" fill={b.red ? "#8F2B1E" : "#6B5D4D"}>
+                          {b.from}–{b.to}
+                        </text>
+                      ))}
+                      <text x={cxL(59)} y="38" fill="#2B2117">
+                        60
+                      </text>
+                    </g>
+                    <path d="M80 50 H1140 M80 125 H1140 M80 275 H1140 M80 350 H1140" fill="none" stroke="#E3DACA" strokeWidth="1" />
+                    <path d="M80 200 H1140" fill="none" stroke="#2B2117" strokeOpacity="0.55" strokeWidth="1" />
+                    <g fontFamily="EB Garamond, Garamond, serif" fontSize="13" fill="#6B5D4D" textAnchor="end" style={{ fontVariantNumeric: "lining-nums tabular-nums" }}>
+                      <text x="70" y="54">+{bound}</text>
+                      <text x="70" y="129">+{bound / 2}</text>
+                      <text x="70" y="204">0</text>
+                      <text x="70" y="279">−{bound / 2}</text>
+                      <text x="70" y="354">−{bound}</text>
+                    </g>
+                    <g fontFamily="EB Garamond, Garamond, serif" fontSize="14" fontStyle="italic" fill="#6B5D4D">
+                      <text x="1152" y="54">toward {c.toward.length === 1 ? q(c.toward[0].word.trim()) : "the first"}</text>
+                      <text x="1152" y="204" fill="#2B2117">
+                        even
+                      </text>
+                      <text x="1152" y="354">toward {c.away.length === 1 ? q(c.away[0].word.trim()) : "the second"}</text>
+                    </g>
+                    <path d={linePath(c.naked, y)} fill="none" stroke="#6B5D4D" strokeWidth="1.4" strokeDasharray="5 4" strokeLinejoin="round" />
+                    {bgLines.map((x) =>
+                      x.s?.lens ? (
+                        <path
+                          key={x.b}
+                          d={linePath(x.s.lens, y)}
+                          fill="none"
+                          stroke="#8F2B1E"
+                          strokeWidth="1.6"
+                          strokeDasharray={x.dash}
+                          strokeLinejoin="round"
+                        />
+                      ) : null,
+                    )}
+                    <path d={linePath(c.lens, y)} fill="none" stroke="#2B2117" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+                    <line x1={cxL(li)} y1="44" x2={cxL(li)} y2="356" stroke="#8F2B1E" strokeOpacity="0.55" strokeWidth="1" />
+                    {c.lens ? <circle cx={cxL(li)} cy={f1(y(c.lens[li]))} r="5.5" fill="#F6F0E3" stroke="#8F2B1E" strokeWidth="1.6" /> : null}
+                    <g fontFamily="EB Garamond, Garamond, serif" fontSize="13" fill="#6B5D4D" textAnchor="middle" style={{ fontVariantNumeric: "lining-nums tabular-nums" }}>
+                      <text x="80" y="384">
+                        1
+                      </text>
+                      {[5, 11, 17, 23, 29, 35, 41, 47, 53, 59].map((l) => (
+                        <text key={l} x={cxL(l)} y="384">
+                          {l + 1}
+                        </text>
+                      ))}
+                      <text x="1152" y="384" textAnchor="start" fontSize="12" letterSpacing="2">
+                        LAYER
+                      </text>
+                    </g>
+                    <text
+                      x="22"
+                      y="200"
+                      transform="rotate(-90 22 200)"
+                      textAnchor="middle"
+                      fontFamily="EB Garamond, Garamond, serif"
+                      fontSize="12"
+                      letterSpacing="2.5"
+                      fill="#6B5D4D"
+                    >
+                      NATS
+                    </text>
+                  </svg>
+                </div>
+              </div>
+              {row(li)}
+              {li !== 59 ? row(59) : null}
+              {c.controls && !c.controls.deltaLens ? (
+                <p style={{ margin: 0, fontSize: "16px", fontStyle: "italic", color: "#8F2B1E", maxWidth: "900px" }}>
+                  Not read against the control at this word-piece: {c.controls.why ?? "the server gave no reason."}
+                </p>
+              ) : null}
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxWidth: "900px", fontSize: "15px", color: "#6B5D4D" }}>
+                <span style={{ fontVariantCaps: "all-small-caps", letterSpacing: "0.14em" }}>the bands, about the lens line</span>
+                {bandLead ? <span>{bandLead}</span> : null}
+                {BANDS.map((b) => (
+                  <span key={b.band} style={{ display: "flex", gap: "10px", alignItems: "baseline" }}>
+                    <span
+                      aria-hidden="true"
+                      style={{ flex: "none", width: "14px", height: "10px", background: bandFill(b.red), border: `1px solid ${bandEdge(b.red)}` }}
+                    />
+                    <span style={{ color: b.red ? "#8F2B1E" : undefined }}>
+                      layers {b.from}–{b.to}: {bandParts(lens, b.band).words} {b.study}
+                    </span>
+                  </span>
+                ))}
+                <span>
+                  Read through {lensPhrase(lens)}.
+                  {isShippedLens(lens) ? "" : " The study measured these bands with the shipped J++ lens, fitted on the base model, not with this one."}{" "}
+                  The bands are about the lens line; the naked eye has a background of its own, given below.
+                </span>
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -504,7 +624,7 @@ export const ContrastSection: React.FC<{
         neutral prose the naked eye read −3.8, −6.5 and −3.6 at layers 1–10, 11–20 and 21–30, and centring on the average state
         still left −4.8 and −5.7 at layers 11–30 (E3 (c), its naked-eye figures). The dashed line is no clean baseline either.
       </Rubric>
-      {bg === "study_mean" || shownBg === "study_mean" ? (
+      {contrast.backgrounds.includes("study_mean") || shownBgs.includes("study_mean") ? (
         <Rubric style={{ maxWidth: "860px" }}>
           On E3’s neutral prose, centring on the average state took the lens’s score at layers 41–50 from +0.8 to −0.7, taking out
           the average state’s +1.4 share (E3 (c)); where the model speaks of itself, the same centring left about −2.8 on the noun
@@ -530,7 +650,8 @@ export const ContrastSection: React.FC<{
           <dd>
             Each word is read as the landmarks read theirs, “␣word” first, then the word, but only as one word-piece: a word
             that is no single piece is not read, and the sighting goes on. Several words a side, separated by commas, are read in
-            pairs, the first against the first, at most {CONTRAST_MAX_WORDS} a side.
+            pairs, the first against the first, at most {CONTRAST_MAX_WORDS} a side. Each row above is a contrast of its own, up
+            to {maxWord} a sighting, read and drawn apart.
             {c ? (
               <>
                 {" "}
@@ -547,7 +668,7 @@ export const ContrastSection: React.FC<{
                     {q(w.word.trim())} as {q(pieceShown(w.piece ?? ""))} ({w.id ?? "—"})
                   </React.Fragment>
                 ))}
-                {pairs > 1 ? `, ${pairs} pairs` : ""}.
+                {nPairs > 1 ? `, ${nPairs} pairs of words` : ""}.
               </>
             ) : null}
             {failed.map((f, i) => (
@@ -626,9 +747,12 @@ export const ContrastSection: React.FC<{
           </dd>
           <dt>request</dt>
           <dd>
-            <span className="mono">contrasts</span> ([{"{"}toward, away{"}"}], none unless this section is on with words typed)
-            and <span className="mono">contrast_backgrounds</span> (“controls”, “study_mean”); the reply’s{" "}
-            <span className="mono">contrasts</span>, 60 values a series, counted from 0 (report layer L = page layer L + 1).
+            <span className="mono">contrasts</span> ([{"{"}toward, away{"}"}, …], one for each row, in order, at most the server’s{" "}
+            <span className="mono">max_contrasts</span> ({maxPairs}); none unless this section is on with words typed on both sides of
+            every row) and <span className="mono">contrast_backgrounds</span> (“controls”, “study_mean”: those ticked, in that order,
+            “controls” only with a matched control sent, “study_mean” only when the server can read its file); the reply’s{" "}
+            <span className="mono">contrasts</span>, one for each sent, in order, 60 values a series, counted from 0 (report layer L =
+            page layer L + 1), with a series under <span className="mono">backgrounds</span> for each background.
             Sent now: <span className="mono">{JSON.stringify({ contrasts: sent.contrasts, contrast_backgrounds: sentBgs })}</span>
           </dd>
         </dl>

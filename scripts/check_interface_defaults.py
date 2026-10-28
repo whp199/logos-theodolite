@@ -26,9 +26,13 @@ itself, not a copy of it. It checks:
    or for bare text with the imitation chosen, and only when asked;
 7. one word against another (Landmarks section vii): by default, and whenever the section is off or its words are not
    typed both sides (or do not pair), the interface sends no contrast and no background; turned on with words typed it
-   sends exactly those words, split at commas; "controls" only with a matched control sent (the server refuses it
-   otherwise), "study_mean" not when the server's health says it cannot read its file; the request it sends is one the
-   server takes; contrasts and contrast_backgrounds are reading keys (a re-reading carries them as set now);
+   sends exactly those words, split at commas; up to four contrasts go, in the order of the rows (the first kept as
+   toward and away, the rest as `more`), the store's own state sending the same, and a fifth (or more than the
+   server's health allows) sends none and is refused in plain words, as the server refuses it; each pair's problem
+   names its pair; both backgrounds go when both can be read, in the server's order: "controls" only with a matched
+   control sent (the server refuses it otherwise), "study_mean" not when the server's health says it cannot read its
+   file; the request it sends is one the server takes; contrasts and contrast_backgrounds are reading keys (a
+   re-reading carries them as set now);
 8. the vault's voice: the question an edit is heard by is sent as the instrument sends its own (a chat with its system
    prompt and begun answer, or bare text whose begun answer the server puts on a new line, as composeText does), and the
    server's VoiceRequest takes it; executeLarql sends a voice only when given; the reply's voice is kept by patch and
@@ -159,6 +163,36 @@ out.contrast = {
     T.contrastProblem({ ...T.CONTRAST_OFF, on: true, toward: "a,b", away: "c" }),
     T.contrastProblem({ ...T.CONTRAST_OFF, on: true, toward: "a", away: "c" })],
 };
+// up to the server's four contrasts, and both backgrounds: the first contrast is toward/away, the rest `more`
+const MORE = [{ toward: "her", away: "him" }, { toward: "woman", away: "man" }, { toward: "girl", away: "boy" }];
+const FIFTH = { toward: "mother", away: "father" };
+const HEALTHY = { contrasts: { backgrounds: ["controls", "study_mean"], max_contrasts: 4, max_words: 12, study_mean_problem: null } };
+const CENTRED = { control: OTHER, frame: { ...st().frame, centre: true } };
+const BAD_MORE = [{ toward: "her, hers", away: "him" }, { toward: "", away: "man" }];
+Object.assign(out.contrast, {
+  order: T.CONTRAST_BACKGROUND_ORDER,
+  maxPairs: T.CONTRAST_MAX_PAIRS,
+  fourPairs: on({ toward: "she", away: "he", more: MORE, backgrounds: ["study_mean", "controls"] }, { ...CENTRED, health: HEALTHY }),
+  fivePairs: on({ toward: "she", away: "he", more: [...MORE, FIFTH], backgrounds: ["controls"] }, { ...CENTRED, health: HEALTHY }),
+  fivePairsNoHealth: on({ toward: "she", away: "he", more: [...MORE, FIFTH] }, { health: null }),
+  fiveProblem: T.contrastProblem({ ...T.CONTRAST_OFF, on: true, toward: "she", away: "he", more: [...MORE, FIFTH] }),
+  threeOfTwo: on({ toward: "she", away: "he", more: MORE.slice(0, 2) },
+    { health: { contrasts: { ...HEALTHY.contrasts, max_contrasts: 2 } } }),
+  bothNoControl: on({ toward: "she", away: "he", backgrounds: ["controls", "study_mean"] }, { health: HEALTHY }),
+  bothMeanProblem: on({ toward: "she", away: "he", backgrounds: ["study_mean", "controls"] },
+    { ...CENTRED, health: { contrasts: { ...HEALTHY.contrasts, study_mean_problem: "missing" } } }),
+  secondBad: on({ toward: "she", away: "he", more: BAD_MORE.slice(0, 1) }, { health: HEALTHY }),
+  secondProblem: T.contrastProblem({ ...T.CONTRAST_OFF, on: true, toward: "she", away: "he", more: BAD_MORE.slice(0, 1) }),
+  pairProblems: T.contrastPairProblems({ ...T.CONTRAST_OFF, on: true, toward: "she", away: "he", more: BAD_MORE }),
+  offPairProblems: T.contrastPairProblems({ ...T.CONTRAST_OFF, toward: "", away: "", more: BAD_MORE }),
+  pairNames: [0, 1, 2, 3].map(T.pairName),
+  roundTrip: T.contrastPairs(T.withContrastPairs([{ toward: "a", away: "b" }, ...MORE])),
+  emptied: T.withContrastPairs([]),
+});
+// the store's own state, set as the section sets it, sends the same
+st().setContrast({ ...T.CONTRAST_OFF, on: true, backgrounds: ["study_mean"], ...T.withContrastPairs([{ toward: "she", away: "he" }, ...MORE]) });
+out.contrast.fromState = send({ health: HEALTHY });
+st().setContrast({ ...T.CONTRAST_OFF, more: [] });
 // the vault's voice: what an edit is heard by, and what executeLarql sends (over HTTP: no socket is open here)
 out.voice = {
   chat: T.voicePayload(" What is a spider? ", " Hi! I ", true, " Be brief. "),
@@ -359,8 +393,46 @@ def check_contrasts(out: Dict[str, Any]) -> None:
     probs = c["problems"]
     check(probs[0] is None and isinstance(probs[1], str) and "pairs" in (probs[2] or "") and probs[3] is None,
           f"contrastProblem {probs}")
+
+    # up to the server's four contrasts, in the order of the rows, and both backgrounds when both can be read
+    from backend.theodolite_math import CONTRAST_BACKGROUNDS
+
+    four = [{"toward": ["she"], "away": ["he"]}, {"toward": ["her"], "away": ["him"]},
+            {"toward": ["woman"], "away": ["man"]}, {"toward": ["girl"], "away": ["boy"]}]
+    check(c["order"] == list(CONTRAST_BACKGROUNDS) and c["maxPairs"] == 4,
+          f"the backgrounds' order {c['order']} and the bound {c['maxPairs']} are not the server's")
+    check(pick(c["fourPairs"]) == {"contrasts": four, "contrast_backgrounds": ["controls", "study_mean"]},
+          f"fourPairs: {pick(c['fourPairs'])}")
+    check(pick(c["fromState"]) == {"contrasts": four, "contrast_backgrounds": ["study_mean"]},
+          f"the store's own state, set as the section sets it: {pick(c['fromState'])}")
+    for label in ("fivePairs", "fivePairsNoHealth", "threeOfTwo"):
+        check(pick(c[label]) == none, f"{label}: more contrasts than the server reads were sent: {pick(c[label])}")
+    check(c["fiveProblem"] == "There are five pairs, and the server weighs at most four in one sighting: remove one.",
+          f"a fifth pair, refused in plain words: {c['fiveProblem']!r}")
+    check(c["bothNoControl"].get("contrast_backgrounds") == ["study_mean"] and "centre_token_ids" not in c["bothNoControl"],
+          f"both ticked, no control sent: {pick(c['bothNoControl'])}")
+    check(c["bothMeanProblem"].get("contrast_backgrounds") == ["controls"],
+          f"both ticked, the average state unreadable: {pick(c['bothMeanProblem'])}")
+    check(pick(c["secondBad"]) == none and (c["secondProblem"] or "").startswith("The second pair: there are 2 words"),
+          f"a second pair that does not pair: {c['secondProblem']!r}")
+    pp = c["pairProblems"]
+    check(len(pp) == 3 and pp[0] is None and (pp[1] or "").startswith("The second pair: there are 2 words on one side")
+          and pp[2] == "The third pair: type a word on each side to weigh one against the other.",
+          f"each pair's problem, naming it: {pp}")
+    check(c["offPairProblems"] == [None, None, None], f"the section off: {c['offPairProblems']}")
+    check(c["pairNames"] == ["the first pair", "the second pair", "the third pair", "the fourth pair"], f"{c['pairNames']}")
+    check(c["roundTrip"] == [{"toward": "a", "away": "b"}, *[{"toward": t, "away": a} for t, a in
+                                                            (("her", "him"), ("woman", "man"), ("girl", "boy"))]]
+          and c["emptied"] == {"toward": "", "away": "", "more": []}, f"the rows kept: {c['roundTrip']}, {c['emptied']}")
+    # the server refuses a fifth contrast itself (SweepRequest: at most four), so the page never sends one
+    try:
+        server.SweepRequest(prompt="x", contrasts=four + [{"toward": ["mother"], "away": ["father"]}])
+        refused_fifth = False
+    except Exception:  # noqa: BLE001
+        refused_fifth = True
+    check(refused_fifth, "the server's SweepRequest takes a fifth contrast")
     # what the store sends is a request the server takes: the fields parse, and pass check_sweep_options
-    for label in ("words", "onWords", "onPairs", "controlsSent", "meanReadable"):
+    for label in ("words", "onWords", "onPairs", "controlsSent", "meanReadable", "fourPairs", "fromState"):
         p = out[label] if label == "words" else c[label]
         try:
             req = server.SweepRequest(**{k: v for k, v in p.items() if k in server.SweepRequest.model_fields})

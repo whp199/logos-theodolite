@@ -325,20 +325,51 @@ export const READING_MENDED: ReadingOptions = {
  * frame's centring (the sighting's score less the control's, a difference of two log-odds, E3 recommendation 1);
  * "study_mean", E3's average state, subtracted first as E3 centred it. */
 export type ContrastBackground = "controls" | "study_mean";
+/** The backgrounds in the server's own order (theodolite_math.CONTRAST_BACKGROUNDS), the order they are sent in. */
+export const CONTRAST_BACKGROUND_ORDER: ContrastBackground[] = ["controls", "study_mean"];
 
-/** Landmarks section vii: two words (or as many of each, by commas, read in pairs) weighed against each other at every
- * layer. Nothing is sent unless it is on with words typed both sides: the boxes then show the first two landmarks only
- * as placeholders, never as words sent. */
+/** One contrast as typed: a word on each side (or as many of each, by commas, read in pairs, the first against the
+ * first). */
+export interface ContrastPair {
+  toward: string;
+  away: string;
+}
+
+/** Landmarks section vii: words weighed against each other at every layer, up to the server's max_contrasts (four)
+ * contrasts a sighting, each its own. The first is `toward` and `away`, as when the section weighed one only (state
+ * kept from then reads as before); the rest are `more`, in order. Nothing is sent unless the section is on with words
+ * typed on both sides of every one: the first one's boxes then show the first two landmarks only as placeholders,
+ * never as words sent. `backgrounds`: what each is read against, either or both. */
 export interface ContrastSettings {
   on: boolean;
   toward: string;
   away: string;
+  more?: ContrastPair[];
   backgrounds: ContrastBackground[];
 }
 export const CONTRAST_OFF: ContrastSettings = { on: false, toward: "", away: "", backgrounds: [] };
 /** The server's bounds (SweepRequest's ContrastRequest): at most 12 words a side, of at most 64 characters each. */
 export const CONTRAST_MAX_WORDS = 12;
 const CONTRAST_MAX_CHARS = 64;
+/** The server's bound on contrasts a sighting (SweepRequest.contrasts), until its health says (max_contrasts). */
+export const CONTRAST_MAX_PAIRS = 4;
+
+/** Every contrast as set, the first first. */
+export const contrastPairs = (c: Pick<ContrastSettings, "toward" | "away" | "more">): ContrastPair[] => [
+  { toward: c.toward, away: c.away },
+  ...(c.more ?? []),
+];
+/** The settings that hold these contrasts, the first as `toward` and `away` (none left leaves one, empty). */
+export const withContrastPairs = (pairs: ContrastPair[]): Pick<ContrastSettings, "toward" | "away" | "more"> => ({
+  toward: pairs[0]?.toward ?? "",
+  away: pairs[0]?.away ?? "",
+  more: pairs.slice(1),
+});
+const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
+const countWord = (n: number) => COUNT_WORDS[n] ?? String(n);
+const ORDINAL_WORDS = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
+/** "the second pair", for the contrast at index i of the section's rows. */
+export const pairName = (i: number) => "the " + (ORDINAL_WORDS[i] ?? `${i + 1}th`) + " pair";
 
 /** A side of a contrast as typed: words separated by commas, each trimmed, blanks dropped. */
 export const contrastWords = (text: string) =>
@@ -347,11 +378,10 @@ export const contrastWords = (text: string) =>
     .map((w) => w.trim())
     .filter((w) => w !== "");
 
-/** Why the contrast as typed cannot be sent, in plain words; null when it can (or when it is off). */
-export function contrastProblem(c: ContrastSettings): string | null {
-  if (!c.on) return null;
-  const t = contrastWords(c.toward);
-  const a = contrastWords(c.away);
+/** Why one contrast as typed cannot be sent, in plain words; null when it can. */
+function pairProblem(p: ContrastPair): string | null {
+  const t = contrastWords(p.toward);
+  const a = contrastWords(p.away);
   if (!t.length || !a.length) return "Type a word on each side to weigh one against the other.";
   if (t.length !== a.length)
     return `There are ${t.length} word${t.length === 1 ? "" : "s"} on one side and ${a.length} on the other: they are read in pairs, the first against the first, so each side needs as many.`;
@@ -360,20 +390,45 @@ export function contrastProblem(c: ContrastSettings): string | null {
   return null;
 }
 
+/** Each contrast's problem, in the order of the section's rows, naming its pair when there are several; null where one
+ * can be sent (every one null when the section is off). */
+export function contrastPairProblems(c: ContrastSettings): (string | null)[] {
+  const pairs = contrastPairs(c);
+  return pairs.map((p, i) => {
+    const why = c.on ? pairProblem(p) : null;
+    if (why === null || pairs.length === 1) return why;
+    const name = pairName(i);
+    return name[0].toUpperCase() + name.slice(1) + ": " + why[0].toLowerCase() + why.slice(1);
+  });
+}
+
+/** Why the contrasts as set cannot be sent, in plain words; null when they can (or when the section is off): more than
+ * the server reads in one sighting (`max`, its health's max_contrasts), or the first that cannot be, named. */
+export function contrastProblem(c: ContrastSettings, max: number = CONTRAST_MAX_PAIRS): string | null {
+  if (!c.on) return null;
+  const n = contrastPairs(c).length;
+  if (n > max)
+    return `There are ${countWord(n)} pairs, and the server weighs at most ${countWord(max)} in one sighting: remove ${countWord(n - max)}.`;
+  return contrastPairProblems(c).find((p) => p !== null) ?? null;
+}
+
 /**
- * The contrast fields of a sweep: one contrast when section vii is on with words typed both sides (and they pair), else
- * none; its backgrounds only as far as they can be read: "controls" only when a matched control is sent with the
- * request (the server refuses it otherwise), "study_mean" not when the server has said it cannot read its file.
+ * The contrast fields of a sweep: every contrast set, in the order of section vii's rows, when the section is on with
+ * words typed on both sides of each (and they pair), and no more of them than the server reads (its health's
+ * max_contrasts, else four); else none. The backgrounds ticked go in the server's own order, only as far as they can
+ * be read: "controls" only when a matched control is sent with the request (the server refuses it otherwise),
+ * "study_mean" not when the server has said it cannot read its file.
  */
 export function contrastFields(c: ContrastSettings | undefined, controlSent: boolean, health?: Health | null) {
-  const on = !!c && c.on && contrastProblem(c) === null;
+  const max = health?.contrasts?.max_contrasts ?? CONTRAST_MAX_PAIRS;
+  const on = !!c && c.on && contrastProblem(c, max) === null;
   if (!on) return { contrasts: [] as { toward: string[]; away: string[] }[], contrast_backgrounds: [] as ContrastBackground[] };
   const smProblem = typeof health?.contrasts?.study_mean_problem === "string";
   return {
-    contrasts: [{ toward: contrastWords(c!.toward), away: contrastWords(c!.away) }],
-    contrast_backgrounds: [...new Set(c!.backgrounds)].filter(
-      (b) => (b === "controls" ? controlSent : !smProblem),
-    ) as ContrastBackground[],
+    contrasts: contrastPairs(c!).map((p) => ({ toward: contrastWords(p.toward), away: contrastWords(p.away) })),
+    contrast_backgrounds: CONTRAST_BACKGROUND_ORDER.filter(
+      (b) => c!.backgrounds.includes(b) && (b === "controls" ? controlSent : !smProblem),
+    ),
   };
 }
 

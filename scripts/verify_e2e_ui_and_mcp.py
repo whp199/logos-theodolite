@@ -2375,9 +2375,10 @@ async def main() -> int:
                     const i = l && l.querySelector("input"); if (i && !i.checked) i.click(); }})()"""
             )
             await asyncio.sleep(0.4)
-            bg_radio = f"""Array.from({sec}.querySelectorAll('input[name="contrast-background"]')).find((x) => x.closest("label").textContent.includes("the study’s average state"))"""
-            await wait_for(f"(() => {{ const r = {bg_radio}; return !!r && !r.disabled; }})()", "section vii's “the study’s average state”")
-            await cdp.eval_js(f"(() => {{ {bg_radio}.click(); }})()")
+            # the backgrounds are checkboxes now, either or both (a fresh page has neither ticked)
+            bg_box = f"""Array.from({sec}.querySelectorAll('fieldset input[type="checkbox"]')).find((x) => x.closest("label").textContent.includes("the study’s average state"))"""
+            await wait_for(f"(() => {{ const r = {bg_box}; return !!r && !r.disabled; }})()", "section vii's “the study’s average state”")
+            await cdp.eval_js(f"(() => {{ const r = {bg_box}; if (!r.checked) r.click(); }})()")
             await asyncio.sleep(0.4)
             vii = await cdp.eval_js(
                 f"""(() => {{ const s = {sec};
@@ -2408,8 +2409,7 @@ async def main() -> int:
             # and off again, read against nothing, so the pages after this weigh nothing
             await cdp.eval_js(
                 f"""(() => {{ const s = {sec};
-                    const r = Array.from(s.querySelectorAll('input[name="contrast-background"]')).find((x) => x.closest("label").textContent.includes("nothing (as it reads)"));
-                    if (r && !r.checked) r.click();
+                    for (const r of s.querySelectorAll('fieldset input[type="checkbox"]')) if (r.checked) r.click();
                     const l = Array.from(s.querySelectorAll("label")).find((x) => x.textContent.includes("weigh one word against another in the next sighting"));
                     const i = l && l.querySelector("input"); if (i && i.checked) i.click(); }})()"""
             )

@@ -410,11 +410,17 @@ One that can adds, per layer (0-based, 60 values, 4 decimals):
 (`study_mean_problem` null when the average state can be read, else why, in plain words). The thinking comparison is
 read without contrasts.
 On the pages (`contrastFields` in the store): the request always carries both keys, empty unless the landmarks page's
-section vii is on with words typed on both sides that pair; then it carries that one contrast (several words a side,
-by commas) and the one background chosen, dropping "controls" when no matched control goes with the request and
-"study_mean" when `/api/health` gives a `study_mean_problem`, so a sighting is never refused for them. Choosing the
-matched control also centres the frame, since the control goes with the request as `centre_token_ids`. Both keys are
-reading keys: changing them reads the answer shown again from its ids (`answer_token_ids`), nothing written again.
+section vii is on with words typed on both sides of each of its rows, and they pair; then it carries a contrast for
+each row, in order (several words a side, by commas), at most `/api/health`'s `max_contrasts` (four): the first row is
+the settings' `toward` and `away`, as when the section sent one, the rest `more`. More rows than that, or a row that
+does not pair, sends none, and the page says why, naming the row ("the second pair: …"). The backgrounds are
+checkboxes, either or both, sent in `CONTRAST_BACKGROUNDS`' order, dropping "controls" when no matched control goes
+with the request and "study_mean" when `/api/health` gives a `study_mean_problem`, so a sighting is never refused for
+them. Ticking the matched control also centres the frame, since the control goes with the request as
+`centre_token_ids`. The chart draws one contrast at a time, picked by a pill for each the sighting read (the first it
+could read until one is picked; one it could not read shows its error), and each background it was read against as a
+line of its own (against the control solid, centred on the average state dashed), with the bands as before. Both keys
+are reading keys: changing them reads the answer shown again from its ids (`answer_token_ids`), nothing written again.
 `Sighting.contrasts` is null when the server sent none (the recorded sighting, an older server) and [] when none was
 asked for.
 
