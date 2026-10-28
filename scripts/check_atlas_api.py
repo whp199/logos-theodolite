@@ -462,6 +462,8 @@ def main() -> int:
     live = ao.neuron_wiring(w, 2, 5, f_idx, k=24)
     ab.build_steer_lens(rt, out, [float(x) for x in stats["resid_q"][:, 1]], batch=16, log=quiet)
     ab.build_layout(rt, out, method="pca", log=quiet)
+    ab.build_passages(rt, out, wins, "check", k=6, sample=3, extremes=(stats["pos"], stats["neg"]), extremes_source="the stats index (check)",
+                      chunk=4, log=quiet)
     arch = c.get("/api/atlas/arch").json()
     check(all(v_["built"] for k_, v_ in arch["indexes"].items() if k_ != "folder"), "/arch: every index built")
     check(arch["push"]["scale_source"]["kind"] == "index" and arch["push"]["scale_source"]["corpus"] == "check", "/arch: the scales from the stats index")

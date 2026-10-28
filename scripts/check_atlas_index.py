@@ -7,14 +7,21 @@ with the same quantity read live, one neuron at a time:
    DESCRIBE POLE ranks for its label (`label_top_ids`), and the index's label check is the vault's, count and reasons;
 3. act_scale.npz: the extremes and the stream's quantiles of `activation_extremes` over the same windows, the norms
    kept in float32 buffers giving exactly the quantiles of the Python lists they replace;
-4. wiring.npz: each neuron's links each way are `neuron_wiring`'s, the same neurons, z (as float16 keeps it) and sign;
-5. steer_lens.d / steer_lens.npz: each neuron's rises are `steer_lens`'s, KL too; a stopped run resumes and merges;
-6. layout_writes.npz: each layer's cells are distinct places on its sheet;
-7. the queries: a search finds a face by a word-piece of its label at the right rank; the cone's hops move one way
+4. passages.d: by brute force over the same windows (`all_activations` a window, the gate and up values by hooks),
+   each face's stored K are the K largest per-window peaks, the same windows and positions in order (ties, which the
+   stand-in's sliding layers make, to the lower window), their activation, gate and up values as float16 keeps them, the first the stats index's extreme; each
+   stored window read again (`read_neurons`) gives the stored activation; two part sizes, and a run stopped after its
+   first part and resumed, merge to the same arrays, and a run with other settings is refused; the sampled events lie
+   above half the face's extreme, at most one a window, as many as such windows allow; the unigram counts add up to
+   the word-pieces read; the server reads the arrays memory-mapped;
+5. wiring.npz: each neuron's links each way are `neuron_wiring`'s, the same neurons, z (as float16 keeps it) and sign;
+6. steer_lens.d / steer_lens.npz: each neuron's rises are `steer_lens`'s, KL too; a stopped run resumes and merges;
+7. layout_writes.npz: each layer's cells are distinct places on its sheet;
+8. the queries: a search finds a face by a word-piece of its label at the right rank; the cone's hops move one way
    each side and start from the neuron; the web summary pools the steer lens when built and, without it, only faces
    the label gate lets through (on the stand-in's six layers every face is held back, so it pools nothing and says how
    many it left out); the active paths join only neurons that fired; the scores scale by each side's extreme;
-8. head profiles: each head's shares of weight add up to one per read, and its pairs read more than one unit back.
+9. head profiles: each head's shares of weight add up to one per read, and its pairs read more than one unit back.
 
 Run: .venv/bin/python -I scripts/check_atlas_index.py   (exits 0 when every check holds)
 """
@@ -92,6 +99,37 @@ def old_norm_lists(lm: torch.nn.Module, wins: List[List[int]]) -> dict:
         for h in hooks:
             h.remove()
     return got
+
+
+def read_window(lm: torch.nn.Module, ids: List[int]) -> tuple:
+    """One window's activation and its gate and up pre-activations at every word-piece, [L, T, N] float32 each, by
+    hooks of the check's own (the brute force the passages index is checked against)."""
+    L = len(lm.layers)
+    g: list = [None] * L
+    u: list = [None] * L
+    hooks = []
+    for l, layer in enumerate(lm.layers):
+        hooks.append(layer.mlp.gate_proj.register_forward_hook(lambda _m, _a, o, l=l: g.__setitem__(l, o[0].float().numpy())))
+        hooks.append(layer.mlp.up_proj.register_forward_hook(lambda _m, _a, o, l=l: u.__setitem__(l, o[0].float().numpy())))
+    try:
+        A = ao.all_activations(lm, ids, dtype=torch.float32).numpy()
+    finally:
+        for h in hooks:
+            h.remove()
+    return A, np.stack(g), np.stack(u)
+
+
+def raises(fn, *args, **kw) -> str:
+    """What `fn` raised, in words; "" when it raised nothing."""
+    try:
+        fn(*args, **kw)
+    except Exception as exc:  # noqa: BLE001
+        return str(exc) or type(exc).__name__
+    return ""
+
+
+class Stop(Exception):
+    """A build stopped part-way, as a killed process would stop it."""
 
 
 def main() -> int:
@@ -182,6 +220,109 @@ def main() -> int:
           and ao.norm_scales(ex)["mid_rms"] == [float(np.median(v)) for v in old_lists["mid_rms_q"]],
           "stats: the push's unit and the norms' scales are the old lists' medians, exactly")
     section("the activation extremes, the stream's quantiles and the norms' scales are activation_extremes'; the norms kept in float32", before)
+
+    before = len(failures)
+    K, S = 5, 3
+    ext = (s["pos"], s["neg"])
+    ab.build_passages(rt, out, wins, "check", k=K, sample=S, extremes=ext, extremes_source="the stats index", seed=7, chunk=4, log=quiet)
+    P = idx.get("passages")
+    check(P is not None and P["pos_act"].shape == (L, N, K) and P["neg_smp_win"].shape == (L, N, S), "passages: shapes")
+    check(isinstance(P["pos_act"], np.memmap) and isinstance(P["windows"], np.memmap), "passages: the arrays are memory-mapped")
+    m = P["meta"]
+    check(m.get("corpus") == "check" and m.get("tokens") == ex.tokens and m.get("windows") == len(wins) and m.get("K") == K
+          and m.get("per_window") == 1 and m.get("seed") == 7 and m.get("sample") == S and "stats index" in m.get("sample_threshold", ""),
+          f"passages: provenance {m}")
+    reads = [read_window(lm, wn) for wn in wins]
+    h16 = np.float16
+    mism, ties = [], 0
+    for f, sgn in (("pos", 1.0), ("neg", -1.0)):
+        for l in range(L):
+            for n in range(N):
+                # each window's peak past the start mark (the first position reaching it), where it fires on this face
+                peaks = []
+                for wi, (A, _G, _U) in enumerate(reads):
+                    col = sgn * A[l, 1:, n]
+                    t = int(np.argmax(col))
+                    if col[t] > 0:
+                        peaks.append((-float(col[t]), wi, t + 1))
+                top = sorted(peaks)[:K]  # by value, then the lower window
+                want = [(wi, t) for _, wi, t in top]
+                ties += any(top[i][0] == top[i + 1][0] for i in range(len(top) - 1))
+                got = [(int(P[f"{f}_win"][l, n, i]), int(P[f"{f}_at"][l, n, i])) for i in range(K) if int(P[f"{f}_win"][l, n, i]) >= 0]
+                if got != want:
+                    mism.append((f, l, n, got[:3], want[:3]))
+                    continue
+                for i, (wi, t) in enumerate(want):
+                    A, G, U = reads[wi]
+                    if not (P[f"{f}_act"][l, n, i] == h16(A[l, t, n]) and P[f"{f}_g"][l, n, i] == h16(G[l, t, n])
+                            and P[f"{f}_u"][l, n, i] == h16(U[l, t, n])):
+                        mism.append((f, l, n, i, "value"))
+                if any(int(P[f"{f}_win"][l, n, i]) != -1 for i in range(len(want), K)):
+                    mism.append((f, l, n, "empty slot"))
+    check(not mism, f"passages: the stored K a face are the brute force's per-window peaks ({len(mism)} differ: {mism[:3]})")
+    # the stand-in's sliding layers read only the last eight word-pieces, so equal stretches of text in two windows tie
+    # exactly: the rule for ties is tested, not only stated
+    check(ties > 0, "passages: some faces' top K hold exact ties between windows, which the lower window wins")
+    check(all(P["pos_act"][l, n, 0] == h16(s["pos"][l, n]) for l in range(L) for n in range(N) if s["pos"][l, n] > 0)
+          and all(P["neg_act"][l, n, 0] == h16(s["neg"][l, n]) for l in range(L) for n in range(N) if s["neg"][l, n] < 0),
+          "passages: each face's strongest passage is the stats index's extreme over the same windows")
+    check(K < len(wins) and int((P["pos_win"] >= 0).sum(-1).min()) >= 1, "passages: the windows outnumber K, and every + face found some")
+    # read again by another route (read_neurons): each stored window gives the stored activation at the stored position
+    again = []
+    for (l, n) in ((0, 0), (2, 47), (L - 1, 100), (4, N - 1)):
+        for f in ("pos", "neg"):
+            for i in range(K):
+                wi, t = int(P[f"{f}_win"][l, n, i]), int(P[f"{f}_at"][l, n, i])
+                if wi < 0:
+                    continue
+                ids_w = idx.window_ids(wi)
+                v = ao.read_neurons(lm, ids_w, [(l, n)])[(l, n)][t]
+                again.append(ids_w == list(wins[wi]) and P[f"{f}_act"][l, n, i] == h16(v))
+    check(bool(again) and all(again), f"passages: a stored window read again gives the stored activation ({again.count(False)} of {len(again)} do not)")
+    # two part sizes, and a run stopped after its first part and resumed, merge to the same arrays
+    names = sorted(k_ for k_ in P if k_ != "meta")
+
+    def stop(msg: str) -> None:
+        if "part 1 of" in msg:
+            raise Stop("stopped")
+
+    for chunk in (7, 3):
+        d_ = out / f"passages-{chunk}"
+        if chunk == 3:
+            said = raises(ab.build_passages, rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=7, chunk=3, log=stop)
+            check(said == "stopped" and (d_ / "passages.d" / "parts" / "part-00000.npz").exists() and not (d_ / "passages.d" / "meta.json").exists()
+                  and AtlasIndex(d_).get("passages") is None, "passages: a run stopped after its first part leaves that part and no index")
+            said = raises(ab.build_passages, rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=8, chunk=3, log=quiet)
+            check("other settings (seed)" in said, f"passages: a resume with another seed refused in plain words ({said})")
+            lines: List[str] = []
+            ab.build_passages(rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=7, chunk=3, log=lines.append)
+            check(bool(lines) and "part 2 of" in lines[0] and not any("part 1 of" in x for x in lines), f"passages: the resumed run begins at its second part ({lines[:1]})")
+        else:
+            ab.build_passages(rt, d_, wins, "check", k=K, sample=S, extremes=ext, seed=7, chunk=chunk, log=quiet)
+            check(not (d_ / "passages.d" / "parts").exists(), "passages: the parts are removed once merged")
+        Q = AtlasIndex(d_).get("passages")
+        check(Q is not None and sorted(k_ for k_ in Q if k_ != "meta") == names and all(np.array_equal(P[k_], Q[k_]) for k_ in names),
+              f"passages: parts of {chunk} windows{' (stopped and resumed)' if chunk == 3 else ''} merge to the same arrays as parts of 4")
+    # the sampled events: above half the face's extreme, at most one a window, as many as such windows allow
+    bad_s = []
+    for f, sgn, e_ in (("pos", 1.0, s["pos"]), ("neg", -1.0, s["neg"])):
+        for l in range(L):
+            for n in range(N):
+                thr = 0.5 * sgn * float(e_[l, n])
+                slots_ = [(int(P[f"{f}_smp_win"][l, n, i]), int(P[f"{f}_smp_at"][l, n, i])) for i in range(S) if int(P[f"{f}_smp_win"][l, n, i]) >= 0]
+                able = sum(1 for A, _, _ in reads if thr > 0 and bool((sgn * A[l, 1:, n] > thr).any()))
+                ok = (len({wi for wi, _ in slots_}) == len(slots_) == min(S, able)
+                      and all(sgn * reads[wi][0][l, t, n] > thr and P[f"{f}_smp_act"][l, n, i] == h16(reads[wi][0][l, t, n])
+                              for i, (wi, t) in enumerate(slots_)))
+                if not ok:
+                    bad_s.append((f, l, n, slots_, able))
+    check(not bad_s, f"passages: sampled events above half the extreme, at most one a window, as many as such windows allow ({bad_s[:2]})")
+    read_ids = np.concatenate([np.asarray(wn[1:]) for wn in wins])
+    check(int(P["unigram"].sum()) == ex.tokens == len(read_ids) and np.array_equal(P["unigram"], np.bincount(read_ids, minlength=len(P["unigram"]))),
+          "passages: the unigram counts add up to the word-pieces read, each word-piece's own")
+    check(all(list(np.asarray(P["windows"][i])[: len(wn)]) == list(wn) and bool((np.asarray(P["windows"][i])[len(wn):] == -1).all())
+              for i, wn in enumerate(wins)), "passages: the windows kept as read, -1 past a short one's end")
+    section("passages: each face's K strongest windows by brute force, read again, merged alike whatever the parts, sampled, counted", before)
 
     before = len(failures)
     f = ao.link_scale(w.scalars, [float(x) for x in s["mlp_rms_q"][:, 1]], [float(x) for x in s["mid_rms_q"][:, 1]])
@@ -284,13 +425,14 @@ def main() -> int:
 
     before = len(failures)
     mine = AtlasIndex(out, model=rt.model_id, shape=(L, N))
-    check(all(mine.get(k_) is not None for k_ in ("lens", "act_scale", "wiring", "steer_lens", "layout")), "the model's own indexes are read")
+    check(all(mine.get(k_) is not None for k_ in ("lens", "act_scale", "wiring", "steer_lens", "layout", "passages")), "the model's own indexes are read")
     other = AtlasIndex(out, model="google/gemma-4-31B-it", shape=(L, N))
     st = other.status()
     check(other.get("lens") is None and not st["lens"]["built"] and "built for" in st["lens"]["refused"], f"another model's index refused: {st['lens']}")
     wide = AtlasIndex(out, model=rt.model_id, shape=(L, N + 1))
     check(wide.get("wiring") is None and "shaped for" in wide.status()["wiring"]["refused"], "an index of another shape refused")
-    check(other.face_ids(1, 2, "+", "lens") is None and other.cone(1, 2) == [] and other.links(1, 2) is None, "a refused index reads as not built")
+    check(other.face_ids(1, 2, "+", "lens") is None and other.cone(1, 2) == [] and other.links(1, 2) is None
+          and other.passages(1, 2, "+") is None and "built for" in st["passages"]["refused"], "a refused index reads as not built (passages too)")
     oldw = dict(np.load(out / "wiring.npz"))
     for side in ("down", "up"):
         del oldw[f"{side}_lw"], oldw[f"{side}_gate"]

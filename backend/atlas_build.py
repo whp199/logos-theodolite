@@ -12,17 +12,20 @@ contexts (hours: it can be built a range of layers at a time and resumes), the l
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
 
 from backend import atlas_ops as ao
-from backend.atlas_index import FILES, LENS_K, WIRING_K, save_npz
+from backend.atlas_index import FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, WIRING_K, save_npz
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right
 from backend.label_gate import label_top_ids, writes_nothing
 from backend.theodolite_math import unembed_gemma4
@@ -135,6 +138,105 @@ def build_stats(rt: Any, out_dir: Path, texts_ids: Sequence[Sequence[int]], corp
              np=ex.np.numpy(), tokens=np.array(ex.tokens), resid_q=qs(ex.resid_norms), mlp_rms_q=qs(ex.mlp_rms),
              mid_rms_q=qs(ex.mid_rms), meta=_meta(rt, corpus=corpus, tokens=ex.tokens, windows=len(texts_ids)))
     return path
+
+
+# ---------------------------------------------------------------------------------------------------------- passages
+
+
+def _sha(arr: np.ndarray) -> str:
+    return hashlib.sha256(np.ascontiguousarray(arr).tobytes()).hexdigest()
+
+
+@torch.no_grad()
+def build_passages(rt: Any, out_dir: Path, texts_ids: Sequence[Sequence[int]], corpus: str, *, k: int = PASSAGES_K,
+                   sample: int = 0, extremes: Optional[Tuple[np.ndarray, np.ndarray]] = None, extremes_source: Optional[str] = None,
+                   seed: int = 0, chunk: int = 1024, keep_parts: bool = False, log: Log = print) -> Path:
+    """Every neuron's k strongest passages on each face over the windows (`atlas_ops.passage_events`: at most one a
+    window, ties to the lower window, with the gate and up values at each), and, given `sample` and `extremes` (the
+    stats index's), `sample` more a face drawn at random above half its extreme; the windows' word-piece ids, and each
+    word-piece's count over them (the base rate the "reads" and "follows" lifts are taken against).
+
+    A part per `chunk` windows is written to `passages.d/parts/part-NNNNN.npz` as it is read, so a stopped run resumes
+    at the first missing part (the parts' plan.json holds the settings and the windows' sha256: a run with others is
+    refused). The parts are merged in window order (`atlas_ops.merge_events`, exact whatever the chunk), into one `.npy`
+    per array in `passages.d/` (backend/atlas_index.py lists them), each written beside its place and renamed into it, the
+    old meta.json removed first and the new one written last, so a reader sees the whole index or none; the server
+    memory-maps them. The parts are removed after the merge unless `keep_parts`. The windows hold the corpus's own text:
+    it stays in the atlas folder (git ignores it) and is never committed."""
+    lm = language_model(rt.hf_model)
+    L, N = len(lm.layers), ao.ffn_width(lm, 0)
+    V = int(rt.lm_head_weight.shape[0])
+    folder = Path(out_dir) / PASSAGES_DIR
+    parts = folder / "parts"
+    W = len(texts_ids)
+    seq = max((len(t) for t in texts_ids), default=0)
+    if not W or seq < 2:
+        raise ValueError("No windows to read passages from.")
+    if seq > 32767:
+        raise ValueError(f"Windows of {seq} word-pieces are longer than a position kept as int16 can name (32,767).")
+    wins = np.full((W, seq), -1, np.int32)
+    for i, t in enumerate(texts_ids):
+        wins[i, : len(t)] = np.asarray(t, np.int32)
+    sample = int(sample) if extremes is not None else 0
+    plan = {"model": getattr(rt, "model_id", None), "k": int(k), "sample": sample, "seed": int(seed), "chunk": int(chunk),
+            "windows": W, "seq": seq, "windows_sha256": _sha(wins),
+            "extremes_sha256": _sha(np.stack([np.asarray(x, np.float32) for x in extremes])) if sample else None}
+    plan_path = parts / "plan.json"
+    if plan_path.exists():
+        old = json.loads(plan_path.read_text(encoding="utf-8"))
+        differ = [key for key in plan if old.get(key) != plan[key]]
+        if differ:
+            raise ValueError(f"The parts in {parts} were begun with other settings ({', '.join(differ)}): build with the same "
+                             "ones to resume, or remove that folder to start again.")
+    else:
+        parts.mkdir(parents=True, exist_ok=True)
+        plan_path.write_text(json.dumps({**plan, "corpus": corpus}, indent=1), encoding="utf-8")
+    n_parts = -(-W // int(chunk))
+    ext = (np.asarray(extremes[0], np.float32), np.asarray(extremes[1], np.float32)) if sample else None
+    t0 = time.time()
+    for i in range(n_parts):
+        part = parts / f"part-{i:05d}.npz"
+        if part.exists():
+            continue
+        lo, hi = i * int(chunk), min(W, (i + 1) * int(chunk))
+        save_npz(part, **ao.passage_events(lm, texts_ids[lo:hi], k=k, first=lo, sample=sample, extremes=ext, seed=seed))
+        log(f"passages: part {i + 1} of {n_parts}, windows {lo} to {hi - 1} ({time.time() - t0:.0f} s)")
+    merged: Optional[Dict[str, np.ndarray]] = None
+    for i in range(n_parts):
+        with np.load(parts / f"part-{i:05d}.npz") as z:
+            got = {key: z[key] for key in z.files}
+        merged = got if merged is None else ao.merge_events(merged, got, k, sample)
+    assert merged is not None
+    read = wins[:, 1:][wins[:, 1:] >= 0]  # every word-piece read: all but each window's start mark
+    arrays: Dict[str, np.ndarray] = {"windows": wins, "unigram": np.bincount(read, minlength=V)[:V].astype(np.int32)}
+    for f, sgn in (("pos", 1.0), ("neg", -1.0)):
+        empty = merged[f"{f}_win"] < 0
+        arrays[f"{f}_win"], arrays[f"{f}_at"] = merged[f"{f}_win"], merged[f"{f}_at"]
+        arrays[f"{f}_act"] = np.where(empty, 0.0, sgn * merged[f"{f}_key"]).astype(np.float16)
+        arrays[f"{f}_g"], arrays[f"{f}_u"] = merged[f"{f}_g"], merged[f"{f}_u"]
+        if sample:
+            for name in ("win", "at", "act", "g", "u"):
+                arrays[f"{f}_smp_{name}"] = merged[f"{f}_smp_{name}"]
+    tokens = int(read.size)
+    meta = json.loads(str(_meta(rt, corpus=corpus, tokens=tokens, windows=W, seq=seq, K=int(k), per_window=1, seed=int(seed),
+                                sample=sample, sample_threshold=("half of each face's extreme in " + str(extremes_source)) if sample else None,
+                                parts=n_parts, text="the windows hold the corpus's own text: keep it in this folder, never commit it")))
+    (folder / "meta.json").unlink(missing_ok=True)
+    for old in folder.glob("*.npy"):
+        if old.stem not in arrays:
+            old.unlink()
+    for key, arr in arrays.items():
+        tmp = folder / f"{key}.npy.tmp"
+        with open(tmp, "wb") as fh:
+            np.save(fh, np.ascontiguousarray(arr))
+        os.replace(tmp, folder / f"{key}.npy")
+    tmp = folder / "meta.json.tmp"
+    tmp.write_text(json.dumps(meta), encoding="utf-8")
+    os.replace(tmp, folder / "meta.json")
+    log(f"passages: {tokens} word-pieces in {W} windows, {n_parts} parts merged ({time.time() - t0:.0f} s)")
+    if not keep_parts:
+        shutil.rmtree(parts, ignore_errors=True)
+    return folder
 
 
 # ------------------------------------------------------------------------------------------------------------ wiring

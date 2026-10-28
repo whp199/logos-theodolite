@@ -25,6 +25,14 @@ git ignores), each with its provenance in a `meta` field (model, lens id, built_
   strength over the neuron's strongest; z below -1e4 marks an empty slot).
 - steer_lens.npz: up, down [L, N, 12] int32, up_kl, down_kl [L, N] float16, dose, contexts (`atlas_ops.steer_lens`).
 - layout_writes.npz: cell [L, N] int16, side (each neuron's place on its layer's sheet, neighbours writing alike).
+- passages.d/: one .npy per array, memory-mapped (on the 31B about 0.5 GB at K = 16, 0.7 GB with six sampled events a
+  face), and meta.json, written last (`atlas_build.build_passages`): windows [W, seq] int32 (the windows' word-piece ids, -1 past a short one's end:
+  the corpus's own text, never committed), unigram [V] int32 (each word-piece's count over the word-pieces read, the
+  base rate), and per face ("pos", "neg") the K strongest events, at most one a window, ties to the lower window:
+  {face}_win [L, N, K] int32 (-1 an empty slot), {face}_at int16 (the position in its window), {face}_act, {face}_g,
+  {face}_u float16 (the activation, and the gate and up pre-activations there; float16 reaches 65,504); with a sampled
+  build also
+  {face}_smp_{win, at, act, g, u} [L, N, S], drawn at random above half the face's extreme.
 - head_profiles.json: where each head looks over a few reference texts (built by the server on first need).
 - vocab.json: every word-piece decoded alone (written by the server on first need).
 Layers count from 0 in every array and field.
@@ -46,15 +54,19 @@ ATLAS_DIR_ENV = "THEODOLITE_ATLAS_DIR"
 LENS_K = 12
 WIRING_K = 24
 EMPTY_Z = -1e4  # an empty wiring slot (fewer links than K)
+PASSAGES_K = 16
+PASSAGES_DIR = "passages.d"
 FILES = {
     "lens": "lens.npz",
     "act_scale": "act_scale.npz",
     "wiring": "wiring.npz",
     "steer_lens": "steer_lens.npz",
     "layout": "layout_writes.npz",
+    "passages": f"{PASSAGES_DIR}/meta.json",  # a folder of .npy arrays, memory-mapped; its meta.json is written last
 }
+FOLDERS = {"passages"}
 # the array of each file whose first two axes are [layers, neurons]
-SHAPE_KEY = {"lens": "lens_pos", "act_scale": "pos", "wiring": "down_z", "steer_lens": "up", "layout": "cell"}
+SHAPE_KEY = {"lens": "lens_pos", "act_scale": "pos", "wiring": "down_z", "steer_lens": "up", "layout": "cell", "passages": "pos_act"}
 # arrays an index file must hold to be read: older builds lack them and are refused, with what to do
 NEEDS = {
     "lens": ("built", "built before it marked which layers it has read"),
@@ -89,6 +101,16 @@ def meta_of(z: Any) -> Dict[str, Any]:
         return {}
 
 
+def load_folder(meta_path: Path) -> Dict[str, Any]:
+    """A folder index: every .npy beside `meta_path` memory-mapped (read-only, nothing loaded until read), and the meta."""
+    data: Dict[str, Any] = {f.stem: np.load(f, mmap_mode="r", allow_pickle=False) for f in sorted(meta_path.parent.glob("*.npy"))}
+    try:
+        data["meta"] = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data["meta"] = {}
+    return data
+
+
 class AtlasIndex:
     """The index files of one folder, each loaded on first need and loaded again when it changes on disk (by mtime).
 
@@ -117,9 +139,12 @@ class AtlasIndex:
             hit = self._cache.get(name)
             if hit and hit[0] == mt:
                 return hit[1]
-            with np.load(p, allow_pickle=False) as z:
-                data = {k: z[k] for k in z.files}
-            data["meta"] = meta_of(data)
+            if name in FOLDERS:
+                data = load_folder(p)
+            else:
+                with np.load(p, allow_pickle=False) as z:
+                    data = {k: z[k] for k in z.files}
+                data["meta"] = meta_of(data)
             why = self._refusal(name, data)
             self._cache[name] = (mt, None if why else data, why)
             return None if why else data
@@ -154,7 +179,8 @@ class AtlasIndex:
             if d is None:
                 out[name] = {"built": False, "file": str(p), "refused": self.refused(name)}
                 continue
-            out[name] = {"built": True, "file": str(p), "bytes": p.stat().st_size, **d.get("meta", {})}
+            size = sum(f.stat().st_size for f in p.parent.iterdir() if f.is_file()) if name in FOLDERS else p.stat().st_size
+            out[name] = {"built": True, "file": str(p.parent if name in FOLDERS else p), "bytes": size, **d.get("meta", {})}
         return out
 
     # ------------------------------------------------------------------------------------------------------- labels
@@ -189,6 +215,36 @@ class AtlasIndex:
     def label_passes(self, layer: int, n: int, sign: str) -> bool:
         c = self.face_check(layer, n, sign)
         return bool(c) and not c["held_back"]
+
+    # ----------------------------------------------------------------------------------------------------- passages
+
+    def passages(self, layer: int, n: int, sign: str, k: int = PASSAGES_K) -> Optional[Dict[str, List[Dict[str, Any]]]]:
+        """One face's stored events from the passages index: `top`, its k strongest (at most one a window, strongest
+        first), and `sample`, those drawn at random above half its extreme (when the build drew them); each {window, at,
+        act, g, u}. None when the index is not built."""
+        d = self.get("passages")
+        if d is None:
+            return None
+        f = "pos" if sign == "+" else "neg"
+
+        def slots(group: str, kk: int) -> List[Dict[str, Any]]:
+            if f"{group}_win" not in d:
+                return []
+            win = d[f"{group}_win"][int(layer), int(n)]
+            cols = [i for i in range(min(int(kk), win.shape[0])) if int(win[i]) >= 0]
+            return [{"window": int(win[i]), "at": int(d[f"{group}_at"][int(layer), int(n), i]),
+                     "act": float(d[f"{group}_act"][int(layer), int(n), i]), "g": float(d[f"{group}_g"][int(layer), int(n), i]),
+                     "u": float(d[f"{group}_u"][int(layer), int(n), i])} for i in cols]
+
+        return {"top": slots(f, k), "sample": slots(f"{f}_smp", 1 << 30)}
+
+    def window_ids(self, w: int) -> Optional[List[int]]:
+        """A stored window's word-piece ids (from its start mark), or None when the passages index is not built."""
+        d = self.get("passages")
+        if d is None:
+            return None
+        row = np.asarray(d["windows"][int(w)])
+        return [int(t) for t in row[row >= 0]]
 
     # ------------------------------------------------------------------------------------------------------- search
 

@@ -773,6 +773,126 @@ def norm_scales(ex: Extremes) -> Dict[str, List[float]]:
     return {"mlp_rms": [_median(v) for v in ex.mlp_rms], "mid_rms": [_median(v) for v in ex.mid_rms]}
 
 
+# ------------------------------------------------------------------------------------------------- stored passages
+
+PASSAGE_FACES = ("pos", "neg")
+TOP_FIELDS = ("key", "win", "at", "g", "u")  # each face's strongest events
+SAMPLE_FIELDS = ("key", "win", "at", "act", "g", "u")  # and the events drawn at random above half its extreme
+
+
+def keep_order(keys: torch.Tensor, k: int, smallest: bool = False) -> torch.Tensor:
+    """The slots that keep the k largest keys along the last axis (the k smallest with `smallest`), in order, ties to
+    the earlier slot: a stable sort, the same on the CPU and the GPU."""
+    return torch.sort(keys, dim=-1, descending=not smallest, stable=True).indices[..., : int(k)]
+
+
+def merge_events(a: Dict[str, np.ndarray], b: Dict[str, np.ndarray], k: int, sample: int = 0) -> Dict[str, np.ndarray]:
+    """Two runs of `passage_events` over windows one after the other (`a` before `b`) merged into what one run over
+    both would have kept: the order of the keys, ties to `a`, which holds the lower windows. Exact, since each run
+    kept its events in that order (`keep_order`)."""
+    out: Dict[str, np.ndarray] = {}
+    for f in PASSAGE_FACES:
+        for group, fields, kk, smallest in ((f, TOP_FIELDS, k, False), (f"{f}_smp", SAMPLE_FIELDS, sample, True)):
+            if not kk:
+                continue
+            cat = lambda name: torch.from_numpy(np.concatenate([a[f"{group}_{name}"], b[f"{group}_{name}"]], -1))  # noqa: E731
+            order = keep_order(cat("key"), kk, smallest)
+            for name in fields:
+                out[f"{group}_{name}"] = cat(name).gather(-1, order).numpy()
+    return out
+
+
+@torch.no_grad()
+def passage_events(lm: nn.Module, texts_ids: Sequence[Sequence[int]], *, k: int = 16, first: int = 0, sample: int = 0,
+                   extremes: Optional[Tuple[Any, Any]] = None, seed: int = 0) -> Dict[str, np.ndarray]:
+    """Each neuron's k strongest events on each face over `texts_ids` (windows numbered from `first`), at most one a
+    window: in each window its largest activation past the start mark (`pos`; the first position reaching it) and its
+    most negative (`neg`), kept where it is positive (negative), and the k largest of those over the windows, ties to
+    the lower window, so one long passage cannot fill every slot (as the study's N1 kept one per context). With each
+    event its window (`win`, -1 for an empty slot), its position there (`at`), its strength (`key`: the activation on
+    `pos`, minus it on `neg`, float32, the order kept) and the gate and up pre-activations there (`g`, `u`, float16):
+    which of GeGLU's four sign regimes it fired in, and the operating point a linearised wiring would read.
+
+    With `sample` and `extremes` (each neuron's (pos, neg) [L, N], the stats index's), also `sample` events per face drawn
+    at random above half its extreme, at most one a window: every word-piece a uniform key from a generator seeded by
+    (seed, window, layer), so the draw is the same however the windows are split into runs; in each window the
+    smallest key above the threshold, and the `sample` smallest of those (`{face}_smp_*`, with `act`).
+
+    One forward a window, batch 1, as `activation_extremes` reads them; the running lists stay on the device (on the
+    31B about 0.6 GB at k = 16, 0.8 GB with six samples a face) and nothing is copied to the CPU until the end. Returns `{face}_{field}` arrays
+    [L, N, k] (and [L, N, sample]) for `merge_events` and `atlas_build.build_passages`."""
+    L, N = len(lm.layers), ffn_width(lm, 0)
+    dev = model_device(lm)
+    ninf, pinf = float("-inf"), float("inf")
+
+    def slots(kk: int, fields: Sequence[str], key_fill: float) -> Dict[str, torch.Tensor]:
+        dt = {"key": torch.float32, "win": torch.int32, "at": torch.int16}
+        out = {name: torch.zeros((L, N, kk), dtype=dt.get(name, torch.float16), device=dev) for name in fields}
+        out["key"].fill_(key_fill)
+        out["win"].fill_(-1)
+        return out
+
+    st = {f: slots(k, TOP_FIELDS, ninf) for f in PASSAGE_FACES}
+    thr: Dict[str, torch.Tensor] = {}
+    if sample:
+        if extremes is None:
+            raise ValueError("Sampled events need each neuron's extremes (the stats index): their threshold is half of each.")
+        pos, neg = (torch.as_tensor(np.asarray(x), dtype=torch.float32, device=dev) for x in extremes)
+        thr = {"pos": torch.where(pos > 0, 0.5 * pos, pinf), "neg": torch.where(neg < 0, -0.5 * neg, pinf)}
+        st.update({f"{f}_smp": slots(sample, SAMPLE_FIELDS, pinf) for f in PASSAGE_FACES})
+    cols = torch.arange(N, device=dev)
+    cur = [int(first)]
+    gate: Dict[int, torch.Tensor] = {}
+    up: Dict[int, torch.Tensor] = {}
+
+    def keep(group: str, l: int, new: Dict[str, torch.Tensor], kk: int, smallest: bool) -> None:
+        s = st[group]
+        order = keep_order(torch.cat([s["key"][l], new["key"][:, None]], 1), kk, smallest)
+        for name, arr in s.items():
+            arr[l] = torch.cat([arr[l], new[name][:, None].to(arr.dtype)], 1).gather(1, order)
+
+    hooks = []
+    try:
+        for l, layer in enumerate(lm.layers):
+            hooks.append(layer.mlp.gate_proj.register_forward_hook(lambda _m, _a, o, l=l: gate.__setitem__(l, o)))
+            hooks.append(layer.mlp.up_proj.register_forward_hook(lambda _m, _a, o, l=l: up.__setitem__(l, o)))
+
+            def pre(_m: nn.Module, args: Tuple[Any, ...], l: int = l) -> None:
+                a = args[0][0, 1:].float()
+                if a.shape[0] == 0:
+                    return
+                g, u, w = gate[l][0, 1:], up[l][0, 1:], cur[0]
+                keys = None
+                if sample:
+                    gen = torch.Generator(device=dev)
+                    gen.manual_seed(((int(seed) << 40) + (w << 8) + l) % (1 << 63))
+                    keys = torch.rand(a.shape, generator=gen, device=dev)
+                for f, sa in (("pos", a), ("neg", -a)):
+                    v, at = sa.max(0)  # the first position reaching it
+                    hit = v > 0
+                    zero = torch.zeros_like(v)
+                    keep(f, l, {"key": torch.where(hit, v, torch.full_like(v, ninf)), "win": torch.where(hit, w, -1),
+                                "at": torch.where(hit, at + 1, 0), "g": torch.where(hit, g[at, cols].float(), zero),
+                                "u": torch.where(hit, u[at, cols].float(), zero)}, k, False)
+                    if sample:
+                        km, ak = torch.where(sa > thr[f][l], keys, pinf).min(0)
+                        hit = torch.isfinite(km)
+                        keep(f"{f}_smp", l, {"key": km, "win": torch.where(hit, w, -1), "at": torch.where(hit, ak + 1, 0),
+                                             "act": torch.where(hit, a[ak, cols], zero), "g": torch.where(hit, g[ak, cols].float(), zero),
+                                             "u": torch.where(hit, u[ak, cols].float(), zero)}, sample, True)
+
+            hooks.append(layer.mlp.down_proj.register_forward_pre_hook(pre))
+        for i, ids in enumerate(texts_ids):
+            cur[0] = int(first) + i
+            lm(input_ids=torch.tensor([[int(t) for t in ids]], dtype=torch.long, device=dev), use_cache=False)
+            gate.clear()
+            up.clear()
+    finally:
+        for h in hooks:
+            h.remove()
+    return {f"{group}_{name}": arr.cpu().numpy() for group, s in st.items() for name, arr in s.items()}
+
+
 @torch.no_grad()
 def forward_from_layer(
     lm: nn.Module, start: int, hidden: torch.Tensor, attention_mask: Optional[torch.Tensor], position_ids: torch.Tensor

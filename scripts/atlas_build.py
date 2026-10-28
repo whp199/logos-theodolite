@@ -8,7 +8,9 @@
     .venv/bin/python scripts/atlas_build.py wiring                # every neuron's 24 strongest weight links each way
     .venv/bin/python scripts/atlas_build.py layout                # each layer's sheet, neighbours writing alike
     .venv/bin/python scripts/atlas_build.py steer --layers 40-59  # the steer lens, a range of layers at a time
-    .venv/bin/python scripts/atlas_build.py all                   # lens, stats, wiring, layout (not the steer lens)
+    .venv/bin/python scripts/atlas_build.py passages --hf HuggingFaceFW/fineweb-edu:sample-10BT \
+        --hf HuggingFaceH4/ultrachat_200k::train_sft --tokens 2000000 --k 16 --sample 6   # each face's passages
+    .venv/bin/python scripts/atlas_build.py all                   # lens, stats, wiring, layout (not the steer lens, nor passages)
 
 The folder is `$THEODOLITE_ATLAS_DIR/index`, else `atlas_data/index` in the checkout (git ignores it), or `--out`. Each
 file carries its provenance (model, lens, date, what it was read over); the server reads them as they appear, and the
@@ -31,6 +33,14 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   rows of ~25 pieces through 30 layers on average, per layer: on the order of 10^17 FLOP a layer, so hours for all 60.
   Each layer is written as its own file under steer_lens.d/ and a stopped run resumes; steer_lens.npz is merged when
   all 60 are there.
+- passages: the same forward per window as stats over the same corpus (give it the same --hf, --tokens and --seq), each
+  neuron's 16 strongest windows a face kept on the card with the gate and up values at each (about 0.8 GiB above the
+  model with --sample 6), so it should cost about what stats costs, some 29 minutes a million word-pieces (measured
+  for stats; passages not yet run on the model, inferred). --sample S also keeps S events a face drawn at random above
+  half its extreme, which the stats index holds (without it no samples are drawn, and the meta says so). A part per
+  --chunk windows (1,024: about 0.8 GB each on the 31B) is written to passages.d/parts/ and a stopped run resumes;
+  the parts are merged into passages.d/ (about 0.7 GB) and removed (--keep-parts keeps them). The windows it keeps are
+  the corpus's own text: the folder stays in the atlas folder, which git ignores; never commit it.
 `--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU
@@ -121,17 +131,23 @@ def corpus_texts(a: argparse.Namespace, rt: Any) -> tuple:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=__doc__.split("\n\n", 1)[1])
-    ap.add_argument("what", choices=["lens", "stats", "wiring", "steer", "layout", "all"])
+    ap.add_argument("what", choices=["lens", "stats", "wiring", "steer", "layout", "passages", "all"])
     ap.add_argument("--out", help="the index folder (default: the atlas's)")
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in, not the model")
     ap.add_argument("--layers", default="", help='for lens and steer: "40-59" or "3,7,11"')
-    ap.add_argument("--text", action="append", help="stats: a plain-text corpus file (documents split on blank lines)")
-    ap.add_argument("--jsonl", action="append", help="stats: a JSONL corpus file with a text field per line")
-    ap.add_argument("--hf", action="append", help="stats: a dataset name[:config[:split]], streamed (needs the datasets package); "
-                    "several are read a document from each in turn")
-    ap.add_argument("--tokens", type=int, default=200_000, help="stats: word-pieces to read")
-    ap.add_argument("--seq", type=int, default=512, help="stats: window length")
-    ap.add_argument("--chunk", type=int, default=0, help="lens: columns per product; wiring: columns per product")
+    ap.add_argument("--text", action="append", help="stats, passages: a plain-text corpus file (documents split on blank lines)")
+    ap.add_argument("--jsonl", action="append", help="stats, passages: a JSONL corpus file with a text field per line")
+    ap.add_argument("--hf", action="append", help="stats, passages: a dataset name[:config[:split]], streamed (needs the datasets "
+                    "package); several are read a document from each in turn")
+    ap.add_argument("--tokens", type=int, default=200_000, help="stats, passages: word-pieces to read")
+    ap.add_argument("--seq", type=int, default=512, help="stats, passages: window length")
+    ap.add_argument("--chunk", type=int, default=0, help="lens: columns per product; wiring: columns per product; passages: "
+                    "windows per part (1024)")
+    ap.add_argument("--k", type=int, default=16, help="passages: the strongest windows kept a face, one event each")
+    ap.add_argument("--sample", type=int, default=6, help="passages: events a face drawn at random above half its extreme "
+                    "(needs the stats index; 0 for none)")
+    ap.add_argument("--seed", type=int, default=0, help="passages: the seed of the random draw")
+    ap.add_argument("--keep-parts", action="store_true", help="passages: keep the parts after merging them")
     ap.add_argument("--batch", type=int, default=64, help="steer: neurons per forward")
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
     ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
@@ -200,6 +216,17 @@ def main() -> int:
             print("->", ab.build_wiring(rt, out, f, scale_source=sc["source"], chunk=a.chunk or 4096))
         elif step == "layout":
             print("->", ab.build_layout(rt, out, method=a.layout_method))
+        elif step == "passages":
+            texts, name = corpus_texts(a, rt)
+            wins = ab.windows(rt, texts, a.seq, a.tokens)
+            stats = AtlasIndex(out).get("act_scale") if a.sample else None
+            if a.sample and stats is None:
+                print("passages: no stats index here, so no events are drawn at random (their threshold is half of each "
+                      "face's extreme): build stats first to draw them")
+            ext = (stats["pos"], stats["neg"]) if stats is not None else None
+            src = f"the stats index ({stats['meta'].get('corpus')}, {int(stats['tokens'])} word-pieces)" if stats is not None else None
+            print("->", ab.build_passages(rt, out, wins, name, k=a.k, sample=a.sample, extremes=ext, extremes_source=src,
+                                          seed=a.seed, chunk=a.chunk or 1024, keep_parts=a.keep_parts))
         elif step == "steer":
             sc = scales()
             print(f"steer: the push's unit is the stream's median length from {sc['source']}")
