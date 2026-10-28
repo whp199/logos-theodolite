@@ -51,9 +51,10 @@ shard is continued only as the same shard, the merge refuses a run with a shard 
 --partial, and the ranking comes after it. --canary-only writes that first batch alone (<run>.canary.jsonl, and
 <run>.canary.json with the settings and the runtime it was written with) and stops, the run itself not begun: take it
 on the home card and on a rented one with the same arguments, and census_tools.py canary says whether the two cards
-write the same bits (scripts/pod/pilot.sh --home-canary). --neurons-from <run>.units.jsonl --top M retests a screen's M strongest
-neurons against fresh controls (another --seed), the census's second stage: its p and q are taken over those M alone,
-and its neurons are fixed when it is begun (a screen ranked again since is a new retest, under another --run).
+write the same bits (scripts/pod/pilot.sh --home-canary); one already there is kept only when taken with the same
+settings on the same runtime, and is otherwise refused. --neurons-from <run>.units.jsonl --top M retests a screen's M
+strongest neurons against fresh controls (another --seed), the census's second stage: its p and q are taken over those
+M alone, and its neurons are fixed when it is begun (a screen ranked again since is a new retest, under another --run).
 
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is

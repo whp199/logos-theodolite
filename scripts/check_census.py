@@ -1153,6 +1153,9 @@ def run_checks(tmp: Path) -> int:
     (wf_dir / "atlas_writer_floor_a.json").write_text(json.dumps({**hand, "runtime": other_rt, "census_floor": {"5": 3, "64": 2}}))
     (wf_dir / "atlas_writer_floor_b.json").write_text(json.dumps({**hand, "runtime": um["runtime"]}))
     (wf_dir / "atlas_writer_floor_c.json").write_text(json.dumps({**hand, "model": "another model", "runtime": um["runtime"]}))
+    (wf_dir / "atlas_writer_floor_d.json").write_text(json.dumps({**hand, "runtime": um["runtime"], "census_floor": {"5": "none"}}))
+    check(cz.writer_floor(run_meta, files=[wf_dir / "atlas_writer_floor_d.json"]) is None,
+          "writer_floor: a file of the run's model whose floor does not read as one is passed over, not raised")
     os.environ[cz.WRITER_FLOOR_ENV] = str(wf_dir)
     try:
         f_ = cz.writer_floor(run_meta)
@@ -1196,6 +1199,24 @@ def run_checks(tmp: Path) -> int:
     check(all(p_.name not in (can.name, cz.canary_about_path_of(can).name) for p_ in cz.layer_runs(sdir).values()),
           "a canary's about-file is never read as a run")
     check(cz.take_census(rt, 3, NU, alone_run, **{**kp, "log": said.append}, canary_only=True)["skipped"] == n0, "taken again, it is left as it is")
+    about_p = cz.canary_about_path_of(can)
+    held_c = (can.read_bytes(), about_p.read_bytes())
+    for how, kw, word in (("with another --max-new", {**kp, "max_new": 4}, "(max_new;"),
+                          ("on another card", kp, "(the runtime's device;")):
+        if how == "on another card":
+            about_p.write_text(json.dumps({**about, "meta": {**about["meta"], "runtime": {**about["meta"]["runtime"], "device": "NVIDIA H200"}}}))
+            held_c = (can.read_bytes(), about_p.read_bytes())
+        try:
+            cz.take_census(rt, 3, NU, alone_run, **kw, canary_only=True)
+            check(False, f"a canary taken again {how} is refused")
+        except ValueError as exc:
+            check(word in str(exc) and "remove both to take it again" in str(exc) and (can.read_bytes(), about_p.read_bytes()) == held_c,
+                  f"a canary taken again {how} is refused, the one there left as it is ({exc})")
+    about_p.unlink()
+    res = cz.take_census(rt, 3, NU, alone_run, **{**kp, "log": said.append}, canary_only=True)
+    check(res["written"] == n0 and list(cz.read_rows(can)) == U[:n0] and about_p.exists()
+          and json.loads(about_p.read_text())["meta"]["runtime"] == um["runtime"],
+          f"a canary with no about-file, taken with what is not known, is written again ({res})")
     try:
         cz.take_census(rt, 3, NU, alone_run, **kp, shard=(1, 3), canary_only=True)
         check(False, "a canary alone with a shard is refused")

@@ -683,15 +683,18 @@ def writer_floor(meta: Dict[str, Any], files: Optional[Sequence[Path]] = None) -
     word-pieces an unpushed answer written in such a batch kept in common with the same answer written alone before
     they first parted (None: they did not part within the `max_new` measured); `says` puts it in words, a guide for
     reading a pushed answer's departure from an unpushed one written in another shape. None where no floor of the run's
-    model is on disk."""
+    model is on disk (a file that does not read as a floor is passed over)."""
     found = []
     for p in writer_floor_files() if files is None else files:
         try:
             d = json.loads(Path(p).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
+            if (isinstance(d, dict) and d.get("model") == meta.get("model") and isinstance(d.get("census_floor"), dict)
+                    and isinstance(d.get("runtime") or {}, dict)):
+                floors_of = {int(b): (None if v is None else int(v)) for b, v in d["census_floor"].items()}
+                if floors_of:
+                    found.append((Path(p), d, floors_of))
+        except (OSError, ValueError, TypeError):
             continue
-        if isinstance(d, dict) and d.get("model") == meta.get("model") and isinstance(d.get("census_floor"), dict):
-            found.append((Path(p), d))
     if not found:
         return None
     mine = meta.get("runtime") or {}
@@ -700,8 +703,7 @@ def writer_floor(meta: Dict[str, Any], files: Optional[Sequence[Path]] = None) -
         theirs = d.get("runtime") or {}
         return [f for f in FLOOR_CLASS if theirs.get(f) != mine.get(f)]
 
-    path, d = next(((p, d) for p, d in found if mine and not differ(d)), found[0])
-    floors = {int(b): (None if v is None else int(v)) for b, v in d["census_floor"].items()}
+    path, d, floors = next(((p, d, f) for p, d, f in found if mine and not differ(d)), found[0])
     batch = meta.get("batch")
     if batch in floors:
         batches, k = [int(batch)], floors[int(batch)]
@@ -1148,7 +1150,8 @@ def take_census(
     neurons it was begun with. A run begun before runtime records, continued, records its earlier answers' runtime as
     unknown (`RUNTIME_UNKNOWN` in `mixed_runtime`). `canary_only` writes plan batch 0 alone, as a shard's canary, beside
     the run's path (with the meta the run would begin with, `canary_about_path_of`), and nothing else: for comparing
-    two cards before a run (census_tools.py canary). Returns counts."""
+    two cards before a run (census_tools.py canary). A canary already there is kept only when its about-file names the
+    same settings and runtime (else refused; with no about-file it is written again). Returns counts."""
     import time
 
     import torch
@@ -1270,12 +1273,12 @@ def take_census(
     meta["jobs"] = these_jobs = jobs_digest(all_jobs)
     plan = plan_batches(all_jobs, batch, meta["plan"])
 
-    def put_canary(canary: Path) -> Optional[int]:
+    def put_canary(canary: Path, again: bool = False) -> Optional[int]:
         """Plan batch 0 written again into `canary` (atomically), outside the run: how many answers, 0 when it holds them
-        already, None when stopped first."""
+        already (unless `again`), None when stopped first."""
         want = [row_key(all_jobs[i]) for i in plan[0][2]]
         have = [row_key(r) for r in read_rows(canary, tolerate_tail=True)] if canary.exists() else []
-        if have == want:
+        if have == want and not again:
             return 0
         recs = write_batch([all_jobs[i] for i in plan[0][2]])
         if recs is None:
@@ -1291,12 +1294,24 @@ def take_census(
         if shard:
             raise ValueError("A canary is the plan's first batch whatever the shard: take it without --shard.")
         canary = canary_path_of(out_path)
-        n_canary = put_canary(canary)
+        about = canary_about_path_of(canary)
+        try:
+            was = json.loads(about.read_text(encoding="utf-8")).get("meta") if about.exists() else None
+        except (OSError, ValueError, AttributeError):
+            was = None
+        if was:
+            # a canary already here is kept only where this command would write it: the same settings, the same runtime
+            differ = settings_differ(was, meta) + [f"the runtime's {k}" for k in runtime_differ(was.get("runtime"), meta["runtime"])]
+            if differ:
+                raise ValueError(f"{canary.name} was taken with other settings or on another runtime ({', '.join(differ)}; "
+                                 f"{about.name} holds what it was taken with); name another run (--run), or remove both to "
+                                 "take it again.")
+        # with no about-file, what a canary here was taken with is unknown: it is written again
+        n_canary = put_canary(canary, again=not was)
         if n_canary is None:
             log("stopped before the canary was written; the same command writes it")
             return {"written": 0, "skipped": 0, "stopped": True, "canary": str(canary)}
-        about = canary_about_path_of(canary)
-        if n_canary or not about.exists():
+        if n_canary or not was:
             write_json_atomic(about, {"what": f"plan batch 0 of {out_path.name}, written alone (census_run.py --canary-only), to "
                                               "compare with the same batch written on another card (census_tools.py canary)",
                                       "written_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "answers": len(plan[0][2]),
