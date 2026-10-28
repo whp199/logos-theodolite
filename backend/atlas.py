@@ -513,7 +513,7 @@ class ProposalRequest(BaseModel):
     index: Optional[StrictInt] = None
     name: Optional[str] = None
     note: Optional[str] = None
-    chat: Optional[str] = Field(None, max_length=fn.MAX_CHAT)
+    chat: Optional[str] = None  # its limits checked by `field_notes.propose`, so a refusal says what was wrong in plain words
     part: Optional[str] = None  # keep or discard only the name, or only the note (both when left out)
 
 

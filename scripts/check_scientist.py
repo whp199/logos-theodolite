@@ -8,7 +8,8 @@ so the chat is driven over real connections):
    links, reads, steering (greedy, and sampled with its knobs passed through and its seeds given back), odds, compare,
    fires, heads, the drive, the census, names and notes proposed by set_name and write_note and read by nothing (names,
    neuron, the notes) until the person keeps them, kept without overwriting each other, the cone and the web once the
-   indexes are built), and each screen action reaching the chat's page in the API's count, a proposal among them;
+   indexes are built), and each screen action reaching the chat's page in the API's count, a proposal among them, each
+   proposal recording the chat that made it;
 3. the MCP server, started as Claude Code starts it: initialize, its tools, a call, refusals in plain words;
 4. Claude Code, played by a fake `claude` that starts the MCP server from the config it is given and calls it: the
    command line (stream-json, the prompt file, the MCP config naming this server and the chat, the tools allowed, a
@@ -1233,7 +1234,7 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
           f"neuron reads the kept note, not the proposals, and says what waits ({nv5.get('name')}, {nv5.get('note')}, {nv5.get('awaiting_the_person')})")
     waiting = (await api.get("/api/atlas/proposals"))["neurons"]["2:5"]
     check(waiting["name"] == "bob watcher (??)" and waiting["note"] == "steers toward Bob at +2" and waiting["chat"] == "",
-          "the proposals, under the API's key, with the chat that made them")
+          "the proposals, under the API's key (called with no chat, their chat is empty)")
     # the person keeps the name and discards the note
     await api.post("/api/atlas/proposals/keep", {"kind": "neuron", "layer": 2, "index": 5, "part": "name"})
     await api.post("/api/atlas/proposals/discard", {"kind": "neuron", "layer": 2, "index": 5})
@@ -1269,6 +1270,12 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     r = await st.call("set_name", {"layer": 3, "n": 6, "name": "next one"}, api, cid)
     got = await asyncio.wait_for(q.get(), 5)
     check(got == {"t": "ui", "action": "propose", "layer": 2, "n": 6, "name": "next one"}, f"set_name shows its proposal on the page: {got}")
+    named_in = (await api.get("/api/atlas/proposals"))["neurons"]["2:6"]["chat"]
+    r = await st.call("write_note", {"layer": 3, "n": 6, "note": "a note from this chat"}, api, cid)
+    got = await asyncio.wait_for(q.get(), 5)
+    noted_in = (await api.get("/api/atlas/proposals"))["neurons"]["2:6"]["chat"]
+    check(got == {"t": "ui", "action": "propose", "layer": 2, "n": 6, "note": "a note from this chat"} and named_in == cid and noted_in == cid,
+          f"set_name and write_note: each proposal records the chat that made it ({named_in}, {noted_in})")
     r = await st.call("select_neuron", {"layer": 3, "n": 5}, api, "no-such-chat")
     check(r["ok"] is False and "no such chat" in r["note"], "a screen action for a chat not open")
     try:

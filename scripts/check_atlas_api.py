@@ -20,7 +20,8 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    earlier block's part split over its neurons (each block's shares adding up to its part to float error, worked out
    here from the weights and a capture alone; the twelve strongest with their activations, faces, words and names; the
    top one's share against a direct-path finite difference, the neuron's activation moved along that neuron's write
-   with the norms held), the ids of a text giving the text's own drive, refusals in plain words;
+   with the norms held; the same split with W_down read seven columns at a time), the ids of a text giving the text's
+   own drive, refusals in plain words;
 6. with every index built (backend/atlas_build.py into the temporary atlas folder): the scales come from the stats
    index, the tooltip and the wiring from the indexes, the search finds a face by its first word-piece, the cone and
    the web come back as the index has them, the layout and the active paths; a face's stored passages (the index's
@@ -566,6 +567,21 @@ def main() -> int:
     fd = aa * (act9(mid + h_ * d_a) - act9(mid - h_ * d_a)) / (2 * h_)
     check(near(fd, top_n["contribution"], 1e-4) and abs(top_n["contribution"]) > 1e-4,
           f"/attn_drive: the top neuron's share, as a direct-path finite difference gives it ({fd:.8g} vs {top_n['contribution']})")
+    # the split reads W_down a chunk of columns at a time (4096 on the 31B, more than the stand-in's whole layer): seven
+    # at a time, the last chunk short, gives the same neurons and shares, to float32's rounding (another kernel's)
+    cap_a = ao.capture_heads(lm, ids_text, w, streams=True, act_pos=pos_bob)
+    whole = ao.attention_drive(cap_a, w, shapes, 4, 9, pos_bob, top=8)
+    chunk0, ao.DOWN_CHUNK = ao.DOWN_CHUNK, 7
+    try:
+        seven = ao.attention_drive(cap_a, w, shapes, 4, 9, pos_bob, top=8)
+    finally:
+        ao.DOWN_CHUNK = chunk0
+    big = max(abs(x[3]) for x in whole["neurons"])
+    check(N % 7 != 0 and len(seven["neurons"]) == 12 and [x[:2] for x in seven["neurons"]] == [x[:2] for x in whole["neurons"]]
+          and all(near(x[3], y[3], 1e-5) for x, y in zip(seven["neurons"], whole["neurons"]))
+          and all(x[0] == y[0] and abs(x[1] - y[1]) <= 1e-5 * big for x, y in zip(seven["block_sums"], whole["block_sums"])),
+          f"/attn_drive: W_down read seven columns at a time gives the same neurons and shares as read whole "
+          f"({max(abs(x[3] - y[3]) for x, y in zip(seven['neurons'], whole['neurons'])):.2g} at most)")
     atlas_routes.atlas().caps.clear()  # the ids read afresh, not from the text's capture
     dr_ids = c.post("/api/atlas/attn_drive", json={"layer": 4, "n": 9, "ids": ids_text, "token": "Bob"}).json()
     check(dr_ids["read"] == "ids" and dr["read"] == "text" and {k_: v_ for k_, v_ in dr_ids.items() if k_ != "read"} == {k_: v_ for k_, v_ in dr.items() if k_ != "read"},
@@ -962,9 +978,16 @@ def main() -> int:
                       ({"kind": "neuron", "layer": 2, "index": 5, "name": "a\nb"}, "control characters"),
                       ({"kind": "neuron", "layer": 2, "index": 5, "name": "a" * 121}, "at most 120"),
                       ({"kind": "neuron", "layer": 6, "index": 5, "name": "a"}, "Layer 6 does not exist"),
-                      ({"kind": "neuron", "index": 5, "name": "a"}, "names its layer and its index")]:
+                      ({"kind": "neuron", "index": 5, "name": "a"}, "names its layer and its index"),
+                      ({"kind": "neuron", "layer": 2, "index": 5, "name": "a", "chat": "c" * 201}, "chat's id is at most 200 characters")]:
         r = c.post("/api/atlas/proposals", json=bad)
         check(r.status_code == 400 and says in r.json()["detail"], f"/proposals refused {bad}: {r.status_code} {r.text[:120]}")
+    # half a character in the chat's id (sent as raw bytes: httpx would refuse to encode it) is refused, not a failed write
+    r = c.post("/api/atlas/proposals", content=b'{"kind": "neuron", "layer": 2, "index": 5, "name": "a", "chat": "\\ud83d"}',
+               headers={"content-type": "application/json"})
+    check(r.status_code == 400 and "chat's id holds a broken character" in r.json()["detail"]
+          and c.get("/api/atlas/proposals").json()["neurons"]["2:5"]["name"] == "bob, the subject (?)",
+          f"/proposals: a lone surrogate in the chat's id refused in plain words, the proposal as it was ({r.status_code} {r.text[:120]})")
     r = c.post("/api/atlas/proposals/keep", json={"kind": "neuron", "layer": 2, "index": 5, "part": "both"})
     check(r.status_code == 400 and 'part is "name" or "note"' in r.json()["detail"], "/proposals/keep: a part that is neither refused")
     r = c.post("/api/atlas/proposals/keep", json={"kind": "neuron", "layer": 2, "index": 6})

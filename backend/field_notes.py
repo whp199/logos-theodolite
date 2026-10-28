@@ -437,6 +437,11 @@ async def propose(kind: str, layer: int, index: int, name: Optional[str], note: 
     neither): a later one replaces the earlier one's name or note, and leaves the other. Nothing in the notes changes.
     Returns the proposal as it waits."""
     path = path or field_proposals_path()
+    chat = str(chat)
+    if _has_broken(chat):
+        raise ValueError(f"The chat's id {BROKEN}.")
+    if len(chat) > MAX_CHAT:
+        raise ValueError(f"The chat's id is at most {MAX_CHAT} characters.")
     key = note_key(layer, index)
     table = KINDS[kind]
     async with _LOCK:
@@ -449,7 +454,7 @@ async def propose(kind: str, layer: int, index: int, name: Optional[str], note: 
             e["name"] = name
         if note is not None:
             e["note"] = note
-        e.update({"chat": str(chat)[:MAX_CHAT], "at": _utc_now()})
+        e.update({"chat": chat, "at": _utc_now()})
         entries[key] = e
         _write_atomic(path, data)
         return e
