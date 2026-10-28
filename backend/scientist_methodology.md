@@ -80,6 +80,9 @@ study found about Gemma-4-31B. It uses the vocabulary above (faces, steer lens, 
 - **Weight links (`writes_into`, `reads_from`, cone).** Leads to check, never circuits. Verify a claimed path with
   `activations` under ablation: a real, causal link can still change nothing in the output.
 - **Activation range.** Raw values. Scores many times `act_max` mark a detector at its centre.
+- **Passages** (`passages`). Each face's strongest windows of the stats corpus, one event a window, with the word-pieces
+  it reads and that follow: read both faces' passages before you name a face (one input label for both faces was the
+  audit's fault 7); `reads` and `follows` are counts over a few passages, leads until a test confirms them.
 
 ## Motifs to test for
 

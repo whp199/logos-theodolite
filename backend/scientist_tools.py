@@ -138,6 +138,14 @@ TOOLS: List[Dict[str, Any]] = [
      "(writes_into, reads_from) by strength across layers (w), each read from rest: a reader on the face the link pushes it "
      "toward (sign), a writer on the face that opens the reader's gate (gate), with that face's words, census words and name.",
      "inputSchema": {"type": "object", "properties": LN, "required": ["layer", "n"]}},
+    {"name": "passages", "description": "One face's stored passages, from the passages index (read over the stats corpus): its k "
+     "strongest windows, one event each, the peak marked [[like this]], each with its activation, its share of the face's "
+     "extreme (rel) and GeGLU's regime there (pp: gate and up both positive; nn: both negative, the double negative; pn, np: "
+     "the negative side's two); then a few events drawn at random above half its extreme; and the word-pieces at the peaks "
+     "(reads) and just after them (follows), each with its count and its lift over the corpus's base rate. Leads from k "
+     "passages, not labels the gate has checked. Read both faces' passages before you name a face. Needs the passages index.",
+     "inputSchema": {"type": "object", "properties": {**LN, "face": {"type": "string", "enum": ["+", "-"], "default": "+"},
+                                                       "k": {"type": "integer", "default": 16}}, "required": ["layer", "n"]}},
     {"name": "rollouts", "description": "The census of a neuron: what the model wrote when it was pushed, per question and dose, beside the "
      "unpushed answers, with its distinctive words, their mass, its empirical p against random-direction controls and the "
      "layer's false-discovery q. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model "
@@ -346,6 +354,18 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
             "writes_into": [_slim_link(c) for c in r["writes_into"]], "reads_from": [_slim_link(c) for c in r["reads_from"]],
             "lens": (r.get("lens") or {}).get("name"),
         }
+    if name == "passages":
+        _need(a, "layer", "n")
+        r = await api.get("/api/atlas/neuron/passages", layer=a["layer"], n=a["n"], face=a.get("face", "+"), k=a.get("k", 16))
+        if not r.get("ready"):
+            return {"neuron": cite(a["layer"], a["n"]), "face": r.get("face"), "ready": False, "note": r.get("note")}
+        marked = lambda units: "".join(f"[[{t}]]" if peak else t for t, peak in units)  # noqa: E731
+        words = lambda rows: [f"{t['tok']} ({t['n']}, lift {t['lift']})" for t in rows]  # noqa: E731
+        return {"neuron": cite(a["layer"], a["n"]), "face": r["face"], "corpus": r["corpus"], "word_pieces": r["tokens"],
+                "rel_to": r.get("rel_to"), **({"stale": r["stale"]} if r.get("stale") else {}),
+                "passages": [{"kind": x["kind"], "act": x["act"], "rel": x["rel"], "regime": x["regime"], "text": marked(x["units"]),
+                              "cut": x["cut"]} for x in r["passages"]],
+                "reads": words(r["reads"]), "follows": words(r["follows"]), "note": r["words_note"]}
     if name == "rollouts":
         _need(a, "layer", "n")
         u = await api.get("/api/atlas/census/unit", layer=a["layer"], n=a["n"])

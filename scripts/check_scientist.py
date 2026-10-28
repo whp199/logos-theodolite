@@ -870,7 +870,9 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     cn = await st.call("cone", {"layer": 3, "n": 5}, api)
     ws = await st.call("web_summary", {"layer": 3, "n": 5}, api)
     sr = await st.call("search_lens", {"query": "the"}, api)
-    check(cn["ready"] is False and ws["ready"] is False and sr["ready"] is False, "without the indexes: the cone, the web and the search say so")
+    pg = await st.call("passages", {"layer": 3, "n": 5}, api)
+    check(cn["ready"] is False and ws["ready"] is False and sr["ready"] is False and pg["ready"] is False and "atlas_build.py passages" in pg["note"],
+          "without the indexes: the cone, the web, the search and the passages say so")
     from backend.atlas import atlas as atlas_state
 
     a_ = atlas_state()
@@ -881,6 +883,16 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     stats = a_.index.get("act_scale")
     ab.build_wiring(a_.rt, out, a_.link_scale(), log=quiet)
     ab.build_steer_lens(a_.rt, out, [float(x) for x in stats["resid_q"][:, 1]], batch=16, log=quiet)
+    ab.build_passages(a_.rt, out, ab.windows(a_.rt, CORPUS, 24, 300), "check", k=6, sample=2, extremes=(stats["pos"], stats["neg"]),
+                      extremes_source="the stats index", log=quiet)
+    pg = await st.call("passages", {"layer": 3, "n": 5, "face": "-", "k": 4}, api)
+    raw = hc.get("/api/atlas/neuron/passages", params={"layer": 2, "n": 5, "face": "-", "k": 4}).json()
+    check(pg["neuron"] == "L3 N5" and pg["face"] == "-" and [x["text"] for x in pg["passages"]]
+          == ["".join(f"[[{t}]]" if pk else t for t, pk in x["units"]) for x in raw["passages"]]
+          and sum(1 for x in pg["passages"] if x["kind"] == "top") == 4 and all(x["text"].count("[[") == 1 for x in pg["passages"]),
+          "passages: page layer 3 is the API's 2, one face's passages with the peak marked")
+    check(pg["reads"] == [f"{t['tok']} ({t['n']}, lift {t['lift']})" for t in raw["reads"]] and "not validated as a label" in pg["note"]
+          and (await st.call("passages", {"layer": 3, "n": 5}, api))["face"] == "+", "passages: reads with their lift, the note, the + face by default")
     cn = await st.call("cone", {"layer": 3, "n": 5}, api)
     raw = hc.get("/api/atlas/cone", params={"layer": 2, "n": 5}).json()
     check(cn["neurons"] == raw["neurons"] and [x["neuron"] for x in cn["nodes"]] == [st.cite(x["layer"], x["n"]) for x in raw["nodes"]], "cone in the pages' count")

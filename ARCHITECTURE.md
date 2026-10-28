@@ -35,7 +35,7 @@ theodolite2/
 │   ├── census.py                    # the census: every neuron of a layer pushed on fixed questions, ranked vs controls
 │   ├── field_notes.py               # names and notes kept beside neurons and heads, shared by every page and chat
 │   ├── scientist_chat.py            # the atlas's scientist: Claude Code, Codex or an OpenAI-compatible endpoint (§4.8)
-│   ├── scientist_tools.py           # the scientist's 29 tools, in the pages' count of layers (stdlib only)
+│   ├── scientist_tools.py           # the scientist's 30 tools, in the pages' count of layers (stdlib only)
 │   ├── scientist_mcp.py             # those tools as a stdio MCP server, for Claude Code and Codex
 │   ├── scientist_prompt.md          # the scientist's instructions (with scientist_methodology.md)
 │   └── scientist_methodology.md
@@ -708,9 +708,9 @@ The scientist folder is `$THEODOLITE_SCIENTIST_DIR`, else `<atlas folder>/scient
 | `POST /upload` | `{name, type, data (base64)}` (at most 25 MB) → `{id}`, for `attachments` |
 | `GET /prompt?agent` | the system prompt as built |
 
-The tools (`backend/scientist_tools.py`, 29, standard library only) take and give layers in the pages' count (L54 N15491)
-and call the atlas's routes: reading the atlas (`overview`, `neuron`, `rollouts`, `cone`, `web_summary`, `search_lens`,
-`top_units`), names and notes (`set_name`, `write_note`, `names`), live readings (`steer`, `activations`, `compare`,
+The tools (`backend/scientist_tools.py`, 30, standard library only) take and give layers in the pages' count (L54 N15491)
+and call the atlas's routes: reading the atlas (`overview`, `neuron`, `passages`, `rollouts`, `cone`, `web_summary`,
+`search_lens`, `top_units`), names and notes (`set_name`, `write_note`, `names`), live readings (`steer`, `activations`, `compare`,
 `logprobs`, `top_firing`, `steer_lens`, `causal_check`, `attention`, `attn_drive`, `head`, `neuron_heads`), and the
 person's screen (`select_neuron`, `select_head`, `open_tab`, `camera`, `highlight_neurons`, `annotate_neurons`,
 `show_text`, `show_search`). scripts/check_scientist.py checks the tools, the MCP server and all three backends against

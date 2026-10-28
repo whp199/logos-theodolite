@@ -1299,7 +1299,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             its own guess.
           </Note>
           <EntryApparatus title="the scientist">
-            29 tools (<M>backend/scientist_tools.py</M>), served to Claude Code and Codex over MCP (
+            30 tools (<M>backend/scientist_tools.py</M>), served to Claude Code and Codex over MCP (
             <M>backend/scientist_mcp.py</M>) and to an OpenAI-compatible endpoint as functions, the tool loop then run by
             the server; its instructions are <M>backend/scientist_prompt.md</M> and <M>scientist_methodology.md</M>.
             Endpoints come from the environment or <M>endpoints.json</M>, their keys only from environment variables.
