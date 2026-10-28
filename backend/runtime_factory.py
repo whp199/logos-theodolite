@@ -4,7 +4,8 @@ scripts/census_run.py and scripts/atlas_build.py.
     THEODOLITE_GGUF=<file.gguf>        a GGUF of Gemma 4 (backend/gguf_runtime.py), else the W4A16 checkpoint as today
     THEODOLITE_DEVICE=cpu | cuda:N     where the model runs (default cuda:0, as today)
     THEODOLITE_GGUF_LINEARS=packed | resident | dense   how a GGUF's quantised layers are held (default packed)
-    THEODOLITE_GGUF_CONFIG=<config.json>                build a GGUF's model from this config, checked against the file
+    THEODOLITE_GGUF_CONFIG=<config.json>                build a GGUF's model from this config, checked against all the
+                                                        file states (it stands in for any key the file leaves out)
     THEODOLITE_DTYPE=bfloat16 | float32                 a GGUF model's dtype (default bfloat16, as the instrument runs)
     THEODOLITE_GGUF_LENS=jpp | none                     load the J++ lens beside a GGUF model (default), or leave it
                                                         out (3.4 GB): a census and the atlas's stats, wiring, layout

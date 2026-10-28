@@ -733,7 +733,7 @@ run on Gemma-4-31B itself, from either a GGUF or the checkpoint on the CPU.
 | `THEODOLITE_GGUF` | a `.gguf` file | `GGUFRuntime` on it; unset: the pinned `TheodoliteRuntime` on the W4A16 checkpoint, as before |
 | `THEODOLITE_DEVICE` | `cpu`, `cuda:N` | where the model runs (default `cuda:0`); `cpu` hides the GPUs from the process (`CUDA_VISIBLE_DEVICES=""`) |
 | `THEODOLITE_GGUF_LINEARS` | `packed`, `resident`, `dense` | how a GGUF's quantised layers are held (default `packed`) |
-| `THEODOLITE_GGUF_CONFIG` | a `config.json` | build from this config, checked against the file's metadata (refused where they disagree) |
+| `THEODOLITE_GGUF_CONFIG` | a `config.json` | build from this config: it stands in for what the file's metadata leaves out, and is refused where it disagrees with what the file states |
 | `THEODOLITE_DTYPE` | `bfloat16`, `float32` | a GGUF model's dtype (default `bfloat16`, as the instrument runs) |
 | `THEODOLITE_GGUF_LENS` | `jpp`, `none` | load the J++ lens beside a GGUF model (default), or leave it out (3.4 GB) |
 
@@ -748,12 +748,12 @@ run on Gemma-4-31B itself, from either a GGUF or the checkpoint on the CPU.
   weight (plain, W4A16 through the pinned unpackers, or GGUF) with the pinned unpackers' shapes. `atlas_ops.dense_weight`
   and the vault's column read go through them.
 - `backend/gguf_model.py`: a `Gemma4ForCausalLM` built from the file without allocating random weights, its config from
-  the metadata llama.cpp's converter writes (or a matching `config.json`), its tensors by gguf-py's name map, and a
-  provenance record. `GGUFRuntime` (`backend/gguf_runtime.py`) subclasses the pinned runtime: its `load()` does what the
-  pinned one does once its model is built, and the seven accessors that read `weight_packed` read through the
-  accessors above; everything else is the pinned code. On the stand-in its accessors, a push in three voices, a neuron
-  read, a sighting's row capture and naked-eye readout, a vault DELETE on a packed layer and a census equal the stand-in
-  runtime's, bit for bit in float32.
+  the metadata llama.cpp's converter writes (or a matching `config.json`, which also stands in for keys a file leaves
+  out), its tensors by gguf-py's name map, and a provenance record. `GGUFRuntime` (`backend/gguf_runtime.py`) subclasses
+  the pinned runtime: its `load()` does what the pinned one does once its model is built, and the seven accessors that
+  read `weight_packed` read through the accessors above; everything else is the pinned code. On the stand-in its
+  accessors, a push in three voices, a neuron read, a sighting's row capture and naked-eye readout, a vault DELETE on a
+  packed layer and a census equal the stand-in runtime's, bit for bit in float32.
 - The model id of a GGUF reading is `gguf:<file>#<fingerprint>`, and any reading taken off the GPU or in float32 carries
   where and in what after it (`runtime_factory.reading_class`: `gguf:<file>#<fingerprint>@cpu/bfloat16`, and the
   checkpoint on the CPU `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`; bfloat16 on a GPU adds nothing). Every index,

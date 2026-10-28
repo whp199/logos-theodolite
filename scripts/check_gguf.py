@@ -14,7 +14,8 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    stand-in's; every tensor is gguf's dequantised; the forward equals the stand-in carrying those numbers, bit for bit
    in float32 on the CPU, with the layers packed, resident and dense; the norm convention by a round trip (the file
    holds w, transformers' own GGUF reader reads w for gemma4 and w - 1 under Gemma 3's rule, and a file holding w + 1
-   does not give the stand-in's forward); a matching config.json taken, one that differs refused; an IQ tensor, a
+   does not give the stand-in's forward); a matching config.json taken, one that differs refused, and one standing in
+   for keys or the rope_freqs tensor a file leaves out (which alone is refused, asking for it); an IQ tensor, a
    mixture of experts, per-layer embeddings and another arch refused; the provenance (size, the header's and both
    ends' sha256, the tensor types, a fingerprint that moves when a byte of the data does); the tokenizer from the
    file's own metadata encodes as the stand-in's does; the 31B's metadata, as llama.cpp writes it, built on the meta
@@ -407,6 +408,42 @@ def run_checks(tmp: Path) -> int:
             check(False, f"a config.json with another {k} refused")
         except ValueError as exc:
             check(k in str(exc) and "different models" in str(exc), f"a config.json with another {k} refused in plain words: {str(exc)[:120]}")
+    # a file that leaves out a key a Gemma 4 needs, or the rope_freqs tensor: refused alone, built with a config.json
+    r = gguf.GGUFReader(str(files["Q8_0"]))
+    gmeta, gfreqs = gm.gguf_metadata_of(hf.config)
+    fmeta = gm.read_metadata(r)
+    check(all((np.float32(fmeta[k]) == np.float32(v)) if isinstance(v, float) else fmeta[k] == v for k, v in gmeta.items())
+          and np.array_equal(np.asarray(gm.tensor_table(r)["rope_freqs.weight"].data), gfreqs),
+          f"gguf_metadata_of the stand-in's config: the {len(gmeta)} keys and the rope_freqs the writer put in the file")
+    logits_q8 = gm.build_gemma4(files["Q8_0"], dtype=torch.float32)[0](ids).logits
+
+    def short_reader(what: str) -> Any:
+        """The Q8_0 file's reader without `what` (a key, the rope_freqs tensor, or "all": every gemma4 key and it)."""
+        r_ = gm.open_gguf(files["Q8_0"])
+        if what in ("rope_freqs.weight", "all"):
+            r_.tensors = [t for t in r_.tensors if t.name != "rope_freqs.weight"]
+        for k in [k for k in r_.fields if k == what or (what == "all" and k.startswith("gemma4."))]:
+            del r_.fields[k]
+        return r_
+
+    for what in ("gemma4.attention.sliding_window_pattern", "gemma4.attention.layer_norm_rms_epsilon", "rope_freqs.weight", "all"):
+        try:
+            gm.build_gemma4(files["Q8_0"], dtype=torch.float32, reader=short_reader(what))
+            check(False, f"a file without {what} refused when no config.json is given")
+        except ValueError as exc:
+            check("config.json" in str(exc) and (what == "all" or what in str(exc) or "rope_freqs" in str(exc)),
+                  f"a file without {what}, no config.json: refused, asking for one ({str(exc)[:90]})")
+        m_l, rec_l = gm.build_gemma4(files["Q8_0"], dtype=torch.float32, hf_config=cfg_json, reader=short_reader(what))
+        check(torch.equal(m_l(ids).logits, logits_q8) and "which lacks" in rec_l["config_source"]
+              and (what == "all" or what in rec_l["config_source"]),
+              f"a file without {what}, with the config.json: built from it, the same model ({rec_l['config_source'][-70:]})")
+    d = dict(hf.config.to_dict(), sliding_window=16)
+    try:
+        gm.build_gemma4(files["Q8_0"], dtype=torch.float32, hf_config=d, reader=short_reader("gemma4.attention.layer_norm_rms_epsilon"))
+        check(False, "a file lacking a key, with a config.json that differs on a key it states: refused")
+    except ValueError as exc:
+        check("sliding_window" in str(exc) and "rms_norm_eps" not in str(exc),
+              "a file lacking a key, with a config.json that differs on one it states: refused for that one alone")
     iq = gm.write_gemma4_gguf(hf, tmp / "stand-in-iq.gguf", qtype="Q8_0",
                               blocks={"blk.0.ffn_down.weight": (rng.integers(0, 256, (asi.HIDDEN, asi.FFN // 32 * 18), dtype=np.uint8), "IQ4_NL")})
     try:
@@ -425,8 +462,8 @@ def run_checks(tmp: Path) -> int:
             check(False, f"{change} refused")
         except ValueError as exc:
             check(word in str(exc), f"{list(change)[0]}: refused in plain words ({exc})")
-    section("a matching config.json taken, a differing one refused; IQ tensors, experts, per-layer embeddings, shared "
-            "key-values and other archs refused", before)
+    section("a matching config.json taken, a differing one refused, one standing in for what a file leaves out; IQ "
+            "tensors, experts, per-layer embeddings, shared key-values and other archs refused", before)
 
     before = len(failures)
     # the 31B's shape, as llama.cpp's converter would write its metadata (ARCHITECTURE §2; the head counts as the GPU

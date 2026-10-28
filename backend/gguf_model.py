@@ -1,11 +1,11 @@
 """A Gemma 4 text model from a GGUF file (`backend/gguf_model.py`), on the CPU or a GPU, and its provenance.
 
 `build_gemma4(path)` reads the file with gguf-py (`gguf.GGUFReader`, a memory map), works out the model's config from
-its metadata (or takes a matching Hugging Face config.json when given, and refuses in plain words where the two
-disagree), builds transformers' `Gemma4ForCausalLM` without allocating its random weights, and fills it from the file
-by gguf-py's own name map (`gguf.get_tensor_name_map` for the gemma4 arch: model.layers.N.mlp.down_proj ->
-blk.N.ffn_down, layer_scalar -> blk.N.layer_output_scale, and so on). The seven linear layers of every block are
-`linears`:
+its metadata (or takes a matching Hugging Face config.json when given: it stands in for any key the file leaves out,
+and is refused in plain words where it disagrees with one the file states), builds transformers' `Gemma4ForCausalLM`
+without allocating its random weights, and fills it from the file by gguf-py's own name map (`gguf.get_tensor_name_map`
+for the gemma4 arch: model.layers.N.mlp.down_proj -> blk.N.ffn_down, layer_scalar -> blk.N.layer_output_scale, and so
+on). The seven linear layers of every block are `linears`:
 - "packed": a block-quantised tensor becomes a `gguf_weights.GGUFLinear` that keeps its blocks and unpacks them at
   every forward (memory at rest about the file's size; on the CPU the blocks are read through the file's memory map);
 - "resident": the same layer, unpacked once at load (memory the dense weight's);
@@ -107,10 +107,28 @@ def _key(meta: Dict[str, Any], name: str, default: Any = None) -> Any:
 # ------------------------------------------------------------------------------------------------ the config
 
 
-def text_config_from_gguf(meta: Dict[str, Any], tensors: Dict[str, Any]) -> Dict[str, Any]:
+# The gemma4 keys a Gemma 4 GGUF must state (or a config.json given beside it must stand in for).
+NEEDED_KEYS = ("block_count", "embedding_length", "feed_forward_length", "attention.head_count",
+               "attention.head_count_kv", "attention.key_length", "attention.key_length_swa",
+               "attention.sliding_window", "attention.sliding_window_pattern", "attention.layer_norm_rms_epsilon")
+
+
+def lacking(meta: Dict[str, Any], tensors: Dict[str, Any]) -> List[str]:
+    """What a Gemma 4 needs that the file does not state: its missing NEEDED_KEYS (full names), and the rope_freqs
+    tensor when it has none ([] for a file llama.cpp's converter wrote)."""
+    out = [f"{ARCH}.{k}" for k in NEEDED_KEYS if _key(meta, k) is None]
+    return out + (["rope_freqs.weight"] if "rope_freqs.weight" not in tensors else [])
+
+
+def text_config_from_gguf(meta: Dict[str, Any], tensors: Dict[str, Any],
+                          given: Optional[Tuple[Dict[str, Any], np.ndarray]] = None) -> Dict[str, Any]:
     """The `Gemma4TextConfig` keyword arguments a Gemma 4 GGUF's metadata and tensors give, under the keys llama.cpp's
-    converter writes (conversion/gemma.py `Gemma4Model.set_gguf_parameters`). A ValueError in plain words for a file
-    that is not a Gemma 4 text model this module reads."""
+    converter writes (conversion/gemma.py `Gemma4Model.set_gguf_parameters`). `given` (`gguf_metadata_of` of a
+    config.json's config) stands in for every key and for the rope_freqs tensor the file leaves out; what the file
+    states is read from the file. A ValueError in plain words for a file that is not a Gemma 4 text model this module
+    reads, or that lacks what a Gemma 4 needs and no config was given for."""
+    if given is not None:
+        meta = {**given[0], **meta}
     arch = meta.get("general.architecture")
     if arch != ARCH:
         raise ValueError(f"This GGUF holds a {arch!r} model; only Gemma 4 ({ARCH!r}) is read here.")
@@ -120,13 +138,10 @@ def text_config_from_gguf(meta: Dict[str, Any], tensors: Dict[str, Any]) -> Dict
         raise ValueError("This GGUF holds a Gemma 4 with per-layer embeddings (E2B, E4B); they are not read yet.")
     if int(_key(meta, "attention.shared_kv_layers", 0) or 0):
         raise ValueError("This GGUF holds a Gemma 4 whose last layers share their keys and values; not read yet.")
-    missing = [k for k in ("block_count", "embedding_length", "feed_forward_length", "attention.head_count",
-                           "attention.head_count_kv", "attention.key_length", "attention.key_length_swa",
-                           "attention.sliding_window", "attention.sliding_window_pattern",
-                           "attention.layer_norm_rms_epsilon") if _key(meta, k) is None]
+    missing = [k for k in NEEDED_KEYS if _key(meta, k) is None]
     if missing:
         raise ValueError(f"This GGUF's metadata lacks {', '.join(f'{ARCH}.{k}' for k in missing)}, which a Gemma 4 needs; "
-                         "give the model's config.json (hf_config) to build it from.")
+                         "give the model's config.json (hf_config, THEODOLITE_GGUF_CONFIG) to build it from.")
     L = int(_key(meta, "block_count"))
     swa = [bool(x) for x in _key(meta, "attention.sliding_window_pattern")]
     if len(swa) != L:
@@ -158,10 +173,14 @@ def text_config_from_gguf(meta: Dict[str, Any], tensors: Dict[str, Any]) -> Dict
     # The full layers' rope is "proportional" with a partial rotary factor: llama.cpp writes it as rope_freqs, one
     # factor per rotated pair, 1 for the first n_rot pairs and 1e30 (no rotation) for the rest.
     freqs = tensors.get("rope_freqs.weight")
-    if freqs is None:
+    if freqs is not None:
+        raw = torch.from_numpy(np.array(np.asarray(freqs.data).view(np.uint8).reshape(-1)))
+        f = np.asarray(unpack(raw, freqs.tensor_type))
+    elif given is not None:
+        f = np.asarray(given[1], dtype=np.float32)
+    else:
         raise ValueError("This GGUF has no rope_freqs tensor, so the full layers' partial rotary factor is not known; "
-                         "give the model's config.json (hf_config).")
-    f = np.asarray(unpack(torch.from_numpy(np.array(np.asarray(freqs.data).view(np.uint8).reshape(-1))), freqs.tensor_type))
+                         "give the model's config.json (hf_config, THEODOLITE_GGUF_CONFIG).")
     n_rot = int((f == 1.0).sum())
     if f.shape[0] != hd_full // 2 or not np.all(f[:n_rot] == 1.0) or not np.all(f[n_rot:] >= 1e29):
         raise ValueError(f"rope_freqs is not the proportional rope's pattern for a head of {hd_full} "
@@ -216,6 +235,35 @@ def text_config_from_hf(config: Union[str, Path, Dict[str, Any]]) -> Dict[str, A
     for k in ("model_type", "architectures", "transformers_version", "dtype", "torch_dtype"):
         d.pop(k, None)
     return d
+
+
+def gguf_metadata_of(cfg: Any) -> Tuple[Dict[str, Any], np.ndarray]:
+    """What llama.cpp's converter would write for a `Gemma4TextConfig`, as `write_gemma4_gguf` writes it: the gemma4
+    keys `text_config_from_gguf` reads, and the rope_freqs factors (1 for each rotated pair of the full layers' heads,
+    1e30 for the rest). It stands in for what a file leaves out when a config.json is given (`build_gemma4`)."""
+    L = int(cfg.num_hidden_layers)
+    swa = [t == "sliding_attention" for t in cfg.layer_types]
+    plc = cfg.per_layer_config
+    rp = cfg.rope_parameters
+    hd_full = int(plc[swa.index(False)].head_dim)
+    hd_swa = int(plc[swa.index(True)].head_dim) if True in swa else hd_full
+    keys: Dict[str, Any] = {
+        "block_count": L, "context_length": int(cfg.max_position_embeddings), "embedding_length": int(cfg.hidden_size),
+        "feed_forward_length": int(cfg.intermediate_size), "attention.head_count": int(cfg.num_attention_heads),
+        "attention.head_count_kv": [int(plc[l].num_key_value_heads) for l in range(L)],
+        "rope.freq_base": float(rp["full_attention"]["rope_theta"]),
+        "rope.freq_base_swa": float(rp["sliding_attention"]["rope_theta"]),
+        "attention.layer_norm_rms_epsilon": float(cfg.rms_norm_eps),
+        "attention.key_length": hd_full, "attention.value_length": hd_full,
+        "attention.key_length_swa": hd_swa, "attention.value_length_swa": hd_swa,
+        "attention.sliding_window": int(cfg.sliding_window), "attention.sliding_window_pattern": swa,
+        "rope.dimension_count": hd_full, "rope.dimension_count_swa": hd_swa,
+    }
+    if cfg.final_logit_softcapping:
+        keys["final_logit_softcapping"] = float(cfg.final_logit_softcapping)
+    n_rot = int(hd_full * float(rp["full_attention"].get("partial_rotary_factor", 1.0)) / 2)
+    freqs = np.array([1.0] * n_rot + [1e30] * (hd_full // 2 - n_rot), dtype=np.float32)
+    return {f"{ARCH}.{k}": v for k, v in keys.items()}, freqs
 
 
 def config_shape(cfg: Any) -> Dict[str, Any]:
@@ -355,16 +403,20 @@ def build_gemma4(
     tensors = tensor_table(reader)
     for t in tensors.values():
         type_code(t.tensor_type)  # refuses a type not read yet, before anything is built
-    cfg_kwargs = text_config_from_gguf(meta, tensors)
+    # with a config.json, it stands in for whatever the file leaves out, and is checked against all the file states
+    hf_kwargs = text_config_from_hf(hf_config) if hf_config is not None else None
+    given = gguf_metadata_of(Gemma4TextConfig(**hf_kwargs)) if hf_kwargs is not None else None
+    cfg_kwargs = text_config_from_gguf(meta, tensors, given)
     source = "gguf"
-    if hf_config is not None:
-        hf_kwargs = text_config_from_hf(hf_config)
+    if hf_kwargs is not None:
         differ = config_disagreements(cfg_kwargs, hf_kwargs)
         if differ:
             raise ValueError("The GGUF and the config.json given describe different models, so neither is used: "
                              + "; ".join(differ) + ".")
         cfg_kwargs = hf_kwargs
-        source = f"config.json ({hf_config if not isinstance(hf_config, dict) else 'given'}), checked against the GGUF"
+        lack = lacking(meta, tensors)
+        source = (f"config.json ({hf_config if not isinstance(hf_config, dict) else 'given'}), checked against the GGUF"
+                  + (f", which lacks {', '.join(lack)}" if lack else ""))
     cfg = Gemma4TextConfig(**cfg_kwargs)
     cfg._attn_implementation = attn_implementation
     cfg.architectures = ["Gemma4ForCausalLM"]
