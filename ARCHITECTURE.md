@@ -44,7 +44,17 @@ theodolite2/
 │   ├── atlas_build.py               # builds the atlas's indexes (GPU): lens, stats, wiring, layout, steer, passages
 │   ├── atlas_stand_in.py            # a tiny random Gemma 4 for the atlas's checks, and the server on it (--serve)
 │   ├── census_run.py                # takes a layer's census (GPU), resumable, in planned batches or shards
-│   ├── census_tools.py              # rank, merge, depth, spread and the dose window over finished census runs (CPU)
+│   ├── census_tools.py              # rank, merge, depth, spread, the dose window and canaries over census runs (CPU)
+│   ├── pod/                         # a rented card's jobs, each with --dry-run on the stand-in (README §v):
+│   │   ├── setup.sh                 #   everything on the volume, the pinned downloads, the venv from constraints, a self-test
+│   │   ├── pilot.sh                 #   the one-hour pilot: steps per unpacker and batch, the writer's floor, projections
+│   │   ├── census_shard.sh          #   one shard detached, logged, under a time limit, the pod stopped only when asked
+│   │   ├── sync.sh                  #   pulls to this machine every N minutes, and a final pull checked by listing
+│   │   ├── pod_tool.py              #   their Python: the self-test, the steps, the listing check, the pilot's summary
+│   │   └── common.sh                #   the volume root, the env file, a child's environment kept clear of secrets
+│   ├── export_constraints.sh        # the home venv's exact versions in a dated constraints file, for a pod (CPU)
+│   ├── gpu_log.py                   # rented cards' approvals, starts and stops, summed against the approval (CPU)
+│   ├── check_pod_scripts.py         # every pod script's --dry-run end to end on the stand-in, gpu_log's sums (CPU only)
 │   ├── check_atlas_ops.py           # the atlas's live operations against brute force on the stand-in (CPU only)
 │   ├── check_atlas_index.py         # every index built on the stand-in against the same quantity read live (CPU only)
 │   ├── check_atlas_api.py           # every atlas route against the operation it serves, the GPU lock, refusals (CPU only)
@@ -60,6 +70,7 @@ theodolite2/
 │   ├── check_gguf.py                # the GGUF path against gguf-py and the stand-in, bit for bit (CPU only)
 │   ├── compare_gguf_ct.py           # does a GGUF hold the W4A16 checkpoint's weights? tensor by tensor (CPU)
 │   ├── export_E3_background_mu.py   # writes experiments/results/E3_background_mu.npy (+ .json) from E3's caches (CPU)
+│   ├── verify_atlas_writer.py       # the writer's floor: unpushed answers in each batch shape against one written alone (GPU)
 │   ├── verify_causal_check.py       # the causal spot-check against N1A's and N1V's figures on the real model (GPU)
 │   ├── verify_e2e_ui_and_mcp.py     # server, MCP tools and headless-Chrome pages end to end (GPU)
 │   └── verify_optics.py             # Standalone deterministic CLI verification suite
@@ -657,7 +668,7 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `POST /fires` | the neurons that fire hardest on a text against their usual range |
 | `POST /run`, `GET /run/view?pos&sign&lo&hi&min&q&limit`, `GET /run/heads?pos`, `GET /run/paths?pos&top&min`, `GET /head/row?layer&head&pos` | a text run once (at most 256 positions) and every activation kept: the neurons passing the filters at a word-piece or over all of them (score = activation over the neuron's usual extreme on that side), each head's write there, the links among the strongest (int16 rows as `/web`), one head's attention by unit |
 | `GET /head?layer&head`, `GET /head/profile?layer&head`, `POST /head/pattern`, `POST /attention`, `POST /attn_drive` | a head's q / k / v / o neurons from the weights with their words pooled; where it looks over eight texts; its attention on a text; which heads and blocks drive a neuron at one unit |
-| `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/card?layer`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers, its statistics and the run's card; the card alone (where the doses and the push unit come from, the unit a dose counts in, how loudly the next layer reads controls against neurons, how many neurons beat every control and how many would by chance, the card it was written on and whether its parts mixed runtime classes, a partial merge, a retest's stage); one answer; the layout of the run's answers |
+| `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/card?layer`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers, its statistics and the run's card; the card alone (where the doses and the push unit come from, the unit a dose counts in, how loudly the next layer reads controls against neurons, how many neurons beat every control and how many would by chance, the card it was written on and whether its parts mixed runtime classes, a partial merge, a retest's stage, the writer's floor where measured); one answer; the layout of the run's answers |
 | `GET /notes`, `POST /notes` | names and notes (`backend/field_notes.py`): `{kind: "neuron" \| "head", layer, index, name?, note?, by}`; an omitted field is kept, both empty forgets the entry |
 
 **The census** (`backend/census.py`; `scripts/census_run.py` on the GPU, `scripts/census_tools.py` on the CPU). For one
@@ -685,7 +696,14 @@ runtime class (the card, the library versions, the commit, the stats index's sha
 (`mixed_runtime`), never refused. `--shard i/n`
 takes whole chunks of the plan, and every shard but 0 writes the plan's first batch again as a canary. A shard is never
 read as a layer's census: `census_tools.py merge` joins shards only whole, every shard and every answer (else refused,
-unless `--partial`, which the meta records), with each canary compared with shard 0's answers as whole JSON values. A
+unless `--partial`, which the meta records), with each canary compared with shard 0's answers as whole JSON values.
+`census_run.py --canary-only` writes that first batch alone, beside the run's path with the meta its run would begin
+with (`<run>.canary.json`), and `census_tools.py canary` sets two such against each other, so a rented card's batch is
+set against the home card's before a run. Every batch is written by one function (`write_census_batch`), which
+`scripts/verify_atlas_writer.py` also writes its census-shaped batches with; the card carries the writer's floor that
+script measured for the run's model (`writer_floor`, `census.writer_floor`: with no push, after how many word-pieces an answer
+written in batches like the run's parts from the same answer written alone, the floor of the run's runtime class first;
+none where no floor is on disk). A
 second stage (`census_run.py --neurons-from <screen>.units.jsonl --top M`, a fresh seed) retests a screen's strongest
 neurons against fresh controls; its p and q are taken over those M alone (`stage`), and the layer's census stays the
 screen. Ranking (`compute_units`, after

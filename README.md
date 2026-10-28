@@ -531,6 +531,30 @@ restart, since that also ends its process group, with any commands it left runni
 > it has the atlas’s tools only, but your messages and what the tools read are sent to that endpoint (OpenRouter is a
 > third-party service).
 
+**On a rented card** (the plan, its prices and the budget rule: COMPUTE.md)
+
+```bash
+scripts/export_constraints.sh                                   # at home: the venv's exact versions, dated
+scripts/pod/setup.sh --constraints scripts/pod/constraints/home-<date>.txt     # on the pod, from a checkout on its volume
+scripts/pod/pilot.sh --home-canary L45-main_rel.canary.jsonl    # the one-hour pilot, before any budget is asked for
+scripts/pod/census_shard.sh --layer 45 --shard 1/4 --projected-hours 2.6 -- --neurons all --batch 128 --max-new 64
+scripts/pod/sync.sh --from root@<ip> --port <port> --to ~/pods/h200-a --until-done   # at home: pull, then check the copy
+.venv/bin/python -I scripts/gpu_log.py sum A1                   # GPU-hours and dollars against the owner's approval
+```
+
+`scripts/pod/` runs the hard jobs (a layer's census in shards, the steer lens, a corpus pass) on a rented card.
+`setup.sh` puts everything on the pod's volume (the caches, the venv, the atlas's data, the field notes), so a stopped
+pod restarts ready; the downloads are pinned to the snapshots above and tried without a token first, a token taken
+from its environment for that alone and never written. `pilot.sh` times the decode step and the memory for each
+unpacker at several batches, measures the writer's floor (`scripts/verify_atlas_writer.py`), takes a `calib_rel` run
+and one steer-lens layer, sets a canary batch against the home card's (`census_run.py --canary-only`), and projects
+each job × 1.25 against an approval. `census_shard.sh` runs one shard detached, logged and under a time limit;
+`sync.sh` pulls the runs, metas, canaries and logs every few minutes and checks the final copy by listing; and
+`scripts/gpu_log.py` logs each pod against the approval it counts against. Each takes `--dry-run`, the whole flow on
+the CPU stand-in (`scripts/check_pod_scripts.py`); none has yet run on a rented card. The server on a pod is reached
+through an SSH tunnel to its 127.0.0.1:8765, never through a provider's public URL (it binds 127.0.0.1, and refuses a
+Host that is not this machine's).
+
 **Reproduce the study**
 
 Run everything from the repository root: the scripts use repo-relative paths.
