@@ -150,8 +150,8 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | — | a CPU stand-in of Gemma 4 for every check and for trying the page without the weights (`scripts/atlas_stand_in.py`) |
 
 The sweep’s HF-against-vLLM check and its steered prefill captures are not carried over: the atlas runs on the
-instrument’s one runtime. Parts of the atlas adapt neuron-explorer’s code and prompts, and that repository carries no
-licence: see [`NOTICE`](NOTICE).
+instrument’s one runtime. Parts of the atlas adapt neuron-explorer’s code and prompts, under its MIT licence; its notice is
+in [`NOTICE`](NOTICE).
 
 **The instrument’s words, and what they name**
 

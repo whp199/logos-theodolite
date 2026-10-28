@@ -114,15 +114,17 @@ Exception: CC BY-SA 4.0
   English Wikipedia articles (https://en.wikipedia.org). That text is licensed
   under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
 
-Exception: no licence granted (neuron-explorer)
------------------------------------------------
+Exception: MIT (neuron-explorer)
+--------------------------------
 * The atlas (#/atlas) follows the design of lyramakesmusic's neuron-explorer,
   a steering-first neuron explorer for Qwen3.5-4B
   (https://github.com/lyramakesmusic/neuron-explorer, read at commit
-  e566e83e3f9fe00f85438231a788f90e83e2af43; REFERENCES.md [47]). That
-  repository carries no licence file. Parts of the following files adapt its
-  code or its prompts, rewritten for Gemma 4 and this instrument but in places
-  close to the original:
+  e566e83e3f9fe00f85438231a788f90e83e2af43; REFERENCES.md [47]). Its author
+  licensed that repository under the MIT License on 28 October 2026 (commit
+  529fcf0042ca62fb9ec80852c854e253ce295f28, a descendant of the commit read).
+  Parts of the following files adapt its code or its prompts, rewritten for
+  Gemma 4 and this instrument but in places close to the original, and are
+  used under that licence, reproduced below:
   - backend/scientist_prompt.md and backend/scientist_methodology.md, from
     explorer/agent_prompt.md and explorer/agent_methodology.md (the report
     formats and much of the method);
@@ -137,9 +139,28 @@ Exception: no licence granted (neuron-explorer)
     sweep/steer_sweep.py, sweep/rank.py, sweep/depth_report.py and
     sweep/merge_runs.py;
   - frontend/src/screens/atlas/ (map.ts above all), from explorer/static/.
-  No permission from its author is recorded in this repository. Until there is
-  one, treat those adaptations as not covered by this repository's Apache
-  License, and ask before reusing them.
+
+  MIT License
+
+  Copyright (c) 2026 lyramakesmusic
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
 
 Activation-example corpus (N1B)
 -------------------------------

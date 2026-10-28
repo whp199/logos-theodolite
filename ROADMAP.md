@@ -246,7 +246,5 @@ browser against it, but nothing yet on Gemma-4-31B itself.
   model can still write names and notes that a later chat reads (they are marked as stored text, but no page asks the
   person first); and another account on this machine can reach the server's loopback port (the guard checks the peer
   is this machine, not which user it is).
-- **neuron-explorer's licence.** Parts of the atlas adapt neuron-explorer's code and prompts, and that repository carries
-  no licence (`NOTICE`). Ask its author for one, or rewrite those parts.
 - **Not carried over:** the explorer's HF-against-vLLM steering check (the atlas runs on one runtime) and its steered
   prefill captures.
