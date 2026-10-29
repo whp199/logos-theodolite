@@ -1,0 +1,18 @@
+{
+ "what": "Is a census run bit for bit itself across processes on one card? A calib_rel run of 16 neurons and 8 controls at layer 45 (868 answers, --batch 64 --max-new 64 --unpacker compiled) on the home RTX 5090, 29 October 2026, 00:32-00:37 CDT, at commit 221b698 (the tree not clean). Quoted in ROADMAP §vi (the census on larger and rented cards).",
+ "result": {
+  "unbroken_vs_merged": "the run taken unbroken and the same run taken in two shards and merged (census_tools.py merge) are the same file: 868 rows, every one of their 17 fields equal, the bytes identical (sha256 50f16b89...)",
+  "canaries": "the canary batch (plan batch 0, 64 answers) written in two separate processes (CANA, CANB) and again by shard 1 for the merge are identical, every field of every row (sha256 4a6b0f18...); the merge's own record says 'identical on 1 of 1 shard'",
+  "not_measured": "how far a run differs across cards"
+ },
+ "how": {
+  "run_det.sh": "the script as it ran, kept as it is. Its second shard was asked for as --shard 2/2, which census_run.py refuses (logs/s2.log: shards count from 0); shard 0 of 2 was then run by hand with the same arguments (logs/s0.log), and the two merged by census_tools.py merge (no log kept; the merged meta is metas/sharded.DET.meta.json).",
+  "compare.py": "reads the kept runs and writes compare.json: rows, fields, rows differing, bytes and sha256 of each pair, and the sha256 of every kept file (CPU only)"
+ },
+ "files": {
+  "logs/": "unbroken.log, s1.log (shard 1 of 2, with its canary), s2.log (the refused 2/2), s0.log (shard 0 of 2), ca.log and cb.log (the two canaries)",
+  "metas/": "each run's meta and each canary's settings, as written",
+  "compare.json": "compare.py's report",
+  "runs": "atlas_data/offline/census_determinism/ (gitignored): census/ (the unbroken run DET.jsonl, 5.6 MB, and the canaries CANA, CANB) and sharded/ (both shards, shard 1's canary and the merged DET.jsonl); compare.json gives every file's sha256"
+ }
+}

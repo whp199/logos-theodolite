@@ -1,0 +1,4 @@
+sign_gate_nz {'linked': 0.336, 'null': 0.341}
+use_gate_nz {'linked': 0.418, 'null': 0.438}
+zero {'linked': 0.002, 'null': 0.008}
+sign_plus_nz {'linked': 0.48, 'null': 0.503}

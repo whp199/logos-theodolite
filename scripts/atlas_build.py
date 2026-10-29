@@ -29,11 +29,11 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   each way, weighed across layers by Gemma's layer scalars and the norms' scales (from the stats index, else read over
   the study's 36 texts first): 4 minutes in all, 4.3 GiB above the model. About 250 MB compressed. It also keeps each
   link's g and u (float16: 248 MB more uncompressed, which compressed to about three quarters on the stand-in, so some
-  180 MB more in the file; about 0.6 GiB more on the card and the same time, inferred), from which the sign in use is
-  read at each reader's operating point in the passages index (ARCHITECTURE §4.7). g and u are the weights' alone, so
-  `all` keeps them and a new passages index needs no new wiring; a wiring.npz built before 28 October 2026 lacks them
-  and serves the sign from rest only: rebuild it once. With both there, a wiring or passages step ends by counting
-  how often the sign in use differs from the sign from rest.
+  180 MB more in the file; about 0.6 GiB more on the card, inferred, and the same 4 minutes, measured on 28 October
+  2026: 224 s on the 5090), from which the sign in use is read at each reader's operating point in the passages index
+  (ARCHITECTURE §4.7). g and u are the weights' alone, so `all` keeps them and a new passages index needs no new wiring;
+  a wiring.npz built before 28 October 2026 lacks them and serves the sign from rest only: rebuild it once. With both
+  there, a wiring or passages step ends by counting how often the sign in use differs from the sign from rest.
 - layout: a principal-component projection and (with umap-learn installed) a UMAP of 21,504 points per layer, on the
   CPU; about a minute a layer with UMAP.
 - steer: for every neuron, both signs and four contexts, a forward of every layer after its own: about 2 x 4 x 21,504
@@ -42,36 +42,36 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   all 60 are there.
 - passages: the same forward per window as stats over the same corpus (give it the same --hf, --tokens and --seq), each
   neuron's 16 strongest windows a face kept on the card with the gate and up values at each (about 0.8 GiB more than
-  stats needs with --sample 6, as both keep each layer's gate and up outputs to a window's end), so it should cost
-  about what stats costs, some 29 minutes a million word-pieces (measured for stats; passages not yet run on the
-  model, inferred). --sample S also keeps S events a face drawn at random above half its extreme, which the stats
-  index holds (without it no samples are drawn, and the meta says so). A part per --chunk windows (1,024: about
-  0.8 GB each on the 31B) is written to passages.d/parts/ and a stopped run resumes; the parts are merged into
-  passages.d/ (about 0.7 GB) and removed (--keep-parts keeps them). The windows it keeps are the corpus's own text:
-  the folder stays in the atlas folder, which git ignores; never commit it.
+  stats needs with --sample 6, as both keep each layer's gate and up outputs to a window's end): on the 31B (28 October
+  2026, the 5090) it took 20 minutes for 2,000,054 word-pieces with --unpacker compiled (stats took 58 with reference, a
+  slower unpacker). --sample S also keeps S events a face drawn at random above half its extreme, which the stats index
+  holds (without it no samples are drawn, and the meta says so). A part per --chunk windows (1,024: about 0.8 GB each on
+  the 31B) is written to passages.d/parts/ and a stopped run resumes; the parts are merged into passages.d/ (about
+  0.7 GB) and removed (--keep-parts keeps them). The windows it keeps are the corpus's own text: the folder stays in the
+  atlas folder, which git ignores; never commit it.
 - wiring_check: the wiring measured, prefill only. Per layer (--layers, else all), --writers (random:512, drawn from
   --seed and the layer) are each pushed by +d and -d along their write direction at every word-piece of the census's
   four questions but the start mark, d = --dose (0.25) times the writer's own write ceiling, the most it can write by
-  itself: a quarter of what it could write firing alone, the same share for every writer, never a push the neuron
-  could not make (the steer lens's 0.8 of the stream is 1 to 10 times the ceiling at most layers), and meant to stay
-  near the first order the sign in use is read at (on the 31B, 29 October 2026, the change's odd, first-order part was
-  the larger at 73% of linked pairs and 90% of the null's). Its indexed readers and as many it is not linked to (the null)
-  are read at the last word-piece and over the prompt, in prefills of up to --batch rows (63 at its 64; 3 at least),
-  each with its own unpushed row, on which each reader's own gate and up values are kept too (g0, u0: where it sits).
-  Needs the wiring index (the passages index too, for the sign in use the atlas serves). Per layer it logs, and keeps
-  in wiring_check.npz for /arch, how often the sign from rest holds (under +d, and on the writer's gate face), the sign
-  in use where the reader sits (and at the passages' operating point, where it fires hardest), both split by whether
-  the reader's gate is open, shut, or shut below gelu's minimum, Spearman's rho of the change against |P| f^2 and
-  against the first-order size where the reader sits, the same for the null, and how often +d and -d move a reader the
-  same way; shares of signs are set against 0.5, the null tests size. Cost (inferred, prefill only): at 512 writers
-  and four questions of some 20 word-pieces, 68 prefills of up to 63 rows a layer, about 1.3 minutes a layer on the
-  5090 from the census's 0.71 s step and the stats pass's rate (the log gives each layer's own figure and the seconds
-  it took), some 1.3 hours for the 59 layers a later one reads; measured on 29 October 2026 with --unpacker compiled,
-  about 31 s a layer, 31 minutes for the 59. A layer is written as it is done, and a stopped run resumes (a run with
-  other settings, or against another wiring, passages or stats index, is refused, so every layer is read against the
-  same ones; so is one against a folder holding a layer measured before g0 and u0 were recorded, or one that would
-  replace a wiring_check.npz of that older format, before it measures anything: --fresh sets the layers measured so
-  far aside, renamed, and starts again).
+  itself: a quarter of what it could write firing alone, the same share for every writer, never a push the neuron could
+  not make (the steer lens's 0.8 of the stream is 1 to 10 times the ceiling at most layers), and meant to stay near the
+  first order the sign in use is read at (on the 31B, the night of 28-29 October 2026, the change's odd, first-order
+  part was the larger at 73% of linked pairs and 90% of the null's). Its indexed readers and as many it is not linked to
+  (the null) are read at the last word-piece and over the prompt, in prefills of up to --batch rows (63 at its 64; 3 at
+  least), each with its own unpushed row, on which each reader's own gate and up values are kept too (g0, u0: where it
+  sits). Needs the wiring index (the passages index too, for the sign in use the atlas serves). Per layer it logs, and
+  keeps in wiring_check.npz for /arch, how often the sign from rest holds (under +d, and on the writer's gate face), the
+  sign in use where the reader sits (and at the passages' operating point, where it fires hardest), both split by
+  whether the reader's gate is open, shut, or shut below gelu's minimum, Spearman's rho of the change against |P| f^2
+  and against the first-order size where the reader sits, the same for the null, and how often +d and -d move a reader
+  the same way; shares of signs are set against 0.5, the null tests size. Cost (inferred, prefill only): at 512 writers
+  and four questions of some 20 word-pieces, 68 prefills of up to 63 rows a layer, about 1.3 minutes a layer on the 5090
+  from the census's 0.71 s step and the stats pass's rate (the log gives each layer's own figure and the seconds it
+  took), some 1.3 hours for the 59 layers a later one reads; measured on the night of 28-29 October 2026 with --unpacker
+  compiled, 29-35 s a layer, 31 minutes for the 59, before g0 and u0 were recorded (their hooks are not yet timed). A
+  layer is written as it is done, and a stopped run resumes (a run with other settings, or against another wiring,
+  passages or stats index, is refused, so every layer is read against the same ones; so is one against a folder holding
+  a layer measured before g0 and u0 were recorded, or one that would replace a wiring_check.npz of that older format,
+  before it measures anything: --fresh sets the layers measured so far aside, renamed, and starts again).
 `--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU

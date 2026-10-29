@@ -1,0 +1,10 @@
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 21243.80it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 38052.41it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<03:49,  8.76it/s]Loading weights:   0%|          | 2/2009 [00:00<05:27,  6.13it/s]Loading weights:   7%|▋         | 138/2009 [00:00<00:04, 464.51it/s]Loading weights:  13%|█▎        | 255/2009 [00:00<00:02, 689.71it/s]Loading weights:  20%|█▉        | 393/2009 [00:00<00:01, 907.59it/s]Loading weights:  27%|██▋       | 535/2009 [00:00<00:01, 1062.55it/s]Loading weights:  33%|███▎      | 666/2009 [00:00<00:01, 1137.59it/s]Loading weights:  39%|███▉      | 787/2009 [00:00<00:01, 1126.52it/s]Loading weights:  47%|████▋     | 935/2009 [00:01<00:00, 1226.18it/s]Loading weights:  54%|█████▍    | 1080/2009 [00:01<00:00, 1280.28it/s]Loading weights:  61%|██████    | 1220/2009 [00:01<00:00, 1303.50it/s]Loading weights:  67%|██████▋   | 1353/2009 [00:01<00:00, 1298.35it/s]Loading weights:  74%|███████▍  | 1491/2009 [00:01<00:00, 1321.56it/s]Loading weights:  81%|████████  | 1630/2009 [00:01<00:00, 1334.95it/s]Loading weights:  95%|█████████▌| 1917/2009 [00:01<00:00, 1780.61it/s]Loading weights: 100%|██████████| 2009/2009 [00:01<00:00, 1202.34it/s]
+unpacker: compiled on 410 linears (8 shapes) in 1.78 s; the same bits as the reference on every one and on the piece-by-scale table
+passages: part 1 of 4, windows 0 to 1023 (306 s)
+passages: part 2 of 4, windows 1024 to 2047 (614 s)
+passages: part 3 of 4, windows 2048 to 3071 (922 s)
+passages: part 4 of 4, windows 3072 to 3913 (1174 s)
+passages: 2000054 word-pieces in 3914 windows, 4 parts merged (1178 s)
+-> /home/eric/bin/ai/theodolite2/atlas_data/index/passages.d

@@ -1,0 +1,183 @@
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 22856.63it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 39786.79it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<04:21,  7.68it/s]Loading weights:   0%|          | 3/2009 [00:00<03:27,  9.65it/s]Loading weights:   7%|▋         | 138/2009 [00:00<00:04, 462.46it/s]Loading weights:  13%|█▎        | 255/2009 [00:00<00:02, 688.97it/s]Loading weights:  20%|█▉        | 393/2009 [00:00<00:01, 901.90it/s]Loading weights:  28%|██▊       | 557/2009 [00:00<00:01, 1125.56it/s]Loading weights:  34%|███▍      | 680/2009 [00:00<00:01, 1149.59it/s]Loading weights:  40%|████      | 804/2009 [00:00<00:01, 1176.91it/s]Loading weights:  47%|████▋     | 936/2009 [00:01<00:00, 1220.01it/s]Loading weights:  53%|█████▎    | 1062/2009 [00:01<00:00, 1181.41it/s]Loading weights:  59%|█████▉    | 1183/2009 [00:01<00:00, 1163.20it/s]Loading weights:  65%|██████▍   | 1302/2009 [00:01<00:00, 1150.37it/s]Loading weights:  71%|███████   | 1419/2009 [00:01<00:00, 1121.22it/s]Loading weights:  77%|███████▋  | 1547/2009 [00:01<00:00, 1161.17it/s]Loading weights:  86%|████████▌ | 1724/2009 [00:01<00:00, 1337.12it/s]Loading weights: 100%|██████████| 2009/2009 [00:01<00:00, 1142.26it/s]
+[transformers] The tied weights mapping and config for this model specifies to tie model.language_model.embed_tokens.weight to lm_head.weight, but both are present in the checkpoints with different values, so we will NOT tie them. You should update the config with `tie_word_embeddings=False` to silence this warning.
+unpacker: compiled on 410 linears (8 shapes) in 1.86 s; the same bits as the reference on every one and on the piece-by-scale table
+wiring_check: each link's strength |P| f^2 weighed with the norms' scales from the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft)
+wiring_check: layer 0, 25 of 68 prefills
+wiring_check: layer 0, 50 of 68 prefills
+wiring_check: layer 0: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.49), on the gate face at 0.39 (null 0.40), the sign in use at 0.53; rho 0.24 (null 0.17); +d and -d the same way at 0.23; linked readers moved 3.88 x the null's; 68 prefills in 34 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 1, 25 of 68 prefills
+wiring_check: layer 1, 50 of 68 prefills
+wiring_check: layer 1: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.41 (null 0.45), on the gate face at 0.42 (null 0.34), the sign in use at 0.57; rho 0.30 (null 0.11); +d and -d the same way at 0.15; linked readers moved 21.85 x the null's; 68 prefills in 35 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 2, 25 of 68 prefills
+wiring_check: layer 2, 50 of 68 prefills
+wiring_check: layer 2: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.33 (null 0.34), on the gate face at 0.34 (null 0.29), the sign in use at 0.42; rho 0.20 (null 0.06); +d and -d the same way at 0.25; linked readers moved 47.79 x the null's; 68 prefills in 34 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 3, 25 of 68 prefills
+wiring_check: layer 3, 50 of 68 prefills
+wiring_check: layer 3: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.41 (null 0.42), on the gate face at 0.44 (null 0.38), the sign in use at 0.52; rho 0.17 (null 0.16); +d and -d the same way at 0.23; linked readers moved 11.70 x the null's; 68 prefills in 33 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 4, 25 of 68 prefills
+wiring_check: layer 4, 50 of 68 prefills
+wiring_check: layer 4: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.23 (null 0.22), on the gate face at 0.27 (null 0.21), the sign in use at 0.33; rho 0.07 (null 0.03); +d and -d the same way at 0.12; linked readers moved - x the null's; 68 prefills in 33 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 5, 25 of 68 prefills
+wiring_check: layer 5, 50 of 68 prefills
+wiring_check: layer 5: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.24 (null 0.21), on the gate face at 0.30 (null 0.20), the sign in use at 0.36; rho 0.18 (null 0.05); +d and -d the same way at 0.08; linked readers moved - x the null's; 68 prefills in 30 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 6, 25 of 68 prefills
+wiring_check: layer 6, 50 of 68 prefills
+wiring_check: layer 6: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.44 (null 0.45), on the gate face at 0.32 (null 0.33), the sign in use at 0.60; rho 0.21 (null 0.17); +d and -d the same way at 0.15; linked readers moved 16.00 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 7, 25 of 68 prefills
+wiring_check: layer 7, 50 of 68 prefills
+wiring_check: layer 7: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.48), on the gate face at 0.38 (null 0.34), the sign in use at 0.57; rho 0.20 (null 0.22); +d and -d the same way at 0.15; linked readers moved 9.00 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 8, 25 of 68 prefills
+wiring_check: layer 8, 50 of 68 prefills
+wiring_check: layer 8: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.39 (null 0.41), on the gate face at 0.44 (null 0.32), the sign in use at 0.58; rho 0.21 (null 0.09); +d and -d the same way at 0.16; linked readers moved 15.17 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 9, 25 of 68 prefills
+wiring_check: layer 9, 50 of 68 prefills
+wiring_check: layer 9: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.33 (null 0.38), on the gate face at 0.39 (null 0.32), the sign in use at 0.53; rho 0.15 (null 0.17); +d and -d the same way at 0.25; linked readers moved 47.59 x the null's; 68 prefills in 30 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 10, 25 of 68 prefills
+wiring_check: layer 10, 50 of 68 prefills
+wiring_check: layer 10: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.33 (null 0.40), on the gate face at 0.39 (null 0.33), the sign in use at 0.51; rho 0.18 (null 0.19); +d and -d the same way at 0.30; linked readers moved 45.63 x the null's; 68 prefills in 29 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 11, 25 of 68 prefills
+wiring_check: layer 11, 50 of 68 prefills
+wiring_check: layer 11: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.42 (null 0.47), on the gate face at 0.30 (null 0.29), the sign in use at 0.49; rho 0.15 (null 0.24); +d and -d the same way at 0.25; linked readers moved 9.81 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 12, 25 of 68 prefills
+wiring_check: layer 12, 50 of 68 prefills
+wiring_check: layer 12: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.40 (null 0.44), on the gate face at 0.35 (null 0.33), the sign in use at 0.54; rho 0.17 (null 0.14); +d and -d the same way at 0.18; linked readers moved 11.67 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 13, 25 of 68 prefills
+wiring_check: layer 13, 50 of 68 prefills
+wiring_check: layer 13: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.41 (null 0.45), on the gate face at 0.31 (null 0.32), the sign in use at 0.52; rho 0.14 (null 0.15); +d and -d the same way at 0.22; linked readers moved 10.84 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 14, 25 of 68 prefills
+wiring_check: layer 14, 50 of 68 prefills
+wiring_check: layer 14: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.43 (null 0.48), on the gate face at 0.29 (null 0.29), the sign in use at 0.53; rho 0.21 (null 0.22); +d and -d the same way at 0.20; linked readers moved 7.21 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 15, 25 of 68 prefills
+wiring_check: layer 15, 50 of 68 prefills
+wiring_check: layer 15: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.41 (null 0.47), on the gate face at 0.31 (null 0.33), the sign in use at 0.49; rho 0.24 (null 0.19); +d and -d the same way at 0.26; linked readers moved 7.53 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 16, 25 of 68 prefills
+wiring_check: layer 16, 50 of 68 prefills
+wiring_check: layer 16: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.39 (null 0.47), on the gate face at 0.31 (null 0.30), the sign in use at 0.47; rho 0.23 (null 0.22); +d and -d the same way at 0.31; linked readers moved 9.89 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 17, 25 of 68 prefills
+wiring_check: layer 17, 50 of 68 prefills
+wiring_check: layer 17: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.39 (null 0.47), on the gate face at 0.34 (null 0.34), the sign in use at 0.49; rho 0.24 (null 0.20); +d and -d the same way at 0.32; linked readers moved 9.60 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 18, 25 of 68 prefills
+wiring_check: layer 18, 50 of 68 prefills
+wiring_check: layer 18: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.50), on the gate face at 0.23 (null 0.26), the sign in use at 0.43; rho 0.23 (null 0.42); +d and -d the same way at 0.30; linked readers moved 5.42 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 19, 25 of 68 prefills
+wiring_check: layer 19, 50 of 68 prefills
+wiring_check: layer 19: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.50), on the gate face at 0.24 (null 0.25), the sign in use at 0.45; rho 0.28 (null 0.41); +d and -d the same way at 0.33; linked readers moved 5.25 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 20, 25 of 68 prefills
+wiring_check: layer 20, 50 of 68 prefills
+wiring_check: layer 20: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.46 (null 0.48), on the gate face at 0.25 (null 0.31), the sign in use at 0.54; rho 0.28 (null 0.26); +d and -d the same way at 0.28; linked readers moved 4.84 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 21, 25 of 68 prefills
+wiring_check: layer 21, 50 of 68 prefills
+wiring_check: layer 21: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.45 (null 0.48), on the gate face at 0.32 (null 0.36), the sign in use at 0.51; rho 0.24 (null 0.18); +d and -d the same way at 0.24; linked readers moved 3.97 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 22, 25 of 68 prefills
+wiring_check: layer 22, 50 of 68 prefills
+wiring_check: layer 22: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.56 (null 0.52), on the gate face at 0.38 (null 0.35), the sign in use at 0.48; rho 0.28 (null 0.46); +d and -d the same way at 0.27; linked readers moved 4.66 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 23, 25 of 68 prefills
+wiring_check: layer 23, 50 of 68 prefills
+wiring_check: layer 23: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.54 (null 0.51), on the gate face at 0.38 (null 0.36), the sign in use at 0.55; rho 0.32 (null 0.33); +d and -d the same way at 0.29; linked readers moved 4.90 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 24, 25 of 68 prefills
+wiring_check: layer 24, 50 of 68 prefills
+wiring_check: layer 24: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.55 (null 0.51), on the gate face at 0.38 (null 0.37), the sign in use at 0.53; rho 0.33 (null 0.27); +d and -d the same way at 0.27; linked readers moved 4.57 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 25, 25 of 68 prefills
+wiring_check: layer 25, 50 of 68 prefills
+wiring_check: layer 25: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.53 (null 0.50), on the gate face at 0.37 (null 0.36), the sign in use at 0.55; rho 0.31 (null 0.25); +d and -d the same way at 0.27; linked readers moved 5.00 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 26, 25 of 68 prefills
+wiring_check: layer 26, 50 of 68 prefills
+wiring_check: layer 26: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.57 (null 0.50), on the gate face at 0.40 (null 0.40), the sign in use at 0.47; rho 0.30 (null 0.29); +d and -d the same way at 0.26; linked readers moved 4.39 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 27, 25 of 68 prefills
+wiring_check: layer 27, 50 of 68 prefills
+wiring_check: layer 27: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.62 (null 0.51), on the gate face at 0.45 (null 0.42), the sign in use at 0.41; rho 0.35 (null 0.34); +d and -d the same way at 0.29; linked readers moved 5.52 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 28, 25 of 68 prefills
+wiring_check: layer 28, 50 of 68 prefills
+wiring_check: layer 28: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.65 (null 0.51), on the gate face at 0.46 (null 0.39), the sign in use at 0.41; rho 0.46 (null 0.42); +d and -d the same way at 0.32; linked readers moved 5.95 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 29, 25 of 68 prefills
+wiring_check: layer 29, 50 of 68 prefills
+wiring_check: layer 29: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.60 (null 0.51), on the gate face at 0.41 (null 0.36), the sign in use at 0.42; rho 0.42 (null 0.37); +d and -d the same way at 0.29; linked readers moved 5.75 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 30, 25 of 68 prefills
+wiring_check: layer 30, 50 of 68 prefills
+wiring_check: layer 30: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.57 (null 0.50), on the gate face at 0.35 (null 0.32), the sign in use at 0.39; rho 0.28 (null 0.42); +d and -d the same way at 0.29; linked readers moved 5.53 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 31, 25 of 68 prefills
+wiring_check: layer 31, 50 of 68 prefills
+wiring_check: layer 31: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.55 (null 0.50), on the gate face at 0.37 (null 0.40), the sign in use at 0.42; rho 0.32 (null 0.23); +d and -d the same way at 0.21; linked readers moved 3.71 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 32, 25 of 68 prefills
+wiring_check: layer 32, 50 of 68 prefills
+wiring_check: layer 32: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.53 (null 0.51), on the gate face at 0.32 (null 0.35), the sign in use at 0.40; rho 0.33 (null 0.31); +d and -d the same way at 0.23; linked readers moved 4.31 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 33, 25 of 68 prefills
+wiring_check: layer 33, 50 of 68 prefills
+wiring_check: layer 33: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.49 (null 0.50), on the gate face at 0.29 (null 0.30), the sign in use at 0.40; rho 0.25 (null 0.36); +d and -d the same way at 0.25; linked readers moved 5.08 x the null's; 68 prefills in 30 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 34, 25 of 68 prefills
+wiring_check: layer 34, 50 of 68 prefills
+wiring_check: layer 34: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.57 (null 0.51), on the gate face at 0.37 (null 0.33), the sign in use at 0.37; rho 0.33 (null 0.51); +d and -d the same way at 0.27; linked readers moved 5.36 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 35, 25 of 68 prefills
+wiring_check: layer 35, 50 of 68 prefills
+wiring_check: layer 35: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.63 (null 0.52), on the gate face at 0.45 (null 0.40), the sign in use at 0.39; rho 0.45 (null 0.51); +d and -d the same way at 0.28; linked readers moved 6.10 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 36, 25 of 68 prefills
+wiring_check: layer 36, 50 of 68 prefills
+wiring_check: layer 36: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.64 (null 0.52), on the gate face at 0.45 (null 0.40), the sign in use at 0.39; rho 0.51 (null 0.50); +d and -d the same way at 0.29; linked readers moved 6.63 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 37, 25 of 68 prefills
+wiring_check: layer 37, 50 of 68 prefills
+wiring_check: layer 37: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.62 (null 0.52), on the gate face at 0.45 (null 0.41), the sign in use at 0.40; rho 0.50 (null 0.43); +d and -d the same way at 0.28; linked readers moved 6.78 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 38, 25 of 68 prefills
+wiring_check: layer 38, 50 of 68 prefills
+wiring_check: layer 38: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.60 (null 0.51), on the gate face at 0.43 (null 0.38), the sign in use at 0.40; rho 0.51 (null 0.42); +d and -d the same way at 0.28; linked readers moved 6.83 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 39, 25 of 68 prefills
+wiring_check: layer 39, 50 of 68 prefills
+wiring_check: layer 39: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.58 (null 0.52), on the gate face at 0.40 (null 0.35), the sign in use at 0.40; rho 0.49 (null 0.44); +d and -d the same way at 0.28; linked readers moved 6.93 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 40, 25 of 68 prefills
+wiring_check: layer 40, 50 of 68 prefills
+wiring_check: layer 40: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.54 (null 0.51), on the gate face at 0.39 (null 0.33), the sign in use at 0.42; rho 0.43 (null 0.40); +d and -d the same way at 0.33; linked readers moved 7.60 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 41, 25 of 68 prefills
+wiring_check: layer 41, 50 of 68 prefills
+wiring_check: layer 41: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.50 (null 0.50), on the gate face at 0.31 (null 0.31), the sign in use at 0.41; rho 0.47 (null 0.34); +d and -d the same way at 0.28; linked readers moved 6.51 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 42, 25 of 68 prefills
+wiring_check: layer 42, 50 of 68 prefills
+wiring_check: layer 42: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.50), on the gate face at 0.26 (null 0.29), the sign in use at 0.41; rho 0.45 (null 0.37); +d and -d the same way at 0.26; linked readers moved 6.42 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 43, 25 of 68 prefills
+wiring_check: layer 43, 50 of 68 prefills
+wiring_check: layer 43: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.46 (null 0.49), on the gate face at 0.26 (null 0.28), the sign in use at 0.42; rho 0.38 (null 0.36); +d and -d the same way at 0.26; linked readers moved 6.92 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 44, 25 of 68 prefills
+wiring_check: layer 44, 50 of 68 prefills
+wiring_check: layer 44: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.49), on the gate face at 0.26 (null 0.28), the sign in use at 0.39; rho 0.38 (null 0.30); +d and -d the same way at 0.25; linked readers moved 5.75 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 46, 25 of 68 prefills
+wiring_check: layer 46, 50 of 68 prefills
+wiring_check: layer 46: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.50), on the gate face at 0.25 (null 0.29), the sign in use at 0.39; rho 0.37 (null 0.28); +d and -d the same way at 0.21; linked readers moved 5.22 x the null's; 68 prefills in 32 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 47, 25 of 68 prefills
+wiring_check: layer 47, 50 of 68 prefills
+wiring_check: layer 47: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.50), on the gate face at 0.25 (null 0.30), the sign in use at 0.37; rho 0.36 (null 0.27); +d and -d the same way at 0.22; linked readers moved 4.60 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 48, 25 of 68 prefills
+wiring_check: layer 48, 50 of 68 prefills
+wiring_check: layer 48: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.48 (null 0.50), on the gate face at 0.26 (null 0.32), the sign in use at 0.35; rho 0.33 (null 0.30); +d and -d the same way at 0.23; linked readers moved 4.25 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 49, 25 of 68 prefills
+wiring_check: layer 49, 50 of 68 prefills
+wiring_check: layer 49: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.48 (null 0.49), on the gate face at 0.29 (null 0.33), the sign in use at 0.37; rho 0.31 (null 0.33); +d and -d the same way at 0.24; linked readers moved 3.88 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 50, 25 of 68 prefills
+wiring_check: layer 50, 50 of 68 prefills
+wiring_check: layer 50: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.47 (null 0.50), on the gate face at 0.29 (null 0.32), the sign in use at 0.37; rho 0.27 (null 0.33); +d and -d the same way at 0.23; linked readers moved 3.86 x the null's; 68 prefills in 30 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 51, 25 of 68 prefills
+wiring_check: layer 51, 50 of 68 prefills
+wiring_check: layer 51: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.49 (null 0.51), on the gate face at 0.27 (null 0.33), the sign in use at 0.39; rho 0.32 (null 0.39); +d and -d the same way at 0.21; linked readers moved 4.04 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 52, 25 of 68 prefills
+wiring_check: layer 52, 50 of 68 prefills
+wiring_check: layer 52: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.48 (null 0.51), on the gate face at 0.27 (null 0.29), the sign in use at 0.35; rho 0.41 (null 0.41); +d and -d the same way at 0.26; linked readers moved 4.96 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 53, 25 of 68 prefills
+wiring_check: layer 53, 50 of 68 prefills
+wiring_check: layer 53: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.46 (null 0.50), on the gate face at 0.27 (null 0.29), the sign in use at 0.37; rho 0.30 (null 0.42); +d and -d the same way at 0.19; linked readers moved 3.80 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 54, 25 of 68 prefills
+wiring_check: layer 54, 50 of 68 prefills
+wiring_check: layer 54: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.48 (null 0.51), on the gate face at 0.26 (null 0.31), the sign in use at 0.36; rho 0.39 (null 0.44); +d and -d the same way at 0.20; linked readers moved 4.47 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 55, 25 of 68 prefills
+wiring_check: layer 55, 50 of 68 prefills
+wiring_check: layer 55: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.48 (null 0.51), on the gate face at 0.25 (null 0.29), the sign in use at 0.36; rho 0.40 (null 0.45); +d and -d the same way at 0.20; linked readers moved 5.13 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 56, 25 of 68 prefills
+wiring_check: layer 56, 50 of 68 prefills
+wiring_check: layer 56: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.48 (null 0.50), on the gate face at 0.25 (null 0.29), the sign in use at 0.42; rho 0.52 (null 0.37); +d and -d the same way at 0.19; linked readers moved 4.50 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 57, 25 of 68 prefills
+wiring_check: layer 57, 50 of 68 prefills
+wiring_check: layer 57: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.49 (null 0.50), on the gate face at 0.25 (null 0.32), the sign in use at 0.40; rho 0.46 (null 0.33); +d and -d the same way at 0.19; linked readers moved 4.03 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: layer 58, 25 of 68 prefills
+wiring_check: layer 58, 50 of 68 prefills
+wiring_check: layer 58: 512 writers, 12288 links, d = 0.25 x each one's ceiling; at the last word-piece the sign from rest held under +d at 0.48 (null 0.50), on the gate face at 0.26 (null 0.32), the sign in use at 0.41; rho 0.45 (null 0.26); +d and -d the same way at 0.20; linked readers moved 3.77 x the null's; 68 prefills in 31 s here, about 1.3 min on the 5090 (inferred)
+wiring_check: 59 layers measured so far -> /home/eric/bin/ai/theodolite2/atlas_data/index/wiring_check.npz
+-> /home/eric/bin/ai/theodolite2/atlas_data/index/wiring_check.npz
+links in use: at each reader's operating point the sign differs from the sign from rest on 8,575,766 of 30,447,356 read on the reader's + face (28.2%) and 8,613,373 of 30,447,611 read on the reader's - face (28.3%); 569,355 of 30,449,664 downstream links differ on both

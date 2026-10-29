@@ -1,11 +1,13 @@
 # Where it runs
 
 *What each hard job costs, on the owner’s RTX 5090 and on rented cards, how to make a card count without changing a
-reading, and the long way to the CPU and GGUF. Written on 28 October 2026. Only the 5090’s figures are measured (in the
-pilot of 27 October, `cbbb5fa` and `8898010`); every other figure is worked out from them and the cards’ published
-bandwidth and arithmetic, and is to be timed in a pilot before anyone relies on it. Prices were read that day through
-web search (the providers’ own pages could not be opened from the machine this was written on) and move often: read the
-live page before asking for a budget. Layers count from 0 in the commands, as every script does (page = layer + 1).*
+reading, and the long way to the CPU and GGUF. Written on 28 October 2026, and brought up to date on 29 October. Only
+the 5090’s figures and the CPU timings of §vii are measured (in the pilot of 27 October, `cbbb5fa` and `8898010`, and in
+the runs of 28 and 29 October, §i and §ii); every other figure is worked out from them and the cards’ published
+bandwidth and arithmetic, and is to be timed in a pilot before anyone relies on it. Prices were read on 28 October
+through web search (the providers’ own pages could not be opened from the machine this was written on) and move often:
+read the live page before asking for a budget. Layers count from 0 in the commands, as every script does
+(page = layer + 1).*
 
 <br>
 
@@ -16,9 +18,9 @@ live page before asking for a budget. Layers count from 0 in the commands, as ev
 | **A layer’s census** | every neuron of a layer pushed on fixed questions, beside matched controls (`census_run.py`; ARCHITECTURE §4.7) | **measured step**: 0.71 s a decode step whatever the batch (1 to 64 rows); a whole `main_rel` layer (21,504 neurons + 256 controls, 217,604 answers) is about 3.6–3.9 days at `--batch 32 --max-new 64` beside a desktop, about two weeks at `--max-new 256`. **With `--unpacker compiled`** (measured step 0.103 s at batch 32, 0.126 s at 96; §ii): about 12.7 hours at `--batch 32`, about 5.2 at `--batch 96` |
 | The depth curve | 384 neurons + 64 controls a layer (4,484 answers), every layer | about 2 hours a layer, about 120 hours for 60, at `--batch 32 --max-new 64`; with `compiled` about 17 minutes a layer, some 17 hours for 60 |
 | Calibrating the doses | `calib_rel` and `calib_ceil` on a few layers, read by `census_tools.py curves` | 64 + 64 units a layer about 1.9 hours (by the measured step), about 16 minutes with `compiled`; the 8 + 8 pilot took about 16 minutes. **Measured** (28 October 2026): both ladders on six layers, 64 + 64 units, `compiled` at `--batch 64 --max-new 64`, 65 minutes (`calib_rel`, about 7 answers a second) and 49 (`calib_ceil`) |
-| The steer lens | every neuron of a layer pushed both ways on four contexts, read at every later layer (`atlas_build.py steer`) | by the arithmetic about 15–20 hours for all 60 layers; **measured** (29 October 2026, layer 45, `compiled`): 287 s a layer, so about 4.8 hours for all 60 (the unpacking did bind it) |
-| A corpus pass | the stats index, or the stored passages of every face (`atlas_build.py stats`, `passages`) | **measured**: 58 minutes for 2,000,054 word-pieces (stats, `reference`); the passages over the same windows 20 minutes with `compiled` (29 October 2026) |
-| The wiring | weight products of every pair of layers (`atlas_build.py wiring`) | **measured**: about 4 minutes (again on 29 October, keeping each link's g and u); its measured check (`wiring_check`, 512 writers a layer) 31–35 s a layer with `compiled`, 59 layers in about 35 minutes |
+| The steer lens | every neuron of a layer pushed both ways on four contexts, read at every later layer (`atlas_build.py steer`) | by the arithmetic about 15–20 hours for all 60 layers; **measured** (29 October 2026, layer 45, `compiled`; `experiments/results/atlas_steer_timing/`): 287 s for that layer, which runs the 14 layers after it. A layer’s cost grows with the layers after it (the forward starts at l + 1), so all 60 come to about 10 hours (inferred: 287 s / 14 × 1,770 layer-forwards; `pod_tool.py`’s projection gives 9.7; a shallow layer timed would check it) |
+| A corpus pass | the stats index, or the stored passages of every face (`atlas_build.py stats`, `passages`) | **measured**: 58 minutes for 2,000,054 word-pieces (stats, `reference`); the passages over the same windows 20 minutes with `compiled` (28 October 2026; its log in `experiments/results/atlas_wiring_check/gpu_logs/`) |
+| The wiring | weight products of every pair of layers (`atlas_build.py wiring`) | **measured**: about 4 minutes (again on 28 October, keeping each link's g and u); its measured check (`wiring_check`, 512 writers a layer, the night of 28–29 October) 29–35 s a layer with `compiled`, 59 layers in about 31 minutes, before it kept each reader's g₀ and u₀ (the logs and the check's own cost line in `experiments/results/atlas_wiring_check/`) |
 | The writer’s noise floor | how far an unpushed answer agrees with itself in other batch shapes (`scripts/verify_atlas_writer.py`) | about 18 minutes (by the measured step); **measured**: 2 minutes with `compiled` (28 October 2026) |
 | A label survey | the causal check of ROADMAP §ii condition 4 for every label at pages 41–59 (408,576 neurons in N1A’s 36-text layout) | about 2 × 10²⁰ multiply-adds: some 17 days (inferred) |
 
@@ -78,10 +80,10 @@ and the ranking’s leads, against the runtime’s own disagreement with itself 
 ## iii · which card
 
 **Option zero: the home 5090, headless.** With the desktop off, the lens freed and the batch raised to what the card
-then holds (about 96–128 rows at `--max-new 64`, to be measured), a whole layer at `--max-new 64` is about a day on
-today’s unpacker and, if `lut` or `compiled` time as the arithmetic says, half a day or less. It costs nothing, and it is
-the study’s own card class, so the instrument’s recorded numbers carry over. Calibration and the first whole layers
-belong here.
+then holds (about 96–128 rows at `--max-new 64`, to be measured), a whole layer at `--max-new 64` is about a day on the
+reference unpacker and, with `compiled` as timed beside a desktop (§ii), about 5 hours at a batch of 96, less if the
+card holds more. It costs nothing, and it is the study’s own card class, so the instrument’s recorded numbers carry
+over. Calibration and the first whole layers belong here.
 
 **Rented, for breadth** (the steer lens, a depth curve over all 60 layers, several whole layers, a large corpus pass, a
 label survey):
@@ -101,7 +103,7 @@ only; their spot prices are near the neoclouds’, and a census resumes after a 
 
 | Card | `--max-new 64`: today’s unpacker | the same, `compiled` | `--max-new 256`: today’s | the same, `compiled` |
 |---|---|---|---|---|
-| RTX 5090, beside a desktop, batch 32 | 87–94 (measured step) | — | 340–375 | — |
+| RTX 5090, beside a desktop, batch 32 | 87–94 (measured step) | 12.7 (measured step) | 340–375 | — |
 | RTX 5090, headless, batch ~120 | 24 | 5 | 280–300 | 39 |
 | H100 80 GB SXM | 3.4–3.8 | 1.1 | 24–35 | 8 |
 | H200 141 GB | 2.5–2.8 | 0.9 | 10–15 | 4.6 |
@@ -123,16 +125,18 @@ the causal check would have to pass `verify_causal_check.py` against N1A and N1V
 ## iv · the order
 
 1. **Calibrate the doses**, which every later spend waits on (ROADMAP §vi): read the 8 + 8 pilot already taken
-   (`census_tools.py curves <layer> --weights`), then `calib_rel` and `calib_ceil` on four to six layers
-   (`census_run.py --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16`), on the
-   home card.
+   (`census_tools.py curves <layer> --weights`), then `calib_rel` and `calib_ceil` on four to six layers (`census_run.py
+   --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16`), on the home card.
+   **Taken** (28 October 2026: both ladders at six layers, 64 + 64 units; `experiments/results/atlas_calibration/`); the
+   doses are still to be chosen from them (ROADMAP §vi).
 2. **A pilot on the card that will do the work**, one hour: the decode step and peak memory for each unpacker at several
    batches, the unpacker self-tests, the batch the card holds, the writer’s noise floor, one steer-lens layer timed, a
    canary batch against one written on the home card, the size of a run file once compressed (`scripts/pod/pilot.sh`).
    Its numbers then replace this page’s arithmetic and the scripts’ help, as `cbbb5fa` did for the 5090.
-3. **The steer lens**, all 60 layers (shards by depth).
+3. **The steer lens**, all 60 layers (shards by depth), once its dose is chosen: about 10 hours on the 5090 (§i).
 4. **A passages pass** of 2 to 10 million word-pieces, the wiring rebuilt with the links’ gate and up values, and the
-   wiring’s measured check.
+   wiring’s measured check. **Done** for 2 million word-pieces (the night of 28–29 October 2026, §i); the check is to be
+   run again with `--fresh`, now that it keeps each reader’s g₀ and u₀ (ROADMAP §vi).
 5. **The depth curve**, at the dose and `--max-new` the calibration chose.
 6. **Whole layers**, chosen from the depth curve, each on one card class at one `--batch`.
 7. **A label survey**, if wanted, once a resumable driver exists (a small CPU job, not yet written).
@@ -208,15 +212,19 @@ the server refuses one built from others, and a reading the CPU’s memory canno
 reading off the GPU, or from a GGUF, carries that in its model id, so it never mixes with the card’s in one file.
 
 What a CPU costs, measured on a 4-vCPU container: unpacking every weight on every forward (7.8 ns a weight for Q4_0,
-10.0 for the runtime’s W4A16 unpacker) makes a forward of 29.3 billion weights some minutes; resident bf16 (about 62 GB
-of RAM) writes a word-piece in seconds. torch’s own int4 kernel for the CPU (`THEODOLITE_GGUF_LINEARS=int4mm`, or
-`THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) takes a 5,376 × 21,504 layer at one row in 1.7 to 8 ms
-against 0.5 to 1.5 s for the reference, about 2 s a written word-piece of the 31B by the arithmetic, but its sums are the
-kernel’s, not the reference’s: its readings carry `+int4mm` in their model id, and on the stand-in 30 of 64 canary
-answers matched the reference’s word for word, where two batches of the reference matched 64 of 64. So the CPU suits
-weight reads, single forwards, pilots and looking through int4mm now; a census or a corpus pass of record on it waits on
-a fast path with the reference’s bits (`scripts/compare_int4mm.py` holds the rule, fixed before any run on the 31B, by
-which int4mm’s readings could stand for the reference’s). What is left, phase by phase, is in ROADMAP §vii.
+10.0 for the runtime’s W4A16 unpacker) makes a forward of 29.3 billion weights some minutes there; resident bf16 (about
+62 GB of RAM) writes a word-piece in seconds. The 31B itself has run on the CPU only for the wiring check’s offline
+reads (29 October 2026, on the home machine’s AMD Ryzen 9 7900X, 12 cores and 24 threads, the reads using 22, the packed
+checkpoint on the reference unpacker): a prefill of 17 to 20 word-pieces took 31 to 37 s, and one of 25 rows of 17
+word-pieces 43 to 51 s (`experiments/results/atlas_wiring_check/`). torch’s own int4 kernel for the CPU
+(`THEODOLITE_GGUF_LINEARS=int4mm`, or `THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) takes a 5,376 × 21,504
+layer at one row in 1.7 to 8 ms against 0.5 to 1.5 s for the reference, about 2 s a written word-piece of the 31B by the
+arithmetic, but its sums are the kernel’s, not the reference’s: its readings carry `+int4mm` in their model id, and on
+the stand-in 30 of 64 canary answers matched the reference’s word for word, where two batches of the reference matched
+64 of 64. So the CPU suits weight reads, single forwards, pilots and looking through int4mm now; a census or a corpus
+pass of record on it waits on a fast path with the reference’s bits (`scripts/compare_int4mm.py` holds the rule, fixed
+before any run on the 31B, by which int4mm’s readings could stand for the reference’s). What is left, phase by phase, is
+in ROADMAP §vii.
 
 <br>
 

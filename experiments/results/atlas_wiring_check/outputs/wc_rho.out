@@ -1,0 +1,6 @@
+strength {'linked': 0.312, 'null': 0.314}
+d {'linked': 0.001, 'null': 0.01}
+strength_d2 {'linked': 0.309, 'null': 0.314}
+sqrtstrength_d {'linked': 0.309, 'null': 0.314}
+within_writer_strength {}
+cv_d {'linked': 1.072}

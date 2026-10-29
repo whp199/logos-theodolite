@@ -1,0 +1,17 @@
+stand-in: 6 layers x 128 neurons; index folder /tmp/atlas-index-uhxv_rcp
+  ok    forward_from_layer gives the whole forward's states (right-padded rows)
+  ok    the lens index is the vault's ranking and label check, face by face; a partial build adds layers
+  ok    the activation extremes, the stream's quantiles and the norms' scales are activation_extremes'; the norms kept in float32
+  ok    passages: each face's K strongest windows by brute force, read again, merged alike whatever the parts, sampled, counted
+  ok    the wiring index is neuron_wiring's, link by link, in order of strength across layers
+        on the stand-in the sign in use differs from rest on 2369 of 6400 links read on the reader's + face and 2399 of 6400 on its - face
+  ok    the wiring's g and u kept; operating points as medians; the sign in use alike from the index and live, counted
+  ok    the wiring measured: written, read back, its readers, null, reads, summary and cost; resumed; refused
+  ok    the steer lens index is steer_lens's, neuron by neuron (a partial run resumes, then merges)
+  ok    each layer's neurons take distinct places on its sheet
+  ok    search, cone, web summary (steer lens, or only labels the gate lets through), active paths, scores
+  ok    head profiles: shares add up to one per read, pairs reach further back
+  ok    an index built for another model, of another shape, or by an older build, is not read
+  ok    provenance: each index names its weights; one from other weights refused, in plain words, and not resumed
+
+158 checks passed, 0 failed

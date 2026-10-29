@@ -1,0 +1,17 @@
+/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/umap/umap_.py:1952: UserWarning: n_jobs value 1 overridden to 1 by setting random_state. Use no seed for parallelism.
+  warn(
+  ok    the ranking, p and q, and the shift, worked by hand
+  ok    a run on the stand-in: every answer as written alone, pushes recorded
+  ok    continuing, extending, stopping, refusing
+  ok    finding a layer's run
+  ok    merge, the depth report, the spread, the ranking file
+  ok    the command lines, into the stand-in's own folder
+  ok    the dose window: departures, curves and the verdict by hand, ceilings from a checkpoint, a calib_rel run read back
+  ok    the dose against each neuron's own ceiling: pushes measured, rows and meta, refusals, old metas, ranking, calib_ceil read back
+  ok    batch plans: a stop mid-chunk, a torn batch and three shards each equal an unbroken run row for row; merges, canaries, refusals, runtimes, old metas
+  ok    write_rows reads each step back in one transfer, bit for bit; the lens freed; several layers in one process
+  ok    a two-stage census: a screen's strongest retested against fresh controls, p and q over them alone; refusals; the card
+  ok    the writer's floor's CPU half: unpushed and dose-0 rows of a pushed batch write the answer alone; the floor on the card; a canary taken alone and compared
+  ok    the null on the 31B's own weights: shaped controls as loud as neurons, isotropic ones ~100x louder (page 46: 1.02x vs 103x, page 58: 1.18x vs 236x)
+
+205 checks passed, 0 failed

@@ -338,9 +338,9 @@ const Wiring: React.FC = () => {
             the other way about as hard); a reader sitting with its gate shut, as most did where it was measured (the census questions' last
             word-piece), is pushed about the other way through its up path. In use a reader's other inputs decide where it sits. Where the push
             read where the reader fires hardest on a face (its gate and up values at its strongest stored passages, its gate open) goes the other
-            way, that is marked "in use" beside it; where a reader sits at an ordinary word-piece is not read here (at the one place measured on
-            Gemma-4-31B this sign agreed with the measured change at 0.42 of links, below chance; scored where each reader sat, 0.84). Leads to
-            test with a push, not a circuit found.
+            way, that is marked "in use" beside it; where a reader sits at an ordinary word-piece is not read here (at that one place measured on
+            Gemma-4-31B the arrow read from rest agreed with the measured change at 0.34 of links and the sign in use at 0.42, medians over
+            layers, both below chance; the sign in use scored where each reader sat, 0.84). Leads to test with a push, not a circuit found.
           </Rubric>
           <IfApparatus>
             <p className="muted atlas-small">{w.source === "index" ? "from the wiring index" : "read from the weights just now"} · {w.note}</p>

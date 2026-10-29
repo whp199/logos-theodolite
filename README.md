@@ -61,15 +61,15 @@ instrument has. Both are switches at the top of every page; nothing is hidden fr
        alt="The instrument page: sixty engraved rings with the path of the word I winding up from layer 1 to layer 60, labelled computer, HUAWEI, bot and am at several layers; beside it, the leaf of layer 36 with its top words through the lens and a bar splitting the layer's change into 37 percent gathered and 63 percent recalled.">
 </p>
 
-**The instrument.** One ring for each layer, the first at the bottom. The dark thread is the path of the word "I", in the
-reply "Hi! I", as it rises; beside it stand the words a lens makes of it at a few layers. That lens is J++, fitted on the
-base model: the head of every page names it, the opening page says once among its cautions what it was fitted on, and a
-red line beside each layer's words says what the reading can bear there. The gilded rings, every sixth, are the layers
-that look back over the whole conversation. On the right is the leaf
-of the chosen layer: its likeliest words through the lens, and how much of its change was **gathered** from the words
-before (attention, lapis) or **recalled** from memory (the feed-forward block, gilt). The picture was taken before the
-label gate: the leaf now holds back the words of the layer-36 neuron shown at its foot, as it holds back every
-neuron's words below layer 41, and keeps them in the apparatus (§iv).
+**The instrument.** One ring for each layer, the first at the bottom. The dark thread is the path of the word "I", in
+the reply "Hi! I", as it rises; beside it stand the words a lens makes of it at a few layers. That lens is J++, fitted
+on the base model: the head of every page names it, the opening page says once among its cautions what it was fitted on,
+and a red line beside each layer's words says what the reading can bear there. The gilded rings, every sixth, are the
+layers that look back over the whole conversation. On the right is the leaf of the chosen layer: its likeliest words
+through the lens, and how much of its change was **gathered** from the words before (attention, lapis) or **recalled**
+from memory (the feed-forward block, gilt). The picture was taken before the label gate: the leaf now holds back the
+words of the layer-36 neuron shown at its foot, as it holds back every neuron's words below layer 41, and keeps them in
+the apparatus (§iv).
 
 <table>
   <tr>
@@ -120,18 +120,17 @@ neuron's words below layer 41, and keeps them in the apparatus (§iv).
 **The atlas.** Every neuron of every layer on one map (`#/atlas`): sixty sheets of 21,504 dots, each layer’s attention
 heads drawn as lines before its sheet, the neurons that write alike side by side. Open a neuron and the atlas shows its
 words (through the lens, held back by the label gate below layer 41 as on every page, and beside them its *steer lens*:
-which next word-pieces a push along its write direction actually raises, a push larger than the neuron itself can write at
-most layers), its **web** of weight links hop by hop with the words of what
-could drive it up and down and what it could drive when it fires each way, the heads that read it and feed it, its **census**
-answers (the model answering fixed questions with this neuron pushed at several doses, ranked against pushes along
-random directions), and a **push**: ask anything and read three answers at once, the neuron pushed up, left alone and
-pushed down. Run a text to see which neurons fire hardest on each word-piece, search every neuron’s words, lay a layer’s
-census answers out by what they say, and keep a name and a note beside a neuron. Its **passages** keep each face’s
-strongest windows of a corpus whole, with what the face reads and what follows it (built, not yet gathered on the
-model). A **scientist** in the side panel reads
-the atlas with the same tools, runs pushes and texts, names what it finds and points at it on the map; it runs on Claude
-Code or Codex where they are installed, or on any OpenAI-compatible endpoint: LM Studio or Ollama on this machine,
-OpenRouter, or one you name.
+which next word-pieces a push along its write direction actually raises, a push larger than the neuron itself can write
+at most layers), its **web** of weight links hop by hop with the words of what could drive it up and down and what it
+could drive when it fires each way, the heads that read it and feed it, its **census** answers (the model answering
+fixed questions with this neuron pushed at several doses, ranked against pushes along random directions), and a
+**push**: ask anything and read three answers at once, the neuron pushed up, left alone and pushed down. Run a text to
+see which neurons fire hardest on each word-piece, search every neuron’s words, lay a layer’s census answers out by what
+they say, and keep a name and a note beside a neuron. Its **passages** keep each face’s strongest windows of a corpus
+whole, with what the face reads and what follows it (gathered on the 31B over two million word-pieces, not yet validated
+as labels). A **scientist** in the side panel reads the atlas with the same tools, runs pushes and texts, names what it
+finds and points at it on the map; it runs on Claude Code or Codex where they are installed, or on any OpenAI-compatible
+endpoint: LM Studio or Ollama on this machine, OpenRouter, or one you name.
 
 The atlas follows [lyramakesmusic’s neuron-explorer](https://github.com/lyramakesmusic/neuron-explorer) [47], made for
 Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its functionality for Gemma-4-31B-it:
@@ -139,7 +138,7 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | neuron-explorer (Qwen3.5-4B) | the atlas (Gemma-4-31B-it) |
 |---|---|
 | a 3D map of every MLP neuron, attention and MLP per layer; hover a neuron for its lenses, open it, view a layer’s sheet face-on; a `writes` layout | the same for 60 × 21,504 neurons in one draw call, with the q / k / v / o heads on each layer’s slab, lit by role for an open neuron and by their write on a run text; the `writes` layout (UMAP where installed, else PCA) |
-| the open neuron’s connection web, upstream and downstream, with its words pooled | the same, its links weighed through Gemma 4’s pre- and post-feed-forward norms and its layer scalars and ranked by how strongly they arrive, their signs read one consistent way (from rest, through GeGLU’s gate: what drives it up or down, what it drives when it fires up or down) where the reference’s mix two, and, with the passages built, read again where each reader fires hardest on a face (its strongest stored passages, not where it sits at an ordinary word-piece), the details marking where the two disagree |
+| the open neuron’s connection web, upstream and downstream, with its words pooled | the same, its links weighed through Gemma 4’s pre- and post-feed-forward norms and its layer scalars and ranked by how strongly they arrive, their signs read one consistent way (from rest, through GeGLU’s gate: what drives it up or down, what it drives when it fires up or down) where the reference’s mix two, and, with the passages built, read again where each reader fires hardest on a face (its strongest stored passages, not where it sits at an ordinary word-piece), the details marking where the two disagree. Measured on the 31B (the night of 28–29 October 2026, at the census questions’ last word-piece, a mark of the chat template, where about nine readers in ten sat with the gate shut), neither sign as served held: under the push on the writer’s gate face the sign from rest agreed with the change at 0.34 of links and the sign in use as served at 0.42 (medians over layers), both below chance; scored offline where each reader sat, the sign in use agreed at 0.84. The links are real by size (§iv) |
 | the list: units ranked by word-cluster mass against random-direction controls | the census ranking: the same statistic and the same `main_rel` questions and doses (not yet calibrated on Gemma, and said so), its controls shaped through Gemma’s post-feed-forward norm so the next layer hears them as loudly as a neuron, each rank with a p and the layer’s false-discovery q beside how many would beat every control by chance; taken on the instrument’s own runtime, resumable, batched by question |
 | `lens` search over the steer and logit lenses | search over the lens, the naked eye and the steer lens, every lens label under the label gate |
 | `fires`: run your text, filter neurons by activation over their usual range, token paths | “run a text”: the same filters (layers, sign, score, words), the links among what fires at a word-piece, the heads lit by their write |
@@ -290,7 +289,7 @@ REPORT §3.4). Where each fault stands now:
 | **4** | The thread score C is a weak guide: ρ ≈ 0.41 with measured effects, against 0.87 for a direct-path estimate | **Mended in the instrument**: `thread_score="direct"` chooses and ranks threads by the direct-path estimate, and the interface sends it by default; the server’s own default stays C for old callers. Each binary row carries the one score it was chosen by; the JSON's `filaments_meta` (its first 60 threads, in source-layer order) carries both |
 | **5** | No chat template: the instruct model ran as a raw language model | **Mended**: `chat`, `system`, `assistant_prefix`; on by default in the interface |
 | **6** | A doubled start mark for chat prompts | **Applied**: [`V7_bos_fix.patch`](experiments/results/V7_bos_fix.patch) |
-| **7** | One input label for a neuron’s two faces | **Built, not yet gathered on the model.** The atlas keeps each face’s own passages, with the word-pieces it reads and that follow (`scripts/atlas_build.py passages`), shown on the atlas’s passages tab and in the folio’s apparatus; they are counts over sixteen passages, not yet validated as labels |
+| **7** | One input label for a neuron’s two faces | **Built, and gathered on the model; not yet validated as labels.** The atlas keeps each face’s own passages, with the word-pieces it reads and that follow (`scripts/atlas_build.py passages`), shown on the atlas’s passages tab and in the folio’s apparatus; gathered on Gemma-4-31B on 28 October 2026 over 2,000,054 word-pieces, they are counts over sixteen passages that no test has checked |
 | **8** | Neurons ranked by \|a\|, not by the size of their write; the top fifteen explain 10–41% of the feed-forward write | **Mended in the instrument**: `pole_ranking="write"` lists each layer’s fifteen biggest writers, \|a\| · ‖w<sub>down</sub> ⊙ w<sub>post</sub>‖, and the interface sends it by default; the server’s own default stays \|a\| for old callers. Every layer reports each listed neuron’s write size and the share of the feed-forward write the fifteen explain. That share is a sample either way: in E3 (12 prompts, last word-piece; indicative only), the fifteen loudest explained 10–41% at layers 21, 31, 41, 51 and 59 and 70–74% at layers 3 and 11, the seven sampled, and so did the fifteen biggest writers, within half a percentage point. The threads join the listed neurons, so they follow the ranking; V7 measured thread scores only among neurons ranked by \|a\| |
 | **9** | The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is applied to the instruct model (4-bit QAT), where it agrees with the model’s own average gradients at only cos 0.15–0.33 for the pronoun direction (layers 31–59) | **Open, and the largest accuracy fault left; now labelled.** Everywhere the instrument uses the lens, it still reads through this base-fitted J++: the words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. R1 refitted a lens on the instruct model ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)): its directional form is stable from layer 31; its full matrix exists at only 11 layers (11, 16, …, 56, 59) and is usable at only five of them, 41, 46, 51, 56 and 59, where it beats J++ (top-1 on the model’s own reply at layer 51: 25% → 45%); below layer 31 no averaged lens tested was reliable. The instrument does not load it. The head and the foot of every page name the lens plainly, a red line beside each layer's words says what the reading can bear there, and the opening page says once, among its cautions, that the lens was fitted on the base model: the repository owner’s choice of 28 October 2026, after no refit passed R2, R3 or R4. `/api/health`, every sweep reply and the replies of the scientist’s tools still carry the full `lens` object (`id`, `fitted_on`, `method`, `applied_to`, `caution`). R2’s pre-registered test served no second lens at any layer, and R3, J++’s recipe fitted on the instruct model, served none either. R4 tested R1’s lens at layers 56 and 59 on 640 fresh prompts and served it at neither. Its lead over the naked eye was in function words (“the”, “of”, which R2’s filter counts as content), and without them it beat neither baseline ([ROADMAP §i](ROADMAP.md#i--the-lens-the-largest-fault-left)) |
 
@@ -326,6 +325,18 @@ REPORT §3.4). Where each fault stands now:
   DESCRIBE POLE (`experiments/scripts/N1G_01_recorded_label_checks.py`, on the GPU;
   [`N1G_recorded_label_checks.json`](experiments/results/N1G_recorded_label_checks.json)): the pages hold back 46 of
   the sighting's 75 labelled faces and 98 of the vault's 240 rows.
+- **The wiring’s signs.** A link’s strength and sign are read from the weights alone: from rest (g₀ = u₀ = 0, through
+  GeGLU’s gate) or, with the passages built, where its reader fires hardest on a face; neither is where a reader sits at
+  an ordinary word-piece. On Gemma-4-31B (the night of 28–29 October 2026: 512 writers a layer at the 59 layers a later
+  one reads, each pushed both ways by a quarter of its own write ceiling, read at the census questions’ last word-piece,
+  a mark of the chat template) about nine readers in ten sat with the gate shut, and under the push on the writer’s gate
+  face the sign from rest agreed with the measured change at 0.336 of links (0.341 for as many readers not linked) and
+  the sign in use as served at 0.418 (0.438), each the median over layers: below chance, links and null alike. Where the
+  gate was open the sign from rest held at 0.82. Scored offline at each reader’s own gate and up values there, the sign
+  in use agreed at 0.835 (0.854); the check now records those values itself, and its rerun (`wiring_check --fresh`) is
+  to replace that offline figure. The links are real by size: linked readers moved 5.5 times as much as the null’s. So
+  read a link’s strength as a lead, and its sign as holding where its reader’s gate is open (ARCHITECTURE §4.7; the
+  scripts and figures in [`atlas_wiring_check/`](experiments/results/atlas_wiring_check/)).
 - **Thinking turned on.** A chat's sighting with thinking turned on is switched on by the chat template's own switch
   (`enable_thinking`: `<|think|>` at the head of a system turn, the model's turn begun with no empty thought). Bare
   text has no turn to think in, so the interface leaves it out there (`think_bare="none"`; the pair says
@@ -404,7 +415,8 @@ uv pip install -r pyproject.toml
 The study used model snapshot `52f3f65bc7a02d555763bc923bd1d9094898219d` and lens snapshot
 `e166deb5ad540932100ef803c8c9bcc2a5453694`.
 
-**On the CPU, or from a GGUF** (ARCHITECTURE §5; checked on the CPU stand-in only, not yet on the 31B)
+**On the CPU, or from a GGUF** (ARCHITECTURE §5; checked on the CPU stand-in; the 31B has run on the CPU only for eight
+offline prefills of the checkpoint, and never from a GGUF)
 
 ```bash
 uv pip install "gguf>=0.19"                            # reads GGUF files (the optional "gguf" extra)
@@ -422,18 +434,19 @@ THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEO
 
 The lab daemon (`experiments/lab/labd.py`) and the scientist's MCP server run alone (`backend/mcp_scientist.py`) take
 the same variables. On the CPU, packed 4-bit weights take about 20 GB of RAM and unpack at every forward (minutes a
-forward on a small machine); resident bf16 (`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a
-word-piece in seconds; `int4mm` (a Q4_0 GGUF, or `THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) keeps 4-bit
-weights and multiplies them in place, 70 to 150 times as fast as the packed forward at one row on one 4-core machine
-(about 2 s a written word-piece of the 31B by that arithmetic, not run), but its sums are the kernel's, not the
-reference's; the J++ lens adds 3.4 GB. Those speeds were measured on one layer of one 4-core machine and the rest
-inferred: time a pilot first. A reading taken on the CPU (or in float32, or through int4mm) is recorded under its own
-model id (`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's `gguf:<file>#<fingerprint>@cpu/bfloat16`, with
-`+int4mm` after either), so no census run or index taken on the GPU is continued or read there; every index also
-records the weights it was built from, and none built from other weights is read (a census run records the model id
-only). A sweep, a census batch, the vault's voice, a causal check or a steer lens batch that the CPU's memory
-(MemAvailable) cannot hold, by an estimate from the model's config, is refused in plain words before it starts
-(`THEODOLITE_CPU_MEMORY=off` skips the estimate).
+forward on a small machine; a prefill of the 31B took 31 to 37 s on a 12-core desktop); resident bf16
+(`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a word-piece in seconds; `int4mm` (a Q4_0 GGUF, or
+`THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) keeps 4-bit weights and multiplies them in place, 70 to 150
+times as fast as the packed forward at one row on one 4-core machine (about 2 s a written word-piece of the 31B by that
+arithmetic, not run), but its sums are the kernel's, not the reference's; the J++ lens adds 3.4 GB. Those speeds were
+measured on one layer of one 4-core machine, and the 31B's prefill on a 12-core one; the rest is inferred: time a pilot
+first. A reading taken on the CPU (or in float32, or through int4mm) is recorded under its own model id
+(`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's `gguf:<file>#<fingerprint>@cpu/bfloat16`, with `+int4mm`
+after either), so no census run or index taken on the GPU is continued or read there; every index also records the
+weights it was built from, and none built from other weights is read (a census run records the model id only). A sweep,
+a census batch, the vault's voice, a causal check or a steer lens batch that the CPU's memory (MemAvailable) cannot
+hold, by an estimate from the model's config, is refused in plain words before it starts (`THEODOLITE_CPU_MEMORY=off`
+skips the estimate).
 
 **Take a first sighting**
 
@@ -532,14 +545,14 @@ little left for a batch). The 0.71 s a decode step in `census_run.py`’s help w
 on the same 5090 `lut` took 0.28 s and `compiled` 0.103 s at a batch of 32 (COMPUTE §ii)
 (ARCHITECTURE §2).
 
-`atlas_build.py passages --hf <dataset> --tokens 2000000` keeps, for every neuron and face, its sixteen strongest windows
-of the corpus (one event a window) with the gate and up values there, for the atlas’s passages tab, the folio and the
-scientist’s `passages`; give it the corpus `stats` read, for each passage’s share of the face’s extreme and the
-samples’ threshold are taken against the stats index (`all` reads the study’s 36 texts unless given a corpus; the
-route and the build say when the two differ). With the stats index there it also draws six a face at random above
-half its extreme (`--sample`). It is one forward a window, as `stats` is, so it should cost about what stats costs,
-some 29 minutes a million word-pieces on one RTX 5090 (measured for stats; passages not yet run on the model). The
-windows it keeps are the corpus’s own text: they stay in the atlas folder and are never committed.
+`atlas_build.py passages --hf <dataset> --tokens 2000000` keeps, for every neuron and face, its sixteen strongest
+windows of the corpus (one event a window) with the gate and up values there, for the atlas’s passages tab, the folio
+and the scientist’s `passages`; give it the corpus `stats` read, for each passage’s share of the face’s extreme and the
+samples’ threshold are taken against the stats index (`all` reads the study’s 36 texts unless given a corpus; the route
+and the build say when the two differ). With the stats index there it also draws six a face at random above half its
+extreme (`--sample`). It is one forward a window, as `stats` is: on one RTX 5090 it took 20 minutes for 2,000,054
+word-pieces with `--unpacker compiled` (28 October 2026), where stats took 58 with `reference`. The windows it keeps are
+the corpus’s own text: they stay in the atlas folder and are never committed.
 
 The scientist runs on Claude Code (`claude`, installed and logged in; `$THEODOLITE_CLAUDE_MODEL` picks the model) or
 Codex (`codex`) where the server finds them, or on an OpenAI-compatible endpoint: LM Studio (`http://127.0.0.1:1234/v1`,

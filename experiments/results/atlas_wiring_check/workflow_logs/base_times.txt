@@ -1,0 +1,3 @@
+check_atlas_api exit 0 in 21 s
+check_atlas_ops exit 0 in 25 s
+check_atlas_index exit 0 in 31 s

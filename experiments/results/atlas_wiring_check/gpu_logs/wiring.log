@@ -1,0 +1,66 @@
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 22791.20it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 39328.19it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:   0%|          | 1/2009 [00:00<06:52,  4.86it/s]Loading weights:   0%|          | 3/2009 [00:00<04:25,  7.56it/s]Loading weights:   6%|▌         | 124/2009 [00:00<00:05, 345.47it/s]Loading weights:  11%|█▏        | 227/2009 [00:00<00:03, 535.77it/s]Loading weights:  17%|█▋        | 339/2009 [00:00<00:02, 700.57it/s]Loading weights:  24%|██▍       | 479/2009 [00:00<00:01, 894.64it/s]Loading weights:  30%|██▉       | 598/2009 [00:00<00:01, 974.96it/s]Loading weights:  35%|███▌      | 705/2009 [00:01<00:01, 944.52it/s]Loading weights:  40%|████      | 807/2009 [00:01<00:01, 963.42it/s]Loading weights:  45%|████▌     | 909/2009 [00:01<00:02, 525.56it/s]Loading weights:  49%|████▉     | 987/2009 [00:05<00:14, 71.09it/s] Loading weights:  52%|█████▏    | 1042/2009 [00:07<00:18, 51.04it/s]Loading weights:  54%|█████▍    | 1081/2009 [00:09<00:20, 44.28it/s]Loading weights:  55%|█████▌    | 1109/2009 [00:10<00:21, 41.32it/s]Loading weights:  56%|█████▌    | 1130/2009 [00:10<00:21, 40.13it/s]Loading weights:  57%|█████▋    | 1146/2009 [00:11<00:23, 36.69it/s]Loading weights:  58%|█████▊    | 1158/2009 [00:11<00:22, 37.04it/s]Loading weights:  58%|█████▊    | 1168/2009 [00:12<00:26, 31.38it/s]Loading weights:  59%|█████▊    | 1177/2009 [00:12<00:24, 33.67it/s]Loading weights:  59%|█████▉    | 1184/2009 [00:12<00:23, 35.09it/s]Loading weights:  59%|█████▉    | 1191/2009 [00:13<00:23, 34.22it/s]Loading weights:  60%|█████▉    | 1197/2009 [00:13<00:30, 26.29it/s]Loading weights:  60%|█████▉    | 1205/2009 [00:13<00:26, 30.85it/s]Loading weights:  60%|██████    | 1212/2009 [00:13<00:23, 33.98it/s]Loading weights:  61%|██████    | 1217/2009 [00:14<00:25, 31.27it/s]Loading weights:  61%|██████    | 1222/2009 [00:14<00:29, 26.64it/s]Loading weights:  61%|██████    | 1226/2009 [00:14<00:32, 23.86it/s]Loading weights:  61%|██████▏   | 1232/2009 [00:14<00:28, 27.42it/s]Loading weights:  62%|██████▏   | 1238/2009 [00:14<00:23, 32.46it/s]Loading weights:  62%|██████▏   | 1245/2009 [00:15<00:25, 30.45it/s]Loading weights:  62%|██████▏   | 1249/2009 [00:15<00:29, 25.58it/s]Loading weights:  62%|██████▏   | 1253/2009 [00:15<00:33, 22.50it/s]Loading weights:  63%|██████▎   | 1261/2009 [00:15<00:24, 30.64it/s]Loading weights:  63%|██████▎   | 1268/2009 [00:15<00:20, 36.34it/s]Loading weights:  63%|██████▎   | 1273/2009 [00:16<00:23, 31.59it/s]Loading weights:  64%|██████▎   | 1277/2009 [00:16<00:29, 24.76it/s]Loading weights:  64%|██████▍   | 1281/2009 [00:16<00:31, 23.03it/s]Loading weights:  64%|██████▍   | 1289/2009 [00:16<00:22, 32.25it/s]Loading weights:  64%|██████▍   | 1294/2009 [00:16<00:20, 35.50it/s]Loading weights:  65%|██████▍   | 1301/2009 [00:16<00:21, 32.63it/s]Loading weights:  65%|██████▍   | 1305/2009 [00:17<00:29, 24.16it/s]Loading weights:  65%|██████▌   | 1309/2009 [00:17<00:31, 22.17it/s]Loading weights:  66%|██████▌   | 1317/2009 [00:17<00:24, 28.06it/s]Loading weights:  66%|██████▌   | 1321/2009 [00:17<00:26, 26.19it/s]Loading weights:  66%|██████▌   | 1325/2009 [00:18<00:28, 24.02it/s]Loading weights:  66%|██████▌   | 1329/2009 [00:18<00:32, 20.79it/s]Loading weights:  66%|██████▋   | 1332/2009 [00:18<00:33, 20.25it/s]Loading weights:  67%|██████▋   | 1342/2009 [00:18<00:21, 31.36it/s]Loading weights:  67%|██████▋   | 1347/2009 [00:18<00:19, 34.80it/s]Loading weights:  67%|██████▋   | 1354/2009 [00:18<00:20, 32.67it/s]Loading weights:  68%|██████▊   | 1358/2009 [00:19<00:23, 27.28it/s]Loading weights:  68%|██████▊   | 1362/2009 [00:19<00:26, 24.32it/s]Loading weights:  68%|██████▊   | 1370/2009 [00:19<00:19, 32.18it/s]Loading weights:  68%|██████▊   | 1374/2009 [00:19<00:18, 33.54it/s]Loading weights:  69%|██████▊   | 1381/2009 [00:19<00:18, 33.59it/s]Loading weights:  69%|██████▉   | 1385/2009 [00:19<00:17, 34.81it/s]Loading weights:  69%|██████▉   | 1389/2009 [00:20<00:18, 33.91it/s]Loading weights:  70%|██████▉   | 1402/2009 [00:20<00:11, 50.98it/s]Loading weights:  70%|███████   | 1410/2009 [00:20<00:12, 46.32it/s]Loading weights:  70%|███████   | 1415/2009 [00:20<00:14, 40.84it/s]Loading weights:  71%|███████   | 1420/2009 [00:20<00:15, 37.21it/s]Loading weights:  71%|███████   | 1425/2009 [00:20<00:15, 38.63it/s]Loading weights:  71%|███████▏  | 1433/2009 [00:21<00:12, 45.76it/s]Loading weights:  72%|███████▏  | 1438/2009 [00:21<00:15, 37.26it/s]Loading weights:  72%|███████▏  | 1443/2009 [00:21<00:19, 28.83it/s]Loading weights:  72%|███████▏  | 1447/2009 [00:21<00:22, 25.06it/s]Loading weights:  72%|███████▏  | 1451/2009 [00:21<00:20, 26.70it/s]Loading weights:  73%|███████▎  | 1461/2009 [00:22<00:13, 39.26it/s]Loading weights:  73%|███████▎  | 1466/2009 [00:22<00:16, 32.15it/s]Loading weights:  73%|███████▎  | 1470/2009 [00:22<00:19, 27.12it/s]Loading weights:  73%|███████▎  | 1474/2009 [00:22<00:19, 26.89it/s]Loading weights:  79%|███████▉  | 1587/2009 [00:22<00:01, 234.48it/s]Loading weights:  89%|████████▉ | 1793/2009 [00:22<00:00, 621.26it/s]Loading weights: 100%|██████████| 2009/2009 [00:22<00:00, 87.70it/s] 
+unpacker: compiled on 410 linears (8 shapes) in 1.85 s; the same bits as the reference on every one and on the piece-by-scale table
+wiring: links weighed across layers with the norms' scales from the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft)
+wiring: layer 1 read against every layer before it (0 s)
+wiring: layer 2 read against every layer before it (0 s)
+wiring: layer 3 read against every layer before it (1 s)
+wiring: layer 4 read against every layer before it (1 s)
+wiring: layer 5 read against every layer before it (2 s)
+wiring: layer 6 read against every layer before it (3 s)
+wiring: layer 7 read against every layer before it (3 s)
+wiring: layer 8 read against every layer before it (4 s)
+wiring: layer 9 read against every layer before it (6 s)
+wiring: layer 10 read against every layer before it (7 s)
+wiring: layer 11 read against every layer before it (8 s)
+wiring: layer 12 read against every layer before it (10 s)
+wiring: layer 13 read against every layer before it (11 s)
+wiring: layer 14 read against every layer before it (13 s)
+wiring: layer 15 read against every layer before it (15 s)
+wiring: layer 16 read against every layer before it (17 s)
+wiring: layer 17 read against every layer before it (19 s)
+wiring: layer 18 read against every layer before it (21 s)
+wiring: layer 19 read against every layer before it (24 s)
+wiring: layer 20 read against every layer before it (26 s)
+wiring: layer 21 read against every layer before it (29 s)
+wiring: layer 22 read against every layer before it (32 s)
+wiring: layer 23 read against every layer before it (35 s)
+wiring: layer 24 read against every layer before it (38 s)
+wiring: layer 25 read against every layer before it (41 s)
+wiring: layer 26 read against every layer before it (44 s)
+wiring: layer 27 read against every layer before it (48 s)
+wiring: layer 28 read against every layer before it (51 s)
+wiring: layer 29 read against every layer before it (55 s)
+wiring: layer 30 read against every layer before it (59 s)
+wiring: layer 31 read against every layer before it (63 s)
+wiring: layer 32 read against every layer before it (67 s)
+wiring: layer 33 read against every layer before it (71 s)
+wiring: layer 34 read against every layer before it (75 s)
+wiring: layer 35 read against every layer before it (80 s)
+wiring: layer 36 read against every layer before it (84 s)
+wiring: layer 37 read against every layer before it (89 s)
+wiring: layer 38 read against every layer before it (94 s)
+wiring: layer 39 read against every layer before it (98 s)
+wiring: layer 40 read against every layer before it (104 s)
+wiring: layer 41 read against every layer before it (109 s)
+wiring: layer 42 read against every layer before it (114 s)
+wiring: layer 43 read against every layer before it (120 s)
+wiring: layer 44 read against every layer before it (125 s)
+wiring: layer 45 read against every layer before it (131 s)
+wiring: layer 46 read against every layer before it (137 s)
+wiring: layer 47 read against every layer before it (143 s)
+wiring: layer 48 read against every layer before it (149 s)
+wiring: layer 49 read against every layer before it (155 s)
+wiring: layer 50 read against every layer before it (161 s)
+wiring: layer 51 read against every layer before it (168 s)
+wiring: layer 52 read against every layer before it (174 s)
+wiring: layer 53 read against every layer before it (181 s)
+wiring: layer 54 read against every layer before it (188 s)
+wiring: layer 55 read against every layer before it (195 s)
+wiring: layer 56 read against every layer before it (202 s)
+wiring: layer 57 read against every layer before it (209 s)
+wiring: layer 58 read against every layer before it (216 s)
+wiring: layer 59 read against every layer before it (224 s)
+-> /home/eric/bin/ai/theodolite2/atlas_data/index/wiring.npz
+links in use: at each reader's operating point the sign differs from the sign from rest on 8,575,766 of 30,447,356 read on the reader's + face (28.2%) and 8,613,373 of 30,447,611 read on the reader's - face (28.3%); 569,355 of 30,449,664 downstream links differ on both

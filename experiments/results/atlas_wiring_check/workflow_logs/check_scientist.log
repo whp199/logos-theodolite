@@ -1,0 +1,751 @@
+2026-10-29 01:21:21,322 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/arch "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,322 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,323 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,487 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,487 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,488 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,494 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/neuron?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,498 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/reads "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,503 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/reads "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,519 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/steer "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,538 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/steer "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,559 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/steer "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,559 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/steer "HTTP/1.1 400 Bad Request"
+2026-10-29 01:21:21,563 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/logprobs "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,568 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/compare "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,571 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/fires "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,575 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/attention "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,580 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/attn_drive "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,585 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/attn_drive "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,590 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/head?layer=3&head=1 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,646 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/head/profile?layer=3&head=1 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,648 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron/heads?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,653 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/neuron/steer_lens?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,653 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron?layer=2&n=999 "HTTP/1.1 400 Bad Request"
+2026-10-29 01:21:21,694 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/scientist/causal_check "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,695 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,700 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,700 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,701 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,701 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,702 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,702 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,703 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,703 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,707 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,707 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,708 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,708 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,709 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/proposals/keep "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,710 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/proposals/discard "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,710 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,711 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,711 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,714 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,715 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,715 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,716 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,716 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,717 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,717 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,717 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,718 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,718 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,719 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,719 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,720 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,720 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,721 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,721 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,721 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,722 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,723 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/cone?layer=2&n=5&k=2&limit=120&model=rest "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,724 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/web/summary?layer=2&n=5&first=5&k=2&top=20&model=rest "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,724 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/search?q=the&limit=40 "HTTP/1.1 200 OK"
+2026-10-29 01:21:21,725 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron/passages?layer=2&n=5&face=%2B&k=16 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,683 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron/passages?layer=2&n=5&face=-&k=4 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,686 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/neuron/passages?layer=2&n=5&face=-&k=4 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,688 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron/passages?layer=2&n=5&face=%2B&k=16 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,694 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/cone?layer=2&n=5&k=2&limit=120&model=rest "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,700 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/cone?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,701 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/web/summary?layer=2&n=5&first=5&k=2&top=20&model=rest "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,712 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/cone?layer=2&n=5&k=2&limit=120&model=use "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,720 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/cone?layer=2&n=5&model=use "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,722 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/web/summary?layer=2&n=5&first=5&k=2&top=20&model=use "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,727 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/search?q=caf&limit=2000 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,736 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/search?q=led&limit=2000 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,738 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/census/units?layer=3 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,739 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/census/card?layer=3 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,740 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/census/units?layer=1 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,741 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/census/unit?layer=3&n=7 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,742 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/arch "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,742 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,743 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,809 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=ed518f33-2e2e-4b4a-aacc-a350e0205f43 "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,831 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,902 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/backends "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,905 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/backends "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,912 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/upload "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,914 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/upload "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,916 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/upload "HTTP/1.1 400 Bad Request"
+2026-10-29 01:21:22,919 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,937 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:22,939 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,242 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/interrupt "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,271 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/interrupt "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,273 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/chats "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,276 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=ed518f33-2e2e-4b4a-aacc-a350e0205f43 "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,280 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,282 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=ed518f33-2e2e-4b4a-aacc-a350e0205f43 "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,304 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,369 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,371 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,374 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/restart "HTTP/1.1 409 Conflict"
+2026-10-29 01:21:23,677 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/interrupt "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,703 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,738 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,804 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,821 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:23,823 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:24,126 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/interrupt "HTTP/1.1 200 OK"
+2026-10-29 01:21:24,154 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:26,231 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:26,298 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:26,301 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:26,604 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/interrupt "HTTP/1.1 200 OK"
+2026-10-29 01:21:27,632 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,691 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=922376c2-3acd-4bcc-9655-41586f86c687 "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,712 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,777 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,800 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=922376c2-3acd-4bcc-9655-41586f86c687 "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,805 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=820f2149-7b80-420e-8e12-1f4e8f7d3eb3 "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,839 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,843 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=820f2149-7b80-420e-8e12-1f4e8f7d3eb3 "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,847 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,849 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=820f2149-7b80-420e-8e12-1f4e8f7d3eb3 "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,880 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,884 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,891 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=820f2149-7b80-420e-8e12-1f4e8f7d3eb3 "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,894 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,898 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/restart "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,929 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,934 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/restart "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,940 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,989 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,993 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:28,997 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,000 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,003 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,006 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,008 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,041 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,044 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,048 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,050 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,081 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,085 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,088 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+  ok    the tools' schemas and the pages' count
+  ok    each tool on the atlas's routes, in the pages' count
+  ok    the MCP server over stdio
+  ok    Claude Code: the command, a turn, attachments, mid-turn, interrupt, history, rewind, changed instructions
+  ok    Codex: its home, the thread, a turn, an approval declined, history, rewind, changed instructions, a steered turn rewound
+2026-10-29 01:21:29,119 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/backends "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,125 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:59073/v1/models "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,126 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/models?profile=custom "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,128 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/models?profile=nope "HTTP/1.1 404 Not Found"
+2026-10-29 01:21:29,134 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=71990e61-f816-46e5-b60f-06f258d32f98 "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,137 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,142 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,149 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/neuron?layer=2&n=5 "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,149 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,150 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,151 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/scientist/ui "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,152 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,156 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,161 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,163 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,169 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=6c844f4a-b665-44a9-8996-3fb242bf196a "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,172 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,176 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,180 | INFO    | httpx | HTTP Request: POST http://127.0.0.1/api/atlas/reads "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,182 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:29,185 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,785 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,788 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,793 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,796 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/interrupt "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,847 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,851 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,855 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,860 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 500 Internal Server Error"
+2026-10-29 01:21:30,863 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/backends "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,869 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=64bfab16-b448-4604-99e8-d7eedbe36031 "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,872 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,876 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,877 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/notes "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,877 | INFO    | httpx | HTTP Request: GET http://127.0.0.1/api/atlas/proposals "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,879 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:59073/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,885 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=d25dd474-aa5c-4f80-9549-8410c29043fc "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,887 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,890 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 400 Bad Request"
+2026-10-29 01:21:30,893 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 400 Bad Request"
+2026-10-29 01:21:30,895 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=71990e61-f816-46e5-b60f-06f258d32f98 "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,899 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/chats "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,902 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:30,904 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=71990e61-f816-46e5-b60f-06f258d32f98 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,096 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,099 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,102 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/chats "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,105 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=71990e61-f816-46e5-b60f-06f258d32f98 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,107 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=71990e61-f816-46e5-b60f-06f258d32f98 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,110 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/chats "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,113 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=ed518f33-2e2e-4b4a-aacc-a350e0205f43 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,115 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=ed518f33-2e2e-4b4a-aacc-a350e0205f43 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,118 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/chats "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,124 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/events?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,158 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,161 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,164 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,167 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,170 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/history?chat=4e7138d2-076e-48f6-a6b7-73123a93dcb8 "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,173 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,176 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/rewind "HTTP/1.1 200 OK"
+2026-10-29 01:21:31,177 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 403 Forbidden"
+2026-10-29 01:21:31,177 | INFO    | httpx | HTTP Request: POST http://127.0.0.1:44237/api/atlas/scientist/send "HTTP/1.1 403 Forbidden"
+2026-10-29 01:21:31,177 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:44237/api/atlas/scientist/backends "HTTP/1.1 403 Forbidden"
+ERROR:    Cancel 9 running task(s), timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1216, in __call__
+    await super().__call__(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/backend/local_only.py", line 175, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/routing.py", line 676, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2791, in app
+    await route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1819, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2874, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1845, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1308, in handle
+    await effective_context.app(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 165, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    await response(scope, receive, send)
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 283, in __call__
+    await wrap(partial(self.listen_for_disconnect, receive))
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 279, in wrap
+    await func()
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/starlette/responses.py", line 247, in listen_for_disconnect
+    message = await receive()
+              ^^^^^^^^^^^^^^^
+  File "/home/eric/bin/ai/theodolite2/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 574, in receive
+    await self.message_event.wait()
+  File "/home/eric/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError: Task cancelled, timeout graceful shutdown exceeded
+2026-10-29 01:21:37,438 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:41295/api/health "HTTP/1.1 200 OK"
+2026-10-29 01:21:37,466 | INFO    | httpx | HTTP Request: GET http://127.0.0.1:41295/api/atlas/scientist/events?chat=79d63e57-9722-41e9-af31-69b3283f2101 "HTTP/1.1 200 OK"
+  ok    an OpenAI-compatible endpoint: the tool loop, mid-turn, interrupt, errors, profiles, history
+  ok    a line cut off mid-write: the history, the past chats and a rewind read on, the next line starts afresh
+  ok    who may ask
+  ok    a stop with a chat's event stream open: the server exits within seconds
+
+186 checks passed, 0 failed
+
+real	0m24.143s
+user	0m19.555s
+sys	0m2.781s

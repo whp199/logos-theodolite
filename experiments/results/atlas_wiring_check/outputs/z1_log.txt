@@ -1,0 +1,10 @@
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 23210.17it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 39345.29it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights:  87%|████████▋ | 1753/2009 [00:00<00:00, 17529.39it/s]Loading weights: 100%|██████████| 2009/2009 [00:00<00:00, 19320.35it/s]
+loaded google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16 5s
+{'who': 17, 'snake': 20, 'orange': 18, 'free': 18}
+who forward 37s 60 60 60
+snake forward 34s 60 60 60
+orange forward 32s 60 60 60
+free forward 31s 60 60 60
+done 140s

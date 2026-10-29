@@ -1,0 +1,55 @@
+{
+ "layers": 59,
+ "built_at": "2026-10-29T05:23:53Z",
+ "wiring_built_at": "2026-10-29T04:50:57Z",
+ "passages_built_at": "2026-10-29T04:46:21Z",
+ "dose": 0.25,
+ "writers": "random:512",
+ "last.sign_plus.linked": 0.473,
+ "last.sign_gate.linked": 0.32,
+ "last.use_plus.linked": 0.469,
+ "last.use_gate.linked": 0.417,
+ "last.same_way.linked": 0.247,
+ "last.rho.linked": 0.312,
+ "last.sign_plus.null": 0.498,
+ "last.sign_gate.null": 0.324,
+ "last.use_plus.null": 0.439,
+ "last.use_gate.null": 0.427,
+ "last.same_way.null": 0.077,
+ "last.rho.null": 0.314,
+ "last.moved_over_null": 5.53,
+ "last.moved_over_null_layers": 57,
+ "mean.sign_plus.linked": 0.56,
+ "mean.sign_gate.linked": 0.345,
+ "mean.same_way.linked": 0.298,
+ "mean.rho.linked": 0.417,
+ "mean.sign_plus.null": 0.507,
+ "mean.sign_gate.null": 0.284,
+ "mean.same_way.null": 0.086,
+ "mean.rho.null": 0.484,
+ "mean.moved_over_null": 6.26,
+ "mean.moved_over_null_layers": 59,
+ "cost": {
+  "layers": 59,
+  "seconds_min": 29.3,
+  "seconds_max": 34.9,
+  "seconds_median": 31.3,
+  "seconds_sum": 1859.2,
+  "minutes_sum": 31.0
+ },
+ "sign_disagreement": {
+  "links": 30449664,
+  "+": {
+   "read": 30447356,
+   "differ": 8575766,
+   "share": 0.2817
+  },
+  "-": {
+   "read": 30447611,
+   "differ": 8613373,
+   "share": 0.2829
+  },
+  "differ_on_both": 569355,
+  "differ_on_both_share": 0.0187
+ }
+}

@@ -1,5 +1,5 @@
 {
- "what": "the census's two calibration ladders on Gemma-4-31B, six layers, read with census_tools.py curves and the runs' own ranking (census_tools.py rank, every dose pooled); the runs themselves are in the atlas folder (atlas_data/census/runs, gitignored), each layer's dose window beside this file",
+ "what": "the census's two calibration ladders on Gemma-4-31B, six layers, read with census_tools.py curves and the runs' own ranking (census_tools.py rank, the doses under its 1.6 cap pooled; see ranking_read); the runs themselves are in the atlas folder (atlas_data/census/runs, gitignored), each layer's dose window beside this file",
  "taken": "2026-10-28, RTX 5090 beside a desktop, --unpacker compiled, --batch 64 --max-new 64, seed 0",
  "units": "64 random neurons (random:64) and 64 controls a layer; one greedy answer per (question, dose) on who, orange, free",
  "layers_count_from": 0,

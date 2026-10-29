@@ -1,0 +1,22 @@
+stand-in: 6 layers, 128 neurons each, d_model 64, vocabulary 600
+  ok    each push lands where it says (add after the norm and scalar, mul, act, a block, a head; the start mark spared); what the norms undo is refused; the most a neuron can write
+  ok    resolve gives the three voices their rows
+  ok    three voices written together are each written as alone, padded (an end mark, a cancel, top-k)
+  ok    text deltas add up to the decoded text, a split character held back until whole
+  ok    sampled writing: temperature 0 is greedy; a seed draws again; the voices of a sample share their draw; a sample's unpushed row is the write alone with seed + s; each chance is the sampler's
+  ok    sampled writing: over 4,000 seeds the first piece, and the second under a presence penalty, as sampler_chances says (chi-square), the race on sharper logits too; a penalty without a temperature, a draw without a seed, and a temperature with no chances to draw from, refused
+  ok    a read is the hook's activation, moved by earlier pushes only
+  ok    next_logprobs' base and intervened rows equal separate forwards
+  ok    all activations and their extremes (four sign regimes) equal brute force, start mark left out
+  ok    display units cover every piece once and never cut a character
+  ok    head patterns equal eager attention on every head (worst 3.6e-06); outputs and writes add up
+  ok    attention drive: its parts (heads, blocks, embedding, through the layer scalars) add up to the total
+  ok    wiring: the norms' scales, the carried layer scalars, the products one by one, z, w, sign and gate
+  ok    the steer lens equals separate pushed forwards (rises and KL, both signs)
+        the norms free, the change's sign is that of alpha g + beta u at 113 of 120 events (94%; the norms' own response is what the link model leaves out)
+        the median-based sign in use is each event's own at 14073 of 18432 (link, event) pairs (76%)
+  ok    the sign in use: operating points as medians, exactly f (alpha g + beta u) to first order at stored events, the norms held; the full first-order change with them free
+  ok    the wiring measured: batched pushed reads equal separate forwards; the null never linked; any pair's g and u
+  ok    the runtime's weight accessors give the same wiring
+
+225 checks passed, 0 failed

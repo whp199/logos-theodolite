@@ -1,0 +1,325 @@
+{
+ "what": "The 31B's first wiring check (atlas_build.py wiring_check, the night of 28-29 October 2026) and the offline scoring that read it again at each reader's own operating point: every figure ARCHITECTURE §4.7, ROADMAP §vi, README, COMPUTE, the details tab, LINK_MODEL / LINK_MODEL_USE and the scientist's prompt quote from it, with its value and the script and output that give it.",
+ "kept": "29 October 2026, copied from the session scratchpad, before it is cleared. The scripts are the session's own, their paths moved to this folder (outputs) and atlas_data/offline/wiring_check_31b (inputs); each starts with a two-line note saying so. scripts/stored_summary.py was written afterwards, to read the check file's own summary, cost and sign counts. z1_log.txt, z4_log.txt and nonzero.json are the session's own outputs (a rerun of nonzero.py gave the same bytes); every other output was written again on the CPU from the kept inputs on 29 October 2026, and z2_per.npy, z3_per.npy and validate_31b_per.npy are identical to the session's (allow_pickle: they hold dicts of per-layer lists). gpu_logs/ holds the GPU runs' own logs: the passages pass, the wiring rebuilt, and the check (layer 45 first, then the other 58).",
+ "how": "CUDA_VISIBLE_DEVICES= /home/eric/bin/ai/theodolite2/.venv/bin/python -I scripts/<name>.py > outputs/<name>.out (nonzero.py takes the check file as its argument). z1 and z4 run Gemma-4-31B on the CPU (THEODOLITE_DEVICE=cpu, the packed checkpoint, the reference unpacker, at 22 torch threads on the 12-core, 24-thread CPU); the rest read the kept arrays only.",
+ "inputs": {
+  "folder": "atlas_data/offline/wiring_check_31b (gitignored; 1.8 GB)",
+  "wiring_check.npz": {
+   "sha256": "1c34a34a710af6a33738d5c80e57385667370f1531f75b96bda27b001a1cb6a5",
+   "bytes": 142580480,
+   "note": "a copy of atlas_data/index/wiring_check.npz as the GPU run wrote it (built_at 2026-10-29T05:23:53Z, 00:23 CDT), pinned here because `wiring_check --fresh` will set that file aside and write another"
+  },
+  "z1_out/q0-3.npz": {
+   "sha256": [
+    "29c9509b4fd2b6229cc366c174d0dc0a6c0b67fa470dffbc0b1ec14ac7ff2ec1",
+    "7345f2889c177d664c26e0b24192d9e855fb8cc5d3f0f2d0ead5194ef6532ce5",
+    "456e8c97606fafefdf7c27b35e744436b79430922d9085caf0284e2484420ca5",
+    "5eb7cfcf6462c5bfdf124f32625653c68572f137834e7f0ca17ca4ed3c58715e"
+   ],
+   "what": "each census question's unpushed gate and up values (g0, u0) and activation at every layer, last word-piece in float32 and every word-piece in float16, from z1"
+  },
+  "z4_out/L5,L20,L35,L50.npz": {
+   "sha256": [
+    "6c70c3de6e2ffd58b157fe790b6d5e112d0923b46dcd20a8cd030b1d3678e333",
+    "006dc189984bd059e729479e23e9a4cf863809df3f40279edc3246f44fac074e",
+    "c6eb91a0c20e483902cf1a1a0d54ea2665de0a28e5d0584869b7d9664ab56222",
+    "44cb87453d455f909a835b710ceefdfce31ba63ca2e4c4e8cec88bd5272115cd"
+   ],
+   "what": "six of the check's writers a layer pushed by +-0.25 and +-1 of their ceiling on the first question, every later layer's gate, up and activation at the last word-piece, from z4"
+  },
+  "flat.npz, standin_rows.npy, run_closed/, run_closed_last/, run_native/": "the investigation's flattened arrays (scripts/investigation/flatten.py) and its stand-in runs; regenerable, kept for completeness",
+  "orig_*.npy": "the session's own z2_per.npy, z3_per.npy and validate_31b's per-layer values, to compare the rewritten ones with",
+  "passages": "a6_passages.py reads atlas_data/index/passages.d itself (built_at 2026-10-29T04:46:21Z, 23:46 CDT on 28 October); it is not copied",
+  "workflow_cli_index/": "the stand-in index the wiring workflow's CLI dry run built (workflow_logs/cli_index.log)"
+ },
+ "figures": [
+  {
+   "figure": "sign from rest under the push on the writer's gate face, changes of exactly 0 left out, per-layer median, linked / null",
+   "value": [
+    0.336,
+    0.341
+   ],
+   "script": "scripts/wc_check.py (sign_gate_nz); also z2_stored.py (sign_gate layer_median 0.3357 / 0.3407) and validate_31b.py (last.sign_gate)",
+   "output": "outputs/wc_check.out"
+  },
+  {
+   "figure": "sign in use as served, at the passages' operating point (where each reader fires hardest), 0s left out, linked / null",
+   "value": [
+    0.418,
+    0.438
+   ],
+   "script": "scripts/wc_check.py (use_gate_nz); z2_stored.py (use_gate 0.4184 / 0.4382); validate_31b.py (last.use_gate_peak)",
+   "output": "outputs/wc_check.out"
+  },
+  {
+   "figure": "the file's stored summary, a 0 counted as a miss: sign from rest on the gate face, sign in use, linked / null",
+   "value": {
+    "sign_gate": [
+     0.32,
+     0.324
+    ],
+    "use_gate": [
+     0.417,
+     0.427
+    ]
+   },
+   "script": "scripts/stored_summary.py",
+   "output": "outputs/stored_summary.json"
+  },
+  {
+   "figure": "the plain +d share with the sign from rest, stored (0 a miss) and with 0s left out, linked / null",
+   "value": {
+    "stored": [
+     0.473,
+     0.498
+    ],
+    "nonzero": [
+     0.48,
+     0.503
+    ]
+   },
+   "script": "scripts/stored_summary.py; scripts/wc_check.py (sign_plus_nz)",
+   "output": "outputs/stored_summary.json, outputs/wc_check.out"
+  },
+  {
+   "figure": "readers with the gate shut at the last word-piece (g0 <= 0), pooled, linked / null ('about nine in ten')",
+   "value": [
+    0.897,
+    0.865
+   ],
+   "script": "scripts/z3_true_op.py (1 - share_open pooled: 0.1033 / 0.1351)",
+   "output": "outputs/z3_true_op.out"
+  },
+  {
+   "figure": "readers below gelu's minimum (g0 <= -0.7518), pooled, linked / null",
+   "value": [
+    0.698,
+    0.631
+   ],
+   "script": "scripts/z3_true_op.py (share_below_min pooled)",
+   "output": "outputs/z3_true_op.out"
+  },
+  {
+   "figure": "sign from rest by the reader's regime, per-layer median, linked / null: gate open; shut above the minimum; below it",
+   "value": {
+    "open": [
+     0.818,
+     0.688
+    ],
+    "shut_above_min": [
+     0.466,
+     0.293
+    ],
+    "below_min": [
+     0.186,
+     0.256
+    ]
+   },
+   "script": "scripts/z3_true_op.py (sign_gate[regime]); validate_31b.py (last.<regime>.sign_gate)",
+   "output": "outputs/z3_true_op.out, outputs/validate_31b.out"
+  },
+  {
+   "figure": "the same responses against the sign in use at each reader's measured operating point (alpha0 = gelu'(g0) u0, beta0 = gelu(g0)), float32, linked / null",
+   "value": [
+    0.835,
+    0.854
+   ],
+   "script": "scripts/z3_true_op.py (use_gate_true layer_median)",
+   "output": "outputs/z3_true_op.out"
+  },
+  {
+   "figure": "the same with alpha0 and beta0 in float64, as wiring_check_summary computes them now",
+   "value": [
+    0.842,
+    0.853
+   ],
+   "script": "scripts/validate_31b.py (last.use_gate; the repository's wiring_check_summary on the kept arrays)",
+   "output": "outputs/validate_31b.out"
+  },
+  {
+   "figure": "the three signs' shares above pooled over every link of every layer, not per-layer medians (0s left out), linked / null: the sign from rest on the gate face, the sign in use as served, the sign in use at each reader's measured operating point (float32)",
+   "value": {
+    "sign_gate": [
+     0.342,
+     0.342
+    ],
+    "use_gate_served": [
+     0.455,
+     0.465
+    ],
+    "use_gate_at_the_reader": [
+     0.83,
+     0.854
+    ]
+   },
+   "script": "scripts/z3_true_op.py (sign_gate, use_gate_built and use_gate_true, pooled)",
+   "output": "outputs/z3_true_op.out"
+  },
+  {
+   "figure": "over the prompt (each coefficient's mean over the word-pieces past the start mark), linked / null",
+   "value": [
+    0.812,
+    0.88
+   ],
+   "script": "scripts/z6_mean_site.py (use_gate_true_mean); validate_31b.py (mean.use_gate)",
+   "output": "outputs/z6_mean_site.out"
+  },
+  {
+   "figure": "Spearman's rho of the change's size against f |alpha0 g + beta0 u| d, and against |P| f^2, per-layer median, linked / null",
+   "value": {
+    "first_order_at_the_reader": [
+     0.89,
+     0.873
+    ],
+    "strength": [
+     0.312,
+     0.314
+    ]
+   },
+   "script": "scripts/z7_rho.py; validate_31b.py (last.rho_site, last.rho); wc_rho.py (strength)",
+   "output": "outputs/z7_rho.out"
+  },
+  {
+   "figure": "linked readers moved this many times as much as the null's (per-layer median of the 57 layers with a figure)",
+   "value": 5.53,
+   "script": "scripts/stored_summary.py (last.moved_over_null); validate_31b.py",
+   "output": "outputs/stored_summary.json"
+  },
+  {
+   "figure": "the change's odd (first-order) part the larger, pooled, linked / null",
+   "value": [
+    0.731,
+    0.904
+   ],
+   "script": "scripts/z2_stored.py (odd_dominates)",
+   "output": "outputs/z2_stored.out"
+  },
+  {
+   "figure": "the index's signs are sign(g u) and its gates sign(g) of the weights, at every pair of every layer",
+   "value": "59 of 59 layers",
+   "script": "scripts/z2_stored.py (consist_sign, consist_gate)",
+   "output": "outputs/z2_stored.out"
+  },
+  {
+   "figure": "every layer scalar positive",
+   "value": "all 60 positive: the least 0.0317 at layer 59, the largest 0.992 at layer 2 (layers from 0)",
+   "script": "scripts/investigation/scalars.py (reads the checkpoint's safetensors)",
+   "output": "outputs/scalars.out"
+  },
+  {
+   "figure": "a quarter-ceiling push moves the linked readers' g with the sign of the index's g (u likewise): 24 writers (6 a layer at layers 5, 20, 35, 50), the first question, CPU",
+   "value": {
+    "g": [
+     1.0,
+     1.0,
+     1.0,
+     0.993
+    ],
+    "u": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ]
+   },
+   "script": "scripts/z4_31b_push_cpu.py, then z5_push_analysis.py (dose0.25 sign(dg)==sign(g), sign(du)==sign(u), by layer L5, L20, L35, L50)",
+   "output": "outputs/z5_push_analysis.out"
+  },
+  {
+   "figure": "the CPU read's unpushed activations (gelu(g0) u0) against the GPU run's stored ones: correlation, per-layer median (least)",
+   "value": {
+    "r": 0.9999,
+    "r_least": 0.9986,
+    "sign_agreement": 0.9951
+   },
+   "script": "scripts/z3_true_op.py (validation)",
+   "output": "outputs/z3_true_op.out"
+  },
+  {
+   "figure": "at the whole ceiling (dose 1): gates opened on the gate face in this share of linked pairs, by layer 5, 20, 35, 50",
+   "value": [
+    0.111,
+    0.479,
+    0.611,
+    0.396
+   ],
+   "script": "scripts/z5_push_analysis.py (dose1.0 'share gate crosses 0 on gate face')",
+   "output": "outputs/z5_push_analysis.out"
+  },
+  {
+   "figure": "at layer 35 the sign from rest on the gate face, a quarter of the ceiling against the whole",
+   "value": [
+    0.438,
+    0.771
+   ],
+   "script": "scripts/z5_push_analysis.py (L35 dose0.25 and dose1.0 sign_gate)",
+   "output": "outputs/z5_push_analysis.out"
+  },
+  {
+   "figure": "at the whole ceiling the first-order sign in use at the unpushed point, by layer 5, 20, 35, 50",
+   "value": [
+    0.529,
+    0.5,
+    0.417,
+    0.486
+   ],
+   "script": "scripts/z5_push_analysis.py (dose1.0 use_gate_true_op)",
+   "output": "outputs/z5_push_analysis.out"
+  },
+  {
+   "figure": "over the whole index the sign in use differs from the sign from rest: on the reader's + face, on its - face, on both",
+   "value": {
+    "+": 0.2817,
+    "-": 0.2829,
+    "both": 0.0187,
+    "links": 30449664
+   },
+   "script": "atlas_build.py wiring (its last line), kept in the check's meta",
+   "output": "gpu_logs/wiring.log; outputs/stored_summary.json (sign_disagreement)"
+  },
+  {
+   "figure": "stored events (the passages index's sixteen strongest a face, every neuron) with the gate open",
+   "value": 0.945,
+   "script": "scripts/a6_passages.py",
+   "output": "outputs/a6_passages.out"
+  },
+  {
+   "figure": "the check's cost on the 5090 with --unpacker compiled",
+   "value": {
+    "seconds_a_layer": [
+     29.3,
+     34.9
+    ],
+    "median": 31.3,
+    "layers": 59,
+    "minutes": 31.0,
+    "log": "29-35 s a layer as the log rounds them: 58 layers in wiring_check_all.log (1,823 s) and layer 45 in wiring_check_L45.log (35 s)"
+   },
+   "script": "atlas_build.py wiring_check",
+   "output": "outputs/stored_summary.json (cost); gpu_logs/wiring_check_all.log, gpu_logs/wiring_check_L45.log"
+  },
+  {
+   "figure": "the passages pass on the 5090 with compiled, 2,000,054 word-pieces in 3,914 windows",
+   "value": "1,178 s (about 20 minutes), finished 23:46 CDT on 28 October 2026",
+   "script": "atlas_build.py passages",
+   "output": "gpu_logs/passages.log"
+  },
+  {
+   "figure": "the wiring rebuilt with each link's g and u",
+   "value": "224 s by the log's last layer (about 4 minutes), built at 23:50 CDT on 28 October 2026 (the check's meta: 2026-10-29T04:50:57Z)",
+   "script": "atlas_build.py wiring",
+   "output": "gpu_logs/wiring.log"
+  },
+  {
+   "figure": "the CPU reads of the 31B (29 October 2026, 00:38-00:45 CDT; AMD Ryzen 9 7900X: 12 cores, 24 threads, 61 GB; run at 22 torch threads; packed checkpoint, reference unpacker)",
+   "value": {
+    "z1": "one prefill a census question (17-20 word-pieces): 37, 34, 32 and 31 s; 140 s with the load",
+    "z4": "one prefill of 25 rows (the first question) a layer: 44, 51, 44 and 43 s at layers 5, 20, 35 and 50"
+   },
+   "script": "scripts/z1_31b_g0u0_cpu.py, scripts/z4_31b_push_cpu.py",
+   "output": "outputs/z1_log.txt, outputs/z4_log.txt"
+  }
+ ],
+ "not_here": "The check now records g0 and u0 itself (format 2); its rerun (`wiring_check --fresh`) is to replace these offline figures. The investigation's other scripts (scripts/investigation/) were exploratory and their printed output was not kept; they read the same inputs.",
+ "workflow": "scripts/workflow/ and workflow_logs/: the wiring workflow's own checks of the new wiring_check_summary on the stand-in (proto_fd.py, mutate.py, debug_l4.py) and its CPU check logs: base_* before the change, final_* after it, and precommit_* (01:56-01:58 CDT on 29 October, just before 88e832d), whose counts are the ones its message gives (atlas_ops 229, atlas_index 169, atlas_api 340, census 205; dequant 216 is in final_check_dequant.log)."
+}

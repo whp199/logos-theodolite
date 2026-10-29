@@ -1,0 +1,18 @@
+{
+ "sign_gate_mean:linked": {
+  "layer_median": 0.3453,
+  "min": 0.218
+ },
+ "use_gate_true_mean:linked": {
+  "layer_median": 0.812,
+  "min": 0.643
+ },
+ "sign_gate_mean:null": {
+  "layer_median": 0.2836,
+  "min": 0.206
+ },
+ "use_gate_true_mean:null": {
+  "layer_median": 0.8801,
+  "min": 0.697
+ }
+}

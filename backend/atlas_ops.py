@@ -1485,7 +1485,7 @@ def operating_points(g: Any, u: Any, filled: Any) -> Tuple[np.ndarray, np.ndarra
     u0 and beta = gelu(g0), the two coefficients a reader's first-order change is read with (LINK_MODEL_USE), each the
     median over the face's events (the mean of the middle two for an even count); NaN where the face holds none. The
     events are the face's strongest, so this is where the reader fires hardest on that face, its gate open at almost
-    every one (94.5% of the events of the readers the 31B's wiring check read), not where it sits at an ordinary
+    every one (94.5% of every face's sixteen strongest stored events on the 31B), not where it sits at an ordinary
     word-piece."""
     g = torch.as_tensor(np.asarray(g, np.float32))
     u = torch.as_tensor(np.asarray(u, np.float32))

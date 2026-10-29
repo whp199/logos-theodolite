@@ -1,0 +1,8 @@
+Applying quantization config:   0%|          | 0/410 [00:00<?, ?it/s]Applying quantization config: 100%|██████████| 410/410 [00:00<00:00, 20945.47it/s]
+Compressing model:   0%|          | 0/410 [00:00<?, ?it/s]Compressing model: 100%|██████████| 410/410 [00:00<00:00, 37324.78it/s]
+Loading weights:   0%|          | 0/2009 [00:00<?, ?it/s]Loading weights: 100%|██████████| 2009/2009 [00:00<00:00, 20101.86it/s]
+L5 forward B=25 44s
+L20 forward B=25 51s
+L35 forward B=25 44s
+L50 forward B=25 43s
+done

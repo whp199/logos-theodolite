@@ -1,0 +1,119 @@
+{
+ "unbroken_vs_merged": {
+  "a": "census/DET.jsonl",
+  "b": "sharded/DET.jsonl",
+  "rows": [
+   868,
+   868
+  ],
+  "fields": [
+   "ceiling",
+   "dose",
+   "finish",
+   "kind",
+   "layer",
+   "logprob",
+   "n_gen",
+   "neuron",
+   "prompt",
+   "push",
+   "ref_neuron",
+   "rel_push",
+   "seed",
+   "text",
+   "token_ids",
+   "top_ids",
+   "top_lps"
+  ],
+  "rows_differing": 0,
+  "first_differing": [],
+  "bytes_identical": true,
+  "sha256": [
+   "50f16b89c20ae0e5bba94361437ea89223a9818a55041dfd33e2525c7e6ab00c",
+   "50f16b89c20ae0e5bba94361437ea89223a9818a55041dfd33e2525c7e6ab00c"
+  ]
+ },
+ "canary_A_vs_B": {
+  "a": "census/CANA.canary.jsonl",
+  "b": "census/CANB.canary.jsonl",
+  "rows": [
+   64,
+   64
+  ],
+  "fields": [
+   "ceiling",
+   "dose",
+   "finish",
+   "kind",
+   "layer",
+   "logprob",
+   "n_gen",
+   "neuron",
+   "prompt",
+   "push",
+   "ref_neuron",
+   "rel_push",
+   "seed",
+   "text",
+   "token_ids",
+   "top_ids",
+   "top_lps"
+  ],
+  "rows_differing": 0,
+  "first_differing": [],
+  "bytes_identical": true,
+  "sha256": [
+   "4a6b0f1887f59140e2b3a3d0fe5b71af385dce7102ee35f68dc260c8e2ebea6b",
+   "4a6b0f1887f59140e2b3a3d0fe5b71af385dce7102ee35f68dc260c8e2ebea6b"
+  ]
+ },
+ "canary_A_vs_shard1": {
+  "a": "census/CANA.canary.jsonl",
+  "b": "sharded/DET.s1of2.canary.jsonl",
+  "rows": [
+   64,
+   64
+  ],
+  "fields": [
+   "ceiling",
+   "dose",
+   "finish",
+   "kind",
+   "layer",
+   "logprob",
+   "n_gen",
+   "neuron",
+   "prompt",
+   "push",
+   "ref_neuron",
+   "rel_push",
+   "seed",
+   "text",
+   "token_ids",
+   "top_ids",
+   "top_lps"
+  ],
+  "rows_differing": 0,
+  "first_differing": [],
+  "bytes_identical": true,
+  "sha256": [
+   "4a6b0f1887f59140e2b3a3d0fe5b71af385dce7102ee35f68dc260c8e2ebea6b",
+   "4a6b0f1887f59140e2b3a3d0fe5b71af385dce7102ee35f68dc260c8e2ebea6b"
+  ]
+ },
+ "files": {
+  "census/CANA.canary.json": "8b7ef900d99b7ea5734612e104f5fc0d37bb79a8218bb3c484824467bb254cc1",
+  "census/CANA.canary.jsonl": "4a6b0f1887f59140e2b3a3d0fe5b71af385dce7102ee35f68dc260c8e2ebea6b",
+  "census/CANB.canary.json": "f88bce901538d8daf63c29a688b9bab55f80805edaf6c6d93ef475f6e7761871",
+  "census/CANB.canary.jsonl": "4a6b0f1887f59140e2b3a3d0fe5b71af385dce7102ee35f68dc260c8e2ebea6b",
+  "census/DET.jsonl": "50f16b89c20ae0e5bba94361437ea89223a9818a55041dfd33e2525c7e6ab00c",
+  "census/DET.meta.json": "910e7ecb04618d206caa9118c94942cc226afdd827f52ebdb7f172f4653a466b",
+  "sharded/DET.jsonl": "50f16b89c20ae0e5bba94361437ea89223a9818a55041dfd33e2525c7e6ab00c",
+  "sharded/DET.meta.json": "409581aab6f405cf4dad2eebf9cb01a70bd3d264f7cd2be509faeaa0f089526a",
+  "sharded/DET.s0of2.jsonl": "634e83b3603aa46468028548aed1ba201280f28a17cf82afc8a2dae72bbf405a",
+  "sharded/DET.s0of2.meta.json": "d94c6125e8053f3100296e35e0b2dbd1c8d831b7846bbbee6b4407d3088fc1fc",
+  "sharded/DET.s1of2.canary.jsonl": "4a6b0f1887f59140e2b3a3d0fe5b71af385dce7102ee35f68dc260c8e2ebea6b",
+  "sharded/DET.s1of2.jsonl": "deaaea750eca9a1517a3b4f752c0fca0af5f72921d15558f4a48a2cb3f5e50fb",
+  "sharded/DET.s1of2.meta.json": "0f133b819e905287571dc4c187d895f0535b1bb5139da6eb98f564d2b2907d94"
+ }
+}

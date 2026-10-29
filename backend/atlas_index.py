@@ -39,9 +39,9 @@ git ignores), each with its provenance in a `meta` field (model, lens id, built_
   writers, their pushes, their linked readers and the null's, each pair's g, u, signs, scale f and strength, the
   readers' operating points from the passages, every read [W, R, Q, 3, 2], and each reader's own gate and up values
   unpushed, g0 and u0 [W, R, Q, P], the last word-piece at [..., -1]: where it sits; a check whose meta has no `format`
-  (measured before g0 and u0 were recorded, as the 31B's of 29 October 2026 was) lacks f, g0 and u0, its stored
-  summary is as it was, and /arch (`links.measured.site_score`) says its sign in use needs measuring again where the
-  reader sits), `layers`; its meta holds each layer's summary and cost, and is all the server reads of it (/arch).
+  (measured before g0 and u0 were recorded, as the 31B's of the night of 28-29 October 2026 was) lacks f, g0 and u0,
+  its stored summary is as it was, and /arch (`links.measured.site_score`) says its sign in use needs measuring again
+  where the reader sits), `layers`; its meta, all the server reads of it (/arch), holds each layer's summary and cost.
   Merged from wiring_check.d/L{l}.npz, one a layer, as each is measured.
 - head_profiles.json: where each head looks over a few reference texts (built by the server on first need).
 - vocab.json: every word-piece decoded alone (written by the server on first need).

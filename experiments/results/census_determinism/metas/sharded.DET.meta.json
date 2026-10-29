@@ -1,0 +1,344 @@
+{
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "layer": 45,
+ "prompts": {
+  "who": "Who are you?",
+  "snake": "Write a snake game in Python.",
+  "orange": "Describe the color orange.",
+  "free": "Write whatever you like."
+ },
+ "prompt_ids": {
+  "who": [
+   2,
+   105,
+   2364,
+   107,
+   15938,
+   659,
+   611,
+   236881,
+   106,
+   107,
+   105,
+   4368,
+   107,
+   100,
+   45518,
+   107,
+   101
+  ],
+  "snake": [
+   2,
+   105,
+   2364,
+   107,
+   6974,
+   496,
+   22825,
+   2290,
+   528,
+   17856,
+   236761,
+   106,
+   107,
+   105,
+   4368,
+   107,
+   100,
+   45518,
+   107,
+   101
+  ],
+  "orange": [
+   2,
+   105,
+   2364,
+   107,
+   82858,
+   506,
+   2258,
+   11167,
+   236761,
+   106,
+   107,
+   105,
+   4368,
+   107,
+   100,
+   45518,
+   107,
+   101
+  ],
+  "free": [
+   2,
+   105,
+   2364,
+   107,
+   6974,
+   9002,
+   611,
+   1133,
+   236761,
+   106,
+   107,
+   105,
+   4368,
+   107,
+   100,
+   45518,
+   107,
+   101
+  ]
+ },
+ "design_name": "calib_rel",
+ "design": [
+  [
+   "who",
+   -0.1
+  ],
+  [
+   "who",
+   0.1
+  ],
+  [
+   "who",
+   -0.25
+  ],
+  [
+   "who",
+   0.25
+  ],
+  [
+   "who",
+   -0.5
+  ],
+  [
+   "who",
+   0.5
+  ],
+  [
+   "who",
+   -1.0
+  ],
+  [
+   "who",
+   1.0
+  ],
+  [
+   "who",
+   -2.0
+  ],
+  [
+   "who",
+   2.0
+  ],
+  [
+   "who",
+   -4.0
+  ],
+  [
+   "who",
+   4.0
+  ],
+  [
+   "orange",
+   -0.1
+  ],
+  [
+   "orange",
+   0.1
+  ],
+  [
+   "orange",
+   -0.25
+  ],
+  [
+   "orange",
+   0.25
+  ],
+  [
+   "orange",
+   -0.5
+  ],
+  [
+   "orange",
+   0.5
+  ],
+  [
+   "orange",
+   -1.0
+  ],
+  [
+   "orange",
+   1.0
+  ],
+  [
+   "orange",
+   -2.0
+  ],
+  [
+   "orange",
+   2.0
+  ],
+  [
+   "orange",
+   -4.0
+  ],
+  [
+   "orange",
+   4.0
+  ],
+  [
+   "free",
+   -0.1
+  ],
+  [
+   "free",
+   0.1
+  ],
+  [
+   "free",
+   -0.25
+  ],
+  [
+   "free",
+   0.25
+  ],
+  [
+   "free",
+   -0.5
+  ],
+  [
+   "free",
+   0.5
+  ],
+  [
+   "free",
+   -1.0
+  ],
+  [
+   "free",
+   1.0
+  ],
+  [
+   "free",
+   -2.0
+  ],
+  [
+   "free",
+   2.0
+  ],
+  [
+   "free",
+   -4.0
+  ],
+  [
+   "free",
+   4.0
+  ]
+ ],
+ "max_new": 64,
+ "top_k": 5,
+ "seed": 0,
+ "random_controls": 8,
+ "neurons": "random:16",
+ "push": "add: dose x p50 along unit(w_post * W_down[:, n]) (a control: along unit(w_post * r), r isotropic), at the stream leaving the layer, every word-piece but the start mark",
+ "controls": "unit(w_post * r), r isotropic: the reference's random down column through the post-feed-forward norm",
+ "dose_unit": "stream",
+ "ceilings": "each pushed answer records its unit's write ceiling (`ceiling`; a control's is that of the neuron it is paired with, `ref_neuron`), for the dose window alone",
+ "version": 2,
+ "read_gain": {
+  "neurons": 0.9397,
+  "controls": 0.9611,
+  "ratio": 1.023,
+  "read_by": "the next layer's input norm (the final norm after the last layer)"
+ },
+ "doses_from": "a calibration ladder, for finding where effects begin and text breaks on this model",
+ "p50": 144.42271423339844,
+ "p50_source": "the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces)",
+ "stop_ids": [
+  1,
+  106,
+  50
+ ],
+ "greedy": true,
+ "chat": "thinking off",
+ "lens": "jpp-base",
+ "stand_in": false,
+ "unpacker": {
+  "mode": "compiled",
+  "linears": 410,
+  "shapes": 8,
+  "devices": [
+   "cuda:0"
+  ],
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+   "table_nan_payloads": 0,
+   "seconds": 1.67
+  },
+  "install_s": 1.67
+ },
+ "d_ff": 21504,
+ "neuron_ids": "749,3098,5357,5526,5873,6703,8799,9101,10168,10999,16229,17689,17797,18683,20392,20427",
+ "batch": 64,
+ "runtime": {
+  "device": "NVIDIA GeForce RTX 5090",
+  "torch": "2.14.1+cu130",
+  "cuda": "13.0",
+  "transformers": "5.20.0",
+  "interp_engine": "1.14.0",
+  "compressed_tensors": "0.19.0",
+  "git": "221b69805768a74073fc1db00d677f7940d1369a",
+  "git_clean": false,
+  "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+ },
+ "plan": "10 x batch",
+ "jobs": {
+  "n": 868,
+  "sha256": "1505178b9c12ebc6"
+ },
+ "started_at": "2026-10-29T05:36:30Z",
+ "plan_kept": true,
+ "shards": [
+  "DET.s0of2.jsonl",
+  "DET.s1of2.jsonl"
+ ],
+ "unpacker_sessions": [
+  {
+   "mode": "compiled",
+   "linears": 410,
+   "shapes": 8,
+   "devices": [
+    "cuda:0"
+   ],
+   "self_test": {
+    "linears": 410,
+    "same_bits": true,
+    "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+    "table_nan_payloads": 0,
+    "seconds": 1.67
+   },
+   "install_s": 1.67
+  },
+  {
+   "mode": "compiled",
+   "linears": 410,
+   "shapes": 8,
+   "devices": [
+    "cuda:0"
+   ],
+   "self_test": {
+    "linears": 410,
+    "same_bits": true,
+    "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+    "table_nan_payloads": 0,
+    "seconds": 1.66
+   },
+   "install_s": 1.66
+  }
+ ],
+ "canary": "identical on 1 of 1 shard"
+}

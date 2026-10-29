@@ -415,6 +415,8 @@ const BearingCaution: React.FC<{ sighting: Sighting | null; chart?: boolean; sty
 export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
   const sighting = useTheodoliteStore((s) => s.sighting);
   const { lens } = useReadingLens(sighting);
+  // the frontispiece's rule: a comma before "at the word" only after a phrase that ends in what the lens was fitted on
+  const lensWords = lensPhrase(lens);
   const frameDesc = sighting ? describeFrame(sighting) : null;
   const landmarks = useTheodoliteStore((s) => s.landmarks);
   const setLandmarks = useTheodoliteStore((s) => s.setLandmarks);
@@ -2249,8 +2251,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         {sf?.kind === "words" ? (
           <>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
-              Gilt lozenge: the nearest each word came. Hollow ring: where it stood at the last layer. Read through {lensPhrase(lens)}
-              {isShippedLens(lens) ? "" : ","} at the word{" "}
+              Gilt lozenge: the nearest each word came. Hollow ring: where it stood at the last layer. Read through {lensWords}
+              {lensWords.includes(", fitted on ") ? "," : ""} at the word{" "}
               {sighting?.readAt != null ? wp(sighting.readAt) : <Missing what={NOT_HERE} />}
               {k >= 1 ? `, the ${ordinal(k)} word-piece of its own answer,` : ""} in the sighting shown.
             </p>
@@ -2329,9 +2331,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         <Rubric style={{ maxWidth: "860px" }}>
           Compare the landmarks with one another, not with certainty. The study found that at layers 51 to 59 the J++ lens
           leans toward “she” for most of the AIs it tried (six or seven of nine), far more than the other lenses it tried:
-          mostly a quirk of the J++ recipe (R1). Do not read it as how the model sees itself. Compare a landmark across
-          versions of a question at the same word-piece, not across the word-pieces of one answer. Section vii weighs two
-          words against each other directly.
+          mostly a quirk of the J++ recipe, for the Jacobian lens, fitted on the same model as J++, removes it almost as
+          well as a lens fitted on the instruct model (R1; <a href={href.lexicon("late")}>the caution</a>). Do not read it
+          as how the model sees itself. Compare a landmark across versions of a question at the same word-piece, not across
+          the word-pieces of one answer. Section vii weighs two words against each other directly.
         </Rubric>
         {readsInsideAnswer(sighting) ? <AnswerPositionCaution sighting={sighting} /> : null}
         {sighting && readWhere(sighting).role === "template_end" ? <TemplateEndCaution /> : null}

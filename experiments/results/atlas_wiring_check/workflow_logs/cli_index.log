@@ -1,0 +1,27 @@
+lens: layer 0 done (0 s)
+lens: layer 1 done (0 s)
+lens: layer 2 done (0 s)
+lens: layer 3 done (0 s)
+lens: layer 4 done (0 s)
+lens: layer 5 done (0 s)
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/wc/cli_index/lens.npz
+stats: 1837 word-pieces in 4 windows (0 s)
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/wc/cli_index/act_scale.npz
+wiring: links weighed across layers with the norms' scales from the stats index (the study's 36 texts (backend/causal_check.STUDY_TEXTS))
+wiring: layer 1 read against every layer before it (0 s)
+wiring: layer 2 read against every layer before it (0 s)
+wiring: layer 3 read against every layer before it (0 s)
+wiring: layer 4 read against every layer before it (0 s)
+wiring: layer 5 read against every layer before it (0 s)
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/wc/cli_index/wiring.npz
+layout: layer 0 (pca, 0 s)
+layout: layer 1 (pca, 0 s)
+layout: layer 2 (pca, 0 s)
+layout: layer 3 (pca, 0 s)
+layout: layer 4 (pca, 0 s)
+layout: layer 5 (pca, 0 s)
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/wc/cli_index/layout_writes.npz
+passages: part 1 of 1, windows 0 to 29 (0 s)
+passages: 1837 word-pieces in 30 windows, 1 parts merged (0 s)
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/wc/cli_index/passages.d
+links in use: at each reader's operating point the sign differs from the sign from rest on 5,016 of 15,360 read on the reader's + face (32.7%) and 5,054 of 15,360 read on the reader's - face (32.9%); 627 of 15,360 downstream links differ on both
