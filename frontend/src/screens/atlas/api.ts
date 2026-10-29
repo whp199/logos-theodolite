@@ -310,6 +310,10 @@ export interface CensusUnitRow {
   null_pct: number | null;
   q?: number | null;
   words: string[];
+  /** the share of its mass that comes from collapse words, which `words` leaves out, and the mass of the words shown
+   * (census.mark_collapse) */
+  collapse_mass?: number;
+  mass_shown?: number;
   name: string;
 }
 /** What every census reply says of its run (backend/atlas.py census_card). */
@@ -352,6 +356,11 @@ export interface CensusCard {
     file: string;
     says: string;
   } | null;
+  /** the words pages leave out of a unit's census words (census.COLLAPSE_RULE: what enough random controls bring at
+   * the design's largest doses); null for a design without the rule */
+  collapse?: { rule: string; doses: number[]; answers: number; controls: number; controls_needed: number; words: string[] } | null;
+  /** what a high rank says (census.LEAD_SAYS) */
+  lead_says?: string;
 }
 export interface Rollout {
   prompt: string;
@@ -373,6 +382,11 @@ export interface CensusStats {
   shift?: number | null;
   shift_up?: [string, number][];
   shift_down?: [string, number][];
+  /** its words that are collapse words (census.mark_collapse), left out where its words are shown, and the share of its
+   * mass they give */
+  collapse?: string[];
+  collapse_mass?: number;
+  mass_shown?: number;
 }
 export interface CensusUnit {
   layer: number;

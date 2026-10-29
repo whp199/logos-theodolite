@@ -50,9 +50,15 @@ function neuronBody(layer: number, n: number) {
   const s = useAtlas.getState();
   const us = s.units[layer];
   const u = us?.find((x) => x.kind === "neuron" && x.n === n);
-  // census words describe a neuron only when its pushes beat every random control's (the map's gilt)
-  const ctl = (us ?? []).filter((x) => x.kind === "random").map((x) => x.z);
-  const censusShown = !!u && ctl.length > 0 && u.z > Math.max(...ctl);
+  // census words describe a neuron only when its pushes beat every random control's (the map's gilt), and, where a
+  // census leaves out collapse words, only when the words shown beat every control's shown words alone (mass_shown)
+  const ctls = (us ?? []).filter((x) => x.kind === "random");
+  const ctl = ctls.map((x) => x.z);
+  const censusShown =
+    !!u &&
+    ctl.length > 0 &&
+    u.z > Math.max(...ctl) &&
+    (u.mass_shown == null || u.mass_shown > Math.max(...ctls.map((x) => x.mass_shown ?? Number.NEGATIVE_INFINITY)));
   const h = hoverCache.get(`${layer}/${n}`) as Hover | undefined;
   const nh = hoverCache.get(`nh/${layer}/${n}`) as NeuronHeads | undefined;
   const name = h?.name || u?.name;

@@ -125,7 +125,9 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # 2026 (DOSES_CALIBRATED; experiments/results/census_break_rel_trial)
     "break_rel": [(p, s * d) for p in DESIGN_QUESTIONS["break_rel"] for d in (1.0, 2.0) for s in (-1.0, 1.0)],
 }
-DEFAULT_DESIGN = "main_rel"
+# the design a census takes when none is named, and the one a layer's run is read from first (layer_runs): break_rel,
+# whose doses come from this model's own ladders, since 29 October 2026 (the owner's choice; main_rel before it)
+DEFAULT_DESIGN = "break_rel"
 CALIBRATION_DESIGNS = ("calib_rel", "calib_ceil")
 # where the doses come from, said wherever a census is shown or handed to the scientist
 DOSES_FROM = {
@@ -152,12 +154,29 @@ DOSES_FROM = {
 # from how the text survives. A design named here speaks on every card with DOSES_FROM's words, which say where it is
 # calibrated, not with the words its runs' metas recorded before that was recorded (atlas.census_card).
 DOSES_CALIBRATED: Dict[str, Tuple[int, int]] = {"break_rel": (40, 50)}
+# the answer lengths a design's calibration was read at (break_rel's trial: 48 word-pieces, and 32 as those answers cut
+# short, both passing at layer 45): a run whose answers run longer is not calibrated, its doses read over more loops
+DOSES_CALIBRATED_MAX_NEW: Dict[str, Tuple[int, ...]] = {"break_rel": (32, 48)}
+# the settings a design's census takes unless others are given (census_run.py): break_rel's are the owner's of 29
+# October 2026 for a whole layer, its trial's length and batch (the step-0 rule) with 2,048 controls; other designs
+# keep the command's own (256 word-pieces, a batch of 32, 256 controls)
+DESIGN_RUN_DEFAULTS: Dict[str, Dict[str, int]] = {"break_rel": {"max_new": 48, "batch": 64, "random_controls": 2048}}
+RUN_DEFAULTS: Dict[str, int] = {"max_new": 256, "batch": 32, "random_controls": 256}
 
 
-def doses_calibrated(design_name: Optional[str], layer: Optional[int]) -> bool:
-    """Whether a design's doses are calibrated on this model at a layer (DOSES_CALIBRATED; the layer counted from 0)."""
+def run_defaults(design_name: Optional[str]) -> Dict[str, int]:
+    """The settings a census of this design takes unless others are given (DESIGN_RUN_DEFAULTS over RUN_DEFAULTS)."""
+    return {**RUN_DEFAULTS, **DESIGN_RUN_DEFAULTS.get(str(design_name), {})}
+
+
+def doses_calibrated(design_name: Optional[str], layer: Optional[int], max_new: Optional[int] = None) -> bool:
+    """Whether a design's doses are calibrated on this model at a layer (DOSES_CALIBRATED; the layer counted from 0),
+    for answers of `max_new` word-pieces at most where one is given (DOSES_CALIBRATED_MAX_NEW)."""
     span = DOSES_CALIBRATED.get(str(design_name))
-    return span is not None and layer is not None and span[0] <= int(layer) <= span[1]
+    if span is None or layer is None or not span[0] <= int(layer) <= span[1]:
+        return False
+    lengths = DOSES_CALIBRATED_MAX_NEW.get(str(design_name))
+    return max_new is None or lengths is None or int(max_new) in lengths
 
 
 def design_questions(design_name: Optional[str]) -> Dict[str, str]:
@@ -190,6 +209,157 @@ DESIGN_READING: Dict[str, Dict[str, Any]] = {
 def reading_of(design_name: Optional[str]) -> Dict[str, Any]:
     """The reading a design's runs are ranked by (DESIGN_READING over READING_DEFAULT)."""
     return {**READING_DEFAULT, **DESIGN_READING.get(str(design_name), {})}
+
+
+# The words a page does not show as a neuron's census words (the owner's choice of 29 October 2026, after break_rel's
+# trial, where at +-2 neurons and controls alike broke into loops on the same few words, own, thought and same, and 194
+# of the 262 neurons it named listed one of them): a word that at least `per_1024` of every 1,024 controls (and at
+# least two) hold in `answers` or more of their answers at a dose of size `doses`, read from each run's own controls
+# with each answer's unpushed words left out as the design's reading leaves them out (the review's rule, readlib's
+# counts, without its clause for every word holding "thought"); and a word made only of such words run together
+# (thoughtthought, ownthought), a loop with its spaces lost. The ranking is not changed by it: a unit's mass and p count
+# every word, as the design was calibrated; the ranking file keeps every word and marks these (`collapse`), and
+# `<run>.collapse.json` keeps the layer's list.
+COLLAPSE_RULE: Dict[str, Dict[str, Any]] = {"break_rel": {"doses": (2.0,), "answers": 2, "per_1024": 10}}
+
+# What a census lead says, wherever one is shown (the owner's choice of 29 October 2026, a question break_rel's
+# pre-registration left open): that the neuron's pushes differ from random ones, not that its words share a theme. Every
+# unit, a control too, has words above the mean it is set against; a high rank says that its stand further above it
+# than nearly every random direction's own do. Worded by the run's reading (`reference`).
+def lead_says(reading: Optional[Dict[str, Any]]) -> str:
+    against = ("what random directions pushed as far bring" if (reading or {}).get("reference") == "controls"
+               else "what the run's units bring on average")
+    return (f"a high rank says that, pushed along its own write direction, the neuron's strongest words stand further above "
+            f"{against} than nearly every random direction's own strongest words do: its push differs from a random one. "
+            f"It does not say that its words share a theme or name what it does")
+
+
+LEAD_SAYS = lead_says({"reference": "controls"})
+
+
+def joined_of(parts: set, vocab: Iterable[str]) -> List[str]:
+    """The words of `vocab` made only of two or more of `parts` run together (a loop whose spaces were lost), sorted."""
+    out = []
+    if not parts:
+        return out
+    longest = max(len(x) for x in parts)
+    for w in vocab:
+        if w in parts or len(w) < 6:
+            continue
+        if not any(w[:k] in parts for k in range(3, min(longest, len(w)) + 1)) or not any(
+                w[-k:] in parts for k in range(3, min(longest, len(w)) + 1)):
+            continue  # it neither begins nor ends with a part
+        ok = [0] + [-1] * len(w)  # ok[j]: the fewest parts that make w[:j], -1 where none do
+        for j in range(3, len(w) + 1):
+            best = -1
+            for i in range(0, j - 2):
+                if ok[i] >= 0 and w[i:j] in parts and (best < 0 or ok[i] + 1 < best):
+                    best = ok[i] + 1
+            ok[j] = best
+        if ok[len(w)] >= 2:
+            out.append(w)
+    return sorted(out)
+
+
+def collapse_words(rows: Iterable[Dict[str, Any]], design_name: Optional[str]) -> Optional[Dict[str, Any]]:
+    """A run's collapse words by its design's COLLAPSE_RULE (None for a design without one): {rule, doses, answers,
+    controls, controls_needed, held, joined, words}: `held`, the words enough controls hold; `joined`, the words made only
+    of those run together; `words`, both, sorted. A control holds a word when it is among the words (three letters or
+    more) of at least `answers` of its answers at those doses, either sign, each answer's unpushed words left out as the
+    design's reading leaves them out (`reading_of`'s `exclude`: the answer's own question's, or every question's)."""
+    rule = COLLAPSE_RULE.get(str(design_name))
+    if rule is None:
+        return None
+    rows = as_slim(rows)
+    exclude = reading_of(design_name)["exclude"]
+    base_of: Dict[str, set] = collections.defaultdict(set)
+    for r in rows:
+        if r["kind"] == "baseline":
+            base_of[str(r["prompt"])].update(r["wid"])
+    base_ids: set = set().union(*base_of.values()) if base_of else set()
+    doses = {abs(float(d)) for d in rule["doses"]}
+    per_ctl: Dict[int, collections.Counter] = collections.defaultdict(collections.Counter)
+    controls = set()
+    for r in rows:
+        if r["kind"] != "random":
+            continue
+        controls.add(int(r["neuron"]))
+        if abs(float(r["dose"])) in doses:
+            left_out = base_of.get(str(r["prompt"]), set()) if exclude == "own" else base_ids
+            per_ctl[int(r["neuron"])].update(i for i in r["wid"] if i not in left_out)
+    need = max(2, math.ceil(rule["per_1024"] * len(controls) / 1024))
+    holders: collections.Counter = collections.Counter()
+    for c in per_ctl.values():
+        holders.update(w for w, k in c.items() if k >= rule["answers"])
+    held = sorted(rows.vocab[w] for w, h in holders.items() if h >= need)
+    joined = joined_of(set(held), rows.vocab) if held else []
+    size = "/".join(f"{d:g}" for d in sorted(doses))
+    return {"rule": (f"a word at least {need} of the run's {len(controls):,} controls hold in {rule['answers']} or more of "
+                     f"their answers pushed by ±{size} of the stream (or one made of such words run together): what random "
+                     f"pushes bring that hard, not a neuron's own"),
+            "doses": sorted(doses), "answers": int(rule["answers"]), "controls": len(controls), "controls_needed": need,
+            "held": held, "joined": joined, "words": sorted(set(held) | set(joined))}
+
+
+def mark_collapse(records: List[Dict[str, Any]], collapse: Optional[Dict[str, Any]]) -> None:
+    """Mark each ranked unit's collapse words (`collapse`, in its words' order) when its design has a rule; the share of
+    its mass they give (`collapse_mass`: of the positive z of its top five words, the collapse words'; 0 when it has no
+    mass); and the mass of the words shown (`mass_shown`: the positive z of its top five words that are not collapse
+    words), so a page can say when a rank rests on words it does not show, and describe a neuron by its words only where
+    those alone beat every control's."""
+    if collapse is None:
+        return
+    cw = set(collapse["words"])
+    for r in records:
+        words_ = r.get("words") or []
+        r["collapse"] = [w for w, _, _ in words_ if w in cw]
+        top = [(w, max(float(z), 0.0)) for w, _, z in words_[:5]]
+        mass = sum(z for _, z in top)
+        shown = sum(z for w, z in top if w not in cw)
+        r["collapse_mass"] = round((mass - shown) / mass, 3) if mass > 0 else 0.0
+        r["mass_shown"] = round(shown, 3)
+
+
+def remark_units(run_path: Path) -> Path:
+    """Mark a run's ranking file with its design's collapse words in place (`mark_collapse`), without ranking it again,
+    so its mass, p and q stay as they were; the layer's list written first, to `<run>.collapse.json`. A design without
+    a rule is left as it is."""
+    out = units_path_of(run_path)
+    collapse = collapse_words(read_slim(run_path), run_design(run_path))
+    if collapse is None:
+        return out
+    recs = list(read_rows(out))
+    mark_collapse(recs, collapse)
+    write_json_atomic(collapse_path_of(run_path), collapse)
+    tmp = out.with_name(out.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.writelines(json.dumps(u, ensure_ascii=False) + "\n" for u in recs)
+    os.replace(tmp, out)
+    return out
+
+
+def shown_words(unit: Dict[str, Any], k: Optional[int] = None) -> List[str]:
+    """A ranked unit's census words as a page shows them: of its `k` strongest words (all of them without `k`), those
+    that are not collapse words (COLLAPSE_RULE; a ranking without the mark shows every word), so a word below the
+    strongest few never moves up to stand for the neuron in a hidden word's place."""
+    hide = set(unit.get("collapse") or ())
+    top = (unit.get("words") or []) if k is None else (unit.get("words") or [])[:k]
+    return [w for w, _, _ in top if w not in hide]
+
+
+def shown_unit(unit: Dict[str, Any]) -> Dict[str, Any]:
+    """A ranked unit as a page or tool is given it: its words, the words its per-question list and its word-shift lists
+    name, with its collapse words left out (kept by name in `collapse`, with `collapse_mass` and `mass_shown`)."""
+    hide = set(unit.get("collapse") or ())
+    if not hide:
+        return unit
+    out = dict(unit)
+    out["words"] = [x for x in unit.get("words") or [] if x[0] not in hide]
+    out["per_prompt"] = {w: v for w, v in (unit.get("per_prompt") or {}).items() if w not in hide}
+    for key in ("shift_up", "shift_down"):
+        if unit.get(key) is not None:
+            out[key] = [x for x in unit[key] if x[0] not in hide]
+    return out
 # The push's unit: "stream", dose x p50, the same push for every neuron and control (the reference's `--dose-unit
 # rel`); "ceiling", dose x the neuron's write ceiling (`atlas_ops.Weights.write_ceiling`, the most it can write by
 # itself), a control pushed by the ceiling of the neuron it is paired with (`control_refs`), so the null's lengths follow
@@ -663,8 +833,8 @@ def census_dir() -> Path:
 
 def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
                refused: Optional[Dict[int, str]] = None, calibration: bool = False) -> Dict[int, Path]:
-    """layer -> the path of its census run: a main_rel run first, a screen before a retest of it (`stage`), then the
-    largest; calibration runs left out (as the reference's `layer_runs`), or, with `calibration`, only they are read
+    """layer -> the path of its census run: a screen before any retest (`stage`: a retest is never a layer's census), then
+    a run of the default design (DEFAULT_DESIGN), then the largest; calibration runs left out (as the reference's `layer_runs`), or, with `calibration`, only they are read
     (for the dose window, census_tools.py curves); given the model read here, runs taken on another model left out. A
     shard of a run (its meta names its `shard`) is never read as a layer's census: only the run `merge_runs` joins from
     its shards is. Runs taken before the controls were drawn through w_post (CENSUS_VERSION) are not read: given
@@ -688,7 +858,7 @@ def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
                 refused[meta["layer"]] = (f"{jsonl.name} was taken with isotropic random controls, about 100 times louder to the "
                                           "next layer than any neuron's push on this model: take it again")
             continue
-        key = (meta.get("design_name") == DEFAULT_DESIGN, not meta.get("stage"), jsonl.stat().st_size)  # a screen before its retest
+        key = (not meta.get("stage"), meta.get("design_name") == DEFAULT_DESIGN, jsonl.stat().st_size)  # a screen before any retest
         if meta["layer"] not in best or key > best[meta["layer"]][1]:
             best[meta["layer"]] = (jsonl, key)
     return {layer: path for layer, (path, _) in best.items()}
@@ -739,8 +909,21 @@ def meta_path_of(run_path: Path) -> Path:
     return Path(str(run_path)[: -len(".jsonl")] + ".meta.json")
 
 
+def collapse_path_of(run_path: Path) -> Path:
+    return Path(str(run_path)[: -len(".jsonl")] + ".collapse.json")
+
+
 def spread_path_of(run_path: Path) -> Path:
     return Path(str(run_path)[: -len(".jsonl")] + ".spread.json")
+
+
+def run_design(run_path: Path) -> Optional[str]:
+    """The design a run's meta names (None when it names none or cannot be read)."""
+    try:
+        meta = json.loads(meta_path_of(Path(run_path)).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return meta.get("design_name") if isinstance(meta, dict) else None
 
 
 def run_reading(run_path: Path, max_rel: Optional[float] = None) -> Dict[str, Any]:
@@ -760,12 +943,18 @@ def write_units(run_path: Path, max_rel: Optional[float] = None, top_words: int 
     """Rank a run and write its `.units.jsonl` beside it (atomically): `compute_units`' records, each with its word-shift
     score against the controls (`shift_scores`: shift, shift_up, shift_down; None without controls), read as the run's
     design is (`run_reading`: its cap on the push, its reference and its exclusion; `max_rel` replaces the cap), each
-    record carrying that reading (`reading`), so a reader of the file knows what ranked it."""
+    record carrying that reading (`reading`), so a reader of the file knows what ranked it. For a design with a
+    COLLAPSE_RULE each record also marks its collapse words (`collapse`) and the layer's list is written first, to
+    `<run>.collapse.json` beside it."""
     out = units_path_of(run_path)
     rows = read_slim(run_path)
     reading = run_reading(run_path, max_rel)
     recs = compute_units(rows, max_rel=reading["max_rel"], top_words=top_words, reference=reading["reference"],
                          exclude=reading["exclude"])
+    collapse = collapse_words(rows, run_design(run_path))
+    if collapse is not None:
+        mark_collapse(recs, collapse)
+        write_json_atomic(collapse_path_of(run_path), collapse)
     shifts = shift_scores(rows, max_rel=reading["max_rel"])
     for r in recs:
         sh = shifts.get((r["kind"], int(r["neuron"])), {"shift": None, "up": [], "down": []})
@@ -1835,6 +2024,7 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
         design_name = meta.get("design_name")
         reading = reading_of(design_name)
         rows = read_slim(Path(path))
+        collapse = collapse_words(rows, design_name)  # the run's own, before any subsample
         nn = sorted({int(r["neuron"]) for r in rows if r["kind"] == "neuron"})
         cc = sorted({int(r["neuron"]) for r in rows if r["kind"] == "random"})
         sub = len(nn) > neurons or len(cc) > controls
@@ -1847,12 +2037,13 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
             kept.extend(r for r in rows if r["kind"] == "baseline" or (r["kind"], int(r["neuron"])) in keep)
             rows = kept
         recs = compute_units(rows, max_rel=reading["max_rel"], reference=reading["reference"], exclude=reading["exclude"])
+        mark_collapse(recs, collapse)
         null = np.array([r["mass"] for r in recs if r["kind"] == "random"], np.float64)
         neu = [r for r in recs if r["kind"] == "neuron"]
         m = np.array([r["mass"] for r in neu], np.float64)
         entry: Dict[str, Any] = {"layer": int(l), "run": Path(path).name, "subsampled": sub, "n_neurons": len(m), "n_controls": len(null),
                                  "dose_unit": unit, "design": design_name, "reading": reading,
-                                 "dose_note": DOSES_FROM[design_name] if doses_calibrated(design_name, l) else
+                                 "dose_note": DOSES_FROM[design_name] if doses_calibrated(design_name, l, meta.get("max_new")) else
                                  ("one nominal dose, a multiple of each neuron's own write ceiling, the same share of "
                                   "each neuron's most at every layer; doses not yet calibrated on this model")
                                  if unit == "ceiling" else
@@ -1881,7 +2072,7 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
             # a neuron's chance of out-massing a control (ties half): 0.5 where neurons and controls are alike
             "auc": round(float((np.searchsorted(np.sort(null), m, side="left") + np.searchsorted(np.sort(null), m, side="right")).sum()
                                / (2.0 * len(m) * len(null))), 4),
-            "top": [{"n": r["neuron"], "mass": r["mass"], "words": [w for w, _, _ in r["words"][:6]]} for r in neu[:5]],
+            "top": [{"n": r["neuron"], "mass": r["mass"], "words": shown_words(r, 6)} for r in neu[:5]],
         })
         report.append(entry)
     return report

@@ -682,7 +682,8 @@ def run_checks(tmp: Path) -> int:
     runs = {}
     for name, rt in (("gguf", rt_g), ("stand-in", rt_s)):
         out = tmp / f"census-{name}.jsonl"
-        res = cz.take_census(rt, 2, [0, 1], out, p50=1.5, p50_source="fixed", controls=1, seed=0, max_new=6, top_k=3, batch=5, log=quiet)
+        res = cz.take_census(rt, 2, [0, 1], out, p50=1.5, p50_source="fixed", design_name="main_rel", controls=1, seed=0, max_new=6,
+                             top_k=3, batch=5, log=quiet)
         runs[name] = (list(cz.read_rows(out)), json.loads(cz.meta_path_of(out).read_text()), res)
     (rg, mg, _), (rs, ms, _) = runs["gguf"], runs["stand-in"]
     check(len(rg) == 34 and rg == rs, f"a tiny census (2 neurons, 1 control, main_rel): {len(rg)} answers, row for row the stand-in's")
@@ -690,8 +691,8 @@ def run_checks(tmp: Path) -> int:
           "its meta: the GGUF's model id, the same read gain and prompts")
     rt_16 = GGUFRuntime(files["Q4_0"], device="cpu", dtype=torch.bfloat16, tokenizer=tok, load_jpp=False).load()
     try:
-        cz.take_census(rt_16, 2, [0, 1, 2], tmp / "census-gguf.jsonl", p50=1.5, p50_source="fixed", controls=1, seed=0,
-                       max_new=6, top_k=3, batch=5, log=quiet)
+        cz.take_census(rt_16, 2, [0, 1, 2], tmp / "census-gguf.jsonl", p50=1.5, p50_source="fixed", design_name="main_rel", controls=1,
+                       seed=0, max_new=6, top_k=3, batch=5, log=quiet)
         check(False, "the same census continued in bf16 on a float32 run refused")
     except ValueError as exc:
         check("model" in str(exc) and rt_16.model_id.endswith("@cpu/bfloat16") and len(list(cz.read_rows(tmp / "census-gguf.jsonl"))) == 34,
@@ -755,7 +756,7 @@ def run_checks(tmp: Path) -> int:
            "THEODOLITE_ATLAS_DIR": str(tmp / "atlas"), "HF_HUB_OFFLINE": "1", "CUDA_VISIBLE_DEVICES": ""}
     env.pop("THEODOLITE_CENSUS_DIR", None)
     out_dir = tmp / "cli-census"
-    r = subprocess.run([sys.executable, "-I", str(ROOT_DIR / "scripts" / "census_run.py"), "--layer", "2", "--neurons", "0-1",
+    r = subprocess.run([sys.executable, "-I", str(ROOT_DIR / "scripts" / "census_run.py"), "--design", "main_rel", "--layer", "2", "--neurons", "0-1",
                         "--random-controls", "1", "--max-new", "6", "--batch", "5", "--top-k", "3", "--out-dir", str(out_dir), "--no-rank"],
                        env=env, capture_output=True, text=True, timeout=600)
     run = out_dir / "L2-main_rel.jsonl"
@@ -763,8 +764,8 @@ def run_checks(tmp: Path) -> int:
     if run.exists():
         meta = json.loads(cz.meta_path_of(run).read_text())
         ref_out = tmp / "cli-ref.jsonl"
-        cz.take_census(rt_s, 2, [0, 1], ref_out, p50=meta["p50"], p50_source=meta["p50_source"], controls=1, seed=0, max_new=6, top_k=3,
-                       batch=5, log=quiet)
+        cz.take_census(rt_s, 2, [0, 1], ref_out, p50=meta["p50"], p50_source=meta["p50_source"], design_name="main_rel", controls=1,
+                       seed=0, max_new=6, top_k=3, batch=5, log=quiet)
         check(meta["model"] == rt_g.model_id and list(cz.read_rows(run)) == list(cz.read_rows(ref_out)),
               "its rows are the stand-in runtime's at the same p50 (the GGUF's own tokenizer reads the questions alike)")
     section("make_runtime from the environment; census_run.py on a GGUF on the CPU", before)

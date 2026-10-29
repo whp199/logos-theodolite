@@ -220,8 +220,15 @@ def main(argv=None) -> int:
                       f"{sum(1 for u in neurons if u.get('q') is not None and u['q'] <= 0.05)} with a false-discovery q <= 0.05")
             else:
                 print(f"{len(neurons)} neurons, no random controls (null_pct is None)")
+            def said(u: dict) -> str:
+                """Its six strongest words as pages show them (census.shown_words), the collapse words among them counted."""
+                hide = set(u.get("collapse") or ())
+                ws_ = ", ".join(f"{w}({c})" for w, c, _ in u["words"][:6] if w not in hide)
+                n_hid = sum(1 for w, _, _ in u["words"][:6] if w in hide)
+                return ws_ + (f" (+{n_hid} collapse word{'s' if n_hid > 1 else ''} left out, {u.get('collapse_mass', 0):.0%} of its mass)" if n_hid else "")
+
             for i, u in enumerate(recs[: a.show]):
-                ws = ", ".join(f"{w}({c})" for w, c, _ in u["words"][:6])
+                ws = said(u)
                 print(f"{i + 1:4d}  {u['kind'][:3]} {u['neuron']:5d}  mass {u['mass']:5.1f}  shift {u['shift'] if u['shift'] is not None else '-':>6}  {ws}")
             for n in [int(x) for x in a.find.split(",") if x.strip()]:
                 rank = next((i + 1 for i, u in enumerate(neurons) if u["neuron"] == n), None)
@@ -229,7 +236,7 @@ def main(argv=None) -> int:
                 if rec is None:
                     print(f"neuron {n}: not in this run")
                     continue
-                ws = ", ".join(f"{w}({c})" for w, c, _ in rec["words"][:6])
+                ws = said(rec)
                 print(f"neuron {n}: rank {rank}/{len(neurons)} among neurons, mass {rec['mass']:.1f}, null_pct {rec['null_pct']}, "
                       f"p {rec.get('p')}, q {rec.get('q')}, {ws}")
             print(f"-> {out}")

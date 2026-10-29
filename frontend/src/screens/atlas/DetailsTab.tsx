@@ -20,17 +20,28 @@ const CensusStats: React.FC = () => {
   const unit = useAtlas((s) => s.unit);
   if (!f || !unit || unit.layer !== f.layer || unit.n !== f.n || !unit.stats) return null;
   const s = unit.stats;
+  // its words as pages show them: the collapse words, which random pushes bring as hard, left out (the server sends them
+  // left out already, census.shown_unit, and names them in `collapse`)
+  const hide = new Set(s.collapse ?? []);
+  const shown = s.words.filter(([w]) => !hide.has(w));
   return (
     <section className="atlas-sec">
-      <div className="kicker">the census · words its pushes brought out, against random directions</div>
+      <div className="kicker">the census · words its pushes brought out more than random pushes as far did</div>
       <CensusProvenance card={unit.card} style={{ margin: "0 0 4px" }} />
       <div className="atlas-crumbs">
-        {s.words.map(([w, c, z]) => (
+        {shown.length === 0 && s.words.length ? <span className="muted">only words random pushes bring as hard</span> : null}
+        {shown.map(([w, c, z]) => (
           <span key={w} className="atlas-tok" title={`${c} answers · z ${z.toFixed(1)} · ${(s.per_prompt[w] ?? []).join(" ")}`}>
             {w}
           </span>
         ))}
       </div>
+      {hide.size ? (
+        <div className="atlas-small muted" style={{ marginTop: 4 }}>
+          {hide.size === 1 ? "one word" : `${hide.size} words`} left out as words random pushes bring as hard at ±2
+          {s.collapse_mass ? `, ${Math.round(s.collapse_mass * 100)}% of its mass` : ""}: {[...hide].join(", ")}
+        </div>
+      ) : null}
       {s.shift_up?.length || s.shift_down?.length ? (
         <div className="atlas-small" style={{ marginTop: 4 }}>
           <span className="muted">shift of the answers' words · </span>
@@ -67,6 +78,9 @@ const CensusStats: React.FC = () => {
           {s.p != null ? ` · p ${s.p} against them` : ""}
           {s.q != null ? ` · q ${s.q} over the layer (false discovery)` : ""}
           {s.shift != null ? ` · shift ${s.shift.toFixed(3)}` : ""} · push = the push's length over the stream's
+          {hide.size
+            ? ` · left out of its words, as collapse words (${unit.card?.collapse?.rule ?? "words random pushes bring as hard"}), though its mass counts them${s.collapse_mass != null ? `, ${Math.round(s.collapse_mass * 100)}% of it` : ""}: ${[...hide].join(", ")}`
+            : ""}
           {unit.card?.read_gain?.ratio != null
             ? ` · the next layer reads the controls ${unit.card.read_gain.ratio}× as loudly as the neurons (a fair null is near 1)`
             : ""}

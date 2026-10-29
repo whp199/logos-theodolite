@@ -386,8 +386,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
 
   A design to replace `main_rel` was drafted on these leads: `break_rel` (±1 and ±2 of the stream on six questions read
   as two halves, every answer counted, each word against the controls alone), built on the branch `census-break-rel`
-  and merged on 29 October once its trial was read; `main_rel` stays the default (the owner’s choice). Its trial was taken early on 29 October, its reader and
-  gates fixed and hashed before it began (`SHA256SUMS` sha256
+  and merged on 29 October once its trial was read; it has been the default design since that afternoon (the owner’s
+  choice, below). Its trial was taken early on 29 October, its reader and gates fixed and hashed before it began (`SHA256SUMS` sha256
   `8d8d81de91dd03529db83f091c7ddeb26bbb4dd8037cac66f6dd91884c7c3b2d`), and read that morning with the gates as they
   were (the owner’s word). At layer 45 (1,022 fresh neurons against 1,024 controls) it **passes every gate** at 48
   word-pieces, and at 32 every gate the reader computes there (the check that the units file ranks as read is made at
@@ -419,7 +419,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
     (distinct-4 below 0.5) in 9.6% of cases (fresh neurons 4.1%, controls 0.4%): 135 of their 303 looping answers on
     their own words, 127 on the collapse words and 41 on neither. 194 of the 262 list “same”, “own” or “thought” among
     their words. The gates do not rest on these: with the 789 collapse words removed from every answer, every gate still
-    passes. But a page should not show them as a neuron’s words.
+    passes. But a page should not show them as a neuron’s words, and since 29 October none does (below).
   - **At layer 57 the pass is fragile and is not words in fluent text.** ±1 alone gives 0.52, and only the two doses
     together clear the probe’s first bar. The named take 82% of their weight from broken answers (distinct-4 below 0.9;
     the controls 49%, nearly all at ±2, and all 507 neurons 60%); many loop on pieces such as “sem”, “pemb” and “ngày”,
@@ -435,11 +435,51 @@ layers, the determinism run and the sampled push on 29 October). In this section
   12.4 answers a second while writing: about 12.1 hours at 48 pieces (12.7 with 2,048 controls), about 8.0–8.4 at 32
   (estimated, not timed). The owner chose, on 29 October, to count `break_rel`’s doses calibrated at layers 40–50 alone
   (pages 41–51): `DOSES_CALIBRATED` gives each design its span of layers and the card tests the run’s own, so 51–57
-  and every layer below 40 stay uncalibrated. These still wait on the owner: the piece count, whether ±2 stays
-  (a design without it is a new design, and the ±1 figures above were read after the fact), the controls, the default
-  design, and what a page says a lead means (the pre-registration left open whether to say “unlike a random direction
-  pushed as far” rather than “has a theme”). Every page and tool that shows a census says its doses are uncalibrated
+  and every layer below 40 stay uncalibrated. Every page and tool that shows a census says its doses are uncalibrated
   (in red), or not calibrated at that layer for `break_rel` outside 40–50, save a `break_rel` census at 40–50.
+
+  **The owner’s choices, and the first whole layer** (29 October 2026, afternoon):
+  - **48 word-pieces.** The 32-piece reading is the 48-piece answers cut short, so a run at 48 gives both. A
+    `break_rel` census now takes 48 pieces, a batch of 64 and 2,048 controls unless told otherwise
+    (`census.run_defaults`), and its card counts the doses calibrated only for answers of 32 or 48 pieces
+    (`DOSES_CALIBRATED_MAX_NEW`). The pod scripts still take `main_rel` unless told, as their pilot projects its cost.
+  - **±2 stays.** The design is run as it was trialled, so its calibration covers the run; a design without ±2 would be
+    a new one, its ±1 figures above read after the fact.
+  - **2,048 controls.** The smallest p halves, and about 10 of a layer’s 21,504 neurons beat every control by chance
+    alone, against about 21 with 1,024.
+  - **`break_rel` is the default design** (`census.DEFAULT_DESIGN`). A census takes it when none is named, and a layer’s
+    run of it is read before others.
+  - **Collapse words are left out of the words a page shows** (`census.COLLAPSE_RULE`): for `break_rel`, a word at
+    least 10 of every 1,024 controls (and at least two) hold in two or more of their ±2 answers, each answer’s own
+    question’s unpushed words left out as the ranking leaves them, read from each run’s own controls; and a word made
+    only of such words run together (thoughtthought, ownthought). This is the review’s rule with its hand-picked clause
+    for words holding “thought” replaced by the joined words. The ranking file keeps every word and marks these
+    (`collapse`, with `collapse_mass`, their share of the mass, and `mass_shown`), and the layer’s list is kept beside it
+    (`<run>.collapse.json`). The mass, p and q still count them, as the design was calibrated. So:
+    - a neuron is shown by those of its five strongest words that are not collapse words, never by words further down;
+    - it is described beside links and on the map only where those words alone beat every control’s;
+    - the census list gives every neuron’s share of its mass from words not shown;
+    - the details tab names the words it left out;
+    - the scientist’s tools give the rule and the share.
+
+    A ranking made before the rule is marked in place when the atlas opens the layer, its masses unchanged; until then
+    the map gives its neurons no census words. On the trial’s own answers (CPU,
+    [`census_collapse_rule/`](experiments/results/census_collapse_rule/)) the rule holds 15 words: the review’s seven
+    besides its “thought” clause (and, idea, own, owns, rest, same, sss) and the thought family itself. It joins 187
+    loops of them (andthoughtthought and the like) and hides no question’s topic word. Of the 180 neurons above every
+    control, 107 take some of their mass from hidden words (median 10%) and one takes half; 168 keep a description on
+    the map.
+  - **What a lead says** (`census.lead_says`, on every census card’s provenance line, the Lexicon and the scientist’s
+    prompt): every unit, a control too, has words above the mean it is set against; a high rank says that the
+    neuron’s strongest words stand further above it than nearly every random direction’s own do, so its push differs
+    from a random one; not that its words share a theme.
+
+  The first whole layer was started that afternoon: layer 45 (page 46), `break_rel`, all 21,504 neurons against 2,048
+  controls drawn with seed 7 (the trial’s were 3, the ladders’ 0), `--batch 64 --max-new 48 --unpacker compiled`,
+  565,254 answers, about 13–14 hours on the home 5090 (`atlas_data/census/runs/L45-break_rel.*`; begun 15:35 CDT). It
+  started before the collapse rule was written, so it ranks itself without it; the atlas marks that ranking when the
+  layer is opened, or `census_tools.py rank` ranks it again with the rule. Still open once it is in: read it the
+  trial’s way and say how the trial’s 1,022 neurons rank against fresh controls.
 - **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8 of
   the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
   neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
@@ -447,7 +487,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
   layer and the depth curve compares like with like. Every answer records its ceiling and its push’s real share of the
   stream. Which unit, and which doses, a whole layer is taken at waits on the calibration, taken (above) but read so far
   only as leads; `break_rel`’s doses, ±1 and ±2 of the stream, are counted calibrated at layers 40–50 alone (above),
-  though whether ±2 stays and which design is the default still wait on the owner. The steer lens’s and the census’s 0.8
+  and since 29 October it keeps ±2 and is the default design. The steer lens’s and the census’s 0.8
   is to be chosen against the ceiling the same way before either is built on the model.
 - **The census’s null.** Its controls are drawn as unit(w_post ⊙ r), matched to within 1.2× (`check_census.py`); with C
   controls about N / (C + 1) neurons beat every control by chance alone (84 of a whole layer with 256), so each neuron
@@ -456,7 +496,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
   --top M --seed <another>` retests a screen’s M strongest neurons against fresh controls, its p and q taken over those
   M alone (`stage` in the meta and on the card; the layer’s census stays the screen). Its cost is mostly the controls:
   about (200 + 4,096) × 10 answers, some 17 hours on the 5090 at `--batch 32 --max-new 64` (worked out from the
-  pilot’s step). How many controls a whole layer gets, or whether it is read as leads to retest, is the owner’s choice.
+  pilot’s step). The owner chose 2,048 controls for the first whole `break_rel` layer (above); whether its strongest are
+  then retested is still to choose.
 - **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card

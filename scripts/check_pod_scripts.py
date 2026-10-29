@@ -487,7 +487,7 @@ def run_checks(tmp: Path) -> int:
     # ------------------------------------------------------------------------------------------------ 6. pilot.sh
     before = len(failures)
     hc = tmp / "home-canary"
-    r = run([py, "-I", ROOT_DIR / "scripts" / "census_run.py", "--stand-in", "--layer", "3", "--neurons", "all", "--random-controls", "4",
+    r = run([py, "-I", ROOT_DIR / "scripts" / "census_run.py", "--stand-in", "--design", "main_rel", "--layer", "3", "--neurons", "all", "--random-controls", "4",
              "--batch", "4", "--max-new", "8", "--canary-only", "--out-dir", hc], {**env, "THEODOLITE_ATLAS_DIR": str(tmp / "home-atlas")})
     home_can = hc / "L3-main_rel.canary.jsonl"
     check(r.returncode == 0 and home_can.exists() and (hc / "L3-main_rel.canary.json").exists(), f"a home canary taken alone ({r.stderr[-200:]})")
