@@ -1327,6 +1327,12 @@ def run_checks(tmp: Path) -> int:
           and bmeta.get("plan") == "12 x batch" and bmeta.get("dose_unit") == "stream" and bmeta.get("doses_from") == cz.DOSES_FROM["break_rel"],
           f"census_run.py --design break_rel: (8 + 2) x 24 + 6 answers, six unpushed, 12 x batch ({r.stderr[-300:]})")
     bunits = list(cz.read_rows(cz.units_path_of(brun))) if cz.units_path_of(brun).exists() else []
+    # the progress bar a reader runs beside a census (scripts/census_watch.py): a finished run read whole, by path
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_watch.py"), str(brun), "--once"], env=env, capture_output=True,
+                       text=True, timeout=120)
+    check(r.returncode == 0 and "100.0%" in r.stdout and f"{len(brows):,} / {len(brows):,} answers" in r.stdout
+          and "every answer written" in r.stdout and "8 neurons + 2 controls" in r.stdout and "\x1b[" not in r.stdout,
+          f"census_watch.py --once: a finished run whole, its units counted, no colour off a terminal ({r.stdout[-300:]} {r.stderr[-200:]})")
     slimb = cz.read_slim(brun)
     want = {(u_["kind"], u_["neuron"]): u_["mass"] for u_ in cz.compute_units(slimb, max_rel=2.5, reference="controls", exclude="own")}
     check(len(bunits) == 10 and all(u_["mass"] == want[(u_["kind"], u_["neuron"])] for u_ in bunits)
