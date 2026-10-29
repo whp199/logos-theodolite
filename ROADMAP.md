@@ -269,15 +269,17 @@ where to run it.
   approval, which `scripts/gpu_log.py` keeps with every pod against it); a layer’s census then runs in shards
   (`scripts/pod/census_shard.sh`, every shard at the batch the pilot measured on that card class) and `sync.sh --final`
   pulls and checks them before a pod goes. None of these has yet run on a rented card.
-- **Faster unpacking, the same bits. Built, not timed.** Every forward unpacks the 4-bit weights afresh (five eager
+- **Faster unpacking, the same bits. Built, and timed.** Every forward unpacks the 4-bit weights afresh (five eager
   operations, three over int32 temporaries), which by the arithmetic is most of the 0.71 s step. `backend/w4a16_fast.py`
   installs, without touching the R4-pinned runtime, a lookup-table unpacker (`--unpacker lut`), the same arithmetic
   compiled alone (`compiled`, the model left eager with its hooks) or the weights kept unpacked (`resident`, about 60 GB
   beside the 4-bit ones). Each gives the reference’s bits: `scripts/check_dequant.py` shows it on the CPU for every
   (piece, bf16 scale) pair and for a 4-bit stand-in’s logits, vault edits, pushed answers and census rows, and `install`
   tests every linear again on the card, refusing in plain words on any difference. Each census and index meta, and
-  `/api/health`, records which unpacker ran. Still open: time each on the card, and put the measured step into
-  `census_run.py`’s help.
+  `/api/health`, records which unpacker ran. On the home 5090 (28 October 2026, beside a desktop) `lut` and `compiled`
+  passed that test on all 410 linears and took 0.28 s and 0.103 s a step at a batch of 32, against the reference’s
+  0.71 s; `compiled` held 0.126 s at 96 rows (COMPUTE §ii). By that step a whole `main_rel` layer is about 5 hours at
+  `--batch 96 --max-new 64`, not 3.6 days, and the calibration below about 16 minutes a layer: arithmetic, not a run.
 - **The census’s doses come from Qwen3.5-4B.** `main_rel` (−0.7, +0.5, +0.8 and +3 of the stream’s median length) is
   neuron-explorer’s design, where its log found answers readable near 0.5–0.8 and wrecked by 3. Take `calib_rel` (±0.1
   to 4 of the stream) and `calib_ceil` (±0.5 to 8 × each neuron’s write ceiling) on a few layers of Gemma-4-31B first;

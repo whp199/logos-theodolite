@@ -527,7 +527,8 @@ says, above: `--unpacker` is the W4A16 checkpoint’s). `--unpacker lut` or `--u
 `census_run.py` (`THEODOLITE_UNPACKER` for the server) unpacks them faster with the same bits, tested against the
 runtime’s own unpacker at load on a GPU and refused in plain words on any difference; `--unpacker resident` keeps them
 unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit weights (an 80 GB card holds it, with
-little left for a batch). The 0.71 s a decode step in `census_run.py`’s help was measured with the default, `reference`
+little left for a batch). The 0.71 s a decode step in `census_run.py`’s help was measured with the default, `reference`;
+on the same 5090 `lut` took 0.28 s and `compiled` 0.103 s at a batch of 32 (COMPUTE §ii)
 (ARCHITECTURE §2).
 
 `atlas_build.py passages --hf <dataset> --tokens 2000000` keeps, for every neuron and face, its sixteen strongest windows

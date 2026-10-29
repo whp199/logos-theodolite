@@ -13,9 +13,9 @@ live page before asking for a budget. Layers count from 0 in the commands, as ev
 
 | Job | What it is | On the home 5090 today |
 |---|---|---|
-| **A layer’s census** | every neuron of a layer pushed on fixed questions, beside matched controls (`census_run.py`; ARCHITECTURE §4.7) | **measured step**: 0.71 s a decode step whatever the batch (1 to 64 rows); a whole `main_rel` layer (21,504 neurons + 256 controls, 217,604 answers) is about 3.6–3.9 days at `--batch 32 --max-new 64` beside a desktop, about two weeks at `--max-new 256` |
-| The depth curve | 384 neurons + 64 controls a layer (4,484 answers), every layer | about 2 hours a layer, about 120 hours for 60, at `--batch 32 --max-new 64` |
-| Calibrating the doses | `calib_rel` and `calib_ceil` on a few layers, read by `census_tools.py curves` | 64 + 64 units a layer about 1.9 hours (by the measured step); the 8 + 8 pilot took about 16 minutes |
+| **A layer’s census** | every neuron of a layer pushed on fixed questions, beside matched controls (`census_run.py`; ARCHITECTURE §4.7) | **measured step**: 0.71 s a decode step whatever the batch (1 to 64 rows); a whole `main_rel` layer (21,504 neurons + 256 controls, 217,604 answers) is about 3.6–3.9 days at `--batch 32 --max-new 64` beside a desktop, about two weeks at `--max-new 256`. **With `--unpacker compiled`** (measured step 0.103 s at batch 32, 0.126 s at 96; §ii): about 12.7 hours at `--batch 32`, about 5.2 at `--batch 96` |
+| The depth curve | 384 neurons + 64 controls a layer (4,484 answers), every layer | about 2 hours a layer, about 120 hours for 60, at `--batch 32 --max-new 64`; with `compiled` about 17 minutes a layer, some 17 hours for 60 |
+| Calibrating the doses | `calib_rel` and `calib_ceil` on a few layers, read by `census_tools.py curves` | 64 + 64 units a layer about 1.9 hours (by the measured step), about 16 minutes with `compiled`; the 8 + 8 pilot took about 16 minutes |
 | The steer lens | every neuron of a layer pushed both ways on four contexts, read at every later layer (`atlas_build.py steer`) | never timed; by the arithmetic about 15–20 hours for all 60 layers (it is bound by arithmetic, not by the unpacking) |
 | A corpus pass | the stats index, or the stored passages of every face (`atlas_build.py stats`, `passages`) | **measured**: 58 minutes for 2,000,054 word-pieces (stats); passages about the same per word-piece (inferred) |
 | The wiring | weight products of every pair of layers (`atlas_build.py wiring`) | **measured**: about 4 minutes |
@@ -32,7 +32,8 @@ about a hundred rows, which is why the step costs the same from 1 to 64. The sam
 
 ## ii · making the card count, with every reading the same
 
-Built on 28 October 2026 and checked on the CPU stand-in; none of it yet timed on a card:
+Built on 28 October 2026 and checked on the CPU stand-in; the unpackers timed on the home 5090 that evening, the rest
+not yet:
 
 - **Faster unpacking, the same bits** (`backend/w4a16_fast.py`, `--unpacker`, `THEODOLITE_UNPACKER`; ARCHITECTURE §2).
   `lut` reads the packed bytes through a 256-entry table and multiplies by the scale as the runtime does; `compiled` is
@@ -41,7 +42,20 @@ Built on 28 October 2026 and checked on the CPU stand-in; none of it yet timed o
   for every (piece, bf16 scale) pair and for a 4-bit stand-in’s logits, vault edits, pushed answers and census rows,
   and `install` tests every linear again on the card, refusing in plain words on any difference. None of it touches
   the R4-pinned `engine_runtime.py`. By the arithmetic `lut` shortens the step two to three times on a 5090 and
-  `compiled` about five times; both are to be timed.
+  `compiled` about five times. **Timed** on the home 5090 beside a desktop (28 October 2026, `scripts/pod/pod_tool.py
+  steps`, layer 45, census-shaped batches at `--max-new 64`, the lens freed;
+  `experiments/results/atlas_unpacker_steps_rtx5090.json`), each passing its test on all 410 linears first:
+
+  | rows | `reference` | `lut` | `compiled` | torch's peak above the model |
+  |---|---|---|---|---|
+  | 1 | 0.706 s | 0.275 s | 0.091 s | 0.3–1.0 GiB |
+  | 32 | 0.713 s | 0.282 s | 0.103 s | 2.4–3.1 GiB |
+  | 64 | 0.721 s | 0.287 s | 0.109 s | 4.8–5.3 GiB |
+  | 96 | 0.743 s | 0.303 s | 0.126 s | 7.2–7.5 GiB |
+
+  `lut` is about 2.5 times shorter and `compiled` about seven (its graphs compile in about 4 s at load). With
+  `compiled` the step grows with the batch, the products now counting beside the unpacking; 128 rows and more were
+  not tried.
 - **The lens freed and the steps read whole.** The census frees the J++ lens after loading (about 3.2 GiB more for
   rows, worked out) and reads each step’s pieces back in one transfer, bit for bit as before.
 - **The batch fixes the bits, the unpacker does not.** On the GPU a row’s numbers depend on the size of its batch, so

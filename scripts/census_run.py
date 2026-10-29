@@ -59,14 +59,19 @@ M alone, and its neurons are fixed when it is begun (a screen ranked again since
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
 answers / batch x (max_new + 1) x 0.71 s and the batch should be as large as the card holds. That 0.71 s is the
-reference unpacker's (--unpacker reference, the default): lut and compiled give the same bits in a step two to five
-times shorter on a 5090 by the arithmetic, not yet timed. Memory: the model and lens took 21.2 GiB; each row costs
+reference unpacker's (--unpacker reference, the default). lut and compiled give the same bits (tested on every linear
+at load), and on the same card beside a desktop (28 October 2026, layer 45, --max-new 64, the lens freed;
+experiments/results/atlas_unpacker_steps_rtx5090.json) a step took 0.27-0.30 s with lut and 0.09-0.13 s with compiled
+from 1 to 96 rows, against the reference's 0.71-0.74 s: at --batch 32, 0.28 s and 0.103 s, so compiled is about seven
+times shorter, and its first run compiles for a few seconds. Memory: the model and lens took 21.2 GiB; each row costs
 about 0.8 MB per word-piece of context on top (a batch of 32 at --max-new 64 peaked 3.1 GiB above the model), so at
 --max-new 256 a batch of 32 needs some 7 GiB more and may not fit beside a desktop: lower --batch or --max-new.
 Freeing the lens leaves about 3.2 GiB more for rows (worked out from its 59 matrices of 5,376 x 5,376 in bf16, not yet
 measured). A calib_rel run of 8 neurons and 8 controls (580 answers) at --batch 32 --max-new 64 took about 16 minutes.
 answers = (neurons + controls) x 10 + 4 for main_rel: a whole layer is (21,504 + 256) x 10 + 4 = 217,604 answers,
-about 3.6 days at --batch 32 --max-new 64 and about two weeks at --max-new 256; the reference's depth curve used 384
+about 3.6 days at --batch 32 --max-new 64 and about two weeks at --max-new 256 (with --unpacker compiled about 12.7
+hours at --batch 32, and about 5.2 at --batch 96, which fit beside a desktop at 7.2 GiB above the model with the lens
+freed: the arithmetic above on the measured step, not a run); the reference's depth curve used 384
 neurons and 64 controls a layer (4,484 answers, about 2 hours at --batch 32 --max-new 64). The batch and the plan now
 fix a run's determinism class (on the GPU a row's numbers depend on the size of its batch), the unpacker does not:
 measure what the card holds once, then keep that --batch for every continuation and every shard of the run. On disk a
