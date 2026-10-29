@@ -1,0 +1,1622 @@
+[
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "full@1.6: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.5156,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.3939,
+  "note": "rank default; = summary.json: True; a/u 24; AUC 0.525 (p 0.3); w 0.63; r 0.480 (p 0.7); 0 0/0"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "full: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.5625,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 36; AUC 0.520 (p 0.3); w 0.63; r 0.468 (p 0.7); 0 0/0; + 0.48 (p 0.6), - 0.57 (p 0.1), rho -0.14; at max_rel 1.6: a/u 24, med 0.516, top 1, q 0.394"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "+-0.1: -0.1,+0.1",
+  "neurons_median_null_pct": 0.6562,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.6752,
+  "note": "a/u 6; AUC 0.549 (p 0.2); w 0.61; r 0.487 (p 0.6); 0 3/3; + 0.56 (p 0.08), - 0.52 (p 0.3), rho +0.15"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "+-0.25: -0.25,+0.25",
+  "neurons_median_null_pct": 0.3594,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.5907,
+  "note": "a/u 6; AUC 0.478 (p 0.7); w 0.40; r 0.507 (p 0.4); 0 3/5; + 0.48 (p 0.7), - 0.54 (p 0.1), rho -0.01"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.6094,
+  "controls_median_null_pct": 0.2969,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.3787,
+  "note": "a/u 6; AUC 0.540 (p 0.2); w 0.68; r 0.440 (p 0.9); 0 14/9; + 0.56 (p 0.1), - 0.45 (p 0.9), rho -0.28"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.4375,
+  "controls_median_null_pct": 0.4375,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.759,
+  "note": "a/u 6; AUC 0.521 (p 0.3); w 0.47; r 0.534 (p 0.3); 0 9/17; + 0.58 (p 0.06), - 0.52 (p 0.3), rho +0.07"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.625,
+  "controls_median_null_pct": 0.3906,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.558 (p 0.1); w 0.54; r 0.563 (p 0.1); 0 13/15; + 0.58 (p 0.05), - 0.52 (p 0.3), rho +0.02; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.4141,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.7877,
+  "note": "a/u 6; AUC 0.481 (p 0.6); w 0.50; r 0.452 (p 0.8); 0 13/10; + 0.48 (p 0.6), - 0.48 (p 0.6), rho -0.02; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "+ only: +0.1,+0.25,+0.5,+1,+2,+4",
+  "neurons_median_null_pct": 0.4454,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4923,
+  "note": "a/u 18; AUC 0.481 (p 0.6); w 0.55; r 0.435 (p 0.9); 0 0/0; at max_rel 1.6: a/u 12, med 0.352, top 1, q 0.537"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "- only: -0.1,-0.25,-0.5,-1,-2,-4",
+  "neurons_median_null_pct": 0.5938,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.7293,
+  "note": "a/u 18; AUC 0.567 (p 0.1); w 0.59; r 0.534 (p 0.3); 0 0/0; at max_rel 1.6: a/u 12, med 0.523, top 0, q 0.695"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "under break: -0.1,+0.1,-0.25,+0.25",
+  "neurons_median_null_pct": 0.3984,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4219,
+  "note": "break +0.5/-0.5; a/u 12; AUC 0.493 (p 0.6); w 0.52; r 0.481 (p 0.6); 0 0/0; + 0.45 (p 0.8), - 0.56 (p 0.1), rho -0.12"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "at/above break: -0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.6094,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4595,
+  "note": "break +0.5/-0.5; a/u 24; AUC 0.568 (p 0.09); w 0.66; r 0.469 (p 0.7); 0 1/1; + 0.56 (p 0.1), - 0.51 (p 0.4), rho -0.18; at max_rel 1.6: a/u 12, med 0.508, top 1, q 0.369"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "smallest 2: -0.1,+0.1,-0.25,+0.25",
+  "neurons_median_null_pct": 0.3984,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4219,
+  "note": "a/u 12; AUC 0.493 (p 0.6); w 0.52; r 0.481 (p 0.6); 0 0/0; + 0.45 (p 0.8), - 0.56 (p 0.1), rho -0.12"
+ },
+ {
+  "layer": 20,
+  "design": "calib_rel",
+  "doses": "smallest 3: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.625,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.3787,
+  "note": "a/u 18; AUC 0.555 (p 0.1); w 0.65; r 0.497 (p 0.5); 0 0/0; + 0.52 (p 0.4), - 0.58 (p 0.06), rho -0.22"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "full@1.6: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.4766,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8951,
+  "note": "rank default; = summary.json: True; a/u 30; AUC 0.501 (p 0.5); w 0.62; r 0.459 (p 0.8); 0 0/0"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "full: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.4766,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8951,
+  "note": "a/u 30; AUC 0.501 (p 0.5); w 0.62; r 0.459 (p 0.8); 0 0/0; + 0.48 (p 0.7), - 0.49 (p 0.5), rho +0.25"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.4609,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 6,
+  "min_q": 0.1641,
+  "note": "a/u 6; AUC 0.523 (p 0.3); w 0.60; r 0.501 (p 0.5); 0 9/11; + 0.46 (p 1), - 0.46 (p 0.9), rho -0.05"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.6328,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 6; AUC 0.569 (p 0.09); w 0.64; r 0.499 (p 0.5); 0 3/3; + 0.56 (p 0.08), - 0.57 (p 0.03), rho +0.16"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.375,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.9042,
+  "note": "a/u 6; AUC 0.445 (p 0.9); w 0.40; r 0.489 (p 0.6); 0 0/1; + 0.41 (p 1), - 0.52 (p 0.3), rho -0.07"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.5781,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 6; AUC 0.584 (p 0.05); w 0.61; r 0.528 (p 0.3); 0 2/3; + 0.54 (p 0.2), - 0.55 (p 0.2), rho +0.07"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "+-8: -8,+8",
+  "neurons_median_null_pct": 0.2344,
+  "controls_median_null_pct": 0.2344,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 6; AUC 0.457 (p 0.8); w 0.47; r 0.466 (p 0.8); 0 18/15; + 0.48 (p 0.7), - 0.46 (p 0.9), rho -0.18"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "+ only: +0.5,+1,+2,+4,+8",
+  "neurons_median_null_pct": 0.4688,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.9218,
+  "note": "a/u 15; AUC 0.480 (p 0.7); w 0.53; r 0.472 (p 0.7); 0 0/0"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "- only: -0.5,-1,-2,-4,-8",
+  "neurons_median_null_pct": 0.5078,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.919,
+  "note": "a/u 15; AUC 0.494 (p 0.5); w 0.61; r 0.452 (p 0.8); 0 0/0"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "under break: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.5312,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8504,
+  "note": "break +4/-4; a/u 18; AUC 0.483 (p 0.6); w 0.57; r 0.471 (p 0.7); 0 0/0; + 0.46 (p 0.8), - 0.46 (p 0.8), rho +0.17"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "at/above break: -4,+4,-8,+8",
+  "neurons_median_null_pct": 0.6016,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "break +4/-4; a/u 12; AUC 0.575 (p 0.07); w 0.61; r 0.506 (p 0.5); 0 2/3; + 0.48 (p 0.7), - 0.51 (p 0.4), rho -0.03"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "smallest 2: -0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.4297,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.9167,
+  "note": "a/u 12; AUC 0.468 (p 0.7); w 0.65; r 0.427 (p 0.9); 0 0/0; + 0.50 (p 0.5), - 0.45 (p 0.8), rho -0.09"
+ },
+ {
+  "layer": 20,
+  "design": "calib_ceil",
+  "doses": "smallest 3: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.5312,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8504,
+  "note": "a/u 18; AUC 0.483 (p 0.6); w 0.57; r 0.471 (p 0.7); 0 0/0; + 0.46 (p 0.8), - 0.46 (p 0.8), rho +0.17"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "full@1.6: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.4844,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "rank default; = summary.json: True; a/u 24; AUC 0.524 (p 0.3); w 0.55; r 0.490 (p 0.6); 0 0/0"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "full: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.6562,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 36; AUC 0.578 (p 0.06); w 0.61; r 0.525 (p 0.3); 0 0/0; + 0.54 (p 0.2), - 0.60 (p 0.02), rho +0.29; at max_rel 1.6: a/u 24, med 0.484, top 4, q 0.246"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "+-0.1: -0.1,+0.1",
+  "neurons_median_null_pct": 0.5156,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.871,
+  "note": "a/u 6; AUC 0.478 (p 0.7); w 0.56; r 0.456 (p 0.8); 0 9/4; + 0.48 (p 0.8), - 0.46 (p 0.9), rho -0.10"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "+-0.25: -0.25,+0.25",
+  "neurons_median_null_pct": 0.5468,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.8243,
+  "note": "a/u 6; AUC 0.538 (p 0.2); w 0.53; r 0.529 (p 0.3); 0 0/3; + 0.49 (p 0.6), - 0.57 (p 0.03), rho +0.12"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.5781,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 6; AUC 0.569 (p 0.09); w 0.49; r 0.589 (p 0.04); 0 0/1; + 0.52 (p 0.4), - 0.54 (p 0.2), rho -0.06"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.5,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.478 (p 0.7); w 0.59; r 0.401 (p 1); 0 1/0; + 0.46 (p 0.8), - 0.52 (p 0.3), rho +0.32"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.6172,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.3109,
+  "note": "a/u 6; AUC 0.652 (p 0.002); w 0.71; r 0.517 (p 0.4); 0 0/8; + 0.65 (p 0.001), - 0.63 (p 0.004), rho +0.10; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.3594,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.9846,
+  "note": "a/u 6; AUC 0.426 (p 0.9); w 0.49; r 0.418 (p 0.9); 0 12/7; + 0.54 (p 0.2), - 0.41 (p 1), rho +0.10; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "+ only: +0.1,+0.25,+0.5,+1,+2,+4",
+  "neurons_median_null_pct": 0.5625,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 18; AUC 0.537 (p 0.2); w 0.54; r 0.519 (p 0.4); 0 0/0; at max_rel 1.6: a/u 12, med 0.453, top 0, q 0.738"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "- only: -0.1,-0.25,-0.5,-1,-2,-4",
+  "neurons_median_null_pct": 0.6562,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 18; AUC 0.601 (p 0.02); w 0.61; r 0.531 (p 0.3); 0 0/0; at max_rel 1.6: a/u 12, med 0.672, top 12, q 0.082"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "under break: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.5312,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.5626,
+  "note": "break +1/-1; a/u 18; AUC 0.526 (p 0.3); w 0.52; r 0.514 (p 0.4); 0 0/0; + 0.45 (p 0.8), - 0.55 (p 0.1), rho +0.15"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "at/above break: -1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.5938,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "break +1/-1; a/u 18; AUC 0.542 (p 0.2); w 0.63; r 0.441 (p 0.9); 0 0/0; + 0.55 (p 0.2), - 0.57 (p 0.09), rho +0.35; at max_rel 1.6: a/u 6, med 0.500, top 0, q 0.656"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "smallest 2: -0.1,+0.1,-0.25,+0.25",
+  "neurons_median_null_pct": 0.5234,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8646,
+  "note": "a/u 12; AUC 0.501 (p 0.5); w 0.56; r 0.477 (p 0.7); 0 0/0; + 0.50 (p 0.5), - 0.51 (p 0.4), rho +0.03"
+ },
+ {
+  "layer": 30,
+  "design": "calib_rel",
+  "doses": "smallest 3: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.5312,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.5626,
+  "note": "a/u 18; AUC 0.526 (p 0.3); w 0.52; r 0.514 (p 0.4); 0 0/0; + 0.45 (p 0.8), - 0.55 (p 0.1), rho +0.15"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "full@1.6: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.3906,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.4923,
+  "note": "rank default; = summary.json: True; a/u 24.47; AUC 0.475 (p 0.7); w 0.50; r 0.469 (p 0.7); 0 0/0"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "full: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.6094,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.358,
+  "note": "a/u 30; AUC 0.585 (p 0.05); w 0.57; r 0.568 (p 0.09); 0 0/0; + 0.50 (p 0.5), - 0.64 (p 0.004), rho +0.18; at max_rel 1.6: a/u 24.47, med 0.391, top 0, q 0.492"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.6406,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.667,
+  "note": "a/u 6; AUC 0.540 (p 0.2); w 0.55; r 0.530 (p 0.3); 0 8/6; + 0.51 (p 0.4), - 0.44 (p 1), rho -0.13"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.4922,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.5251,
+  "note": "a/u 6; AUC 0.506 (p 0.5); w 0.53; r 0.491 (p 0.6); 0 2/2; + 0.50 (p 0.5), - 0.51 (p 0.4), rho +0.08"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.6875,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 6; AUC 0.604 (p 0.02); w 0.51; r 0.598 (p 0.03); 0 0/1; + 0.56 (p 0.1), - 0.46 (p 0.8), rho -0.22"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.4062,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.9846,
+  "note": "a/u 6; AUC 0.416 (p 0.9); w 0.45; r 0.424 (p 0.9); 0 1/0; + 0.39 (p 1), - 0.51 (p 0.4), rho +0.10"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "+-8: -8,+8",
+  "neurons_median_null_pct": 0.7344,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.422,
+  "note": "a/u 6; AUC 0.648 (p 0.002); w 0.69; r 0.499 (p 0.5); 0 0/1; + 0.60 (p 0.02), - 0.62 (p 0.01), rho +0.06; at max_rel 1.6: a/u 0.47, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "+ only: +0.5,+1,+2,+4,+8",
+  "neurons_median_null_pct": 0.5078,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 15; AUC 0.495 (p 0.5); w 0.51; r 0.485 (p 0.6); 0 0/0; at max_rel 1.6: a/u 12.23, med 0.430, top 0, q 0.820"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "- only: -0.5,-1,-2,-4,-8",
+  "neurons_median_null_pct": 0.7422,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.3545,
+  "note": "a/u 15; AUC 0.638 (p 0.004); w 0.59; r 0.591 (p 0.04); 0 0/0; at max_rel 1.6: a/u 12.23, med 0.586, top 0, q 0.394"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "under break: -0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.4375,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4376,
+  "note": "break +8/-8; a/u 24; AUC 0.502 (p 0.5); w 0.49; r 0.508 (p 0.4); 0 0/0; + 0.44 (p 0.9), - 0.58 (p 0.05), rho +0.22"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "at/above break: -8,+8",
+  "neurons_median_null_pct": 0.7344,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.422,
+  "note": "break +8/-8; a/u 6; AUC 0.648 (p 0.002); w 0.69; r 0.499 (p 0.5); 0 0/1; + 0.60 (p 0.02), - 0.62 (p 0.01), rho +0.06; at max_rel 1.6: a/u 0.47, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "smallest 2: -0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.4688,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 12; AUC 0.504 (p 0.5); w 0.56; r 0.477 (p 0.7); 0 0/0; + 0.46 (p 0.8), - 0.50 (p 0.5), rho -0.04"
+ },
+ {
+  "layer": 30,
+  "design": "calib_ceil",
+  "doses": "smallest 3: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.5156,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.7033,
+  "note": "a/u 18; AUC 0.526 (p 0.3); w 0.55; r 0.512 (p 0.4); 0 0/0; + 0.48 (p 0.7), - 0.51 (p 0.4), rho +0.09"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "full@1.6: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.6406,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.1515,
+  "note": "rank default; = summary.json: True; a/u 24; AUC 0.618 (p 0.01); w 0.42; r 0.636 (p 0.004); 0 0/0"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "full: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.8281,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 12,
+  "min_q": 0.082,
+  "note": "a/u 36; AUC 0.699 (p 5e-05); w 0.50; r 0.708 (p 3e-05); 0 0/0; + 0.57 (p 0.09), - 0.68 (p 0.0002), rho +0.06; at max_rel 1.6: a/u 24, med 0.641, top 4, q 0.151"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "+-0.1: -0.1,+0.1",
+  "neurons_median_null_pct": 0.5078,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.509 (p 0.4); w 0.43; r 0.538 (p 0.2); 0 19/16; + 0.49 (p 0.7), - 0.46 (p 1), rho -0.03"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "+-0.25: -0.25,+0.25",
+  "neurons_median_null_pct": 0.5782,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.57,
+  "note": "a/u 6; AUC 0.542 (p 0.2); w 0.51; r 0.542 (p 0.2); 0 6/8; + 0.47 (p 0.9), - 0.50 (p 0.5), rho +0.08"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.6641,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 6,
+  "min_q": 0.1641,
+  "note": "a/u 6; AUC 0.601 (p 0.02); w 0.52; r 0.602 (p 0.02); 0 1/1; + 0.58 (p 0.008), - 0.54 (p 0.1), rho +0.03"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.5781,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.3282,
+  "note": "a/u 6; AUC 0.528 (p 0.3); w 0.36; r 0.567 (p 0.1); 0 0/0; + 0.50 (p 0.5), - 0.51 (p 0.4), rho -0.30"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.8906,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.1846,
+  "note": "a/u 6; AUC 0.767 (p 8e-08); w 0.79; r 0.567 (p 0.09); 0 4/17; + 0.62 (p 0.009), - 0.71 (p 1e-05), rho -0.08; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.0,
+  "controls_median_null_pct": 0.0,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.5744,
+  "note": "a/u 6; AUC 0.517 (p 0.4); w 0.51; r 0.501 (p 0.5); 0 33/34; + 0.58 (p 0.03), - 0.46 (p 0.8), rho +0.21; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "+ only: +0.1,+0.25,+0.5,+1,+2,+4",
+  "neurons_median_null_pct": 0.5625,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 8,
+  "min_q": 0.123,
+  "note": "a/u 18; AUC 0.569 (p 0.09); w 0.54; r 0.561 (p 0.1); 0 0/0; at max_rel 1.6: a/u 12, med 0.438, top 2, q 0.394"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "- only: -0.1,-0.25,-0.5,-1,-2,-4",
+  "neurons_median_null_pct": 0.8203,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 6,
+  "min_q": 0.1641,
+  "note": "a/u 18; AUC 0.685 (p 0.0002); w 0.48; r 0.703 (p 4e-05); 0 0/0; at max_rel 1.6: a/u 12, med 0.680, top 3, q 0.197"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "under break: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.6406,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.1515,
+  "note": "break +2/-2; a/u 24; AUC 0.618 (p 0.01); w 0.42; r 0.636 (p 0.004); 0 0/0; + 0.51 (p 0.4), - 0.66 (p 0.001), rho +0.20"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "at/above break: -2,+2,-4,+4",
+  "neurons_median_null_pct": 0.7656,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.2461,
+  "note": "break +2/-2; a/u 12; AUC 0.717 (p 1e-05); w 0.76; r 0.539 (p 0.2); 0 4/8; + 0.65 (p 0.002), - 0.64 (p 0.002), rho -0.06; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "smallest 2: -0.1,+0.1,-0.25,+0.25",
+  "neurons_median_null_pct": 0.4688,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 12; AUC 0.493 (p 0.6); w 0.47; r 0.495 (p 0.5); 0 0/0; + 0.48 (p 0.7), - 0.54 (p 0.2), rho -0.15"
+ },
+ {
+  "layer": 40,
+  "design": "calib_rel",
+  "doses": "smallest 3: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.5156,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 18; AUC 0.502 (p 0.5); w 0.50; r 0.497 (p 0.5); 0 0/0; + 0.49 (p 0.6), - 0.56 (p 0.1), rho -0.02"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "full@1.6: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.7969,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 14,
+  "min_q": 0.0703,
+  "note": "rank default; = summary.json: True; a/u 18; AUC 0.652 (p 0.002); w 0.45; r 0.659 (p 0.0009); 0 0/0"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "full: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.7188,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 13,
+  "min_q": 0.0757,
+  "note": "a/u 30; AUC 0.669 (p 0.0005); w 0.49; r 0.675 (p 0.0003); 0 0/0; + 0.62 (p 0.01), - 0.58 (p 0.05), rho +0.04; at max_rel 1.6: a/u 18, med 0.797, top 14, q 0.070"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.5312,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.526 (p 0.3); w 0.53; r 0.518 (p 0.4); 0 2/8; + 0.51 (p 0.4), - 0.51 (p 0.3), rho -0.07"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.625,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 5,
+  "min_q": 0.1969,
+  "note": "a/u 6; AUC 0.619 (p 0.01); w 0.52; r 0.619 (p 0.01); 0 1/3; + 0.55 (p 0.08), - 0.55 (p 0.1), rho +0.04"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.6954,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 7,
+  "min_q": 0.1158,
+  "note": "a/u 6; AUC 0.622 (p 0.009); w 0.37; r 0.686 (p 0.0001); 0 1/0; + 0.47 (p 0.7), - 0.57 (p 0.07), rho -0.22"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.8203,
+  "controls_median_null_pct": 0.4531,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.3282,
+  "note": "a/u 6; AUC 0.658 (p 0.001); w 0.72; r 0.531 (p 0.3); 0 6/13; + 0.62 (p 0.006), - 0.58 (p 0.06), rho -0.10; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "+-8: -8,+8",
+  "neurons_median_null_pct": 0.0,
+  "controls_median_null_pct": 0.0,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.7877,
+  "note": "a/u 6; AUC 0.487 (p 0.6); w 0.49; r 0.477 (p 0.7); 0 42/40; + 0.49 (p 0.6), - 0.49 (p 0.7), rho +0.06; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "+ only: +0.5,+1,+2,+4,+8",
+  "neurons_median_null_pct": 0.6094,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 5,
+  "min_q": 0.1407,
+  "note": "a/u 15; AUC 0.616 (p 0.01); w 0.55; r 0.603 (p 0.02); 0 0/0; at max_rel 1.6: a/u 9, med 0.625, top 13, q 0.076"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "- only: -0.5,-1,-2,-4,-8",
+  "neurons_median_null_pct": 0.6406,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 9,
+  "min_q": 0.1094,
+  "note": "a/u 15; AUC 0.584 (p 0.05); w 0.45; r 0.609 (p 0.02); 0 0/0; at max_rel 1.6: a/u 9, med 0.617, top 7, q 0.141"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "under break: -0.5,+0.5,-1,+1,+2",
+  "neurons_median_null_pct": 0.5781,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 10,
+  "min_q": 0.0984,
+  "note": "break +4/-2; a/u 15; AUC 0.582 (p 0.06); w 0.51; r 0.575 (p 0.07); 0 0/0; + 0.60 (p 0.03), - 0.51 (p 0.4), rho +0.06"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "at/above break: -2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.7344,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 7,
+  "min_q": 0.1406,
+  "note": "break +4/-2; a/u 15; AUC 0.638 (p 0.004); w 0.49; r 0.669 (p 0.0005); 0 3/1; + 0.62 (p 0.01), - 0.61 (p 0.02), rho +0.10; at max_rel 1.6: a/u 3, med 0.609, top 6, q 0.164"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "smallest 2: -0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.5234,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4923,
+  "note": "a/u 12; AUC 0.562 (p 0.1); w 0.55; r 0.552 (p 0.2); 0 0/0; + 0.53 (p 0.3), - 0.51 (p 0.4), rho +0.04"
+ },
+ {
+  "layer": 40,
+  "design": "calib_ceil",
+  "doses": "smallest 3: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.7969,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 14,
+  "min_q": 0.0703,
+  "note": "a/u 18; AUC 0.652 (p 0.002); w 0.45; r 0.659 (p 0.0009); 0 0/0; + 0.60 (p 0.03), - 0.58 (p 0.06), rho -0.07"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "full@1.6: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.7188,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.1969,
+  "note": "rank default; = summary.json: True; a/u 24; AUC 0.597 (p 0.03); w 0.40; r 0.615 (p 0.01); 0 0/0"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "full: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.6328,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 36; AUC 0.578 (p 0.07); w 0.40; r 0.595 (p 0.03); 0 0/0; + 0.64 (p 0.003), - 0.51 (p 0.4), rho +0.07; at max_rel 1.6: a/u 24, med 0.719, top 2, q 0.197"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "+-0.1: -0.1,+0.1",
+  "neurons_median_null_pct": 0.5938,
+  "controls_median_null_pct": 0.4766,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 6; AUC 0.575 (p 0.07); w 0.52; r 0.577 (p 0.07); 0 10/17; + 0.52 (p 0.2), - 0.52 (p 0.2), rho -0.08"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "+-0.25: -0.25,+0.25",
+  "neurons_median_null_pct": 0.375,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.9467,
+  "note": "a/u 6; AUC 0.409 (p 1); w 0.40; r 0.429 (p 0.9); 0 5/7; + 0.52 (p 0.2), - 0.53 (p 0.1), rho +0.04"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.5234,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 6; AUC 0.535 (p 0.2); w 0.54; r 0.528 (p 0.3); 0 0/1; + 0.51 (p 0.4), - 0.49 (p 0.6), rho -0.00"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.6875,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 16,
+  "min_q": 0.0615,
+  "note": "a/u 6; AUC 0.616 (p 0.01); w 0.40; r 0.633 (p 0.005); 0 1/0; + 0.67 (p 0.0001), - 0.61 (p 0.01), rho +0.08"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.5781,
+  "controls_median_null_pct": 0.4688,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.2813,
+  "note": "a/u 6; AUC 0.586 (p 0.04); w 0.58; r 0.532 (p 0.3); 0 14/19; + 0.55 (p 0.2), - 0.55 (p 0.2), rho +0.01; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.0,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 0,
+  "min_q": 1.0,
+  "note": "a/u 6; AUC 0.462 (p 0.8); w 0.46; r 0.477 (p 0.7); 0 35/31; + 0.48 (p 0.7), - 0.47 (p 0.8), rho -0.11; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "+ only: +0.1,+0.25,+0.5,+1,+2,+4",
+  "neurons_median_null_pct": 0.6562,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4545,
+  "note": "a/u 18; AUC 0.639 (p 0.003); w 0.50; r 0.656 (p 0.001); 0 0/0; at max_rel 1.6: a/u 12, med 0.641, top 1, q 0.369"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "- only: -0.1,-0.25,-0.5,-1,-2,-4",
+  "neurons_median_null_pct": 0.5547,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 18; AUC 0.508 (p 0.4); w 0.39; r 0.552 (p 0.2); 0 0/0; at max_rel 1.6: a/u 12, med 0.609, top 3, q 0.328"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "under break: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.7188,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.1969,
+  "note": "break +2/-2; a/u 24; AUC 0.597 (p 0.03); w 0.40; r 0.615 (p 0.01); 0 0/0; + 0.63 (p 0.005), - 0.55 (p 0.2), rho +0.04"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "at/above break: -2,+2,-4,+4",
+  "neurons_median_null_pct": 0.5469,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.7529,
+  "note": "break +2/-2; a/u 12; AUC 0.519 (p 0.4); w 0.53; r 0.488 (p 0.6); 0 7/9; + 0.51 (p 0.4), - 0.52 (p 0.3), rho +0.09; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "smallest 2: -0.1,+0.1,-0.25,+0.25",
+  "neurons_median_null_pct": 0.6172,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.6564,
+  "note": "a/u 12; AUC 0.506 (p 0.5); w 0.45; r 0.539 (p 0.2); 0 0/0; + 0.54 (p 0.2), - 0.50 (p 0.5), rho -0.07"
+ },
+ {
+  "layer": 45,
+  "design": "calib_rel",
+  "doses": "smallest 3: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.5469,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.4923,
+  "note": "a/u 18; AUC 0.520 (p 0.3); w 0.47; r 0.525 (p 0.3); 0 0/0; + 0.57 (p 0.09), - 0.46 (p 0.8), rho -0.10"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "full@1.6: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.75,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.2188,
+  "note": "rank default; = summary.json: True; a/u 23.95; AUC 0.640 (p 0.003); w 0.48; r 0.652 (p 0.002); 0 0/0"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "full: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.7344,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.1969,
+  "note": "a/u 30; AUC 0.629 (p 0.006); w 0.48; r 0.646 (p 0.002); 0 0/0; + 0.56 (p 0.1), - 0.48 (p 0.7), rho +0.12; at max_rel 1.6: a/u 23.95, med 0.750, top 1, q 0.219"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.4219,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.442 (p 0.9); w 0.49; r 0.447 (p 0.8); 0 9/6; + 0.52 (p 0.1), - 0.53 (p 0.1), rho -0.12"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.5469,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.497 (p 0.5); w 0.50; r 0.498 (p 0.5); 0 2/1; + 0.52 (p 0.3), - 0.53 (p 0.2), rho -0.16"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.5234,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.1969,
+  "note": "a/u 6; AUC 0.560 (p 0.1); w 0.48; r 0.574 (p 0.07); 0 0/0; + 0.60 (p 0.005), - 0.52 (p 0.3), rho +0.08"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.7266,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.3751,
+  "note": "a/u 6; AUC 0.630 (p 0.006); w 0.57; r 0.602 (p 0.02); 0 4/12; + 0.63 (p 0.005), - 0.57 (p 0.1), rho -0.17; at max_rel 1.6: a/u 5.95, med 0.727, top 0, q 0.375"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "+-8: -8,+8",
+  "neurons_median_null_pct": 0.0,
+  "controls_median_null_pct": 0.0,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.512 (p 0.4); w 0.53; r 0.472 (p 0.7); 0 40/41; + 0.49 (p 0.6), - 0.51 (p 0.4), rho -0.23; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "+ only: +0.5,+1,+2,+4,+8",
+  "neurons_median_null_pct": 0.5469,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 15; AUC 0.558 (p 0.1); w 0.56; r 0.527 (p 0.3); 0 0/0; at max_rel 1.6: a/u 11.98, med 0.562, top 3, q 0.328"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "- only: -0.5,-1,-2,-4,-8",
+  "neurons_median_null_pct": 0.3906,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 7,
+  "min_q": 0.1406,
+  "note": "a/u 15; AUC 0.475 (p 0.7); w 0.45; r 0.491 (p 0.6); 0 0/0; at max_rel 1.6: a/u 11.98, med 0.367, top 7, q 0.141"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "under break: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.6484,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4923,
+  "note": "break +4/-4; a/u 18; AUC 0.577 (p 0.07); w 0.47; r 0.585 (p 0.05); 0 0/0; + 0.50 (p 0.5), - 0.45 (p 0.8), rho -0.03"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "at/above break: -4,+4,-8,+8",
+  "neurons_median_null_pct": 0.6875,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.5744,
+  "note": "break +4/-4; a/u 12; AUC 0.605 (p 0.02); w 0.56; r 0.574 (p 0.08); 0 3/3; + 0.60 (p 0.03), - 0.57 (p 0.09), rho -0.23; at max_rel 1.6: a/u 5.95, med 0.727, top 0, q 0.375"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "smallest 2: -0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.4844,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.844,
+  "note": "a/u 12; AUC 0.497 (p 0.5); w 0.49; r 0.499 (p 0.5); 0 0/0; + 0.48 (p 0.6), - 0.50 (p 0.5), rho -0.08"
+ },
+ {
+  "layer": 45,
+  "design": "calib_ceil",
+  "doses": "smallest 3: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.6484,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4923,
+  "note": "a/u 18; AUC 0.577 (p 0.07); w 0.47; r 0.585 (p 0.05); 0 0/0; + 0.50 (p 0.5), - 0.45 (p 0.8), rho -0.03"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "full@1.6: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.6719,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.5908,
+  "note": "rank default; = summary.json: True; a/u 24; AUC 0.559 (p 0.1); w 0.47; r 0.563 (p 0.1); 0 0/0"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "full: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.5625,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 36; AUC 0.554 (p 0.1); w 0.48; r 0.555 (p 0.1); 0 0/0; + 0.53 (p 0.3), - 0.56 (p 0.1), rho -0.16; at max_rel 1.6: a/u 24, med 0.672, top 0, q 0.591"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "+-0.1: -0.1,+0.1",
+  "neurons_median_null_pct": 0.4062,
+  "controls_median_null_pct": 0.4062,
+  "neurons_beating_every_control": 3,
+  "min_q": 0.3281,
+  "note": "a/u 6; AUC 0.564 (p 0.1); w 0.59; r 0.524 (p 0.3); 0 21/26; + 0.49 (p 0.8), - 0.51 (p 0.3), rho +nan"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "+-0.25: -0.25,+0.25",
+  "neurons_median_null_pct": 0.5703,
+  "controls_median_null_pct": 0.4766,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.7925,
+  "note": "a/u 6; AUC 0.541 (p 0.2); w 0.52; r 0.534 (p 0.3); 0 6/13; + 0.50 (p 1), - 0.49 (p 0.6), rho +nan"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.3828,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.9673,
+  "note": "a/u 6; AUC 0.451 (p 0.8); w 0.41; r 0.474 (p 0.7); 0 4/3; + 0.52 (p 0.1), - 0.50 (p 0.5), rho +0.10"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.6562,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 6,
+  "min_q": 0.1641,
+  "note": "a/u 6; AUC 0.604 (p 0.02); w 0.44; r 0.611 (p 0.02); 0 0/0; + 0.64 (p 0.002), - 0.59 (p 0.03), rho +0.04"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.75,
+  "controls_median_null_pct": 0.4531,
+  "neurons_beating_every_control": 5,
+  "min_q": 0.1969,
+  "note": "a/u 6; AUC 0.667 (p 0.0005); w 0.69; r 0.552 (p 0.2); 0 9/19; + 0.57 (p 0.06), - 0.66 (p 0.0003), rho -0.16; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.5625,
+  "controls_median_null_pct": 0.25,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8398,
+  "note": "a/u 6; AUC 0.532 (p 0.3); w 0.44; r 0.596 (p 0.03); 0 26/32; + 0.58 (p 0.03), - 0.45 (p 0.9), rho -0.17; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "+ only: +0.1,+0.25,+0.5,+1,+2,+4",
+  "neurons_median_null_pct": 0.4844,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 3,
+  "min_q": 0.3281,
+  "note": "a/u 18; AUC 0.529 (p 0.3); w 0.42; r 0.558 (p 0.1); 0 0/0; at max_rel 1.6: a/u 12, med 0.531, top 1, q 0.872"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "- only: -0.1,-0.25,-0.5,-1,-2,-4",
+  "neurons_median_null_pct": 0.5859,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.5626,
+  "note": "a/u 18; AUC 0.562 (p 0.1); w 0.55; r 0.542 (p 0.2); 0 0/0; at max_rel 1.6: a/u 12, med 0.578, top 0, q 0.753"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "under break: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.375,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.8951,
+  "note": "break +1/-1; a/u 18; AUC 0.460 (p 0.8); w 0.51; r 0.444 (p 0.9); 0 0/0; + 0.49 (p 0.6), - 0.55 (p 0.1), rho +0.04"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "at/above break: -1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.6875,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "break +1/-1; a/u 18; AUC 0.628 (p 0.006); w 0.45; r 0.641 (p 0.003); 0 0/0; + 0.65 (p 0.002), - 0.63 (p 0.007), rho -0.18; at max_rel 1.6: a/u 6, med 0.656, top 6, q 0.164"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "smallest 2: -0.1,+0.1,-0.25,+0.25",
+  "neurons_median_null_pct": 0.5625,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.7179,
+  "note": "a/u 12; AUC 0.549 (p 0.2); w 0.57; r 0.524 (p 0.3); 0 0/0; + 0.50 (p 0.5), - 0.61 (p 0.02), rho -0.00"
+ },
+ {
+  "layer": 50,
+  "design": "calib_rel",
+  "doses": "smallest 3: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.375,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.8951,
+  "note": "a/u 18; AUC 0.460 (p 0.8); w 0.51; r 0.444 (p 0.9); 0 0/0; + 0.49 (p 0.6), - 0.55 (p 0.1), rho +0.04"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "full@1.6: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.6172,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.3939,
+  "note": "rank default; = summary.json: True; a/u 18.14; AUC 0.587 (p 0.05); w 0.48; r 0.588 (p 0.04); 0 0/0"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "full: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.5781,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 3,
+  "min_q": 0.3281,
+  "note": "a/u 30; AUC 0.579 (p 0.06); w 0.52; r 0.576 (p 0.07); 0 0/0; + 0.50 (p 0.5), - 0.54 (p 0.2), rho -0.09; at max_rel 1.6: a/u 18.14, med 0.617, top 1, q 0.394"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.6094,
+  "controls_median_null_pct": 0.4688,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.7658,
+  "note": "a/u 6; AUC 0.538 (p 0.2); w 0.53; r 0.530 (p 0.3); 0 14/18; + 0.49 (p 0.8), - 0.50 (p 0.5), rho +nan"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.3203,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 1.0,
+  "note": "a/u 6; AUC 0.392 (p 1); w 0.44; r 0.398 (p 1); 0 5/3; + 0.51 (p 0.3), - 0.49 (p 0.7), rho -0.03"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.6016,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.3282,
+  "note": "a/u 6; AUC 0.508 (p 0.4); w 0.48; r 0.510 (p 0.4); 0 0/0; + 0.57 (p 0.02), - 0.54 (p 0.1), rho +0.10"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.6484,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 6,
+  "min_q": 0.1641,
+  "note": "a/u 6; AUC 0.620 (p 0.009); w 0.62; r 0.545 (p 0.2); 0 11/18; + 0.54 (p 0.2), - 0.58 (p 0.05), rho +0.13; at max_rel 1.6: a/u 0.14, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "+-8: -8,+8",
+  "neurons_median_null_pct": 0.0,
+  "controls_median_null_pct": 0.25,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.7161,
+  "note": "a/u 6; AUC 0.480 (p 0.7); w 0.47; r 0.477 (p 0.7); 0 35/32; + 0.51 (p 0.4), - 0.46 (p 0.9), rho -0.19; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "+ only: +0.5,+1,+2,+4,+8",
+  "neurons_median_null_pct": 0.5234,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 15; AUC 0.503 (p 0.5); w 0.45; r 0.521 (p 0.3); 0 0/0; at max_rel 1.6: a/u 9.07, med 0.500, top 2, q 0.492"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "- only: -0.5,-1,-2,-4,-8",
+  "neurons_median_null_pct": 0.6406,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4922,
+  "note": "a/u 15; AUC 0.543 (p 0.2); w 0.55; r 0.530 (p 0.3); 0 0/0; at max_rel 1.6: a/u 9.07, med 0.531, top 1, q 0.348"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "under break: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.6328,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4376,
+  "note": "break +4/-4; a/u 18; AUC 0.585 (p 0.05); w 0.49; r 0.586 (p 0.05); 0 0/0; + 0.48 (p 0.6), - 0.55 (p 0.1), rho -0.09"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "at/above break: -4,+4,-8,+8",
+  "neurons_median_null_pct": 0.5938,
+  "controls_median_null_pct": 0.4844,
+  "neurons_beating_every_control": 3,
+  "min_q": 0.3281,
+  "note": "break +4/-4; a/u 12; AUC 0.577 (p 0.07); w 0.56; r 0.540 (p 0.2); 0 5/10; + 0.56 (p 0.1), - 0.54 (p 0.2), rho -0.04; at max_rel 1.6: a/u 0.14, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "smallest 2: -0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.4688,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.9026,
+  "note": "a/u 12; AUC 0.461 (p 0.8); w 0.49; r 0.465 (p 0.8); 0 0/0; + 0.39 (p 1), - 0.53 (p 0.3), rho +0.05"
+ },
+ {
+  "layer": 50,
+  "design": "calib_ceil",
+  "doses": "smallest 3: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.6328,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4376,
+  "note": "a/u 18; AUC 0.585 (p 0.05); w 0.49; r 0.586 (p 0.05); 0 0/0; + 0.48 (p 0.6), - 0.55 (p 0.1), rho -0.09"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "full@1.6: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.4062,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8615,
+  "note": "rank default; = summary.json: True; a/u 24; AUC 0.453 (p 0.8); w 0.39; r 0.492 (p 0.6); 0 0/0"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "full: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,-1,+1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.6719,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 36; AUC 0.620 (p 0.009); w 0.39; r 0.641 (p 0.003); 0 0/0; + 0.54 (p 0.2), - 0.51 (p 0.5), rho +0.13; at max_rel 1.6: a/u 24, med 0.406, top 0, q 0.862"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "+-0.1: -0.1,+0.1",
+  "neurons_median_null_pct": 0.0,
+  "controls_median_null_pct": 0.0,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.4923,
+  "note": "a/u 6; AUC 0.501 (p 0.5); w 0.53; r 0.481 (p 0.6); 0 46/45; + 0.50 (p 1), - 0.50 (p 1), rho +nan"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "+-0.25: -0.25,+0.25",
+  "neurons_median_null_pct": 0.3438,
+  "controls_median_null_pct": 0.4219,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4923,
+  "note": "a/u 6; AUC 0.478 (p 0.7); w 0.46; r 0.490 (p 0.6); 0 27/22; + 0.51 (p 0.2), - 0.51 (p 0.2), rho -0.02"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.2344,
+  "controls_median_null_pct": 0.4766,
+  "neurons_beating_every_control": 0,
+  "min_q": 1.0,
+  "note": "a/u 6; AUC 0.398 (p 1); w 0.40; r 0.444 (p 0.9); 0 15/7; + 0.52 (p 0.2), - 0.52 (p 0.2), rho -0.07"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.4531,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.9587,
+  "note": "a/u 6; AUC 0.444 (p 0.9); w 0.36; r 0.479 (p 0.7); 0 13/2; + 0.53 (p 0.1), - 0.53 (p 0.2), rho -0.05"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.5938,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 4,
+  "min_q": 0.2461,
+  "note": "a/u 6; AUC 0.569 (p 0.09); w 0.55; r 0.546 (p 0.2); 0 12/11; + 0.54 (p 0.2), - 0.51 (p 0.4), rho -0.05; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.6562,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.5807,
+  "note": "a/u 6; AUC 0.632 (p 0.004); w 0.43; r 0.704 (p 3e-05); 0 13/28; + 0.64 (p 0.001), - 0.54 (p 0.2), rho +0.00; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "+ only: +0.1,+0.25,+0.5,+1,+2,+4",
+  "neurons_median_null_pct": 0.5,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.5251,
+  "note": "a/u 18; AUC 0.537 (p 0.2); w 0.44; r 0.565 (p 0.1); 0 0/0; at max_rel 1.6: a/u 12, med 0.453, top 1, q 0.859"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "- only: -0.1,-0.25,-0.5,-1,-2,-4",
+  "neurons_median_null_pct": 0.4922,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.4923,
+  "note": "a/u 18; AUC 0.505 (p 0.5); w 0.42; r 0.528 (p 0.3); 0 0/0; at max_rel 1.6: a/u 12, med 0.406, top 0, q 0.738"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "under break: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5,+1",
+  "neurons_median_null_pct": 0.4375,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.7877,
+  "note": "break +2/-1; a/u 21; AUC 0.470 (p 0.7); w 0.44; r 0.505 (p 0.5); 0 0/0; + 0.46 (p 0.8), - 0.52 (p 0.4), rho +0.05"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "at/above break: -1,-2,+2,-4,+4",
+  "neurons_median_null_pct": 0.7812,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.3516,
+  "note": "break +2/-1; a/u 15; AUC 0.689 (p 0.0001); w 0.40; r 0.709 (p 2e-05); 0 4/8; + 0.65 (p 0.002), - 0.55 (p 0.2), rho -0.14; at max_rel 1.6: a/u 3, med 0.000, top 1, q 0.281"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "smallest 2: -0.1,+0.1,-0.25,+0.25",
+  "neurons_median_null_pct": 0.4844,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 3,
+  "min_q": 0.3281,
+  "note": "a/u 12; AUC 0.481 (p 0.6); w 0.49; r 0.484 (p 0.6); 0 2/4; + 0.52 (p 0.3), - 0.49 (p 0.6), rho +0.28"
+ },
+ {
+  "layer": 57,
+  "design": "calib_rel",
+  "doses": "smallest 3: -0.1,+0.1,-0.25,+0.25,-0.5,+0.5",
+  "neurons_median_null_pct": 0.5156,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.3939,
+  "note": "a/u 18; AUC 0.470 (p 0.7); w 0.45; r 0.510 (p 0.4); 0 0/1; + 0.46 (p 0.8), - 0.52 (p 0.4), rho -0.07"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "full@1.6: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.5156,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.8861,
+  "note": "rank default; = summary.json: True; a/u 12.47; AUC 0.481 (p 0.6); w 0.37; r 0.515 (p 0.4); 0 0/0"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "full: -0.5,+0.5,-1,+1,-2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.7188,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 7,
+  "min_q": 0.1406,
+  "note": "a/u 30; AUC 0.666 (p 0.0006); w 0.50; r 0.658 (p 0.001); 0 0/0; + 0.61 (p 0.02), - 0.54 (p 0.2), rho -0.08; at max_rel 1.6: a/u 12.47, med 0.516, top 0, q 0.886"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "+-0.5: -0.5,+0.5",
+  "neurons_median_null_pct": 0.25,
+  "controls_median_null_pct": 0.4688,
+  "neurons_beating_every_control": 0,
+  "min_q": 1.0,
+  "note": "a/u 6; AUC 0.377 (p 1); w 0.40; r 0.409 (p 1); 0 21/9; + 0.50 (p 0.5), - 0.49 (p 0.7), rho -0.02"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "+-1: -1,+1",
+  "neurons_median_null_pct": 0.3672,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.6564,
+  "note": "a/u 6; AUC 0.446 (p 0.9); w 0.43; r 0.474 (p 0.7); 0 7/4; + 0.52 (p 0.2), - 0.50 (p 0.6), rho -0.12"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "+-2: -2,+2",
+  "neurons_median_null_pct": 0.6562,
+  "controls_median_null_pct": 0.4688,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.4431,
+  "note": "a/u 6; AUC 0.574 (p 0.07); w 0.71; r 0.460 (p 0.8); 0 9/8; + 0.50 (p 0.5), - 0.45 (p 0.9), rho -0.06; at max_rel 1.6: a/u 0.47, med 0.000, top 0, q 0.985"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "+-4: -4,+4",
+  "neurons_median_null_pct": 0.7344,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.2954,
+  "note": "a/u 6; AUC 0.663 (p 0.0006); w 0.52; r 0.696 (p 7e-05); 0 12/26; + 0.61 (p 0.007), - 0.58 (p 0.04), rho -0.13; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "+-8: -8,+8",
+  "neurons_median_null_pct": 0.4062,
+  "controls_median_null_pct": 0.4062,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.7529,
+  "note": "a/u 6; AUC 0.558 (p 0.1); w 0.40; r 0.657 (p 0.001); 0 7/11; + 0.58 (p 0.05), - 0.50 (p 0.5), rho -0.18; at max_rel 1.6: a/u 0, med 0.000, top 0, q 1.000"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "+ only: +0.5,+1,+2,+4,+8",
+  "neurons_median_null_pct": 0.6328,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 3,
+  "min_q": 0.303,
+  "note": "a/u 15; AUC 0.609 (p 0.02); w 0.51; r 0.606 (p 0.02); 0 0/0; at max_rel 1.6: a/u 6.23, med 0.344, top 1, q 0.984"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "- only: -0.5,-1,-2,-4,-8",
+  "neurons_median_null_pct": 0.5469,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 3,
+  "min_q": 0.3281,
+  "note": "a/u 15; AUC 0.536 (p 0.2); w 0.50; r 0.538 (p 0.2); 0 2/1; at max_rel 1.6: a/u 6.23, med 0.398, top 0, q 0.682"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "under break: -0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.4453,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.9398,
+  "note": "break +2/-2; a/u 12; AUC 0.468 (p 0.7); w 0.39; r 0.498 (p 0.5); 0 0/0; + 0.39 (p 1), - 0.47 (p 0.7), rho -0.04"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "at/above break: -2,+2,-4,+4,-8,+8",
+  "neurons_median_null_pct": 0.7656,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 2,
+  "min_q": 0.2813,
+  "note": "break +2/-2; a/u 18; AUC 0.634 (p 0.004); w 0.67; r 0.567 (p 0.09); 0 3/3; + 0.58 (p 0.05), - 0.50 (p 0.5), rho -0.06; at max_rel 1.6: a/u 0.47, med 0.000, top 0, q 0.985"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "smallest 2: -0.5,+0.5,-1,+1",
+  "neurons_median_null_pct": 0.4453,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 0,
+  "min_q": 0.9398,
+  "note": "a/u 12; AUC 0.468 (p 0.7); w 0.39; r 0.498 (p 0.5); 0 0/0; + 0.39 (p 1), - 0.47 (p 0.7), rho -0.04"
+ },
+ {
+  "layer": 57,
+  "design": "calib_ceil",
+  "doses": "smallest 3: -0.5,+0.5,-1,+1,-2,+2",
+  "neurons_median_null_pct": 0.6406,
+  "controls_median_null_pct": 0.4922,
+  "neurons_beating_every_control": 1,
+  "min_q": 0.4923,
+  "note": "a/u 18; AUC 0.591 (p 0.04); w 0.52; r 0.591 (p 0.04); 0 0/0; + 0.50 (p 0.5), - 0.53 (p 0.3), rho -0.07; at max_rel 1.6: a/u 12.47, med 0.516, top 0, q 0.886"
+ }
+]

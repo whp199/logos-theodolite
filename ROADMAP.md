@@ -264,9 +264,11 @@ where to run it.
   controls (580 answers, about 16 minutes at `--max-new 64`). The pilot measured the cost: every decode step of the 31B
   takes about 0.71 s whatever the batch (1 to 64 rows), so a whole `main_rel` layer is about 3.6 days at `--batch 32
   --max-new 64` and about two weeks at the default 256. The step is the 4-bit unpacking, not the model (COMPUTE §i).
-  The steer lens has never been timed (15 to 20 hours for all 60 layers on a 5090, and 3 to 5 on an H100, by two
-  estimates that disagree). On the home card, headless, time a pilot first; on a rented one, `scripts/pod/pilot.sh`
-  is that pilot (it times the step and the memory for each unpacker at several batches, takes a `calib_rel` run, times
+  The steer lens was estimated at 15 to 20 hours for all 60 layers on a 5090; one layer timed on 29 October 2026 (layer
+  45, `compiled`, into a scratch folder, not served) took 287 s, so all 60 would be about 4.8 hours. Its dose, the
+  census’s 0.8 of the stream, is still to be chosen against the calibration before it is built. On the home card,
+  headless, time a pilot first; on a rented one, `scripts/pod/pilot.sh` is that pilot (it times the step and the
+  memory for each unpacker at several batches, takes a `calib_rel` run, times
   one steer-lens layer, sets a canary batch against the home card’s and projects each job × 1.25 against the owner’s
   approval, which `scripts/gpu_log.py` keeps with every pod against it); a layer’s census then runs in shards
   (`scripts/pod/census_shard.sh`, every shard at the batch the pilot measured on that card class) and `sync.sh --final`
@@ -304,15 +306,22 @@ where to run it.
     changes as many: the neurons moved more answers than the controls at one dose of some 130 tested (layer 30, −0.5 ×
     the ceiling, 88% against 81%, uncorrected), about what chance gives. Whether an answer changes at all is too coarse
     a reading at this length, and `curves`’ verdict reads only that.
-  - **The ranking tells some neurons from controls at layers 40–50.** The census’s own ranking (the words each push
-    brings, every dose pooled, the broken ones too) puts the random neurons’ median null percentile at 0.62–0.80 there,
-    against the controls’ 0.49; at layer 40 in the ceiling 14 of 64 neurons beat every control, where about one would by
-    chance (least q 0.07). At layers 20, 30 and 57 neurons and controls are alike (0.39–0.52).
+  - **The ranking tells neurons from controls at layers 40–57.** The census’s own ranking (the words each push brings)
+    caps the push it reads at 1.6 of the stream (`compute_units`’ `max_rel`), so as first read here it left out
+    `calib_rel`’s ±2 and ±4 and every `calib_ceil` dose past 1.6 of the stream (at layer 57 all but ±0.5, ±1 and a
+    little of ±2): those first figures (0.62–0.80 at 40–50, alike at 20, 30 and 57) were over the doses under the cap,
+    not every dose. Re-ranked on every answer (29 October 2026, CPU; `experiments/results/atlas_calibration/`, the
+    subset analysis beside it), neurons lead their controls at layers 40–57 in both ladders (AUC of mass 0.55–0.70 a
+    layer; in the ceiling at layer 40, 13 of 64 beat every control where about one would by chance, least q 0.08),
+    marginally at 30, and not at 20. The doses under the break alone separate nothing; the lead lives near the break
+    (±2 of the stream, ±2 to 4 × the ceiling).
 
-  Still open: the design that replaces `main_rel`. By these leads, doses under the break (in the ceiling, about 0.5 to
-  2 × from layer 40 up), read by something finer than whether an answer moved (the ranking within the window, or how
-  early an answer parts), taken on one layer before a whole one. Every page and tool that shows a census still says the
-  doses are uncalibrated.
+  The design that replaces `main_rel` is drafted: `break_rel` (±1 and ±2 of the stream on six questions read as two
+  halves, every answer counted, each word against the controls alone), on the branch `census-break-rel`, not merged.
+  Its trial, at layer 45 (1,022 fresh neurons against 1,024 controls) and a probe at layer 57, was written on the
+  night of 29 October; its reader and gates were fixed and hashed before (`atlas_data/census/trials/prereg`) and wait
+  for the owner to approve or amend them before the verdict is read. Every page and tool that shows a census still
+  says the doses are uncalibrated.
 - **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8
   of the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
   neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
@@ -343,9 +352,11 @@ where to run it.
   parted from itself written alone after 22 word-pieces (one question of four), in a batch of 32 after 54; alone, as
   `/steer`’s middle row and by the sweep’s writer it held all 64. Within one shape the unpushed row and a dose-0 row
   part alike, so a run, whose baseline is written in its own batches, compares like with like. Without the lens the
-  5090 holds a batch of 96 at `--max-new 64` beside a desktop (7.2 GiB above the model, COMPUTE §ii). Still to measure
-  on a GPU: whether the canaries and a merged run are bit for bit an unbroken one across processes on one card, and how
-  far they differ across cards.
+  5090 holds a batch of 96 at `--max-new 64` beside a desktop (7.2 GiB above the model, COMPUTE §ii). On one card,
+  across processes, a run is bit for bit itself (29 October 2026, the 5090, `compiled`, a `calib_rel` run of 16 neurons
+  and 8 controls at layer 45, 868 answers): the same run taken in two shards and merged equals the unbroken run in every
+  field of every row, and two canaries taken in separate processes are identical. Still to measure: how far a run
+  differs across cards.
 - **The wiring.** Links are ranked by |P| f², with Gemma’s layer scalars and the norms’ usual scales (the review of 27
   October 2026), and every consumer reads their signs one way, from rest through GeGLU’s gate. That model is a
   simplification, and a second reading is now built beside it: to first order about a reader’s operating point (g₀, u₀),
@@ -385,16 +396,18 @@ where to run it.
   The dose: at a quarter of the ceiling the pushes stay near first order; at the whole ceiling gates opened in 11–61% of
   linked pairs and the sign from rest rose (layer 35: 0.44 to 0.77), while the first-order sign in use at the unpushed
   point fell to 0.42–0.53: each reading holds in its own regime of dose, measured for 24 writers on one question.
-- **Stored passages for each face** (Cammarata’s practice iii, the study’s §3.5): built and checked on the stand-in,
-  not yet run on the model. One pass over the corpus the stats index was read over (`atlas_build.py passages`, the same
-  windows) keeps each face’s sixteen strongest windows and six drawn at random above half its extreme, with the gate
-  and up values at each event (the operating point the wiring’s sign in use reads). One forward a window, as stats is,
-  so it should cost about what stats costs, some 29 minutes a million word-pieces on the 5090 (inferred). The stats
+- **Stored passages for each face** (Cammarata’s practice iii, the study’s §3.5): **built on Gemma-4-31B** (29 October
+  2026, 20 minutes on the 5090 with `compiled`, over the 2,000,054 word-pieces in 3,914 windows the stats index read).
+  One pass over the corpus the stats index was read over (`atlas_build.py passages`, the same windows) keeps each face’s
+  sixteen strongest windows and six drawn at random above half its extreme, with the gate and up values at each event
+  (the operating point the wiring’s sign in use reads). Still open: whether the words over sixteen passages make sound
+  labels (condition 1 of §ii; no test has checked them). The stats
   pass now keeps its norms in float32 buffers (about 1.4 GB at two million word-pieces, where Python floats took about
   11.5 GB, inferred), so a pass over ten million fits in memory, its quantiles unchanged.
 - **Single neurons at layers 21–31.** The study's 60-fold push overdrove them (errata E43, E46). The calibration
   (above) moved their answers readily at layers 20 and 30, from 0.05 of the stream, but no more than matched controls
-  moved theirs, and the census’s ranking did not tell them from the controls (median null percentile 0.39–0.52).
+  moved theirs; on every answer the census’s ranking told them from the controls not at all at layer 20 and only
+  marginally at 30.
 - **The scientist’s reach.** Since the review of 27 October 2026 it reads, writes and edits files only in its work
   folder under Claude Code, with no shell, and runs Codex’s shell in its workspace-write sandbox;
   `THEODOLITE_SCIENTIST_REACH=home` gives neuron-explorer’s shell over the home folder, and the page asks first. On 28

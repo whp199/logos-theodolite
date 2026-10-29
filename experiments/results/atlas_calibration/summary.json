@@ -370,5 +370,6 @@
     }
    }
   }
- }
+ },
+ "ranking_read": "each layer's 'ranking' figures were read by census_tools.py rank at its default cap, max_rel 1.6 of the stream, which leaves out calib_rel's +-2 and +-4 and every calib_ceil dose past 1.6 of the stream; the same runs ranked on every answer, and on subsets of their doses, are in subset_table.json and subset_ranking.json beside this file (29 October 2026, subset_rank.py)"
 }
