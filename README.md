@@ -520,6 +520,7 @@ process at a time):
 .venv/bin/python scripts/census_run.py --layers 20,40,45 --design calib_ceil --neurons random:32 --random-controls 16   # doses first
 .venv/bin/python scripts/census_tools.py curves 45 --weights         # where pushes start to tell and where text breaks (CPU)
 .venv/bin/python scripts/census_run.py --layer 45 --neurons all --unpacker compiled   # a layer's census, break_rel, ranked (layers from 0; ~13 h)
+.venv/bin/python scripts/census_watch.py                             # in another terminal: its progress bar, rate and finish
 .venv/bin/python scripts/census_tools.py spread 45                   # its answers laid out by what they say (CPU)
 ```
 

@@ -14,6 +14,8 @@ ranked (scripts/census_tools.py rank).
     .venv/bin/python scripts/census_run.py --layer 45 --design break_rel --neurons all --random-controls 2048 --seed 7 --batch 64 --max-new 48 --unpacker compiled
     .venv/bin/python scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
 
+Watch a run from another terminal with scripts/census_watch.py (a progress bar, its rate and when it should finish).
+
 The model is the W4A16 checkpoint on cuda:0 unless THEODOLITE_GGUF names a GGUF of Gemma 4 or THEODOLITE_DEVICE=cpu
 puts it on the CPU (backend/runtime_factory.py; THEODOLITE_GGUF_LENS=none leaves out the J++ lens, which a census does
 not read); the run's meta records the model id, a GGUF's carrying its file and fingerprint and one off the GPU or in
