@@ -382,11 +382,13 @@ layer and the determinism run on 29 October). In this section layers count from 
 
   A whole layer is taken at batch 64 (the step-0 rule: chair parts at 20 pieces at batch 96), at the trial’s measured
   12.4 answers a second while writing: about 12.1 hours at 48 pieces (12.7 with 2,048 controls), about 8.0–8.4 at 32
-  (estimated, not timed). Nothing is yet marked calibrated. These wait on the owner: which layers `DOSES_CALIBRATED`
-  covers, the piece count, whether ±2 stays (a design without it is a new design, and the ±1 figures above were read
-  after the fact), the controls, the default design, and what a page says a lead means (the pre-registration left open
-  whether to say “unlike a random direction pushed as far” rather than “has a theme”). Every page and tool that shows a
-  census still says the doses are uncalibrated.
+  (estimated, not timed). The owner chose, on 29 October, to count `break_rel`’s doses calibrated at layers 40–50 alone
+  (pages 41–51): the branch’s `DOSES_CALIBRATED` gives each design its span of layers and the card tests the run’s own,
+  so 51–57 and every layer below 40 stay uncalibrated. These still wait on the owner: the piece count, whether ±2 stays
+  (a design without it is a new design, and the ±1 figures above were read after the fact), the controls, the default
+  design, and what a page says a lead means (the pre-registration left open whether to say “unlike a random direction
+  pushed as far” rather than “has a theme”). On `main`, which has no `break_rel`, every page and tool that shows a
+  census still says its doses are uncalibrated.
 - **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8 of
   the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
   neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
