@@ -11,7 +11,7 @@ import {
   type LarqlEntry,
 } from "../../store/useTheodoliteStore";
 import { pct } from "../../lib/words";
-import { INSERT_EXAMPLE, isFloat } from "./lql";
+import { EXAMPLE_EDIT, EXAMPLE_QUESTION, INSERT_EXAMPLE, isFloat } from "./lql";
 import { asked, editDescription, num, replyTo, said } from "./live";
 import { FaceMark, MONO, OwnWords, roman, sentenceInput, smallCaps } from "./bits";
 import { toConsole, useVaultUi } from "./ui";
@@ -77,7 +77,7 @@ export const EditPanel: React.FC = () => {
   const activeEdits = useTheodoliteStore((s) => s.activeEdits);
   const editVoices = useTheodoliteStore((s) => s.editVoices);
   const executeLarql = useTheodoliteStore((s) => s.executeLarql);
-  // the question the edit is heard by: the instrument page's own, unless typed here
+  // the question the edit is heard by: the example's own at first (ui.ts), the instrument page's once taken again
   const sQuestion = useTheodoliteStore((s) => s.question);
   const sBegins = useTheodoliteStore((s) => s.answerBegins);
   const sChat = useTheodoliteStore((s) => s.chat);
@@ -101,6 +101,11 @@ export const EditPanel: React.FC = () => {
   const posFace = ui.ePol !== "-";
   const wordOk = eWord !== "" && !/['"]/.test(eWord);
   const valid = eNOk && eLOk && (!isUpd || (wordOk && eSOk)) && hearOk;
+  // the tab's own example, heard on its own question (lql.ts EXAMPLE_EDIT)
+  const isExample =
+    isUpd && eN === EXAMPLE_EDIT.n && eL === EXAMPLE_EDIT.layer && eWord === EXAMPLE_EDIT.word && eS === EXAMPLE_EDIT.strength && ui.ePol === EXAMPLE_EDIT.pol;
+  // ... heard as it was tried: its own question, a chat, no system prompt, nothing begun
+  const exampleHeard = isExample && ui.hear && vQuestion.trim() === EXAMPLE_QUESTION && vBegins.trim() === "" && vChat && !vSystem.trim();
   const nTxt = eNOk ? String(eN) : "…";
   const lTxt = eLOk ? String(eL) : "…";
   const sTxt = eSOk ? eS : "…";
@@ -392,10 +397,11 @@ export const EditPanel: React.FC = () => {
           <button className="btn-primary" type="button" onClick={make} disabled={editPending}>
             {isUpd ? "make this edit" : "silence this neuron"}
           </button>
-          <span style={{ fontSize: 15, color: "var(--muted)" }}>
-            The values filled in are the instrument’s own self-test edit, from{" "}
-            <span style={{ fontFamily: MONO, fontSize: 13, overflowWrap: "anywhere" }}>scripts/verify_optics.py</span>.
-          </span>
+          {exampleHeard ? (
+            <span style={{ fontSize: 15, color: "var(--muted)" }}>
+              The values filled in are the tab’s example, chosen because the model’s answer to its question changes.
+            </span>
+          ) : null}
         </div>
         {editPending ? (
           <p className="status-line" role="status">
@@ -431,6 +437,17 @@ export const EditPanel: React.FC = () => {
                 This is an edit to one neuron, not a change to what the model knows. The original tool calls it a MEMIT edit, but it is not
                 MEMIT: a single column of a single layer moves and nothing is solved for, so the model may say the word in places you never
                 meant.
+              </Rubric>
+            ) : null}
+            {isExample ? (
+              <Rubric>
+                This is the tab’s example. Neuron {EXAMPLE_EDIT.n} of layer {EXAMPLE_EDIT.layer} fires hardest of its layer where the answer to
+                “{EXAMPLE_QUESTION}” begins, and there the edit is heard: “A spider has eight legs.” becomes “six legs.” Tried on seven questions
+                (29 October 2026), it also gave a dog six legs and wrote a hexagon’s “6 sides” as “six sides”, and it left an insect’s six legs,
+                Paris, the colour of the sky and the model’s account of itself as they were. Such an edit is rare: the most active neurons at
+                layers 41, 46, 51, 56 and 59 were not heard on this question at strengths 3 or 30. At the last layer only the norms stand between
+                this neuron’s write and the next word, so the edit raises “six” wherever the neuron fires on this face: the example shows an
+                edit being heard, not where the model keeps what a spider is.
               </Rubric>
             ) : null}
             {isUpd && eLOk && eL >= 36 && eL <= 59 ? (

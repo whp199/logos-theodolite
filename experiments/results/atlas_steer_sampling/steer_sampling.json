@@ -1,0 +1,298 @@
+{
+ "what": "The push written with the instrument's sampler (`POST /api/atlas/steer` with `sampler` and `samples`), checked on\nthe real model through the running server: do the three voices stay alike at dose 0 in bf16, as they did on the\nstand-in in float32, and what do eight samples cost against one?",
+ "commit": "9e255fe",
+ "health": {
+  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "unpacker": {
+   "mode": "reference",
+   "linears": 410,
+   "shapes": 8,
+   "devices": [
+    "cuda:0"
+   ]
+  },
+  "device": "cuda:0"
+ },
+ "question": "Describe a walk through a forest in early spring.",
+ "max_new": 64,
+ "sampler": {
+  "temperature": 1.0,
+  "top_k": 64,
+  "top_p": 0.95,
+  "seed": 1234
+ },
+ "push": {
+  "layer": 45,
+  "n": 12623,
+  "layers_from": 0
+ },
+ "checks": {
+  "greedy, dose 0: the three voices the same": true,
+  "sampled, one sample, dose 0: the three voices the same": true,
+  "sampled, eight samples, dose 0: in every sample the three voices the same": true,
+  "sampled, eight samples again: the same eight texts": true
+ },
+ "timings_s": {
+  "greedy_1": 48.49,
+  "sampled_1": 49.07,
+  "sampled_8": 50.36,
+  "sampled_8_again": 49.95,
+  "sampled_1_seed+0": 49.27,
+  "sampled_1_seed+1": 49.44,
+  "sampled_1_seed+2": 49.16,
+  "sampled_1_seed+3": 49.12,
+  "sampled_1_seed+4": 49.21,
+  "sampled_1_seed+5": 49.15,
+  "sampled_1_seed+6": 48.94,
+  "sampled_1_seed+7": 49.38,
+  "sampled_8_dose_0.8": 50.93
+ },
+ "sample_s_of_eight_against_seed_plus_s_alone": [
+  {
+   "s": 0,
+   "same": false,
+   "shared_chars": 245,
+   "chars_alone": 295,
+   "chars_in_eight": 299
+  },
+  {
+   "s": 1,
+   "same": true,
+   "shared_chars": 280,
+   "chars_alone": 280,
+   "chars_in_eight": 280
+  },
+  {
+   "s": 2,
+   "same": false,
+   "shared_chars": 90,
+   "chars_alone": 296,
+   "chars_in_eight": 291
+  },
+  {
+   "s": 3,
+   "same": true,
+   "shared_chars": 296,
+   "chars_alone": 296,
+   "chars_in_eight": 296
+  },
+  {
+   "s": 4,
+   "same": false,
+   "shared_chars": 111,
+   "chars_alone": 285,
+   "chars_in_eight": 285
+  },
+  {
+   "s": 5,
+   "same": false,
+   "shared_chars": 93,
+   "chars_alone": 292,
+   "chars_in_eight": 289
+  },
+  {
+   "s": 6,
+   "same": false,
+   "shared_chars": 135,
+   "chars_alone": 304,
+   "chars_in_eight": 301
+  },
+  {
+   "s": 7,
+   "same": true,
+   "shared_chars": 295,
+   "chars_alone": 295,
+   "chars_in_eight": 295
+  }
+ ],
+ "dose_0.8": {
+  "samples": 8,
+  "pushed_voices_parted": 8
+ },
+ "texts": {
+  "greedy_1": {
+   "prompt": "Describe a walk through a forest in early spring.",
+   "pushed": [
+    {
+     "layer": 45,
+     "n": 12623,
+     "mode": "add",
+     "dose": 0.0
+    }
+   ],
+   "up": "The air is the first thing you notice—a sharp, silver clarity that still carries the ghost of winter, but tastes of damp earth and waking roots. As you step off the paved road and onto the forest floor, the ground is a sponge of russet-colored needles and decaying leaves, yielding softly under your boots",
+   "baseline": "The air is the first thing you notice—a sharp, silver clarity that still carries the ghost of winter, but tastes of damp earth and waking roots. As you step off the paved road and onto the forest floor, the ground is a sponge of russet-colored needles and decaying leaves, yielding softly under your boots",
+   "down": "The air is the first thing you notice—a sharp, silver clarity that still carries the ghost of winter, but tastes of damp earth and waking roots. As you step off the paved road and onto the forest floor, the ground is a sponge of russet-colored needles and decaying leaves, yielding softly under your boots",
+   "sampling": "greedy"
+  },
+  "sampled_1": {
+   "prompt": "Describe a walk through a forest in early spring.",
+   "pushed": [
+    {
+     "layer": 45,
+     "n": 12623,
+     "mode": "add",
+     "dose": 0.0
+    }
+   ],
+   "up": "The transition from winter to early spring in the forest is not a sudden explosion of color, but a slow, tentative awakening. To walk through it is to witness a world rubbing the sleep from its eyes.\n\nAs you step off the paved road and onto the trail, the first thing you notice is the smell. It",
+   "baseline": "The transition from winter to early spring in the forest is not a sudden explosion of color, but a slow, tentative awakening. To walk through it is to witness a world rubbing the sleep from its eyes.\n\nAs you step off the paved road and onto the trail, the first thing you notice is the smell. It",
+   "down": "The transition from winter to early spring in the forest is not a sudden explosion of color, but a slow, tentative awakening. To walk through it is to witness a world rubbing the sleep from its eyes.\n\nAs you step off the paved road and onto the trail, the first thing you notice is the smell. It",
+   "sampling": {
+    "temperature": 1.0,
+    "top_k": 64,
+    "top_p": 0.95,
+    "presence_penalty": 0.0,
+    "seed": 1234,
+    "seed_drawn": false,
+    "samples": 1,
+    "seeds": [
+     1234
+    ],
+    "draw": "shared across the three voices"
+   }
+  },
+  "sampled_8": {
+   "prompt": "Describe a walk through a forest in early spring.",
+   "pushed": [
+    {
+     "layer": 45,
+     "n": 12623,
+     "mode": "add",
+     "dose": 0.0
+    }
+   ],
+   "up": [
+    "The transition from winter to early spring in the forest is not a sudden explosion of color, but a slow, tentative awakening. To walk through it is to witness a world rubbing the sleep from its eyes.\n\nAs you step off the paved road and onto the forest floor, the first thing you notice is the smell.",
+    "The air is the first thing you notice—it is a precarious balance, holding the sharp, metallic memory of winter and the soft, humid promise of April. As you step off the paved road and onto the loam of the forest floor, the ground gives way with a rhythmic, spongy squelch. It is a",
+    "The transition into early spring is not a sudden explosion of color, but a slow, rhythmic waking. Stepping into the forest, the first thing that hits you is the smell: the heady, primal scent of damp earth, decaying leaves from the winter before, and the sharp, ozonic tang of recent rain.\n\n",
+    "The air is a contradiction—sharp enough to make you tuck your chin into your collar, yet carrying a sudden, honeyed warmth that suggests the sun is finally winning its battle against the frost. \n\nEntering the forest, the first thing you notice is the light. In mid-summer, the canopy is a ceiling",
+    "The air is the first thing you notice—it is crisp, holding a lingering winter chill that bites at your cheeks, yet it carries a new, electric scent. It is the smell of wet slate, decaying cedar, and the sudden, sharp sweetness of ozone and waking earth.\n\nAs you step off the paved road",
+    "The air is the first thing you notice—a crisp, silver contradiction. It carries the lingering bite of winter’s tail, but beneath the chill, there is a new, restless sweetness. It is the scent of wet stone, waking loam, and the faint, green promise of things stirring beneath the surface.\n\n",
+    "The air is a contradiction—crisp enough to make your breath bloom in small, ghostly clouds, yet carrying a sudden, honeyed warmth that hints at the returning sun. As you step off the paved road and onto the forest floor, the sound changes instantly. The distant hum of traffic is swallowed by a heavy,",
+    "The air is the first thing you notice—it is crisp, carrying a sharp, metallic edge that speaks of the winter that is only just retreating. As you step off the paved road and onto the forest floor, the ground feels spongy and saturated, yielding beneath your boots with a rhythmic, wet squelch.\n\n"
+   ],
+   "baseline": [
+    "The transition from winter to early spring in the forest is not a sudden explosion of color, but a slow, tentative awakening. To walk through it is to witness a world rubbing the sleep from its eyes.\n\nAs you step off the paved road and onto the forest floor, the first thing you notice is the smell.",
+    "The air is the first thing you notice—it is a precarious balance, holding the sharp, metallic memory of winter and the soft, humid promise of April. As you step off the paved road and onto the loam of the forest floor, the ground gives way with a rhythmic, spongy squelch. It is a",
+    "The transition into early spring is not a sudden explosion of color, but a slow, rhythmic waking. Stepping into the forest, the first thing that hits you is the smell: the heady, primal scent of damp earth, decaying leaves from the winter before, and the sharp, ozonic tang of recent rain.\n\n",
+    "The air is a contradiction—sharp enough to make you tuck your chin into your collar, yet carrying a sudden, honeyed warmth that suggests the sun is finally winning its battle against the frost. \n\nEntering the forest, the first thing you notice is the light. In mid-summer, the canopy is a ceiling",
+    "The air is the first thing you notice—it is crisp, holding a lingering winter chill that bites at your cheeks, yet it carries a new, electric scent. It is the smell of wet slate, decaying cedar, and the sudden, sharp sweetness of ozone and waking earth.\n\nAs you step off the paved road",
+    "The air is the first thing you notice—a crisp, silver contradiction. It carries the lingering bite of winter’s tail, but beneath the chill, there is a new, restless sweetness. It is the scent of wet stone, waking loam, and the faint, green promise of things stirring beneath the surface.\n\n",
+    "The air is a contradiction—crisp enough to make your breath bloom in small, ghostly clouds, yet carrying a sudden, honeyed warmth that hints at the returning sun. As you step off the paved road and onto the forest floor, the sound changes instantly. The distant hum of traffic is swallowed by a heavy,",
+    "The air is the first thing you notice—it is crisp, carrying a sharp, metallic edge that speaks of the winter that is only just retreating. As you step off the paved road and onto the forest floor, the ground feels spongy and saturated, yielding beneath your boots with a rhythmic, wet squelch.\n\n"
+   ],
+   "down": [
+    "The transition from winter to early spring in the forest is not a sudden explosion of color, but a slow, tentative awakening. To walk through it is to witness a world rubbing the sleep from its eyes.\n\nAs you step off the paved road and onto the forest floor, the first thing you notice is the smell.",
+    "The air is the first thing you notice—it is a precarious balance, holding the sharp, metallic memory of winter and the soft, humid promise of April. As you step off the paved road and onto the loam of the forest floor, the ground gives way with a rhythmic, spongy squelch. It is a",
+    "The transition into early spring is not a sudden explosion of color, but a slow, rhythmic waking. Stepping into the forest, the first thing that hits you is the smell: the heady, primal scent of damp earth, decaying leaves from the winter before, and the sharp, ozonic tang of recent rain.\n\n",
+    "The air is a contradiction—sharp enough to make you tuck your chin into your collar, yet carrying a sudden, honeyed warmth that suggests the sun is finally winning its battle against the frost. \n\nEntering the forest, the first thing you notice is the light. In mid-summer, the canopy is a ceiling",
+    "The air is the first thing you notice—it is crisp, holding a lingering winter chill that bites at your cheeks, yet it carries a new, electric scent. It is the smell of wet slate, decaying cedar, and the sudden, sharp sweetness of ozone and waking earth.\n\nAs you step off the paved road",
+    "The air is the first thing you notice—a crisp, silver contradiction. It carries the lingering bite of winter’s tail, but beneath the chill, there is a new, restless sweetness. It is the scent of wet stone, waking loam, and the faint, green promise of things stirring beneath the surface.\n\n",
+    "The air is a contradiction—crisp enough to make your breath bloom in small, ghostly clouds, yet carrying a sudden, honeyed warmth that hints at the returning sun. As you step off the paved road and onto the forest floor, the sound changes instantly. The distant hum of traffic is swallowed by a heavy,",
+    "The air is the first thing you notice—it is crisp, carrying a sharp, metallic edge that speaks of the winter that is only just retreating. As you step off the paved road and onto the forest floor, the ground feels spongy and saturated, yielding beneath your boots with a rhythmic, wet squelch.\n\n"
+   ],
+   "sampling": {
+    "temperature": 1.0,
+    "top_k": 64,
+    "top_p": 0.95,
+    "presence_penalty": 0.0,
+    "seed": 1234,
+    "seed_drawn": false,
+    "samples": 8,
+    "seeds": [
+     1234,
+     1235,
+     1236,
+     1237,
+     1238,
+     1239,
+     1240,
+     1241
+    ],
+    "draw": "shared across the three voices"
+   }
+  },
+  "sampled_8_dose_0.8": {
+   "prompt": "Describe a walk through a forest in early spring.",
+   "pushed": [
+    {
+     "layer": 45,
+     "n": 12623,
+     "mode": "add",
+     "dose": 0.8
+    }
+   ],
+   "up": [
+    "The air is a sharp, bracing contradiction—still holding the crystalline bite of winter, but carrying a sudden, fragrant promise of warmth. To step into the woods in early spring is to witness a slow, rhythmic awakening, a symphony of subtle shifts that signal the return of life.\n\nUnderfoot, the ground is a",
+    "The air is a sharp, cool contradiction—still holding the icy bite of winter, but carrying a new, insistent fragrance of damp earth and crushed pine. As you step into the forest, the ground is a tapestry of matted amber and brown, a heavy coat of last year’s decay that serves as a seal",
+    "The transition into early spring is not a sudden explosion of color, but a tentative, rhythmic awakening. To walk through a forest in this period is to witness a world waking up in slow motion.\n\nAs you step beneath the canopy, the first thing you notice is the light. It is a pale, translucent gold,",
+    "The air is a sharp, bracing contradiction—still holding the crystalline bite of winter, but carrying a sudden, tentative sweetness that promises the coming warmth. \n\nAs you step onto the trail, the ground is a damp mosaic of mahogany-colored earth and the skeletal remains of last year’s ferns. The soil is",
+    "The air is a sharp, crystalline blend of lingering winter frost and a tentative, honeyed warmth. As you step into the forest, the first thing you notice is the sound: the silence of December has been replaced by a chaotic, joyful orchestration. The birds are returning, their songs sharp and frantic, echoing through the",
+    "The air is a sharp, bracing cocktail of frost and promise. It is a temperature that forces you to keep your jacket zipped to the chin, yet it is a cold that doesn’t bite—it awakens.\n\nStepping onto the trail, the first thing you notice is the sound. The forest is no longer",
+    "The air is a sharp, bright contradiction—cold enough to nip at your fingertips, but carrying a scent that is unmistakably warm. It is the smell of damp earth awakening, a mixture of crushed pine needles, thawing frost, and the metallic tang of wet slate.\n\nAs you step onto the trail, the ground",
+    "The air is a paradox—sharp and biting in the shade, but tasting of honey and ozone where the light hits. To walk into the forest in early spring is to step into a world that is holding its breath, poised between the heavy sleep of winter and the frantic energy of summer.\n\nUnderfoot, the earth"
+   ],
+   "baseline": [
+    "The transition from winter to early spring in the forest is not a sudden explosion of color, but a slow, tentative awakening. To walk through it is to witness a world rubbing the sleep from its eyes.\n\nAs you step off the paved road and onto the forest floor, the first thing you notice is the smell.",
+    "The air is the first thing you notice—it is a precarious balance, holding the sharp, metallic memory of winter and the soft, humid promise of April. As you step off the paved road and onto the loam of the forest floor, the ground gives way with a rhythmic, spongy squelch. It is a",
+    "The transition into early spring is not a sudden explosion of color, but a slow, rhythmic waking. Stepping into the forest, the first thing that hits you is the smell: the heady, primal scent of damp earth, decaying leaves from the winter before, and the sharp, ozonic tang of recent rain.\n\n",
+    "The air is a contradiction—sharp enough to make you tuck your chin into your collar, yet carrying a sudden, honeyed warmth that suggests the sun is finally winning its battle against the frost. \n\nEntering the forest, the first thing you notice is the light. In mid-summer, the canopy is a ceiling",
+    "The air is the first thing you notice—it is crisp, holding a lingering winter chill that bites at your cheeks, yet it carries a new, electric scent. It is the smell of wet slate, decaying cedar, and the sudden, sharp sweetness of ozone and waking earth.\n\nAs you step off the paved road",
+    "The air is the first thing you notice—a crisp, silver contradiction. It carries the lingering bite of winter’s tail, but beneath the chill, there is a new, restless sweetness. It is the scent of wet stone, waking loam, and the faint, green promise of things stirring beneath the surface.\n\n",
+    "The air is a contradiction—crisp enough to make your breath bloom in small, ghostly clouds, yet carrying a sudden, honeyed warmth that hints at the returning sun. As you step off the paved road and onto the forest floor, the sound changes instantly. The distant hum of traffic is swallowed by a heavy,",
+    "The air is the first thing you notice—it is crisp, carrying a sharp, metallic edge that speaks of the winter that is only just retreating. As you step off the paved road and onto the forest floor, the ground feels spongy and saturated, yielding beneath your boots with a rhythmic, wet squelch.\n\n"
+   ],
+   "down": [
+    "From the moment you step from the paved road from the trailhead, the air changes. It is from the lungs of the forest—cool, heavy from from the thaw, and smelling intensely of from wet stone and ozone. \n\nFrom the ground from the ground from from the ground from from from from from from from from",
+    "From the moment you step from the paved road from the trailhead, the air changes. It is no longer from the from the from the from the from the from from the from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from",
+    "From the moment from the from the from the moment from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from",
+    "From the moment you step from the road from the from the from from the from from the from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from",
+    "From the moment you step from the road from from the from the from the from the from the from the from the from the from the from the from the from the from from the from from the from from from from from from from from from from from from from from from from from from from from from from from from from",
+    "From the moment you step from the paved road onto the trailhead, the air hits from from the lungs—from a mixture of ozone, damp earth, and the sharp, metallic scent of from the thawing ground. From the forest from the waking from from the from from from from from from from from from from from from from",
+    "From the moment from from the from the trailhead, the air is from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from",
+    "From the moment you step from the road from the gravel from from the dirt from from the paved from from the from from the from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from from"
+   ],
+   "sampling": {
+    "temperature": 1.0,
+    "top_k": 64,
+    "top_p": 0.95,
+    "presence_penalty": 0.0,
+    "seed": 1234,
+    "seed_drawn": false,
+    "samples": 8,
+    "seeds": [
+     1234,
+     1235,
+     1236,
+     1237,
+     1238,
+     1239,
+     1240,
+     1241
+    ],
+    "draw": "shared across the three voices"
+   }
+  }
+ },
+ "sampling": {
+  "temperature": 1.0,
+  "top_k": 64,
+  "top_p": 0.95,
+  "presence_penalty": 0.0,
+  "seed": 1234,
+  "seed_drawn": false,
+  "samples": 8,
+  "seeds": [
+   1234,
+   1235,
+   1236,
+   1237,
+   1238,
+   1239,
+   1240,
+   1241
+  ],
+  "draw": "shared across the three voices"
+ }
+}

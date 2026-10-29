@@ -220,7 +220,9 @@ TOOLS: List[Dict[str, Any]] = [
                                                        "seed": {"type": "integer", "description": "left out: one is drawn, and given back"},
                                                        "samples": {"type": "integer", "default": 1, "description": "1 to 8, sampled only: "
                                                                    "up, baseline and down come as lists when more than one, sample s "
-                                                                   "drawn with seed + s; several hold at most 6,144 word-pieces over "
+                                                                   "drawn with seed + s (alone at seed + s it can write other words on "
+                                                                   "the GPU: ask for the same samples and seed to write it again); "
+                                                                   "several hold at most 6,144 word-pieces over "
                                                                    "their rows (prompt and answer), so fewer at a long max_new"}},
                      "required": ["prompt"]}},
     {"name": "activations", "description": "Live: the neuron's activation at every display unit of a text (chat: true makes it a user turn), "

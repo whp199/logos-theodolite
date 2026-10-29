@@ -1,0 +1,238 @@
+{
+ "what": "The vault edit tab's example edit, heard on several questions (29 October 2026): which of them does it change, and\ndid the tab's earlier example change any? Each edit is made with its voice (POST /api/larql, the edit tab's voice: a\nchat, no system prompt, nothing begun but the page's own default where named, 12 word-pieces written the likeliest\nway) and undone (ROLLBACK) before the next. Talks to the server on :8765; writes probe.json beside this file.",
+ "commit": "9e255fe",
+ "unpacker": {
+  "mode": "reference",
+  "linears": 410,
+  "shapes": 8,
+  "devices": [
+   "cuda:0"
+  ]
+ },
+ "rows": [
+  {
+   "edit": "example (layer 60, neuron 7830)",
+   "statement": "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -",
+   "question": "How many legs does a spider have?",
+   "begun": "",
+   "before": "A spider has **eight** legs.<turn|>",
+   "after": " six legs.<turn|>",
+   "parted_at": 0,
+   "kl_first": 5.653482,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 0.21603961288928986,
+    "rank": 1
+   }
+  },
+  {
+   "edit": "example (layer 60, neuron 7830)",
+   "statement": "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -",
+   "question": "Tell me about yourself.",
+   "begun": "Hi! I",
+   "before": " am a large language model, trained by Google.\n\nThink",
+   "after": " am a large language model, trained by Google.\n\nThink",
+   "parted_at": null,
+   "kl_first": 0.0,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 2.5885937490754962e-11,
+    "rank": 18971
+   }
+  },
+  {
+   "edit": "example (layer 60, neuron 7830)",
+   "statement": "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -",
+   "question": "How many legs does a dog have?",
+   "begun": "",
+   "before": "A dog has four legs.<turn|>",
+   "after": " six legs.<turn|>",
+   "parted_at": 0,
+   "kl_first": 6.838764,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 0.1092689260840416,
+    "rank": 1
+   }
+  },
+  {
+   "edit": "example (layer 60, neuron 7830)",
+   "statement": "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -",
+   "question": "How many legs does an insect have?",
+   "begun": "",
+   "before": "An insect has **six** legs.<turn|>",
+   "after": "An insect has **six** legs.<turn|>",
+   "parted_at": null,
+   "kl_first": 0.000183,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 2.7509641716975996e-15,
+    "rank": 207174
+   }
+  },
+  {
+   "edit": "example (layer 60, neuron 7830)",
+   "statement": "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -",
+   "question": "How many sides does a hexagon have?",
+   "begun": "",
+   "before": "A hexagon has **6** sides.<turn|>",
+   "after": " six sides<turn|>",
+   "parted_at": 0,
+   "kl_first": 13.292608,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 0.02893754467368126,
+    "rank": 1
+   }
+  },
+  {
+   "edit": "example (layer 60, neuron 7830)",
+   "statement": "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -",
+   "question": "What is the capital of France?",
+   "begun": "",
+   "before": "The capital of France is Paris.<turn|>",
+   "after": "The capital of France is Paris.<turn|>",
+   "parted_at": null,
+   "kl_first": 0.0,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 5.740852091497522e-16,
+    "rank": 202092
+   }
+  },
+  {
+   "edit": "example (layer 60, neuron 7830)",
+   "statement": "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -",
+   "question": "Name a colour of the sky.",
+   "begun": "",
+   "before": "Blue<turn|>",
+   "after": "Blue<turn|>",
+   "parted_at": null,
+   "kl_first": 1.9e-05,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 1.9502516192693858e-13,
+    "rank": 64076
+   }
+  },
+  {
+   "edit": "earlier example (layer 36, neuron 100)",
+   "statement": "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+   "question": "How many legs does a spider have?",
+   "begun": "",
+   "before": "A spider has **eight** legs.<turn|>",
+   "after": "A spider has **eight** legs.<turn|>",
+   "parted_at": null,
+   "kl_first": 2.7e-05,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 1.3037272216606462e-17,
+    "rank": 246911
+   }
+  },
+  {
+   "edit": "earlier example (layer 36, neuron 100)",
+   "statement": "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+   "question": "Tell me about yourself.",
+   "begun": "Hi! I",
+   "before": " am a large language model, trained by Google.\n\nThink",
+   "after": " am a large language model, trained by Google. \n\n",
+   "parted_at": 10,
+   "kl_first": 8.2e-05,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 2.5101859826848205e-11,
+    "rank": 18206
+   }
+  },
+  {
+   "edit": "earlier example (layer 36, neuron 100)",
+   "statement": "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+   "question": "How many legs does a dog have?",
+   "begun": "",
+   "before": "A dog has four legs.<turn|>",
+   "after": "A dog has four legs.<turn|>",
+   "parted_at": null,
+   "kl_first": 0.0,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 8.904252912251836e-19,
+    "rank": 253658
+   }
+  },
+  {
+   "edit": "earlier example (layer 36, neuron 100)",
+   "statement": "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+   "question": "How many legs does an insect have?",
+   "begun": "",
+   "before": "An insect has **six** legs.<turn|>",
+   "after": "An insect has **six** legs.<turn|>",
+   "parted_at": null,
+   "kl_first": 0.000175,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 1.1291103346896224e-14,
+    "rank": 181847
+   }
+  },
+  {
+   "edit": "earlier example (layer 36, neuron 100)",
+   "statement": "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+   "question": "How many sides does a hexagon have?",
+   "begun": "",
+   "before": "A hexagon has **6** sides.<turn|>",
+   "after": "A hexagon has **6** sides.<turn|>",
+   "parted_at": null,
+   "kl_first": 0.0,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 4.5223494372407246e-18,
+    "rank": 248852
+   }
+  },
+  {
+   "edit": "earlier example (layer 36, neuron 100)",
+   "statement": "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+   "question": "What is the capital of France?",
+   "begun": "",
+   "before": "The capital of France is Paris.<turn|>",
+   "after": "The capital of France is Paris.<turn|>",
+   "parted_at": null,
+   "kl_first": 0.0,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 3.5570900465760577e-17,
+    "rank": 237939
+   }
+  },
+  {
+   "edit": "earlier example (layer 36, neuron 100)",
+   "statement": "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+   "question": "Name a colour of the sky.",
+   "begun": "",
+   "before": "Blue<turn|>",
+   "after": "Blue<turn|>",
+   "parted_at": null,
+   "kl_first": 0.0,
+   "watch": {
+    "token_id": 3962,
+    "token": " six",
+    "prob": 2.3967483285480964e-19,
+    "rank": 252823
+   }
+  }
+ ]
+}

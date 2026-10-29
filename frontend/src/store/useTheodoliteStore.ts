@@ -464,7 +464,7 @@ export const HEARD_KINDS = ["delete", "update", "insert"] as const;
 /**
  * What a statement typed in the vault's console is sent with, decided here so that the bundle check can read it: with
  * hearing on (the console's default, as the edit tab's), an edit (`kind` as parseLql gives it) goes with the voice it
- * is heard by (`voicePayload` of the question given, the edit tab's: the instrument page's own unless typed there), and
+ * is heard by (`voicePayload` of the question given, the edit tab's: its example's at first, the instrument page's once taken again), and
  * a blank question is a problem to show, not an edit made unheard; with hearing off, or for any other statement, no
  * voice goes, and the statement is sent exactly as before.
  */

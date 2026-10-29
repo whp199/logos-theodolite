@@ -114,7 +114,7 @@ export const ConsolePanel: React.FC = () => {
   const larqlPending = useTheodoliteStore((s) => s.larqlPending);
   const inForce = useTheodoliteStore((s) => s.activeEdits.length);
   const live = conn === "open";
-  // the question an edit typed here is heard by: the edit tab's, which is the instrument page's own unless typed there
+  // the question an edit typed here is heard by: the edit tab's (its example's at first, the instrument page's once taken again)
   const sQuestion = useTheodoliteStore((s) => s.question);
   const sBegins = useTheodoliteStore((s) => s.answerBegins);
   const sChat = useTheodoliteStore((s) => s.chat);
@@ -364,8 +364,8 @@ export const ConsolePanel: React.FC = () => {
               <p style={{ margin: 0, fontSize: 16, color: "var(--muted)" }}>
                 Just before the edit and again just after, the vault will ask the model {asked({ prompt: heard.voice.prompt, assistantPrefix: heard.voice.assistant_prefix })}
                 {heard.voice.chat ? " as a chat" + (heard.voice.system ? ", after the system prompt “" + heard.voice.system + "”" : "") : " as bare text"}, and
-                write each answer the likeliest way, up to {VOICE_LENGTH} word-pieces. The question is the edit tab’s: the instrument
-                page’s own, unless typed there.
+                write each answer the likeliest way, up to {VOICE_LENGTH} word-pieces. The question is the edit tab’s: its example’s at
+                first, or the instrument page’s once taken again there.
               </p>
             ) : !ui.conHear ? (
               <p style={{ margin: 0, fontSize: 16, color: "var(--muted)" }}>It will be made without its voice; the ledger will say so.</p>
