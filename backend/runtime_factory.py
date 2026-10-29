@@ -188,7 +188,9 @@ def checkpoint_files_id(snapshot: Path) -> Optional[str]:
     """The checkpoint's weight files, whatever commit holds them: the sha256 of the names of `WEIGHT_FILES` in a
     snapshot folder and of the blobs the hub's cache links each to (a large file's blob is named by the sha256 of its
     content, a small one's by its git blob id), so another commit of the same files (a model card edited) gives the same
-    id and a changed weight or config another. None when there is no .safetensors file, or a file is not such a link (a
+    id and a changed weight or config another. Only the snapshot file's own link is read, as the hub writes it: a blob
+    that is itself a link onward (a cache whose blobs were moved into a shared store, as on the owner's machine) is
+    still named by the hub's name for it. None when there is no .safetensors file, or a file is not such a link (a
     cache laid out without links, or a copied folder): the snapshot is then all the card can name."""
     names = sorted({f.name for pattern in WEIGHT_FILES for f in Path(snapshot).glob(pattern)})
     if not any(n.endswith(".safetensors") for n in names):
@@ -196,8 +198,10 @@ def checkpoint_files_id(snapshot: Path) -> Optional[str]:
     lines = []
     for name in names:
         f = Path(snapshot) / name
-        blob = f.resolve()
-        if not f.is_symlink() or blob.parent.name != "blobs":
+        if not f.is_symlink():
+            return None
+        blob = Path(os.path.normpath(f.parent / os.readlink(f)))
+        if blob.parent.name != "blobs":
             return None
         lines.append(f"{name} {blob.name}")
     return hashlib.sha256("\n".join(lines).encode()).hexdigest()

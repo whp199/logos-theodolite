@@ -247,6 +247,15 @@ def run_checks(tmp: Path) -> int:
                                       ("3333333333333333333333333333333333333333", shards, False)):  # copied, not linked
             snapshot(commit, names, linked)
             cards[commit[0]] = rf.weights_card(er.TheodoliteRuntime(load_jlens=False))
+        # a cache whose blobs were moved on into a store shared by every repo, each left as a link to it (as on the
+        # owner's machine: blobs/<name> -> ../../blobs/<two>/<another name>): still named by the hub's own names
+        for b in blobs.values():
+            kept = hub / "blobs" / b[:2] / hashlib.sha256(b.encode()).hexdigest()
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            (repo_dir / "blobs" / b).rename(kept)
+            (repo_dir / "blobs" / b).symlink_to(Path("..") / ".." / "blobs" / b[:2] / kept.name)
+        (repo_dir / "refs" / "main").write_text("0123456789abcdef0123456789abcdef01234567")
+        card_store = rf.weights_card(er.TheodoliteRuntime(load_jlens=False))
         cpu_ct = rf.CheckpointRuntime(device="cpu", load_jlens=False)
         cpu_ct.model_id += rf.reading_class(cpu_ct.device)
         card_cpu = rf.weights_card(cpu_ct)
@@ -270,6 +279,8 @@ def run_checks(tmp: Path) -> int:
     check(cards["3"]["snapshot"].startswith("3333") and cards["3"]["files_sha256"] is None and cards["3"]["id"] is None
           and weights_differ(card_ct, cards["3"]) is None,
           "a snapshot whose files are not links: no files id, so the model id alone is compared")
+    check(card_store["files_sha256"] == files_id and weights_differ(card_ct, card_store) is None,
+          "blobs that are themselves links into a shared store: the same files id, by the hub's own blob names")
     check(card_cpu["repo"] == er.DEFAULT_W4A16_MODEL_ID and card_cpu["device"] == "cpu" and card_cpu["runtime"] == "CheckpointRuntime",
           "on the CPU: the repo id without the reading class, the device the CPU")
     check(card_none["snapshot"] is None and card_none["id"] is None and card_none["files_sha256"] is None,
