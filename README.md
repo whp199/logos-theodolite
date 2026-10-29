@@ -332,9 +332,9 @@ REPORT §3.4). Where each fault stands now:
   a mark of the chat template) about nine readers in ten sat with the gate shut, and under the push on the writer’s gate
   face the sign from rest agreed with the measured change at 0.336 of links (0.341 for as many readers not linked) and
   the sign in use as served at 0.418 (0.438), each the median over layers: below chance, links and null alike. Where the
-  gate was open the sign from rest held at 0.82. Scored offline at each reader’s own gate and up values there, the sign
-  in use agreed at 0.835 (0.854); the check now records those values itself, and its rerun (`wiring_check --fresh`) is
-  to replace that offline figure. The links are real by size: linked readers moved 5.5 times as much as the null’s. So
+  gate was open the sign from rest held at 0.82. Scored at each reader’s own gate and up values there, which the check
+  now records (its rerun of 29 October), the sign in use agreed at 0.841 (0.853), and the change’s size followed the
+  first-order term at ρ 0.89. The links are real by size: linked readers moved 5.5 times as much as the null’s. So
   read a link’s strength as a lead, and its sign as holding where its reader’s gate is open (ARCHITECTURE §4.7; the
   scripts and figures in [`atlas_wiring_check/`](experiments/results/atlas_wiring_check/)).
 - **Thinking turned on.** A chat's sighting with thinking turned on is switched on by the chat template's own switch

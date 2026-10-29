@@ -413,15 +413,23 @@ layer and the determinism run on 29 October). In this section layers count from 
   use there, splits both signs by the reader’s regime (open, shut above gelu’s minimum, below it), judges sign shares
   against 0.5 (the null tests size) and ranks the size against the first-order term too.
 
-  Still open: (1) the rerun that records g₀ and u₀ (`wiring_check --fresh`, about half an hour as timed before it kept
-  g₀ and u₀; the night’s layers are set aside, not removed), which replaces the offline figures above. (2) The open
-  item: the sign in use the atlas serves is read where each reader fires hardest on a face, not where it sits at an
-  ordinary word-piece. A resting operating point (the median g and u over a sample of ordinary word-pieces, beside the
-  passages index) or one per GeGLU regime would read it there; whether to build one is the owner’s choice, and until
-  then every page says where it is read. (3) The dose: at a quarter of the ceiling the pushes stay near first order; at
-  the whole ceiling gates opened in 11–61% of linked pairs and the sign from rest rose (layer 35: 0.44 to 0.77), while
-  the first-order sign in use at the unpushed point fell to 0.42–0.53: each reading holds in its own regime of dose,
-  measured for 24 writers on one question.
+  **Rerun with g₀ and u₀ recorded** (29 October 2026, 04:18 CDT; `wiring_check --fresh`, the night’s first check set
+  aside; 59 layers in about 32 minutes; [`rerun_at_site.json`](experiments/results/atlas_wiring_check/rerun_at_site.json)):
+  the check itself now gives what the offline scoring gave. Medians over layers, linked / null: the sign in use scored
+  at each reader’s site holds at 0.841 / 0.853 (under the plain +d push 0.866 / 0.852); read where it fires hardest,
+  as served, 0.418 / 0.438; the sign from rest 0.336 / 0.341; size against f |α₀ g + β₀ u| d at ρ 0.89 / 0.87, against
+  0.31 for |P| f²; linked readers moved 5.5 times the null’s. By regime, for linked readers: the gate open at 7% of
+  pairs (the sign from rest 0.82, at the site 0.86), shut above gelu’s minimum at 14% (0.47, 0.74), below it at 80%
+  (0.19, 0.88); the null’s shares 12%, 21% and 68%. (The 70% / 63% above are pooled over every pair, these the median
+  over layers.)
+
+  Still open: (1) The sign in use the atlas serves is read where each reader fires hardest on a face, not where it sits
+  at an ordinary word-piece. A resting operating point (the median g and u over a sample of ordinary word-pieces,
+  beside the passages index) or one per GeGLU regime would read it there; whether to build one is the owner’s choice,
+  and until then every page says where it is read. (2) The dose: at a quarter of the ceiling the pushes stay near
+  first order; at the whole ceiling gates opened in 11–61% of linked pairs and the sign from rest rose (layer 35: 0.44
+  to 0.77), while the first-order sign in use at the unpushed point fell to 0.42–0.53: each reading holds in its own
+  regime of dose, measured for 24 writers on one question.
 - **Stored passages for each face** (Cammarata’s practice iii, the study’s §3.5): **built on Gemma-4-31B** (28 October
   2026, 20 minutes on the 5090 with `compiled`, over the 2,000,054 word-pieces in 3,914 windows the stats index read;
   its log in `experiments/results/atlas_wiring_check/gpu_logs/`). One pass over the corpus the stats index was read over

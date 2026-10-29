@@ -757,8 +757,11 @@ each face of the reader (28.2% on +, 28.3% on −; on both only 1.9%, so on abou
 These were scored offline, outside the check (the scripts, their outputs and a summary naming each figure in
 `experiments/results/atlas_wiring_check/`; the inputs over 5 MB in `atlas_data/offline/wiring_check_31b/`, but for the
 passages index, read in place at `atlas_data/index/passages.d`, built at 23:46 CDT on 28 October, and the checkpoint the
-CPU reads load); it now records g₀ and u₀ itself, and the run that does (`wiring_check --fresh`, the night's layers set
-aside) is what it reports from here on.
+CPU reads load); it now records g₀ and u₀ itself. Its rerun so (29 October 2026, `wiring_check --fresh`, the night's
+first layers set aside; `experiments/results/atlas_wiring_check/rerun_at_site.json`) gives the same from the check
+alone, medians over layers, linked / null: at the site 0.841 / 0.853, as served 0.418 / 0.438, from rest 0.336 / 0.341,
+ρ 0.89 / 0.87 against 0.31; by regime for linked readers the gate open at 7% of pairs (from rest 0.82, at the site
+0.86), shut above the minimum at 14% (0.47, 0.74), below it at 80% (0.19, 0.88).
 
 **The steer lens.** ±0.8 · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
 you?", "Write whatever you like.") and two plain openings, one forward with an unpushed row each; per sign, the mean change

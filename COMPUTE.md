@@ -135,8 +135,8 @@ the causal check would have to pass `verify_causal_check.py` against N1A and N1V
    Its numbers then replace this page’s arithmetic and the scripts’ help, as `cbbb5fa` did for the 5090.
 3. **The steer lens**, all 60 layers (shards by depth), once its dose is chosen: about 10 hours on the 5090 (§i).
 4. **A passages pass** of 2 to 10 million word-pieces, the wiring rebuilt with the links’ gate and up values, and the
-   wiring’s measured check. **Done** for 2 million word-pieces (the night of 28–29 October 2026, §i); the check is to be
-   run again with `--fresh`, now that it keeps each reader’s g₀ and u₀ (ROADMAP §vi).
+   wiring’s measured check. **Done** for 2 million word-pieces (the night of 28–29 October 2026, §i), and the check run
+   again with `--fresh` keeping each reader’s g₀ and u₀ (29 October, about 32 minutes; ROADMAP §vi).
 5. **The depth curve**, at the dose and `--max-new` the calibration chose.
 6. **Whole layers**, chosen from the depth curve, each on one card class at one `--batch`.
 7. **A label survey**, if wanted, once a resumable driver exists (a small CPU job, not yet written).
