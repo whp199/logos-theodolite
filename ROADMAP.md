@@ -267,7 +267,7 @@ layer and the determinism run on 29 October). In this section layers count from 
 - **Take its censuses, and its steer lens, on the model.** Neither exists beyond the 8 + 8 `calib_rel` pilot of 27
   October (580 answers, about 16 minutes at `--max-new 64`), the two calibration ladders of 28 October (64 + 64 units at
   each of six layers, below), one steer-lens layer timed into a scratch folder, the 16 + 8 determinism run of 29 October
-  (868 answers) and the `break_rel` trial begun that day on the branch (both below). The pilot measured the cost: every
+  (868 answers) and the `break_rel` trial taken and read that day on the branch (both below). The pilot measured the cost: every
   decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole `main_rel` layer is about 3.6
   days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is the 4-bit unpacking, not the
   model (COMPUTE §i). The steer lens was estimated at 15 to 20 hours for all 60 layers on a 5090. One layer timed on 29
@@ -333,17 +333,60 @@ layer and the determinism run on 29 October). In this section layers count from 
     covariate check credits most of that to the neurons’ text keeping more new words under the push than the controls’
     text does: with that regressed out the AUC is 0.52–0.57, at no layer p < 0.05.
 
-  A design to replace `main_rel` is drafted on these leads, and rests on nothing more: `break_rel` (±1 and ±2 of the
-  stream on six questions read as two halves, every answer counted, each word against the controls alone), on the branch
-  `census-break-rel`, not merged; `main_rel` stays the default (the owner’s choice). Its doses are ±2, where the lead
-  above was largest, and ±1, where it led at layers 45 and 50; both rest on 64 neurons and 64 controls a layer, one
-  greedy answer a question, and the covariate check credits most of the lead at ±2 to text that survives the push
-  (above). Its trial, at layer 45 (1,086 neurons, 1,022 fresh and 64 re-asked from the calibration, against 1,024
-  controls) and a probe at layer 57, was begun early on 29 October; its reader and gates were fixed and hashed before it
-  began (`atlas_data/census/trials/prereg`, gitignored; its `SHA256SUMS` has sha256
-  `8d8d81de91dd03529db83f091c7ddeb26bbb4dd8037cac66f6dd91884c7c3b2d`). A copy of that folder is to be committed on the
-  branch once the trial has written its runs, and the owner is to approve or amend the reader and gates, both before the
-  verdict is read. Every page and tool that shows a census still says the doses are uncalibrated.
+  A design to replace `main_rel` was drafted on these leads: `break_rel` (±1 and ±2 of the stream on six questions read
+  as two halves, every answer counted, each word against the controls alone), on the branch `census-break-rel`, not
+  merged; `main_rel` stays the default (the owner’s choice). Its trial was taken early on 29 October, its reader and
+  gates fixed and hashed before it began (`SHA256SUMS` sha256
+  `8d8d81de91dd03529db83f091c7ddeb26bbb4dd8037cac66f6dd91884c7c3b2d`), and read that morning with the gates as they
+  were (the owner’s word). At layer 45 (1,022 fresh neurons against 1,024 controls) it **passes every gate** at 48
+  word-pieces, and at 32 every gate the reader computes there (the check that the units file ranks as read is made at
+  48 only). At 48: mass AUC 0.714, 0.724 with six measures of how the text survives fitted out, words picked on one half
+  of the questions and scored on the other 0.688 and 0.674, the three new questions alone 0.669 (all AUCs), against
+  bars of 0.60, 0.58, 0.57 and 0.56. The probe at layer 57 (507 against 512) passes at 48 and fails at 32 (its residual
+  0.5608 against a bar of 0.56, then 0.5061). By the rules written before it, that licenses whole layers at 40–50 at 32
+  word-pieces and at 51–57 at 48. The shorter reading at 45 lay within 0.02 on the two measures the rule checks, but it
+  names 191 neurons where 48 names 262, and its residual falls 0.0215. A review the same morning
+  (`experiments/results/census_break_rel_trial/` on the branch, `summary.json` and `review/`) used six agents: three
+  readers, each checked by a second that re-derived its headline figures, the gates with code that shares nothing with
+  the pre-registered reader, the by-dose and per-neuron figures with code built on its parts. It found the reading
+  faithful; four small departures, none able to move a gate, are recorded there, one of them that the 32-piece reading
+  is the 48-piece answers cut short. Then it asked what the pass measures:
+  - **At layer 45 the lead is the ±1 answers’.** On them alone the AUC is 0.706 and clears every bar. On the ±2 answers
+    alone it is 0.571 and clears none: at ±2 the text of neurons and controls alike collapses into loops on the same
+    few words (own, thought, same; distinct-4 0.21 for both), so that half of the answers adds 0.008, though alone it
+    still holds a weak lead (5.6 SE above chance). Among units whose twelve ±1 answers all stay fluent (distinct-4 at
+    least 0.9; 705 neurons, 942 controls) the ±1 lead is 0.641, about two-thirds of the pooled lead above chance. A
+    neuron picked on one half is found again on the other three times in four (120 of 161, against 7 of the 51 strongest
+    controls), and its words nine times in ten (147 of 161, against 10 of 51). The two halves’ ranks agree at 0.46
+    (controls 0.14), and about 7 of the 262 neurons named would be named by chance (95% upper bound about 14). The 893
+    neurons whose text survival the controls do cover clear every gate on their own (0.692, 0.691, 0.657 and 0.643,
+    0.651), the check layer 57 fails. The order lies in the layer’s tail: below the controls’ 95th percentile the halves
+    agree barely more than the controls’ do (0.17 against 0.12), though those 767 neurons still lead the controls as a
+    group (0.61 on the other half). The calibration’s “none named” was forced by its size (64 + 64 units cannot reach
+    q ≤ 0.05 with fewer than 20 neurons above every control; it had 15).
+  - **Part of that lead is text breaking early, and the words need filtering.** The named neurons’ ±1 answers loop
+    (distinct-4 below 0.5) in 9.6% of cases (fresh neurons 4.1%, controls 0.4%): 135 of their 303 looping answers on
+    their own words, 127 on the collapse words and 41 on neither. 194 of the 262 list “same”, “own” or “thought” among
+    their words. The gates do not rest on these: with the 789 collapse words removed from every answer, every gate still
+    passes. But a page should not show them as a neuron’s words.
+  - **At layer 57 the pass is fragile and is not words in fluent text.** ±1 alone gives 0.52, and only the two doses
+    together clear the probe’s first bar. The named take 82% of their weight from broken answers (distinct-4 below 0.9;
+    the controls 49%, nearly all at ±2, and all 507 neurons 60%); many loop on pieces such as “sem”, “pemb” and “ngày”,
+    though about half their words are ordinary ones (vendor, volt, deck). Its residual falls below its bar in about half
+    of the resamples. And 30% of its neurons write text whose survival no control matches, while the 354 the controls do
+    cover fail every probe gate (0.551, 0.488, 0.522 and 0.537). This design cannot tell layer 57’s lead from how the
+    text survives.
+  - **Two sanity checks say less than their names.** The read gain is computed from the weights alone before any answer
+    (at 57 the controls are read 1.18 times as loudly), and the relabelled-control split cannot name anything, so it
+    shows only that the reading favours neither label.
+
+  A whole layer is taken at batch 64 (the step-0 rule: chair parts at 20 pieces at batch 96), at the trial’s measured
+  12.4 answers a second while writing: about 12.1 hours at 48 pieces (12.7 with 2,048 controls), about 8.0–8.4 at 32
+  (estimated, not timed). Nothing is yet marked calibrated. These wait on the owner: which layers `DOSES_CALIBRATED`
+  covers, the piece count, whether ±2 stays (a design without it is a new design, and the ±1 figures above were read
+  after the fact), the controls, the default design, and what a page says a lead means (the pre-registration left open
+  whether to say “unlike a random direction pushed as far” rather than “has a theme”). Every page and tool that shows a
+  census still says the doses are uncalibrated.
 - **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8 of
   the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
   neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
