@@ -61,7 +61,7 @@ def from_page(args: Any) -> Any:
 
 def to_page(x: Any) -> Any:
     """A reply in the API's count turned into the pages': every "layer" field, every key of a "z_by_layer" table, and
-    every entry of "census_layers"."""
+    every entry of "census_layers" and of a census card's "doses_calibrated_layers"."""
     if isinstance(x, dict):
         out: Dict[str, Any] = {}
         for k, v in x.items():
@@ -69,7 +69,7 @@ def to_page(x: Any) -> Any:
                 out[k] = v + 1
             elif k == "z_by_layer" and isinstance(v, dict):
                 out[k] = {str(int(kk) + 1): vv for kk, vv in v.items()}
-            elif k == "census_layers" and isinstance(v, list):
+            elif k in ("census_layers", "doses_calibrated_layers") and isinstance(v, list):
                 out[k] = [int(i) + 1 for i in v]
             else:
                 out[k] = to_page(v)
@@ -151,8 +151,8 @@ TOOLS: List[Dict[str, Any]] = [
      "unpushed answers, with its distinctive words, their mass, its empirical p against random-direction controls and the "
      "layer's false-discovery q. The run asks its design's questions (`prompts`) at its design's doses; its card says where "
      "the doses come from, what they are, how the ranking read the answers and whether the doses are calibrated on this "
-     "model (`card.doses_from`, `card.doses`, `card.reading`, `card.doses_calibrated`): where they are not, a low rank may "
-     "only mean the dose was wrong for this layer. Empty when the layer has no census.",
+     "model at this layer (`card.doses_from`, `card.doses`, `card.reading`, `card.doses_calibrated`): where they are not, "
+     "a low rank may only mean the dose was wrong for this layer. Empty when the layer has no census.",
      "inputSchema": {"type": "object", "properties": {**LN, "max_chars": {"type": "integer", "default": 500}}, "required": ["layer", "n"]}},
     {"name": "cone", "description": "The neuron's cone: its weight links chained forward (what reads it, hop > 0, from it firing on its + "
      "face and on its - face: `when`) and backward (what feeds it, hop < 0: `drives`, the face of the neuron it pushes toward), "
@@ -180,7 +180,8 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "top_units", "description": "A layer's neurons ranked by their census words' mass against random-direction controls, with their "
      "words and names, and how many would land above every control by chance alone (N / (C + 1): with 256 controls about 84 "
      "of a whole layer), and the run's card: its design, where its doses come from, the doses, how the ranking read the "
-     "answers and whether the doses are calibrated on this model (doses_calibrated). A rank is a lead to test, not a "
+     "answers and whether the doses are calibrated on this model at this layer (doses_calibrated). A rank is a lead to "
+     "test, not a "
      "finding, and where the doses are not calibrated a low rank may only mean the dose was wrong for the layer. Empty "
      "when the layer has no census.",
      "inputSchema": {"type": "object", "properties": {"layer": LN["layer"], "limit": {"type": "integer", "default": 30}}, "required": ["layer"]}},

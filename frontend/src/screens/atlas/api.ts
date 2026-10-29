@@ -329,11 +329,13 @@ export interface CensusCard {
    * a share of the stream; the mean a word is set against ("units": every unit's; "controls": the controls' alone);
    * whose unpushed words are left out */
   reading?: { max_rel: number; reference: "units" | "controls"; exclude: "all" | "own" };
-  /** its design's doses, and whether they are calibrated on this model (census.DOSES_CALIBRATED: none yet; break_rel's
-   * once the owner records its trial's pass); where they are not, the census and details tabs say so in red, and the
-   * left panel's census head says so */
+  /** its design's doses, and whether they are calibrated on this model at the run's layer (census.doses_calibrated:
+   * break_rel's at layers 40–50 counted from 0, 41–51 on the pages); where they are not, the census and details tabs say
+   * so in red, and the left panel's census head says so. `doses_calibrated_layers`: the first and last layer, counted
+   * from 0, that the run's design is calibrated at; null for a design calibrated at none */
   doses?: number[];
   doses_calibrated?: boolean;
+  doses_calibrated_layers?: [number, number] | null;
   /** the second stage of a two-stage census: the screen whose strongest neurons it retests against fresh controls */
   stage?: { stage: number; screen: string; top: number; of: number; screen_seed: number | null; screen_controls: number | null } | null;
   /** with no push, after how many word-pieces an answer written in batches like this run's parts from the same answer

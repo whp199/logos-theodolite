@@ -488,8 +488,10 @@ def run_checks() -> int:
         check(False, "layer 0 refused")
     except st.ToolError as exc:
         check("count from 1" in str(exc), f"layer 0: {exc}")
-    back = st.to_page({"layer": 53, "x": [{"layer": 0}], "z_by_layer": {"0": [1.0], "59": [2.0]}, "census_layers": [3], "pos": 4})
-    check(back == {"layer": 54, "x": [{"layer": 1}], "z_by_layer": {"1": [1.0], "60": [2.0]}, "census_layers": [4], "pos": 4}, f"to_page: {back}")
+    back = st.to_page({"layer": 53, "x": [{"layer": 0}], "z_by_layer": {"0": [1.0], "59": [2.0]}, "census_layers": [3], "pos": 4,
+                       "card": {"doses_calibrated_layers": [40, 50]}, "card2": {"doses_calibrated_layers": None}})
+    check(back == {"layer": 54, "x": [{"layer": 1}], "z_by_layer": {"1": [1.0], "60": [2.0]}, "census_layers": [4], "pos": 4,
+                   "card": {"doses_calibrated_layers": [41, 51]}, "card2": {"doses_calibrated_layers": None}}, f"to_page: {back}")
     check(st.cite(53, 15491) == "L54 N15491" and st.cite_head(5, 3) == "L6 h3", "citations in the pages' count")
     section("the tools' schemas and the pages' count", before)
 

@@ -822,23 +822,30 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     for the second stage of a two-stage census, which screen's strongest it retests (`stage`: its p and q are taken over
     those neurons alone, against fresh controls), how its ranking read its answers (`reading`, as its ranking file
     records it, census.write_units: the largest push counted, the mean a word is set against, whose unpushed words are
-    left out), its doses and whether they are calibrated on this model (`doses_calibrated`: a design that
-    census.DOSES_CALIBRATED names, none yet), and, where scripts/verify_atlas_writer.py has measured one for the
+    left out), its doses and whether they are calibrated on this model at the run's layer (`doses_calibrated`,
+    census.doses_calibrated; `doses_calibrated_layers`, the first and last layer its design is calibrated at, None for
+    a design calibrated at none), and, where scripts/verify_atlas_writer.py has measured one for the
     run's model, the writer's floor (`writer_floor`, census.writer_floor: with no push, after how many word-pieces an
     answer written in batches like this run's parts from the same answer written alone; None where none is on disk)."""
     m = d["meta"]
+    design = m.get("design_name")
     devices = {(c or {}).get("device") for c in (m.get("mixed_runtime") or [m.get("runtime")])}
-    return {"run": d["path"].name, "design": m.get("design_name"), "doses_from": m.get("doses_from") or cz.DOSES_FROM.get(m.get("design_name")),
+    span = cz.DOSES_CALIBRATED.get(str(design))
+    # where its doses come from in the words its meta recorded, save for a design whose calibration was recorded since
+    # (census.DOSES_CALIBRATED), which speaks with the words that say where it is calibrated
+    doses_from = cz.DOSES_FROM.get(design) if span else (m.get("doses_from") or cz.DOSES_FROM.get(design))
+    return {"run": d["path"].name, "design": design, "doses_from": doses_from,
             "dose_unit": m.get("dose_unit", "stream"), "p50_source": m.get("p50_source"), "read_gain": m.get("read_gain"), "null": d["null"],
             "device": devices.pop() if len(devices) == 1 else None, "mixed_runtime": bool(m.get("mixed_runtime")), "partial": m.get("partial"),
             "stage": m.get("stage"), "writer_floor": cz.writer_floor(m),
             # how its ranking read its answers (the reading its ranking file records; one written before rankings
             # recorded it was ranked by census.READING_DEFAULT; with no ranking yet, its design's, census.reading_of),
-            # its doses, and whether they are calibrated on this model (census.DOSES_CALIBRATED)
+            # its doses, and whether they are calibrated on this model at the run's layer (census.doses_calibrated)
             "reading": next((u["reading"] for u in d.get("units") or [] if u.get("reading")), None)
                        or (dict(cz.READING_DEFAULT) if d.get("units") else cz.reading_of(m.get("design_name"))),
             "doses": sorted({float(x[1]) for x in m.get("design") or []}),
-            "doses_calibrated": m.get("design_name") in cz.DOSES_CALIBRATED}
+            "doses_calibrated": cz.doses_calibrated(design, m.get("layer")),
+            "doses_calibrated_layers": list(span) if span else None}
 
 
 @router.get("/census/units")

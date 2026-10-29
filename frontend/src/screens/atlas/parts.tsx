@@ -127,11 +127,18 @@ const typesetDoses = (s: string) =>
     .replace(/\b(\d+)-(\d+)\b/g, "$1–$2");
 
 /** Where a census's doses and push unit come from, said wherever its answers or numbers are shown: in red that they are
- * not yet calibrated on this model, unless the card says they are (census.DOSES_CALIBRATED). */
+ * not yet calibrated on this model, or not at this layer where its design is calibrated at others, unless the card says
+ * they are calibrated at the run's layer (census.doses_calibrated). */
 export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: React.CSSProperties }> = ({ card, style }) =>
   card ? (
     <p className="atlas-small atlas-prov" style={style}>
-      {card.doses_calibrated ? <span>Doses:</span> : <span className="red">Doses not yet calibrated on this model:</span>}{" "}
+      {card.doses_calibrated ? (
+        <span>Doses:</span>
+      ) : card.doses_calibrated_layers ? (
+        <span className="red">Doses not calibrated at this layer:</span>
+      ) : (
+        <span className="red">Doses not yet calibrated on this model:</span>
+      )}{" "}
       {card.doses_from ? typesetDoses(card.doses_from) : "the run does not say where its doses come from"}.
       {readingSaid(card)}
       {card.dose_unit === "ceiling"

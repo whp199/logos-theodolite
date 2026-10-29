@@ -95,8 +95,14 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   how its ranking read the answers and whether its doses are calibrated on this model from its card (`card` in
   `rollouts`: `design`, `doses_from`, `doses`, `reading`, `doses_calibrated`; `top_units` gives the same). `main_rel`'s
   doses are neuron-explorer's, chosen on Qwen3.5-4B; `break_rel`'s were chosen on this model's calibration ladders for
-  layers 40-57, a lead until its trial is read. Wherever `doses_calibrated` is false, a low rank can mean only that the
-  dose was wrong for the layer. Only layers that have one; say when you work without.
+  layers 41-58 and are calibrated at layers 41-51 by a trial fixed before it was taken, which tested layer 46 alone of
+  them (its rules licensed 41-58, but its one probe above 51, at layer 58, passed by 0.0008 and its lead could not be
+  told from how the text survives; `doses_from` says so). Calibrated means that at layer 46 the neurons' mass beat the
+  controls' beyond how the text survives and held on questions held out, not that a neuron's census words are its
+  meaning: there most neurons the census singles out list same, own or thought, words that come with text breaking into
+  loops and that controls write too, and below the controls' 95th percentile the neurons' order barely repeats from one
+  half of the questions to the other, though those neurons still lead the controls as a group. Wherever
+  `doses_calibrated` is false, a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when you work without.
 - **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest (or in use, `model: "use"`, as
   above; `read` says which) and pooled: `downstream` `when_plus` / `when_minus`, what the neurons it drives write when
   it fires on its + / - face; `upstream` `drives_plus` / `drives_minus`, what the neurons that push it toward its + / -

@@ -40,8 +40,8 @@ for finding where effects begin and text breaks on this model: take them on a fe
 census_tools.py curves before a full main_rel run; and break_rel, ±1 and ±2 of the stream, chosen for layers 40-57 on
 those two ladders (28 October 2026, 64 neurons and 64 controls at each of layers 20, 30, 40, 45, 50 and 57), on which
 text breaks first at ±2 at layers 40 and 45, at ±1 for the neurons at 50 and at +2 and -1 for them at 57 (the controls
-at ±2 at both), at ±0.5 at layer 20 and ±1 at 30: a lead from those 64 + 64 units a layer until the trial on fresh
-units is read (the pages call them not yet calibrated until census.DOSES_CALIBRATED names it). It asks six questions,
+at ±2 at both), at ±0.5 at layer 20 and ±1 at 30, and calibrated at layers 40-50 by its trial of 29 October 2026
+(census.DOSES_CALIBRATED; elsewhere the pages call them not calibrated at that layer). It asks six questions,
 who, orange, free and three asked by no other design (bicycle, walk, chair: census.DESIGN_QUESTIONS), read as two
 halves of three, 24 answers a unit, its batches planned 12 x batch. Each design is ranked its own way
 (census.reading_of): main_rel and the ladders as the reference (pushes of at most 1.6 of the stream, words against

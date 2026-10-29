@@ -1178,10 +1178,13 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             A rank is a lead, not a finding: with 256 controls about one neuron in 257 lands above all of them by chance
-            alone, some 84 of a layer’s 21,504. A main_rel census’s doses are neuron-explorer’s, chosen on Qwen3.5-4B;
-            break_rel’s were chosen for layers 40–57 on this model’s two calibration ladders, a lead from 64 neurons and
-            64 controls a layer until its trial on fresh units is read. Neither is yet calibrated on this model, so a low
-            rank can mean only that the dose was wrong for the layer. break_rel’s six questions are read as two halves,
+            alone, some 84 of a layer’s 21,504. A main_rel census’s doses are neuron-explorer’s, chosen on Qwen3.5-4B,
+            and not yet calibrated on this model. break_rel’s were chosen for layers 41–58 on this model’s two
+            calibration ladders and are calibrated at layers 41–51 by a trial fixed before it was taken, at layer 46 on
+            1,022 fresh neurons against 1,024 controls; not at 52–58, where its probe at layer 58 passed by 0.0008 and its lead
+            could not be told from how the text survives.
+            Where a census’s doses are not calibrated at its layer, a low rank can mean only that the dose was wrong for
+            the layer. break_rel’s six questions are read as two halves,
             so a neuron’s words picked on one half are tested on the other. A census runs a layer at a time on the GPU
             and is kept; the map colours a layer’s neurons by it, from pale to dark gilt above the strongest control.
           </Note>
@@ -1189,9 +1192,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             main_rel: who are you, a snake game in Python, the colour orange (at −0.7, +0.5 and +0.8 of the stream’s
             median length leaving the layer) and “write whatever you like” at +3.0. break_rel: who are you, the colour
             orange, write whatever you like, how a bicycle works, three tips for a long walk and a wooden chair, each at
-            −2, −1, +1 and +2 of the stream (chosen for layers 40–57 on the ladders of 28 October, 64 + 64 units at
-            layers 20, 30, 40, 45, 50 and 57, on which text breaks first at ±0.5 at layer 20, ±1 at 30 and ±2 at 40 and
-            45, and for the neurons at ±1 at 50 and at +2 and −1 at 57, the controls at ±2 at both). Greedy answers. A
+            −2, −1, +1 and +2 of the stream (chosen for layers 41–58 on the ladders of 28 October, 64 + 64 units at
+            layers 21, 31, 41, 46, 51 and 58, on which text breaks first at ±0.5 at layer 21, ±1 at 31 and ±2 at 41 and
+            46, and for the neurons at ±1 at 51 and at +2 and −1 at 58, the controls at ±2 at both; calibrated at layers
+            41–51 by its trial of 29 October). Greedy answers. A
             word (three letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5), for main_rel
             against the average unit over pushes of at most 1.6 of the stream with every word of the unpushed answers
             left out, for break_rel against the controls’ mean alone over every answer with the answer’s own question’s

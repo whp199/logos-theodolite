@@ -297,21 +297,28 @@ const CensusRows: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   const [q, setQ] = useState("");
   const [controls, setControls] = useState(false);
-  // the layer's census card, for whether its doses are calibrated on this model (said uncalibrated until it says so)
+  // the layer's census card, for whether its doses are calibrated on this model at this layer (said uncalibrated until
+  // it says so) and, where they are not, the layers its design is calibrated at
   const run = arch?.census[String(layer)] ?? "";
   const key = run ? `${layer}/${run}` : "";
-  const [card, setCard] = useState<{ key: string; calibrated: boolean } | null>(null);
+  const [card, setCard] = useState<{ key: string; calibrated: boolean; span: [number, number] | null } | null>(null);
   useEffect(() => {
     if (!key) return;
     let live = true;
     get<Partial<CensusCard>>("/api/atlas/census/card", { layer })
-      .then((c) => live && setCard({ key, calibrated: c.doses_calibrated === true }))
-      .catch(() => live && setCard({ key, calibrated: false }));
+      .then((c) => live && setCard({ key, calibrated: c.doses_calibrated === true, span: c.doses_calibrated_layers ?? null }))
+      .catch(() => live && setCard({ key, calibrated: false, span: null }));
     return () => {
       live = false;
     };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const calibrated = !!card && card.key === key && card.calibrated;
+  const span = card && card.key === key ? card.span : null;
+  const doses = calibrated
+    ? "doses calibrated on this model at this layer"
+    : span
+      ? `doses not calibrated at this layer (only at layers ${span[0] + 1}–${span[1] + 1})`
+      : "doses not yet calibrated on this model";
   if (!arch?.census[String(layer)]) {
     const refused = arch?.census_refused?.[String(layer)];
     return (
@@ -341,7 +348,7 @@ const CensusRows: React.FC = () => {
         <li className="atlas-rows-head">
           layer {layer + 1}'s census · ranked by the mass of its words against random directions
           {chance
-            ? ` · ${chance.above} above every control, about ${chance.chance.toFixed(0)} of them by chance alone · doses ${calibrated ? "" : "not yet "}calibrated on this model`
+            ? ` · ${chance.above} above every control, about ${chance.chance.toFixed(0)} of them by chance alone · ${doses}`
             : " · no random controls, so nothing here is set against chance"}
         </li>
         {shown.slice(0, 600).map((u) => (
