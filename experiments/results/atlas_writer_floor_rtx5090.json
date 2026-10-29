@@ -1,0 +1,251 @@
+{
+ "what": "with no push, the word-pieces an answer written in each batch shape the atlas writes in holds in common with the same answer written alone before they first part (scripts/verify_atlas_writer.py)",
+ "written_at": "2026-10-29T02:05:43Z",
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "stand_in": false,
+ "runtime": {
+  "device": "NVIDIA GeForce RTX 5090",
+  "torch": "2.14.1+cu130",
+  "cuda": "13.0",
+  "transformers": "5.20.0",
+  "interp_engine": "1.14.0",
+  "compressed_tensors": "0.19.0",
+  "git": "c708cdfcac0f25dfa9e6fc5c6091425502efaed6",
+  "git_clean": true,
+  "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+ },
+ "unpacker": {
+  "mode": "compiled",
+  "linears": 410,
+  "shapes": 8,
+  "devices": [
+   "cuda:0"
+  ],
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+   "table_nan_payloads": 0,
+   "seconds": 1.82
+  },
+  "install_s": 1.82
+ },
+ "layer": 45,
+ "steer_neuron": 18291,
+ "steer_dose": 0.8,
+ "control_dose": 0.8,
+ "seed": 0,
+ "p50": 144.42271423339844,
+ "p50_source": "the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces)",
+ "max_new": 64,
+ "batches": [
+  32,
+  64
+ ],
+ "stop_ids": [
+  1,
+  106,
+  50
+ ],
+ "questions": {
+  "who": "Who are you?",
+  "snake": "Write a snake game in Python.",
+  "orange": "Describe the color orange.",
+  "free": "Write whatever you like."
+ },
+ "steer_prompt_same": true,
+ "shapes": [
+  "steer (as it is, of 3)",
+  "census 32, baseline (row 0)",
+  "census 32, dose 0 (row 31)",
+  "census 64, baseline (row 0)",
+  "census 64, dose 0 (row 63)",
+  "writer of the sweep and the voice (write_voice)"
+ ],
+ "results": {
+  "who": {
+   "alone": {
+    "n": 64,
+    "text": "I am a large language model, trained by Google. \n\nYou can think of me as a knowledgeable assistant that can help you with a wide variety of tasks, such as:\n\n*   **Answering questions** on almost any topic.\n*   **Writing** emails, essays, stories, or code."
+   },
+   "alone, again": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 32, baseline (row 0)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 32, dose 0 (row 31)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   }
+  },
+  "snake": {
+   "alone": {
+    "n": 64,
+    "text": "The most popular way to create a Snake game in Python is by using the `pygame` library. It provides great tools for handling graphics, keyboard input, and game loops.\n\n### 1. Install Pygame\nFirst, you need to install the library via your terminal or command prompt:\n```bash\npip"
+   },
+   "alone, again": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 32, baseline (row 0)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 32, dose 0 (row 31)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 22,
+    "n": 64,
+    "same": false
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 22,
+    "n": 64,
+    "same": false
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   }
+  },
+  "orange": {
+   "alone": {
+    "n": 64,
+    "text": "Depending on how you perceive the world, orange can be described in several different ways:\n\n### Visually (The Color)\nOrange is a vibrant, high-energy hue that sits exactly halfway between the aggressive intensity of red and the cheerful brightness of yellow. It is a \"warm\" color, evoking the feeling of"
+   },
+   "alone, again": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 32, baseline (row 0)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 32, dose 0 (row 31)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   }
+  },
+  "free": {
+   "alone": {
+    "n": 64,
+    "text": "Since you gave me a blank canvas, I want to share a short, atmospheric piece of writing—a tiny slice of a world that doesn't exist.\n\n***\n\n**The Archivist of Unspoken Things**\n\nIn a city where the rain smells like old cinnamon and the streetlamps glow with a soft,"
+   },
+   "alone, again": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   },
+   "census 32, baseline (row 0)": {
+    "shared": 54,
+    "n": 64,
+    "same": false
+   },
+   "census 32, dose 0 (row 31)": {
+    "shared": 54,
+    "n": 64,
+    "same": false
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 54,
+    "n": 64,
+    "same": false
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 54,
+    "n": 64,
+    "same": false
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 64,
+    "n": 64,
+    "same": true
+   }
+  }
+ },
+ "floor": 22,
+ "floor_at": {
+  "k": 22,
+  "question": "snake",
+  "shape": "census 64, baseline (row 0)"
+ },
+ "census_floor": {
+  "32": 54,
+  "64": 22
+ },
+ "by_shape": {
+  "steer (as it is, of 3)": null,
+  "census 32, baseline (row 0)": 54,
+  "census 32, dose 0 (row 31)": 54,
+  "census 64, baseline (row 0)": 22,
+  "census 64, dose 0 (row 63)": 22,
+  "writer of the sweep and the voice (write_voice)": null
+ },
+ "alone_twice_same": true,
+ "seconds": 165.2
+}

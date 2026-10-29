@@ -1,0 +1,374 @@
+{
+ "what": "the census's two calibration ladders on Gemma-4-31B, six layers, read with census_tools.py curves and the runs' own ranking (census_tools.py rank, every dose pooled); the runs themselves are in the atlas folder (atlas_data/census/runs, gitignored), each layer's dose window beside this file",
+ "taken": "2026-10-28, RTX 5090 beside a desktop, --unpacker compiled, --batch 64 --max-new 64, seed 0",
+ "units": "64 random neurons (random:64) and 64 controls a layer; one greedy answer per (question, dose) on who, orange, free",
+ "layers_count_from": 0,
+ "layers": {
+  "20": {
+   "page": 21,
+   "calib_rel": {
+    "dose_unit": "stream",
+    "breaks": {
+     "+": {
+      "neuron": 0.5,
+      "random": 0.5
+     },
+     "-": {
+      "neuron": -0.5,
+      "random": -0.5
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.1,
+     "moved": 0.945,
+     "of_stream": 0.1,
+     "x_ceiling": 1.0711006648345958
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.516,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 1,
+     "min_q": 0.394
+    }
+   },
+   "calib_ceil": {
+    "dose_unit": "ceiling",
+    "breaks": {
+     "+": {
+      "neuron": 4.0,
+      "random": 4.0
+     },
+     "-": {
+      "neuron": -4.0,
+      "random": -4.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.5,
+     "moved": 0.734,
+     "of_stream": 0.046681,
+     "x_ceiling": 0.500000266886961
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.477,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 0,
+     "min_q": 0.895
+    }
+   }
+  },
+  "30": {
+   "page": 31,
+   "calib_rel": {
+    "dose_unit": "stream",
+    "breaks": {
+     "+": {
+      "neuron": 1.0,
+      "random": 1.0
+     },
+     "-": {
+      "neuron": -1.0,
+      "random": -1.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.1,
+     "moved": 0.846,
+     "of_stream": 0.1,
+     "x_ceiling": 0.4796798016562677
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.484,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 4,
+     "min_q": 0.246
+    }
+   },
+   "calib_ceil": {
+    "dose_unit": "ceiling",
+    "breaks": {
+     "+": {
+      "neuron": 8.0,
+      "random": 8.0
+     },
+     "-": {
+      "neuron": -8.0,
+      "random": -8.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": -0.5
+    },
+    "smallest_dose_moved": {
+     "dose": 0.5,
+     "moved": 0.859,
+     "of_stream": 0.104236,
+     "x_ceiling": 0.500000128812673
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.391,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 0,
+     "min_q": 0.492
+    }
+   }
+  },
+  "40": {
+   "page": 41,
+   "calib_rel": {
+    "dose_unit": "stream",
+    "breaks": {
+     "+": {
+      "neuron": 2.0,
+      "random": 2.0
+     },
+     "-": {
+      "neuron": -2.0,
+      "random": -2.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.1,
+     "moved": 0.667,
+     "of_stream": 0.1,
+     "x_ceiling": 0.17671332319185748
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.641,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 4,
+     "min_q": 0.151
+    }
+   },
+   "calib_ceil": {
+    "dose_unit": "ceiling",
+    "breaks": {
+     "+": {
+      "neuron": 4.0,
+      "random": 4.0
+     },
+     "-": {
+      "neuron": -2.0,
+      "random": -4.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.5,
+     "moved": 0.872,
+     "of_stream": 0.2829435,
+     "x_ceiling": 0.4999999250258989
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.797,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 14,
+     "min_q": 0.07
+    }
+   }
+  },
+  "45": {
+   "page": 46,
+   "calib_rel": {
+    "dose_unit": "stream",
+    "breaks": {
+     "+": {
+      "neuron": 2.0,
+      "random": 2.0
+     },
+     "-": {
+      "neuron": -2.0,
+      "random": -2.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.1,
+     "moved": 0.68,
+     "of_stream": 0.1,
+     "x_ceiling": 0.25387839537749646
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.719,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 2,
+     "min_q": 0.197
+    }
+   },
+   "calib_ceil": {
+    "dose_unit": "ceiling",
+    "breaks": {
+     "+": {
+      "neuron": 4.0,
+      "random": 4.0
+     },
+     "-": {
+      "neuron": -4.0,
+      "random": -4.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.5,
+     "moved": 0.794,
+     "of_stream": 0.19694499999999998,
+     "x_ceiling": 0.5000001102187277
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.75,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 1,
+     "min_q": 0.219
+    }
+   }
+  },
+  "50": {
+   "page": 51,
+   "calib_rel": {
+    "dose_unit": "stream",
+    "breaks": {
+     "+": {
+      "neuron": 1.0,
+      "random": 2.0
+     },
+     "-": {
+      "neuron": -1.0,
+      "random": -2.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.1,
+     "moved": 0.602,
+     "of_stream": 0.1,
+     "x_ceiling": 0.23234593520335955
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.672,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 0,
+     "min_q": 0.591
+    }
+   },
+   "calib_ceil": {
+    "dose_unit": "ceiling",
+    "breaks": {
+     "+": {
+      "neuron": 4.0,
+      "random": 4.0
+     },
+     "-": {
+      "neuron": -4.0,
+      "random": -4.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.5,
+     "moved": 0.758,
+     "of_stream": 0.215197,
+     "x_ceiling": 0.49999994852304785
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.617,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 1,
+     "min_q": 0.394
+    }
+   }
+  },
+  "57": {
+   "page": 58,
+   "calib_rel": {
+    "dose_unit": "stream",
+    "breaks": {
+     "+": {
+      "neuron": 2.0,
+      "random": 2.0
+     },
+     "-": {
+      "neuron": -1.0,
+      "random": -2.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.1,
+     "moved": 0.385,
+     "of_stream": 0.1,
+     "x_ceiling": 0.12059433707397921
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.406,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 0,
+     "min_q": 0.862
+    }
+   },
+   "calib_ceil": {
+    "dose_unit": "ceiling",
+    "breaks": {
+     "+": {
+      "neuron": 2.0,
+      "random": 2.0
+     },
+     "-": {
+      "neuron": -2.0,
+      "random": -2.0
+     }
+    },
+    "moves": {
+     "+": null,
+     "-": null
+    },
+    "smallest_dose_moved": {
+     "dose": 0.5,
+     "moved": 0.604,
+     "of_stream": 0.4146145,
+     "x_ceiling": 0.5000001872461899
+    },
+    "ranking": {
+     "neurons_median_null_pct": 0.516,
+     "controls_median_null_pct": 0.492,
+     "neurons_beating_every_control": 0,
+     "min_q": 0.886
+    }
+   }
+  }
+ }
+}
