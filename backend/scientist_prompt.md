@@ -85,15 +85,18 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   its census words and its name, so you can read a neighbourhood without more calls.
 - **Activation range** (`activation`: act_max, act_min, over_tokens, source): the largest and most negative activation
   over a corpus (the stats index), or, until that is built, over the study's 36 texts (marked provisional). Raw values.
-- **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed by fixed doses on four
-  questions, beside unpushed answers, with its distinctive words and their mass against random-direction controls. A
-  control is shaped as a neuron's write is (a random direction through the layer's post-feed-forward norm), so the next
-  layer reads it about as loudly. `null_pct` is the share of controls it beats, `p` its empirical p against them, `q`
-  the layer's false-discovery q. With C controls no p falls below 1 / (C + 1), and about N / (C + 1) of N neurons beat
-  every control by chance alone (about 84 of a whole layer with 256 controls): a rank is a lead to test, never a finding
-  on its own. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model (`card` in
-  `rollouts`), so a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when
-  you work without.
+- **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed at its census design's fixed
+  doses on that design's questions, beside unpushed answers, with its distinctive words and their mass against
+  random-direction controls. A control is shaped as a neuron's write is (a random direction through the layer's
+  post-feed-forward norm), so the next layer reads it about as loudly. `null_pct` is the share of controls it beats,
+  `p` its empirical p against them, `q` the layer's false-discovery q. With C controls no p falls below 1 / (C + 1), and
+  about N / (C + 1) of N neurons beat every control by chance alone (about 84 of a whole layer with 256 controls): a
+  rank is a lead to test, never a finding on its own. Read the run's questions (`prompts` in `rollouts`), its doses,
+  how its ranking read the answers and whether its doses are calibrated on this model from its card (`card` in
+  `rollouts`: `design`, `doses_from`, `doses`, `reading`, `doses_calibrated`; `top_units` gives the same). `main_rel`'s
+  doses are neuron-explorer's, chosen on Qwen3.5-4B; `break_rel`'s were chosen on this model's calibration ladders for
+  layers 40-57, a lead until its trial is read. Wherever `doses_calibrated` is false, a low rank can mean only that the
+  dose was wrong for the layer. Only layers that have one; say when you work without.
 - **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest (or in use, `model: "use"`, as
   above; `read` says which) and pooled: `downstream` `when_plus` / `when_minus`, what the neurons it drives write when
   it fires on its + / - face; `upstream` `drives_plus` / `drives_minus`, what the neurons that push it toward its + / -

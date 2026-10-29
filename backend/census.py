@@ -116,9 +116,12 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # the same ladder's purpose in each neuron's own unit (dose_unit "ceiling"): half of the most it can write by itself
     # up to eight times it
     "calib_ceil": [(p, s * d) for p in ("who", "orange", "free") for d in (0.5, 1.0, 2.0, 4.0, 8.0) for s in (-1.0, 1.0)],
-    # from the two ladders (28 October 2026, layers 20-57, 64 + 64 units a layer): +-1 of the stream, where text breaks
-    # at layers 40-57, and +-2, past it, on both signs: the only doses whose lead over the controls held across layers,
-    # beyond how gracefully the text survives, and on a held-out question; asked on six questions
+    # chosen for layers 40-57 on the two ladders (28 October 2026, 64 + 64 units at each of layers 20, 30, 40, 45, 50
+    # and 57): +-1 and +-2 of the stream, on both signs, around where text first breaks there (at +-2 at layers 40 and
+    # 45; at +-1 for the neurons at 50, at +2 and -1 for them at 57, the controls at +-2 at both; sooner at the earlier
+    # layers, +-0.5 at 20 and +-1 at 30); asked on six questions. A lead from those 64 + 64 units a layer (the
+    # covariate check of experiments/results/atlas_calibration/subset_rank.py credits most of the lead at +-2 to text
+    # that survives the push) until the trial on fresh units is read
     "break_rel": [(p, s * d) for p in DESIGN_QUESTIONS["break_rel"] for d in (1.0, 2.0) for s in (-1.0, 1.0)],
 }
 DEFAULT_DESIGN = "main_rel"
@@ -131,12 +134,19 @@ DOSES_FROM = {
     "calib_rel": "a calibration ladder, for finding where effects begin and text breaks on this model",
     "calib_ceil": "a calibration ladder in each neuron's own write ceiling, for finding where effects begin and text breaks "
                   "on this model",
-    "break_rel": "chosen on this model's two calibration ladders (28 October 2026: 64 neurons and 64 controls at each of "
-                 "layers 20, 30, 40, 45, 50 and 57): +-1 of the stream, where its text breaks at layers 40-57, and +-2, past "
-                 "it; a lead from 64 + 64 units a layer until a trial on fresh units holds it",
+    "break_rel": "+-1 and +-2 of the stream, chosen for layers 40-57 on this model's two calibration ladders of 28 October "
+                 "2026 (64 neurons and 64 controls at each of layers 20, 30, 40, 45, 50 and 57), on which text breaks first "
+                 "at +-2 of the stream at layers 40 and 45, at +-1 for the neurons at 50 and at +2 and -1 for them at 57 "
+                 "(the controls at +-2 at both), at +-0.5 at layer 20 and at +-1 at 30; a lead from those 64 + 64 units a "
+                 "layer until the trial on fresh units is read",
 }
-# designs whose doses were chosen on this model (the page leaves out its red "not yet calibrated" line for them)
-DOSES_CALIBRATED = ("break_rel",)
+# designs whose doses are calibrated on this model: the card says `doses_calibrated` and the page leaves out its red
+# "not yet calibrated" line for them. None yet: the owner adds break_rel only after its trial's pass is recorded, and
+# only for the layers that pass covers (the card tests the design's name alone, so a pass at some layers wants the
+# layer tested beside it). When it is added, reword DOSES_FROM["break_rel"] to say what the trial found, since it now
+# calls the doses a lead until the trial is read: a run already taken keeps the doses_from its meta recorded, which
+# atlas.census_card prefers, so its card keeps the words it was taken with.
+DOSES_CALIBRATED: Tuple[str, ...] = ()
 
 
 def design_questions(design_name: Optional[str]) -> Dict[str, str]:

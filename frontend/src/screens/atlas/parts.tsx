@@ -116,16 +116,23 @@ function readingSaid(card: CensusCard): string {
   return ` Ranked on ${every ? "every answer" : `the answers pushed by at most ${r.max_rel} of the stream`}, each word set against the controls’ mean alone${r.exclude === "own" ? ", each answer leaving out only its own question’s unpushed words" : ""}.`;
 }
 
-/** Where a census's doses and push unit come from, said wherever its answers or numbers are shown. */
+/** Where a run's doses come from as the backend writes it (census.DOSES_FROM, kept in the run's meta, in ASCII),
+ * typeset: an apostrophe as ’, "+-1" as ±1, a minus before a number as −, and a range of numbers ("layers 40-57") with
+ * an en dash. */
+const typesetDoses = (s: string) =>
+  s
+    .replace(/'/g, "’")
+    .replace(/\+-(?=\d)/g, "±")
+    .replace(/(^|[\s(/])-(?=\d)/g, "$1−")
+    .replace(/\b(\d+)-(\d+)\b/g, "$1–$2");
+
+/** Where a census's doses and push unit come from, said wherever its answers or numbers are shown: in red that they are
+ * not yet calibrated on this model, unless the card says they are (census.DOSES_CALIBRATED). */
 export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: React.CSSProperties }> = ({ card, style }) =>
   card ? (
     <p className="atlas-small atlas-prov" style={style}>
-      {card.doses_calibrated ? (
-        <span>Doses chosen on this model:</span>
-      ) : (
-        <span className="red">Doses not yet calibrated on this model:</span>
-      )}{" "}
-      {card.doses_from ?? "the run does not say where its doses come from"}.
+      {card.doses_calibrated ? <span>Doses:</span> : <span className="red">Doses not yet calibrated on this model:</span>}{" "}
+      {card.doses_from ? typesetDoses(card.doses_from) : "the run does not say where its doses come from"}.
       {readingSaid(card)}
       {card.dose_unit === "ceiling"
         ? ` Each dose is a multiple of the pushed neuron’s write ceiling, the most it can write by itself (a control’s: of the neuron it is paired with), so one dose is a different push for each neuron; the push beside it is its share of the stream’s median length${card.p50_source ? `, read over ${card.p50_source}` : ""}.`

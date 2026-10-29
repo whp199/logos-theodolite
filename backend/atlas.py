@@ -822,8 +822,8 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     for the second stage of a two-stage census, which screen's strongest it retests (`stage`: its p and q are taken over
     those neurons alone, against fresh controls), how its ranking read its answers (`reading`, as its ranking file
     records it, census.write_units: the largest push counted, the mean a word is set against, whose unpushed words are
-    left out), its doses and whether they
-    were chosen on this model (`doses_calibrated`), and, where scripts/verify_atlas_writer.py has measured one for the
+    left out), its doses and whether they are calibrated on this model (`doses_calibrated`: a design that
+    census.DOSES_CALIBRATED names, none yet), and, where scripts/verify_atlas_writer.py has measured one for the
     run's model, the writer's floor (`writer_floor`, census.writer_floor: with no push, after how many word-pieces an
     answer written in batches like this run's parts from the same answer written alone; None where none is on disk)."""
     m = d["meta"]
@@ -834,7 +834,7 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
             "stage": m.get("stage"), "writer_floor": cz.writer_floor(m),
             # how its ranking read its answers (the reading its ranking file records; one written before rankings
             # recorded it was ranked by census.READING_DEFAULT; with no ranking yet, its design's, census.reading_of),
-            # its doses, and whether they were chosen on this model
+            # its doses, and whether they are calibrated on this model (census.DOSES_CALIBRATED)
             "reading": next((u["reading"] for u in d.get("units") or [] if u.get("reading")), None)
                        or (dict(cz.READING_DEFAULT) if d.get("units") else cz.reading_of(m.get("design_name"))),
             "doses": sorted({float(x[1]) for x in m.get("design") or []}),

@@ -1345,9 +1345,18 @@ def run_checks(tmp: Path) -> int:
     bunits = list(cz.read_rows(cz.units_path_of(brun))) if cz.units_path_of(brun).exists() else []
     check(bunits and all(u_.get("reading") == cz.reading_of("break_rel") for u_ in bunits), "the ranking file records the reading it was made with")
     bcard = atlas_routes.census_card({"path": brun, "meta": bmeta, "null": {}, "units": bunits})
-    check(bcard["doses_calibrated"] is True and bcard["doses"] == [-2.0, -1.0, 1.0, 2.0] and bcard["reading"] == cz.reading_of("break_rel")
-          and atlas_routes.census_card({"path": brun, "meta": {**bmeta, "design_name": "main_rel"}, "null": {}})["doses_calibrated"] is False,
-          "the census card: break_rel's doses chosen on this model, its doses and its reading")
+    # doses_calibrated follows census.DOSES_CALIBRATED (none yet: break_rel's only once its trial's pass is recorded)
+    kept_calibrated = cz.DOSES_CALIBRATED
+    try:
+        cz.DOSES_CALIBRATED = ("break_rel",)
+        bcard_on = atlas_routes.census_card({"path": brun, "meta": bmeta, "null": {}, "units": bunits})
+        main_on = atlas_routes.census_card({"path": brun, "meta": {**bmeta, "design_name": "main_rel"}, "null": {}})
+    finally:
+        cz.DOSES_CALIBRATED = kept_calibrated
+    check(bcard["doses_calibrated"] is ("break_rel" in cz.DOSES_CALIBRATED) and bcard["doses"] == [-2.0, -1.0, 1.0, 2.0]
+          and bcard["reading"] == cz.reading_of("break_rel") and bcard_on["doses_calibrated"] is True and main_on["doses_calibrated"] is False,
+          f"the census card: its doses and its reading, and doses_calibrated only for a design census.DOSES_CALIBRATED names "
+          f"({cz.DOSES_CALIBRATED})")
     # ranked again at another cap: the file and the card say that cap, not the design's (a file older than readings: the reference's)
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "rank", str(brun), "--max-rel", "1.6"], env=env,
                        capture_output=True, text=True, timeout=300)

@@ -37,15 +37,18 @@ main_rel, {who, snake, orange} x {-0.7, +0.5, +0.8} and {free} x {+3}, neuron-ex
 and not yet calibrated on this model; calib_rel, a ladder ±{0.1, 0.25, 0.5, 1, 2, 4} of the stream on {who, orange,
 free}, and calib_ceil, ±{0.5, 1, 2, 4, 8} x each neuron's ceiling on the same questions (taken in the ceiling unit),
 for finding where effects begin and text breaks on this model: take them on a few layers and read them with
-census_tools.py curves before a full main_rel run; and break_rel, chosen on those two ladders (28 October 2026): ±1 of
-the stream, where text breaks at layers 40-57, and ±2, past it, on six questions, who, orange, free and three asked by
-no other design (bicycle, walk, chair: census.DESIGN_QUESTIONS), read as two halves of three, 24 answers a unit, its
-batches planned 12 x batch. Each design is ranked its own way (census.reading_of): main_rel and the ladders as the
-reference (pushes of at most 1.6 of the stream, words against every unit's mean, every question's unpushed words left
-out); break_rel counts every answer, sets each word against the controls' mean alone and leaves out only the answer's
-own question's unpushed words. The ranking file records the reading it was made with. The meta also records how
-loudly the next layer reads the controls against the neurons (read_gain; a fair null is near 1, and the run warns when
-it is not).
+census_tools.py curves before a full main_rel run; and break_rel, ±1 and ±2 of the stream, chosen for layers 40-57 on
+those two ladders (28 October 2026, 64 neurons and 64 controls at each of layers 20, 30, 40, 45, 50 and 57), on which
+text breaks first at ±2 at layers 40 and 45, at ±1 for the neurons at 50 and at +2 and -1 for them at 57 (the controls
+at ±2 at both), at ±0.5 at layer 20 and ±1 at 30: a lead from those 64 + 64 units a layer until the trial on fresh
+units is read (the pages call them not yet calibrated until census.DOSES_CALIBRATED names it). It asks six questions,
+who, orange, free and three asked by no other design (bicycle, walk, chair: census.DESIGN_QUESTIONS), read as two
+halves of three, 24 answers a unit, its batches planned 12 x batch. Each design is ranked its own way
+(census.reading_of): main_rel and the ladders as the reference (pushes of at most 1.6 of the stream, words against
+every unit's mean, every question's unpushed words left out); break_rel counts every answer, sets each word against
+the controls' mean alone and leaves out only the answer's own question's unpushed words. The ranking file records the
+reading it was made with. The meta also records how loudly the next layer reads the controls against the neurons
+(read_gain; a fair null is near 1, and the run warns when it is not).
 
 A run's batches are planned from its whole job list and the batch size (chunks of 10 x batch answers, each grouped by
 question), and written whole: a run continued after a stop, or after a kill that tore its last batch, and a run taken

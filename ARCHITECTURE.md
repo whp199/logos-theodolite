@@ -734,29 +734,44 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 | `POST /fires` | the neurons that fire hardest on a text against their usual range |
 | `POST /run`, `GET /run/view?pos&sign&lo&hi&min&q&limit`, `GET /run/heads?pos`, `GET /run/paths?pos&top&min&model`, `GET /head/row?layer&head&pos` | a text run once (at most 256 positions) and every activation kept: the neurons passing the filters at a word-piece or over all of them (score = activation over the neuron's usual extreme on that side), each head's write there, the links among the strongest (int16 rows as `/web`, from rest or in use: `X-Model`, `X-Use-Refused`), one head's attention by unit |
 | `GET /head?layer&head`, `GET /head/profile?layer&head`, `POST /head/pattern`, `POST /attention`, `POST /attn_drive` | a head's q / k / v / o neurons from the weights with their words pooled; where it looks over eight texts; its attention on a text; which heads, blocks and earlier neurons drive a neuron at one unit (`text`, or `ids` read exactly as given, a sighting's own, at most 512): the activation linearised where it reads the stream, the norm's rms held, split exactly over every head (and the units it read), every earlier block and the embedding, and each block's part over its neurons, a<sub>A</sub> (J′<sub>k</sub> · W<sub>down,k</sub>[:, A]) with J′<sub>k</sub> the s-carried w<sub>post,k</sub> ⊙ J over the block output's rms, one mat-vec a layer (`neurons_sum`, equal to the block's part up to the rounding of its output); `neurons`, the twelve strongest across every block, each on the face it fired on with that face's words, check and name |
-| `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/card?layer`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers, its statistics and the run's card; the card alone (where the doses and the push unit come from, the unit a dose counts in, how loudly the next layer reads controls against neurons, how many neurons beat every control and how many would by chance, the card it was written on and whether its parts mixed runtime classes, a partial merge, a retest's stage, the writer's floor where measured); one answer; the layout of the run's answers |
+| `GET /census/units?layer`, `GET /census/unit?layer&n&kind`, `GET /census/card?layer`, `GET /census/rollout?layer&i`, `GET /census/spread?layer` | the layer's census ranking; one unit's answers, the unpushed answers, its statistics and the run's card; the card alone (the design, where the doses and the push unit come from, the doses (`doses`) and whether they are calibrated on this model (`doses_calibrated`), the unit a dose counts in, how its ranking read its answers (`reading`, as its ranking file records it), how loudly the next layer reads controls against neurons, how many neurons beat every control and how many would by chance, the card it was written on and whether its parts mixed runtime classes, a partial merge, a retest's stage, the writer's floor where measured); one answer; the layout of the run's answers |
 | `GET /notes`, `POST /notes` | names and notes (`backend/field_notes.py`): `{kind: "neuron" \| "head", layer, index, name?, note?, by}`; an omitted field is kept, both empty forgets the entry. A neuron folio's name is this name, by `reader` |
 | `GET /fieldbook?layer&n`, `POST /fieldbook` | a neuron folio's field book, per face, in `field_book.json` beside the notes (`$THEODOLITE_FIELD_BOOK`; a file of its own, which a server from before never reads or writes): `{jobs: "one" \| "two" \| "unknown" \| null, pattern (≤ 4,000 characters), checked: {other_pole, long_contexts, steered, readers_traced}, by, at}`; given a neuron, both faces (`faces`, null where nothing is said) and its entry in the notes (`notes`); given neither, the whole book. POST `{layer, n, face, jobs?, pattern?, checked?, by}`: a field left out is kept (`checked` may give some ticks only), a face with nothing said is forgotten |
 | `GET /proposals`, `POST /proposals`, `POST /proposals/keep`, `POST /proposals/discard` | the names and notes the scientist proposes (its `set_name`, `write_note`), waiting for the person in `field_proposals.json` beside the notes (`$THEODOLITE_FIELD_PROPOSALS`): `{kind, layer, index, name?, note?, chat}`, checked as a note is (an empty string proposes clearing), the reply naming the entry the notes keep now. Nothing reads a proposal as a name or note (the routes above, the map, search, later chats). Keep `{kind, layer, index, part?}` writes it to the notes as the scientist's (`name_by` / `note_by` "scientist") and removes it; discard removes it; `part` is "name" or "note", else both; 404 when none waits |
 
 **The census** (`backend/census.py`; `scripts/census_run.py` on the GPU, `scripts/census_tools.py` on the CPU). For one
 layer, every neuron (or a range) and some random directions are pushed as above on the design's questions and doses
-(`main_rel`: "Who are you?", a snake game in Python and the colour orange at −0.7, +0.5 and +0.8, and "Write whatever you
-like." at +3.0, plus one unpushed answer each), greedy, batched by question. A dose counts in one of two units
+(`DESIGNS`), greedy, batched by question, with one unpushed answer to each question. `main_rel`, the default: "Who are
+you?", a snake game in Python and the colour orange at −0.7, +0.5 and +0.8, and "Write whatever you like." at +3.0.
+`break_rel`: who, orange and free with three questions no other design asks (`MORE_PROMPTS`, `DESIGN_QUESTIONS`): how a
+bicycle works, three tips for a long walk and a wooden chair, each with a spare of its genre fixed beside it (a kettle,
+sleeping well, a stone bridge) that takes its place where its unpushed answer parts from itself written alone in a
+census batch before 32 word-pieces; each at −2, −1, +1 and +2 of the stream, 24 answers a unit, read as two halves of
+three (`DESIGN_HALVES`: who, orange, free; bicycle, walk, chair), so a unit's words picked on one half can be tested on
+the other with nothing selected. A design that names no questions of its own asks the four `PROMPTS`, so every run
+begun before `break_rel` keeps its job list and its resume key. A dose counts in one of two units
 (`dose_unit`, in the meta and the card): `stream`, a share of the stream's median length, the same push for every unit,
 or `ceiling`, a multiple of each neuron's write ceiling (a control pushed by the ceiling of the neuron it is paired
 with), so that one dose is the same share of each neuron's most at every layer. Every pushed answer records its unit's
-ceiling and its push's real share of the stream (`rel_push`, which the ranking's 1.6 filters on). Two calibration
+ceiling and its push's real share of the stream (`rel_push`, which the ranking's cap filters on). Two calibration
 ladders come first: `calib_rel` (±0.1 to 4 of the stream) and `calib_ceil` (±0.5 to 8 × the ceiling). A control is
 unit(w_post ⊙ r), r isotropic from a seed: the reference's random down column carried through the post-feed-forward
 norm every neuron's write passes, so the next layer reads controls about as loudly as neurons (on the 31B's own
 weights, 1.02× at page 46 and 1.18× at page 58, where a plain isotropic direction is read 103× and 236× as loudly;
 `check_census.py` measures it when the checkpoint is cached). The run's meta records that ratio (`read_gain`) and
-where the doses come from (`doses_from`:
-neuron-explorer's, chosen on Qwen3.5-4B, not yet calibrated here); runs taken with isotropic controls (meta `version`
-below 2) are not read, and `/arch` says why (`census_refused`). Answers go to `$THEODOLITE_CENSUS_DIR`, else `<atlas
-folder>/census/runs`, `L<layer>-<design>.jsonl` with its `.meta.json`, in batches planned from the whole job list and
-the batch size (`plan_batches`: 10 × batch a chunk, each chunk grouped by question), each written whole or not at all.
+where the doses come from (`doses_from`, from `DOSES_FROM`: `main_rel`'s are neuron-explorer's, chosen on
+Qwen3.5-4B, not calibrated here; `break_rel`'s, ±1 and ±2 of the stream, were chosen for layers 40–57 on the two
+ladders of 28 October 2026, 64 neurons and 64 controls at each of layers 20, 30, 40, 45, 50 and 57, on which text
+breaks first at ±2 of the stream at layers 40 and 45, at ±1 for the neurons at 50 and at +2 and −1 for them at 57 (the
+controls at ±2 at both), at ±0.5 at 20 and ±1 at 30: a lead from those 64 + 64 units a layer until the trial on fresh
+units is read). The card says `doses_calibrated` only for a design `DOSES_CALIBRATED` names, none yet (the owner adds
+`break_rel` once its trial's pass is recorded, for the layers that pass covers); every other run's doses are said to be
+not yet calibrated on this model: in red on the census and details tabs, and in the left panel's census head (where
+the run has controls). Runs taken with isotropic controls (meta `version` below 2) are not read, and `/arch` says why
+(`census_refused`). Answers go to `$THEODOLITE_CENSUS_DIR`, else `<atlas folder>/census/runs`, `L<layer>-<design>.jsonl`
+with its `.meta.json`, in batches planned from the whole job list and the batch size (`plan_batches`: 10 × batch a
+chunk, 12 × batch for `break_rel`, `DESIGN_PLAN`, whose units ask each question equally often; each chunk grouped by
+question in the order the job list first asks them), each written whole or not at all.
 So a stopped run, or one killed mid-write, resumes to the rows an unbroken run writes: on the GPU a row's numbers depend
 on its batch's size. A run with other settings, the batch among them once it has a plan, is refused before anything in
 it is cut; else a half-written last line, and a last batch written in part, are cut off first. The meta records the
@@ -774,18 +789,28 @@ written in batches like the run's parts from the same answer written alone, the 
 none where no floor is on disk). A
 second stage (`census_run.py --neurons-from <screen>.units.jsonl --top M`, a fresh seed) retests a screen's strongest
 neurons against fresh controls; its p and q are taken over those M alone (`stage`), and the layer's census stays the
-screen. Ranking (`compute_units`, after
-the explorer's `sweep/rank.py`, reading a run one line at a time and keeping only each answer's word ids): a word (three
-letters or more) counts once per answer, over pushes of at most 1.6 of the stream, leaving out every word of the
-unpushed answers; each unit's words scored against the average unit, z = (count − mean) / √(mean + 0.5); `mass` the
-summed positive z of its top five words, the sort key; `null_pct` the share of controls below it; `p` = (1 + controls at
-least as strong) / (C + 1), and `q` the Benjamini–Hochberg false-discovery q over the run's neurons (about N / (C + 1)
-neurons beat every control by chance alone, 84 of a whole layer with 256 controls, and every page that ranks says so);
-per dose, the push's length over the stream's, distinct 4-grams, the share cut off, the mean log-probability. A
-neuron's census words describe it beside links, search hits and the map's tooltip only when it beat every control.
-`census_tools.py` ranks (`.units.jsonl`, with the word-shift score), merges shards, writes the depth report (each entry
-names its dose unit; in the stream's, one nominal dose is a different push at each layer) and lays a run's answers out
-(`.spread.json`: words by tf-idf, or `st:<model>` through sentence-transformers; UMAP where installed, else PCA). It
+screen. A retest whose design shares a (question, dose) cell with its screen's (`shared_cells`, against the screen's
+cells that `stage` records) is refused before anything is written: on a shared cell a neuron writes again the answer it
+was picked for, bit for bit in batches of one size, so the retest's p would carry the screen's selection (a `main_rel`
+screen is retested with `break_rel`; a `break_rel` run needs none, its halves being the held-out test). Ranking
+(`compute_units`, after the explorer's `sweep/rank.py`, reading a run one line at a time and keeping only each answer's
+word ids), each design its own way (`reading_of`, `DESIGN_READING` over `READING_DEFAULT`): a word (three letters or
+more) counts once per answer; for `main_rel` and the ladders over pushes of at most 1.6 of the stream (`max_rel`),
+leaving out every word of every question's unpushed answer (`exclude` "all"), and scored against the average unit
+(`reference` "units"); for `break_rel` over pushes of at most 2.5 (every answer), leaving out only the answer's own
+question's unpushed words ("own"), and scored against the controls' mean alone ("controls", a control left out of its
+own, so a neuron's mass does not move with the neurons beside it in the run); z = (count − mean) / √(mean + 0.5);
+`mass` the summed positive z of its top five words, the sort key; `null_pct` the share of controls below it; `p` = (1 +
+controls at least as strong) / (C + 1), and `q` the Benjamini–Hochberg false-discovery q over the run's neurons (about
+N / (C + 1) neurons beat every control by chance alone, 84 of a whole layer with 256 controls, and every page that
+ranks says so); per dose, the push's length over the stream's, distinct 4-grams, the share cut off, the mean
+log-probability. A neuron's census words describe it beside links, search hits and the map's tooltip only when it beat
+every control. `census_tools.py` ranks (`.units.jsonl`, with the word-shift score, each record carrying the reading it
+was ranked with, `reading`, which the card reports; a file without one was ranked by `READING_DEFAULT`), merges
+shards, writes the depth report (each run read as its design is; each entry names its dose unit, design and reading,
+with the coherence at each of its doses and the neurons' AUC against the controls; in the stream's unit one nominal
+dose is a different push at each layer) and lays a run's answers out (`.spread.json`: words by tf-idf, or
+`st:<model>` through sentence-transformers; UMAP where installed, else PCA). It
 also reads a calibration run's dose window (`curves`, after the explorer's `sweep/peek.py`): per dose, neurons against
 controls, the share of answers moved from the unpushed one, where they first part, the share cut off, distinct 4-grams,
 the mean log-probability, and the push over each neuron's ceiling (from the answers' own record, else the checkpoint's

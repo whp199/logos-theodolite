@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { IfApparatus, LensCaution, Rubric } from "../../components/kit";
 import { href } from "../../router";
 import { wp } from "../../lib/words";
-import { cite, citeHead, noteKey, type RunRow, type SearchRow } from "./api";
+import { cite, citeHead, get, noteKey, type CensusCard, type RunRow, type SearchRow } from "./api";
 import { censusChance, Chips, ErrorLine, FaceLine, NameMark, ProposalLine } from "./parts";
 import {
   closeFocus,
@@ -297,6 +297,21 @@ const CensusRows: React.FC = () => {
   const f = useAtlas((s) => s.focus);
   const [q, setQ] = useState("");
   const [controls, setControls] = useState(false);
+  // the layer's census card, for whether its doses are calibrated on this model (said uncalibrated until it says so)
+  const run = arch?.census[String(layer)] ?? "";
+  const key = run ? `${layer}/${run}` : "";
+  const [card, setCard] = useState<{ key: string; calibrated: boolean } | null>(null);
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    get<Partial<CensusCard>>("/api/atlas/census/card", { layer })
+      .then((c) => live && setCard({ key, calibrated: c.doses_calibrated === true }))
+      .catch(() => live && setCard({ key, calibrated: false }));
+    return () => {
+      live = false;
+    };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const calibrated = !!card && card.key === key && card.calibrated;
   if (!arch?.census[String(layer)]) {
     const refused = arch?.census_refused?.[String(layer)];
     return (
@@ -326,7 +341,7 @@ const CensusRows: React.FC = () => {
         <li className="atlas-rows-head">
           layer {layer + 1}'s census · ranked by the mass of its words against random directions
           {chance
-            ? ` · ${chance.above} above every control, about ${chance.chance.toFixed(0)} of them by chance alone · doses not yet calibrated on this model`
+            ? ` · ${chance.above} above every control, about ${chance.chance.toFixed(0)} of them by chance alone · doses ${calibrated ? "" : "not yet "}calibrated on this model`
             : " · no random controls, so nothing here is set against chance"}
         </li>
         {shown.slice(0, 600).map((u) => (

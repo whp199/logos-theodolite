@@ -329,7 +329,9 @@ export interface CensusCard {
    * a share of the stream; the mean a word is set against ("units": every unit's; "controls": the controls' alone);
    * whose unpushed words are left out */
   reading?: { max_rel: number; reference: "units" | "controls"; exclude: "all" | "own" };
-  /** its design's doses, and whether they were chosen on this model (break_rel) rather than carried from another */
+  /** its design's doses, and whether they are calibrated on this model (census.DOSES_CALIBRATED: none yet; break_rel's
+   * once the owner records its trial's pass); where they are not, the census and details tabs say so in red, and the
+   * left panel's census head says so */
   doses?: number[];
   doses_calibrated?: boolean;
   /** the second stage of a two-stage census: the screen whose strongest neurons it retests against fresh controls */
