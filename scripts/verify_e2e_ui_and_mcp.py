@@ -1793,12 +1793,16 @@ async def main() -> int:
                 await cdp.eval_js(f"(() => {{ location.hash = {json.dumps(route)}; }})()")
                 await asyncio.sleep(0.8)
 
-            # The instrument: wait until the first live sighting has replaced the recorded one (E6 fixture)
+            # The instrument: wait until the first live sighting has replaced the recorded one (E6 fixture). The opening
+            # page says "it went on" and "· ready" too, so the instrument's own line is waited for, not only the words:
+            # its page is loaded on demand and may not yet have replaced the opening page when the hash is set
             await go("#/instrument")
             await wait_for(
                 """(() => {
                     const t = document.body ? document.body.innerText : "";
-                    return t.includes("· ready") && t.includes("it went on") && !t.includes("the study’s recorded sighting");
+                    const facts = document.querySelector(".went-on .went-facts");
+                    return location.hash === "#/instrument" && !!facts && facts.textContent.includes("60 layers surveyed")
+                        && t.includes("· ready") && !t.includes("the study’s recorded sighting");
                 })()""",
                 "the first live sighting",
             )
