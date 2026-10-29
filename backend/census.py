@@ -37,7 +37,15 @@ where, the share cut off, distinct 4-grams, and the push over each neuron's ceil
 Every page and tool that shows a census says so. With 256 controls and 21,504 neurons about 84 neurons land above every
 control by chance alone (N / (C + 1)), so a rank is a lead, not a finding: each unit carries an empirical p against the
 controls and a layer-wide false-discovery q (`compute_units`). A second stage retests a screen's strongest neurons
-against fresh controls (`retest_of`), its p and q taken over those alone.
+against fresh controls (`retest_of`), its p and q taken over those alone, on (question, dose) cells its screen did not
+ask: in batches of one size a neuron writes the same answer to the same cell bit for bit, so a retest on the screen's
+own cells would read the answers it was picked for again (`take_census` refuses it).
+
+break_rel, the design chosen on the two ladders (28 October 2026), asks six questions (`DESIGN_QUESTIONS`) at +-1 and
++-2 of the stream and is read its own way (`DESIGN_READING`, `reading_of`): every answer counted, each answer's own
+question's unpushed words left out, and each word set against the controls' mean alone, so a whole layer of neurons is
+ranked as a trial of a thousand was. Its six questions are two halves of three (`DESIGN_HALVES`), so a neuron's words
+picked on one half can be tested on the other with nothing selected, which a retest of its strongest cannot do.
 
 A run's batches are planned from its whole job list and the batch size (`plan_batches`), and written whole, so a run
 continued after a stop or a torn write, and a run taken in shards (`shard_batches`, each but shard 0 with a canary
@@ -70,13 +78,34 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-# The reference's four questions (sweep/steer_sweep.py PROMPTS), asked as a chat turn with thinking off.
+# The reference's four questions (sweep/steer_sweep.py PROMPTS), asked as a chat turn with thinking off. Every design
+# that names no questions of its own (DESIGN_QUESTIONS) asks these and writes each one's unpushed answer, so every run
+# begun before break_rel keeps its job list and its prompt_ids (a resume key).
 PROMPTS: Dict[str, str] = {
     "who": "Who are you?",
     "snake": "Write a snake game in Python.",
     "orange": "Describe the color orange.",
     "free": "Write whatever you like.",
 }
+# Questions asked only by the designs that name them, fixed on 29 October 2026 before any run asked them: one each in
+# three genres the reference's do not cover (how a thing works, advice, an object), each with a spare of its genre that
+# takes its place where its unpushed answer parts from itself written alone in a census batch before 32 word-pieces
+# (scripts/verify_atlas_writer.py --design), which is decided before any neuron is read.
+MORE_PROMPTS: Dict[str, str] = {
+    "bicycle": "Explain how a bicycle works.",
+    "walk": "Give me three tips for a long walk.",
+    "chair": "Describe a wooden chair.",
+    "kettle": "Explain how a kettle works.",
+    "sleep": "Give me three tips for sleeping well.",
+    "bridge": "Describe a stone bridge.",
+}
+ALL_PROMPTS: Dict[str, str] = {**PROMPTS, **MORE_PROMPTS}
+# A design's questions, in the order its runs ask them, where they are not the four PROMPTS. break_rel's six are read
+# as two halves of three (DESIGN_HALVES): the calibrated three, and three new ones, so every unit's words can be picked
+# on one half and tested on the other, nothing selected.
+DESIGN_QUESTIONS: Dict[str, Tuple[str, ...]] = {"break_rel": ("who", "orange", "free", "bicycle", "walk", "chair")}
+DESIGN_HALVES: Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...]]] = {
+    "break_rel": (("who", "orange", "free"), ("bicycle", "walk", "chair"))}
 
 # Doses as shares of the stream's median length leaving the layer (the reference's "main_rel": its research log found
 # the coherent window near 0.5-0.8 of the stream, and +3 reads the direction out as wreckage), and a ladder for
@@ -87,6 +116,10 @@ DESIGNS: Dict[str, List[Tuple[str, float]]] = {
     # the same ladder's purpose in each neuron's own unit (dose_unit "ceiling"): half of the most it can write by itself
     # up to eight times it
     "calib_ceil": [(p, s * d) for p in ("who", "orange", "free") for d in (0.5, 1.0, 2.0, 4.0, 8.0) for s in (-1.0, 1.0)],
+    # from the two ladders (28 October 2026, layers 20-57, 64 + 64 units a layer): +-1 of the stream, where text breaks
+    # at layers 40-57, and +-2, past it, on both signs: the only doses whose lead over the controls held across layers,
+    # beyond how gracefully the text survives, and on a held-out question; asked on six questions
+    "break_rel": [(p, s * d) for p in DESIGN_QUESTIONS["break_rel"] for d in (1.0, 2.0) for s in (-1.0, 1.0)],
 }
 DEFAULT_DESIGN = "main_rel"
 CALIBRATION_DESIGNS = ("calib_rel", "calib_ceil")
@@ -98,14 +131,51 @@ DOSES_FROM = {
     "calib_rel": "a calibration ladder, for finding where effects begin and text breaks on this model",
     "calib_ceil": "a calibration ladder in each neuron's own write ceiling, for finding where effects begin and text breaks "
                   "on this model",
+    "break_rel": "chosen on this model's two calibration ladders (28 October 2026: 64 neurons and 64 controls at each of "
+                 "layers 20, 30, 40, 45, 50 and 57): +-1 of the stream, where its text breaks at layers 40-57, and +-2, past "
+                 "it; a lead from 64 + 64 units a layer until a trial on fresh units holds it",
 }
+# designs whose doses were chosen on this model (the page leaves out its red "not yet calibrated" line for them)
+DOSES_CALIBRATED = ("break_rel",)
+
+
+def design_questions(design_name: Optional[str]) -> Dict[str, str]:
+    """The questions a design's runs ask, each written unpushed once, in order, with their texts: DESIGN_QUESTIONS'
+    where the design names them, else the four PROMPTS (every design begun before break_rel)."""
+    keys = DESIGN_QUESTIONS.get(str(design_name))
+    return dict(PROMPTS) if keys is None else {k: ALL_PROMPTS[k] for k in keys}
+
+
+def meta_questions(meta: Dict[str, Any]) -> List[str]:
+    """The questions a run asked, from its meta (`prompts`, in order), else the four PROMPTS (a meta older than it)."""
+    return list(meta.get("prompts") or PROMPTS)
+
+
+# How a design's runs are ranked (`compute_units`, `shift_scores`, `write_units`, `depth_report`): max_rel, the largest
+# push counted, a share of the stream; reference, the mean a unit's word counts are set against ("units", every unit's,
+# the reference's; "controls", the controls' alone, a control left out of its own, so a neuron's mass does not depend
+# on how many neurons share the run and a whole layer ranks as its trial did); exclude, whose unpushed words an answer
+# leaves out ("all", every question's, the reference's; "own", its own question's, so one question's unpushed words do
+# not hide a theme on the others). main_rel and the ladders keep the reference's reading (main_rel's +3 on free is
+# shown, not ranked; `census_tools.py rank --max-rel` reads a ladder past the cap on request). A run's ranking file
+# records the reading it was made with (`write_units`, each record's `reading`; a file without one was ranked by
+# READING_DEFAULT).
+READING_DEFAULT: Dict[str, Any] = {"max_rel": 1.6, "reference": "units", "exclude": "all"}
+DESIGN_READING: Dict[str, Dict[str, Any]] = {
+    "break_rel": {"max_rel": 2.5, "reference": "controls", "exclude": "own"},
+}
+
+
+def reading_of(design_name: Optional[str]) -> Dict[str, Any]:
+    """The reading a design's runs are ranked by (DESIGN_READING over READING_DEFAULT)."""
+    return {**READING_DEFAULT, **DESIGN_READING.get(str(design_name), {})}
 # The push's unit: "stream", dose x p50, the same push for every neuron and control (the reference's `--dose-unit
 # rel`); "ceiling", dose x the neuron's write ceiling (`atlas_ops.Weights.write_ceiling`, the most it can write by
 # itself), a control pushed by the ceiling of the neuron it is paired with (`control_refs`), so the null's lengths follow
 # the neurons' and one dose is the same share of each neuron's most at every layer. A design whose doses only mean
 # something in one unit names it.
 DOSE_UNITS = ("stream", "ceiling")
-DESIGN_UNITS = {"calib_ceil": "ceiling"}
+DESIGN_UNITS = {"calib_ceil": "ceiling", "break_rel": "stream"}
 # 2: controls drawn as unit(w_post * r) (1 was isotropic, ~100x louder to the next layer than any neuron on the 31B)
 CENSUS_VERSION = 2
 
@@ -169,11 +239,15 @@ def read_slim(path: Path) -> SlimRows:
     return SlimRows(read_rows(path, tolerate_tail=True))
 
 
-def compute_units(rows: Iterable[Dict[str, Any]], max_rel: float = 1.6, top_words: int = 12) -> List[Dict[str, Any]]:
+def compute_units(rows: Iterable[Dict[str, Any]], max_rel: float = 1.6, top_words: int = 12, reference: str = "units",
+                  exclude: str = "all") -> List[Dict[str, Any]]:
     """One record per pushed unit (a neuron or a random control), strongest first, as sweep/rank.py computes them:
     - words: the words over-represented in its answers against the average unit, Poisson z = (count - mean) /
       sqrt(mean + 0.5), counted once per answer, over its answers pushed by at most `max_rel` of the stream, leaving out
-      every word the unpushed answers use; [word, count, z], those met at least twice;
+      every word the unpushed answers use; [word, count, z], those met at least twice. With `reference` "controls" the
+      mean is the controls' alone (a control's leaving it out), not every unit's, so a neuron's z does not move with
+      the neurons beside it in the run (no controls, or one: every unit's, as "units"); with `exclude` "own" an answer
+      leaves out only its own question's unpushed words, not every question's (`reading_of` says which a design uses);
     - z: its strongest word's z; mass: the summed positive z of its top five words (the sort key);
     - null_pct: the share of random controls with a lower mass (1.0: above every control; None without controls);
     - p: its empirical p against the controls, (1 + controls with at least its mass) / (controls + 1) (a control is
@@ -184,9 +258,16 @@ def compute_units(rows: Iterable[Dict[str, Any]], max_rel: float = 1.6, top_word
     - dose: per dose, the mean push (rel_push), the share of distinct 4-grams, the share of answers cut off at the
       length limit, and the mean log-probability of the pieces it wrote.
     `rows` are a run's rows, whole or as `SlimRows`."""
+    if reference not in ("units", "controls") or exclude not in ("all", "own"):
+        raise ValueError(f"compute_units reads against the units' or the controls' mean and leaves out every question's or "
+                         f"the answer's own question's unpushed words, not {reference!r} and {exclude!r}.")
     rows = as_slim(rows)
     vocab = rows.vocab
-    base_ids: set = set().union(*(r["wid"] for r in rows if r["kind"] == "baseline")) if rows else set()
+    base_of: Dict[str, set] = collections.defaultdict(set)
+    for r in rows:
+        if r["kind"] == "baseline":
+            base_of[str(r["prompt"])].update(r["wid"])
+    base_ids: set = set().union(*base_of.values()) if base_of else set()
     units: Dict[Tuple[str, int], List[Dict[str, Any]]] = collections.defaultdict(list)
     for r in rows:
         if r["kind"] != "baseline":
@@ -197,18 +278,27 @@ def compute_units(rows: Iterable[Dict[str, Any]], max_rel: float = 1.6, top_word
         c: collections.Counter = collections.Counter()
         for r in rs:
             if r["rel_push"] <= max_rel:
-                c.update(i for i in r["wid"] if i not in base_ids)
+                left_out = base_of.get(str(r["prompt"]), set()) if exclude == "own" else base_ids
+                c.update(i for i in r["wid"] if i not in left_out)
         counts[u] = c
+    ctl_units = [u for u in counts if u[0] == "random"]
+    by_controls = reference == "controls" and len(ctl_units) >= 2
     total: collections.Counter = collections.Counter()
-    for c in counts.values():
-        total.update(c)
-    mean = {w: v / max(len(counts), 1) for w, v in total.items()}
+    for u in (ctl_units if by_controls else counts):
+        total.update(counts[u])
+    n_ref = len(ctl_units) if by_controls else max(len(counts), 1)
+
+    def mean_of(u: Tuple[str, int], w: int, cnt: int) -> float:
+        if by_controls and u[0] == "random":  # a control set against the other controls
+            return (total[w] - cnt) / (n_ref - 1)
+        return total[w] / n_ref
 
     records: List[Dict[str, Any]] = []
     for u, rs in units.items():
         c = counts[u]
         ranked = sorted(
-            (((cnt - mean[w]) / np.sqrt(mean[w] + 0.5), vocab[w], cnt, w) for w, cnt in c.items() if cnt >= 2), reverse=True
+            (((cnt - mean_of(u, w, cnt)) / np.sqrt(mean_of(u, w, cnt) + 0.5), vocab[w], cnt, w) for w, cnt in c.items() if cnt >= 2),
+            reverse=True,
         )[:top_words]
         per_prompt = {w: sorted({r["prompt"] for r in rs if i in r["wid"]}) for _, w, _, i in ranked[:5]}
         dose: Dict[str, Dict[str, float]] = {}
@@ -632,16 +722,34 @@ def spread_path_of(run_path: Path) -> Path:
     return Path(str(run_path)[: -len(".jsonl")] + ".spread.json")
 
 
-def write_units(run_path: Path, max_rel: float = 1.6, top_words: int = 12) -> Path:
+def run_reading(run_path: Path, max_rel: Optional[float] = None) -> Dict[str, Any]:
+    """The reading a run is ranked by: its design's (`reading_of`, the design named in its meta; the reference's for a
+    run without one), with `max_rel` in place of the design's where one is given."""
+    try:
+        meta = json.loads(meta_path_of(Path(run_path)).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        meta = {}
+    reading = reading_of(meta.get("design_name") if isinstance(meta, dict) else None)
+    if max_rel is not None:
+        reading["max_rel"] = float(max_rel)
+    return reading
+
+
+def write_units(run_path: Path, max_rel: Optional[float] = None, top_words: int = 12) -> Path:
     """Rank a run and write its `.units.jsonl` beside it (atomically): `compute_units`' records, each with its word-shift
-    score against the controls (`shift_scores`: shift, shift_up, shift_down; None without controls)."""
+    score against the controls (`shift_scores`: shift, shift_up, shift_down; None without controls), read as the run's
+    design is (`run_reading`: its cap on the push, its reference and its exclusion; `max_rel` replaces the cap), each
+    record carrying that reading (`reading`), so a reader of the file knows what ranked it."""
     out = units_path_of(run_path)
     rows = read_slim(run_path)
-    recs = compute_units(rows, max_rel=max_rel, top_words=top_words)
-    shifts = shift_scores(rows, max_rel=max_rel)
+    reading = run_reading(run_path, max_rel)
+    recs = compute_units(rows, max_rel=reading["max_rel"], top_words=top_words, reference=reading["reference"],
+                         exclude=reading["exclude"])
+    shifts = shift_scores(rows, max_rel=reading["max_rel"])
     for r in recs:
         sh = shifts.get((r["kind"], int(r["neuron"])), {"shift": None, "up": [], "down": []})
         r["shift"], r["shift_up"], r["shift_down"] = sh["shift"], sh["up"], sh["down"]
+        r["reading"] = dict(reading)
     tmp = out.with_name(out.name + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         f.writelines(json.dumps(u, ensure_ascii=False) + "\n" for u in recs)
@@ -703,7 +811,31 @@ def writer_floor(meta: Dict[str, Any], files: Optional[Sequence[Path]] = None) -
         theirs = d.get("runtime") or {}
         return [f for f in FLOOR_CLASS if theirs.get(f) != mine.get(f)]
 
-    path, d, floors = next(((p, d, f) for p, d, f in found if mine and not differ(d)), found[0])
+    asked = meta_questions(meta)
+
+    def covers(d: Dict[str, Any]) -> bool:  # measured on every question the run asks (its results', else its questions')
+        res = d.get("results") if isinstance(d.get("results"), dict) else d.get("questions")
+        return isinstance(res, dict) and all(q in res for q in asked)
+
+    # the run's runtime class and every one of its questions first, then its runtime class, then every one of its
+    # questions, then the first
+    path, d, floors = next(((p, d, f) for p, d, f in found if mine and not differ(d) and covers(d)),
+                           next(((p, d, f) for p, d, f in found if mine and not differ(d)),
+                                next(((p, d, f) for p, d, f in found if covers(d)), found[0])))
+    res = d.get("results") if isinstance(d.get("results"), dict) else None
+    held = res if res is not None else (d.get("questions") or {})
+    missing = [q for q in asked if q not in held]
+    ours = [q for q in asked if q in held]
+    # the floor over the run's own questions where the file holds each question's results and measured others too (a
+    # floor kept without them, older or written by hand, is read as its census_floor says)
+    recomputed = res is not None and bool(ours) and set(ours) != set(res)
+    if recomputed:
+        def over(B: int) -> Optional[int]:
+            ks = [int(r["shared"]) for q in ours for n, r in res[q].items()
+                  if n.startswith(f"census {B},") and isinstance(r, dict) and not r.get("same")]
+            return min(ks) if ks else None
+
+        floors = {B: over(B) for B in floors}
     batch = meta.get("batch")
     if batch in floors:
         batches, k = [int(batch)], floors[int(batch)]
@@ -715,7 +847,16 @@ def writer_floor(meta: Dict[str, Any], files: Optional[Sequence[Path]] = None) -
     device = (d.get("runtime") or {}).get("device")
     shape = (f"census batches of {batches[0]} (this run's size)" if batch in floors else
              f"census batches of {' and '.join(map(str, batches))}" + (f" (not this run's {batch})" if batch else ""))
-    where = f"on {device}, the census's {len(d.get('questions') or PROMPTS)} questions, {d.get('max_new')} word-pieces"
+    n_file = len(d.get("questions") or PROMPTS)
+    if recomputed and not missing:
+        qs_said = f"this run's {len(ours)} questions (of {len(res)} measured)"
+    elif recomputed:
+        qs_said = f"{len(ours)} of this run's questions (of {len(res)} measured), not its {', '.join(missing)}"
+    elif missing:
+        qs_said = f"{n_file} questions, not this run's {', '.join(missing)}"
+    else:
+        qs_said = f"the census's {n_file} questions"
+    where = f"on {device}, {qs_said}, {d.get('max_new')} word-pieces"
     if k is None:
         says = (f"Writer's floor: with no push, answers written in {shape} did not part from the same answers written alone "
                 f"within the word-pieces measured ({where}): no departure there came from the batch's shape alone.")
@@ -809,8 +950,21 @@ def retest_of(units_path: Path, top: int) -> Tuple[List[int], Dict[str, Any]]:
     if not 0 < int(top) <= len(ranked):
         raise ValueError(f"{units_path.name} ranks {len(ranked)} neurons, so a retest takes 1 to {len(ranked)} of them, not {top}.")
     stage = {"stage": 2, "screen": run.name, "top": int(top), "of": len(ranked), "by": "mass", "screen_layer": meta.get("layer"),
-             "screen_seed": meta.get("seed"), "screen_controls": meta.get("random_controls"), "screen_design": meta.get("design_name")}
+             "screen_seed": meta.get("seed"), "screen_controls": meta.get("random_controls"), "screen_design": meta.get("design_name"),
+             # the screen's (question, dose) cells: a retest asks none of them (`shared_cells`, take_census)
+             "screen_cells": [[str(p), float(d)] for p, d in (meta.get("design") or DESIGNS.get(str(meta.get("design_name")), []))]}
     return sorted(int(u["neuron"]) for u in ranked[: int(top)]), stage
+
+
+def shared_cells(design: Sequence[Tuple[str, float]], stage: Dict[str, Any]) -> List[Tuple[str, float]]:
+    """The (question, dose) cells a retest's design shares with its screen's (`stage["screen_cells"]`). In batches of one
+    size a neuron writes the same answer to the same cell bit for bit (and, in another size, the same first
+    word-pieces), so on a shared cell a retest reads again the answer its neuron was picked for: the selection carries
+    into its p (in a null simulation from the controls, top-5-of-22 retests on the screen's own cells gave p <= 0.05
+    about a fifth of the time; on a held-out question, about one time in twenty, and on the screen's own questions at
+    other doses too: 0.04-0.06 over calib_rel's six layers, a screen at +-0.5 or +-4 retested at +-1 and +-2)."""
+    screen = {(str(p), float(d)) for p, d in stage.get("screen_cells") or []}
+    return sorted({(str(p), float(d)) for p, d in design} & screen)
 
 
 def unit_order(neurons: Sequence[int], controls: int) -> List[Tuple[str, int]]:
@@ -821,9 +975,11 @@ def unit_order(neurons: Sequence[int], controls: int) -> List[Tuple[str, int]]:
     return units
 
 
-def census_jobs(neurons: Sequence[int], controls: int, design: Sequence[Tuple[str, float]]) -> List[Dict[str, Any]]:
-    """Every answer a run writes, in order: one unpushed answer per question, then each unit's (question, dose)."""
-    jobs = [{"kind": "baseline", "neuron": -1, "prompt": p, "dose": 0.0} for p in PROMPTS]
+def census_jobs(neurons: Sequence[int], controls: int, design: Sequence[Tuple[str, float]],
+                questions: Optional[Sequence[str]] = None) -> List[Dict[str, Any]]:
+    """Every answer a run writes, in order: one unpushed answer per question (`questions`, the run's: its design's,
+    `design_questions`, or its meta's, `meta_questions`; the four PROMPTS by default), then each unit's (question, dose)."""
+    jobs = [{"kind": "baseline", "neuron": -1, "prompt": p, "dose": 0.0} for p in (PROMPTS if questions is None else questions)]
     jobs += [{"kind": kind, "neuron": n, "prompt": p, "dose": float(d)} for kind, n in unit_order(neurons, controls) for p, d in design]
     return jobs
 
@@ -850,24 +1006,29 @@ def neuron_ranges(neurons: Iterable[int]) -> str:
 # not bit-identical, N1A), though not on which rows share it, every operation of the decoder being per row. A plan
 # takes the jobs a chunk of k x batch at a time, each chunk's answers grouped by question so a batch shares its
 # question: 10 x batch for runs begun now (one batch's worth of main_rel's units, whose questions split 3 : 3 : 3 : 1, so
-# few batches are part-full), 16 x batch kept for runs begun before batch plans were recorded.
-PLANS = {"10 x batch": 10, "16 x batch": 16}
+# few batches are part-full), 16 x batch kept for runs begun before batch plans were recorded, and 12 x batch for a
+# design whose questions are asked equally often by every unit (break_rel's six x four doses: two whole batches a
+# question a chunk, a whole layer's batches 99.9% full where 10 x batch fills 83%).
+PLANS = {"10 x batch": 10, "16 x batch": 16, "12 x batch": 12}
 PLAN = "10 x batch"
 PLAN_BEFORE = "16 x batch"
+DESIGN_PLAN = {"break_rel": "12 x batch"}  # the plan a design's runs begin with, where not PLAN
 
 
 def plan_batches(jobs: Sequence[Dict[str, Any]], batch: int, plan: str = PLAN) -> List[Tuple[int, str, List[int]]]:
     """A run's batches in the order they are written, [(chunk, question, [job indices])]: the job list (`census_jobs`)
-    taken `plan` x batch at a time (PLANS), each chunk's jobs grouped by question in PROMPTS' order, `batch` at a time.
+    taken `plan` x batch at a time (PLANS), each chunk's jobs grouped by question in the order the job list first asks
+    them (its unpushed answers come first: PROMPTS' order for every design that asks those), `batch` at a time.
     A function of the whole job list and the batch size alone."""
     if plan not in PLANS:
         raise ValueError(f"The census's batch plans are {', '.join(PLANS)}, not {plan!r}.")
     B = max(int(batch), 1)
     size = B * PLANS[plan]
+    order = list(dict.fromkeys(j["prompt"] for j in jobs))
     out: List[Tuple[int, str, List[int]]] = []
     for c, c0 in enumerate(range(0, len(jobs), size)):
         part = range(c0, min(c0 + size, len(jobs)))
-        for p in PROMPTS:
+        for p in order:
             js = [i for i in part if jobs[i]["prompt"] == p]
             out.extend((c, p, js[b0 : b0 + B]) for b0 in range(0, len(js), B))
     return out
@@ -1166,8 +1327,10 @@ def take_census(
     if unit not in DOSE_UNITS:
         raise ValueError(f"The census's dose units are {', '.join(DOSE_UNITS)}, not {unit!r}.")
     if DESIGN_UNITS.get(design_name, unit) != unit:
-        raise ValueError(f"{design_name}'s doses are multiples of each neuron's write ceiling: take it with the "
-                         f"{DESIGN_UNITS[design_name]} unit, not the {unit} unit.")
+        what = ("multiples of each neuron's write ceiling" if DESIGN_UNITS[design_name] == "ceiling" else
+                "shares of the stream's median length (dose x p50)")
+        raise ValueError(f"{design_name}'s doses are {what}: take it with the {DESIGN_UNITS[design_name]} unit, not the "
+                         f"{unit} unit.")
     by_ceiling = unit == "ceiling"
     lm = language_model(rt.hf_model)
     w = ao.Weights(lm, rt)
@@ -1179,7 +1342,8 @@ def take_census(
         raise ValueError(f"Neurons count from 0 to {N - 1}; {bad[:5]} do not exist.")
     design = DESIGNS[design_name]
     tok = rt.tokenizer
-    prompt_ids = {k: rt.tokenize_prompt(rt.compose_prompt(v, chat=True)) for k, v in PROMPTS.items()}
+    prompts = design_questions(design_name)  # the four PROMPTS for every design but those naming their own
+    prompt_ids = {k: rt.tokenize_prompt(rt.compose_prompt(v, chat=True)) for k, v in prompts.items()}
     from backend import cpu_memory  # on the CPU, a batch against MemAvailable, refused before anything is written
 
     cpu_memory.ensure(rt, lambda: cpu_memory.writing_need(rt, batch, max(len(p) for p in prompt_ids.values()), max_new),
@@ -1242,7 +1406,7 @@ def take_census(
         return out
 
     meta = {
-        "model": getattr(rt, "model_id", None), "layer": int(layer), "prompts": PROMPTS, "prompt_ids": prompt_ids,
+        "model": getattr(rt, "model_id", None), "layer": int(layer), "prompts": prompts, "prompt_ids": prompt_ids,
         "design_name": design_name, "design": [[p, d] for p, d in design], "max_new": int(max_new), "top_k": int(top_k),
         "seed": int(seed), "random_controls": int(controls), "neurons": neurons_spec or f"{len(neurons)} neurons",
         "push": ("add: dose x the neuron's write ceiling (s_l sqrt(D) ||w_post * unit(W_down[:, n])||, the most it can "
@@ -1268,13 +1432,22 @@ def take_census(
     if stage:
         if int(seed) == stage.get("screen_seed"):
             raise ValueError(f"A retest draws fresh controls: give it another seed than its screen's ({seed}).")
+        same = shared_cells(design, stage)
+        if same:
+            raise ValueError(f"A retest asks its neurons on cells its screen did not: {design_name} shares {len(same)} (question, "
+                             f"dose) cell{'s' if len(same) != 1 else ''} with {stage.get('screen')} ("
+                             + ", ".join(f"{p} {d:+g}" for p, d in same[:4]) + (", ..." if len(same) > 4 else "")
+                             + "). On a shared cell a neuron writes again the answer it was picked for (bit for bit in "
+                             "batches of one size, its first word-pieces in another), so the retest's p would carry the "
+                             "screen's selection; retest on a design with other questions or doses.")
         meta["stage"] = stage
     if controls and gain["ratio"] is not None and not 0.5 <= gain["ratio"] <= 2.0:
         log(f"warning: the next layer reads the controls {gain['ratio']}x as loudly as the neurons (a fair null is near 1)")
     meta_path = meta_path_of(out_path)
     old = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else None
-    meta["plan"] = (old.get("plan") or PLAN_BEFORE) if old is not None else PLAN  # a run keeps the plan it was begun with
-    all_jobs = census_jobs(neurons, controls, design)
+    # a run keeps the plan it was begun with
+    meta["plan"] = (old.get("plan") or PLAN_BEFORE) if old is not None else DESIGN_PLAN.get(design_name, PLAN)
+    all_jobs = census_jobs(neurons, controls, design, list(prompts))
     meta["jobs"] = these_jobs = jobs_digest(all_jobs)
     plan = plan_batches(all_jobs, batch, meta["plan"])
 
@@ -1369,7 +1542,7 @@ def take_census(
             held |= set(parse_neurons(old["neuron_ids"], N))
         if held != {int(n) for n in neurons}:
             meta["neuron_ids"] = neuron_ranges(held)
-            meta["jobs"] = jobs_digest(census_jobs(sorted(held), controls, design))
+            meta["jobs"] = jobs_digest(census_jobs(sorted(held), controls, design, list(prompts)))
         moved = runtime_differ(old.get("runtime"), meta["runtime"])
         if moved:
             log(f"warning: {out_path.name} was begun on another runtime ({', '.join(moved)} differ): its answers' bits may "
@@ -1492,7 +1665,8 @@ def merge_runs(inputs: Sequence[Path], out: Path, partial: bool = False) -> Tupl
     if all(isinstance(m.get("neuron_ids"), str) and m.get("d_ff") for m in metas):
         held = sorted({n for m in metas for n in parse_neurons(m["neuron_ids"], int(m["d_ff"]))})
         meta["neuron_ids"] = neuron_ranges(held)
-        meta["jobs"] = jobs_digest(census_jobs(held, int(meta["random_controls"]), [tuple(x) for x in meta["design"]]))
+        meta["jobs"] = jobs_digest(census_jobs(held, int(meta["random_controls"]), [tuple(x) for x in meta["design"]],
+                                               meta_questions(meta)))
     else:  # a part taken before runs recorded them: the joined run's neurons are those its rows hold
         meta.pop("neuron_ids", None)
         meta.pop("jobs", None)
@@ -1564,7 +1738,8 @@ def _merge_shards(inputs: List[Path], metas: List[Dict[str, Any]], out: Path, pa
         raise ValueError(f"Shard{'s' if len(missing) > 1 else ''} {', '.join(map(str, missing))} of {n} "
                          f"{'are' if len(missing) > 1 else 'is'} missing: finish {'them' if len(missing) > 1 else 'it'} and merge "
                          "again, or merge with --partial.")
-    jobs = census_jobs(parse_neurons(m0["neuron_ids"], int(m0["d_ff"])), int(m0["random_controls"]), [tuple(x) for x in m0["design"]])
+    jobs = census_jobs(parse_neurons(m0["neuron_ids"], int(m0["d_ff"])), int(m0["random_controls"]), [tuple(x) for x in m0["design"]],
+                       meta_questions(m0))
     if jobs_digest(jobs) != m0.get("jobs"):
         raise ValueError(f"The run's job list cannot be rebuilt from {p0.name}'s meta (its digest differs).")
     plan = plan_batches(jobs, int(m0["batch"]), m0["plan"])
@@ -1620,7 +1795,9 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
     """Per layer with a census, how far its neurons move the model's words beyond what random directions do
     (sweep/depth_report.py): the controls' mass at its median, 95th percentile and maximum, the neurons' at its median
     and 90th percentile, the share of neurons above the controls' 95th percentile and above all of them, the answers'
-    coherence at +0.8 (neurons and controls) and -0.7 (neurons), and the five strongest neurons. A run holding more
+    coherence at +0.8 (neurons and controls) and -0.7 (neurons) (main_rel's doses), and at each of the run's own doses
+    (`coherence`), the share of neuron-control pairs a neuron wins (`auc`, ties half), the five strongest neurons, and
+    the run's design and reading (each run ranked as its design is, `reading_of`). A run holding more
     than `neurons` neurons or `controls` controls is subsampled to that pool (seeded by the layer), so the mass, which
     grows with the pool, compares across layers. The layers are pushed at one nominal dose each, a share of each
     layer's own stream; how hard that pushes the next layer differs from layer to layer (by about sixteen-fold across
@@ -1630,9 +1807,12 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
     report: List[Dict[str, Any]] = []
     for l, path in sorted(runs.items()):
         try:
-            unit = json.loads(meta_path_of(Path(path)).read_text(encoding="utf-8")).get("dose_unit", "stream")
+            meta = json.loads(meta_path_of(Path(path)).read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            unit = "stream"
+            meta = {}
+        unit = meta.get("dose_unit", "stream")
+        design_name = meta.get("design_name")
+        reading = reading_of(design_name)
         rows = read_slim(Path(path))
         nn = sorted({int(r["neuron"]) for r in rows if r["kind"] == "neuron"})
         cc = sorted({int(r["neuron"]) for r in rows if r["kind"] == "random"})
@@ -1645,14 +1825,15 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
             kept.vocab = rows.vocab
             kept.extend(r for r in rows if r["kind"] == "baseline" or (r["kind"], int(r["neuron"])) in keep)
             rows = kept
-        recs = compute_units(rows)
+        recs = compute_units(rows, max_rel=reading["max_rel"], reference=reading["reference"], exclude=reading["exclude"])
         null = np.array([r["mass"] for r in recs if r["kind"] == "random"], np.float64)
         neu = [r for r in recs if r["kind"] == "neuron"]
         m = np.array([r["mass"] for r in neu], np.float64)
         entry: Dict[str, Any] = {"layer": int(l), "run": Path(path).name, "subsampled": sub, "n_neurons": len(m), "n_controls": len(null),
-                                 "dose_unit": unit,
-                                 "dose_note": ("one nominal dose, a multiple of each neuron's own write ceiling, the same share of "
-                                               "each neuron's most at every layer; doses not yet calibrated on this model")
+                                 "dose_unit": unit, "design": design_name, "reading": reading,
+                                 "dose_note": DOSES_FROM[design_name] if design_name in DOSES_CALIBRATED else
+                                 ("one nominal dose, a multiple of each neuron's own write ceiling, the same share of "
+                                  "each neuron's most at every layer; doses not yet calibrated on this model")
                                  if unit == "ceiling" else
                                  "one nominal dose, a different push at each layer; doses not yet calibrated on this model"}
         if not len(null) or not len(m):
@@ -1672,6 +1853,11 @@ def depth_report(runs: Dict[int, Path], neurons: int = 384, controls: int = 64) 
             # what above_max would be by chance alone, were neurons and controls alike: 1 / (C + 1)
             "above_max_by_chance": round(1.0 / (len(null) + 1), 3),
             "coh_neuron_+0.8": coh("neuron", "+0.8"), "coh_random_+0.8": coh("random", "+0.8"), "coh_neuron_-0.7": coh("neuron", "-0.7"),
+            "coherence": {k: {"neuron": coh("neuron", k), "random": coh("random", k)}
+                          for k in sorted({f"{float(d):+g}" for _, d in meta.get("design") or []}, key=float)},
+            # a neuron's chance of out-massing a control (ties half): 0.5 where neurons and controls are alike
+            "auc": round(float((np.searchsorted(np.sort(null), m, side="left") + np.searchsorted(np.sort(null), m, side="right")).sum()
+                               / (2.0 * len(m) * len(null))), 4),
             "top": [{"n": r["neuron"], "mass": r["mass"], "words": [w for w, _, _ in r["words"][:6]]} for r in neu[:5]],
         })
         report.append(entry)

@@ -10,7 +10,8 @@ ranked (scripts/census_tools.py rank).
     .venv/bin/python scripts/census_run.py --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16
     .venv/bin/python scripts/census_run.py --layer 45 --neurons all --batch 96 --max-new 64 --shard 1/4     # one of four shards
     .venv/bin/python scripts/census_run.py --layer 45 --neurons all --batch 96 --max-new 64 --canary-only   # its first batch alone
-    .venv/bin/python scripts/census_run.py --layer 45 --neurons-from L45-r384.units.jsonl --top 32 --seed 1 --random-controls 1024
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons-from L45-r384.units.jsonl --top 32 --seed 1 --random-controls 1024 --design break_rel
+    .venv/bin/python scripts/census_run.py --layer 45 --design break_rel --neurons all --random-controls 2048 --seed 7 --batch 96 --max-new 48 --unpacker compiled
     .venv/bin/python scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
 
 The model is the W4A16 checkpoint on cuda:0 unless THEODOLITE_GGUF names a GGUF of Gemma 4 or THEODOLITE_DEVICE=cpu
@@ -36,8 +37,15 @@ main_rel, {who, snake, orange} x {-0.7, +0.5, +0.8} and {free} x {+3}, neuron-ex
 and not yet calibrated on this model; calib_rel, a ladder ±{0.1, 0.25, 0.5, 1, 2, 4} of the stream on {who, orange,
 free}, and calib_ceil, ±{0.5, 1, 2, 4, 8} x each neuron's ceiling on the same questions (taken in the ceiling unit),
 for finding where effects begin and text breaks on this model: take them on a few layers and read them with
-census_tools.py curves before a full main_rel run. The meta also records how loudly the next layer reads the controls
-against the neurons (read_gain; a fair null is near 1, and the run warns when it is not).
+census_tools.py curves before a full main_rel run; and break_rel, chosen on those two ladders (28 October 2026): ±1 of
+the stream, where text breaks at layers 40-57, and ±2, past it, on six questions, who, orange, free and three asked by
+no other design (bicycle, walk, chair: census.DESIGN_QUESTIONS), read as two halves of three, 24 answers a unit, its
+batches planned 12 x batch. Each design is ranked its own way (census.reading_of): main_rel and the ladders as the
+reference (pushes of at most 1.6 of the stream, words against every unit's mean, every question's unpushed words left
+out); break_rel counts every answer, sets each word against the controls' mean alone and leaves out only the answer's
+own question's unpushed words. The ranking file records the reading it was made with. The meta also records how
+loudly the next layer reads the controls against the neurons (read_gain; a fair null is near 1, and the run warns when
+it is not).
 
 A run's batches are planned from its whole job list and the batch size (chunks of 10 x batch answers, each grouped by
 question), and written whole: a run continued after a stop, or after a kill that tore its last batch, and a run taken
@@ -55,6 +63,9 @@ write the same bits (scripts/pod/pilot.sh --home-canary); one already there is k
 settings on the same runtime, and is otherwise refused. --neurons-from <run>.units.jsonl --top M retests a screen's M
 strongest neurons against fresh controls (another --seed), the census's second stage: its p and q are taken over those
 M alone, and its neurons are fixed when it is begun (a screen ranked again since is a new retest, under another --run).
+A retest's --design must share no (question, dose) cell with its screen's: on a shared cell a neuron writes again the
+answer it was picked for, bit for bit at one batch size, so such a retest is refused (a main_rel screen is retested
+with break_rel; a break_rel run needs none: its halves are the held-out test).
 
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
@@ -71,7 +82,10 @@ measured). A calib_rel run of 8 neurons and 8 controls (580 answers) at --batch 
 answers = (neurons + controls) x 10 + 4 for main_rel: a whole layer is (21,504 + 256) x 10 + 4 = 217,604 answers,
 about 3.6 days at --batch 32 --max-new 64 and about two weeks at --max-new 256 (with --unpacker compiled about 12.7
 hours at --batch 32, and about 5.2 at --batch 96, which fit beside a desktop at 7.2 GiB above the model with the lens
-freed: the arithmetic above on the measured step, not a run); the reference's depth curve used 384
+freed: the arithmetic above on the measured step, not a run). break_rel is (neurons + controls) x 24 + 6 answers: a whole
+layer with 2,048 controls is 565,254 answers in 5,896 batches of 96, about 10.9 hours at --max-new 48 and 7.6 at 32
+(each batch about 0.60 s of prefill and 0.126 s a step), more than one night at 48: stop it in the morning and the same
+command continues it row for row; the reference's depth curve used 384
 neurons and 64 controls a layer (4,484 answers, about 2 hours at --batch 32 --max-new 64). The batch and the plan now
 fix a run's determinism class (on the GPU a row's numbers depend on the size of its batch), the unpacker does not:
 measure what the card holds once, then keep that --batch for every continuation and every shard of the run. On disk a
@@ -138,10 +152,13 @@ def main(argv=None) -> int:
     ap.add_argument("--neurons-from", default="", help="a screen's ranking (<run>.units.jsonl): retest its --top strongest neurons "
                                                        "against fresh controls (another --seed), the census's second stage")
     ap.add_argument("--top", type=int, default=0, help="with --neurons-from: how many of the screen's strongest to retest")
-    ap.add_argument("--design", default="main_rel", help="main_rel | calib_rel | calib_ceil")
-    ap.add_argument("--dose-unit", default=None, choices=["stream", "ceiling"],
+    from backend import census as cz_designs  # the designs' names and units (numpy only: torch is imported below)
+
+    ap.add_argument("--design", default=cz_designs.DEFAULT_DESIGN, choices=list(cz_designs.DESIGNS),
+                    help=f"{' | '.join(cz_designs.DESIGNS)} (default {cz_designs.DEFAULT_DESIGN})")
+    ap.add_argument("--dose-unit", default=None, choices=list(cz_designs.DOSE_UNITS),
                     help="stream: dose x p50, the same push for every unit; ceiling: dose x each neuron's write ceiling "
-                         "(default: the design's own, ceiling for calib_ceil, else stream)")
+                         "(default: the design's own, ceiling for calib_ceil, else stream; break_rel only in the stream)")
     ap.add_argument("--random-controls", type=int, default=256, help="random-direction controls spread through the run")
     ap.add_argument("--seed", type=int, default=0, help="draws the controls' directions and random:K's neurons")
     ap.add_argument("--max-new", type=int, default=256, help="word-pieces per answer at most (pushed answers often loop)")
@@ -155,7 +172,8 @@ def main(argv=None) -> int:
     ap.add_argument("--run", default="", help="the run's name (default L<layer>-<design>); with several layers it names each "
                                               "by {layer}, e.g. L{layer}-r384")
     ap.add_argument("--out-dir", default="", help="the census folder (default: the atlas's)")
-    ap.add_argument("--no-rank", action="store_true", help="leave the ranking to the server or census_tools.py rank")
+    ap.add_argument("--no-rank", action="store_true", help="leave the ranking to the server or census_tools.py rank (a run is "
+                                                          "otherwise ranked as its design is read, census.reading_of)")
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in (scripts/atlas_stand_in.py), for a dry run")
     ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
@@ -291,7 +309,11 @@ def main(argv=None) -> int:
                   f"{run_path.name} (in {out_dir}; a canary named among them is left out of the join), then rank")
         elif not a.no_rank and not a.canary_only and out.exists():
             units = cz.write_units(out)
-            print(f"-> {units}")
+            rd = cz.run_reading(out)
+            against = "the controls' mean" if rd["reference"] == "controls" else "every unit's mean"
+            left_out = "each answer's own question's" if rd["exclude"] == "own" else "every question's"
+            print(f"-> {units} (ranked as {a.design} is read: pushes of at most {rd['max_rel']:g} of the stream, each word "
+                  f"against {against}, {left_out} unpushed words left out)")
         if res["stopped"]:
             left = layers[layers.index(layer) + 1 :]
             if left:

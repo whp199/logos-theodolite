@@ -26,13 +26,16 @@ export const CensusTab: React.FC = () => {
   return <Grid unit={unit} open={open} toggle={(k) => setOpen((s) => new Set(s.has(k) ? [...s].filter((x) => x !== k) : [...s, k]))} />;
 };
 
-/** The census's doses against the most this neuron can ever write by itself (NeuronLens.ceiling). */
-const CeilingNote: React.FC<{ unit?: "stream" | "ceiling" }> = ({ unit }) => {
+/** The census's doses against the most this neuron can ever write by itself (NeuronLens.ceiling): the run's smallest and
+ * largest dose (main_rel's 0.5 and 0.8 for a run whose card names none). */
+const CeilingNote: React.FC<{ unit?: "stream" | "ceiling"; doses?: number[] }> = ({ unit, doses }) => {
   const f = useAtlas((s) => s.focus);
   const lens = useAtlas((s) => s.lens);
   const c = f && lens && lens.layer === f.layer && lens.n === f.n ? lens.ceiling : null;
-  const o5 = overCeiling(0.5, c);
-  const o8 = overCeiling(0.8, c);
+  const sizes = [...new Set((doses ?? []).map((d) => Math.abs(d)).filter((d) => d > 0 && d < 3))].sort((a, b) => a - b);
+  const [lo, hi] = sizes.length ? [sizes[0], sizes[sizes.length - 1]] : [0.5, 0.8];
+  const o5 = overCeiling(lo, c);
+  const o8 = overCeiling(hi, c);
   if (unit === "ceiling")
     return (
       <p className="muted atlas-small" style={{ margin: "0 0 8px" }}>
@@ -43,7 +46,7 @@ const CeilingNote: React.FC<{ unit?: "stream" | "ceiling" }> = ({ unit }) => {
   if (o5 == null || o8 == null) return null;
   return (
     <p className="muted atlas-small" style={{ margin: "0 0 8px" }}>
-      For this neuron a push of 0.5 is {o5.toFixed(1)}× and 0.8 is {o8.toFixed(1)}× the most it can ever write by itself: where that is above
+      For this neuron a push of {lo} is {o5.toFixed(1)}× and {hi} is {o8.toFixed(1)}× the most it can ever write by itself: where that is above
       1, the answers say what a push this large does, not what the neuron does when it fires.
     </p>
   );
@@ -119,7 +122,7 @@ const Grid: React.FC<{ unit: CensusUnit; open: Set<string>; toggle: (k: string) 
         measured beside it as a share of the stream). Click an answer to read all of it. <a href={href.lexicon("census")}>What the census is.</a>
       </Rubric>
       <CensusProvenance card={unit.card} style={{ margin: "0 0 8px" }} />
-      <CeilingNote unit={unit.card?.dose_unit} />
+      <CeilingNote unit={unit.card?.dose_unit} doses={unit.card?.doses} />
       <div className="atlas-grid" style={{ gridTemplateColumns: `56px repeat(${1 + doses.length}, minmax(0, 1fr))` }}>
         {out}
       </div>

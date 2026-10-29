@@ -11,7 +11,19 @@ import { fmtDose } from "./parts";
 import { goToNeuron, useAtlas } from "./state";
 import { hideTip, showTip } from "./Tooltip";
 
-const PROMPT_INK: Record<string, string> = { who: "#8f2b1e", snake: "#3b6e5a", orange: "#a07a2e", free: "#2e4a7d" };
+const PROMPT_INK: Record<string, string> = {
+  who: "#8f2b1e",
+  snake: "#3b6e5a",
+  orange: "#a07a2e",
+  free: "#2e4a7d",
+  // break_rel's other half (census.MORE_PROMPTS) and their spares
+  bicycle: "#5e3f7a",
+  walk: "#4f6b2a",
+  chair: "#7a4a26",
+  kettle: "#5e3f7a",
+  sleep: "#4f6b2a",
+  bridge: "#7a4a26",
+};
 const KIND_INK: Record<string, string> = { neuron: "#a89a82", random: "#2e4a7d", baseline: "#2b2117" };
 
 const hueOf = (n: number) => `hsl(${(n * 2654435761) % 360}, 38%, 42%)`;

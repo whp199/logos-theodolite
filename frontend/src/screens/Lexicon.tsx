@@ -1170,7 +1170,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
 
         <Entry id="census" head="the census" tech="steering sweep · ranked against random directions">
           <Body>
-            Every neuron of a layer pushed in turn, along its own write direction, on four fixed questions at a few
+            Every neuron of a layer pushed in turn, along its own write direction, on a few fixed questions at a few
             doses, and the words its pushes bring out counted. The same is done along random directions, as controls,
             shaped the way the layer shapes every neuron’s write so the next layer hears them as loudly. A neuron whose
             pushes bring out words that the random pushes do not ranks high; one indistinguishable from the controls
@@ -1178,16 +1178,22 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             A rank is a lead, not a finding: with 256 controls about one neuron in 257 lands above all of them by chance
-            alone, some 84 of a layer’s 21,504. The doses are neuron-explorer’s, chosen on Qwen3.5-4B and not yet
-            calibrated on this model, so a low rank can mean only that the dose was wrong for the layer. A census runs a
+            alone, some 84 of a layer’s 21,504. A main_rel census’s doses are neuron-explorer’s, chosen on Qwen3.5-4B and
+            not calibrated on this model, so a low rank there can mean only that the dose was wrong for the layer;
+            break_rel’s were chosen on this model’s two calibration ladders, and its six questions are read as two
+            halves, so a neuron’s words picked on one half are tested on the other. A census runs a
             layer at a time on the GPU and is kept; the map colours a layer’s neurons by it, from pale to dark gilt above
             the strongest control.
           </Note>
           <EntryApparatus title="the census">
-            Questions: who are you, a snake game in Python, the colour orange (at −0.7, +0.5 and +0.8 of the stream’s
-            median length leaving the layer) and “write whatever you like” at +3.0; greedy answers. A word (three
-            letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5) against the average unit, over
-            pushes of at most 1.6 of the stream, every word of the unpushed answers left out; mass = the summed positive z
+            main_rel: who are you, a snake game in Python, the colour orange (at −0.7, +0.5 and +0.8 of the stream’s
+            median length leaving the layer) and “write whatever you like” at +3.0. break_rel: who are you, the colour
+            orange, write whatever you like, how a bicycle works, three tips for a long walk and a wooden chair, each at
+            −2, −1, +1 and +2 of the stream (±1 where text breaks at layers 40–57, ±2 past it). Greedy answers. A word
+            (three letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5), for main_rel against the
+            average unit over pushes of at most 1.6 of the stream with every word of the unpushed answers left out, for
+            break_rel against the controls’ mean alone over every answer with the answer’s own question’s unpushed words
+            left out; mass = the summed positive z
             of its top five words, the sort key; p = (1 + controls with at least its mass) / (C + 1), and q its
             Benjamini–Hochberg false-discovery q over the layer. A control is unit(w<sub>post</sub> ⊙ r), r isotropic from
             a seed, pushed exactly as a neuron is: the reference rotates a down column to a random direction, and on Gemma

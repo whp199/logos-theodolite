@@ -105,11 +105,28 @@ export function censusChance(units: { kind: string; z: number }[] | undefined) {
   return { above: neu.filter((u) => u.z > floor).length, chance: neu.length / (ctl.length + 1), neurons: neu.length, controls: ctl.length };
 }
 
+/** How a census's ranking read its answers, said where it is not the reference's reading (as the ranking file records
+ * it): every answer, or those under its cap on the push; each word against the controls' mean alone; and whose unpushed
+ * words each answer leaves out. */
+function readingSaid(card: CensusCard): string {
+  const r = card.reading;
+  if (!r || r.reference !== "controls") return "";
+  const ds = card.doses ?? [];
+  const every = ds.length > 0 && ds.every((d) => Math.abs(d) <= r.max_rel);
+  return ` Ranked on ${every ? "every answer" : `the answers pushed by at most ${r.max_rel} of the stream`}, each word set against the controls’ mean alone${r.exclude === "own" ? ", each answer leaving out only its own question’s unpushed words" : ""}.`;
+}
+
 /** Where a census's doses and push unit come from, said wherever its answers or numbers are shown. */
 export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: React.CSSProperties }> = ({ card, style }) =>
   card ? (
     <p className="atlas-small atlas-prov" style={style}>
-      <span className="red">Doses not yet calibrated on this model:</span> {card.doses_from ?? "the run does not say where its doses come from"}.
+      {card.doses_calibrated ? (
+        <span>Doses chosen on this model:</span>
+      ) : (
+        <span className="red">Doses not yet calibrated on this model:</span>
+      )}{" "}
+      {card.doses_from ?? "the run does not say where its doses come from"}.
+      {readingSaid(card)}
       {card.dose_unit === "ceiling"
         ? ` Each dose is a multiple of the pushed neuron’s write ceiling, the most it can write by itself (a control’s: of the neuron it is paired with), so one dose is a different push for each neuron; the push beside it is its share of the stream’s median length${card.p50_source ? `, read over ${card.p50_source}` : ""}.`
         : card.p50_source

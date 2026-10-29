@@ -325,6 +325,13 @@ export interface CensusCard {
   device?: string | null;
   mixed_runtime?: boolean;
   partial?: { missing_shards: number[]; missing_answers: number } | null;
+  /** how its ranking read its answers (as its ranking file records it, census.write_units): the largest push counted, as
+   * a share of the stream; the mean a word is set against ("units": every unit's; "controls": the controls' alone);
+   * whose unpushed words are left out */
+  reading?: { max_rel: number; reference: "units" | "controls"; exclude: "all" | "own" };
+  /** its design's doses, and whether they were chosen on this model (break_rel) rather than carried from another */
+  doses?: number[];
+  doses_calibrated?: boolean;
   /** the second stage of a two-stage census: the screen whose strongest neurons it retests against fresh controls */
   stage?: { stage: number; screen: string; top: number; of: number; screen_seed: number | null; screen_controls: number | null } | null;
   /** with no push, after how many word-pieces an answer written in batches like this run's parts from the same answer

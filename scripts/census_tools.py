@@ -149,7 +149,9 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="what", required=True)
     r = sub.add_parser("rank", help="rank a run's units")
     r.add_argument("run")
-    r.add_argument("--max-rel", type=float, default=1.6, help="answers pushed by at most this share of the stream count")
+    r.add_argument("--max-rel", type=float, default=None, help="answers pushed by at most this share of the stream count "
+                   "(default: the run's design's reading, census.reading_of: 1.6 for main_rel and the ladders, 2.5, every "
+                   "answer, for break_rel)")
     r.add_argument("--top-words", type=int, default=12)
     r.add_argument("--show", type=int, default=30)
     r.add_argument("--find", default="", help="neurons whose rank to report, e.g. 2742,15")
@@ -194,8 +196,15 @@ def main(argv=None) -> int:
             if rmeta.get("shard"):
                 raise SystemExit(f"{run.name} is shard {rmeta['shard']['i']} of {rmeta['shard']['n']} of a run: join its shards first "
                                  "(census_tools.py merge), then rank the joined run.")
+            reading = cz.run_reading(run, a.max_rel)
             out = cz.write_units(run, max_rel=a.max_rel, top_words=a.top_words)
             recs = list(cz.read_rows(out))
+            doses = [abs(float(x[1])) for x in rmeta.get("design") or []]
+            every = " (every answer)" if doses and reading["max_rel"] >= max(doses) else ""
+            against = "the controls' mean" if reading["reference"] == "controls" else "every unit's mean"
+            left_out = "its own question's" if reading["exclude"] == "own" else "every question's"
+            print(f"read as {rmeta.get('design_name') or 'a run with no design named'} is: answers pushed by at most "
+                  f"{reading['max_rel']:g} of the stream{every}, each word against {against}, {left_out} unpushed words left out")
             st = rmeta.get("stage")
             if st:
                 print(f"a retest (stage {st['stage']}) of the {st['top']} strongest of the {st['of']} neurons of {st['screen']}, "
@@ -268,7 +277,7 @@ def main(argv=None) -> int:
                                     base=cz.baseline_ids(cz.read_rows(run, tolerate_tail=True)))
             has = any(x["over_ceiling"] is not None for x in curves)
             source = ("the answers' own record, else the weights" if ceilings is not None else "the answers' own record") if has else ""
-            questions = [p for p in cz.PROMPTS if p in {q for q, _ in meta.get("design") or []}]
+            questions = list(dict.fromkeys(q for q, _ in meta.get("design") or []))  # the design's, in its order
             window = cz.dose_window(curves, meta.get("dose_unit", "stream"), questions)
             print_curves(run, meta, curves, window, source)
             if a.json:
