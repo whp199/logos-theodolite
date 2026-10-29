@@ -644,9 +644,15 @@ def run_checks(tmp: Path) -> int:
     fl, kn = rep["floor"], rep["kernel"]
     print(f"  --    {c4.say('floor (the reference at batch 8 against 3)', fl)}")
     print(f"  --    {c4.say('int4mm against the reference, batch 8', kn)}")
-    check(fl["answers"] == kn["answers"] == 64 and fl["identical"] == 64 and fl["max_abs_dlogprob"] == 0.0
-          and rt_i4.model_id.endswith("+int4mm"),
-          "the canary (64 answers): on the CPU the reference is the same at batch 8 and 3, so its floor is nought")
+    # oneDNN's bf16 products on a CPU with AVX-512 bf16 (a Ryzen 9 7900X) round differently at batch 8 and 3, by about
+    # one bf16 step of a log-prob (0.0039 there); on its AVX2 path (ONEDNN_MAX_CPU_ISA=AVX2, or the 4-vCPU container
+    # this was written on) they do not, and the floor is nought. Either way every answer is the same, and the kernel
+    # departs further than the floor
+    check(fl["answers"] == kn["answers"] == 64 and fl["identical"] == 64 and fl["max_abs_dlogprob"] < 2 ** -7
+          and fl["max_abs_dlogprob"] < kn["max_abs_dlogprob"] and rt_i4.model_id.endswith("+int4mm"),
+          "the canary (64 answers): on the CPU the reference writes the same answers at batch 8 and 3, its log-probs "
+          + ("the same, so its floor is nought" if fl["max_abs_dlogprob"] == 0.0 else
+             f"within {fl['max_abs_dlogprob']:.2g} (this CPU's bf16 products depend on the batch), below the kernel's"))
     same = c4.verdict(fl, fl)
     check(same["per_answer_within_floor"] is True and same["stands_for_reference"] is False and same["ranking"] is None,
           "the rule can only refuse: a run within the floor on all four measures still does not stand for the reference "

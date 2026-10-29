@@ -1048,10 +1048,13 @@ prefix, largest |Δ log-prob| or top-5 overlap. Those are only the per-answer ha
 the per-run half (the rankings of a whole depth pool compared: Spearman's ρ of mass, the top 100's overlap, the neurons
 above every control, the false discoveries) is not taken, so the script can only refuse; within the floor on all four,
 the kernel's readings still do not stand for the reference's. On the stand-in's Q4_0 GGUF in bf16 (4 neurons, 2 controls, 64
-answers) the floor is nought (the reference is the same at batch 8 and 3), and through the kernel 30 of 64 answers are
-identical, the shared prefix 65%, the largest |Δ log-prob| over it 0.024, the top-5 overlap 0.95 (at the script's
-defaults, 244 answers: 119 identical, 67%, 0.030, 0.96): its own class by the rule (the stand-in's small, near-tied
-logits split greedy answers easily; the 31B is untested).
+answers) the floor is nought on the 4-vCPU container it was first run on (the reference is the same at batch 8 and 3);
+on a Ryzen 9 7900X, whose AVX-512 bf16 products round by the batch, every answer is the same but a log-prob moves by
+up to 0.0039 (nought again with `ONEDNN_MAX_CPU_ISA=AVX2`), so a CPU's floor is to be measured on it, as a card's is.
+Through the kernel 30 of 64 answers are identical (29 on the 7900X's AVX-512 path), the shared prefix 65%, the largest
+|Δ log-prob| over it 0.024, the top-5 overlap 0.95 (at the script's defaults, 244 answers: 119 identical, 67%, 0.030,
+0.96): its own class by the rule (the stand-in's small, near-tied logits split greedy answers easily; the 31B is
+untested).
 
 A machine with more cores and memory bandwidth should be some times faster (inferred, not measured). Either way the CPU
 suits reading weights (the wiring, the lens build, `compare_gguf_ct.py`), single forwards (a sighting's capture) and
