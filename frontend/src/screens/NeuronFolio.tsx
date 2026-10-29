@@ -3371,7 +3371,12 @@ const Builds: React.FC<{ m: Model }> = ({ m }) => {
         Both are leads, not causes. The drive’s parts add up exactly to its linearised activation at one word-piece, which can stand well off
         the activation itself; a neuron’s share counts only its own write straight into this layer, the norms held at their scale there, and
         what it does through the layers between is in those layers’ parts. The weights alone know nothing of the text. Test a lead by silencing
-        it and reading this neuron again.
+        it and reading this neuron again. On Gemma-4-31B that was tried only where each of 42 neurons, at seven layers between 11 and 58, fired
+        hardest, its gate wide open. There, silencing one of its three strongest heads or earlier neurons moved it the way its part said 117 and
+        118 times in 124. Heads at its own layer or the one below, and neurons up to four layers back, moved it by 0.9 to 1 times their part
+        (medians). Heads further back moved it by about half, and neurons five or more layers back went the predicted way only 9 times in 13.
+        A head the drive does not list can move it as much, through the layers between. At a word-piece where it fires weakly, as at most of a
+        sighting’s, nothing was tried.
       </Rubric>
       <Apparatus title="what builds it" label="Apparatus for what builds it">
         <dl className="dl num">

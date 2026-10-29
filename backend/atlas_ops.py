@@ -510,7 +510,9 @@ def write_rows(
     come out alike write alike: with every push an add or an act at dose 0 the voices are the same (a mul at dose 0
     silences its neuron in the pushed rows), and a sample's unpushed row writes what an unpushed write alone with
     seed + s does (both checked in float32 on the stand-in; on the GPU the batch's size can move a row's numbers, as it
-    can a greedy row's). Each row's draw follows its own chances exactly but is not interp_engine's own draw
+    can a greedy row's: on Gemma-4-31B the voices of every sample stayed alike at dose 0, but sample s of eight was the
+    write alone with seed + s for 3 of 8, the other five parting after 90 to 245 of their ~290 characters,
+    experiments/results/atlas_steer_sampling/). Each row's draw follows its own chances exactly but is not interp_engine's own draw
     (`torch.multinomial`, in sorted order under top-p), so a seed here does not draw what the same seed draws in a
     sweep. Each Step then carries `sampler_prob`, and a step with no chances to draw from (a temperature so small that
     the logits over it overflow) is refused. There is no min-p and no repetition penalty: backend/sampler_request.py

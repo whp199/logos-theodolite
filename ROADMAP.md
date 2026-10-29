@@ -12,7 +12,9 @@ ii–vi gathered again on 28 October 2026, at `554f058`, after a session that gu
 its first calibration and for rented cards, built the passages, one field book, the wiring’s sign in use and faster
 4-bit unpacking, and began the CPU and GGUF (section vii, new); sections i, ii, vi and vii brought up to date on the
 night of 28–29 October 2026 (`f88dba5`, `88e832d`, `4e38b6d` and that night’s review), once the calibration, the
-passages and the wiring’s check had been taken on the model; what each hard job costs is in `COMPUTE.md`.</sub>
+passages and the wiring’s check had been taken on the model; sections iii and vi brought up to date on 29 October
+2026, after the drive, the sampled push, the vault’s example edit and a second steer-lens layer were checked on the
+model; what each hard job costs is in `COMPUTE.md`.</sub>
 
 <br>
 
@@ -156,13 +158,25 @@ Looking upstream at what builds a neuron is in the folio now (§iii).
   default. It is offered through MCP too (`query_larql_vault(lql_query, voice)`, the same `VoiceRequest`; run on its
   own, the MCP server’s tools take turns under one lock of their own, so nothing lands between an edit’s two answers),
   and for an edit typed in the console, heard by default with the edit tab’s question (`check_vault_voice.py`, on the
-  CPU stand-in; the end-to-end check compares the tool’s heard edit with the route’s, not yet run on the GPU). The
-  pages now call the “.patch MEMIT” edit an edit, a one-neuron column edit and not MEMIT; the code’s names and the
-  statements are kept for old callers and the study’s scripts. Every vault query runs in Python; the `larql`/`vindex`
-  binaries are called only for `--version` (README §iv). Still open: it is one question, so UPDATE and INSERT are still
-  tested by cause and effect only as far as that one answer goes (the study tested only DELETE, E6 §2.3). The edit
-  tab’s own example edit is not heard on the page’s own question: its answer does not change, so a first reader hears
-  nothing; the end-to-end check finds an edit that is heard, at layer 60, instead.
+  CPU stand-in; the end-to-end check compares the tool’s heard edit with the route’s, and did so on the 31B on 29
+  October 2026). The pages now call the “.patch MEMIT” edit an edit, a one-neuron column edit and not MEMIT; the
+  code’s names and the statements are kept for old callers and the study’s scripts. Every vault query runs in Python;
+  the `larql`/`vindex` binaries are called only for `--version` (README §iv). The edit tab now opens on an edit that
+  is heard, with its own question (29 October 2026; `vault/lql.ts` `EXAMPLE_EDIT`). Its earlier example, neuron 100 of
+  layer 36, changed only one of seven answers, and that by a space, so a first reader heard nothing. The new one is
+  neuron 7830 of layer 60, the one firing hardest where the answer to “How many legs does a spider have?” begins:
+  - it turns “A spider has eight legs.” into “six legs.”;
+  - on seven questions it also gave a dog six legs and wrote a hexagon’s “6 sides” as “six sides”, each answer cut to
+    those words;
+  - it left an insect’s six legs, Paris, the sky’s colour and the model’s account of itself alone
+    ([`vault_example_edit/probe.json`](experiments/results/vault_example_edit/probe.json)).
+
+  A note beside it says so. It also says that such an edit is rare: the most active neurons at layers 41, 46, 51, 56
+  and 59 were not heard on this question at strengths 3 or 30. And it says that at the last layer only the norms
+  stand between the neuron’s write and the next word, so the example shows an edit heard, not where a fact is kept. It
+  is heard as a chat with no system prompt, as it was tried; the tab opens so. The probe did not record whether the
+  neuron fires on the questions left alone. Still open: it is one question, so UPDATE and INSERT are still tested
+  by cause and effect only as far as that one answer goes (the study tested only DELETE, E6 §2.3).
 - **Thinking on bare text. Built.** Sent as a chat, the sighting with thinking turned on uses the template’s own switch;
   sent as bare text, the interface leaves it out, since bare text has no turn to think in (`think_bare="none"`), and
   the first pair names how thinking was switched on (`think_protocol`; null on later pairs). Still open: the server’s
@@ -204,7 +218,42 @@ Looking upstream at what builds a neuron is in the folio now (§iii).
   /api/atlas/attn_drive` with `ids`; each block’s part split over its neurons, one mat-vec a layer, checked on the
   stand-in to add up to the block’s part to float error and against a direct-path finite difference), and by the
   weights alone its strongest writers, each on the face that opens its gate. Both are leads: a neuron’s share is its
-  direct write with the norms held, not what it does through the layers between. Not yet run on the 31B.
+  direct write with the norms held, not what it does through the layers between. **Checked on the 31B** (29 October
+  2026, through the server with the reference unpacker, 10.5 minutes;
+  [`atlas_drive_check/`](experiments/results/atlas_drive_check/), `scripts/verify_atlas_drive.py`). The neurons were
+  42, six at each of layers 11, 21, 31, 41, 46, 51 and 58, each read at its strongest stored passage, cut to end there.
+  - The parts add up there: the drive’s `rest` is at most 0.5% of its linearised total, a block’s neurons add up to its
+    part within 0.08% (median; at most 2%, the rounding of the block’s bf16 output), and the drive’s activation is the
+    model’s own within 0.8%. The linearised total is about twice the activation (median 2.01, from 1.18 to 2.29), as
+    gelu(g) u is near bilinear once the gate is open.
+  - Each of the three strongest heads, and of the three strongest earlier neurons, was taken away in a real forward
+    (a head scaled by 0, a neuron multiplied by 0, at every word-piece but the start mark), and the neuron read again.
+    That removal moved the neuron the way its part said 117 times in 124 for heads and 118 in 124 for neurons (94% and
+    95%; Wilson 95% intervals 89–97% and 90–98%, treating a neuron’s three leads as independent). It moved it by a
+    median 0.89 and 0.93 of the part (Spearman ρ 0.89 and 0.85). The sign test is not only “taking an input away lowers
+    the peak”: of the leads whose removal was predicted to raise the activation’s size, 34 of 36 heads and 16 of 16
+    neurons did.
+  - How far back a lead was written matters (read after the run, `read_after_the_run` in the record). Heads at the
+    neuron’s own layer or the one below went the predicted way 81 times in 83, by a median 0.95 of the part. Heads
+    further back went 36 in 41, by 0.57. Neurons up to four layers back went 109 in 111, by 0.92–1.0. Neurons five or
+    more back went 9 in 13, by 0.37.
+  - Against heads drawn at random from the layers at or below the neuron’s, and neurons drawn from the named ones’
+    blocks, a lead moved the neuron more than a random one in 92% and 99% of pairs (ties counted half); the median
+    change was 11% of the activation, against 1.3% for the random heads. Both nulls are easy. Only 4 of the 126 random
+    heads sit at the neuron’s own layer, against 46 of the leads. And 89 of the 126 random neurons changed nothing the
+    bf16 reading can show, mostly because they were silent there, so the 99% sets the leads against silence.
+  - The leads are real; they are not all that matters. 18 of the 126 random heads moved the neuron more than the
+    least-moving of its three named heads, through the layers between.
+  - The weakest layer was 58: 16 of 18 the predicted way for each kind, and a median 0.61 of the part for heads, the
+    lowest. The lowest shares were 15 of 17, for the heads at 21 and the neurons at 51.
+
+  So the rows lead well where a neuron fires hardest, at least for parts written close by, in this sample. The
+  folio’s note says so, and that a head it does not list can move the neuron as much. Still untested:
+  - where a neuron fires weakly, as at most of a sighting’s word-pieces (41 of the 42 sat with the gate wide open,
+    their linearised total 2.00–2.29 times the activation);
+  - leads below the three strongest;
+  - a null of neurons matched on activation;
+  - how the named heads rank among every head of the layers just below by the whole effect of taking each away.
 - **The scientist’s names as proposals. Built.** `set_name` and `write_note` propose (`field_proposals.json`,
   `/api/atlas/proposals`): the atlas page shows each with keep and discard, nothing reads one before it is kept (the
   map, lists, search, tooltips and later chats read only the names and notes kept), and a kept one is written as the
@@ -260,21 +309,22 @@ the stats over 2,000,054 word-pieces, a document from each corpus in turn, in 58
 the layout in 9) and the page driven end to end on them, a Codex scientist with it; the index files are kept outside the
 repository. On 28 October the census, the wiring, the passages and the scientist gained the pieces below, each checked
 on the CPU stand-in; each bullet says which have since run on the model (the calibration ladders and the writer’s floor
-on 28 October; the passages, the wiring rebuilt and its measured check on the night of 28–29 October; one steer-lens
-layer and the determinism run on 29 October). In this section layers count from 0, as the commands do
+on 28 October; the passages, the wiring rebuilt and its measured check on the night of 28–29 October; two steer-lens
+layers, the determinism run and the sampled push on 29 October). In this section layers count from 0, as the commands do
 (page = layer + 1), unless pages are named. [`COMPUTE.md`](COMPUTE.md) says what each job costs and where to run it.
 
 - **Take its censuses, and its steer lens, on the model.** Neither exists beyond the 8 + 8 `calib_rel` pilot of 27
   October (580 answers, about 16 minutes at `--max-new 64`), the two calibration ladders of 28 October (64 + 64 units at
-  each of six layers, below), one steer-lens layer timed into a scratch folder, the 16 + 8 determinism run of 29 October
-  (868 answers) and the `break_rel` trial taken and read that day (both below). The pilot measured the cost: every
+  each of six layers, below), two steer-lens layers timed into a scratch folder (45 and 5), the 16 + 8 determinism run
+  of 29 October (868 answers) and the `break_rel` trial taken and read that day (both below). The pilot measured the cost: every
   decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole `main_rel` layer is about 3.6
   days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is the 4-bit unpacking, not the
   model (COMPUTE §i). The steer lens was estimated at 15 to 20 hours for all 60 layers on a 5090. One layer timed on 29
   October 2026 (layer 45, `compiled`, into a scratch folder, not served;
   [`atlas_steer_timing/`](experiments/results/atlas_steer_timing/)) took 287 s; a layer runs only the layers after it
-  (the forward starts at l + 1), 14 for layer 45, so its cost grows with their number, and all 60 would be about 10
-  hours (inferred: 287 s / 14 × 1,770 layer-forwards; a shallow layer timed would check it). Its dose, the census’s 0.8
+  (the forward starts at l + 1), 14 for layer 45, so its cost grows with their number. A shallow layer timed the same
+  day checks it: layer 5, which runs 54, took 1,181 s, 7% more than layer 45’s rate gives. So all 60 would be about
+  10.1–10.8 hours (inferred, by either layer’s rate over 1,770 layer-forwards). Its dose, the census’s 0.8
   of the stream, is still to be chosen against the calibration before it is built. On the home card, headless, time a
   pilot first; on a rented one, `scripts/pod/pilot.sh` is that pilot (it times the step and the memory for each unpacker
   at several batches, takes a `calib_rel` run, times one steer-lens layer, sets a canary batch against the home card’s
@@ -511,8 +561,20 @@ layer and the determinism run on 29 October). In this section layers count from 
   instrument’s own sampler (temperature, top-k, top-p, a presence penalty only with a temperature, a seed drawn and
   echoed when none is given), each step one draw shared by the three voices (an exponential race seeded seed + s), so
   the voices part only where the push moves the odds; `/steer` writes up to eight samples in one batch, and every reply
-  says how it was written. Checked on the stand-in in float32 only; still to see on the 31B whether the voices stay
-  alike at dose 0 in bf16, and what eight samples cost. The census stays greedy.
+  says how it was written. **Checked on the 31B** (29 October 2026, through the server with the reference unpacker, a
+  question of a forest walk, 64 word-pieces; [`atlas_steer_sampling/`](experiments/results/atlas_steer_sampling/),
+  `scripts/verify_steer_sampling.py`):
+  - At dose 0 the three voices wrote the same words in bf16, greedy and sampled, in one sample and in each of eight.
+    Eight samples written again gave the same eight texts, and a push of 0.8 parted the voices in all eight.
+  - With the reference unpacker eight samples took 50 s and one took 49 s, so the rows barely cost: that unpacker’s
+    step is the unpacking’s (COMPUTE §ii). With `compiled` rows cost more (0.103 s a step at 32 rows, 0.126 s at 96).
+  - Sample s of eight is not always what one sample at seed + s writes alone. Three of eight were; the other five
+    parted after 90 to 245 of their 285–304 characters. Each sample draws its noise from its own generator seeded
+    seed + s, the same alone or in eight, and none parted at once as a shifted seed would. So the cause is the batch’s
+    size moving a row’s numbers (the writer’s floor, above), by the code, not shown in the record. To write a sample
+    again, ask for the same samples with the same seed.
+
+  The census stays greedy.
 - **Not carried over:** the explorer’s HF-against-vLLM steering check as such (the atlas runs on the instrument’s one
   runtime; what it measured is measured here as the writer’s floor, above); its steered prefill captures (their idea,
   a push at every prompt word-piece rebuilt by one prefill, gives the wiring its measured check); its steer’s min-p and

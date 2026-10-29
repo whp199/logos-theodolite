@@ -93,8 +93,9 @@ Runs inside a single process/network namespace to verify:
 11. An edit's voice (ARCHITECTURE §4.6; scripts/check_vault_voice.py runs first, on the CPU), on a spider question and
    an edit that is heard: the neuron of layer index 59 (page 60) most active where the answer begins, pushed toward
    "six" on the face that fires, at the first of a few strengths whose answer parts from the answer before by at least
-   0.1 nats at the first word-piece (the edit tab's default edit, UPDATE LAYER 35 SLOT 100, was not heard on the first
-   GPU run, so equalities on it prove nothing; nor was any of layer index 50's at strengths up to 100). Over HTTP the voice before is a fresh sighting's answer word-piece for
+   0.1 nats at the first word-piece (the edit tab's default edit before 29 October 2026, UPDATE LAYER 35 SLOT 100, was
+   not heard on the first GPU run, so equalities on it proved nothing; nor was any of layer index 50's at strengths up
+   to 100; the default is now the edit this item found, and it is checked to be heard on the spider question). Over HTTP the voice before is a fresh sighting's answer word-piece for
    word-piece and the voice after is the answer of a sighting with the edit in force, which differs from it, the
    reply's keys today's with "voice" between "patch" and "lens"; over the WebSocket the same edit again replaces the
    first (replaces_patch, edits_in_force_before), its voice before is the first edit's after, and it hears no change,
@@ -557,10 +558,12 @@ async def check_contrast_transports(ws: Any, legacy_meta: Dict[str, Any], health
 
 
 VOICE_Q = "How many legs does a spider have?"
-VOICE_EDIT = "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +"  # the edit tab's default edit
-# The edit tab's default edit is not heard on the spider question (the first GPU run: the same answer before and after,
-# KL 2.7e-05 nats at the first word-piece), so every equality between voices and sightings would hold whether the
-# overlay were applied or not. The voice is checked on an edit that is heard instead: the neuron of layer index
+VOICE_EDIT = "UPDATE LAYER 59 SLOT 7830 SET object = 'six' STRENGTH 3.0 POLARITY -"  # the edit tab's default edit
+# (frontend/src/screens/vault/lql.ts EXAMPLE_LQL), heard on VOICE_Q, the edit tab's own question: the edit this check
+# found below on its GPU runs of 29 October 2026. The tab's example before it, UPDATE LAYER 35 SLOT 100 ... POLARITY +,
+# was not heard on the spider question (the same answer before and after, KL 2.7e-05 nats at the first word-piece), so
+# every equality between voices and sightings would have held whether the overlay was applied or not. The voice is
+# checked on an edit found to be heard on this run, whatever the default: the neuron of layer index
 # AUDIBLE_LAYER (page layer 60) most active at the question's last word-piece, pushed toward "six" on the face that
 # fires, at the first strength in AUDIBLE_STRENGTHS whose answer parts from the answer before with at least
 # HEARD_KL_FLOOR nats between the two first word-pieces. Layer index 50 was tried first and never heard (its most
@@ -727,8 +730,9 @@ async def check_vault_voice_transports(client: Any) -> None:
         _, s_d = await ws_sweep(wsv, sight)
         assert s_d["answer"]["token_ids"] == v_d["after"]["token_ids"], "the default edit's voice after"
         assert (await client.post("/api/larql", json={"query": "ROLLBACK"})).status_code == 200
+        assert v_d["parted_at"] is not None, f"the edit tab's default edit {VOICE_EDIT} is not heard on {VOICE_Q!r}"
         print(f"  • voice, the edit tab's default edit: parted at {v_d['parted_at']}, KL "
-              f"{v_d['first_step']['kl_before_after']:.3g} nats (not heard, as on the first GPU run, when None)")
+              f"{v_d['first_step']['kl_before_after']:.3g} nats ({voice_said(v_d['before'])} → {voice_said(v_d['after'])})")
     # the MCP tool, called as the server's routes call the tools, under _GPU_LOCK (the server bound the runtime, so the
     # tool's own turn is a no-op): without a voice its edit is made unheard, said so on the record; with one it is heard
     # as the route hears it, the same two answers from the same model as the heard edit over HTTP
@@ -2317,8 +2321,9 @@ async def main() -> int:
             print("  • Instrument: thinking is offered for a chat; with bare text its box is disabled, and a line beside it says "
                   "why, rubrics or none (the rubric explains further)")
 
-            # the vault's edit tab hears its default edit before and after on the instrument's question: the status
-            # line quotes the two answers the server heard (DESCRIBE's record), and "undo every edit" rolls it back
+            # the vault's edit tab hears its default edit before and after on its own question, the spider question
+            # (frontend/src/screens/vault/lql.ts EXAMPLE_QUESTION), where it is heard: the status line quotes the two
+            # answers the server heard (DESCRIBE's record), and "undo every edit" rolls it back
             r_clear = await client.post("/api/larql", json={"query": "DESCRIBE"})
             assert r_clear.json()["active_patches_count"] == 0, "an edit was in force before the edit tab's"
             await go("#/vault")
@@ -2338,9 +2343,11 @@ async def main() -> int:
                 "the edit tab's status line", tries=600,
             )
             heard_rec = (await client.post("/api/larql", json={"query": "DESCRIBE"})).json()["active_patches"]
-            assert len(heard_rec) == 1 and heard_rec[0]["statement"].startswith("UPDATE LAYER 35 SLOT 100"), heard_rec
+            assert len(heard_rec) == 1 and heard_rec[0]["statement"] == VOICE_EDIT, heard_rec
             hv = heard_rec[0]["voice"]
             assert hv and hv["max_new_tokens"] == 12 and hv["chat"] is True and hv["after"] is not None, hv
+            assert hv["prompt"] == VOICE_Q and hv["assistant_prefix"] == "" and hv["parted_at"] is not None, (
+                f"the edit tab's default edit is not heard on its own question: {hv['prompt']!r}, parted at {hv['parted_at']}")
             for part in (f"patch {heard_rec[0]['patch_id']}", f"“{hv['prompt'].strip()}”", voice_said(hv["before"]),
                          voice_said(hv["after"]), "written the likeliest way"):
                 assert part in status, f"the edit tab's status line {status!r} lacks {part!r}"
@@ -2370,7 +2377,9 @@ async def main() -> int:
                 setter.call(el, v); el.dispatchEvent(new Event("input", { bubbles: true })); return true; })"""
             fields = await cdp.eval_js(
                 """(() => ({ n: document.getElementById("e-n").value, l: document.getElementById("e-l").value,
-                             w: document.getElementById("e-w").value, s: document.getElementById("e-s").value }))()"""
+                             w: document.getElementById("e-w").value, s: document.getElementById("e-s").value,
+                             q: document.getElementById("v-q").value, a: document.getElementById("v-a").value,
+                             face: Array.from(document.querySelectorAll('input[name="e-face"]')).findIndex((r) => r.checked) }))()"""
             )
             for fid, val in (("e-n", str(AUDIBLE["neuron"])), ("e-l", str(AUDIBLE["layer"] + 1)), ("e-w", "six"),
                              ("e-s", str(AUDIBLE["strength"])), ("v-q", VOICE_Q), ("v-a", "")):
@@ -2399,13 +2408,11 @@ async def main() -> int:
                 assert part in status2, f"the heard edit's status line {status2!r} lacks {part!r}"
             assert await wait_for("""document.body.innerText.includes("At its first word-piece, “six” went from")""",
                                   "the ledger's odds of the watched word")
-            await cdp.eval_js(
-                """(() => { const b = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "take the instrument’s question again");
-                    if (b) b.click(); })()"""
-            )
-            for fid, val in (("e-n", fields["n"]), ("e-l", fields["l"]), ("e-w", fields["w"]), ("e-s", fields["s"])):
+            for fid, val in (("e-n", fields["n"]), ("e-l", fields["l"]), ("e-w", fields["w"]), ("e-s", fields["s"]),
+                             ("v-q", fields["q"]), ("v-a", fields["a"])):
                 await cdp.eval_js(f"{set_val}({json.dumps(fid)}, {json.dumps(val)})")
-            await cdp.eval_js("""(() => { const r = document.querySelectorAll('input[name="e-face"]')[0]; if (r && !r.checked) r.click(); })()""")
+            await cdp.eval_js("""(() => { const r = document.querySelectorAll('input[name="e-face"]')[%d]; if (r && !r.checked) r.click(); })()"""
+                              % max(int(fields["face"]), 0))
             await cdp.eval_js(
                 """(() => { const b = Array.from(document.querySelectorAll("button")).find((x) => x.textContent.trim() === "undo every edit");
                     if (b && !b.disabled) b.click(); })()"""

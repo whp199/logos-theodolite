@@ -1,5 +1,5 @@
 {
- "what": "One layer of the steer lens timed on the home RTX 5090 (29 October 2026, 00:26-00:31 CDT): `atlas_build.py steer` at layer 45 (layers from 0), --unpacker compiled, written into a scratch folder and not served. Quoted in COMPUTE §i and ROADMAP §vi.",
+ "what": "Two layers of the steer lens timed on the home RTX 5090: `atlas_build.py steer` at layer 45 (29 October 2026, 00:26-00:31 CDT) and at layer 5 (the same day, 14:52-15:13 CDT, the machine otherwise idle), layers from 0, --unpacker compiled, each written into a scratch folder and not served. Quoted in COMPUTE \u00a7i and ROADMAP \u00a7vi.",
  "measured": {
   "layer": 45,
   "seconds": 287,
@@ -8,10 +8,21 @@
  },
  "what_it_ran": "build_steer_layer pushes each batch of neurons, both signs, on four contexts, and runs only the layers after the pushed one (backend/atlas_build.py: ao.forward_from_layer(lm, l + 1, ...); atlas_ops.forward_from_layer loops from start to the last layer). Layer 45 of 0-59 runs the 14 after it.",
  "all_60_inferred": {
-  "rule": "a layer's cost grows with the layers after it: layer l runs 59 - l of them, 1,770 layer-forwards over all 60, against 60 x 14 = 840 were every layer like layer 45",
-  "hours": 10.1,
-  "arithmetic": "287 s / 14 x 1,770 = 36,285 s",
-  "beside": "scripts/pod/pod_tool.py projects the same timing as 287 x sum(60 - l) / (60 - 45) s = 9.7 hours, counting the pushed layer's own per-batch work as one more",
-  "status": "inferred, not run: time a shallow layer (layer 5, say) to check"
+  "rule": "a layer's cost grows with the layers after it: layer l runs 59 - l of them, 1,770 layer-forwards over all 60",
+  "checked": "layer 5 took 1,181 s where layer 45's rate (287 s / 14 = 20.5 s a layer-forward) gives 1,107 s, 7% more; its own rate is 21.9 s a layer-forward",
+  "hours": [
+   10.1,
+   10.8
+  ],
+  "arithmetic": "20.5 x 1,770 = 36,285 s (10.1 h) by layer 45's rate; 21.9 x 1,770 = 38,711 s (10.8 h) by layer 5's; a line through both, cost = a + b (59 - l), gives b = 22.35 s, a = -25.9 s and 38,006 s (10.6 h)",
+  "earlier": "before layer 5 was timed: 10.1 hours from layer 45 alone, and scripts/pod/pod_tool.py's 9.7 (287 x sum(60 - l) / (60 - 45))",
+  "status": "inferred from two timed layers, not run whole"
+ },
+ "measured_layer_5": {
+  "layer": 5,
+  "seconds": 1181,
+  "log": "steer_L5.log ('steer lens: layer 5 done (1181 s)')",
+  "output": "atlas_data/offline/steer_lens_L5/L5.npz (gitignored; 2.2 MB; sha256 7d07587a2300f3eb811f2331d2dbe1fdaae75e79dce4b41e3a51585ed486004e)",
+  "runs": "the 54 layers after it"
  }
 }

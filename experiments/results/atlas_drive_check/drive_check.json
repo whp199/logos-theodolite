@@ -1,0 +1,6507 @@
+{
+ "what": "What builds a neuron (the folio's practice v upstream, `POST /api/atlas/attn_drive`), checked on the real model\nthrough the running server: do its parts add up there as they do on the CPU stand-in, and do the leads it names move\nthe neuron when they are taken away?",
+ "commit": "9e255fe",
+ "seed": 0,
+ "layers_from": 0,
+ "layers": [
+  10,
+  20,
+  30,
+  40,
+  45,
+  50,
+  57
+ ],
+ "health": {
+  "model_id": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "unpacker": {
+   "mode": "reference",
+   "linears": 410,
+   "shapes": 8,
+   "devices": [
+    "cuda:0"
+   ]
+  },
+  "device": "cuda:0"
+ },
+ "elapsed_s": 630.1,
+ "summary": {
+  "neurons": 42,
+  "rest_rel_max": 0.004988015806179957,
+  "block_sum_rel_err_median": 0.0007712198145842853,
+  "block_sum_rel_err_max": 0.019840590054722947,
+  "act_vs_reads_rel_median": 0.0015602060246605511,
+  "act_vs_reads_rel_max": 0.00786975174062876,
+  "linearised_total_over_act_median": 2.008824664046039,
+  "linearised_total_over_act_range": [
+   1.1817135490999495,
+   2.294097606677455
+  ],
+  "heads": {
+   "leads": 126,
+   "signed": 124,
+   "the_predicted_way": 117,
+   "share": 0.944,
+   "wilson_95": [
+    0.888,
+    0.972
+   ],
+   "spearman_predicted_measured": 0.892,
+   "median_measured_over_predicted": 0.894,
+   "auc_lead_over_null": 0.923,
+   "median_abs_change_lead_over_act": 0.1119,
+   "median_abs_change_null_over_act": 0.0129,
+   "null_changes": 126,
+   "null_changes_exactly_0": 25
+  },
+  "neurons_named": {
+   "leads": 126,
+   "signed": 124,
+   "the_predicted_way": 118,
+   "share": 0.952,
+   "wilson_95": [
+    0.898,
+    0.978
+   ],
+   "spearman_predicted_measured": 0.85,
+   "median_measured_over_predicted": 0.926,
+   "auc_lead_over_null": 0.991,
+   "median_abs_change_lead_over_act": 0.1146,
+   "median_abs_change_null_over_act": 0.0,
+   "null_changes": 126,
+   "null_changes_exactly_0": 89
+  },
+  "by_layer": {
+   "10": {
+    "heads": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 18,
+     "share": 1.0,
+     "wilson_95": [
+      0.824,
+      1.0
+     ],
+     "spearman_predicted_measured": 0.878,
+     "median_measured_over_predicted": 1.035,
+     "auc_lead_over_null": 1.0,
+     "median_abs_change_lead_over_act": 0.1304,
+     "median_abs_change_null_over_act": 0.0046,
+     "null_changes": 18,
+     "null_changes_exactly_0": 8
+    },
+    "neurons": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 17,
+     "share": 0.944,
+     "wilson_95": [
+      0.742,
+      0.99
+     ],
+     "spearman_predicted_measured": 0.792,
+     "median_measured_over_predicted": 0.754,
+     "auc_lead_over_null": 1.0,
+     "median_abs_change_lead_over_act": 0.1381,
+     "median_abs_change_null_over_act": 0.0,
+     "null_changes": 18,
+     "null_changes_exactly_0": 13
+    }
+   },
+   "20": {
+    "heads": {
+     "leads": 18,
+     "signed": 17,
+     "the_predicted_way": 15,
+     "share": 0.882,
+     "wilson_95": [
+      0.657,
+      0.967
+     ],
+     "spearman_predicted_measured": 0.676,
+     "median_measured_over_predicted": 1.268,
+     "auc_lead_over_null": 0.944,
+     "median_abs_change_lead_over_act": 0.1123,
+     "median_abs_change_null_over_act": 0.0069,
+     "null_changes": 18,
+     "null_changes_exactly_0": 3
+    },
+    "neurons": {
+     "leads": 18,
+     "signed": 17,
+     "the_predicted_way": 17,
+     "share": 1.0,
+     "wilson_95": [
+      0.816,
+      1.0
+     ],
+     "spearman_predicted_measured": 0.938,
+     "median_measured_over_predicted": 0.942,
+     "auc_lead_over_null": 0.963,
+     "median_abs_change_lead_over_act": 0.163,
+     "median_abs_change_null_over_act": 0.0,
+     "null_changes": 18,
+     "null_changes_exactly_0": 12
+    }
+   },
+   "30": {
+    "heads": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 17,
+     "share": 0.944,
+     "wilson_95": [
+      0.742,
+      0.99
+     ],
+     "spearman_predicted_measured": 0.848,
+     "median_measured_over_predicted": 0.861,
+     "auc_lead_over_null": 0.833,
+     "median_abs_change_lead_over_act": 0.1393,
+     "median_abs_change_null_over_act": 0.0357,
+     "null_changes": 18,
+     "null_changes_exactly_0": 3
+    },
+    "neurons": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 18,
+     "share": 1.0,
+     "wilson_95": [
+      0.824,
+      1.0
+     ],
+     "spearman_predicted_measured": 0.963,
+     "median_measured_over_predicted": 1.243,
+     "auc_lead_over_null": 1.0,
+     "median_abs_change_lead_over_act": 0.0628,
+     "median_abs_change_null_over_act": 0.0,
+     "null_changes": 18,
+     "null_changes_exactly_0": 14
+    }
+   },
+   "40": {
+    "heads": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 18,
+     "share": 1.0,
+     "wilson_95": [
+      0.824,
+      1.0
+     ],
+     "spearman_predicted_measured": 0.99,
+     "median_measured_over_predicted": 0.9,
+     "auc_lead_over_null": 1.0,
+     "median_abs_change_lead_over_act": 0.1556,
+     "median_abs_change_null_over_act": 0.0185,
+     "null_changes": 18,
+     "null_changes_exactly_0": 2
+    },
+    "neurons": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 17,
+     "share": 0.944,
+     "wilson_95": [
+      0.742,
+      0.99
+     ],
+     "spearman_predicted_measured": 0.836,
+     "median_measured_over_predicted": 0.962,
+     "auc_lead_over_null": 1.0,
+     "median_abs_change_lead_over_act": 0.0734,
+     "median_abs_change_null_over_act": 0.0,
+     "null_changes": 18,
+     "null_changes_exactly_0": 13
+    }
+   },
+   "45": {
+    "heads": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 17,
+     "share": 0.944,
+     "wilson_95": [
+      0.742,
+      0.99
+     ],
+     "spearman_predicted_measured": 0.787,
+     "median_measured_over_predicted": 0.766,
+     "auc_lead_over_null": 0.907,
+     "median_abs_change_lead_over_act": 0.0586,
+     "median_abs_change_null_over_act": 0.0137,
+     "null_changes": 18,
+     "null_changes_exactly_0": 2
+    },
+    "neurons": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 18,
+     "share": 1.0,
+     "wilson_95": [
+      0.824,
+      1.0
+     ],
+     "spearman_predicted_measured": 0.899,
+     "median_measured_over_predicted": 0.859,
+     "auc_lead_over_null": 1.0,
+     "median_abs_change_lead_over_act": 0.1338,
+     "median_abs_change_null_over_act": 0.0023,
+     "null_changes": 18,
+     "null_changes_exactly_0": 9
+    }
+   },
+   "50": {
+    "heads": {
+     "leads": 18,
+     "signed": 17,
+     "the_predicted_way": 16,
+     "share": 0.941,
+     "wilson_95": [
+      0.73,
+      0.99
+     ],
+     "spearman_predicted_measured": 0.902,
+     "median_measured_over_predicted": 0.811,
+     "auc_lead_over_null": 0.898,
+     "median_abs_change_lead_over_act": 0.0532,
+     "median_abs_change_null_over_act": 0.0128,
+     "null_changes": 18,
+     "null_changes_exactly_0": 1
+    },
+    "neurons": {
+     "leads": 18,
+     "signed": 17,
+     "the_predicted_way": 15,
+     "share": 0.882,
+     "wilson_95": [
+      0.657,
+      0.967
+     ],
+     "spearman_predicted_measured": 0.727,
+     "median_measured_over_predicted": 0.857,
+     "auc_lead_over_null": 0.972,
+     "median_abs_change_lead_over_act": 0.0901,
+     "median_abs_change_null_over_act": 0.0,
+     "null_changes": 18,
+     "null_changes_exactly_0": 16
+    }
+   },
+   "57": {
+    "heads": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 16,
+     "share": 0.889,
+     "wilson_95": [
+      0.672,
+      0.969
+     ],
+     "spearman_predicted_measured": 0.765,
+     "median_measured_over_predicted": 0.611,
+     "auc_lead_over_null": 0.88,
+     "median_abs_change_lead_over_act": 0.0743,
+     "median_abs_change_null_over_act": 0.0111,
+     "null_changes": 18,
+     "null_changes_exactly_0": 6
+    },
+    "neurons": {
+     "leads": 18,
+     "signed": 18,
+     "the_predicted_way": 16,
+     "share": 0.889,
+     "wilson_95": [
+      0.672,
+      0.969
+     ],
+     "spearman_predicted_measured": 0.688,
+     "median_measured_over_predicted": 0.932,
+     "auc_lead_over_null": 1.0,
+     "median_abs_change_lead_over_act": 0.127,
+     "median_abs_change_null_over_act": 0.0,
+     "null_changes": 18,
+     "null_changes_exactly_0": 12
+    }
+   }
+  },
+  "read_after_the_run": {
+   "heads_by_distance": {
+    "own layer or the one below": {
+     "leads": 84,
+     "signed": 83,
+     "the_predicted_way": 81,
+     "median_measured_over_predicted": 0.946
+    },
+    "two or more layers back": {
+     "leads": 42,
+     "signed": 41,
+     "the_predicted_way": 36,
+     "median_measured_over_predicted": 0.569
+    }
+   },
+   "neurons_by_distance": {
+    "the block below": {
+     "leads": 66,
+     "signed": 66,
+     "the_predicted_way": 66,
+     "median_measured_over_predicted": 0.921
+    },
+    "two to four layers back": {
+     "leads": 46,
+     "signed": 45,
+     "the_predicted_way": 43,
+     "median_measured_over_predicted": 0.996
+    },
+    "five or more layers back": {
+     "leads": 14,
+     "signed": 13,
+     "the_predicted_way": 9,
+     "median_measured_over_predicted": 0.373
+    }
+   },
+   "recall": {
+    "random_heads_moving_more_than_the_least_lead": 18,
+    "random_heads": 126,
+    "random_heads_at_the_neurons_own_layer": 4,
+    "named_heads_at_the_neurons_own_layer": 46
+   },
+   "note": "the Wilson intervals treat a neuron's three leads as independent; the random neurons are drawn uniformly from a block, so most are silent there (null_changes_exactly_0): the comparison with them is with silence, not with neurons as active as the leads"
+  }
+ },
+ "rows": [
+  {
+   "layer": 10,
+   "n": 12623,
+   "face": "+",
+   "window": 107,
+   "at": 16,
+   "pieces": 17,
+   "token": " Moon",
+   "passage_act": 4.75,
+   "act": 4.77305,
+   "act_reads": 4.7812,
+   "act_rel_diff": 0.0017045929892078443,
+   "linearised_total": 10.11986,
+   "rest": 0.014987,
+   "rest_rel": 0.00148094934119642,
+   "attention_sum": -3.59411,
+   "mlp_sum": 11.83812,
+   "embedding": 1.86087,
+   "blocks": [
+    {
+     "layer": 7,
+     "part": 3.14196,
+     "neurons_sum": 3.13953,
+     "rel_err": 0.000773402589466426
+    },
+    {
+     "layer": 8,
+     "part": 2.97552,
+     "neurons_sum": 2.97554,
+     "rel_err": 6.721514222768129e-06
+    },
+    {
+     "layer": 9,
+     "part": 2.09905,
+     "neurons_sum": 2.10047,
+     "rel_err": 0.0006764965103260889
+    },
+    {
+     "layer": 6,
+     "part": 1.14264,
+     "neurons_sum": 1.14188,
+     "rel_err": 0.0006651263740111443
+    },
+    {
+     "layer": 5,
+     "part": 0.64171,
+     "neurons_sum": 0.641141,
+     "rel_err": 0.0008866933661623501
+    },
+    {
+     "layer": 1,
+     "part": 0.54116,
+     "neurons_sum": 0.540979,
+     "rel_err": 0.0003344667011604456
+    },
+    {
+     "layer": 4,
+     "part": 0.52333,
+     "neurons_sum": 0.521314,
+     "rel_err": 0.0038522538360115165
+    },
+    {
+     "layer": 2,
+     "part": 0.46974,
+     "neurons_sum": 0.469746,
+     "rel_err": 1.277302337464555e-05
+    }
+   ],
+   "heads": [
+    {
+     "layer": 10,
+     "head": 22,
+     "predicted": -2.09046,
+     "measured": -2.1874000000000002
+    },
+    {
+     "layer": 10,
+     "head": 11,
+     "predicted": -1.44243,
+     "measured": -1.5937000000000001
+    },
+    {
+     "layer": 10,
+     "head": 20,
+     "predicted": -1.23612,
+     "measured": -1.2812000000000001
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 6,
+     "head": 2,
+     "measured": -0.09370000000000012
+    },
+    {
+     "layer": 4,
+     "head": 31,
+     "measured": -0.43740000000000023
+    },
+    {
+     "layer": 6,
+     "head": 19,
+     "measured": -0.5
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 9,
+     "n": 20094,
+     "act": -9.25,
+     "predicted": 1.05664,
+     "measured": 1.0937999999999999
+    },
+    {
+     "layer": 9,
+     "n": 19254,
+     "act": -12.9375,
+     "predicted": -0.829423,
+     "measured": -0.75
+    },
+    {
+     "layer": 8,
+     "n": 11683,
+     "act": 12.875,
+     "predicted": -0.725151,
+     "measured": -0.5624000000000002
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 9,
+     "n": 15617,
+     "measured": 0.0
+    },
+    {
+     "layer": 9,
+     "n": 11732,
+     "measured": 0.0
+    },
+    {
+     "layer": 8,
+     "n": 19116,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 10,
+   "n": 7157,
+   "face": "-",
+   "window": 2253,
+   "at": 120,
+   "pieces": 121,
+   "token": " cinematographer",
+   "passage_act": -60.0,
+   "act": -59.95834,
+   "act_reads": -60.0,
+   "act_rel_diff": 0.0006943333333333375,
+   "linearised_total": -119.91668,
+   "rest": -0.014305,
+   "rest_rel": 0.00011929116116290078,
+   "attention_sum": 0.25757,
+   "mlp_sum": -110.28317,
+   "embedding": -9.87677,
+   "blocks": [
+    {
+     "layer": 9,
+     "part": -60.23211,
+     "neurons_sum": -60.2146,
+     "rel_err": 0.0002907087266244113
+    },
+    {
+     "layer": 8,
+     "part": -16.81131,
+     "neurons_sum": -16.8151,
+     "rel_err": 0.00022544346633321144
+    },
+    {
+     "layer": 1,
+     "part": -10.28552,
+     "neurons_sum": -10.2853,
+     "rel_err": 2.138929290891983e-05
+    },
+    {
+     "layer": 4,
+     "part": -7.26411,
+     "neurons_sum": -7.26242,
+     "rel_err": 0.00023265066195307744
+    },
+    {
+     "layer": 6,
+     "part": -6.36975,
+     "neurons_sum": -6.37075,
+     "rel_err": 0.00015699203265439522
+    },
+    {
+     "layer": 7,
+     "part": -6.31142,
+     "neurons_sum": -6.31179,
+     "rel_err": 5.862389129549348e-05
+    },
+    {
+     "layer": 5,
+     "part": -2.83445,
+     "neurons_sum": -2.83593,
+     "rel_err": 0.0005221471537687826
+    },
+    {
+     "layer": 0,
+     "part": -1.12185,
+     "neurons_sum": -1.11996,
+     "rel_err": 0.0016847172081828651
+    }
+   ],
+   "heads": [
+    {
+     "layer": 9,
+     "head": 4,
+     "predicted": 8.05144,
+     "measured": 14.0
+    },
+    {
+     "layer": 9,
+     "head": 22,
+     "predicted": 2.74883,
+     "measured": 9.0
+    },
+    {
+     "layer": 8,
+     "head": 25,
+     "predicted": 2.50753,
+     "measured": 2.0
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 8,
+     "head": 8,
+     "measured": 0.0
+    },
+    {
+     "layer": 4,
+     "head": 8,
+     "measured": 0.0
+    },
+    {
+     "layer": 1,
+     "head": 16,
+     "measured": -0.25
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 4,
+     "n": 5809,
+     "act": 70.5,
+     "predicted": 7.84402,
+     "measured": 11.25
+    },
+    {
+     "layer": 9,
+     "n": 12158,
+     "act": 16.625,
+     "predicted": 6.94083,
+     "measured": 3.25
+    },
+    {
+     "layer": 9,
+     "n": 1493,
+     "act": 9.5,
+     "predicted": 5.81148,
+     "measured": 3.5
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 4,
+     "n": 17451,
+     "measured": 0.25
+    },
+    {
+     "layer": 9,
+     "n": 19723,
+     "measured": 0.0
+    },
+    {
+     "layer": 9,
+     "n": 4815,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 10,
+   "n": 10162,
+   "face": "+",
+   "window": 321,
+   "at": 272,
+   "pieces": 273,
+   "token": " vector",
+   "passage_act": 11.125,
+   "act": 11.12455,
+   "act_reads": 11.125,
+   "act_rel_diff": 4.044943820231259e-05,
+   "linearised_total": 22.31241,
+   "rest": -0.040514,
+   "rest_rel": 0.0018157608254778395,
+   "attention_sum": 0.55636,
+   "mlp_sum": 19.32035,
+   "embedding": 2.47621,
+   "blocks": [
+    {
+     "layer": 8,
+     "part": 8.43346,
+     "neurons_sum": 8.42739,
+     "rel_err": 0.000719752035344847
+    },
+    {
+     "layer": 6,
+     "part": 4.94229,
+     "neurons_sum": 4.94379,
+     "rel_err": 0.00030350303199530115
+    },
+    {
+     "layer": 9,
+     "part": 3.3937,
+     "neurons_sum": 3.3994,
+     "rel_err": 0.0016795827562837134
+    },
+    {
+     "layer": 4,
+     "part": 1.94474,
+     "neurons_sum": 1.94293,
+     "rel_err": 0.0009307156740746153
+    },
+    {
+     "layer": 7,
+     "part": 1.10117,
+     "neurons_sum": 1.10205,
+     "rel_err": 0.0007991499950053052
+    },
+    {
+     "layer": 5,
+     "part": -0.24969,
+     "neurons_sum": -0.248947,
+     "rel_err": 0.002975689855420696
+    },
+    {
+     "layer": 1,
+     "part": -0.19987,
+     "neurons_sum": -0.20045,
+     "rel_err": 0.0029018862260469167
+    },
+    {
+     "layer": 0,
+     "part": -0.11499,
+     "neurons_sum": -0.114499,
+     "rel_err": 0.004269936516218728
+    }
+   ],
+   "heads": [
+    {
+     "layer": 10,
+     "head": 22,
+     "predicted": -4.44067,
+     "measured": -4.625
+    },
+    {
+     "layer": 10,
+     "head": 23,
+     "predicted": 4.37011,
+     "measured": 4.5
+    },
+    {
+     "layer": 9,
+     "head": 20,
+     "predicted": -2.93119,
+     "measured": -2.625
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 1,
+     "head": 4,
+     "measured": 0.0
+    },
+    {
+     "layer": 10,
+     "head": 21,
+     "measured": -0.0625
+    },
+    {
+     "layer": 7,
+     "head": 6,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 8,
+     "n": 5810,
+     "act": -27.75,
+     "predicted": -5.73436,
+     "measured": -6.0938
+    },
+    {
+     "layer": 6,
+     "n": 16176,
+     "act": -51.25,
+     "predicted": -2.26556,
+     "measured": -2.0625
+    },
+    {
+     "layer": 4,
+     "n": 20726,
+     "act": 107.0,
+     "predicted": -1.49961,
+     "measured": -1.9375
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 8,
+     "n": 11593,
+     "measured": 0.0625
+    },
+    {
+     "layer": 6,
+     "n": 14226,
+     "measured": 0.0625
+    },
+    {
+     "layer": 4,
+     "n": 10361,
+     "measured": 0.0625
+    }
+   ]
+  },
+  {
+   "layer": 10,
+   "n": 20017,
+   "face": "-",
+   "window": 981,
+   "at": 95,
+   "pieces": 96,
+   "token": "ite",
+   "passage_act": -48.75,
+   "act": -48.90052,
+   "act_reads": -48.75,
+   "act_rel_diff": 0.003087589743589748,
+   "linearised_total": -97.80104,
+   "rest": -0.044811,
+   "rest_rel": 0.00045818531173083635,
+   "attention_sum": 16.90021,
+   "mlp_sum": -114.18939,
+   "embedding": -0.46705,
+   "blocks": [
+    {
+     "layer": 9,
+     "part": -86.83421,
+     "neurons_sum": -86.8577,
+     "rel_err": 0.0002705155030488024
+    },
+    {
+     "layer": 4,
+     "part": -13.21141,
+     "neurons_sum": -13.2079,
+     "rel_err": 0.00026567943921204065
+    },
+    {
+     "layer": 8,
+     "part": -5.36579,
+     "neurons_sum": -5.36603,
+     "rel_err": 4.472780336179465e-05
+    },
+    {
+     "layer": 2,
+     "part": -3.99131,
+     "neurons_sum": -3.9925,
+     "rel_err": 0.00029814772593465464
+    },
+    {
+     "layer": 1,
+     "part": -2.74201,
+     "neurons_sum": -2.74033,
+     "rel_err": 0.0006126892316220231
+    },
+    {
+     "layer": 3,
+     "part": -2.12389,
+     "neurons_sum": -2.12321,
+     "rel_err": 0.00032016724029964547
+    },
+    {
+     "layer": 7,
+     "part": -1.67748,
+     "neurons_sum": -1.68063,
+     "rel_err": 0.001877816725087623
+    },
+    {
+     "layer": 6,
+     "part": 1.5337,
+     "neurons_sum": 1.52763,
+     "rel_err": 0.003957749233878868
+    }
+   ],
+   "heads": [
+    {
+     "layer": 10,
+     "head": 4,
+     "predicted": -2.56864,
+     "measured": -0.75
+    },
+    {
+     "layer": 10,
+     "head": 31,
+     "predicted": -2.4772,
+     "measured": -4.0
+    },
+    {
+     "layer": 10,
+     "head": 0,
+     "predicted": -2.20548,
+     "measured": -1.5
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 10,
+     "head": 13,
+     "measured": -0.25
+    },
+    {
+     "layer": 8,
+     "head": 30,
+     "measured": 0.0
+    },
+    {
+     "layer": 7,
+     "head": 16,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 9,
+     "n": 5145,
+     "act": 32.75,
+     "predicted": 27.1594,
+     "measured": 16.0
+    },
+    {
+     "layer": 9,
+     "n": 17391,
+     "act": -23.125,
+     "predicted": 13.5821,
+     "measured": 9.0
+    },
+    {
+     "layer": 4,
+     "n": 15127,
+     "act": -119.5,
+     "predicted": 12.492,
+     "measured": -2.0
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 9,
+     "n": 2040,
+     "measured": 0.0
+    },
+    {
+     "layer": 9,
+     "n": 17979,
+     "measured": 0.0
+    },
+    {
+     "layer": 4,
+     "n": 460,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 10,
+   "n": 3056,
+   "face": "+",
+   "window": 1025,
+   "at": 163,
+   "pieces": 164,
+   "token": " media",
+   "passage_act": 16.875,
+   "act": 16.92425,
+   "act_reads": 16.875,
+   "act_rel_diff": 0.002918518518518559,
+   "linearised_total": 33.86207,
+   "rest": -0.025273,
+   "rest_rel": 0.0007463513010279643,
+   "attention_sum": -1.32915,
+   "mlp_sum": 32.26241,
+   "embedding": 2.95408,
+   "blocks": [
+    {
+     "layer": 8,
+     "part": 11.13558,
+     "neurons_sum": 11.1333,
+     "rel_err": 0.00020474910152851937
+    },
+    {
+     "layer": 9,
+     "part": 7.45776,
+     "neurons_sum": 7.45408,
+     "rel_err": 0.0004934457531484155
+    },
+    {
+     "layer": 7,
+     "part": 4.5008,
+     "neurons_sum": 4.50139,
+     "rel_err": 0.0001310878066121286
+    },
+    {
+     "layer": 6,
+     "part": 3.05501,
+     "neurons_sum": 3.05288,
+     "rel_err": 0.0006972153937302147
+    },
+    {
+     "layer": 4,
+     "part": 2.38716,
+     "neurons_sum": 2.38709,
+     "rel_err": 2.9323547646581916e-05
+    },
+    {
+     "layer": 1,
+     "part": 1.96331,
+     "neurons_sum": 1.9655,
+     "rel_err": 0.001115463171888247
+    },
+    {
+     "layer": 5,
+     "part": 1.9267,
+     "neurons_sum": 1.92617,
+     "rel_err": 0.0002750817459906272
+    },
+    {
+     "layer": 2,
+     "part": -0.6037,
+     "neurons_sum": -0.604552,
+     "rel_err": 0.0014112970018220373
+    }
+   ],
+   "heads": [
+    {
+     "layer": 10,
+     "head": 23,
+     "predicted": 1.88735,
+     "measured": 1.875
+    },
+    {
+     "layer": 10,
+     "head": 22,
+     "predicted": -1.71957,
+     "measured": -1.8125
+    },
+    {
+     "layer": 10,
+     "head": 20,
+     "predicted": -1.69232,
+     "measured": -1.75
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 6,
+     "head": 0,
+     "measured": 0.25
+    },
+    {
+     "layer": 9,
+     "head": 31,
+     "measured": 0.0
+    },
+    {
+     "layer": 5,
+     "head": 15,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 8,
+     "n": 1431,
+     "act": 26.125,
+     "predicted": -4.14113,
+     "measured": -3.875
+    },
+    {
+     "layer": 7,
+     "n": 18494,
+     "act": 18.375,
+     "predicted": -1.99852,
+     "measured": -0.375
+    },
+    {
+     "layer": 6,
+     "n": 16479,
+     "act": -16.625,
+     "predicted": -1.65384,
+     "measured": -1.875
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 8,
+     "n": 10656,
+     "measured": 0.0
+    },
+    {
+     "layer": 7,
+     "n": 2063,
+     "measured": 0.125
+    },
+    {
+     "layer": 6,
+     "n": 6260,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 10,
+   "n": 18596,
+   "face": "-",
+   "window": 1062,
+   "at": 23,
+   "pieces": 24,
+   "token": "keny",
+   "passage_act": -55.0,
+   "act": -54.60204,
+   "act_reads": -54.5,
+   "act_rel_diff": 0.0018722935779816945,
+   "linearised_total": -109.20407,
+   "rest": 0.185047,
+   "rest_rel": 0.0016945064410145152,
+   "attention_sum": 18.85483,
+   "mlp_sum": -124.63521,
+   "embedding": -3.60874,
+   "blocks": [
+    {
+     "layer": 9,
+     "part": -91.18968,
+     "neurons_sum": -91.167,
+     "rel_err": 0.0002487123542926572
+    },
+    {
+     "layer": 8,
+     "part": -16.17598,
+     "neurons_sum": -16.173,
+     "rel_err": 0.0001842237688227156
+    },
+    {
+     "layer": 1,
+     "part": -5.66428,
+     "neurons_sum": -5.66237,
+     "rel_err": 0.00033720084459095144
+    },
+    {
+     "layer": 2,
+     "part": -3.16616,
+     "neurons_sum": -3.16626,
+     "rel_err": 3.158400080847681e-05
+    },
+    {
+     "layer": 7,
+     "part": -2.11216,
+     "neurons_sum": -2.10225,
+     "rel_err": 0.004691879403075356
+    },
+    {
+     "layer": 4,
+     "part": -1.82968,
+     "neurons_sum": -1.8276,
+     "rel_err": 0.0011368108084474234
+    },
+    {
+     "layer": 6,
+     "part": -1.64119,
+     "neurons_sum": -1.6385,
+     "rel_err": 0.001639054588438791
+    },
+    {
+     "layer": 5,
+     "part": -1.45235,
+     "neurons_sum": -1.45423,
+     "rel_err": 0.001294453816228789
+    }
+   ],
+   "heads": [
+    {
+     "layer": 10,
+     "head": 31,
+     "predicted": -2.82142,
+     "measured": -2.25
+    },
+    {
+     "layer": 10,
+     "head": 4,
+     "predicted": -2.28237,
+     "measured": -2.25
+    },
+    {
+     "layer": 9,
+     "head": 4,
+     "predicted": 2.12181,
+     "measured": 11.5
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 3,
+     "head": 15,
+     "measured": -1.5
+    },
+    {
+     "layer": 2,
+     "head": 28,
+     "measured": -2.0
+    },
+    {
+     "layer": 1,
+     "head": 5,
+     "measured": -1.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 9,
+     "n": 464,
+     "act": -14.8125,
+     "predicted": 8.87853,
+     "measured": 6.5
+    },
+    {
+     "layer": 9,
+     "n": 17100,
+     "act": -14.0,
+     "predicted": 8.85836,
+     "measured": 6.25
+    },
+    {
+     "layer": 9,
+     "n": 15818,
+     "act": -8.75,
+     "predicted": 7.87991,
+     "measured": 5.75
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 9,
+     "n": 10487,
+     "measured": 0.0
+    },
+    {
+     "layer": 9,
+     "n": 16644,
+     "measured": 0.0
+    },
+    {
+     "layer": 9,
+     "n": 16032,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 20,
+   "n": 3573,
+   "face": "+",
+   "window": 3566,
+   "at": 495,
+   "pieces": 496,
+   "token": " technology",
+   "passage_act": 5.75,
+   "act": 5.74882,
+   "act_reads": 5.75,
+   "act_rel_diff": 0.00020521739130430205,
+   "linearised_total": 11.51053,
+   "rest": 0.007764,
+   "rest_rel": 0.0006745128156566205,
+   "attention_sum": -2.83556,
+   "mlp_sum": 14.25487,
+   "embedding": 0.08345,
+   "blocks": [
+    {
+     "layer": 19,
+     "part": 4.96954,
+     "neurons_sum": 4.96828,
+     "rel_err": 0.0002535445936646573
+    },
+    {
+     "layer": 18,
+     "part": 3.63885,
+     "neurons_sum": 3.64083,
+     "rel_err": 0.0005441279525123731
+    },
+    {
+     "layer": 17,
+     "part": 1.88727,
+     "neurons_sum": 1.88694,
+     "rel_err": 0.00017485574401115975
+    },
+    {
+     "layer": 16,
+     "part": 1.35769,
+     "neurons_sum": 1.35819,
+     "rel_err": 0.000368272580633241
+    },
+    {
+     "layer": 15,
+     "part": 0.63311,
+     "neurons_sum": 0.632417,
+     "rel_err": 0.0010945965156133116
+    },
+    {
+     "layer": 8,
+     "part": 0.47617,
+     "neurons_sum": 0.476678,
+     "rel_err": 0.0010668458743726158
+    },
+    {
+     "layer": 9,
+     "part": 0.24154,
+     "neurons_sum": 0.241784,
+     "rel_err": 0.0010101846485053997
+    },
+    {
+     "layer": 12,
+     "part": 0.23892,
+     "neurons_sum": 0.239637,
+     "rel_err": 0.003001004520341518
+    }
+   ],
+   "heads": [
+    {
+     "layer": 19,
+     "head": 1,
+     "predicted": -0.52501,
+     "measured": -0.9375
+    },
+    {
+     "layer": 19,
+     "head": 20,
+     "predicted": -0.49598,
+     "measured": -0.7812000000000001
+    },
+    {
+     "layer": 19,
+     "head": 0,
+     "predicted": -0.48315,
+     "measured": -0.6562000000000001
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 9,
+     "head": 18,
+     "measured": 0.0
+    },
+    {
+     "layer": 3,
+     "head": 21,
+     "measured": 0.031200000000000117
+    },
+    {
+     "layer": 17,
+     "head": 13,
+     "measured": -0.031200000000000117
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 19,
+     "n": 3186,
+     "act": 9.125,
+     "predicted": -0.920608,
+     "measured": -0.7812000000000001
+    },
+    {
+     "layer": 15,
+     "n": 10666,
+     "act": -29.875,
+     "predicted": -0.759109,
+     "measured": -0.6875
+    },
+    {
+     "layer": 18,
+     "n": 14740,
+     "act": -24.0,
+     "predicted": -0.538464,
+     "measured": -0.2812000000000001
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 19,
+     "n": 19765,
+     "measured": 0.0
+    },
+    {
+     "layer": 15,
+     "n": 17931,
+     "measured": 0.031200000000000117
+    },
+    {
+     "layer": 18,
+     "n": 19255,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 20,
+   "n": 9425,
+   "face": "-",
+   "window": 1549,
+   "at": 66,
+   "pieces": 67,
+   "token": "ices",
+   "passage_act": -40.25,
+   "act": -40.56773,
+   "act_reads": -40.5,
+   "act_rel_diff": 0.0016723456790122815,
+   "linearised_total": -81.13545,
+   "rest": -0.020741,
+   "rest_rel": 0.0002556342511195784,
+   "attention_sum": 4.40656,
+   "mlp_sum": -85.33534,
+   "embedding": -0.18594,
+   "blocks": [
+    {
+     "layer": 19,
+     "part": -36.65545,
+     "neurons_sum": -36.6398,
+     "rel_err": 0.0004269487893342144
+    },
+    {
+     "layer": 17,
+     "part": -13.43467,
+     "neurons_sum": -13.4376,
+     "rel_err": 0.0002180924429107087
+    },
+    {
+     "layer": 18,
+     "part": -11.92051,
+     "neurons_sum": -11.9128,
+     "rel_err": 0.0006467844077140525
+    },
+    {
+     "layer": 16,
+     "part": -7.05848,
+     "neurons_sum": -7.05556,
+     "rel_err": 0.0004136867994243063
+    },
+    {
+     "layer": 12,
+     "part": -3.74205,
+     "neurons_sum": -3.73964,
+     "rel_err": 0.000644032014537433
+    },
+    {
+     "layer": 11,
+     "part": -3.17309,
+     "neurons_sum": -3.17201,
+     "rel_err": 0.0003403622336586639
+    },
+    {
+     "layer": 14,
+     "part": -3.02888,
+     "neurons_sum": -3.02886,
+     "rel_err": 6.603100816186519e-06
+    },
+    {
+     "layer": 10,
+     "part": -2.45729,
+     "neurons_sum": -2.45946,
+     "rel_err": 0.0008830866523690754
+    }
+   ],
+   "heads": [
+    {
+     "layer": 19,
+     "head": 1,
+     "predicted": 1.58921,
+     "measured": 2.25
+    },
+    {
+     "layer": 19,
+     "head": 20,
+     "predicted": 1.4879,
+     "measured": 2.75
+    },
+    {
+     "layer": 18,
+     "head": 18,
+     "predicted": -1.30319,
+     "measured": 1.75
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 14,
+     "head": 5,
+     "measured": 0.25
+    },
+    {
+     "layer": 19,
+     "head": 24,
+     "measured": 0.0
+    },
+    {
+     "layer": 10,
+     "head": 15,
+     "measured": -0.5
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 19,
+     "n": 12796,
+     "act": -15.75,
+     "predicted": 9.03593,
+     "measured": 6.75
+    },
+    {
+     "layer": 17,
+     "n": 2082,
+     "act": 33.25,
+     "predicted": 4.38024,
+     "measured": 10.0
+    },
+    {
+     "layer": 17,
+     "n": 19388,
+     "act": -20.875,
+     "predicted": 3.74791,
+     "measured": 0.0
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 19,
+     "n": 9513,
+     "measured": 0.0
+    },
+    {
+     "layer": 17,
+     "n": 6025,
+     "measured": 0.25
+    },
+    {
+     "layer": 17,
+     "n": 6205,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 20,
+   "n": 6118,
+   "face": "+",
+   "window": 2048,
+   "at": 202,
+   "pieces": 203,
+   "token": " npm",
+   "passage_act": 3.3125,
+   "act": 3.26776,
+   "act_reads": 3.2656,
+   "act_rel_diff": 0.0006614404703576493,
+   "linearised_total": 6.53564,
+   "rest": -0.008853,
+   "rest_rel": 0.0013545727732861663,
+   "attention_sum": -8.06242,
+   "mlp_sum": 14.58514,
+   "embedding": 0.02177,
+   "blocks": [
+    {
+     "layer": 19,
+     "part": 3.51563,
+     "neurons_sum": 3.52201,
+     "rel_err": 0.0018147529745735622
+    },
+    {
+     "layer": 18,
+     "part": 2.891,
+     "neurons_sum": 2.89074,
+     "rel_err": 8.993427879623901e-05
+    },
+    {
+     "layer": 15,
+     "part": 2.54251,
+     "neurons_sum": 2.54443,
+     "rel_err": 0.0007551592717433338
+    },
+    {
+     "layer": 17,
+     "part": 1.69053,
+     "neurons_sum": 1.69008,
+     "rel_err": 0.0002661887100495474
+    },
+    {
+     "layer": 16,
+     "part": 1.24371,
+     "neurons_sum": 1.24434,
+     "rel_err": 0.0005065489543381562
+    },
+    {
+     "layer": 12,
+     "part": 1.23238,
+     "neurons_sum": 1.23243,
+     "rel_err": 4.0571901523786065e-05
+    },
+    {
+     "layer": 14,
+     "part": 0.88246,
+     "neurons_sum": 0.882485,
+     "rel_err": 2.8329895972555963e-05
+    },
+    {
+     "layer": 9,
+     "part": 0.35682,
+     "neurons_sum": 0.356555,
+     "rel_err": 0.000742671374922973
+    }
+   ],
+   "heads": [
+    {
+     "layer": 19,
+     "head": 21,
+     "predicted": -1.56534,
+     "measured": -0.5156000000000001
+    },
+    {
+     "layer": 19,
+     "head": 20,
+     "predicted": 1.23361,
+     "measured": 0.15629999999999988
+    },
+    {
+     "layer": 18,
+     "head": 29,
+     "predicted": -0.94882,
+     "measured": 0.23439999999999994
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 1,
+     "head": 16,
+     "measured": -0.07810000000000006
+    },
+    {
+     "layer": 15,
+     "head": 4,
+     "measured": 0.0
+    },
+    {
+     "layer": 2,
+     "head": 8,
+     "measured": -0.015600000000000058
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 19,
+     "n": 20277,
+     "act": -9.75,
+     "predicted": 1.66183,
+     "measured": 1.7656
+    },
+    {
+     "layer": 17,
+     "n": 21350,
+     "act": -103.5,
+     "predicted": -1.47689,
+     "measured": -2.3164
+    },
+    {
+     "layer": 15,
+     "n": 21396,
+     "act": -46.5,
+     "predicted": -1.00503,
+     "measured": -1.6484
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 19,
+     "n": 4900,
+     "measured": 0.0
+    },
+    {
+     "layer": 17,
+     "n": 1266,
+     "measured": 0.031299999999999883
+    },
+    {
+     "layer": 15,
+     "n": 2629,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 20,
+   "n": 17714,
+   "face": "-",
+   "window": 2760,
+   "at": 455,
+   "pieces": 456,
+   "token": "ubic",
+   "passage_act": -18.125,
+   "act": -18.09917,
+   "act_reads": -18.125,
+   "act_rel_diff": 0.001425103448275814,
+   "linearised_total": -36.21598,
+   "rest": 0.020275,
+   "rest_rel": 0.0005598357410181914,
+   "attention_sum": 5.83696,
+   "mlp_sum": -42.17726,
+   "embedding": 0.10405,
+   "blocks": [
+    {
+     "layer": 19,
+     "part": -22.82218,
+     "neurons_sum": -22.832,
+     "rel_err": 0.00043028317189686843
+    },
+    {
+     "layer": 18,
+     "part": -8.01163,
+     "neurons_sum": -8.01332,
+     "rel_err": 0.00021094334111784608
+    },
+    {
+     "layer": 17,
+     "part": -4.51552,
+     "neurons_sum": -4.5159,
+     "rel_err": 8.415420593859065e-05
+    },
+    {
+     "layer": 16,
+     "part": -2.05242,
+     "neurons_sum": -2.05547,
+     "rel_err": 0.0014860506134222026
+    },
+    {
+     "layer": 13,
+     "part": -1.58172,
+     "neurons_sum": -1.58372,
+     "rel_err": 0.001264446298965684
+    },
+    {
+     "layer": 12,
+     "part": -1.48558,
+     "neurons_sum": -1.48538,
+     "rel_err": 0.00013462755287495657
+    },
+    {
+     "layer": 11,
+     "part": -0.89303,
+     "neurons_sum": -0.893722,
+     "rel_err": 0.0007748899812996495
+    },
+    {
+     "layer": 10,
+     "part": 0.40682,
+     "neurons_sum": 0.408153,
+     "rel_err": 0.0032766334005210488
+    }
+   ],
+   "heads": [
+    {
+     "layer": 19,
+     "head": 1,
+     "predicted": 1.93005,
+     "measured": 2.4375
+    },
+    {
+     "layer": 19,
+     "head": 21,
+     "predicted": -1.78885,
+     "measured": -0.75
+    },
+    {
+     "layer": 19,
+     "head": 20,
+     "predicted": 1.57051,
+     "measured": 2.0
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 12,
+     "head": 17,
+     "measured": 0.125
+    },
+    {
+     "layer": 16,
+     "head": 15,
+     "measured": 0.375
+    },
+    {
+     "layer": 6,
+     "head": 26,
+     "measured": 0.125
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 19,
+     "n": 19205,
+     "act": 22.125,
+     "predicted": 6.74684,
+     "measured": 5.1875
+    },
+    {
+     "layer": 19,
+     "n": 4120,
+     "act": 20.25,
+     "predicted": 3.34365,
+     "measured": 2.4375
+    },
+    {
+     "layer": 17,
+     "n": 17480,
+     "act": -138.0,
+     "predicted": 3.32117,
+     "measured": 6.3125
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 19,
+     "n": 18995,
+     "measured": 0.0
+    },
+    {
+     "layer": 19,
+     "n": 9018,
+     "measured": 0.125
+    },
+    {
+     "layer": 17,
+     "n": 14764,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 20,
+   "n": 16143,
+   "face": "+",
+   "window": 3355,
+   "at": 250,
+   "pieces": 251,
+   "token": " answers",
+   "passage_act": 1.2578,
+   "act": 1.273,
+   "act_reads": 1.2734,
+   "act_rel_diff": 0.0003141196795980666,
+   "linearised_total": 2.86799,
+   "rest": 0.004834,
+   "rest_rel": 0.0016855009954706956,
+   "attention_sum": -2.7246,
+   "mlp_sum": 5.591,
+   "embedding": -0.00324,
+   "blocks": [
+    {
+     "layer": 19,
+     "part": 2.22677,
+     "neurons_sum": 2.22757,
+     "rel_err": 0.0003592647646590855
+    },
+    {
+     "layer": 17,
+     "part": 1.06355,
+     "neurons_sum": 1.06376,
+     "rel_err": 0.00019745192985759342
+    },
+    {
+     "layer": 18,
+     "part": 0.52326,
+     "neurons_sum": 0.523787,
+     "rel_err": 0.0010071474983756742
+    },
+    {
+     "layer": 15,
+     "part": 0.40143,
+     "neurons_sum": 0.401827,
+     "rel_err": 0.0009889644520837523
+    },
+    {
+     "layer": 16,
+     "part": 0.29853,
+     "neurons_sum": 0.297722,
+     "rel_err": 0.0027065956520283753
+    },
+    {
+     "layer": 14,
+     "part": 0.29741,
+     "neurons_sum": 0.297073,
+     "rel_err": 0.001133115900608694
+    },
+    {
+     "layer": 11,
+     "part": 0.22666,
+     "neurons_sum": 0.22659,
+     "rel_err": 0.0003088326127238451
+    },
+    {
+     "layer": 1,
+     "part": 0.15953,
+     "neurons_sum": 0.159323,
+     "rel_err": 0.0012975615871623689
+    }
+   ],
+   "heads": [
+    {
+     "layer": 20,
+     "head": 12,
+     "predicted": 0.21884,
+     "measured": 0.19540000000000002
+    },
+    {
+     "layer": 20,
+     "head": 15,
+     "predicted": 0.16395,
+     "measured": 0.1640999999999999
+    },
+    {
+     "layer": 19,
+     "head": 17,
+     "predicted": 0.12334,
+     "measured": 0.0
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 20,
+     "head": 22,
+     "measured": 0.007799999999999807
+    },
+    {
+     "layer": 2,
+     "head": 20,
+     "measured": 0.015699999999999825
+    },
+    {
+     "layer": 19,
+     "head": 7,
+     "measured": 0.015699999999999825
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 17,
+     "n": 19336,
+     "act": -39.25,
+     "predicted": -0.343511,
+     "measured": -0.3359000000000001
+    },
+    {
+     "layer": 19,
+     "n": 10025,
+     "act": -10.4375,
+     "predicted": -0.232129,
+     "measured": -0.20310000000000006
+    },
+    {
+     "layer": 15,
+     "n": 489,
+     "act": 20.625,
+     "predicted": -0.171043,
+     "measured": -0.11720000000000019
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 17,
+     "n": 15939,
+     "measured": 0.0
+    },
+    {
+     "layer": 19,
+     "n": 19237,
+     "measured": 0.007799999999999807
+    },
+    {
+     "layer": 15,
+     "n": 20648,
+     "measured": -0.007800000000000029
+    }
+   ]
+  },
+  {
+   "layer": 20,
+   "n": 10986,
+   "face": "-",
+   "window": 719,
+   "at": 85,
+   "pieces": 86,
+   "token": " do",
+   "passage_act": -0.8672,
+   "act": -0.86884,
+   "act_reads": -0.8711,
+   "act_rel_diff": 0.0025944208472047296,
+   "linearised_total": -1.02672,
+   "rest": -0.000284,
+   "rest_rel": 0.00027660900732429485,
+   "attention_sum": -0.86144,
+   "mlp_sum": -0.16509,
+   "embedding": 9e-05,
+   "blocks": [
+    {
+     "layer": 18,
+     "part": -0.11525,
+     "neurons_sum": -0.115072,
+     "rel_err": 0.0015444685466378435
+    },
+    {
+     "layer": 16,
+     "part": -0.06332,
+     "neurons_sum": -0.0634247,
+     "rel_err": 0.0016535060012634118
+    },
+    {
+     "layer": 17,
+     "part": -0.05108,
+     "neurons_sum": -0.0509132,
+     "rel_err": 0.0032654659357870333
+    },
+    {
+     "layer": 14,
+     "part": 0.02532,
+     "neurons_sum": 0.0252846,
+     "rel_err": 0.001398104265402762
+    },
+    {
+     "layer": 19,
+     "part": -0.01869,
+     "neurons_sum": -0.0188101,
+     "rel_err": 0.006425896201177179
+    },
+    {
+     "layer": 11,
+     "part": 0.01762,
+     "neurons_sum": 0.0176087,
+     "rel_err": 0.0006413166855844955
+    },
+    {
+     "layer": 15,
+     "part": 0.01319,
+     "neurons_sum": 0.0132644,
+     "rel_err": 0.005640636846095565
+    },
+    {
+     "layer": 12,
+     "part": 0.00986,
+     "neurons_sum": 0.00982245,
+     "rel_err": 0.0038083164300203626
+    }
+   ],
+   "heads": [
+    {
+     "layer": 19,
+     "head": 1,
+     "predicted": 0.04324,
+     "measured": 0.13280000000000003
+    },
+    {
+     "layer": 19,
+     "head": 20,
+     "predicted": 0.02881,
+     "measured": 0.125
+    },
+    {
+     "layer": 18,
+     "head": 12,
+     "predicted": 0.0271,
+     "measured": 0.08199999999999996
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 6,
+     "head": 15,
+     "measured": 0.015599999999999947
+    },
+    {
+     "layer": 0,
+     "head": 17,
+     "measured": 0.011699999999999933
+    },
+    {
+     "layer": 3,
+     "head": 14,
+     "measured": 0.011699999999999933
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 18,
+     "n": 5196,
+     "act": -19.0,
+     "predicted": 0.0572659,
+     "measured": 0.17189999999999994
+    },
+    {
+     "layer": 17,
+     "n": 1552,
+     "act": 70.0,
+     "predicted": 0.0545375,
+     "measured": 0.12890000000000001
+    },
+    {
+     "layer": 19,
+     "n": 16289,
+     "act": 11.0625,
+     "predicted": 0.0413729,
+     "measured": 0.08589999999999998
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 18,
+     "n": 12191,
+     "measured": 0.0
+    },
+    {
+     "layer": 17,
+     "n": 5586,
+     "measured": 0.0
+    },
+    {
+     "layer": 19,
+     "n": 10896,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 30,
+   "n": 13963,
+   "face": "+",
+   "window": 454,
+   "at": 58,
+   "pieces": 59,
+   "token": " Ulysses",
+   "passage_act": 4.125,
+   "act": 4.10213,
+   "act_reads": 4.0938,
+   "act_rel_diff": 0.0020347843079779053,
+   "linearised_total": 8.77346,
+   "rest": 0.000986,
+   "rest_rel": 0.00011238439566602001,
+   "attention_sum": 3.92504,
+   "mlp_sum": 4.84729,
+   "embedding": 0.00015,
+   "blocks": [
+    {
+     "layer": 29,
+     "part": 2.41392,
+     "neurons_sum": 2.41497,
+     "rel_err": 0.0004349771326306478
+    },
+    {
+     "layer": 28,
+     "part": 1.2091,
+     "neurons_sum": 1.20805,
+     "rel_err": 0.0008684145231990699
+    },
+    {
+     "layer": 27,
+     "part": 0.32613,
+     "neurons_sum": 0.326254,
+     "rel_err": 0.00038021647809159844
+    },
+    {
+     "layer": 26,
+     "part": 0.27314,
+     "neurons_sum": 0.273061,
+     "rel_err": 0.0002892289668301814
+    },
+    {
+     "layer": 25,
+     "part": 0.25415,
+     "neurons_sum": 0.253569,
+     "rel_err": 0.0022860515443635576
+    },
+    {
+     "layer": 24,
+     "part": 0.23147,
+     "neurons_sum": 0.23186,
+     "rel_err": 0.0016848835702250895
+    },
+    {
+     "layer": 20,
+     "part": 0.10089,
+     "neurons_sum": 0.100614,
+     "rel_err": 0.002735652691049643
+    },
+    {
+     "layer": 23,
+     "part": 0.09954,
+     "neurons_sum": 0.0993777,
+     "rel_err": 0.0016305003013864186
+    }
+   ],
+   "heads": [
+    {
+     "layer": 30,
+     "head": 15,
+     "predicted": -0.6884,
+     "measured": -0.6093999999999999
+    },
+    {
+     "layer": 30,
+     "head": 1,
+     "predicted": -0.679,
+     "measured": -0.6093999999999999
+    },
+    {
+     "layer": 30,
+     "head": 14,
+     "predicted": 0.5881,
+     "measured": 0.625
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 26,
+     "head": 3,
+     "measured": 0.09370000000000012
+    },
+    {
+     "layer": 3,
+     "head": 9,
+     "measured": 0.0
+    },
+    {
+     "layer": 27,
+     "head": 14,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 29,
+     "n": 2993,
+     "act": 0.511719,
+     "predicted": -0.150648,
+     "measured": -0.20319999999999983
+    },
+    {
+     "layer": 29,
+     "n": 17687,
+     "act": 0.59375,
+     "predicted": -0.128623,
+     "measured": -0.09379999999999988
+    },
+    {
+     "layer": 29,
+     "n": 7613,
+     "act": 0.53125,
+     "predicted": -0.122446,
+     "measured": -0.15629999999999988
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 29,
+     "n": 1482,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 18804,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 20781,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 30,
+   "n": 17504,
+   "face": "-",
+   "window": 1668,
+   "at": 71,
+   "pieces": 72,
+   "token": "4",
+   "passage_act": -1.6094,
+   "act": -1.59142,
+   "act_reads": -1.5859,
+   "act_rel_diff": 0.0034806734346427702,
+   "linearised_total": -3.47435,
+   "rest": 0.001043,
+   "rest_rel": 0.0003002000374170709,
+   "attention_sum": -1.50779,
+   "mlp_sum": -1.96752,
+   "embedding": -8e-05,
+   "blocks": [
+    {
+     "layer": 29,
+     "part": -1.14034,
+     "neurons_sum": -1.13985,
+     "rel_err": 0.00042969640633484704
+    },
+    {
+     "layer": 28,
+     "part": -0.36112,
+     "neurons_sum": -0.361019,
+     "rel_err": 0.00027968542312809523
+    },
+    {
+     "layer": 27,
+     "part": -0.1195,
+     "neurons_sum": -0.11982,
+     "rel_err": 0.002677824267782434
+    },
+    {
+     "layer": 26,
+     "part": -0.10305,
+     "neurons_sum": -0.102864,
+     "rel_err": 0.0018049490538574052
+    },
+    {
+     "layer": 25,
+     "part": -0.07958,
+     "neurons_sum": -0.07983,
+     "rel_err": 0.0031414928373963338
+    },
+    {
+     "layer": 15,
+     "part": -0.05062,
+     "neurons_sum": -0.050609,
+     "rel_err": 0.00021730541288022764
+    },
+    {
+     "layer": 1,
+     "part": -0.03243,
+     "neurons_sum": -0.0324404,
+     "rel_err": 0.0003206907184705731
+    },
+    {
+     "layer": 20,
+     "part": -0.03234,
+     "neurons_sum": -0.0324545,
+     "rel_err": 0.0035405071119355767
+    }
+   ],
+   "heads": [
+    {
+     "layer": 30,
+     "head": 15,
+     "predicted": 0.25213,
+     "measured": 0.2109000000000001
+    },
+    {
+     "layer": 30,
+     "head": 2,
+     "predicted": 0.24693,
+     "measured": 0.1797000000000002
+    },
+    {
+     "layer": 30,
+     "head": 13,
+     "predicted": 0.24632,
+     "measured": 0.2109000000000001
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 19,
+     "head": 4,
+     "measured": -0.08599999999999985
+    },
+    {
+     "layer": 0,
+     "head": 7,
+     "measured": 0.039000000000000146
+    },
+    {
+     "layer": 20,
+     "head": 12,
+     "measured": -0.07029999999999981
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 29,
+     "n": 2249,
+     "act": 1.39844,
+     "predicted": 0.241404,
+     "measured": 0.3671
+    },
+    {
+     "layer": 29,
+     "n": 16953,
+     "act": -0.566406,
+     "predicted": -0.0930237,
+     "measured": -0.10939999999999994
+    },
+    {
+     "layer": 29,
+     "n": 2452,
+     "act": -0.75,
+     "predicted": -0.0857797,
+     "measured": -0.14849999999999985
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 29,
+     "n": 19868,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 18872,
+     "measured": -0.023499999999999854
+    },
+    {
+     "layer": 29,
+     "n": 3922,
+     "measured": -0.015699999999999825
+    }
+   ]
+  },
+  {
+   "layer": 30,
+   "n": 12819,
+   "face": "+",
+   "window": 2174,
+   "at": 303,
+   "pieces": 304,
+   "token": " it",
+   "passage_act": 13.375,
+   "act": 1.40892,
+   "act_reads": 1.4062,
+   "act_rel_diff": 0.0019342909970132668,
+   "linearised_total": 3.2322,
+   "rest": -0.000288,
+   "rest_rel": 8.910339706701317e-05,
+   "attention_sum": 2.45659,
+   "mlp_sum": 0.77591,
+   "embedding": -2e-05,
+   "blocks": [
+    {
+     "layer": 29,
+     "part": -0.40003,
+     "neurons_sum": -0.401336,
+     "rel_err": 0.003264755143364321
+    },
+    {
+     "layer": 23,
+     "part": 0.38476,
+     "neurons_sum": 0.384958,
+     "rel_err": 0.0005146065079530915
+    },
+    {
+     "layer": 28,
+     "part": 0.27544,
+     "neurons_sum": 0.275269,
+     "rel_err": 0.0006208248620390366
+    },
+    {
+     "layer": 27,
+     "part": 0.17917,
+     "neurons_sum": 0.17832,
+     "rel_err": 0.004744097784227213
+    },
+    {
+     "layer": 26,
+     "part": 0.15499,
+     "neurons_sum": 0.155502,
+     "rel_err": 0.0033034389315440512
+    },
+    {
+     "layer": 24,
+     "part": 0.08906,
+     "neurons_sum": 0.088999,
+     "rel_err": 0.0006849315068493768
+    },
+    {
+     "layer": 22,
+     "part": 0.08611,
+     "neurons_sum": 0.085816,
+     "rel_err": 0.003414237603065876
+    },
+    {
+     "layer": 12,
+     "part": -0.05021,
+     "neurons_sum": -0.0502409,
+     "rel_err": 0.0006154152559251219
+    }
+   ],
+   "heads": [
+    {
+     "layer": 29,
+     "head": 17,
+     "predicted": -1.2645,
+     "measured": -1.1904
+    },
+    {
+     "layer": 29,
+     "head": 23,
+     "predicted": 0.89019,
+     "measured": 2.375
+    },
+    {
+     "layer": 29,
+     "head": 20,
+     "predicted": -0.88908,
+     "measured": -0.8749999999999999
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 2,
+     "head": 23,
+     "measured": -0.7577999999999999
+    },
+    {
+     "layer": 26,
+     "head": 7,
+     "measured": 0.1563000000000001
+    },
+    {
+     "layer": 1,
+     "head": 1,
+     "measured": 0.9376
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 28,
+     "n": 14091,
+     "act": -0.824219,
+     "predicted": -0.309822,
+     "measured": -0.5233999999999999
+    },
+    {
+     "layer": 29,
+     "n": 17126,
+     "act": 0.835938,
+     "predicted": -0.186171,
+     "measured": -0.17179999999999995
+    },
+    {
+     "layer": 28,
+     "n": 4258,
+     "act": -0.310547,
+     "predicted": -0.164078,
+     "measured": -0.17959999999999998
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 28,
+     "n": 6376,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 6061,
+     "measured": -0.007799999999999807
+    },
+    {
+     "layer": 28,
+     "n": 4059,
+     "measured": -0.007799999999999807
+    }
+   ]
+  },
+  {
+   "layer": 30,
+   "n": 15703,
+   "face": "-",
+   "window": 6,
+   "at": 69,
+   "pieces": 70,
+   "token": "iculate",
+   "passage_act": -5.875,
+   "act": -5.88581,
+   "act_reads": -5.875,
+   "act_rel_diff": 0.0018400000000000354,
+   "linearised_total": -11.97465,
+   "rest": 0.009177,
+   "rest_rel": 0.0007663689544162042,
+   "attention_sum": -3.72021,
+   "mlp_sum": -8.26342,
+   "embedding": -0.0002,
+   "blocks": [
+    {
+     "layer": 29,
+     "part": -4.10387,
+     "neurons_sum": -4.10252,
+     "rel_err": 0.00032895778862379127
+    },
+    {
+     "layer": 28,
+     "part": -1.59629,
+     "neurons_sum": -1.5951,
+     "rel_err": 0.000745478578453805
+    },
+    {
+     "layer": 27,
+     "part": -0.4555,
+     "neurons_sum": -0.455496,
+     "rel_err": 8.781558726682766e-06
+    },
+    {
+     "layer": 23,
+     "part": -0.45431,
+     "neurons_sum": -0.454152,
+     "rel_err": 0.00034778015011774225
+    },
+    {
+     "layer": 24,
+     "part": -0.33264,
+     "neurons_sum": -0.332996,
+     "rel_err": 0.0010702260702261392
+    },
+    {
+     "layer": 21,
+     "part": -0.24742,
+     "neurons_sum": -0.247236,
+     "rel_err": 0.0007436747231427925
+    },
+    {
+     "layer": 22,
+     "part": -0.23105,
+     "neurons_sum": -0.230766,
+     "rel_err": 0.001229171175070359
+    },
+    {
+     "layer": 15,
+     "part": -0.14905,
+     "neurons_sum": -0.148957,
+     "rel_err": 0.0006239516940622743
+    }
+   ],
+   "heads": [
+    {
+     "layer": 30,
+     "head": 27,
+     "predicted": 0.95625,
+     "measured": 0.9375
+    },
+    {
+     "layer": 29,
+     "head": 7,
+     "predicted": -0.79368,
+     "measured": -0.6875
+    },
+    {
+     "layer": 29,
+     "head": 6,
+     "predicted": 0.58038,
+     "measured": -0.21879999999999988
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 6,
+     "head": 3,
+     "measured": 0.0625
+    },
+    {
+     "layer": 29,
+     "head": 1,
+     "measured": -0.7187999999999999
+    },
+    {
+     "layer": 17,
+     "head": 27,
+     "measured": 0.0625
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 29,
+     "n": 19627,
+     "act": -1.54688,
+     "predicted": 0.232377,
+     "measured": 0.2812000000000001
+    },
+    {
+     "layer": 29,
+     "n": 17365,
+     "act": 0.59375,
+     "predicted": -0.20409,
+     "measured": -0.1875
+    },
+    {
+     "layer": 29,
+     "n": 8298,
+     "act": -1.07031,
+     "predicted": 0.203893,
+     "measured": 0.1875
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 29,
+     "n": 20335,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 3325,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 8517,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 30,
+   "n": 2293,
+   "face": "+",
+   "window": 1807,
+   "at": 325,
+   "pieces": 326,
+   "token": " necessary",
+   "passage_act": 2.2344,
+   "act": 2.14181,
+   "act_reads": 2.1406,
+   "act_rel_diff": 0.0005652620760534118,
+   "linearised_total": 4.52463,
+   "rest": 0.001302,
+   "rest_rel": 0.000287758336040737,
+   "attention_sum": 2.47088,
+   "mlp_sum": 2.05247,
+   "embedding": -2e-05,
+   "blocks": [
+    {
+     "layer": 29,
+     "part": 0.98183,
+     "neurons_sum": 0.980886,
+     "rel_err": 0.0009614699082325299
+    },
+    {
+     "layer": 28,
+     "part": 0.29221,
+     "neurons_sum": 0.291652,
+     "rel_err": 0.0019095855720201323
+    },
+    {
+     "layer": 22,
+     "part": 0.17169,
+     "neurons_sum": 0.171935,
+     "rel_err": 0.001426990506144768
+    },
+    {
+     "layer": 27,
+     "part": 0.14972,
+     "neurons_sum": 0.14995,
+     "rel_err": 0.0015362009083623295
+    },
+    {
+     "layer": 23,
+     "part": 0.14716,
+     "neurons_sum": 0.147025,
+     "rel_err": 0.000917368850231204
+    },
+    {
+     "layer": 25,
+     "part": 0.08627,
+     "neurons_sum": 0.0860429,
+     "rel_err": 0.0026324330590007414
+    },
+    {
+     "layer": 24,
+     "part": 0.07934,
+     "neurons_sum": 0.0792638,
+     "rel_err": 0.0009604234938240295
+    },
+    {
+     "layer": 18,
+     "part": 0.03743,
+     "neurons_sum": 0.037413,
+     "rel_err": 0.0004541811381243972
+    }
+   ],
+   "heads": [
+    {
+     "layer": 30,
+     "head": 30,
+     "predicted": -0.37645,
+     "measured": -0.30469999999999997
+    },
+    {
+     "layer": 29,
+     "head": 7,
+     "predicted": 0.33013,
+     "measured": 0.07819999999999983
+    },
+    {
+     "layer": 29,
+     "head": 4,
+     "predicted": 0.31702,
+     "measured": 0.7031999999999998
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 7,
+     "head": 4,
+     "measured": -0.015600000000000058
+    },
+    {
+     "layer": 20,
+     "head": 19,
+     "measured": -0.6406000000000001
+    },
+    {
+     "layer": 11,
+     "head": 27,
+     "measured": 0.15629999999999988
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 29,
+     "n": 3856,
+     "act": 2.09375,
+     "predicted": -0.34076,
+     "measured": -0.47650000000000015
+    },
+    {
+     "layer": 29,
+     "n": 14188,
+     "act": 1.65625,
+     "predicted": -0.199966,
+     "measured": -0.28900000000000015
+    },
+    {
+     "layer": 29,
+     "n": 16158,
+     "act": 0.933594,
+     "predicted": 0.130581,
+     "measured": 0.14060000000000006
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 29,
+     "n": 5908,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 2000,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 16503,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 30,
+   "n": 15306,
+   "face": "-",
+   "window": 2475,
+   "at": 13,
+   "pieces": 14,
+   "token": " to",
+   "passage_act": -1.4062,
+   "act": -1.43309,
+   "act_reads": -1.4219,
+   "act_rel_diff": 0.00786975174062876,
+   "linearised_total": -3.22607,
+   "rest": 0.001466,
+   "rest_rel": 0.0004544228736512227,
+   "attention_sum": -1.38879,
+   "mlp_sum": -1.83873,
+   "embedding": -2e-05,
+   "blocks": [
+    {
+     "layer": 29,
+     "part": -0.72769,
+     "neurons_sum": -0.726335,
+     "rel_err": 0.0018620566449999247
+    },
+    {
+     "layer": 28,
+     "part": -0.62725,
+     "neurons_sum": -0.62683,
+     "rel_err": 0.000669589477879595
+    },
+    {
+     "layer": 24,
+     "part": -0.11386,
+     "neurons_sum": -0.113922,
+     "rel_err": 0.0005445283681713738
+    },
+    {
+     "layer": 26,
+     "part": -0.06452,
+     "neurons_sum": -0.0640211,
+     "rel_err": 0.007732486050836897
+    },
+    {
+     "layer": 17,
+     "part": -0.04807,
+     "neurons_sum": -0.0480666,
+     "rel_err": 7.073018514667411e-05
+    },
+    {
+     "layer": 21,
+     "part": -0.04225,
+     "neurons_sum": -0.042195,
+     "rel_err": 0.001301775147928982
+    },
+    {
+     "layer": 27,
+     "part": -0.0335,
+     "neurons_sum": -0.0336638,
+     "rel_err": 0.00488955223880593
+    },
+    {
+     "layer": 15,
+     "part": -0.03003,
+     "neurons_sum": -0.0300979,
+     "rel_err": 0.002261072261072235
+    }
+   ],
+   "heads": [
+    {
+     "layer": 30,
+     "head": 3,
+     "predicted": 0.24916,
+     "measured": 0.19530000000000003
+    },
+    {
+     "layer": 30,
+     "head": 2,
+     "predicted": 0.20072,
+     "measured": 0.13280000000000003
+    },
+    {
+     "layer": 30,
+     "head": 23,
+     "predicted": 0.17993,
+     "measured": 0.14849999999999985
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 1,
+     "head": 6,
+     "measured": 0.0
+    },
+    {
+     "layer": 22,
+     "head": 25,
+     "measured": 0.20309999999999984
+    },
+    {
+     "layer": 6,
+     "head": 16,
+     "measured": 0.03909999999999991
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 29,
+     "n": 5180,
+     "act": 0.921875,
+     "predicted": 0.0648744,
+     "measured": 0.04689999999999994
+    },
+    {
+     "layer": 29,
+     "n": 15495,
+     "act": -1.03906,
+     "predicted": -0.0603068,
+     "measured": -0.07810000000000006
+    },
+    {
+     "layer": 29,
+     "n": 11546,
+     "act": 2.45312,
+     "predicted": -0.0540892,
+     "measured": -0.08590000000000009
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 29,
+     "n": 11749,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 15408,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "n": 18670,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 40,
+   "n": 5551,
+   "face": "+",
+   "window": 1106,
+   "at": 135,
+   "pieces": 136,
+   "token": " I",
+   "passage_act": 6.5625,
+   "act": 6.62082,
+   "act_reads": 6.625,
+   "act_rel_diff": 0.0006309433962263925,
+   "linearised_total": 13.3839,
+   "rest": 0.022541,
+   "rest_rel": 0.0016841877180791844,
+   "attention_sum": 3.17577,
+   "mlp_sum": 10.18558,
+   "embedding": 2e-05,
+   "blocks": [
+    {
+     "layer": 39,
+     "part": 5.11787,
+     "neurons_sum": 5.12001,
+     "rel_err": 0.0004181427038982641
+    },
+    {
+     "layer": 38,
+     "part": 1.5831,
+     "neurons_sum": 1.58154,
+     "rel_err": 0.0009854083759711994
+    },
+    {
+     "layer": 37,
+     "part": 1.38713,
+     "neurons_sum": 1.38675,
+     "rel_err": 0.0002739469263876111
+    },
+    {
+     "layer": 35,
+     "part": 0.70809,
+     "neurons_sum": 0.707721,
+     "rel_err": 0.000521120196585113
+    },
+    {
+     "layer": 34,
+     "part": 0.59648,
+     "neurons_sum": 0.596882,
+     "rel_err": 0.0006739538626609668
+    },
+    {
+     "layer": 36,
+     "part": 0.31526,
+     "neurons_sum": 0.315852,
+     "rel_err": 0.001877815136712672
+    },
+    {
+     "layer": 33,
+     "part": 0.18147,
+     "neurons_sum": 0.180965,
+     "rel_err": 0.0027828291177605415
+    },
+    {
+     "layer": 30,
+     "part": 0.17117,
+     "neurons_sum": 0.171627,
+     "rel_err": 0.002669860372728942
+    }
+   ],
+   "heads": [
+    {
+     "layer": 40,
+     "head": 9,
+     "predicted": 1.07237,
+     "measured": 0.9375
+    },
+    {
+     "layer": 39,
+     "head": 31,
+     "predicted": -0.68285,
+     "measured": -0.7812000000000001
+    },
+    {
+     "layer": 40,
+     "head": 8,
+     "predicted": -0.5557,
+     "measured": -0.5625
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 13,
+     "head": 3,
+     "measured": 0.09379999999999988
+    },
+    {
+     "layer": 10,
+     "head": 10,
+     "measured": -0.375
+    },
+    {
+     "layer": 21,
+     "head": 16,
+     "measured": -0.5
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 39,
+     "n": 1684,
+     "act": -1.71875,
+     "predicted": -1.74349,
+     "measured": -1.5312000000000001
+    },
+    {
+     "layer": 39,
+     "n": 2082,
+     "act": -0.376953,
+     "predicted": -0.631912,
+     "measured": -0.6562000000000001
+    },
+    {
+     "layer": 39,
+     "n": 9228,
+     "act": 1.85156,
+     "predicted": 0.393929,
+     "measured": 0.5625
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 39,
+     "n": 3840,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 19555,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 14493,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 40,
+   "n": 5728,
+   "face": "-",
+   "window": 2147,
+   "at": 224,
+   "pieces": 225,
+   "token": " can",
+   "passage_act": -1.6797,
+   "act": -1.67873,
+   "act_reads": -1.6797,
+   "act_rel_diff": 0.0005774840745370694,
+   "linearised_total": -3.52872,
+   "rest": 0.001808,
+   "rest_rel": 0.0005123670906164275,
+   "attention_sum": -1.00045,
+   "mlp_sum": -2.53013,
+   "embedding": 5e-05,
+   "blocks": [
+    {
+     "layer": 39,
+     "part": -1.46522,
+     "neurons_sum": -1.46451,
+     "rel_err": 0.00048456887020378403
+    },
+    {
+     "layer": 38,
+     "part": -0.46011,
+     "neurons_sum": -0.460666,
+     "rel_err": 0.0012084066853578512
+    },
+    {
+     "layer": 37,
+     "part": -0.2764,
+     "neurons_sum": -0.276276,
+     "rel_err": 0.00044862518089709653
+    },
+    {
+     "layer": 34,
+     "part": -0.15082,
+     "neurons_sum": -0.150753,
+     "rel_err": 0.0004442381646997181
+    },
+    {
+     "layer": 35,
+     "part": -0.09512,
+     "neurons_sum": -0.0952416,
+     "rel_err": 0.0012783851976450745
+    },
+    {
+     "layer": 29,
+     "part": 0.08124,
+     "neurons_sum": 0.0813031,
+     "rel_err": 0.0007767109798128568
+    },
+    {
+     "layer": 28,
+     "part": 0.06835,
+     "neurons_sum": 0.0682518,
+     "rel_err": 0.0014367227505485405
+    },
+    {
+     "layer": 33,
+     "part": -0.05828,
+     "neurons_sum": -0.0582642,
+     "rel_err": 0.0002711050102950647
+    }
+   ],
+   "heads": [
+    {
+     "layer": 39,
+     "head": 0,
+     "predicted": 0.32524,
+     "measured": 0.2735000000000001
+    },
+    {
+     "layer": 38,
+     "head": 21,
+     "predicted": 0.2701,
+     "measured": 0.5078
+    },
+    {
+     "layer": 40,
+     "head": 23,
+     "predicted": 0.25117,
+     "measured": 0.24219999999999997
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 0,
+     "head": 30,
+     "measured": 0.0625
+    },
+    {
+     "layer": 26,
+     "head": 19,
+     "measured": -0.05469999999999997
+    },
+    {
+     "layer": 22,
+     "head": 24,
+     "measured": -0.05469999999999997
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 39,
+     "n": 320,
+     "act": -0.714844,
+     "predicted": 0.193714,
+     "measured": 0.1640999999999999
+    },
+    {
+     "layer": 39,
+     "n": 10895,
+     "act": 0.71875,
+     "predicted": 0.160024,
+     "measured": 0.14060000000000006
+    },
+    {
+     "layer": 39,
+     "n": 3211,
+     "act": -1.28906,
+     "predicted": 0.157037,
+     "measured": 0.10939999999999994
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 39,
+     "n": 8222,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 5027,
+     "measured": 0.015600000000000058
+    },
+    {
+     "layer": 39,
+     "n": 18369,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 40,
+   "n": 407,
+   "face": "+",
+   "window": 2340,
+   "at": 77,
+   "pieces": 78,
+   "token": " T",
+   "passage_act": 9.3125,
+   "act": 9.32704,
+   "act_reads": 9.3125,
+   "act_rel_diff": 0.0015613422818792182,
+   "linearised_total": 18.741,
+   "rest": 0.024625,
+   "rest_rel": 0.0013139640360706473,
+   "attention_sum": 8.6112,
+   "mlp_sum": 10.10526,
+   "embedding": -9e-05,
+   "blocks": [
+    {
+     "layer": 39,
+     "part": 3.79845,
+     "neurons_sum": 3.79868,
+     "rel_err": 6.055101422953429e-05
+    },
+    {
+     "layer": 1,
+     "part": 1.8072,
+     "neurons_sum": 1.80765,
+     "rel_err": 0.00024900398406377906
+    },
+    {
+     "layer": 37,
+     "part": 1.06834,
+     "neurons_sum": 1.06745,
+     "rel_err": 0.0008330681243799327
+    },
+    {
+     "layer": 38,
+     "part": 0.79026,
+     "neurons_sum": 0.790975,
+     "rel_err": 0.0009047655202085658
+    },
+    {
+     "layer": 28,
+     "part": 0.60296,
+     "neurons_sum": 0.602915,
+     "rel_err": 7.46318163726827e-05
+    },
+    {
+     "layer": 27,
+     "part": 0.51937,
+     "neurons_sum": 0.520435,
+     "rel_err": 0.0020505612569073736
+    },
+    {
+     "layer": 36,
+     "part": 0.42095,
+     "neurons_sum": 0.421495,
+     "rel_err": 0.0012946905808291192
+    },
+    {
+     "layer": 7,
+     "part": 0.23635,
+     "neurons_sum": 0.236624,
+     "rel_err": 0.0011592976517875882
+    }
+   ],
+   "heads": [
+    {
+     "layer": 40,
+     "head": 14,
+     "predicted": -2.24671,
+     "measured": -1.9687000000000001
+    },
+    {
+     "layer": 31,
+     "head": 30,
+     "predicted": -1.80762,
+     "measured": -1.4687000000000001
+    },
+    {
+     "layer": 40,
+     "head": 15,
+     "predicted": -1.71674,
+     "measured": -1.4062999999999999
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 29,
+     "head": 5,
+     "measured": -0.0625
+    },
+    {
+     "layer": 21,
+     "head": 2,
+     "measured": -0.0625
+    },
+    {
+     "layer": 34,
+     "head": 17,
+     "measured": 0.125
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 1,
+     "n": 16536,
+     "act": -88.5,
+     "predicted": -1.02844,
+     "measured": 0.1875
+    },
+    {
+     "layer": 39,
+     "n": 19778,
+     "act": 2.95312,
+     "predicted": -0.721205,
+     "measured": -0.5625
+    },
+    {
+     "layer": 39,
+     "n": 4293,
+     "act": 1.83594,
+     "predicted": -0.467283,
+     "measured": -0.3125
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 1,
+     "n": 4418,
+     "measured": 0.0625
+    },
+    {
+     "layer": 39,
+     "n": 7868,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 15788,
+     "measured": 0.125
+    }
+   ]
+  },
+  {
+   "layer": 40,
+   "n": 11541,
+   "face": "-",
+   "window": 1870,
+   "at": 83,
+   "pieces": 84,
+   "token": "if",
+   "passage_act": -2.125,
+   "act": -2.10617,
+   "act_reads": -2.1094,
+   "act_rel_diff": 0.0015312411112163857,
+   "linearised_total": -4.47902,
+   "rest": -0.001573,
+   "rest_rel": 0.00035119289487432515,
+   "attention_sum": -2.04029,
+   "mlp_sum": -2.4372,
+   "embedding": 5e-05,
+   "blocks": [
+    {
+     "layer": 39,
+     "part": -1.15441,
+     "neurons_sum": -1.15527,
+     "rel_err": 0.0007449692916728744
+    },
+    {
+     "layer": 35,
+     "part": -0.37389,
+     "neurons_sum": -0.373949,
+     "rel_err": 0.00015780042258411761
+    },
+    {
+     "layer": 1,
+     "part": -0.15325,
+     "neurons_sum": -0.153453,
+     "rel_err": 0.0013246329526917372
+    },
+    {
+     "layer": 36,
+     "part": -0.15304,
+     "neurons_sum": -0.15258,
+     "rel_err": 0.0030057501306848923
+    },
+    {
+     "layer": 38,
+     "part": -0.14467,
+     "neurons_sum": -0.144334,
+     "rel_err": 0.0023225271307112947
+    },
+    {
+     "layer": 37,
+     "part": -0.09724,
+     "neurons_sum": -0.0963585,
+     "rel_err": 0.00906519950637591
+    },
+    {
+     "layer": 12,
+     "part": -0.08267,
+     "neurons_sum": -0.0826888,
+     "rel_err": 0.00022741018507334282
+    },
+    {
+     "layer": 34,
+     "part": -0.0738,
+     "neurons_sum": -0.0737651,
+     "rel_err": 0.0004728997289973492
+    }
+   ],
+   "heads": [
+    {
+     "layer": 40,
+     "head": 8,
+     "predicted": 0.23878,
+     "measured": 0.2265999999999999
+    },
+    {
+     "layer": 39,
+     "head": 21,
+     "predicted": -0.19983,
+     "measured": -0.3437000000000001
+    },
+    {
+     "layer": 40,
+     "head": 21,
+     "predicted": 0.17797,
+     "measured": 0.15629999999999988
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 22,
+     "head": 8,
+     "measured": 0.031299999999999883
+    },
+    {
+     "layer": 19,
+     "head": 24,
+     "measured": -0.046800000000000175
+    },
+    {
+     "layer": 26,
+     "head": 5,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 39,
+     "n": 12648,
+     "act": 1.82812,
+     "predicted": 0.161009,
+     "measured": 0.17189999999999994
+    },
+    {
+     "layer": 39,
+     "n": 19835,
+     "act": -0.679688,
+     "predicted": -0.112763,
+     "measured": -0.10939999999999994
+    },
+    {
+     "layer": 39,
+     "n": 19633,
+     "act": -1.3125,
+     "predicted": 0.0943051,
+     "measured": 0.125
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 39,
+     "n": 49,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 19483,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 6301,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 40,
+   "n": 10957,
+   "face": "+",
+   "window": 2630,
+   "at": 447,
+   "pieces": 448,
+   "token": " in",
+   "passage_act": 3.3281,
+   "act": 3.28444,
+   "act_reads": 3.2812,
+   "act_rel_diff": 0.00098744361818844,
+   "linearised_total": 6.59624,
+   "rest": -0.011069,
+   "rest_rel": 0.0016780772076213117,
+   "attention_sum": 2.02876,
+   "mlp_sum": 4.57863,
+   "embedding": -9e-05,
+   "blocks": [
+    {
+     "layer": 39,
+     "part": 2.22356,
+     "neurons_sum": 2.22527,
+     "rel_err": 0.0007690370397021444
+    },
+    {
+     "layer": 37,
+     "part": 1.15998,
+     "neurons_sum": 1.15955,
+     "rel_err": 0.0003706960464835001
+    },
+    {
+     "layer": 38,
+     "part": 0.81347,
+     "neurons_sum": 0.813008,
+     "rel_err": 0.0005679373547888348
+    },
+    {
+     "layer": 36,
+     "part": 0.32185,
+     "neurons_sum": 0.321334,
+     "rel_err": 0.0016032313189374443
+    },
+    {
+     "layer": 34,
+     "part": 0.28497,
+     "neurons_sum": 0.284712,
+     "rel_err": 0.0009053584587850668
+    },
+    {
+     "layer": 29,
+     "part": -0.18535,
+     "neurons_sum": -0.185436,
+     "rel_err": 0.00046398705152415833
+    },
+    {
+     "layer": 28,
+     "part": -0.07896,
+     "neurons_sum": -0.0791035,
+     "rel_err": 0.001817375886524707
+    },
+    {
+     "layer": 33,
+     "part": 0.07395,
+     "neurons_sum": 0.0737271,
+     "rel_err": 0.003014198782961435
+    }
+   ],
+   "heads": [
+    {
+     "layer": 40,
+     "head": 9,
+     "predicted": 0.74527,
+     "measured": 0.6875999999999998
+    },
+    {
+     "layer": 40,
+     "head": 1,
+     "predicted": -0.63649,
+     "measured": -0.5937000000000001
+    },
+    {
+     "layer": 40,
+     "head": 4,
+     "predicted": -0.62616,
+     "measured": -0.5156000000000001
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 10,
+     "head": 15,
+     "measured": 0.10939999999999994
+    },
+    {
+     "layer": 14,
+     "head": 28,
+     "measured": 0.031299999999999883
+    },
+    {
+     "layer": 24,
+     "head": 26,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 39,
+     "n": 5117,
+     "act": 2.01562,
+     "predicted": -1.49203,
+     "measured": -1.1874000000000002
+    },
+    {
+     "layer": 38,
+     "n": 17627,
+     "act": -2.15625,
+     "predicted": -1.27511,
+     "measured": -1.4218000000000002
+    },
+    {
+     "layer": 39,
+     "n": 20957,
+     "act": -1.71875,
+     "predicted": 1.02025,
+     "measured": 1.0625999999999998
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 39,
+     "n": 1033,
+     "measured": 0.015699999999999825
+    },
+    {
+     "layer": 38,
+     "n": 13181,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 18594,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 40,
+   "n": 13704,
+   "face": "-",
+   "window": 1631,
+   "at": 16,
+   "pieces": 17,
+   "token": ".",
+   "passage_act": -3.5312,
+   "act": -3.54443,
+   "act_reads": -3.5312,
+   "act_rel_diff": 0.003746601721794312,
+   "linearised_total": -7.31603,
+   "rest": -0.001673,
+   "rest_rel": 0.0002286759348991188,
+   "attention_sum": -3.60628,
+   "mlp_sum": -3.70797,
+   "embedding": -0.00011,
+   "blocks": [
+    {
+     "layer": 39,
+     "part": -1.17007,
+     "neurons_sum": -1.16896,
+     "rel_err": 0.0009486611912107348
+    },
+    {
+     "layer": 38,
+     "part": -0.80544,
+     "neurons_sum": -0.804849,
+     "rel_err": 0.0007337604290822509
+    },
+    {
+     "layer": 35,
+     "part": -0.57188,
+     "neurons_sum": -0.571912,
+     "rel_err": 5.595579492187343e-05
+    },
+    {
+     "layer": 36,
+     "part": -0.24083,
+     "neurons_sum": -0.241414,
+     "rel_err": 0.0024249470580907746
+    },
+    {
+     "layer": 37,
+     "part": -0.15475,
+     "neurons_sum": -0.154563,
+     "rel_err": 0.001208400646203507
+    },
+    {
+     "layer": 29,
+     "part": -0.1303,
+     "neurons_sum": -0.130344,
+     "rel_err": 0.0003376822716806485
+    },
+    {
+     "layer": 31,
+     "part": -0.12064,
+     "neurons_sum": -0.120659,
+     "rel_err": 0.00015749336870030773
+    },
+    {
+     "layer": 28,
+     "part": -0.09637,
+     "neurons_sum": -0.0964129,
+     "rel_err": 0.0004451592819341963
+    }
+   ],
+   "heads": [
+    {
+     "layer": 40,
+     "head": 7,
+     "predicted": 0.70833,
+     "measured": 0.5468000000000002
+    },
+    {
+     "layer": 40,
+     "head": 21,
+     "predicted": 0.70757,
+     "measured": 0.6718000000000002
+    },
+    {
+     "layer": 40,
+     "head": 31,
+     "predicted": 0.54797,
+     "measured": 0.4687000000000001
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 2,
+     "head": 10,
+     "measured": -0.031299999999999883
+    },
+    {
+     "layer": 28,
+     "head": 4,
+     "measured": 0.21870000000000012
+    },
+    {
+     "layer": 16,
+     "head": 10,
+     "measured": -0.14069999999999983
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 39,
+     "n": 20778,
+     "act": 0.875,
+     "predicted": 0.159068,
+     "measured": 0.20310000000000006
+    },
+    {
+     "layer": 39,
+     "n": 18831,
+     "act": -4.0625,
+     "predicted": -0.131032,
+     "measured": -0.125
+    },
+    {
+     "layer": 39,
+     "n": 16809,
+     "act": -0.5625,
+     "predicted": -0.121343,
+     "measured": -0.125
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 39,
+     "n": 14626,
+     "measured": 0.015600000000000058
+    },
+    {
+     "layer": 39,
+     "n": 17287,
+     "measured": 0.0
+    },
+    {
+     "layer": 39,
+     "n": 15966,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 45,
+   "n": 18396,
+   "face": "+",
+   "window": 2979,
+   "at": 144,
+   "pieces": 145,
+   "token": ".",
+   "passage_act": 7.7188,
+   "act": 7.75333,
+   "act_reads": 7.75,
+   "act_rel_diff": 0.0004296774193548458,
+   "linearised_total": 15.51205,
+   "rest": -0.030294,
+   "rest_rel": 0.0019529333647067926,
+   "attention_sum": 1.00733,
+   "mlp_sum": 14.53506,
+   "embedding": -4e-05,
+   "blocks": [
+    {
+     "layer": 41,
+     "part": 4.35576,
+     "neurons_sum": 4.36009,
+     "rel_err": 0.0009940859918818991
+    },
+    {
+     "layer": 43,
+     "part": 4.28402,
+     "neurons_sum": 4.28706,
+     "rel_err": 0.0007096138673489796
+    },
+    {
+     "layer": 42,
+     "part": 2.81844,
+     "neurons_sum": 2.82129,
+     "rel_err": 0.0010111976838251015
+    },
+    {
+     "layer": 40,
+     "part": 0.84932,
+     "neurons_sum": 0.849705,
+     "rel_err": 0.0004533038195263031
+    },
+    {
+     "layer": 39,
+     "part": 0.67688,
+     "neurons_sum": 0.675447,
+     "rel_err": 0.002117066540598064
+    },
+    {
+     "layer": 36,
+     "part": 0.33587,
+     "neurons_sum": 0.33617,
+     "rel_err": 0.0008932027272457275
+    },
+    {
+     "layer": 34,
+     "part": 0.29643,
+     "neurons_sum": 0.295759,
+     "rel_err": 0.0022636035488986695
+    },
+    {
+     "layer": 33,
+     "part": 0.20085,
+     "neurons_sum": 0.202378,
+     "rel_err": 0.007607667413492664
+    }
+   ],
+   "heads": [
+    {
+     "layer": 42,
+     "head": 14,
+     "predicted": -1.09372,
+     "measured": -0.3437999999999999
+    },
+    {
+     "layer": 43,
+     "head": 7,
+     "predicted": -0.57428,
+     "measured": -1.5312000000000001
+    },
+    {
+     "layer": 44,
+     "head": 20,
+     "predicted": 0.53584,
+     "measured": 0.75
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 38,
+     "head": 0,
+     "measured": -0.15620000000000012
+    },
+    {
+     "layer": 2,
+     "head": 31,
+     "measured": 0.031200000000000117
+    },
+    {
+     "layer": 20,
+     "head": 19,
+     "measured": 0.0625
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 44,
+     "n": 13307,
+     "act": 29.875,
+     "predicted": 1.3184,
+     "measured": 2.0625
+    },
+    {
+     "layer": 41,
+     "n": 5342,
+     "act": 4.09375,
+     "predicted": -1.2239,
+     "measured": -1.0312000000000001
+    },
+    {
+     "layer": 42,
+     "n": 18213,
+     "act": -4.5,
+     "predicted": -1.04407,
+     "measured": -1.2187999999999999
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 44,
+     "n": 15299,
+     "measured": 0.0
+    },
+    {
+     "layer": 41,
+     "n": 1633,
+     "measured": 0.09379999999999988
+    },
+    {
+     "layer": 42,
+     "n": 13603,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 45,
+   "n": 6160,
+   "face": "-",
+   "window": 1563,
+   "at": 168,
+   "pieces": 169,
+   "token": " to",
+   "passage_act": -18.5,
+   "act": -18.87594,
+   "act_reads": -18.875,
+   "act_rel_diff": 4.980132450330813e-05,
+   "linearised_total": -37.7519,
+   "rest": 0.017566,
+   "rest_rel": 0.00046530108418384235,
+   "attention_sum": -10.24904,
+   "mlp_sum": -27.52044,
+   "embedding": 2e-05,
+   "blocks": [
+    {
+     "layer": 43,
+     "part": -10.63892,
+     "neurons_sum": -10.631,
+     "rel_err": 0.0007444364653555409
+    },
+    {
+     "layer": 42,
+     "part": -5.08542,
+     "neurons_sum": -5.08861,
+     "rel_err": 0.0006272834888760468
+    },
+    {
+     "layer": 41,
+     "part": -4.59801,
+     "neurons_sum": -4.59626,
+     "rel_err": 0.00038059943323315136
+    },
+    {
+     "layer": 44,
+     "part": -2.719,
+     "neurons_sum": -2.7185,
+     "rel_err": 0.00018389113644712133
+    },
+    {
+     "layer": 39,
+     "part": -0.87381,
+     "neurons_sum": -0.874989,
+     "rel_err": 0.0013492635698836603
+    },
+    {
+     "layer": 40,
+     "part": -0.84727,
+     "neurons_sum": -0.84834,
+     "rel_err": 0.0012628796015438
+    },
+    {
+     "layer": 34,
+     "part": -0.72029,
+     "neurons_sum": -0.719622,
+     "rel_err": 0.0009274042399589082
+    },
+    {
+     "layer": 35,
+     "part": -0.70993,
+     "neurons_sum": -0.70974,
+     "rel_err": 0.0002676320200581923
+    }
+   ],
+   "heads": [
+    {
+     "layer": 42,
+     "head": 20,
+     "predicted": 3.0853,
+     "measured": 0.875
+    },
+    {
+     "layer": 42,
+     "head": 0,
+     "predicted": 2.49037,
+     "measured": 0.75
+    },
+    {
+     "layer": 43,
+     "head": 25,
+     "predicted": 1.35491,
+     "measured": 0.375
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 35,
+     "head": 5,
+     "measured": -0.625
+    },
+    {
+     "layer": 8,
+     "head": 0,
+     "measured": 0.5
+    },
+    {
+     "layer": 25,
+     "head": 26,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 43,
+     "n": 15060,
+     "act": 11.1875,
+     "predicted": 4.37985,
+     "measured": 3.6875
+    },
+    {
+     "layer": 44,
+     "n": 10853,
+     "act": 18.5,
+     "predicted": 2.40095,
+     "measured": 1.375
+    },
+    {
+     "layer": 42,
+     "n": 20368,
+     "act": 7.875,
+     "predicted": 1.41664,
+     "measured": 0.875
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 43,
+     "n": 10360,
+     "measured": 0.125
+    },
+    {
+     "layer": 44,
+     "n": 111,
+     "measured": 0.0
+    },
+    {
+     "layer": 42,
+     "n": 6996,
+     "measured": 0.125
+    }
+   ]
+  },
+  {
+   "layer": 45,
+   "n": 468,
+   "face": "+",
+   "window": 2737,
+   "at": 296,
+   "pieces": 297,
+   "token": " a",
+   "passage_act": 9.4375,
+   "act": 9.89065,
+   "act_reads": 9.875,
+   "act_rel_diff": 0.0015848101265823625,
+   "linearised_total": 19.78129,
+   "rest": -0.018851,
+   "rest_rel": 0.0009529712167406677,
+   "attention_sum": 7.31744,
+   "mlp_sum": 12.48265,
+   "embedding": 5e-05,
+   "blocks": [
+    {
+     "layer": 44,
+     "part": 10.24532,
+     "neurons_sum": 10.255,
+     "rel_err": 0.0009448216356347331
+    },
+    {
+     "layer": 42,
+     "part": 2.83933,
+     "neurons_sum": 2.84858,
+     "rel_err": 0.0032578108215671315
+    },
+    {
+     "layer": 43,
+     "part": -2.0136,
+     "neurons_sum": -2.01666,
+     "rel_err": 0.001519666269368327
+    },
+    {
+     "layer": 41,
+     "part": 1.98066,
+     "neurons_sum": 1.97341,
+     "rel_err": 0.003660396029606282
+    },
+    {
+     "layer": 38,
+     "part": 0.34199,
+     "neurons_sum": 0.341892,
+     "rel_err": 0.00028655808649388136
+    },
+    {
+     "layer": 33,
+     "part": -0.19717,
+     "neurons_sum": -0.195746,
+     "rel_err": 0.007222194045747368
+    },
+    {
+     "layer": 37,
+     "part": -0.18896,
+     "neurons_sum": -0.190033,
+     "rel_err": 0.0056784504657071255
+    },
+    {
+     "layer": 29,
+     "part": 0.13243,
+     "neurons_sum": 0.132066,
+     "rel_err": 0.002748621913463741
+    }
+   ],
+   "heads": [
+    {
+     "layer": 42,
+     "head": 6,
+     "predicted": -2.69579,
+     "measured": -4.0312
+    },
+    {
+     "layer": 42,
+     "head": 7,
+     "predicted": 0.68401,
+     "measured": 0.6875
+    },
+    {
+     "layer": 42,
+     "head": 14,
+     "predicted": -0.57932,
+     "measured": -0.0625
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 45,
+     "head": 0,
+     "measured": 0.0
+    },
+    {
+     "layer": 43,
+     "head": 6,
+     "measured": -0.1875
+    },
+    {
+     "layer": 12,
+     "head": 7,
+     "measured": -0.5
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 44,
+     "n": 11477,
+     "act": -32.75,
+     "predicted": -6.90724,
+     "measured": -4.8438
+    },
+    {
+     "layer": 42,
+     "n": 18589,
+     "act": -10.25,
+     "predicted": -1.3427,
+     "measured": -1.0625
+    },
+    {
+     "layer": 44,
+     "n": 12521,
+     "act": -9.25,
+     "predicted": -1.28553,
+     "measured": -0.875
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 44,
+     "n": 19934,
+     "measured": 0.0625
+    },
+    {
+     "layer": 42,
+     "n": 21275,
+     "measured": 0.0625
+    },
+    {
+     "layer": 44,
+     "n": 6504,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 45,
+   "n": 9909,
+   "face": "-",
+   "window": 2799,
+   "at": 369,
+   "pieces": 370,
+   "token": " Treasury",
+   "passage_act": -27.75,
+   "act": -26.94326,
+   "act_reads": -26.875,
+   "act_rel_diff": 0.002539906976744136,
+   "linearised_total": -53.89707,
+   "rest": 0.028374,
+   "rest_rel": 0.0005264479126601873,
+   "attention_sum": -10.84703,
+   "mlp_sum": -43.07849,
+   "embedding": 8e-05,
+   "blocks": [
+    {
+     "layer": 41,
+     "part": -12.33174,
+     "neurons_sum": -12.3324,
+     "rel_err": 5.3520427774173224e-05
+    },
+    {
+     "layer": 43,
+     "part": -8.94493,
+     "neurons_sum": -8.9382,
+     "rel_err": 0.0007523815166803135
+    },
+    {
+     "layer": 40,
+     "part": -7.19223,
+     "neurons_sum": -7.19947,
+     "rel_err": 0.0010066418899283627
+    },
+    {
+     "layer": 44,
+     "part": -5.02678,
+     "neurons_sum": -5.02093,
+     "rel_err": 0.0011637668646727506
+    },
+    {
+     "layer": 42,
+     "part": -2.89456,
+     "neurons_sum": -2.89015,
+     "rel_err": 0.001523547620363572
+    },
+    {
+     "layer": 39,
+     "part": -1.48408,
+     "neurons_sum": -1.48289,
+     "rel_err": 0.0008018435663845779
+    },
+    {
+     "layer": 35,
+     "part": -1.12238,
+     "neurons_sum": -1.12328,
+     "rel_err": 0.0008018674602185739
+    },
+    {
+     "layer": 36,
+     "part": -0.65282,
+     "neurons_sum": -0.652788,
+     "rel_err": 4.9018106062805955e-05
+    }
+   ],
+   "heads": [
+    {
+     "layer": 43,
+     "head": 7,
+     "predicted": 8.1473,
+     "measured": 8.0
+    },
+    {
+     "layer": 42,
+     "head": 7,
+     "predicted": -2.19285,
+     "measured": -0.5
+    },
+    {
+     "layer": 41,
+     "head": 0,
+     "predicted": 2.01877,
+     "measured": -0.25
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 17,
+     "head": 11,
+     "measured": -0.25
+    },
+    {
+     "layer": 6,
+     "head": 30,
+     "measured": -0.125
+    },
+    {
+     "layer": 25,
+     "head": 5,
+     "measured": -0.125
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 41,
+     "n": 12467,
+     "act": 15.125,
+     "predicted": 5.91307,
+     "measured": 4.375
+    },
+    {
+     "layer": 43,
+     "n": 8067,
+     "act": 27.625,
+     "predicted": 5.20698,
+     "measured": 3.625
+    },
+    {
+     "layer": 41,
+     "n": 13106,
+     "act": -2.46875,
+     "predicted": 1.85794,
+     "measured": 1.625
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 41,
+     "n": 715,
+     "measured": -0.25
+    },
+    {
+     "layer": 43,
+     "n": 9001,
+     "measured": -0.125
+    },
+    {
+     "layer": 41,
+     "n": 14843,
+     "measured": -0.125
+    }
+   ]
+  },
+  {
+   "layer": 45,
+   "n": 3793,
+   "face": "+",
+   "window": 821,
+   "at": 46,
+   "pieces": 47,
+   "token": " dynamics",
+   "passage_act": 7.875,
+   "act": 8.04993,
+   "act_reads": 8.0625,
+   "act_rel_diff": 0.0015590697674418843,
+   "linearised_total": 16.18637,
+   "rest": -0.003484,
+   "rest_rel": 0.00021524282467285746,
+   "attention_sum": 3.89709,
+   "mlp_sum": 12.29276,
+   "embedding": 1e-05,
+   "blocks": [
+    {
+     "layer": 41,
+     "part": 2.39571,
+     "neurons_sum": 2.39541,
+     "rel_err": 0.00012522383760962092
+    },
+    {
+     "layer": 43,
+     "part": 2.30505,
+     "neurons_sum": 2.30612,
+     "rel_err": 0.000464198173575369
+    },
+    {
+     "layer": 40,
+     "part": 1.86573,
+     "neurons_sum": 1.8673,
+     "rel_err": 0.0008414936780776689
+    },
+    {
+     "layer": 44,
+     "part": 1.85943,
+     "neurons_sum": 1.8623,
+     "rel_err": 0.0015434837557747
+    },
+    {
+     "layer": 42,
+     "part": 1.54433,
+     "neurons_sum": 1.54472,
+     "rel_err": 0.000252536698762643
+    },
+    {
+     "layer": 39,
+     "part": 0.9624,
+     "neurons_sum": 0.963043,
+     "rel_err": 0.0006681213632584675
+    },
+    {
+     "layer": 35,
+     "part": 0.33352,
+     "neurons_sum": 0.33349,
+     "rel_err": 8.994962820812693e-05
+    },
+    {
+     "layer": 36,
+     "part": 0.2631,
+     "neurons_sum": 0.263304,
+     "rel_err": 0.0007753705815278676
+    }
+   ],
+   "heads": [
+    {
+     "layer": 40,
+     "head": 28,
+     "predicted": -0.68328,
+     "measured": -0.8125
+    },
+    {
+     "layer": 41,
+     "head": 2,
+     "predicted": 0.57169,
+     "measured": 0.75
+    },
+    {
+     "layer": 45,
+     "head": 13,
+     "predicted": -0.48034,
+     "measured": -0.4687000000000001
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 16,
+     "head": 8,
+     "measured": -0.2812999999999999
+    },
+    {
+     "layer": 41,
+     "head": 22,
+     "measured": -0.125
+    },
+    {
+     "layer": 7,
+     "head": 9,
+     "measured": -0.1875
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 42,
+     "n": 14550,
+     "act": -11.875,
+     "predicted": -1.0377,
+     "measured": -1.0
+    },
+    {
+     "layer": 44,
+     "n": 19857,
+     "act": -7.71875,
+     "predicted": -0.836548,
+     "measured": -0.7812999999999999
+    },
+    {
+     "layer": 41,
+     "n": 9410,
+     "act": 7.40625,
+     "predicted": -0.728457,
+     "measured": -1.25
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 42,
+     "n": 9122,
+     "measured": 0.0
+    },
+    {
+     "layer": 44,
+     "n": 608,
+     "measured": 0.0
+    },
+    {
+     "layer": 41,
+     "n": 1386,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 45,
+   "n": 1332,
+   "face": "-",
+   "window": 1609,
+   "at": 410,
+   "pieces": 411,
+   "token": " in",
+   "passage_act": -10.625,
+   "act": -10.60512,
+   "act_reads": -10.5625,
+   "act_rel_diff": 0.0040350295857987635,
+   "linearised_total": -21.5103,
+   "rest": -0.01981,
+   "rest_rel": 0.000920954147547919,
+   "attention_sum": -4.70898,
+   "mlp_sum": -16.78153,
+   "embedding": 2e-05,
+   "blocks": [
+    {
+     "layer": 42,
+     "part": -6.63356,
+     "neurons_sum": -6.63229,
+     "rel_err": 0.00019145074439665615
+    },
+    {
+     "layer": 43,
+     "part": -3.11281,
+     "neurons_sum": -3.11194,
+     "rel_err": 0.0002794902355106564
+    },
+    {
+     "layer": 44,
+     "part": -2.96147,
+     "neurons_sum": -2.96128,
+     "rel_err": 6.415732727325026e-05
+    },
+    {
+     "layer": 41,
+     "part": -2.42844,
+     "neurons_sum": -2.4284,
+     "rel_err": 1.647147963312334e-05
+    },
+    {
+     "layer": 40,
+     "part": -1.85755,
+     "neurons_sum": -1.85726,
+     "rel_err": 0.0001561196199295435
+    },
+    {
+     "layer": 34,
+     "part": -0.27748,
+     "neurons_sum": -0.277602,
+     "rel_err": 0.0004396713276632946
+    },
+    {
+     "layer": 29,
+     "part": 0.16941,
+     "neurons_sum": 0.169057,
+     "rel_err": 0.0020837022607873928
+    },
+    {
+     "layer": 39,
+     "part": 0.10665,
+     "neurons_sum": 0.105072,
+     "rel_err": 0.014796061884669443
+    }
+   ],
+   "heads": [
+    {
+     "layer": 42,
+     "head": 6,
+     "predicted": 1.87559,
+     "measured": 5.0625
+    },
+    {
+     "layer": 42,
+     "head": 30,
+     "predicted": 1.34937,
+     "measured": 0.4375
+    },
+    {
+     "layer": 41,
+     "head": 7,
+     "predicted": 1.12288,
+     "measured": 0.625
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 13,
+     "head": 16,
+     "measured": -0.0625
+    },
+    {
+     "layer": 35,
+     "head": 20,
+     "measured": 0.125
+    },
+    {
+     "layer": 23,
+     "head": 2,
+     "measured": 0.4375
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 42,
+     "n": 1237,
+     "act": -20.5,
+     "predicted": 2.36351,
+     "measured": 2.3125
+    },
+    {
+     "layer": 42,
+     "n": 18736,
+     "act": -23.625,
+     "predicted": 2.29384,
+     "measured": 3.0313
+    },
+    {
+     "layer": 44,
+     "n": 11021,
+     "act": 8.75,
+     "predicted": 1.03546,
+     "measured": 0.9375
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 42,
+     "n": 19909,
+     "measured": 0.0625
+    },
+    {
+     "layer": 42,
+     "n": 21474,
+     "measured": 0.0
+    },
+    {
+     "layer": 44,
+     "n": 16203,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 50,
+   "n": 21107,
+   "face": "+",
+   "window": 2822,
+   "at": 47,
+   "pieces": 48,
+   "token": " my",
+   "passage_act": 6.5625,
+   "act": 6.54045,
+   "act_reads": 6.5625,
+   "act_rel_diff": 0.0033600000000000192,
+   "linearised_total": 13.20434,
+   "rest": -0.038358,
+   "rest_rel": 0.0029049539772529336,
+   "attention_sum": 2.54252,
+   "mlp_sum": 10.70013,
+   "embedding": 5e-05,
+   "blocks": [
+    {
+     "layer": 47,
+     "part": 2.25385,
+     "neurons_sum": 2.25475,
+     "rel_err": 0.0003993167247155414
+    },
+    {
+     "layer": 42,
+     "part": 1.66967,
+     "neurons_sum": 1.66995,
+     "rel_err": 0.00016769780854902945
+    },
+    {
+     "layer": 48,
+     "part": 1.50196,
+     "neurons_sum": 1.4969,
+     "rel_err": 0.0033689312631495277
+    },
+    {
+     "layer": 41,
+     "part": 1.0915,
+     "neurons_sum": 1.08909,
+     "rel_err": 0.002207970682546975
+    },
+    {
+     "layer": 44,
+     "part": 1.05763,
+     "neurons_sum": 1.05903,
+     "rel_err": 0.0013237143424447546
+    },
+    {
+     "layer": 45,
+     "part": 1.01813,
+     "neurons_sum": 1.01979,
+     "rel_err": 0.0016304401206132762
+    },
+    {
+     "layer": 40,
+     "part": 0.68658,
+     "neurons_sum": 0.68692,
+     "rel_err": 0.0004952081330653485
+    },
+    {
+     "layer": 43,
+     "part": 0.62458,
+     "neurons_sum": 0.622981,
+     "rel_err": 0.0025601204009094384
+    }
+   ],
+   "heads": [
+    {
+     "layer": 49,
+     "head": 31,
+     "predicted": 0.38545,
+     "measured": 0.3437000000000001
+    },
+    {
+     "layer": 46,
+     "head": 16,
+     "predicted": -0.3518,
+     "measured": -0.2812999999999999
+    },
+    {
+     "layer": 49,
+     "head": 16,
+     "predicted": 0.33635,
+     "measured": 0.21870000000000012
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 29,
+     "head": 27,
+     "measured": -0.09370000000000012
+    },
+    {
+     "layer": 23,
+     "head": 11,
+     "measured": -0.15629999999999988
+    },
+    {
+     "layer": 13,
+     "head": 24,
+     "measured": -0.125
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 47,
+     "n": 15149,
+     "act": -7.28125,
+     "predicted": -0.562602,
+     "measured": -0.75
+    },
+    {
+     "layer": 49,
+     "n": 13144,
+     "act": 6.4375,
+     "predicted": -0.532303,
+     "measured": -0.4687000000000001
+    },
+    {
+     "layer": 48,
+     "n": 9120,
+     "act": -8.0625,
+     "predicted": -0.430126,
+     "measured": -0.15629999999999988
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 47,
+     "n": 19238,
+     "measured": 0.0
+    },
+    {
+     "layer": 49,
+     "n": 9536,
+     "measured": 0.0
+    },
+    {
+     "layer": 48,
+     "n": 291,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 50,
+   "n": 4536,
+   "face": "-",
+   "window": 1574,
+   "at": 67,
+   "pieces": 68,
+   "token": " has",
+   "passage_act": -5.4375,
+   "act": -5.49869,
+   "act_reads": -5.5,
+   "act_rel_diff": 0.00023818181818184442,
+   "linearised_total": -11.92071,
+   "rest": 0.001217,
+   "rest_rel": 0.00010209123449861628,
+   "attention_sum": -0.27951,
+   "mlp_sum": -11.64237,
+   "embedding": -4e-05,
+   "blocks": [
+    {
+     "layer": 48,
+     "part": -2.98274,
+     "neurons_sum": -2.9831,
+     "rel_err": 0.00012069439508629444
+    },
+    {
+     "layer": 47,
+     "part": -2.08127,
+     "neurons_sum": -2.08216,
+     "rel_err": 0.0004276235183325842
+    },
+    {
+     "layer": 42,
+     "part": -1.92929,
+     "neurons_sum": -1.93202,
+     "rel_err": 0.0014150283264828623
+    },
+    {
+     "layer": 49,
+     "part": -1.114,
+     "neurons_sum": -1.11492,
+     "rel_err": 0.0008258527827646407
+    },
+    {
+     "layer": 41,
+     "part": -0.69806,
+     "neurons_sum": -0.699799,
+     "rel_err": 0.0024911898690656033
+    },
+    {
+     "layer": 43,
+     "part": -0.66568,
+     "neurons_sum": -0.663625,
+     "rel_err": 0.0030870688619156787
+    },
+    {
+     "layer": 45,
+     "part": -0.65886,
+     "neurons_sum": -0.65815,
+     "rel_err": 0.001077618917524191
+    },
+    {
+     "layer": 39,
+     "part": -0.59756,
+     "neurons_sum": -0.598599,
+     "rel_err": 0.0017387375326327267
+    }
+   ],
+   "heads": [
+    {
+     "layer": 41,
+     "head": 7,
+     "predicted": 0.71396,
+     "measured": 1.0
+    },
+    {
+     "layer": 50,
+     "head": 22,
+     "predicted": -0.52084,
+     "measured": 0.1875
+    },
+    {
+     "layer": 46,
+     "head": 8,
+     "predicted": 0.4729,
+     "measured": 0.3437999999999999
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 9,
+     "head": 17,
+     "measured": -0.09379999999999988
+    },
+    {
+     "layer": 21,
+     "head": 21,
+     "measured": 0.15620000000000012
+    },
+    {
+     "layer": 45,
+     "head": 5,
+     "measured": 0.031200000000000117
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 48,
+     "n": 2004,
+     "act": -8.9375,
+     "predicted": 0.737447,
+     "measured": 0.75
+    },
+    {
+     "layer": 47,
+     "n": 4219,
+     "act": -10.9375,
+     "predicted": 0.600749,
+     "measured": 0.9687999999999999
+    },
+    {
+     "layer": 49,
+     "n": 21056,
+     "act": -25.5,
+     "predicted": -0.57291,
+     "measured": -1.0625
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 48,
+     "n": 11083,
+     "measured": 0.0
+    },
+    {
+     "layer": 47,
+     "n": 20333,
+     "measured": 0.0
+    },
+    {
+     "layer": 49,
+     "n": 1168,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 50,
+   "n": 1350,
+   "face": "+",
+   "window": 107,
+   "at": 55,
+   "pieces": 56,
+   "token": " Eld",
+   "passage_act": 28.5,
+   "act": 28.52752,
+   "act_reads": 28.5,
+   "act_rel_diff": 0.0009656140350876877,
+   "linearised_total": 57.05504,
+   "rest": -0.121498,
+   "rest_rel": 0.00212948759653836,
+   "attention_sum": 13.08821,
+   "mlp_sum": 44.08826,
+   "embedding": 6e-05,
+   "blocks": [
+    {
+     "layer": 49,
+     "part": 15.32768,
+     "neurons_sum": 15.33,
+     "rel_err": 0.0001513601536566011
+    },
+    {
+     "layer": 41,
+     "part": 5.08556,
+     "neurons_sum": 5.07986,
+     "rel_err": 0.0011208205192741877
+    },
+    {
+     "layer": 43,
+     "part": 3.61152,
+     "neurons_sum": 3.60849,
+     "rel_err": 0.0008389819245082032
+    },
+    {
+     "layer": 40,
+     "part": 3.52338,
+     "neurons_sum": 3.52751,
+     "rel_err": 0.001172169905034361
+    },
+    {
+     "layer": 45,
+     "part": 3.39265,
+     "neurons_sum": 3.39742,
+     "rel_err": 0.001405980575656115
+    },
+    {
+     "layer": 42,
+     "part": 3.19486,
+     "neurons_sum": 3.20021,
+     "rel_err": 0.0016745647696613968
+    },
+    {
+     "layer": 47,
+     "part": 2.31376,
+     "neurons_sum": 2.30902,
+     "rel_err": 0.0020486135122052274
+    },
+    {
+     "layer": 44,
+     "part": 2.03089,
+     "neurons_sum": 2.02555,
+     "rel_err": 0.0026293890855732713
+    }
+   ],
+   "heads": [
+    {
+     "layer": 49,
+     "head": 18,
+     "predicted": -5.03694,
+     "measured": -4.75
+    },
+    {
+     "layer": 49,
+     "head": 29,
+     "predicted": -1.82417,
+     "measured": -1.5
+    },
+    {
+     "layer": 46,
+     "head": 0,
+     "predicted": -1.61775,
+     "measured": -2.125
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 17,
+     "head": 10,
+     "measured": -0.5
+    },
+    {
+     "layer": 9,
+     "head": 18,
+     "measured": 0.25
+    },
+    {
+     "layer": 23,
+     "head": 25,
+     "measured": 0.25
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 49,
+     "n": 5422,
+     "act": -33.25,
+     "predicted": -3.68005,
+     "measured": -1.875
+    },
+    {
+     "layer": 42,
+     "n": 3733,
+     "act": 36.5,
+     "predicted": -2.35968,
+     "measured": 0.0
+    },
+    {
+     "layer": 49,
+     "n": 1559,
+     "act": 10.6875,
+     "predicted": -2.28183,
+     "measured": -2.125
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 49,
+     "n": 17972,
+     "measured": 0.0
+    },
+    {
+     "layer": 42,
+     "n": 4248,
+     "measured": 0.0
+    },
+    {
+     "layer": 49,
+     "n": 9614,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 50,
+   "n": 3764,
+   "face": "-",
+   "window": 2126,
+   "at": 27,
+   "pieces": 28,
+   "token": " opinion",
+   "passage_act": -32.0,
+   "act": -32.5262,
+   "act_reads": -32.5,
+   "act_rel_diff": 0.000806153846153935,
+   "linearised_total": -65.0524,
+   "rest": -0.053848,
+   "rest_rel": 0.0008277634645301326,
+   "attention_sum": -6.77644,
+   "mlp_sum": -58.22196,
+   "embedding": -0.00015,
+   "blocks": [
+    {
+     "layer": 47,
+     "part": -25.41412,
+     "neurons_sum": -25.4197,
+     "rel_err": 0.00021956298309752076
+    },
+    {
+     "layer": 40,
+     "part": -6.03757,
+     "neurons_sum": -6.03758,
+     "rel_err": 1.6562954964513209e-06
+    },
+    {
+     "layer": 46,
+     "part": -5.37002,
+     "neurons_sum": -5.36403,
+     "rel_err": 0.0011154520839774537
+    },
+    {
+     "layer": 49,
+     "part": -4.27161,
+     "neurons_sum": -4.27675,
+     "rel_err": 0.0012032933718199748
+    },
+    {
+     "layer": 43,
+     "part": -3.61715,
+     "neurons_sum": -3.61715,
+     "rel_err": 0.0
+    },
+    {
+     "layer": 44,
+     "part": -2.67083,
+     "neurons_sum": -2.67209,
+     "rel_err": 0.0004717634592991006
+    },
+    {
+     "layer": 45,
+     "part": -2.54407,
+     "neurons_sum": -2.54373,
+     "rel_err": 0.0001336441214274792
+    },
+    {
+     "layer": 39,
+     "part": -1.49868,
+     "neurons_sum": -1.49971,
+     "rel_err": 0.0006872714655564139
+    }
+   ],
+   "heads": [
+    {
+     "layer": 47,
+     "head": 16,
+     "predicted": -5.99664,
+     "measured": -8.5
+    },
+    {
+     "layer": 47,
+     "head": 23,
+     "predicted": 3.04016,
+     "measured": 4.0
+    },
+    {
+     "layer": 41,
+     "head": 2,
+     "predicted": -2.53298,
+     "measured": -1.75
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 30,
+     "head": 15,
+     "measured": -0.25
+    },
+    {
+     "layer": 3,
+     "head": 19,
+     "measured": 0.25
+    },
+    {
+     "layer": 11,
+     "head": 4,
+     "measured": 0.25
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 47,
+     "n": 7674,
+     "act": -18.375,
+     "predicted": 19.9679,
+     "measured": 16.625
+    },
+    {
+     "layer": 44,
+     "n": 8167,
+     "act": -38.25,
+     "predicted": 3.76171,
+     "measured": -1.0
+    },
+    {
+     "layer": 46,
+     "n": 18825,
+     "act": 5.1875,
+     "predicted": 3.31401,
+     "measured": 3.625
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 47,
+     "n": 9917,
+     "measured": 0.0
+    },
+    {
+     "layer": 44,
+     "n": 13211,
+     "measured": 0.0
+    },
+    {
+     "layer": 46,
+     "n": 10764,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 50,
+   "n": 9805,
+   "face": "+",
+   "window": 3557,
+   "at": 224,
+   "pieces": 225,
+   "token": " a",
+   "passage_act": 26.25,
+   "act": 27.08986,
+   "act_reads": 27.125,
+   "act_rel_diff": 0.0012954838709676828,
+   "linearised_total": 54.17971,
+   "rest": 0.017096,
+   "rest_rel": 0.0003155424789095401,
+   "attention_sum": 4.808,
+   "mlp_sum": 49.35456,
+   "embedding": 6e-05,
+   "blocks": [
+    {
+     "layer": 48,
+     "part": 9.7177,
+     "neurons_sum": 9.72229,
+     "rel_err": 0.0004723339884950698
+    },
+    {
+     "layer": 46,
+     "part": 7.6834,
+     "neurons_sum": 7.68273,
+     "rel_err": 8.720097873330873e-05
+    },
+    {
+     "layer": 47,
+     "part": 7.37473,
+     "neurons_sum": 7.37065,
+     "rel_err": 0.000553240593214829
+    },
+    {
+     "layer": 49,
+     "part": 4.2433,
+     "neurons_sum": 4.23787,
+     "rel_err": 0.0012796644121319733
+    },
+    {
+     "layer": 43,
+     "part": 4.13299,
+     "neurons_sum": 4.13339,
+     "rel_err": 9.678223271770701e-05
+    },
+    {
+     "layer": 44,
+     "part": 3.67035,
+     "neurons_sum": 3.66804,
+     "rel_err": 0.0006293677714659458
+    },
+    {
+     "layer": 42,
+     "part": 3.53032,
+     "neurons_sum": 3.53156,
+     "rel_err": 0.0003512429468149306
+    },
+    {
+     "layer": 40,
+     "part": 2.67786,
+     "neurons_sum": 2.67818,
+     "rel_err": 0.00011949840544310605
+    }
+   ],
+   "heads": [
+    {
+     "layer": 46,
+     "head": 1,
+     "predicted": 2.24472,
+     "measured": 0.5
+    },
+    {
+     "layer": 49,
+     "head": 2,
+     "predicted": -1.86501,
+     "measured": -2.5
+    },
+    {
+     "layer": 46,
+     "head": 0,
+     "predicted": -1.70815,
+     "measured": -0.875
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 26,
+     "head": 6,
+     "measured": 0.0
+    },
+    {
+     "layer": 6,
+     "head": 30,
+     "measured": -0.25
+    },
+    {
+     "layer": 30,
+     "head": 21,
+     "measured": -0.5
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 48,
+     "n": 9568,
+     "act": -5.96875,
+     "predicted": -3.39978,
+     "measured": -2.75
+    },
+    {
+     "layer": 46,
+     "n": 12131,
+     "act": -17.25,
+     "predicted": -2.36741,
+     "measured": -3.125
+    },
+    {
+     "layer": 48,
+     "n": 19649,
+     "act": -21.5,
+     "predicted": -2.24261,
+     "measured": 0.875
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 48,
+     "n": 11260,
+     "measured": 0.0
+    },
+    {
+     "layer": 46,
+     "n": 4073,
+     "measured": -0.125
+    },
+    {
+     "layer": 48,
+     "n": 15698,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 50,
+   "n": 3801,
+   "face": "-",
+   "window": 1160,
+   "at": 332,
+   "pieces": 333,
+   "token": " H",
+   "passage_act": -11.125,
+   "act": -11.12345,
+   "act_reads": -11.125,
+   "act_rel_diff": 0.00013932584269662384,
+   "linearised_total": -22.24689,
+   "rest": 0.016588,
+   "rest_rel": 0.0007456323108533372,
+   "attention_sum": -4.73631,
+   "mlp_sum": -17.52713,
+   "embedding": -4e-05,
+   "blocks": [
+    {
+     "layer": 49,
+     "part": -5.99024,
+     "neurons_sum": -5.97952,
+     "rel_err": 0.001789577713079954
+    },
+    {
+     "layer": 43,
+     "part": -3.59219,
+     "neurons_sum": -3.59022,
+     "rel_err": 0.0005484119715271262
+    },
+    {
+     "layer": 42,
+     "part": -3.19274,
+     "neurons_sum": -3.1912,
+     "rel_err": 0.0004823443186730892
+    },
+    {
+     "layer": 47,
+     "part": -1.95281,
+     "neurons_sum": -1.94979,
+     "rel_err": 0.0015464894178133166
+    },
+    {
+     "layer": 45,
+     "part": -1.17415,
+     "neurons_sum": -1.17257,
+     "rel_err": 0.0013456543031130066
+    },
+    {
+     "layer": 44,
+     "part": -0.91896,
+     "neurons_sum": -0.918179,
+     "rel_err": 0.0008498737703491248
+    },
+    {
+     "layer": 48,
+     "part": -0.53905,
+     "neurons_sum": -0.545254,
+     "rel_err": 0.011509136443743599
+    },
+    {
+     "layer": 41,
+     "part": -0.43297,
+     "neurons_sum": -0.431594,
+     "rel_err": 0.003178049287479603
+    }
+   ],
+   "heads": [
+    {
+     "layer": 46,
+     "head": 8,
+     "predicted": 1.26372,
+     "measured": 0.1875
+    },
+    {
+     "layer": 42,
+     "head": 20,
+     "predicted": 1.12508,
+     "measured": 0.0
+    },
+    {
+     "layer": 49,
+     "head": 31,
+     "predicted": -0.98779,
+     "measured": -1.1875
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 44,
+     "head": 31,
+     "measured": -0.125
+    },
+    {
+     "layer": 27,
+     "head": 2,
+     "measured": -0.5
+    },
+    {
+     "layer": 19,
+     "head": 21,
+     "measured": 0.375
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 43,
+     "n": 20209,
+     "act": 28.5,
+     "predicted": 2.81767,
+     "measured": 0.875
+    },
+    {
+     "layer": 49,
+     "n": 4631,
+     "act": -7.75,
+     "predicted": 2.40273,
+     "measured": 2.3125
+    },
+    {
+     "layer": 47,
+     "n": 3654,
+     "act": -41.5,
+     "predicted": 1.95686,
+     "measured": 0.1875
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 43,
+     "n": 5100,
+     "measured": -0.0625
+    },
+    {
+     "layer": 49,
+     "n": 5457,
+     "measured": 0.0
+    },
+    {
+     "layer": 47,
+     "n": 20537,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 57,
+   "n": 18497,
+   "face": "+",
+   "window": 2728,
+   "at": 506,
+   "pieces": 507,
+   "token": " most",
+   "passage_act": 0.5391,
+   "act": 0.53898,
+   "act_reads": 0.5391,
+   "act_rel_diff": 0.000222593210907084,
+   "linearised_total": 1.23496,
+   "rest": 0.00616,
+   "rest_rel": 0.004988015806179957,
+   "attention_sum": -0.10826,
+   "mlp_sum": 1.33706,
+   "embedding": 0.0,
+   "blocks": [
+    {
+     "layer": 54,
+     "part": 0.34041,
+     "neurons_sum": 0.34018,
+     "rel_err": 0.000675655826797121
+    },
+    {
+     "layer": 55,
+     "part": 0.28684,
+     "neurons_sum": 0.286415,
+     "rel_err": 0.001481662250732146
+    },
+    {
+     "layer": 52,
+     "part": 0.17818,
+     "neurons_sum": 0.177788,
+     "rel_err": 0.002200022449208685
+    },
+    {
+     "layer": 48,
+     "part": 0.11177,
+     "neurons_sum": 0.111691,
+     "rel_err": 0.0007068086248545741
+    },
+    {
+     "layer": 53,
+     "part": 0.07559,
+     "neurons_sum": 0.0753315,
+     "rel_err": 0.0034197645191164005
+    },
+    {
+     "layer": 45,
+     "part": 0.06833,
+     "neurons_sum": 0.0683144,
+     "rel_err": 0.00022830381969858772
+    },
+    {
+     "layer": 39,
+     "part": 0.0543,
+     "neurons_sum": 0.0542374,
+     "rel_err": 0.0011528545119705881
+    },
+    {
+     "layer": 56,
+     "part": 0.04203,
+     "neurons_sum": 0.0428639,
+     "rel_err": 0.019840590054722947
+    }
+   ],
+   "heads": [
+    {
+     "layer": 57,
+     "head": 23,
+     "predicted": 0.1884,
+     "measured": 0.12109999999999999
+    },
+    {
+     "layer": 57,
+     "head": 8,
+     "predicted": 0.17379,
+     "measured": 0.13280000000000003
+    },
+    {
+     "layer": 57,
+     "head": 11,
+     "predicted": -0.16078,
+     "measured": -0.16210000000000002
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 24,
+     "head": 5,
+     "measured": 0.0
+    },
+    {
+     "layer": 4,
+     "head": 5,
+     "measured": 0.038999999999999924
+    },
+    {
+     "layer": 12,
+     "head": 14,
+     "measured": 0.007800000000000029
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 52,
+     "n": 7669,
+     "act": -13.75,
+     "predicted": -0.25151,
+     "measured": -0.1094
+    },
+    {
+     "layer": 54,
+     "n": 2115,
+     "act": 28.5,
+     "predicted": -0.238926,
+     "measured": 0.2851
+    },
+    {
+     "layer": 56,
+     "n": 16224,
+     "act": 3.20312,
+     "predicted": -0.115177,
+     "measured": -0.12310000000000004
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 52,
+     "n": 2003,
+     "measured": -0.011800000000000033
+    },
+    {
+     "layer": 54,
+     "n": 12609,
+     "measured": 0.0
+    },
+    {
+     "layer": 56,
+     "n": 257,
+     "measured": -0.0039000000000000146
+    }
+   ]
+  },
+  {
+   "layer": 57,
+   "n": 3213,
+   "face": "-",
+   "window": 1075,
+   "at": 114,
+   "pieces": 115,
+   "token": "E",
+   "passage_act": -2.1562,
+   "act": -2.03558,
+   "act_reads": -2.0312,
+   "act_rel_diff": 0.002156360771957379,
+   "linearised_total": -4.08259,
+   "rest": -0.015042,
+   "rest_rel": 0.003684425817924406,
+   "attention_sum": -1.63042,
+   "mlp_sum": -2.43713,
+   "embedding": 1e-05,
+   "blocks": [
+    {
+     "layer": 56,
+     "part": -0.97787,
+     "neurons_sum": -0.979255,
+     "rel_err": 0.0014163436857659705
+    },
+    {
+     "layer": 54,
+     "part": -0.97085,
+     "neurons_sum": -0.970123,
+     "rel_err": 0.0007488283462945184
+    },
+    {
+     "layer": 52,
+     "part": -0.58264,
+     "neurons_sum": -0.582761,
+     "rel_err": 0.00020767540848538844
+    },
+    {
+     "layer": 55,
+     "part": 0.38085,
+     "neurons_sum": 0.38058,
+     "rel_err": 0.0007089405277669633
+    },
+    {
+     "layer": 47,
+     "part": 0.28212,
+     "neurons_sum": 0.281638,
+     "rel_err": 0.0017084928399262104
+    },
+    {
+     "layer": 51,
+     "part": -0.20233,
+     "neurons_sum": -0.200716,
+     "rel_err": 0.007977067167498662
+    },
+    {
+     "layer": 43,
+     "part": -0.20159,
+     "neurons_sum": -0.201826,
+     "rel_err": 0.0011706929907238156
+    },
+    {
+     "layer": 41,
+     "part": -0.19914,
+     "neurons_sum": -0.198604,
+     "rel_err": 0.002691573767198999
+    }
+   ],
+   "heads": [
+    {
+     "layer": 49,
+     "head": 0,
+     "predicted": 0.33101,
+     "measured": 0.10930000000000017
+    },
+    {
+     "layer": 55,
+     "head": 15,
+     "predicted": 0.25398,
+     "measured": 0.2421000000000002
+    },
+    {
+     "layer": 52,
+     "head": 0,
+     "predicted": 0.2524,
+     "measured": -0.031299999999999883
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 25,
+     "head": 18,
+     "measured": -0.015699999999999825
+    },
+    {
+     "layer": 28,
+     "head": 31,
+     "measured": -0.23439999999999994
+    },
+    {
+     "layer": 50,
+     "head": 13,
+     "measured": -0.031299999999999883
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 56,
+     "n": 5489,
+     "act": 5.875,
+     "predicted": 0.490818,
+     "measured": 0.44530000000000003
+    },
+    {
+     "layer": 52,
+     "n": 5192,
+     "act": -31.375,
+     "predicted": 0.34504,
+     "measured": 0.06240000000000001
+    },
+    {
+     "layer": 55,
+     "n": 5110,
+     "act": -10.6875,
+     "predicted": 0.277228,
+     "measured": 0.2812000000000001
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 56,
+     "n": 13862,
+     "measured": 0.0
+    },
+    {
+     "layer": 52,
+     "n": 2741,
+     "measured": 0.0
+    },
+    {
+     "layer": 55,
+     "n": 12069,
+     "measured": 0.031200000000000117
+    }
+   ]
+  },
+  {
+   "layer": 57,
+   "n": 7213,
+   "face": "+",
+   "window": 1452,
+   "at": 55,
+   "pieces": 56,
+   "token": " car",
+   "passage_act": 27.375,
+   "act": 27.47925,
+   "act_reads": 27.375,
+   "act_rel_diff": 0.0038082191780822064,
+   "linearised_total": 54.9585,
+   "rest": 0.086046,
+   "rest_rel": 0.0015656540844455362,
+   "attention_sum": 11.04061,
+   "mlp_sum": 43.83194,
+   "embedding": -9e-05,
+   "blocks": [
+    {
+     "layer": 55,
+     "part": 9.2233,
+     "neurons_sum": 9.22384,
+     "rel_err": 5.854737458383623e-05
+    },
+    {
+     "layer": 54,
+     "part": 6.67905,
+     "neurons_sum": 6.677,
+     "rel_err": 0.00030692987775215807
+    },
+    {
+     "layer": 53,
+     "part": 6.25118,
+     "neurons_sum": 6.2502,
+     "rel_err": 0.00015677040174804033
+    },
+    {
+     "layer": 51,
+     "part": 6.22025,
+     "neurons_sum": 6.22188,
+     "rel_err": 0.0002620473453638642
+    },
+    {
+     "layer": 52,
+     "part": 2.97419,
+     "neurons_sum": 2.97749,
+     "rel_err": 0.0011095457922997046
+    },
+    {
+     "layer": 41,
+     "part": 2.72372,
+     "neurons_sum": 2.72409,
+     "rel_err": 0.0001358436256295652
+    },
+    {
+     "layer": 40,
+     "part": 2.71561,
+     "neurons_sum": 2.71819,
+     "rel_err": 0.000950062785156936
+    },
+    {
+     "layer": 48,
+     "part": 2.21923,
+     "neurons_sum": 2.22128,
+     "rel_err": 0.000923743821055099
+    }
+   ],
+   "heads": [
+    {
+     "layer": 43,
+     "head": 7,
+     "predicted": -3.13983,
+     "measured": -1.75
+    },
+    {
+     "layer": 53,
+     "head": 22,
+     "predicted": -1.85919,
+     "measured": -0.75
+    },
+    {
+     "layer": 56,
+     "head": 2,
+     "predicted": 1.24534,
+     "measured": 0.625
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 16,
+     "head": 10,
+     "measured": -1.0
+    },
+    {
+     "layer": 27,
+     "head": 12,
+     "measured": 0.125
+    },
+    {
+     "layer": 22,
+     "head": 7,
+     "measured": -0.625
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 51,
+     "n": 18965,
+     "act": 38.0,
+     "predicted": -6.54709,
+     "measured": 1.0
+    },
+    {
+     "layer": 56,
+     "n": 8879,
+     "act": -3.51562,
+     "predicted": -2.69108,
+     "measured": -2.5
+    },
+    {
+     "layer": 55,
+     "n": 15266,
+     "act": 13.625,
+     "predicted": -2.15642,
+     "measured": -2.75
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 51,
+     "n": 2092,
+     "measured": 0.125
+    },
+    {
+     "layer": 56,
+     "n": 905,
+     "measured": 0.0
+    },
+    {
+     "layer": 55,
+     "n": 17229,
+     "measured": 0.125
+    }
+   ]
+  },
+  {
+   "layer": 57,
+   "n": 14798,
+   "face": "-",
+   "window": 2313,
+   "at": 332,
+   "pieces": 333,
+   "token": "mid",
+   "passage_act": -5.4062,
+   "act": -5.41006,
+   "act_reads": -5.4062,
+   "act_rel_diff": 0.000713995042728632,
+   "linearised_total": -11.10802,
+   "rest": -0.013485,
+   "rest_rel": 0.001213987731386872,
+   "attention_sum": -4.76855,
+   "mlp_sum": -6.326,
+   "embedding": 1e-05,
+   "blocks": [
+    {
+     "layer": 54,
+     "part": -1.54641,
+     "neurons_sum": -1.5477,
+     "rel_err": 0.0008341901565561612
+    },
+    {
+     "layer": 40,
+     "part": -0.83452,
+     "neurons_sum": -0.83466,
+     "rel_err": 0.0001677611081818506
+    },
+    {
+     "layer": 53,
+     "part": -0.58376,
+     "neurons_sum": -0.583248,
+     "rel_err": 0.0008770727696312817
+    },
+    {
+     "layer": 41,
+     "part": -0.51085,
+     "neurons_sum": -0.510678,
+     "rel_err": 0.0003366937457180405
+    },
+    {
+     "layer": 51,
+     "part": -0.46326,
+     "neurons_sum": -0.463379,
+     "rel_err": 0.0002568751888787727
+    },
+    {
+     "layer": 48,
+     "part": -0.39219,
+     "neurons_sum": -0.391909,
+     "rel_err": 0.0007164894566408519
+    },
+    {
+     "layer": 47,
+     "part": -0.35416,
+     "neurons_sum": -0.354799,
+     "rel_err": 0.0018042692568330718
+    },
+    {
+     "layer": 46,
+     "part": -0.34079,
+     "neurons_sum": -0.340512,
+     "rel_err": 0.0008157516359048109
+    }
+   ],
+   "heads": [
+    {
+     "layer": 40,
+     "head": 21,
+     "predicted": 0.45959,
+     "measured": 1.0937000000000001
+    },
+    {
+     "layer": 49,
+     "head": 6,
+     "predicted": 0.37725,
+     "measured": 0.21870000000000012
+    },
+    {
+     "layer": 55,
+     "head": 16,
+     "predicted": 0.33637,
+     "measured": 0.031200000000000117
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 48,
+     "head": 12,
+     "measured": 0.0
+    },
+    {
+     "layer": 7,
+     "head": 31,
+     "measured": 0.0
+    },
+    {
+     "layer": 25,
+     "head": 16,
+     "measured": 0.031200000000000117
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 56,
+     "n": 18060,
+     "act": -6.59375,
+     "predicted": 0.314879,
+     "measured": 0.31240000000000023
+    },
+    {
+     "layer": 55,
+     "n": 20726,
+     "act": -6.0,
+     "predicted": -0.22933,
+     "measured": -0.09379999999999988
+    },
+    {
+     "layer": 53,
+     "n": 2565,
+     "act": -6.75,
+     "predicted": 0.205916,
+     "measured": 0.2812000000000001
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 56,
+     "n": 6790,
+     "measured": 0.0
+    },
+    {
+     "layer": 55,
+     "n": 21004,
+     "measured": 0.0
+    },
+    {
+     "layer": 53,
+     "n": 1379,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 57,
+   "n": 7074,
+   "face": "+",
+   "window": 1659,
+   "at": 371,
+   "pieces": 372,
+   "token": " of",
+   "passage_act": 4.4062,
+   "act": 4.41668,
+   "act_reads": 4.4062,
+   "act_rel_diff": 0.002378466706005235,
+   "linearised_total": 9.4236,
+   "rest": -0.002278,
+   "rest_rel": 0.00024173352009847617,
+   "attention_sum": 2.9676,
+   "mlp_sum": 6.45828,
+   "embedding": -0.0,
+   "blocks": [
+    {
+     "layer": 56,
+     "part": 2.65907,
+     "neurons_sum": 2.65904,
+     "rel_err": 1.1282139996221404e-05
+    },
+    {
+     "layer": 54,
+     "part": 1.14707,
+     "neurons_sum": 1.14742,
+     "rel_err": 0.00030512523211318615
+    },
+    {
+     "layer": 55,
+     "part": 1.12445,
+     "neurons_sum": 1.12496,
+     "rel_err": 0.00045355507136823377
+    },
+    {
+     "layer": 53,
+     "part": 0.52071,
+     "neurons_sum": 0.51923,
+     "rel_err": 0.002842273050258372
+    },
+    {
+     "layer": 50,
+     "part": 0.24936,
+     "neurons_sum": 0.24927,
+     "rel_err": 0.00036092396535132636
+    },
+    {
+     "layer": 43,
+     "part": 0.21641,
+     "neurons_sum": 0.216293,
+     "rel_err": 0.0005406404509956945
+    },
+    {
+     "layer": 42,
+     "part": 0.2081,
+     "neurons_sum": 0.208401,
+     "rel_err": 0.0014464199903892153
+    },
+    {
+     "layer": 48,
+     "part": 0.16113,
+     "neurons_sum": 0.160688,
+     "rel_err": 0.0027431266679078877
+    }
+   ],
+   "heads": [
+    {
+     "layer": 57,
+     "head": 23,
+     "predicted": -0.88056,
+     "measured": -0.7187000000000001
+    },
+    {
+     "layer": 49,
+     "head": 31,
+     "predicted": -0.41766,
+     "measured": 0.21879999999999988
+    },
+    {
+     "layer": 56,
+     "head": 5,
+     "predicted": 0.31986,
+     "measured": 0.375
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 39,
+     "head": 9,
+     "measured": -0.09370000000000012
+    },
+    {
+     "layer": 6,
+     "head": 12,
+     "measured": 0.0
+    },
+    {
+     "layer": 29,
+     "head": 24,
+     "measured": 0.0
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 56,
+     "n": 18420,
+     "act": 7.5625,
+     "predicted": -0.962514,
+     "measured": -0.6718000000000002
+    },
+    {
+     "layer": 55,
+     "n": 1544,
+     "act": 7.8125,
+     "predicted": -0.366217,
+     "measured": -0.5
+    },
+    {
+     "layer": 52,
+     "n": 18608,
+     "act": -19.875,
+     "predicted": -0.315382,
+     "measured": -0.8593000000000002
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 56,
+     "n": 11850,
+     "measured": 0.0
+    },
+    {
+     "layer": 55,
+     "n": 17904,
+     "measured": 0.0
+    },
+    {
+     "layer": 52,
+     "n": 4958,
+     "measured": 0.0
+    }
+   ]
+  },
+  {
+   "layer": 57,
+   "n": 3432,
+   "face": "-",
+   "window": 757,
+   "at": 95,
+   "pieces": 96,
+   "token": "'",
+   "passage_act": -5.0938,
+   "act": -4.85968,
+   "act_reads": -4.8438,
+   "act_rel_diff": 0.0032784177711714184,
+   "linearised_total": -10.06417,
+   "rest": -0.004252,
+   "rest_rel": 0.0004224888888005667,
+   "attention_sum": -2.4551,
+   "mlp_sum": -7.60481,
+   "embedding": -1e-05,
+   "blocks": [
+    {
+     "layer": 56,
+     "part": -2.48197,
+     "neurons_sum": -2.48098,
+     "rel_err": 0.00039887669875132427
+    },
+    {
+     "layer": 55,
+     "part": -1.62667,
+     "neurons_sum": -1.62759,
+     "rel_err": 0.0005655726115315533
+    },
+    {
+     "layer": 54,
+     "part": -1.06157,
+     "neurons_sum": -1.06183,
+     "rel_err": 0.00024492025961561555
+    },
+    {
+     "layer": 53,
+     "part": -1.00696,
+     "neurons_sum": -1.00493,
+     "rel_err": 0.002015968856756948
+    },
+    {
+     "layer": 51,
+     "part": -0.52552,
+     "neurons_sum": -0.526235,
+     "rel_err": 0.0013605571624296338
+    },
+    {
+     "layer": 52,
+     "part": -0.49132,
+     "neurons_sum": -0.490509,
+     "rel_err": 0.0016506553773508227
+    },
+    {
+     "layer": 49,
+     "part": 0.21937,
+     "neurons_sum": 0.219788,
+     "rel_err": 0.0019054565346218794
+    },
+    {
+     "layer": 40,
+     "part": -0.20801,
+     "neurons_sum": -0.207968,
+     "rel_err": 0.00020191336954960938
+    }
+   ],
+   "heads": [
+    {
+     "layer": 57,
+     "head": 23,
+     "predicted": 0.80557,
+     "measured": 0.18759999999999977
+    },
+    {
+     "layer": 56,
+     "head": 5,
+     "predicted": -0.68177,
+     "measured": -1.1562000000000001
+    },
+    {
+     "layer": 56,
+     "head": 4,
+     "predicted": 0.56878,
+     "measured": 1.0781999999999998
+    }
+   ],
+   "null_heads": [
+    {
+     "layer": 38,
+     "head": 31,
+     "measured": 0.0
+    },
+    {
+     "layer": 9,
+     "head": 25,
+     "measured": 0.21879999999999988
+    },
+    {
+     "layer": 40,
+     "head": 27,
+     "measured": 0.125
+    }
+   ],
+   "neurons": [
+    {
+     "layer": 56,
+     "n": 6500,
+     "act": 4.9375,
+     "predicted": 1.37434,
+     "measured": 1.2344
+    },
+    {
+     "layer": 53,
+     "n": 5305,
+     "act": 39.5,
+     "predicted": 0.690249,
+     "measured": 1.4531999999999998
+    },
+    {
+     "layer": 56,
+     "n": 2669,
+     "act": -4.59375,
+     "predicted": 0.602001,
+     "measured": 0.5625999999999998
+    }
+   ],
+   "null_neurons": [
+    {
+     "layer": 56,
+     "n": 17079,
+     "measured": 0.0
+    },
+    {
+     "layer": 53,
+     "n": 16233,
+     "measured": 0.031299999999999883
+    },
+    {
+     "layer": 56,
+     "n": 10566,
+     "measured": 0.0
+    }
+   ]
+  }
+ ],
+ "summary_recomputed_by": "--summarise at 9e255fe"
+}

@@ -160,6 +160,25 @@ export function nearestStatement(word: string, layerNo: number | null, k: number
   );
 }
 
+/* ---------------------------------------------------------- the example edit */
+
+/**
+ * The edit the edit tab opens on, and the question it opens on to hear it by. It is heard there: on Gemma-4-31B (29
+ * October 2026, scripts/verify_e2e_ui_and_mcp.py, item 11) the answer "A spider has eight legs." becomes "six legs.",
+ * "six" rising from 1.6e-17 to 0.22 at the first word-piece. Its neuron, 7830 of layer 60, is the one of that layer
+ * firing hardest where the answer begins, on its negative face; at the last layer only the norms stand between its
+ * write and the next word, so the edit raises "six" wherever the neuron fires on that face: it shows that an edit can be
+ * heard, not that the neuron holds the fact. On seven questions (experiments/results/vault_example_edit/probe.json) it
+ * changed only the spider's, the dog's and the hexagon's answers, each to a bare "six legs." or "six sides". Such an
+ * edit is rare: the three most active neurons at layers 41, 46, 51, 56 and 59 were not heard on the spider question at
+ * strengths 3 or 30 (scripts/verify_e2e_ui_and_mcp.py, beside AUDIBLE_LAYER). The edit tab's earlier example, neuron
+ * 100 of layer 36, changed only one of the seven answers, and that by a space at the eleventh word-piece.
+ */
+export const EXAMPLE_EDIT = { layer: 60, n: 7830, word: "six", strength: "3.0", pol: "-" as "+" | "-" };
+export const EXAMPLE_QUESTION = "How many legs does a spider have?";
+/** The example edit as the vault reads it (it counts layers from nought). */
+export const EXAMPLE_LQL = `UPDATE LAYER ${EXAMPLE_EDIT.layer - 1} SLOT ${EXAMPLE_EDIT.n} SET object = '${EXAMPLE_EDIT.word}' STRENGTH ${EXAMPLE_EDIT.strength} POLARITY ${EXAMPLE_EDIT.pol}`;
+
 /* ---------------------------------------------------------- the grammar */
 
 export const FORMS: [string, string, string][] = [
@@ -179,7 +198,7 @@ export const FORMS: [string, string, string][] = [
   [
     "UPDATE LAYER <l> SLOT <i> SET object = '<word>' [STRENGTH <alpha>] [POLARITY +|-]",
     "Make one neuron say a word more strongly. Left out, the strength is 2.5 and the face positive.",
-    "UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY +",
+    EXAMPLE_LQL,
   ],
   [
     "INSERT INTO LAYER <l> (subject, object) VALUES ('<subject>', '<object>') [STRENGTH <alpha>]",

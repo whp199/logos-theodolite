@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { type VoicePayload, useTheodoliteStore } from "../../store/useTheodoliteStore";
-import { nearestStatement } from "./lql";
+import { EXAMPLE_EDIT, EXAMPLE_QUESTION, nearestStatement } from "./lql";
 import { num } from "./live";
 
 /**
@@ -38,7 +38,8 @@ interface VaultUi {
   /** hear the edit before and after (the vault's voice) */
   hear: boolean;
   /** the question it is heard by, as typed here; null follows the instrument page's own (question, begun answer, chat,
-   * system prompt) */
+   * system prompt). It opens on the example edit's own question (EXAMPLE_QUESTION), as a chat with no system prompt and
+   * nothing begun, as that edit was heard */
   vQuestion: string | null;
   vBegins: string | null;
   vChat: boolean | null;
@@ -67,16 +68,16 @@ export const useVaultUi = create<VaultUi>((set) => ({
   gate: 0,
   faRaw: false,
   eKind: "update",
-  eN: "100",
-  eLayer: "36",
-  eWord: "six",
-  eStrength: "3.0",
-  ePol: "+",
+  eN: String(EXAMPLE_EDIT.n),
+  eLayer: String(EXAMPLE_EDIT.layer),
+  eWord: EXAMPLE_EDIT.word,
+  eStrength: EXAMPLE_EDIT.strength,
+  ePol: EXAMPLE_EDIT.pol,
   hear: true,
-  vQuestion: null,
-  vBegins: null,
-  vChat: null,
-  vSystem: null,
+  vQuestion: EXAMPLE_QUESTION,
+  vBegins: "",
+  vChat: true,
+  vSystem: "",
   editSent: null,
   undoAt: null,
   conRun: null,
