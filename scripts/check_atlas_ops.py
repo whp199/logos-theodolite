@@ -35,7 +35,9 @@ model nor the lens, and hides the GPU. It checks, against brute force:
    strength across layers |P| f^2 over the strongest (w, the order of the links), sign(P) and the gate sign(g); a
    neuron that writes nothing has no readers; and a link
    reads the same product from both ends; `HeadSpaces`' shares equal projections on explicit orthonormal bases, and
-   `neuron_head_roles` and `head_wiring` rank as those projections do;
+   `neuron_head_roles` and `head_wiring` rank as those projections do; heads whose rows depend on each other (a query
+   head, the full layer's key and so value space, an output head, each of rank 5, a Gram matrix float32 makes
+   indefinite) factor, and their shares are the projection on the span they have, as their SVD gives it with the ridge;
 10. `steer_lens`' base rows are the unpushed forwards and its rises are those of separate pushed forwards;
 11. the sign in use (LINK_MODEL_USE), on a float64 copy of the stand-in, at a reader's stored events (`passage_events`):
     the operating points are the medians of gelu'(g) u and gelu(g) over each face's events; a writer's write, pushed by
@@ -59,6 +61,7 @@ Run: .venv/bin/python -I scripts/check_atlas_ops.py   (exits 0 when every check 
 
 from __future__ import annotations
 
+import math
 import os
 import sys
 
@@ -689,7 +692,10 @@ def check_wiring(hf: Any, lm: Any, w: ao.Weights, tok: Any) -> torch.Tensor:
     section("wiring: the norms' scales, the carried layer scalars, the products one by one, z, w, sign and gate", before)
     return f
 
+
+def check_head_spaces(lm: Any, w: ao.Weights) -> None:
     before = len(failures)
+    L = len(lm.layers)
     shapes = [ao.attn_shape(lm, l) for l in range(L)]
     sp = ao.HeadSpaces(w, shapes)
     g = torch.Generator().manual_seed(3)
@@ -723,6 +729,70 @@ def check_wiring(hf: Any, lm: Any, w: ao.Weights, tok: Any) -> torch.Tensor:
                 for i in range(3) for a in range(w.d_ff)))
     check((hw["v"][0]["layer"], hw["v"][0]["n"]) == (best[1], best[2]), f"head wiring: top v {hw['v'][0]} != {best}")
     section("head spaces equal projections on explicit bases; roles and head wiring rank by them", before)
+
+    # Heads whose rows depend on each other: a query head and the key (and so value) space of the full layer, an output
+    # head of layer 1, each made of r combinations of r of its own rows. Stored in float32, the combinations sit ~1e-7 off
+    # the r-dimensional span; a Gram matrix formed in float32 comes out indefinite there, as the 31B's full layers'
+    # (layer 47's keys, layer 59's queries) did on the GPU, and the factor refused it until the products were float64.
+    before = len(failures)
+    lf, lo, hq, ho, r = L - 1, 1, 1, 2, 5
+    a_f, a_o = lm.layers[lf].self_attn, lm.layers[lo].self_attn
+    saved = [a_f.q_proj.weight.data.clone(), a_f.k_proj.weight.data.clone(), a_o.o_proj.weight.data.clone()]
+    g = torch.Generator().manual_seed(5)
+
+    def low_rank(rows: torch.Tensor) -> torch.Tensor:
+        return torch.randn(rows.shape[0], r, generator=g) @ rows[:r]
+
+    def ridged(A: torch.Tensor, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """A unit's rows A [m, D] -> (the share of each column of x [D, K] HeadSpaces defines, from A's SVD: a direction
+        A reads with squared gain s^2 counts s^2 / (s^2 + ridge), the ridge 1e-9 of A's mean squared row; an orthonormal
+        basis [D, r] of the r directions A reads)."""
+        _, s, Vh = torch.linalg.svd(A.double(), full_matrices=False)
+        ridge = 1e-9 * A.double().pow(2).sum(1).mean()
+        c = Vh @ x.double()
+        return ((s**2 / (s**2 + ridge))[:, None] * c**2).sum(0).sqrt() / x.double().norm(dim=0), Vh[:r].T
+
+    try:
+        hf_, ho_ = shapes[lf].head_dim, shapes[lo].head_dim
+        a_f.q_proj.weight.data[hq * hf_:(hq + 1) * hf_] = low_rank(saved[0][hq * hf_:(hq + 1) * hf_])
+        a_f.k_proj.weight.data[:hf_] = low_rank(saved[1][:hf_])
+        a_o.o_proj.weight.data[:, ho * ho_:(ho + 1) * ho_] = low_rank(saved[2][:, ho * ho_:(ho + 1) * ho_].T).T
+        d = torch.randn(w.d_model, 4, generator=g)
+        for role, u_i in (("q", hq), ("k", 0), ("v", 0)):
+            A = (w.attn_weight(lf, role).float() * w.norm(lf, "input")[None, :])[u_i * hf_:(u_i + 1) * hf_]
+            _, B = ridged(A, d)
+            inside = B[:, :1].float()
+            outside = d[:, :1] - (B @ (B.T @ d[:, :1].double())).float()
+            x = torch.cat([d, inside, outside], 1)
+            want, _ = ridged(A, x)
+            try:
+                got = sp.read_share(lf, role, x)[u_i]
+            except RuntimeError as e:
+                check(False, f"spaces: L{lf} {role}{u_i} of rank {r} does not factor: {e}")
+                continue
+            check(torch.allclose(got, want, rtol=0, atol=1e-6), f"spaces: L{lf} {role}{u_i} of rank {r}: {got.tolist()} != {want.tolist()}")
+            check(abs(float(got[-2]) - 1) < 1e-6 and float(got[-1]) < 1e-2,
+                  f"spaces: L{lf} {role}{u_i} of rank {r} reads its span whole ({float(got[-2])}) and not what lies off it ({float(got[-1])})")
+        M = w.attn_weight(lo, "o").float() * w.norm(lo, "post_attention")[:, None]
+        A = M[:, ho * ho_:(ho + 1) * ho_].T
+        rr = torch.randn(3, w.d_model, generator=g)
+        want, _ = ridged(A, rr.T)
+        try:
+            got = sp.write_share(lo, rr)[ho]
+            check(torch.allclose(got, want, rtol=0, atol=1e-6), f"spaces: L{lo} o{ho} of rank {r}: {got.tolist()} != {want.tolist()}")
+            roles = ao.neuron_head_roles(sp, 2, 9, k=3)
+            check(all(math.isfinite(x["z"]) for k_ in ("q", "k", "v", "o") for x in roles[k_]), "roles with rank-deficient heads")
+            for l_, h_ in ((lf, hq), (lo, ho)):
+                hw = ao.head_wiring(sp, l_, h_, k=5)
+                check(all(math.isfinite(c["z"]) for k_ in hw for c in hw[k_]), f"head wiring of the rank-deficient head ({l_}, {h_})")
+        except RuntimeError as e:
+            check(False, f"spaces: a rank-{r} head does not factor: {e}")
+    finally:
+        a_f.q_proj.weight.data.copy_(saved[0])
+        a_f.k_proj.weight.data.copy_(saved[1])
+        a_o.o_proj.weight.data.copy_(saved[2])
+    section(f"heads of rank {r}: their shares are the projection on the span their rows have, the roles and head wiring "
+            "read them", before)
 
 
 def check_steer_lens(lm: Any, W_U: torch.Tensor, w: ao.Weights, tok: Any) -> None:
@@ -1035,6 +1105,7 @@ def main() -> int:
     check_reading(lm, W_U, w, tok)
     check_heads(hf, tok, w)
     f = check_wiring(hf, lm, w, tok)
+    check_head_spaces(lm, w)
     check_steer_lens(lm, W_U, w, tok)
     check_wiring_use(hf, tok, f)
     check_wiring_measured(lm, w, tok, f)

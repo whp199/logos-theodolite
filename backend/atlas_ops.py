@@ -1715,18 +1715,48 @@ class HeadSpaces:
     """Each attention head's read spaces (its query, key and value rows, after the input norm's weight) and write space
     (its output columns, after the post-attention norm's weight), read through Gram matrices, so a vector's share of a
     space is ||P d|| = sqrt((W d)^T (W W^T)^-1 (W d)) without a basis per head. Nothing is kept between calls: a basis of
-    every head's spaces on Gemma-4-31B would take gigabytes, and one layer's Gram matrices take milliseconds to remake
-    from its weights (float32 products, float64 factors)."""
+    every head's spaces on Gemma-4-31B would take gigabytes, and one layer's Gram matrices take tens of milliseconds to
+    remake from its weights (float64 products of the float32 rows, float64 factors)."""
 
     def __init__(self, weights: Weights, shapes: Sequence[AttnShape]) -> None:
         self.w = weights
         self.shapes = shapes
 
     @staticmethod
+    def _gram(A: torch.Tensor) -> torch.Tensor:
+        """A [U, m, D] -> A A^T [U, m, m], float64 on the CPU, the products formed in float64 on A's device a few units at
+        a time. Float32 is not enough on the GPU: the 31B's spaces read some directions with a squared gain down to
+        1.8e-9 of their strongest (the Gram's eigenvalues; layers 47, 53 and 59's keys), and the 5090's float32 Grams
+        came out indefinite (layer 47's keys, layer 59's queries and keys), so no neuron below layer 59 had its heads
+        read. The gain alone is not the cause (layer 59's queries' weakest is 1.1e-7, over float32's 6e-8; TF32 is off):
+        a float32 sum along D's 5,376 terms kept in one running total, emulated on the CPU, errs by up to 9e-7 of the
+        strongest and gives layer 47's keys the -4.6e-8 the 5090 logged, while the CPU's own float32 products keep these
+        eigenvalues positive (the weakest within 2%), which is why the CPU-only checks never saw it."""
+        out = []
+        for a in A.split(8):
+            a = a.double()
+            out.append((a @ a.transpose(1, 2)).cpu())
+        return torch.cat(out)
+
+    @staticmethod
+    def _apply(A: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+        """A [U, m, D] @ x [D, K] -> [U, m, K], float64 on the CPU, formed as `_gram` forms its products: in a space whose
+        rows nearly depend on each other, float32's rounding of W d falls off the span, where the factor's 1 / ridge
+        would blow it up."""
+        x = x.double().to(A.device)
+        return torch.cat([(a.double() @ x).cpu() for a in A.split(8)])
+
+    @staticmethod
     def _chol(G: torch.Tensor) -> torch.Tensor:
-        G = G.double().cpu()
-        G += torch.eye(G.shape[-1], dtype=torch.float64) * (1e-9 * G.diagonal(dim1=-2, dim2=-1).mean())
-        return torch.linalg.cholesky(G)
+        """Cholesky factors of Gram matrices G [U, m, m] (float64, CPU), each after a ridge of 1e-9 of its mean diagonal.
+        A space whose m rows depend on each other (rank r < m) is the r directions they span, and its share is the
+        projection on those. The ridge sets how weakly a direction may be read and still count: one read with a squared
+        gain s^2 counts s^2 / (s^2 + ridge) of itself, so what rounding leaves off a dependent space counts for nothing,
+        and a unit whose rows are all zero reads nothing (share 0). Against such a space the random direction's share
+        the roles divide by, sqrt(m / D), is sqrt(m / r) too high."""
+        ridge = 1e-9 * G.diagonal(dim1=-2, dim2=-1).mean(-1)
+        ridge = torch.where(ridge > 0, ridge, torch.ones_like(ridge))
+        return torch.linalg.cholesky(G + torch.eye(G.shape[-1], dtype=G.dtype) * ridge[:, None, None])
 
     def read_rows(self, layer: int, role: str) -> Tuple[torch.Tensor, torch.Tensor]:
         """(rows [units, hd, D] float32 on the device, Cholesky factors [units, hd, hd] float64 on the CPU) of the q, k or
@@ -1735,14 +1765,14 @@ class HeadSpaces:
         W = self.w.attn_weight(layer, role).float() * self.w.norm(layer, "input").to(self.w.device)[None, :]
         units = sh.n_heads if role == "q" else sh.n_kv
         R = W.view(units, sh.head_dim, -1)
-        return R, self._chol(R @ R.transpose(1, 2))
+        return R, self._chol(self._gram(R))
 
     def write_cols(self, layer: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """(M [H, D, hd] float32 on the device, Cholesky factors of M^T M [H, hd, hd] float64 on the CPU)."""
         sh = self.shapes[layer]
         W_O = self.w.attn_weight(layer, "o").float()  # [D, H*hd]
         M = (W_O * self.w.norm(layer, "post_attention").to(self.w.device)[:, None]).view(-1, sh.n_heads, sh.head_dim).permute(1, 0, 2)
-        return M, self._chol(M.transpose(1, 2) @ M)
+        return M, self._chol(self._gram(M.transpose(1, 2)))
 
     @staticmethod
     def _share(proj: torch.Tensor, chol: torch.Tensor) -> torch.Tensor:
@@ -1754,14 +1784,12 @@ class HeadSpaces:
     def read_share(self, layer: int, role: str, d: torch.Tensor) -> torch.Tensor:
         """The share of each vector in d [D, K] that falls in each unit's read space: [U, K]."""
         R, chol = self.read_rows(layer, role)
-        proj = torch.einsum("uhd,dk->uhk", R, d.float().to(R.device))
-        return self._share(proj, chol) / d.double().norm(dim=0).clamp(min=1e-30).cpu()[None, :]
+        return self._share(self._apply(R, d), chol) / d.double().norm(dim=0).clamp(min=1e-30).cpu()[None, :]
 
     def write_share(self, layer: int, r: torch.Tensor) -> torch.Tensor:
         """The share of each row vector in r [K, D] that falls in each head's write space: [H, K]."""
         M, chol = self.write_cols(layer)
-        proj = torch.einsum("hdj,kd->hjk", M, r.float().to(M.device))
-        return self._share(proj, chol) / r.double().norm(dim=1).clamp(min=1e-30).cpu()[None, :]
+        return self._share(self._apply(M.transpose(1, 2), r.T), chol) / r.double().norm(dim=1).clamp(min=1e-30).cpu()[None, :]
 
 
 def _z(v: torch.Tensor) -> torch.Tensor:
