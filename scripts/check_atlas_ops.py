@@ -45,9 +45,14 @@ model nor the lens, and hides the GPU. It checks, against brute force:
     the full first-order change (the norms' own response included), whose sign is the link model's at most events
     (printed, not asserted); the median-based sign agrees with each event's own at most events (printed);
 12. the wiring measured: `pushed_reads`' batched rows (writers at two layers in one prefill, chunks of several sizes)
-    equal separate forwards, one row each, unpushed, +d and -d, at the last word-piece and over the prompt; the null's
-    readers are never the writer's linked ones, one at each linked reader's layer, none twice; `pair_products` gives
-    `neuron_wiring`'s g and u.
+    equal separate forwards, one row each, unpushed, +d and -d, at the last word-piece and over the prompt; each
+    reader's g0 and u0 are what plain hooks on its gate_proj and up_proj give on the unpushed row, at every word-piece
+    past the start mark, right-aligned, NaN before a shorter question's first, and the unpushed read at the last
+    word-piece is gelu_tanh(g0) u0; GELU_MIN, where the check's regimes part, is where gelu_tanh is least; where the
+    reader sits, a small push moves it by alpha0 dg + beta0 du to first order (float32 central differences), alpha0
+    and beta0 from those g0 and u0, dg and du its own gate and up changes (with the link's g and u from the weights in
+    their place, the share of signs is printed, not asserted); the null's readers are never the writer's linked ones,
+    one at each linked reader's layer, none twice; `pair_products` gives `neuron_wiring`'s g and u.
 
 Run: .venv/bin/python -I scripts/check_atlas_ops.py   (exits 0 when every check holds)
 """
@@ -921,31 +926,75 @@ def check_wiring_measured(lm: Any, w: ao.Weights, tok: Any, f: torch.Tensor) -> 
     readers = [[(2, 5), (4, 17), (5, 100)], [(3, 1), (5, 2)], [(2, 5), (3, 64), (4, 0), (5, 127)], [(4, 9)], [(5, 77), (3, 3)]]
     lengths = [0.5, 1.2, 0.3, 2.0, 0.8]
 
-    def alone(ids: List[int], l: int, a: int, d: float, rs: List[Tuple[int, int]]) -> List[Tuple[float, float]]:
+    def alone(ids: List[int], l: int, a: int, d: float, rs: List[Tuple[int, int]]) -> List[Tuple[float, float, Any, Any]]:
         """One row by itself: the writer pushed by d (0: unpushed) at every word-piece but the start mark; each
-        reader's activation at the last word-piece and its mean past the start mark."""
+        reader's activation at the last word-piece and its mean past the start mark, and its gate and up values (plain
+        hooks on gate_proj and up_proj) at every word-piece past the start mark."""
         iv = None
         if d:
             iv = ao.Interventions(rows=1, adds={l: d * w.write_dirs(l, [a])})
         at = sorted({j for j, _ in rs})
-        got = observe(lm, ids, iv, [(lm.layers[j].mlp.down_proj, "pre") for j in at])
-        by = {j: calls[0][0] for j, calls in zip(at, got)}
-        return [(float(by[j][-1, b]), float(by[j][1:, b].mean())) for j, b in rs]
+        mlps = [lm.layers[j].mlp for j in at]
+        got = observe(lm, ids, iv, [(m.down_proj, "pre") for m in mlps] + [(m.gate_proj, "post") for m in mlps] + [(m.up_proj, "post") for m in mlps])
+        k = len(at)
+        by, gs, us = ({j: calls[0][0] for j, calls in zip(at, got[s : s + k])} for s in (0, k, 2 * k))
+        return [(float(by[j][-1, b]), float(by[j][1:, b].mean()), gs[j][1:, b].numpy(), us[j][1:, b].numpy()) for j, b in rs]
 
-    worst = 0.0
+    # gelu's minimum, where the check's regimes part (a shut reader's gate path turns below it): the model's own gelu
+    # (F.gelu, tanh) is least there on a fine grid, and its gradient is 0
+    xs = torch.linspace(-3.0, 1.0, 400001, dtype=torch.float64)
+    least = float(xs[F.gelu(xs, approximate="tanh").argmin()])
+    check(abs(ao.GELU_MIN - least) < 2e-5 and abs(ao.gelu_tanh_grad(ao.GELU_MIN)) < 1e-12 and -0.76 < ao.GELU_MIN < -0.75,
+          f"GELU_MIN is where gelu_tanh is least ({ao.GELU_MIN:.5f}; on the grid {least:.5f})")
+    worst, worst_gu, gelu_bad, pad_bad = 0.0, 0.0, 0.0, 0
+    P = max(len(ids) for ids in prompts) - 1
     for batch in (5, 3, 64):  # two writers a prefill (at two layers in one), one, and all of them
-        got = ao.pushed_reads(lm, w, prompts, writers, readers, lengths, bos_id=tok.bos_token_id, batch=batch)
-        check(got.shape == (5, 4, 2, 3, 2) and bool(np.isnan(got[3, 1:]).all()), f"pushed reads: shape {got.shape}, NaN past a writer's own readers")
+        got, g0, u0 = ao.pushed_reads(lm, w, prompts, writers, readers, lengths, bos_id=tok.bos_token_id, batch=batch)
+        check(got.shape == (5, 4, 2, 3, 2) and bool(np.isnan(got[3, 1:]).all()) and g0.shape == u0.shape == (5, 4, 2, P)
+              and bool(np.isnan(g0[3, 1:]).all() and np.isnan(u0[3, 1:]).all()),
+              f"pushed reads: shapes {got.shape}, {g0.shape}, NaN past a writer's own readers")
         for a, ((l, n), rs) in enumerate(zip(writers, readers)):
             for q, ids in enumerate(prompts):
                 for row, d in enumerate((0.0, lengths[a], -lengths[a])):
                     want = alone(ids, l, n, d, rs)
-                    for r, (last, mean) in enumerate(want):
+                    for r, (last, mean, gg, uu) in enumerate(want):
                         worst = max(worst, abs(float(got[a, r, q, row, 0]) - last), abs(float(got[a, r, q, row, 1]) - mean))
+                        if row == 0:
+                            # where the reader sits: its own gate and up values on the unpushed row, right-aligned
+                            worst_gu = max(worst_gu, float(np.abs(g0[a, r, q, P - len(gg):] - gg).max()), float(np.abs(u0[a, r, q, P - len(uu):] - uu).max()))
+                            pad_bad += int(not (np.isnan(g0[a, r, q, : P - len(gg)]).all() and np.isnan(u0[a, r, q, : P - len(uu)]).all()))
+                            at_last = F.gelu(torch.tensor(g0[a, r, q, -1]), approximate="tanh") * torch.tensor(u0[a, r, q, -1])
+                            gelu_bad = max(gelu_bad, abs(float(at_last) - float(got[a, r, q, 0, 0])))
     check(worst < 1e-5, f"pushed reads: batched rows equal separate forwards, unpushed, +d and -d, last and mean ({worst:.1e} off)")
-    moved = ao.pushed_reads(lm, w, prompts[:1], writers[:1], readers[:1], [0.5], bos_id=tok.bos_token_id)
+    check(worst_gu < 1e-5 and pad_bad == 0, f"pushed reads: each reader's g0 and u0 are a plain hook's on gate_proj and up_proj, unpushed, "
+          f"at every word-piece past the start mark, the last at [..., -1], NaN before a shorter question's first ({worst_gu:.1e} off; {pad_bad} pads not NaN)")
+    check(gelu_bad < 1e-6, f"pushed reads: the unpushed read at the last word-piece is gelu_tanh(g0) u0 there ({gelu_bad:.1e} off)")
+    moved, _, _ = ao.pushed_reads(lm, w, prompts[:1], writers[:1], readers[:1], [0.5], bos_id=tok.bos_token_id)
     check(bool(np.isfinite(moved).all()) and bool(np.abs(moved[0, :, 0, 1] - moved[0, :, 0, 0]).min() > 0),
           "pushed reads: a push moves every reader it reaches")
+    # where the reader sits, a small push (a tenth of the lengths above) moves its activation at the last word-piece by
+    # alpha0 dg + beta0 du to first order, float32 central differences: alpha0 = gelu'(g0) u0 and beta0 = gelu(g0) from
+    # pushed_reads' own g0 and u0 (atlas_ops.site_coefficients, as the summary reads them), dg and du the reader's own
+    # gate and up changes there under +-d
+    small = [0.1 * x for x in lengths]
+    got, g0, u0 = ao.pushed_reads(lm, w, prompts, writers, readers, small, bos_id=tok.bos_token_id)
+    fd_bad, fd_n, by_weights = [], 0, []
+    for a, ((l, n), rs) in enumerate(zip(writers, readers)):
+        g_w, u_w = ao.pair_products(w, l, [n], [rs])
+        for q, ids in enumerate(prompts):
+            up, down = alone(ids, l, n, small[a], rs), alone(ids, l, n, -small[a], rs)
+            for r in range(len(rs)):
+                al0, be0 = (float(x) for x in ao.site_coefficients(g0[a, r, q, -1], u0[a, r, q, -1]))
+                pred = al0 * (float(up[r][2][-1]) - float(down[r][2][-1])) / 2 + be0 * (float(up[r][3][-1]) - float(down[r][3][-1])) / 2
+                da = (float(got[a, r, q, 1, 0]) - float(got[a, r, q, 2, 0])) / 2
+                fd_n += 1
+                if abs(da - pred) > 1e-2 * abs(da) or (da > 0) != (pred > 0):
+                    fd_bad.append((a, r, q, da, pred))
+                by_weights.append((da > 0) == (al0 * float(g_w[0, r]) + be0 * float(u_w[0, r]) > 0))
+    check(fd_n > 20 and not fd_bad, f"where the reader sits: a small push moves it by alpha0 dg + beta0 du, alpha0 and beta0 from its "
+          f"recorded g0 and u0, at {fd_n} (writer, reader, question) ({len(fd_bad)} off: {fd_bad[:2]})")
+    print(f"        with the link's own g and u from the weights in place of dg and du (the direct path alone), its sign is the "
+          f"change's at {sum(by_weights)} of {len(by_weights)} (on random weights every other path counts too; printed, not asserted)")
     # the null: never a linked reader, one at each linked reader's layer, none twice
     rng = np.random.default_rng(0)
     bad = 0
@@ -966,7 +1015,8 @@ def check_wiring_measured(lm: Any, w: ao.Weights, tok: Any, f: torch.Tensor) -> 
     g, u = ao.pair_products(w, 1, [12], [[(c["layer"], c["n"]) for c in res]])
     check(all(abs(float(g[0, i]) - c["g"]) <= 1e-5 * max(1.0, abs(c["g"])) and abs(float(u[0, i]) - c["u"]) <= 1e-5 * max(1.0, abs(c["u"]))
               for i, c in enumerate(res)), "pair_products: neuron_wiring's g and u, pair by pair")
-    section("the wiring measured: batched pushed reads equal separate forwards; the null never linked; any pair's g and u", before)
+    section("the wiring measured: batched pushed reads equal separate forwards, each reader's g0 and u0 a plain hook's, a small "
+            "push the first-order change where it sits; the null never linked; any pair's g and u", before)
 
 
 def main() -> int:

@@ -24,12 +24,21 @@ with the same quantity read live, one neuron at a time:
    open neuron's upstream); the count of signs in use that differ from rest is the count link by link; a wiring index
    without g and u still serves the sign from rest and says, in use, to rebuild it;
 5b. wiring_check.npz (the wiring measured): each writer's linked readers are its links in the wiring index, the null's
-   at the same layers and never linked; each push is the dose times the writer's ceiling; the reads are `pushed_reads`'
-   in another batch shape; the signs, g, u and strength are the index's and the weights'; the summary in the meta is
-   the stored arrays', every share, rho and size recounted pair by pair by hand at both read sites, linked and null
-   (Spearman's rho also on cases with ties); the server reads only its meta; a second run adds layers and skips those
-   done, past a half-written shard, and one with another dose, other scales or against another passages index is
-   refused, as is a batch below 3;
+   at the same layers and never linked; each push is the dose times the writer's ceiling; the reads and each reader's
+   g0 and u0 are `pushed_reads`' in another batch shape; the signs, g, u, f and strength are the index's and the
+   weights'; the summary in the meta is the stored arrays', every share (a change of 0 left out), the sign in use where
+   each reader sits (from its g0 and u0 in Python floats) and at the passages' operating point, each regime (with
+   every g0 moved down by 1 too, which puts readers below gelu's minimum), rho against |P| f^2 and against the
+   first-order size where the reader sits, and the size, recounted pair by pair by hand at both read sites, linked and
+   null (Spearman's rho also on cases with ties); the sign in use where the reader sits is a float32 central
+   difference's of gelu(g0 + e g) (u0 + e u) at nearly every pair; a layer without g0, u0 and f (measured before they
+   were recorded) is summed up as it was then, by the recount of then, and says its site score needs a rerun; the
+   server reads only its meta; a second run adds layers and skips those done, past a half-written shard, and one with
+   another dose, other scales or against another passages index is refused, as is a batch below 3; a run against a
+   folder measured before g0 and u0 were recorded is refused in plain words and the folder left as it is, `fresh` sets
+   it and wiring_check.npz aside, renamed, and starts again; a layer of the older format in a folder of this one, or
+   with the plan lost, is refused before anything is measured or a plan written (and at the merge, the backstop); and
+   an older merged wiring_check.npz with no folder beside it is refused, not replaced;
 6. steer_lens.d / steer_lens.npz: each neuron's rises are `steer_lens`'s, KL too; a stopped run resumes and merges;
 7. layout_writes.npz: each layer's cells are distinct places on its sheet;
 8. the queries: a search finds a face by a word-piece of its label at the right rank; the cone's hops move one way
@@ -63,10 +72,11 @@ if __name__ == "__main__":
     os.environ["HF_HUB_OFFLINE"] = "1"
 
 import json
+import math
 import shutil
 import tempfile
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 for p in (ROOT_DIR, ROOT_DIR / "scripts"):
@@ -80,7 +90,7 @@ import backend.atlas_build as ab
 import backend.atlas_ops as ao
 from atlas_stand_in import stand_in
 from backend import runtime_factory as rf
-from backend.atlas_index import AtlasIndex, match_ids, scale_scores, weights_differ
+from backend.atlas_index import SITE_SCORE_RERUN, AtlasIndex, match_ids, scale_scores, weights_differ
 from backend.causal_check import language_model, pad_right
 from backend.label_gate import label_top_ids
 from backend.theodolite_math import unembed_gemma4
@@ -176,11 +186,121 @@ def ranks_by_hand(v: List[float]) -> List[float]:
     return r
 
 
+def gelu_by_hand(x: float) -> float:
+    """gelu_tanh in Python floats (not the summary's torch)."""
+    return 0.5 * x * (1.0 + math.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * x**3)))
+
+
+def rho_by_hand(xs: List[float], ys: List[float]) -> Optional[float]:
+    rx, ry = ranks_by_hand(xs), ranks_by_hand(ys)
+    mx, my = sum(rx) / max(1, len(rx)), sum(ry) / max(1, len(ry))
+    cov = sum((x - mx) * (y - my) for x, y in zip(rx, ry))
+    vx, vy = sum((x - mx) ** 2 for x in rx), sum((y - my) ** 2 for y in ry)
+    return cov / (vx * vy) ** 0.5 if len(rx) >= 3 and vx > 0 and vy > 0 else None
+
+
 def wiring_summary_by_hand(sh: dict) -> dict:
-    """One layer of the measured check summed up again pair by pair (the brute force `wiring_check_summary` is checked
-    against): each (writer, reader, question) of a group, its change under +d and -d from the unpushed row, the push on
-    the writer's gate face taken by that gate, the reader's face read from its own unpushed row at the last word-piece,
-    the sign in use from that face's stored operating point and the pair's g and u, and Spearman's rho from ranks."""
+    """One layer of the measured check summed up again pair by pair, as a layer with the readers' own g0 and u0 is (the
+    brute force `wiring_check_summary` is checked against): each (writer, reader, question) of a group, its change under
+    +d and -d from the unpushed row, the push on the writer's gate face taken by that gate, a change of exactly 0 left
+    out of every share of signs; the sign in use where the reader sits, from its g0 and u0 at the last word-piece (and
+    over the prompt each coefficient's mean over the word-pieces) in Python floats, and at the passages' operating point
+    on the face it sat on; its regime by its g0 at the last word-piece; Spearman's rho from ranks against |P| f^2 and
+    against f |alpha0 g + beta0 u| d."""
+    sgn = lambda x: 1 if x > 0 else (-1 if x < 0 else 0)  # noqa: E731
+    share = lambda k, n: round(k / n, 3) if n else None  # noqa: E731
+    regimes = ("open", "shut_above_min", "below_min")
+    out: dict = {}
+    for si, site in enumerate(("last", "mean")):
+        res: dict = {}
+        for name in ("linked", "null"):
+            c = {k: 0 for k in ("n", "zero", "np", "plus", "use_plus", "ng", "gate", "use_gate", "nsame", "same", "npp", "plus_peak",
+                                 "ngp", "gate_peak")}
+            reg = {rg: {"n": 0, "ng": 0, "sign": 0, "use": 0} for rg in regimes}
+            sizes, size_q, strength, first = [], [], [], []
+            for a in range(sh["readers"].shape[0]):
+                for r in range(sh["readers"].shape[1]):
+                    if int(sh["readers"][a, r, 0]) < 0 or bool(sh["linked"][a, r]) != (name == "linked"):
+                        continue
+                    gate, sign = int(sh["gate"][a, r]), int(sh["sign"][a, r])
+                    g, u = float(sh["g"][a, r]), float(sh["u"][a, r])
+                    dp = sh["reads"][a, r, :, 1, si] - sh["reads"][a, r, :, 0, si]  # [Q], float32 as stored
+                    dm = sh["reads"][a, r, :, 2, si] - sh["reads"][a, r, :, 0, si]
+                    dg = dp if gate > 0 else dm
+                    first_q = []
+                    for q in range(len(dp)):
+                        gs = [float(x) for x in sh["g0"][a, r, q] if np.isfinite(x)]
+                        us = [float(x) for x in sh["u0"][a, r, q] if np.isfinite(x)]
+                        if site == "last":
+                            gs, us = gs[-1:], us[-1:]
+                        al0 = sum(ao.gelu_tanh_grad(x) * y for x, y in zip(gs, us)) / len(gs)
+                        be0 = sum(gelu_by_hand(x) for x in gs) / len(gs)
+                        kappa = sgn(al0 * g + be0 * u)
+                        first_q.append(float(sh["f"][a, r]) * abs(al0 * g + be0 * u))
+                        c["n"] += 1
+                        c["zero"] += int(dg[q] == 0)
+                        if dp[q] != 0:
+                            c["np"] += 1
+                            c["plus"] += sgn(dp[q]) == sign
+                            c["use_plus"] += sgn(dp[q]) == kappa
+                        if dg[q] != 0:
+                            c["ng"] += 1
+                            c["gate"] += sgn(dg[q]) == sign
+                            c["use_gate"] += sgn(dg[q]) == gate * kappa
+                        if dp[q] != 0 and dm[q] != 0:
+                            c["nsame"] += 1
+                            c["same"] += sgn(dp[q]) == sgn(dm[q])
+                        sizes.append(abs(dg[q]))
+                        if site == "last":
+                            al, be = (float(x) for x in sh["op"][a, r, 0 if sh["reads"][a, r, q, 0, 0] > 0 else 1])
+                            if np.isfinite(al) and np.isfinite(be):
+                                kp = sgn(al * g + be * u)
+                                if dp[q] != 0:
+                                    c["npp"] += 1
+                                    c["plus_peak"] += sgn(dp[q]) == kp
+                                if dg[q] != 0:
+                                    c["ngp"] += 1
+                                    c["gate_peak"] += sgn(dg[q]) == gate * kp
+                            g_last = float(sh["g0"][a, r, q, -1])
+                            rg = "open" if g_last > 0 else ("shut_above_min" if g_last > ao.GELU_MIN else "below_min")
+                            reg[rg]["n"] += 1
+                            if dg[q] != 0:
+                                reg[rg]["ng"] += 1
+                                reg[rg]["sign"] += sgn(dg[q]) == sign
+                                reg[rg]["use"] += sgn(dg[q]) == gate * kappa
+                    size_q.append(float(np.abs(dg).mean()))
+                    strength.append(float(sh["strength"][a, r]))
+                    first.append(sum(first_q) / len(first_q) * float(sh["lengths"][a]))
+            got: dict = {"pairs": c["n"], "zero": share(c["zero"], c["n"]), "sign_plus": share(c["plus"], c["np"]),
+                         "sign_gate": share(c["gate"], c["ng"]), "same_way": share(c["same"], c["nsame"]),
+                         "use_plus": share(c["use_plus"], c["np"]), "use_gate": share(c["use_gate"], c["ng"])}
+            if site == "last":
+                got["use_plus_peak"], got["use_gate_peak"] = share(c["plus_peak"], c["npp"]), share(c["gate_peak"], c["ngp"])
+                got["regimes"] = {rg: {"share": share(reg[rg]["n"], c["n"]), "sign_gate": share(reg[rg]["sign"], reg[rg]["ng"]),
+                                       "use_gate": share(reg[rg]["use"], reg[rg]["ng"])} for rg in regimes}
+                got["n_peak"] = c["ngp"]
+            got["rho"], got["rho_site"] = rho_by_hand(size_q, strength), rho_by_hand(size_q, first)
+            got["moved"] = float(np.median(np.array(sizes, np.float32))) if sizes else None
+            res[name] = got
+        mv, mn = res["linked"]["moved"], res["null"]["moved"]
+        res["moved_over_null"] = round(mv / mn, 2) if mv is not None and mn else None
+        out[site] = res
+    return out
+
+
+def gelu32(x: np.ndarray) -> np.ndarray:
+    """gelu_tanh in float32 numpy, every step rounded to float32 (the finite differences' own arithmetic)."""
+    x = np.asarray(x, np.float32)
+    c, k, h, one = np.float32(math.sqrt(2.0 / math.pi)), np.float32(0.044715), np.float32(0.5), np.float32(1.0)
+    return h * x * (one + np.tanh(c * (x + k * x * x * x)))
+
+
+def wiring_summary_before_by_hand(sh: dict) -> dict:
+    """One layer of the measured check summed up again pair by pair as a layer measured before the readers' g0 and u0
+    were recorded is (and was): each (writer, reader, question) of a group, its change under +d and -d from the
+    unpushed row, the push on the writer's gate face taken by that gate, the reader's face read from its own unpushed
+    row at the last word-piece, the sign in use from that face's stored operating point and the pair's g and u, and
+    Spearman's rho from ranks."""
     sgn = lambda x: 1 if x > 0 else (-1 if x < 0 else 0)  # noqa: E731
     share = lambda k, n: round(k / n, 3) if n else None  # noqa: E731
     out: dict = {}
@@ -585,9 +705,9 @@ def main() -> int:
     check(wc is not None and sorted(wc) == ["layers", "meta"] and wc["layers"].tolist() == [1, 3] and m.get("dose") == 0.25
           and m.get("writers") == "random:12" and m.get("dose_unit") == "each writer's write ceiling" and m.get("scale_source") == "check"
           and m.get("wiring_built_at") == idx.get("wiring")["meta"]["built_at"] and m.get("passages_built_at") == P["meta"]["built_at"]
-          and m.get("stats_built_at") == s["meta"]["built_at"]
+          and m.get("stats_built_at") == s["meta"]["built_at"] and m.get("format") == ab.WIRING_CHECK_FORMAT == 2 and "g0, u0" in m.get("sits", "")
           and set(m.get("summary", {})) == {"1", "3"} and m.get("sign_disagreement") == {k_: v_ for k_, v_ in idx.sign_disagreement().items() if k_ != "by_layer"},
-          f"wiring_check: written with its provenance, the server reading only its meta ({sorted(wc or {})}, {sorted(m)[:6]})")
+          f"wiring_check: written with its provenance and format, the server reading only its meta ({sorted(wc or {})}, {sorted(m)[:6]})")
     check(idx.status()["wiring_check"]["built"] and "summary" in idx.status()["wiring_check"], "wiring_check: /arch's status carries its summary")
     z = dict(np.load(out / "wiring_check.npz"))
     wi = idx.get("wiring")
@@ -595,10 +715,17 @@ def main() -> int:
 
     ao_writers = lambda l_, n_: [A for A in parse_neurons("random:12", n_, 3 + l_) if float(w.write_ceiling(l_, [A])[0]) > 0]  # noqa: E731
     bad_r = []
+    from backend.census import PROMPTS
+
+    qs = [rt.tokenize_prompt(rt.compose_prompt(v_, chat=True)) for v_ in PROMPTS.values()]
+    P_ = max(len(q_) for q_ in qs) - 1
     for l in (1, 3):
         ws_ = z[f"L{l}_writers"].tolist()
         check(ws_ == ao_writers(l, N) and np.allclose(z[f"L{l}_lengths"], 0.25 * w.write_ceiling(l, ws_).numpy(), rtol=1e-6),
               f"wiring_check L{l}: the writers drawn, each pushed by 0.25 of its own ceiling")
+        W_, R_ = z[f"L{l}_readers"].shape[:2]
+        check(z[f"L{l}_g0"].shape == z[f"L{l}_u0"].shape == (W_, R_, len(qs), P_) and z[f"L{l}_f"].shape == (W_, R_),
+              f"wiring_check L{l}: each reader's g0 and u0 [W, R, Q, P] and each pair's f kept ({z[f'L{l}_g0'].shape})")
         for a_, A in enumerate(ws_):
             lk = [(int(wi["down_layer"][l, A, i_]), int(wi["down_n"][l, A, i_])) for i_ in range(int(wi["K"])) if float(wi["down_z"][l, A, i_]) > -1e4]
             rd = [tuple(int(x) for x in z[f"L{l}_readers"][a_, r_]) for r_ in range(z[f"L{l}_readers"].shape[1]) if z[f"L{l}_readers"][a_, r_, 0] >= 0]
@@ -609,6 +736,7 @@ def main() -> int:
             for r_, (j, b) in enumerate(rd):
                 g_, u_ = float(z[f"L{l}_g"][a_, r_]), float(z[f"L{l}_u"][a_, r_])
                 ok &= abs(z[f"L{l}_strength"][a_, r_] - abs(g_ * u_) * float(f[l, j]) ** 2) <= 1e-5 * abs(z[f"L{l}_strength"][a_, r_]) + 1e-30
+                ok &= float(z[f"L{l}_f"][a_, r_]) == float(np.float32(f[l, j]))
                 if r_ < len(lk):
                     ok &= (int(z[f"L{l}_sign"][a_, r_]), int(z[f"L{l}_gate"][a_, r_])) == (int(wi["down_sign"][l, A, r_]), int(wi["down_gate"][l, A, r_]))
                     ok &= abs(g_ - float(wi["down_g"][l, A, r_])) <= 1e-3 * abs(g_) + 1e-7
@@ -619,35 +747,98 @@ def main() -> int:
                           for fi, s_ in enumerate(("+", "-")))
             if not ok:
                 bad_r.append((l, A))
-    check(not bad_r, f"wiring_check: the linked readers are the index's links, the null's at their layers and never linked; signs, g, u, strength, operating points ({bad_r[:3]})")
-    # the reads: pushed_reads again, in another batch shape, for the first three writers of layer 1
-    from backend.census import PROMPTS
-
-    qs = [rt.tokenize_prompt(rt.compose_prompt(v_, chat=True)) for v_ in PROMPTS.values()]
+    check(not bad_r, f"wiring_check: the linked readers are the index's links, the null's at their layers and never linked; signs, g, u, f, strength, operating points ({bad_r[:3]})")
+    # the reads and where the readers sit: pushed_reads again, in another batch shape, for the first three writers of layer 1
     rd1 = [[tuple(int(x) for x in z["L1_readers"][a_, r_]) for r_ in range(z["L1_readers"].shape[1]) if z["L1_readers"][a_, r_, 0] >= 0] for a_ in range(3)]
-    again = ao.pushed_reads(lm, w, qs, [(1, int(A)) for A in z["L1_writers"][:3]], rd1, z["L1_lengths"][:3], bos_id=tok.bos_token_id, batch=3)
-    stored = z["L1_reads"][:3, : again.shape[1]]
-    check(np.allclose(np.nan_to_num(stored, nan=7.0), np.nan_to_num(again, nan=7.0), atol=1e-5), "wiring_check: the reads are pushed_reads' in another batch shape")
+    again, again_g0, again_u0 = ao.pushed_reads(lm, w, qs, [(1, int(A)) for A in z["L1_writers"][:3]], rd1, z["L1_lengths"][:3], bos_id=tok.bos_token_id, batch=3)
+    same_ = lambda x, y: np.allclose(np.nan_to_num(x, nan=7.0), np.nan_to_num(y, nan=7.0), atol=1e-5)  # noqa: E731
+    check(same_(z["L1_reads"][:3, : again.shape[1]], again) and same_(z["L1_g0"][:3, : again.shape[1]], again_g0)
+          and same_(z["L1_u0"][:3, : again.shape[1]], again_u0), "wiring_check: the reads, g0 and u0 are pushed_reads' in another batch shape")
     # the summary is the stored arrays', every figure recounted by hand, pair by pair, for the linked readers and the null
-    sum_bad, n_use_hand = [], 0
-    for l in (1, 3):
-        sh_ = {k_[len(f"L{l}_"):]: v_ for k_, v_ in z.items() if k_.startswith(f"L{l}_")}
+    sum_bad, n_peak_hand = [], 0
+    keys_last = ("pairs", "zero", "sign_plus", "sign_gate", "same_way", "use_plus", "use_gate", "use_plus_peak", "use_gate_peak", "regimes")
+    shards = {l: {k_[len(f"L{l}_"):]: v_ for k_, v_ in z.items() if k_.startswith(f"L{l}_")} for l in (1, 3)}
+    for l, sh_ in shards.items():
         s_l, hand = ab.wiring_check_summary(sh_), wiring_summary_by_hand(sh_)
         sum_bad += [(l, "meta")] if s_l != m["summary"][str(l)] else []
+        sum_bad += [(l, "site_score")] if "site_score" in s_l else []
         for site in ("last", "mean"):
             for name in ("linked", "null"):
                 a_, b_ = s_l[site][name], hand[site][name]
-                n_use_hand += b_.get("n_use", 0) if name == "linked" else 0
-                for key in ("pairs", "sign_plus", "sign_gate", "same_way") + (("use_plus", "use_gate") if site == "last" else ()):
+                n_peak_hand += b_.get("n_peak", 0) if name == "linked" else 0
+                for key in keys_last if site == "last" else keys_last[:7]:
                     sum_bad += [(l, site, name, key, a_[key], b_[key])] if a_[key] != b_[key] else []
-                if (a_["rho"] is None) != (b_["rho"] is None) or (a_["rho"] is not None and abs(a_["rho"] - b_["rho"]) > 5e-4 + 1e-9):
-                    sum_bad.append((l, site, name, "rho", a_["rho"], b_["rho"]))
+                sum_bad += [(l, site, name, "extra keys")] if site == "mean" and {"regimes", "use_gate_peak"} & set(a_) else []
+                for key in ("rho", "rho_site"):
+                    if (a_[key] is None) != (b_[key] is None) or (a_[key] is not None and abs(a_[key] - b_[key]) > 5e-4 + 1e-9):
+                        sum_bad.append((l, site, name, key, a_[key], b_[key]))
                 if abs(a_["moved"] - b_["moved"]) > 1e-6 * abs(b_["moved"]) + 1e-12:
                     sum_bad.append((l, site, name, "moved", a_["moved"], b_["moved"]))
             if s_l[site]["moved_over_null"] != hand[site]["moved_over_null"]:
                 sum_bad.append((l, site, "moved_over_null", s_l[site]["moved_over_null"], hand[site]["moved_over_null"]))
-    check(not sum_bad and n_use_hand > 0, f"wiring_check: the meta's summary is the stored arrays', every share, rho and size recounted by hand "
-          f"({n_use_hand} linked pairs read in use; {sum_bad[:3]})")
+    # the stand-in's readers never sit below gelu's minimum: with every g0 moved down by 1 (the arrays alone, as a model
+    # whose readers sit shut would give them) the summary is still the recount, every regime counted
+    low = {**shards[1], "g0": shards[1]["g0"] - np.float32(1.0)}
+    s_low, hand_low = ab.wiring_check_summary(low), wiring_summary_by_hand(low)
+    for name in ("linked", "null"):
+        for key in keys_last:
+            sum_bad += [("low", name, key, s_low["last"][name][key], hand_low["last"][name][key])] if s_low["last"][name][key] != hand_low["last"][name][key] else []
+    check((s_low["last"]["linked"]["regimes"]["below_min"]["share"] or 0) > 0.2, f"wiring_check: g0 moved down puts readers below gelu's minimum "
+          f"({s_low['last']['linked']['regimes']})")
+    regs = m["summary"]["1"]["last"]["linked"]["regimes"]
+    check(not sum_bad and n_peak_hand > 0 and abs(sum(regs[k_]["share"] for k_ in regs) - 1.0) < 2e-3,
+          f"wiring_check: the meta's summary is the stored arrays', every share (zeros left out), the sign in use where each reader sits and "
+          f"at the passages', each regime, both rho and the size recounted by hand ({n_peak_hand} linked pairs read at the passages'; {sum_bad[:3]})")
+    lst = m["summary"]["1"]["last"]
+    print(f"        on the stand-in, layer 1 at the last word-piece, linked / null: sign_gate {lst['linked']['sign_gate']} / {lst['null']['sign_gate']}, "
+          f"use_gate where the reader sits {lst['linked']['use_gate']} / {lst['null']['use_gate']}, at the passages' {lst['linked']['use_gate_peak']} / "
+          f"{lst['null']['use_gate_peak']}; gates open {regs['open']['share']}, shut {regs['shut_above_min']['share']}, below gelu's minimum "
+          f"{regs['below_min']['share']}; rho_site {lst['linked']['rho_site']}, rho {lst['linked']['rho']}")
+    # the sign in use where the reader sits against a float32 central difference of the GeGLU itself, gelu(g0 + e g) (u0 + e u)
+    # over +-e (at the last word-piece, and its mean over the prompt's word-pieces), at each (writer, reader, question)
+    # where the difference stands well above float32's rounding
+    fd_n, fd_bad, fd_all = 0, [], 0
+    for l, sh_ in shards.items():
+        al_, be_ = ao.site_coefficients(sh_["g0"], sh_["u0"])
+        for a_, r_ in zip(*np.nonzero(sh_["readers"][..., 0] >= 0)):
+            g_, u_ = np.float32(sh_["g"][a_, r_]), np.float32(sh_["u"][a_, r_])
+            for q in range(sh_["g0"].shape[2]):
+                for site, cut in (("last", slice(-1, None)), ("mean", slice(None))):
+                    g0_, u0_ = sh_["g0"][a_, r_, q, cut], sh_["u0"][a_, r_, q, cut]
+                    here_ = np.isfinite(g0_)
+                    g0_, u0_ = g0_[here_], u0_[here_]
+                    e = np.float32(1e-3 * max(1.0, float(np.abs(g0_).max()), float(np.abs(u0_).max())) / max(abs(float(g_)), abs(float(u_)), 1e-30))
+                    F_ = [np.mean(gelu32(g0_ + s_ * e * g_) * (u0_ + s_ * e * u_), dtype=np.float32) for s_ in (np.float32(1), np.float32(-1))]
+                    fd = float((F_[0] - F_[1]) / (np.float32(2) * e))
+                    al0 = float(al_[a_, r_, q, -1]) if site == "last" else float(np.mean(al_[a_, r_, q][np.isfinite(al_[a_, r_, q])]))
+                    be0 = float(be_[a_, r_, q, -1]) if site == "last" else float(np.mean(be_[a_, r_, q][np.isfinite(be_[a_, r_, q])]))
+                    coupling = al0 * float(g_) + be0 * float(u_)
+                    fd_all += 1
+                    if abs(coupling) * 2 * float(e) <= 1e-4 * max(abs(float(F_[0])), abs(float(F_[1])), 1e-30):
+                        continue
+                    fd_n += 1
+                    if (fd > 0) != (coupling > 0) or abs(fd - coupling) > 1e-2 * abs(coupling):
+                        fd_bad.append((l, int(a_), int(r_), q, site, fd, coupling))
+    check(fd_n >= 0.8 * fd_all and not fd_bad, f"wiring_check: the sign in use where the reader sits is a float32 central difference's of "
+          f"gelu(g0 + e g) (u0 + e u), at {fd_n} of {fd_all} (writer, reader, question, site) ({len(fd_bad)} off: {fd_bad[:2]})")
+    # a layer measured before g0 and u0 were recorded is summed up as it was then, and says the site score needs a rerun
+    old_bad = []
+    for l, sh_ in shards.items():
+        before_ = {k_: v_ for k_, v_ in sh_.items() if k_ not in ("g0", "u0", "f")}
+        s_o, hand = ab.wiring_check_summary(before_), wiring_summary_before_by_hand(before_)
+        old_bad += [(l, "note")] if s_o.get("site_score") != SITE_SCORE_RERUN or set(s_o) != {"last", "mean", "site_score"} else []
+        for site in ("last", "mean"):
+            for name in ("linked", "null"):
+                a_, b_ = s_o[site][name], hand[site][name]
+                want_keys = {"pairs", "sign_plus", "sign_gate", "same_way", "rho", "moved"} | ({"use_plus", "use_gate"} if site == "last" else set())
+                old_bad += [(l, site, name, "keys", sorted(a_))] if set(a_) != want_keys else []
+                for key in ("pairs", "sign_plus", "sign_gate", "same_way") + (("use_plus", "use_gate") if site == "last" else ()):
+                    old_bad += [(l, site, name, key, a_[key], b_[key])] if a_[key] != b_[key] else []
+                if (a_["rho"] is None) != (b_["rho"] is None) or (a_["rho"] is not None and abs(a_["rho"] - b_["rho"]) > 5e-4 + 1e-9):
+                    old_bad.append((l, site, name, "rho", a_["rho"], b_["rho"]))
+            old_bad += [(l, site, "moved_over_null")] if s_o[site]["moved_over_null"] != hand[site]["moved_over_null"] else []
+    check(not old_bad, f"wiring_check: a layer measured before g0 and u0 were recorded summed up as before (zeros as misses, the "
+          f"passages' sign in use as use_gate), saying the site score needs a rerun ({old_bad[:3]})")
     cst = m["cost"]["1"]
     per_ = (7 - 1) // 2
     check(cst["forwards"] == len(qs) * -(-12 // per_) and cst["rows"] == 7 and cst["minutes_5090"] > 0 and any("layer 1: 12 writers" in x and "min on the 5090" in x for x in lines),
@@ -674,7 +865,67 @@ def main() -> int:
           f"wiring_check: a run against another passages index (here none) refused, so no layer is read at other operating points ({said})")
     said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.25, seed=3, batch=2, scale_source="check", log=quiet)
     check("--batch 3 at least" in said, f"wiring_check: a batch too small for a writer's two pushes refused ({said})")
-    section("the wiring measured: written, read back, its readers, null, reads, summary and cost; resumed; refused", before)
+    # never two formats in one folder: a folder measured before g0 and u0 were recorded (its plan without a format) is
+    # refused in plain words and left as it is; asked to start afresh, it is set aside, renamed, and the run measures
+    # into a new one; a layer of the older format found in a folder of this one is refused before anything is measured
+    plan_p = out / "wiring_check.d" / "plan.json"
+    plan_p.write_text(json.dumps({k_: v_ for k_, v_ in json.loads(plan_p.read_text()).items() if k_ != "format"}), encoding="utf-8")
+    kept = sorted(p_.name for p_ in (out / "wiring_check.d").iterdir())
+    for dose_ in (0.25, 0.5):
+        said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=dose_, seed=3, batch=7, scale_source="check", log=quiet)
+        check("measured before the check recorded each reader's own gate and up values" in said and "--fresh" in said
+              and sorted(p_.name for p_ in (out / "wiring_check.d").iterdir()) == kept,
+              f"wiring_check: a run against a folder measured before g0 and u0 were recorded refused in plain words, the folder left as it is "
+              f"(dose {dose_}: {said[:90]})")
+    lines3: List[str] = []
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check",
+                  fresh=True, log=lines3.append)
+    aside = sorted(p_ for p_ in out.iterdir() if ".set-aside-" in p_.name)
+    old_dir = [p_ for p_ in aside if p_.name.startswith("wiring_check.d.set-aside-")]
+    old_npz = [p_ for p_ in aside if p_.name.startswith("wiring_check.set-aside-") and p_.suffix == ".npz"]
+    check(not said and len(old_dir) == 1 and len(old_npz) == 1 and sorted(p_.name for p_ in old_dir[0].iterdir()) == kept
+          and np.load(old_npz[0])["layers"].tolist() == [1, 3, 4] and idx.get("wiring_check")["layers"].tolist() == [2]
+          and json.loads(plan_p.read_text()).get("format") == 2 and sum("set aside as" in x for x in lines3) == 2,
+          f"wiring_check --fresh: the folder and wiring_check.npz set aside, renamed, not removed, and a new run started ({said}; {[p_.name for p_ in aside]})")
+    stale = dict(np.load(out / "wiring_check.d" / "L2.npz"))
+    for k_ in ("g0", "u0", "f"):
+        del stale[k_]
+    np.savez(out / "wiring_check.d" / "L4.npz", **stale)
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[2], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=quiet)
+    check("Layer 4 in" in said and "was measured before the check recorded" in said and idx.get("wiring_check")["layers"].tolist() == [2],
+          f"wiring_check: a layer of the older format in a folder of this one refused, not merged ({said[:120]})")
+    # refused before anything is measured: asked for a layer not yet done, beside this run's plan and with the plan lost
+    # (then no plan is written either); the merge refuses it too, the backstop
+    plan_text = plan_p.read_text(encoding="utf-8")
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[3], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=quiet)
+    plan_p.unlink()
+    said_lost = raises(ab.build_wiring_check, rt, out, f, layers=[3], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=quiet)
+    said_merge = raises(ab.merge_wiring_check, rt, out, json.loads(plan_text), idx, log=quiet)
+    check("Layer 4 in" in said and "Layer 4 in" in said_lost and "Layer 4 in" in said_merge and "nothing is measured" in said
+          and not plan_p.exists() and not (out / "wiring_check.d" / "L3.npz").exists() and idx.get("wiring_check")["layers"].tolist() == [2],
+          f"wiring_check: a layer of the older format refused before anything is measured, its plan lost or not, no plan written; "
+          f"the merge refuses it too ({said_lost[:90]})")
+    plan_p.write_text(plan_text, encoding="utf-8")
+    (out / "wiring_check.d" / "L4.npz").unlink()
+    # an older merged wiring_check.npz with no folder beside it (removed once merged, say) is refused, not replaced, and
+    # nothing is measured or begun; --fresh would set it aside
+    (out / "wiring_check.d").rename(out / "wiring_check.d.off")
+    merged_p = out / "wiring_check.npz"
+    merged_bytes = merged_p.read_bytes()
+    zz = dict(np.load(merged_p))
+    mm = json.loads(str(zz["meta"]))
+    mm.pop("format")
+    zz["meta"] = np.array(json.dumps(mm))
+    np.savez(merged_p, **zz)
+    older_bytes = merged_p.read_bytes()
+    said = raises(ab.build_wiring_check, rt, out, f, layers=[3], writers="random:12", dose=0.25, seed=3, batch=7, scale_source="check", log=quiet)
+    check("was measured before the check recorded" in said and "would replace it" in said and "--fresh" in said
+          and merged_p.read_bytes() == older_bytes and not (out / "wiring_check.d").exists(),
+          f"wiring_check: an older merged file with no folder beside it refused, not replaced, nothing begun ({said[:110]})")
+    merged_p.write_bytes(merged_bytes)
+    (out / "wiring_check.d.off").rename(out / "wiring_check.d")
+    section("the wiring measured: written, read back, its readers, null, reads, g0 and u0, summary (the sign in use where each reader sits, "
+            "regimes, both rho) and cost; an older layer summed up as before; resumed; refused; never two formats", before)
 
     before = len(failures)
     p50 = [float(x) for x in s["resid_q"][:, 1]]

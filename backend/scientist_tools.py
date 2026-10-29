@@ -155,11 +155,13 @@ TOOLS: List[Dict[str, Any]] = [
     {"name": "cone", "description": "The neuron's cone: its weight links chained forward (what reads it, hop > 0, from it firing on its + "
      "face and on its - face: `when`) and backward (what feeds it, hop < 0: `drives`, the face of the neuron it pushes toward), "
      "the first hop all of them, later hops each node's top k, read from rest (a writer moves its reader when it fires on the "
-     "face that opens the reader's gate), or with model \"use\" at each reader's operating point (its median gate and up "
-     "values over its strongest stored passages of a face: there a writer moves its reader whichever way it fires, and the "
-     "other way round when it fires the other way; needs the passages index). Each neuron reached with its hop, w (the "
-     "link's strength over its node's strongest), z, the face it is read on and its words. Multi-hop paths are weight-only "
-     "guesses: leads to check, not circuits. Needs the wiring index.",
+     "face that opens the reader's gate; that sign holds for a reader whose gate is open, while one sitting shut, as most did "
+     "where it was measured (the census questions' last word-piece), is pushed about the other way), or with model \"use\" "
+     "at each reader's operating point where it fires hardest on a face (its median gate and up values over its strongest "
+     "stored passages of that face, not where it sits at an ordinary word-piece: there a writer moves its reader whichever "
+     "way it fires, and the other way round when it fires the other way; needs the passages index). Each neuron reached "
+     "with its hop, w (the link's strength over its node's strongest), z, the face it is read on and its words. Multi-hop "
+     "paths are weight-only guesses: leads to check, not circuits. Needs the wiring index.",
      "inputSchema": {"type": "object", "properties": {**LN, "k": {"type": "integer", "default": 2}, "limit": {"type": "integer", "default": 120},
                                                        "model": {"type": "string", "enum": ["rest", "use"], "default": "rest"}},
                      "required": ["layer", "n"]}},

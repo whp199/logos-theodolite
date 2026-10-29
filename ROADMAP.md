@@ -348,16 +348,43 @@ where to run it.
   far they differ across cards.
 - **The wiring.** Links are ranked by |P| f², with Gemma’s layer scalars and the norms’ usual scales (the review of 27
   October 2026), and every consumer reads their signs one way, from rest through GeGLU’s gate. That model is a
-  simplification, and a second reading is now built beside it: to first order where the reader sits, a writer moves it
-  by f (α g + β u), α = gelu′(g₀) u₀, β = gelu(g₀), with the reader’s operating point on each face taken as the median
-  over its strongest stored passages of that face. It is odd in the writer, where the sign from rest is even.
-  `model=use` reads it on `/neuron/wiring`, `/web/summary`, `/cone` and `/run/paths` (the default stays from rest), the
-  details tab marks a link where the two disagree, and `atlas_build.py wiring_check` measures both: readers under ±d
-  pushes of 512 writers a layer, d a quarter of each writer’s own ceiling, against as many readers they are not linked
-  to. On the 31B all of it is the GPU’s: a passages build, a wiring rebuild that keeps each link’s g and u (about 4
-  minutes), then `wiring_check` (inferred, about 1.3 minutes a layer: pilot one layer first). Once built, report how
-  often the sign in use differs from the sign from rest over the whole index, and per layer the share of links whose
-  measured change has each sign, against the null.
+  simplification, and a second reading is now built beside it: to first order about a reader’s operating point (g₀, u₀),
+  a writer moves it by f (α g + β u), α = gelu′(g₀) u₀, β = gelu(g₀), with the operating point served on each face taken
+  as the median over its strongest stored passages of that face: where it fires hardest, not where it sits (below). It
+  is odd in the writer, where the sign from rest is even. `model=use` reads it on `/neuron/wiring`, `/web/summary`,
+  `/cone` and `/run/paths` (the default stays from rest), the details tab marks a link where the two disagree, and
+  `atlas_build.py wiring_check` measures both: readers under ±d pushes of 512 writers a layer, d a quarter of each
+  writer’s own ceiling, against as many readers they are not linked to.
+
+  **Measured on the 31B** (29 October 2026: the passages, the wiring rebuilt with each link’s g and u, then all 59
+  layers of the check in about 31 minutes on the 5090 with `compiled`; per-layer medians, linked / null, at the last
+  word-piece of the census’s four questions, the chat template’s closing `<channel|>`, where the answer begins, not a
+  word of the question; ARCHITECTURE §4.7). As built, the sign from rest held on the gate face at 0.336 / 0.341 and the
+  sign in use at 0.418 / 0.438, below chance for links and null alike (changes of exactly 0 left out, as the summary now
+  counts them; the file’s stored summary, counting a 0 as a miss, gives 0.320 / 0.324 and 0.417 / 0.427). No sign
+  convention is wrong: at that word-piece about nine readers in ten sat with the gate shut, 70% / 63% (pooled) below
+  gelu’s minimum, where the up path carries about −sign(P) (the sign from rest holds where the gate is open, 0.82 /
+  0.69); and the sign in use is read where each reader fires hardest, its strongest stored passages, where the gate is
+  open. Scored offline from the stored responses at the readers’ measured operating point (their g₀ and u₀ read again on
+  the CPU from the packed checkpoint), the same responses agree with the sign in use at 0.835 / 0.854 (0.842 / 0.853 in
+  float64, as the summary now computes it), and the change’s size follows f |α₀ g + β₀ u| d with ρ 0.89 / 0.87, against
+  0.31 for |P| f². The links are real by size: linked readers move 5.5 times as much as the null’s. Over the whole index
+  the sign in use differs from the sign from rest on 28% of links on each face of the reader (28.2% on +, 28.3% on −; on
+  both only 1.9%, so on about 55% of links on one face or the other; the sign in use there is read where the reader
+  fires hardest). The two readings now state their conditions (`LINK_MODEL`: the sign from rest holds for an open gate,
+  or a push big enough to open it; `LINK_MODEL_USE` and the details tab: read where the reader fires hardest, not where
+  it sits), and the check records each reader’s own g₀ and u₀, scores the sign in use there, splits both signs by the
+  reader’s regime (open, shut above gelu’s minimum, below it), judges sign shares against 0.5 (the null tests size) and
+  ranks the size against the first-order term too.
+
+  Still open: (1) the rerun that records g₀ and u₀ (`wiring_check --fresh`, about half an hour; the night’s layers are
+  set aside, not removed), which replaces the offline figures above. (2) The open item: the sign in use the atlas serves
+  is read where each reader fires hardest on a face, not where it sits at an ordinary word-piece. A resting operating
+  point (the median g and u over a sample of ordinary word-pieces, beside the passages index) or one per GeGLU regime
+  would read it there; whether to build one is the owner’s choice, and until then every page says where it is read. (3)
+  The dose: at a quarter of the ceiling the pushes stay near first order; at the whole ceiling gates opened in 11–61% of
+  linked pairs and the sign from rest rose (layer 35: 0.44 to 0.77), while the first-order sign in use at the unpushed
+  point fell to 0.42–0.53: each reading holds in its own regime of dose, measured for 24 writers on one question.
 - **Stored passages for each face** (Cammarata’s practice iii, the study’s §3.5): built and checked on the stand-in,
   not yet run on the model. One pass over the corpus the stats index was read over (`atlas_build.py passages`, the same
   windows) keeps each face’s sixteen strongest windows and six drawn at random above half its extreme, with the gate

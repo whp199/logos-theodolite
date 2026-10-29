@@ -36,9 +36,13 @@ git ignores), each with its provenance in a `meta` field (model, lens id, built_
   build also
   {face}_smp_{win, at, act, g, u} [L, N, S], drawn at random above half the face's extreme.
 - wiring_check.npz: the wiring measured (`atlas_build.build_wiring_check`): per layer measured, `L{l}_*` arrays (the
-  writers, their pushes, their linked readers and the null's, each pair's g, u, signs and strength, the readers'
-  operating points, and every read [W, R, Q, 3, 2]), `layers`; its meta holds each layer's summary and cost, and
-  is all the server reads of it (/arch). Merged from wiring_check.d/L{l}.npz, one a layer, as each is measured.
+  writers, their pushes, their linked readers and the null's, each pair's g, u, signs, scale f and strength, the
+  readers' operating points from the passages, every read [W, R, Q, 3, 2], and each reader's own gate and up values
+  unpushed, g0 and u0 [W, R, Q, P], the last word-piece at [..., -1]: where it sits; a check whose meta has no `format`
+  (measured before g0 and u0 were recorded, as the 31B's of 29 October 2026 was) lacks f, g0 and u0, its stored
+  summary is as it was, and /arch (`links.measured.site_score`) says its sign in use needs measuring again where the
+  reader sits), `layers`; its meta holds each layer's summary and cost, and is all the server reads of it (/arch).
+  Merged from wiring_check.d/L{l}.npz, one a layer, as each is measured.
 - head_profiles.json: where each head looks over a few reference texts (built by the server on first need).
 - vocab.json: every word-piece decoded alone (written by the server on first need).
 Layers count from 0 in every array and field.
@@ -66,6 +70,12 @@ EMPTY_Z = -1e4  # an empty wiring slot (fewer links than K)
 PASSAGES_K = 16
 PASSAGES_DIR = "passages.d"
 WIRING_CHECK_DIR = "wiring_check.d"
+# what a layer of the wiring check measured before the readers' own gate and up values were recorded says of its sign in
+# use (`atlas_build.wiring_check_summary`, and /arch for such a check)
+SITE_SCORE_RERUN = ("not scored where the reader sits: measured before the check recorded each reader's own gate and up "
+                    "values (g0, u0), so use_plus and use_gate are the sign in use at the passages' operating point (where "
+                    "the reader fires hardest on the face it sat on), not at the read site; measure again "
+                    "(scripts/atlas_build.py wiring_check --fresh) to score it there")
 FILES = {
     "lens": "lens.npz",
     "act_scale": "act_scale.npz",
@@ -404,7 +414,10 @@ class AtlasIndex:
 
     def op_point(self, layer: int, n: int) -> Dict[str, Optional[Tuple[float, float]]]:
         """A neuron's operating point on each face: (alpha, beta), each the median over its stored events of that face
-        (`atlas_ops.operating_points`); None for a face with none, and without the passages index. {"+": .., "-": ..}"""
+        (`atlas_ops.operating_points`); None for a face with none, and without the passages index. {"+": .., "-": ..}
+        The stored events are the face's strongest passages, so this is where the neuron fires hardest on that face
+        (its gate open), not where it sits at an ordinary word-piece (at the one place measured, the census questions'
+        last word-piece on Gemma-4-31B, most sat with the gate shut)."""
         from backend.atlas_ops import operating_points
 
         P = self.get("passages")
@@ -448,9 +461,10 @@ class AtlasIndex:
 
     def sign_disagreement(self) -> Optional[Dict[str, Any]]:
         """How often the sign in use differs from the sign from rest, over the whole index: every neuron's downstream
-        links (its K strongest readers), per face of the reader where it has an operating point (`read`), and of those
-        the links whose `use_sign` there is not `sign` (`differ`); `differ_on_both`, the links that differ on both faces;
-        `by_layer`, the same per writer layer. None without the wiring index's g and u, or the passages index."""
+        links (its K strongest readers), per face of the reader where it has an operating point (`read`: where it fires
+        hardest on that face, `op_point`), and of those the links whose `use_sign` there is not `sign` (`differ`);
+        `differ_on_both`, the links that differ on both faces; `by_layer`, the same per writer layer. None without the
+        wiring index's g and u, or the passages index."""
         from backend.atlas_ops import operating_points
 
         w, P = self.get("wiring"), self.get("passages")

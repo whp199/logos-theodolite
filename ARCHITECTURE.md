@@ -644,7 +644,7 @@ stand-in's never; `GET /arch` names a refused one).
 | `steer_lens.npz` | `up`, `down` [L, N, 12] word-piece ids, `up_kl`, `down_kl` [L, N]: the steer lens (below) | `steer`, hours, by ranges of layers, resumable |
 | `layout_writes.npz` | `cell` [L, N] int16: each neuron's cell on its layer's square grid, neurons writing alike side by side (unit write directions, PCA to 50, UMAP where installed, else the first two principal directions, snapped to the grid) | `all` |
 | `passages.d/` | one `.npy` per array, memory-mapped, and `meta.json` (written last): `windows` [W, seq] int32, the windows' word-piece ids (−1 past a short one's end; the corpus's own text, never committed); `unigram` [V] int32, each word-piece's count over the word-pieces read; per face `{pos,neg}_{win, at}` [L, N, 16] and `{pos,neg}_{act, g, u}` float16: its 16 strongest windows, one event a window (each window's peak past the start mark, then the 16 largest, ties to the lower window), with the activation and the gate and up pre-activations there; `{pos,neg}_smp_*` [L, N, S], S events drawn at random above half the face's extreme in `act_scale.npz`, at most one a window. About 0.7 GB on the 31B with S = 6 | `passages`, over the corpus it is given (give it the one `stats` read: `rel` and the samples' threshold are against the stats index's extremes, and the route says when the two corpora differ); parts of 1,024 windows, resumable, merged exactly; not in `all` |
-| `wiring_check.npz` | the links measured (below): per layer `L{l}_*`, the writers and their pushes, each one's linked readers and the null's, each pair's g, u, signs and strength, the readers' operating points, and every read [W, R, 4, 3, 2]; `layers`; the meta, all the server reads of it, holds each layer's summary and cost (`GET /arch` → `links.measured`) | `wiring_check`, after wiring (and passages, for the sign in use): one `wiring_check.d/L{l}.npz` a layer, resumable (a run with other settings, or against another wiring, passages or stats index, refused), merged as it goes |
+| `wiring_check.npz` | the links measured (below): per layer `L{l}_*`, the writers and their pushes, each one's linked readers and the null's, each pair's g, u, signs, scale `f` and strength, the readers' operating points from the passages (`op`), every read [W, R, 4, 3, 2], and each reader's own gate and up values on the unpushed row, `g0`, `u0` [W, R, 4, P] (every word-piece past the start mark, the last at [..., −1]: where it sits); `layers`; the meta, all the server reads of it, holds each layer's summary and cost (`GET /arch` → `links.measured`); a check whose meta has no `format` (measured before g₀ and u₀ were recorded, as the 31B's of 29 October 2026 was) lacks `f`, `g0` and `u0` | `wiring_check`, after wiring (and passages, for the sign in use the atlas serves): one `wiring_check.d/L{l}.npz` a layer, resumable (a run with other settings, against another wiring, passages or stats index, or against a folder holding a layer measured before `g0` and `u0` were recorded or a merged file of that format it would replace, refused before it measures anything; `--fresh` sets the folder and the merged file aside, renamed, and starts again), merged as it goes |
 | `head_profiles.json`, `vocab.json` | where each head looks over eight reference texts; every word-piece decoded alone | by the server, on first need |
 
 **The push's unit.** A push of dose d adds d · p50<sub>ℓ</sub> along unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) to the
@@ -670,20 +670,30 @@ strength across every layer (`w`: over the neuron's strongest; the index keeps l
 the pair of layers, how unusual the link is there. Signs are read from rest (`atlas_ops.LINK_MODEL`): `gate` = sign(g), the
 writer's face that opens the reader's gate (gelu keeps it near shut the other way), `sign` = sign(P), the reader's face it
 then pushes toward; a writer is shown on its `gate` face, a reader on its `sign` face, and the active paths of a run keep a
-link only when its writer fired on its `gate` face. A neuron that writes nothing has no readers. Weight-only: leads to
-test, not circuits. The cone follows each neuron's `first` strongest links, then each node's top `k` (2) with z ≥ `zmin`
+link only when its writer fired on its `gate` face. The sign holds for a reader whose gate is open, or a push big
+enough to open it, and the gate-face rule only for a push that big: a reader whose gate is open is moved by its writer
+firing either way, the other way about as hard, and a small push at rest moves it the same way either way (the change
+is even). At a reader sitting shut (gelu(g₀) < 0), the up path carries about −sign(P), and below gelu's minimum (g₀ ≈
+−0.7525, `atlas_ops.GELU_MIN`) the gate path turns too; on the 31B about nine readers in ten sat shut at the census
+questions' last word-piece (the chat template's closing `<channel|>`, where the answer begins, not a word of the
+question), the one place measured (below). A neuron that writes nothing has no readers. Weight-only: leads to test, not
+circuits. The cone follows each neuron's `first` strongest links, then each node's top `k` (2) with z ≥ `zmin`
 (15), out to the last layer and back to the first; the web summary and `/cone` follow a link only when the face its writer
 was reached on opens the next gate.
 
 From rest is the reading at g₀ = u₀ = 0, where a reader's change is second order in the writer's. Where the reader sits,
 its gate and up values (g₀, u₀), the change is first order (`atlas_ops.LINK_MODEL_USE`): a writer's change δa moves the
 reader by f[i, j] (α g + β u) δa, with α = gelu′(g₀) u₀ and β = gelu(g₀), so it is odd in the writer, which moves the reader
-whichever face it fires on, and the other way when it fires the other way. A reader's operating point on each face is
-the median α and β over its K strongest stored events of that face (`passages.d/`'s g and u: `operating_points`), where
-that face fires hardest, not every place it fires. `model=use` on `/neuron/wiring`, `/web/summary`, `/cone` and
-`/run/paths` reads links there: each link carries `use_sign` per face of its reader, gate · sign(α g + β u), the face the
-writer fired on its `gate` face pushes the reader toward (so it reads against `sign`), null for a face with no stored
-event, and every one null with `use.why` without the passages index or for a wiring index without g and u. The walks
+whichever face it fires on, and the other way when it fires the other way. The operating point read on each face is the
+median α and β over the reader's K strongest stored events of that face (`passages.d/`'s g and u: `operating_points`,
+`AtlasIndex.op_point`): where the reader fires hardest on that face, its gate open (at 94.5% of those events for the
+readers the 31B's check read), not where it sits at an ordinary word-piece: at the one place measured, the census
+questions' last word-piece, most sat shut (β < 0), and there the sign it gives agreed with the measured change at about
+0.42 of links, below chance (below). No resting operating point is built (ROADMAP §vi), so `use_sign` is the sign
+while the reader fires hard on a face, and the pages say so. `model=use` on `/neuron/wiring`, `/web/summary`, `/cone`
+and `/run/paths` reads links there: each link carries `use_sign` per face of its reader, gate · sign(α g + β u), the
+face the writer fired on its `gate` face pushes the reader toward (so it reads against `sign`), null for a face with no
+stored event, and every one null with `use.why` without the passages index or for a wiring index without g and u. The walks
 reach a reader on a face its writer's firing pushes further (the harder of two; a link that only pushes it back toward
 rest is not followed) and a writer upstream on the face whose firing pushes its reader the way the chain needs; the
 active paths keep every link whose ends both fired, signed at the reader's own face. A vault-edited neuron's links are
@@ -694,19 +704,53 @@ writer's own activation pushed) the change had the sign of α g + β u at 113 of
 each event's own at 76% of (link, event) pairs (both printed, on random weights, not asserted). `atlas_build.py` counts
 how often the two readings disagree over the whole index once both are built.
 
-Both readings are weight-only; `atlas_build.py wiring_check` measures them, prefill only (after neuron-explorer's steered
-prefill captures: a push at every prompt word-piece is rebuilt by one prefill). Per layer, `--writers` (random:512) are
-pushed by ±d along their write directions at every word-piece of the census's four questions but the start mark, d =
-`--dose` (0.25) times each one's write ceiling, a share of what it can write firing alone; its indexed readers, and as
-many readers at the same layers it is not linked to (the null, `null_readers`), are read at the last word-piece and over
-the prompt (`pushed_reads`: prefills of up to `--batch` rows, 63 at its 64, each with its own unpushed row). Reported
-per layer, for the linked readers and the null (`wiring_check_summary`, in the log and `GET /arch` → `links.measured`):
-the share whose change under +d has the sign from rest, and under the push on the writer's `gate` face; the same against
-the sign in use at the reader's face that prompt (the last word-piece); Spearman's ρ of the change's size against
-|P| f²; how often +d and −d move a reader the same way (from rest the change is even in the writer, in use odd); how
-much more the linked readers move than the null; and a cost line (forwards, rows, seconds, minutes inferred on the
-5090). On the stand-in's random weights, where every other path counts as much as the direct one, the signs held at
-about half the links, as for the null, and the linked readers moved about twice as much as the null's.
+Both readings are weight-only; `atlas_build.py wiring_check` measures them, prefill only (after neuron-explorer's
+steered prefill captures: a push at every prompt word-piece is rebuilt by one prefill). Per layer, `--writers`
+(random:512) are pushed by ±d along their write directions at every word-piece of the census's four questions but the
+start mark, d = `--dose` (0.25) times each one's write ceiling, a share of what it can write firing alone; its indexed
+readers, and as many readers at the same layers it is not linked to (the null, `null_readers`), are read at the last
+word-piece and over the prompt (`pushed_reads`: prefills of up to `--batch` rows, 63 at its 64, each with its own
+unpushed row, on which each reader's own gate and up values are kept at every word-piece past the start mark, g₀ and u₀,
+by hooks on its gate_proj and up_proj, which fire on every unpacker of the 4-bit weights). Reported per layer, for the
+linked readers and the null (`wiring_check_summary`, in the log and `GET /arch` → `links.measured`), over the changes
+that are not 0 (`zero` counts those): the share whose change under +d has the sign from rest, and under the push on the
+writer's `gate` face; the same against the sign in use where the reader sits, at α₀ = gelu′(g₀) u₀ and β₀ = gelu(g₀)
+from its own g₀ and u₀ (over the prompt, each coefficient's mean over the word-pieces, the push taken to reach the
+reader equally at each) in float64 (`use_plus`, `use_gate`), and against the sign in use the atlas serves, at the
+passages' operating point on the face it sat on (`use_plus_peak`, `use_gate_peak`); at the last word-piece the sign from
+rest and the sign where it sits by the reader's regime there, gate open (g₀ > 0), shut above gelu's minimum and below
+it, with each regime's share; Spearman's ρ of the change's size against |P| f², the second-order term's coefficient, and
+against the first-order size where the reader sits, f |α₀ g + β₀ u| d (`rho_site`); how often +d and −d move a reader
+the same way (from rest the change is even in the writer, in use odd); how much more the linked readers move than the
+null; and a cost line (forwards, rows, seconds, minutes inferred on the 5090). A share of signs is set against 0.5: the
+null's sign and gate are its own weights', which its change follows by the same law, so the null tests size
+(`moved_over_null`, ρ). A layer measured before g₀ and u₀ were recorded is summed up as it was (a change of 0 a miss,
+`use_plus` and `use_gate` at the passages' operating point) and says it needs measuring again (`site_score` when summed
+up now; its stored summary has none, so `links.measured` carries it); the two formats never share a folder, and a run
+that would mix them, or replace a merged file of the older format, is refused before it measures anything. On the
+stand-in's random weights, where every other path counts as much as the direct one, the sign from rest held at about
+half the links, as for the null, the sign in use where the reader sits at about 0.87 / 0.79 (linked / null), and the
+linked readers moved about twice as much as the null's.
+
+On Gemma-4-31B (29 October 2026: all 59 layers a later one reads, 512 writers a layer, d a quarter of each writer's
+ceiling, about 31 minutes on the 5090 with `compiled`; per-layer medians, linked / null, at the last word-piece) the
+sign from rest held on the gate face at 0.336 / 0.341 and the sign in use as built, at the passages' operating point, at
+0.418 / 0.438: below chance, links and null alike (changes of exactly 0 left out, as the summary now counts them; the
+file's stored summary, counting a 0 as a miss, gives 0.320 / 0.324 and 0.417 / 0.427). No sign convention is wrong (the
+index's signs are sign(g u) and sign(g) of the weights at every pair, every layer scalar is positive, and the push moves
+linked readers' g and u with the index's signs at 99–100% of pairs, measured for 24 writers on one question); the
+readers sit shut. Their g₀ and u₀ at that word-piece, read on the CPU from the packed checkpoint (its unpushed reads the
+GPU run's to r = 0.9999), put about nine in ten with the gate shut and 70% / 63% (pooled) below gelu's minimum, where a
+quarter of the ceiling moves them by first order and the up path carries about −sign(P); the sign from rest holds where
+the gate is open (0.82 / 0.69) and falls to 0.47 / 0.29 shut above the minimum and 0.19 / 0.26 below it. Scored offline
+from the stored responses at that measured operating point, the same responses agree with the sign in use at 0.835 /
+0.854 (0.842 / 0.853 with α₀ and β₀ in float64, as the summary computes them: in float32 a reader far below the minimum
+has gelu and gelu′ of exactly 0), over the prompt at 0.812 / 0.880, and the change's size follows f |α₀ g + β₀ u| d with
+ρ 0.89 / 0.87, against 0.31 / 0.31 for |P| f². The links are real by size: the linked readers moved 5.5 times as much as
+the null's. Over the whole index the sign in use, read where each reader fires hardest, differs from the sign from rest
+on 28% of links on each face of the reader (28.2% on +, 28.3% on −; on both only 1.9%, so on about 55% of links on one
+face or the other). These were scored offline, outside the check; it now records g₀ and u₀ itself, and the run that does
+(`wiring_check --fresh`, the night's layers set aside) is what it reports from here on.
 
 **The steer lens.** ±0.8 · p50<sub>ℓ</sub> pushed as above at every position but the start mark of two chat turns ("Who are
 you?", "Write whatever you like.") and two plain openings, one forward with an unpushed row each; per sign, the mean change

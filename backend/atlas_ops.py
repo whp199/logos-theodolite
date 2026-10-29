@@ -1424,18 +1424,29 @@ def link_scale(scalars: torch.Tensor, mlp_rms: Sequence[float], mid_rms: Sequenc
 
 # how the atlas reads a link's sign, said wherever links are shown or pooled
 LINK_MODEL = ("from rest, by the weights: a writer opens its reader's gate when it fires on its `gate` face (the sign "
-              "of the gate's change), and the reader is then pushed toward its `sign` face; fired the other way, the "
-              "writer barely moves it (GeGLU's gate stays near shut). In use, the reader's other inputs set where it "
-              "sits, and the effect can differ (`model=use` reads it there).")
+              "of the gate's change), and the reader is then pushed toward its `sign` face. That sign holds for a reader "
+              "whose gate is open, or a push big enough to open it; only a push that big barely moves the reader when the "
+              "writer fires the other way (GeGLU's gate stays near shut): a reader whose gate is open is pushed the other "
+              "way about as hard, and a small push at rest moves it the same way whichever way the writer fires (the "
+              "change is even). At a reader sitting with its gate shut (gelu(g0) < 0; on Gemma-4-31B about nine readers in "
+              "ten at the census questions' last word-piece, a chat-template mark, the one place measured) the up path "
+              "carries about the opposite sign, and below gelu's minimum (g0 about -0.75) the gate path turns too. In use, "
+              "the reader's other inputs set where it sits, and the effect can differ (`model=use` reads it where the "
+              "reader fires hardest).")
 # the second reading, at the reader's operating point (`model=use` on the routes that read links)
-LINK_MODEL_USE = ("in use, to first order where the reader sits: at its gate and up values (g0, u0), a writer's change of "
-                  "activation moves the reader by f (alpha g + beta u) times that change, alpha = gelu'(g0) u0, beta = "
-                  "gelu(g0), with g and u the link's weight products and f > 0 its scale across layers; odd in the "
-                  "writer, so fired the other way it pushes the reader the other way, as hard. The reader's operating "
-                  "point on each face is the median alpha and beta over its K strongest stored events of that face (the "
-                  "passages index): where that face fires hardest, not every place it fires. `use_sign` gives, per face "
-                  "of the reader, the face it is pushed toward when the writer fires on its `gate` face, as `sign` does "
-                  "from rest; null where that face has no stored event, or there is no passages index.")
+LINK_MODEL_USE = ("in use, to first order about an operating point of the reader: at gate and up values (g0, u0), a "
+                  "writer's change of activation moves the reader by f (alpha g + beta u) times that change, alpha = "
+                  "gelu'(g0) u0, beta = gelu(g0), with g and u the link's weight products and f > 0 its scale across "
+                  "layers; odd in the writer, so fired the other way it pushes the reader the other way, as hard. The "
+                  "operating point read on each face is where the reader fires hardest on that face: the median alpha and "
+                  "beta over its K strongest stored events of that face (the passages index), where its gate is open. It "
+                  "is not where the reader sits at an ordinary word-piece: at the one place measured (Gemma-4-31B, the "
+                  "census questions' last word-piece) most readers sat with the gate shut, beta < 0, and there the sign "
+                  "served here agreed with the measured change at about 0.42 of links, below chance, against 0.84 read "
+                  "where each reader sat (no resting operating point is built). `use_sign` gives, per face of the reader, "
+                  "the face it is pushed toward when the writer fires on its `gate` face while the reader fires hard on "
+                  "that face, as `sign` does from rest; null where that face has no stored event, or there is no "
+                  "passages index.")
 
 
 def gelu_tanh_grads(x: torch.Tensor) -> torch.Tensor:
@@ -1445,11 +1456,37 @@ def gelu_tanh_grads(x: torch.Tensor) -> torch.Tensor:
     return 0.5 * (1.0 + t) + 0.5 * x * (1.0 - t * t) * c * (1.0 + 3 * 0.044715 * x * x)
 
 
+def _gelu_tanh_least() -> float:
+    """Where gelu_tanh is least, about -0.7525 (the erf GELU's is -0.7518): the one negative root of its gradient, by
+    bisection (the gradient is negative below it and positive above, up to 0)."""
+    lo, hi = -3.0, 0.0
+    for _ in range(80):
+        mid = 0.5 * (lo + hi)
+        lo, hi = (mid, hi) if gelu_tanh_grad(mid) < 0 else (lo, mid)
+    return 0.5 * (lo + hi)
+
+
+# below this gate value gelu' < 0 as well as gelu: a shut reader's gate path turns too (the wiring check's regimes)
+GELU_MIN = _gelu_tanh_least()
+
+
+def site_coefficients(g0: Any, u0: Any) -> Tuple[np.ndarray, np.ndarray]:
+    """(alpha, beta) = (gelu'(g0) u0, gelu(g0)) elementwise, float64, through the tanh GELU the model uses (F.gelu with
+    approximate="tanh", and `gelu_tanh_grads`): the first-order coefficients of a reader read where it sits
+    (LINK_MODEL_USE), from its own gate and up values there (the wiring check's g0 and u0); NaN where either is."""
+    g = torch.as_tensor(np.asarray(g0, np.float64))
+    u = torch.as_tensor(np.asarray(u0, np.float64))
+    return (gelu_tanh_grads(g) * u).numpy(), F.gelu(g, approximate="tanh").numpy()
+
+
 def operating_points(g: Any, u: Any, filled: Any) -> Tuple[np.ndarray, np.ndarray]:
     """One face's operating point from its stored events: the gate and up values there (`passage_events`' g and u,
     [..., K]) and `filled` [..., K], the slots holding an event. Returns (alpha, beta) [...] float32: alpha = gelu'(g0)
     u0 and beta = gelu(g0), the two coefficients a reader's first-order change is read with (LINK_MODEL_USE), each the
-    median over the face's events (the mean of the middle two for an even count); NaN where the face holds none."""
+    median over the face's events (the mean of the middle two for an even count); NaN where the face holds none. The
+    events are the face's strongest, so this is where the reader fires hardest on that face, its gate open at almost
+    every one (94.5% of the events of the readers the 31B's wiring check read), not where it sits at an ordinary
+    word-piece."""
     g = torch.as_tensor(np.asarray(g, np.float32))
     u = torch.as_tensor(np.asarray(u, np.float32))
     ok = torch.as_tensor(np.asarray(filled, bool))
@@ -1466,7 +1503,8 @@ def operating_points(g: Any, u: Any, filled: Any) -> Tuple[np.ndarray, np.ndarra
 
 def use_sign(alpha: float, beta: float, g: float, u: float, gate: int) -> Optional[int]:
     """The reader's face a writer pushes it toward when it fires on its `gate` face, read in use (LINK_MODEL_USE) at
-    one operating point (alpha, beta) of the reader: gate * sign(alpha g + beta u). None without an operating point."""
+    one operating point (alpha, beta) of the reader (the served one: where it fires hardest on a face): gate *
+    sign(alpha g + beta u). None without an operating point."""
     if not (math.isfinite(float(alpha)) and math.isfinite(float(beta))):
         return None
     return int(gate) * (1 if float(alpha) * float(g) + float(beta) * float(u) > 0 else -1)
@@ -1582,19 +1620,29 @@ def pair_products(weights: Weights, writer_layer: int, writers: Sequence[int], r
 @torch.no_grad()
 def pushed_reads(lm: nn.Module, weights: Weights, prompts_ids: Sequence[Sequence[int]], writers: Sequence[Tuple[int, int]],
                  readers: Sequence[Sequence[Tuple[int, int]]], lengths: Sequence[float], *, bos_id: Optional[int],
-                 batch: int = 64, done: Optional[Callable[[int], None]] = None) -> np.ndarray:
+                 batch: int = 64, done: Optional[Callable[[int], None]] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Each writer pushed along its own write direction by +d and by -d (`lengths[w]`, the add push's length in the
     stream leaving its layer, at every word-piece but the start mark), and its readers' activations read under it: for
     each question of `prompts_ids`, prefills of up to `batch` rows, an unpushed row first, then +d and -d for each
     writer in turn (one question's rows have one length, so nothing is padded, and every forward holds its own
     unpushed row: rows of one forward are bit-identical, where different batch shapes were not, N1A). Each reader
-    (layer, n) of `readers[w]` is read at the last word-piece and as its mean over every word-piece past the start mark.
-    Returns [W, R, Q, 3, 2] float32: (unpushed, +d, -d) by (last, mean), R the most readers of any writer, NaN past a
-    writer's own; `done(forwards)` is told after each forward."""
+    (layer, n) of `readers[w]` is read at the last word-piece and as its mean over every word-piece past the start mark,
+    and on the unpushed row its own gate and up values (its gate_proj and up_proj outputs, hooked on those modules, so
+    read on any unpacker of the 4-bit weights) at every one of those word-pieces: where it sits, the operating point
+    the measured change is first order about (LINK_MODEL_USE).
+    Returns (reads, g0, u0): reads [W, R, Q, 3, 2] float32, (unpushed, +d, -d) by (last, mean), R the most readers of
+    any writer, NaN past a writer's own; g0, u0 [W, R, Q, P] float32, P the most word-pieces past the start mark of any
+    question (the start mark itself for a question of one word-piece), right-aligned so the last word-piece is at
+    [..., -1], NaN before a shorter question's first and past a writer's own readers, each from the unpushed row of the
+    writer's own forward (so the unpushed read at the last word-piece is gelu(g0) u0 there). `done(forwards)` is told
+    after each forward."""
     dev = model_device(lm)
     W, Q = len(writers), len(prompts_ids)
     R = max((len(r) for r in readers), default=0)
     out = np.full((W, R, Q, 3, 2), np.nan, np.float32)
+    P = max((max(1, len(ids) - 1) for ids in prompts_ids), default=1)
+    g0 = np.full((W, R, Q, P), np.nan, np.float32)
+    u0 = np.full((W, R, Q, P), np.nan, np.float32)
     dirs = torch.zeros((W, weights.d_model), dtype=torch.float32, device=dev)
     for l in sorted({int(l) for l, _ in writers}):
         idx = [a for a, (ll, _) in enumerate(writers) if int(ll) == l]
@@ -1623,6 +1671,15 @@ def pushed_reads(lm: nn.Module, weights: Weights, prompts_ids: Sequence[Sequence
             cols = {j: sorted(set(bs)) for j, bs in cols.items()}
             col_of = {(j, b): c for j, bs in cols.items() for c, b in enumerate(bs)}
             got: Dict[int, Tuple[np.ndarray, np.ndarray]] = {}
+            sits: Dict[Tuple[str, int], np.ndarray] = {}  # ("g" | "u", layer) -> [positions, c], the unpushed row's
+            at = slice(1, None) if T > 1 else slice(0, None)  # the word-pieces the mean is taken over
+
+            def sit(key: Tuple[str, int], bs: List[int]) -> Callable[..., None]:
+                def keep_row(_m: nn.Module, _a: Tuple[Any, ...], o: torch.Tensor) -> None:
+                    sits[key] = o[0, at][:, bs].float().cpu().numpy()
+
+                return keep_row
+
             hooks = []
             try:
                 for j, bs in cols.items():
@@ -1631,7 +1688,10 @@ def pushed_reads(lm: nn.Module, weights: Weights, prompts_ids: Sequence[Sequence
                         v = args[0][:, :, bs].float()  # [B, T, c]
                         got[j] = (v[:, -1].cpu().numpy(), (v[:, 1:].mean(1) if T > 1 else v[:, 0]).cpu().numpy())
 
-                    hooks.append(lm.layers[j].mlp.down_proj.register_forward_pre_hook(read, prepend=True))
+                    mlp = lm.layers[j].mlp
+                    hooks.append(mlp.down_proj.register_forward_pre_hook(read, prepend=True))
+                    hooks.append(mlp.gate_proj.register_forward_hook(sit(("g", j), bs)))
+                    hooks.append(mlp.up_proj.register_forward_hook(sit(("u", j), bs)))
                 with installed(lm, iv, keep):
                     lm(input_ids=x, use_cache=False)
             finally:
@@ -1644,9 +1704,11 @@ def pushed_reads(lm: nn.Module, weights: Weights, prompts_ids: Sequence[Sequence
                     for site in (0, 1):
                         v = got[int(j)][site][:, c]
                         out[a, r, q, :, site] = (v[0], v[1 + 2 * k], v[2 + 2 * k])
+                    gg, uu = sits[("g", int(j))][:, c], sits[("u", int(j))][:, c]
+                    g0[a, r, q, P - len(gg):], u0[a, r, q, P - len(uu):] = gg, uu
             if done is not None:
                 done(forwards)
-    return out
+    return out, g0, u0
 
 
 class HeadSpaces:

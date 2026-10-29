@@ -76,13 +76,20 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   end of every layer, so an early writer reaches a late reader faint) and the norms at their usual scale. `z` is the
   link's |gate . v| * |up . v| z-scored against every neuron of that other layer: how unusual it is for that pair of
   layers. Signs are read from rest: `gate` is the writer's face that opens the reader's gate (fired the other way it
-  barely moves the reader); `sign` is the reader's face it then pushes toward; `face` is the face each linked neuron is
-  shown on (a reader's `sign` face, a writer's `gate` face). In use the reader's other inputs decide where it sits, so
-  a sign is a lead. `cone` and `web_summary` can also read each link where the reader sits (`model: "use"`, with the
-  passages index): to first order at the reader's median gate and up values over its strongest stored passages of a
-  face, a writer moves it whichever face the writer fires on, and the other way when it fires the other way. Where the
-  two readings disagree, neither is a finding until a push tests it. Each linked neuron comes with that face's words,
-  its census words and its name, so you can read a neighbourhood without more calls.
+  barely moves the reader only when the push is big enough to open the gate; a reader whose gate is open is pushed the
+  other way about as hard); `sign` is the reader's face it then pushes toward; `face` is the face each linked neuron
+  is shown on (a reader's `sign` face, a writer's `gate` face). The sign from rest holds for a reader whose gate is
+  open, or a push big enough to open it: a reader sitting with its gate shut, as about nine in ten did where this was
+  measured on Gemma-4-31B (the census questions' last word-piece, a chat-template mark; ordinary text is not yet
+  measured), is pushed about the other way through its up path. In use the reader's other inputs decide where it sits,
+  so a sign is a lead. `cone` and `web_summary` can also read each link in use (`model: "use"`, with the passages
+  index): to first order where the reader fires hardest on a face (its median gate and up values over its strongest
+  stored passages of that face, its gate open), not where it sits at an ordinary word-piece; there a writer moves it
+  whichever face the writer fires on, and the other way when it fires the other way. Where readers were measured
+  sitting shut, this sign agreed with the measured change at only about 0.42 of links and the sign from rest at 0.34:
+  both below chance there. Where the two readings disagree, neither is a finding until a push tests it. Each linked
+  neuron comes with that face's words, its census words and its name, so you can read a neighbourhood without more
+  calls.
 - **Activation range** (`activation`: act_max, act_min, over_tokens, source): the largest and most negative activation
   over a corpus (the stats index), or, until that is built, over the study's 36 texts (marked provisional). Raw values.
 - **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed by fixed doses on four

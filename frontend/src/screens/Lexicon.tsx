@@ -1207,9 +1207,12 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             A link through the weights says what could pass, not what does on a given text, where the reader’s other
-            inputs decide where it sits. Gemma scales the whole stream at the end of every layer, so a writer far back
-            reaches a late reader faint: links are ranked by how strongly they arrive. Past the first hop every path is
-            a guess, and pooled words go beyond what the label gate was tested on: test it with a push or a read.
+            inputs decide where it sits. Read from rest, the sign holds for a reader whose gate is open, or a push big
+            enough to open it; a reader sitting with its gate shut, as most did where it was measured (the census
+            questions’ last word-piece), is pushed about the other way through its up path. Gemma scales the whole
+            stream at the end of every layer, so a writer far back reaches a late reader faint: links are ranked by how
+            strongly they arrive. Past the first hop every path is a guess, and pooled words go beyond what the label
+            gate was tested on: test it with a push or a read.
           </Note>
           <EntryApparatus title="the web">
             A writer A at layer i writes v<sub>A</sub> = w<sub>post,i</sub> ⊙ W<sub>down,i</sub>[:, A]; a reader B at

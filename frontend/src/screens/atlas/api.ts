@@ -150,7 +150,8 @@ export interface FaceWords {
  * gate, `sign` the reader's face it then pushes toward; `w` its strength as it reaches the reader (Gemma's layer
  * scalars and the norms counted) over the neuron's strongest; `z` how unusual it is within its pair of layers. Read
  * with `model=use` it also carries `use_sign` (LINK_MODEL_USE): per face of the reader, the face it is pushed toward
- * when the writer fires on its `gate` face, at the reader's operating point on that face (null without one). */
+ * when the writer fires on its `gate` face, at the reader's operating point on that face (null without one): where it
+ * fires hardest on that face (its strongest stored passages), not where it sits at an ordinary word-piece. */
 export interface Link {
   layer: number;
   n: number;

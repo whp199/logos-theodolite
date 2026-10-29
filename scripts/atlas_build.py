@@ -54,17 +54,24 @@ one RTX 5090 (27 October 2026; the model and the J++ lens take 21.2 GiB of the c
   four questions but the start mark, d = --dose (0.25) times the writer's own write ceiling, the most it can write by
   itself: a quarter of what it could write firing alone, the same share for every writer, never a push the neuron
   could not make (the steer lens's 0.8 of the stream is 1 to 10 times the ceiling at most layers), and meant to stay
-  near the first order the sign in use is read at (how near, untested on the 31B: the share of readers +d and -d move
-  the same way says). Its indexed readers and as many it is not linked to (the null)
+  near the first order the sign in use is read at (on the 31B, 29 October 2026, the change's odd, first-order part was
+  the larger at 73% of linked pairs and 90% of the null's). Its indexed readers and as many it is not linked to (the null)
   are read at the last word-piece and over the prompt, in prefills of up to --batch rows (63 at its 64; 3 at least),
-  each with its own unpushed row. Needs the wiring index (the passages index too, for the sign in use). Per layer it
-  logs, and keeps in wiring_check.npz for /arch, how often the sign from rest holds (under +d, and on the writer's gate
-  face), the sign in use, Spearman's rho of the change against |P| f^2, the same for the null, and how often +d and -d
-  move a reader the same way. Cost (inferred, prefill only): at 512 writers and four questions of some 20 word-pieces, 68 prefills of
-  up to 63 rows a layer, about 1.3 minutes a layer on the 5090 from the census's 0.71 s step and the stats pass's rate
-  (the log gives each layer's own figure and the seconds it took), some 1.3 hours for the 59 layers a later one
-  reads. A layer is written as it is done, and a stopped run resumes (a run with other settings, or against another
-  wiring, passages or stats index, is refused, so every layer is read against the same ones).
+  each with its own unpushed row, on which each reader's own gate and up values are kept too (g0, u0: where it sits).
+  Needs the wiring index (the passages index too, for the sign in use the atlas serves). Per layer it logs, and keeps
+  in wiring_check.npz for /arch, how often the sign from rest holds (under +d, and on the writer's gate face), the sign
+  in use where the reader sits (and at the passages' operating point, where it fires hardest), both split by whether
+  the reader's gate is open, shut, or shut below gelu's minimum, Spearman's rho of the change against |P| f^2 and
+  against the first-order size where the reader sits, the same for the null, and how often +d and -d move a reader the
+  same way; shares of signs are set against 0.5, the null tests size. Cost (inferred, prefill only): at 512 writers
+  and four questions of some 20 word-pieces, 68 prefills of up to 63 rows a layer, about 1.3 minutes a layer on the
+  5090 from the census's 0.71 s step and the stats pass's rate (the log gives each layer's own figure and the seconds
+  it took), some 1.3 hours for the 59 layers a later one reads; measured on 29 October 2026 with --unpacker compiled,
+  about 31 s a layer, 31 minutes for the 59. A layer is written as it is done, and a stopped run resumes (a run with
+  other settings, or against another wiring, passages or stats index, is refused, so every layer is read against the
+  same ones; so is one against a folder holding a layer measured before g0 and u0 were recorded, or one that would
+  replace a wiring_check.npz of that older format, before it measures anything: --fresh sets the layers measured so
+  far aside, renamed, and starts again).
 `--stand-in` runs any of these on the CPU stand-in (scripts/atlas_stand_in.py) instead, for a dry run, into the stand-in's
 own folder (`<atlas folder>/stand-in/index`, never among the model's; `atlas_stand_in.py --serve` reads it).
 THEODOLITE_GGUF=<file.gguf> builds them on a GGUF of Gemma 4, and THEODOLITE_DEVICE=cpu on the CPU
@@ -178,6 +185,9 @@ def main() -> int:
     ap.add_argument("--layout-method", default="auto", choices=["auto", "umap", "pca"])
     ap.add_argument("--replace", action="store_true", help="replace an index built for another model or other weights "
                     "(by default refused: build into another folder, --out or $THEODOLITE_ATLAS_DIR, to keep both)")
+    ap.add_argument("--fresh", action="store_true", help="wiring_check: set the layers measured so far aside (wiring_check.d "
+                    "and wiring_check.npz, renamed with the time, not removed) and start again; without it a run resumes "
+                    "only with the same settings, and a folder measured before the readers' g0 and u0 were recorded is refused")
     ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
                     "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
@@ -301,7 +311,7 @@ def main() -> int:
             f = ao.link_scale(ao.Weights(lm, rt).scalars, sc["mlp_rms"], sc["mid_rms"])
             try:
                 print("->", ab.build_wiring_check(rt, out, f, layers=layers, writers=a.writers, dose=a.dose, seed=a.seed,
-                                                  batch=a.batch, scale_source=sc["source"]))
+                                                  batch=a.batch, scale_source=sc["source"], fresh=a.fresh))
             except ValueError as exc:
                 raise SystemExit(str(exc))
             disagreement()

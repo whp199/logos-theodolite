@@ -23,7 +23,9 @@ them is the same, byte for byte. It loads neither the real model nor the lens, a
    patched by patch_compressed_tensors_for_low_vram, as the real checkpoint is; in each mode, byte for byte against
    the reference: a forward's logits, bare, under a vault edit (a down_proj column overlay by apply_patch_surgery) and
    under a gate_proj row overlay; the runtime's slices and whole weights with each in force; the stream's p50 over the
-   study's texts; three answers written at once under their own pushes (write_rows); a census run's rows, with the
+   study's texts; the wiring check's reads under +-d and each reader's g0 and u0, read by hooks on gate_proj and up_proj
+   (whose forwards the unpackers replace; on the reference, what plain hooks give, to bf16's rounding, and the unpushed
+   read gelu(g0) u0); three answers written at once under their own pushes (write_rows); a census run's rows, with the
    mode in its meta, and a run continued under another unpacker, or merged with one, keeping each session's; the
    resident weights untouched after all of it, and "reference" putting every forward back;
 6. the command lines and the server: census_run.py --stand-in --unpacker lut records it in the run's meta and an
@@ -504,8 +506,24 @@ def readings(rt: Any, vault: LarqlVaultEngine, out: Path) -> Dict[str, Any]:
     r["logits_after"] = hf(input_ids=ids).logits
     p50 = ao.stream_p50(ao.activation_extremes(lm, _study_ids(rt)))
     r["p50"] = [float(x) for x in p50]
-    # three answers at once, each under its own push (none, +3, -2 x p50 along neuron 9's write direction)
     w = ao.Weights(lm, rt)
+    # the wiring check's reads under +-d, and where each reader sits unpushed: its gate_proj and up_proj outputs, read by
+    # hooks on those modules, whose forwards each unpacker replaces (with, beside them, plain hooks of the check's own
+    # on an unpushed forward, which the reference's are set against)
+    readers = [[(2, 5), (4, 17)], [(3, 1), (5, 2), (4, 0)]]
+    reads, g0, u0 = ao.pushed_reads(lm, w, [ids[0].tolist()], [(1, 3), (2, 9)], readers, [0.5, 1.0], bos_id=tok.bos_token_id, batch=5)
+    r["pushed_reads"], r["pushed_g0"], r["pushed_u0"] = (torch.from_numpy(x) for x in (reads, g0, u0))
+    sits: Dict[str, Any] = {}
+    hooks = [h for j in (2, 3, 4, 5) for h in (
+        lm.layers[j].mlp.gate_proj.register_forward_hook(lambda _m, _a, o, j=j: sits.__setitem__(f"g{j}", o[0, 1:].float().clone())),
+        lm.layers[j].mlp.up_proj.register_forward_hook(lambda _m, _a, o, j=j: sits.__setitem__(f"u{j}", o[0, 1:].float().clone())))]
+    try:
+        lm(input_ids=ids, use_cache=False)
+    finally:
+        for h in hooks:
+            h.remove()
+    r["sits_by_hook"] = torch.stack([torch.stack([sits[f"{k}{j}"][:, b] for k in ("g", "u")]) for rs in readers for j, b in rs])
+    # three answers at once, each under its own push (none, +3, -2 x p50 along neuron 9's write direction)
     u = w.write_dirs(2, [9])[0]
     delta = torch.stack([torch.zeros_like(u), u * (3.0 * p50[2]), u * (-2.0 * p50[2])])
     steps = ao.write_rows(lm, rt.lm_head_weight, [ids[0].tolist()] * 3, ao.Interventions(rows=3, adds={2: delta}),
@@ -533,6 +551,15 @@ def check_stand_in(rt: Any, vault: LarqlVaultEngine, modes: List[str], tmp: Path
           and wf.same_bits(ref["logits"], ref["logits_after"]), "the overlays move the logits, and lifting them puts them back")
     check(len({s[1] for s in ref["write_rows"] if s[0] == 1} ^ {s[1] for s in ref["write_rows"] if s[0] == 0}) > 0,
           "the push changes what is written")
+    # where each reader sits, as the wiring check reads it on the packed weights: what plain hooks give (another batch
+    # shape, so to bf16's rounding), every value read, and the unpushed read gelu_tanh(g0) u0 to bf16's rounding
+    sat = torch.stack([torch.stack([ref[f"pushed_{k}"][a, r_, 0] for k in ("g0", "u0")]) for a, n_r in enumerate((2, 3)) for r_ in range(n_r)])
+    act = torch.nn.functional.gelu(ref["pushed_g0"][..., -1], approximate="tanh") * ref["pushed_u0"][..., -1]
+    have = torch.isfinite(ref["pushed_reads"][:, :, 0, 0, 0])
+    check(bool(torch.isfinite(sat).all()) and float((sat - ref["sits_by_hook"]).abs().max()) <= 2e-2 * max(1.0, float(ref["sits_by_hook"].abs().max()))
+          and float((act[:, :, 0][have] - ref["pushed_reads"][:, :, 0, 0, 0][have]).abs().max()) <= 2e-2 * float(act[:, :, 0][have].abs().max()),
+          "the wiring check on the 4-bit weights: each reader's g0 and u0 read through the hooks on gate_proj and up_proj, as plain hooks give "
+          f"them, and the unpushed read gelu(g0) u0 ({float((sat - ref['sits_by_hook']).abs().max()):.1e} off)")
     for mode in modes:
         t0 = time.time()
         rec = wf.install(rt, mode, log=lambda s: None)

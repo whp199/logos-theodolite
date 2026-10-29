@@ -28,7 +28,9 @@ Every reading is compared with the same operation of backend/atlas_ops.py called
    index, the tooltip and the wiring from the indexes, the search finds a face by its first word-piece, the cone and
    the web come back as the index has them, the layout and the active paths; in use (model=use), each link's use_sign as
    the index reads it, every other field as from rest, and the web summary, the cone and the active paths as the index
-   walks them; /arch's measured check (wiring_check, built here) per layer with its cost; a face's stored passages (the index's
+   walks them; /arch's measured check (wiring_check, built here) per layer with its cost, the sign in use scored where
+   each reader sits, and a check measured before the readers' g0 and u0 were recorded served as it was, saying it needs
+   measuring again; a face's stored passages (the index's
    events in order, the peak unit marked, each side cut where the window starts or ends, at a boundary between
    documents (an end mark, or a start mark inside the window) or a turn mark, or where the count runs out, `rel`, the
    regime, reads and follows counted with their lift; `rel_to` naming the stats index's corpus, or saying it is
@@ -90,7 +92,7 @@ import backend.atlas_build as ab
 import backend.atlas_ops as ao
 from atlas_stand_in import CORPUS, bind_server, stand_in
 from backend import census as cz
-from backend.atlas_index import AtlasIndex, index_dir, scale_scores
+from backend.atlas_index import SITE_SCORE_RERUN, AtlasIndex, index_dir, scale_scores
 from backend.causal_check import language_model
 from backend.label_gate import LABEL_GATE_CARD
 from backend.larql_vault import PatchOperationRecord
@@ -655,6 +657,30 @@ def main() -> int:
           and all(meas["layers"][l_]["last"] == wcm["summary"][l_]["last"] and meas["layers"][l_]["cost"] == wcm["cost"][l_] for l_ in ("1", "2"))
           and meas["sign_disagreement"]["links"] == idx.sign_disagreement()["links"] and "sign_gate" in meas["layers"]["1"]["last"]["null"],
           f"/arch: the measured check per layer, linked and null, with its cost, and the disagreement over the index ({sorted(meas or {})})")
+    lk1 = meas["layers"]["1"]["last"]["linked"]
+    check("site_score" not in meas and {"use_gate", "use_gate_peak", "rho_site", "regimes", "zero"} <= set(lk1)
+          and "gate is open" in arch["links"]["models"]["rest"] and "fires hardest" in arch["links"]["models"]["use"],
+          f"/arch: the sign in use scored where each reader sits and at the passages', by regime, both rho; each reading's condition said ({sorted(lk1)})")
+    # a check measured before the readers' g0 and u0 were recorded: its summary as it was then, and /arch says it needs a rerun
+    p_wc = out / "wiring_check.npz"
+    keep_wc = p_wc.read_bytes()
+    zz = dict(np.load(p_wc))
+    mm = json.loads(str(zz["meta"]))
+    newer = ("_g0", "_u0", "_f")
+    for l_ in ("1", "2"):
+        s_ = ab.wiring_check_summary({k_[len(f"L{l_}_"):]: v_ for k_, v_ in zz.items() if k_.startswith(f"L{l_}_") and not k_.endswith(newer)})
+        s_.pop("site_score")
+        mm["summary"][l_] = s_
+    zz = {k_: v_ for k_, v_ in zz.items() if not k_.endswith(newer)}
+    zz["meta"] = np.array(json.dumps(mm))
+    np.savez_compressed(p_wc, **zz)
+    try:
+        meas_old = c.get("/api/atlas/arch").json()["links"]["measured"]
+    finally:
+        p_wc.write_bytes(keep_wc)
+    check(meas_old.get("site_score") == SITE_SCORE_RERUN and "use_gate" in meas_old["layers"]["1"]["last"]["linked"]
+          and "rho_site" not in meas_old["layers"]["1"]["last"]["linked"] and "site_score" not in c.get("/api/atlas/arch").json()["links"]["measured"],
+          f"/arch: a check measured before g0 and u0 were recorded served as it was, saying its sign in use needs measuring again ({meas_old.get('site_score')})")
     check(arch["push"]["scale_source"]["kind"] == "index" and arch["push"]["scale_source"]["corpus"] == "check", "/arch: the scales from the stats index")
     check(all(c.get("/api/health").json()["atlas"]["indexes"].values()), "/api/health: every index on disk")
     stand_in_card = {"format": "stand-in", "model": rt.model_id, "runtime": "TheodoliteRuntime"}

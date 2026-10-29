@@ -28,8 +28,8 @@ import numpy as np
 import torch
 
 from backend import atlas_ops as ao
-from backend.atlas_index import (EMPTY_Z, FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, WIRING_CHECK_DIR, WIRING_K, AtlasIndex, save_npz,
-                                  weights_differ)
+from backend.atlas_index import (EMPTY_Z, FILES, LENS_K, PASSAGES_DIR, PASSAGES_K, SITE_SCORE_RERUN, WIRING_CHECK_DIR, WIRING_K,
+                                  AtlasIndex, save_npz, weights_differ)
 from backend.causal_check import language_model, logits_fp32, model_device, pad_right
 from backend.label_gate import label_top_ids, writes_nothing
 from backend.theodolite_math import unembed_gemma4
@@ -396,20 +396,43 @@ def spearman(x: np.ndarray, y: np.ndarray) -> Optional[float]:
     return None if sx == 0 or sy == 0 else float(((rx - rx.mean()) * (ry - ry.mean())).mean() / (sx * sy))
 
 
+WIRING_CHECK_FORMAT = 2  # 1 (no `format` in its plan): the reads alone; 2: with each reader's g0 and u0, and each pair's f
+# the reader's regime at the last word-piece, by its own gate value there: open; shut above gelu's minimum, where its up
+# path turns; below it, where its gate path turns too (atlas_ops.LINK_MODEL)
+REGIMES = ("open", "shut_above_min", "below_min")
+
+
 def wiring_check_summary(sh: Dict[str, np.ndarray]) -> Dict[str, Any]:
     """One layer of the measured check, summed up (`build_wiring_check`), at each read site ("last": the last word-piece;
     "mean": the mean over the prompt), for the linked readers and for the null, over every (link, question):
     - `sign_plus`: the share whose change under +d has the sign from rest (`sign`: the index's for a linked reader, the
       weights' own for the null's); `sign_gate`: the same under the push on the writer's `gate` face (+d where gate is
       +, -d where it is -), the push the reading from rest is about;
-    - `use_plus`, `use_gate` (at the last word-piece only, with the passages index): the same against the sign in use
-      at the reader's operating point on the face it sat on unpushed (LINK_MODEL_USE);
+    - `use_plus`, `use_gate`: the same against the sign in use (LINK_MODEL_USE) where the reader sits, at its own
+      operating point at that site: alpha0 = gelu'(g0) u0, beta0 = gelu(g0) from its gate and up values unpushed (g0,
+      u0; over the prompt, alpha0 and beta0 are each the mean over its word-pieces, taking the push to reach the reader
+      equally at each word-piece, the pre-feed-forward norm's own scale there and attention's spreading left out);
+    - `use_plus_peak`, `use_gate_peak` (at the last word-piece only, with the passages index): against the sign in use
+      at the operating point the atlas serves, where the reader fires hardest on the face it sat on unpushed (the
+      median over its strongest stored passages of that face), which is not where it sits;
+    - `regimes` (at the last word-piece): by the reader's own gate there, open (g0 > 0), shut above gelu's minimum
+      (`GELU_MIN` < g0 <= 0, about -0.75) and below it, each regime's `share` of the pairs and its `sign_gate` and
+      `use_gate`;
     - `same_way`: the share where +d and -d move the reader the same way, which the reading from rest allows (its
       change is even in the writer) and the reading in use does not (to first order it is odd);
+    - `zero`: the share whose change under the gate-face push is exactly 0 (no sign to count: each share above leaves
+      out the changes of its own that are 0; and a share of signs is set against 0.5, chance, not against the null,
+      whose own g and u follow the same law: the null tests size);
     - `rho`: Spearman's rho of the change under the gate-face push (its size, the mean over the questions) against the
-      link's strength |P| f^2; `moved`: the median size of that change;
-    - `moved_over_null`: the linked readers' `moved` over the null's.
-    A share is None where there is nothing to count."""
+      link's strength |P| f^2, the coefficient of the second-order term; `rho_site`: against the first-order size where
+      the reader sits, f |alpha0 g + beta0 u| d (the mean over the questions); `moved`: the median size of that change;
+    - `moved_over_null`: the linked readers' `moved` over the null's: whether links are real.
+    A share is None where there is nothing to count. A layer measured before g0 and u0 were recorded (no `g0` in its
+    arrays) is summed up as it was then: the shares count a change of 0 as a miss, `use_plus` and `use_gate` are the
+    passages' (the `_peak` scores of a later layer), there are no regimes, `rho_site` or `zero`, and `site_score` says
+    that it needs measuring again."""
+    if "g0" in sh and "u0" in sh:
+        return _site_summary(sh)
     share = lambda m: round(float(m.mean()), 3) if m.size else None  # noqa: E731
     reads = sh["reads"]  # [W, R, Q, 3, 2]
     valid = sh["readers"][..., 0] >= 0
@@ -420,13 +443,7 @@ def wiring_check_summary(sh: Dict[str, np.ndarray]) -> Dict[str, Any]:
     d_gate = np.where(gate > 0, d_plus, d_minus)
     sign = np.broadcast_to(sh["sign"][:, :, None].astype(np.int64), d_plus.shape[:3])
     sg = lambda x: np.where(x > 0, 1, np.where(x < 0, -1, 0))  # noqa: E731
-    # the reader's own face, unpushed, at the last word-piece: where the sign in use is read
-    face = np.where(reads[:, :, :, 0, 0] > 0, 0, 1)  # 0 its + face, 1 its - face
-    op = sh["op"]  # [W, R, 2 faces, (alpha, beta)]
-    al = np.take_along_axis(np.broadcast_to(op[:, :, None, :, 0], face.shape + (2,)), face[..., None], -1)[..., 0]
-    be = np.take_along_axis(np.broadcast_to(op[:, :, None, :, 1], face.shape + (2,)), face[..., None], -1)[..., 0]
-    kappa = sg(al * sh["g"][:, :, None] + be * sh["u"][:, :, None])  # where the writer's rise pushes it there
-    has_op = np.isfinite(al) & np.isfinite(be)
+    kappa, has_op = _peak_kappa(sh)
     out: Dict[str, Any] = {}
     for si, site in enumerate(("last", "mean")):
         res: Dict[str, Any] = {}
@@ -446,13 +463,111 @@ def wiring_check_summary(sh: Dict[str, np.ndarray]) -> Dict[str, Any]:
         mv, mn = res["linked"]["moved"], res["null"]["moved"]
         res["moved_over_null"] = round(mv / mn, 2) if mv is not None and mn else None
         out[site] = res
+    out["site_score"] = SITE_SCORE_RERUN
     return out
+
+
+def _peak_kappa(sh: Dict[str, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+    """The sign in use at the operating point the atlas serves (LINK_MODEL_USE: where the reader fires hardest on a
+    face, from the passages index), on the face the reader sat on unpushed at the last word-piece: (kappa [W, R, Q],
+    the sign of alpha g + beta u there, where the writer's rise pushes it; has_op, where that face has an operating
+    point)."""
+    sg = lambda x: np.where(x > 0, 1, np.where(x < 0, -1, 0))  # noqa: E731
+    reads = sh["reads"]
+    face = np.where(reads[:, :, :, 0, 0] > 0, 0, 1)  # 0 its + face, 1 its - face
+    op = sh["op"]  # [W, R, 2 faces, (alpha, beta)]
+    al = np.take_along_axis(np.broadcast_to(op[:, :, None, :, 0], face.shape + (2,)), face[..., None], -1)[..., 0]
+    be = np.take_along_axis(np.broadcast_to(op[:, :, None, :, 1], face.shape + (2,)), face[..., None], -1)[..., 0]
+    return sg(al * sh["g"][:, :, None] + be * sh["u"][:, :, None]), np.isfinite(al) & np.isfinite(be)
+
+
+def _site_summary(sh: Dict[str, np.ndarray]) -> Dict[str, Any]:
+    """`wiring_check_summary` of a layer measured with each reader's own gate and up values (g0, u0 [W, R, Q, P], the
+    last word-piece at [..., -1]) and each pair's scale `f`: the sign in use scored where the reader sits."""
+    share = lambda m: round(float(m.mean()), 3) if m.size else None  # noqa: E731
+    sg = lambda x: np.where(x > 0, 1, np.where(x < 0, -1, 0))  # noqa: E731
+    reads = sh["reads"]  # [W, R, Q, 3, 2]
+    valid = sh["readers"][..., 0] >= 0
+    groups = {"linked": sh["linked"] & valid, "null": ~sh["linked"] & valid}
+    d_plus = reads[:, :, :, 1] - reads[:, :, :, 0]  # [W, R, Q, 2]
+    d_minus = reads[:, :, :, 2] - reads[:, :, :, 0]
+    d_gate = np.where(sh["gate"][:, :, None, None] > 0, d_plus, d_minus)
+    sign = np.broadcast_to(sh["sign"][:, :, None].astype(np.int64), d_plus.shape[:3])
+    kappa_peak, has_peak = _peak_kappa(sh)
+    # where each reader sits: alpha0, beta0 at the last word-piece, and over the prompt each one's mean over the
+    # word-pieces (a question shorter than the longest is NaN at the front)
+    alpha, beta = ao.site_coefficients(sh["g0"], sh["u0"])  # [W, R, Q, P] float64
+    here = np.isfinite(alpha) & np.isfinite(beta)
+    n_here = here.sum(-1)
+    mean_of = lambda x: np.where(n_here > 0, np.where(here, x, 0.0).sum(-1) / np.maximum(n_here, 1), np.nan)  # noqa: E731
+    at_site = ((alpha[..., -1], beta[..., -1]), (mean_of(alpha), mean_of(beta)))
+    g, u = sh["g"][:, :, None].astype(np.float64), sh["u"][:, :, None].astype(np.float64)
+    g_last = sh["g0"][..., -1]
+    regime = dict(zip(REGIMES, (g_last > 0, (g_last > ao.GELU_MIN) & (g_last <= 0), g_last <= ao.GELU_MIN)))
+    out: Dict[str, Any] = {}
+    for si, site in enumerate(("last", "mean")):
+        coupling = at_site[si][0] * g + at_site[si][1] * u  # [W, R, Q]: alpha0 g + beta0 u
+        kappa = sg(coupling)  # where the writer's rise pushes the reader where it sits
+        first = (sh["f"][:, :, None] * np.abs(coupling)).mean(-1) * sh["lengths"][:, None]  # [W, R]: f |alpha0 g + beta0 u| d
+        res: Dict[str, Any] = {}
+        for name, m in groups.items():
+            dp, dm, dg = d_plus[..., si][m], d_minus[..., si][m], d_gate[..., si][m]  # [n, Q]
+            s_, k_, gt = sign[m], kappa[m], sh["gate"][m][:, None].astype(np.int64)
+            nzp, nzg = dp != 0, dg != 0
+            r: Dict[str, Any] = {"pairs": int(dp.size), "zero": share(~nzg), "sign_plus": share((sg(dp) == s_)[nzp]),
+                                 "sign_gate": share((sg(dg) == s_)[nzg]), "same_way": share((sg(dp) == sg(dm))[nzp & (dm != 0)]),
+                                 "use_plus": share((sg(dp) == k_)[nzp]), "use_gate": share((sg(dg) == gt * k_)[nzg])}
+            if site == "last":
+                kp, hp = kappa_peak[m], has_peak[m]
+                r["use_plus_peak"] = share((sg(dp) == kp)[nzp & hp])
+                r["use_gate_peak"] = share((sg(dg) == gt * kp)[nzg & hp])
+                r["regimes"] = {rg: {"share": share(rm[m]), "sign_gate": share((sg(dg) == s_)[nzg & rm[m]]),
+                                     "use_gate": share((sg(dg) == gt * k_)[nzg & rm[m]])} for rg, rm in regime.items()}
+            size = np.abs(dg).mean(-1)
+            for key, against in (("rho", sh["strength"][m]), ("rho_site", first[m])):
+                rho = spearman(size, against) if dp.size else None
+                r[key] = round(rho, 3) if rho is not None else None
+            r["moved"] = float(np.median(np.abs(dg))) if dg.size else None
+            res[name] = r
+        mv, mn = res["linked"]["moved"], res["null"]["moved"]
+        res["moved_over_null"] = round(mv / mn, 2) if mv is not None and mn else None
+        out[site] = res
+    return out
+
+
+def _older_layers(folder: Path) -> List[int]:
+    """The layers in `folder` measured before the check recorded each reader's g0 and u0 (a shard without `g0`)."""
+
+    def files(p: Path) -> List[str]:
+        with np.load(p) as z:
+            return list(z.files)
+
+    return sorted(int(p.stem[1:]) for p in folder.glob("L*.npz") if p.stem[1:].isdigit() and "g0" not in files(p))
+
+
+def _older_said(folder: Path, older: Sequence[int]) -> str:
+    many = len(older) > 1
+    return (f"Layer{'s' if many else ''} {', '.join(map(str, older))} in {folder} {'were' if many else 'was'} measured before the "
+            "check recorded each reader's own gate and up values (g0, u0), and adding layers beside "
+            f"{'them' if many else 'it'} would mix the two formats: nothing is measured or merged. Start again with --fresh (the "
+            "folder and wiring_check.npz are set aside, renamed, not removed), or measure into another index folder.")
+
+
+def _set_aside(out_dir: Path, log: Log) -> None:
+    """The layers measured so far (`wiring_check.d/` and the merged `wiring_check.npz`) moved aside beside them, named
+    with the time (`--fresh`): never removed."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    for p, to in ((out_dir / WIRING_CHECK_DIR, out_dir / f"{WIRING_CHECK_DIR}.set-aside-{stamp}"),
+                  (out_dir / FILES["wiring_check"], out_dir / f"wiring_check.set-aside-{stamp}.npz")):
+        if p.exists():
+            os.replace(p, to)
+            log(f"wiring_check: {p.name} set aside as {to.name} (--fresh)")
 
 
 @torch.no_grad()
 def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: Optional[Sequence[int]] = None,
                        writers: str = "random:512", dose: float = 0.25, seed: int = 0, batch: int = 64,
-                       scale_source: str = "", log: Log = print) -> Path:
+                       scale_source: str = "", fresh: bool = False, log: Log = print) -> Path:
     """The wiring measured (neuron-explorer's steered prefill captures, adapted: one prefill under a push at every
     prompt word-piece rebuilds what a reader reads). For each layer, the `writers` (`census.parse_neurons`: "random:K",
     drawn from the seed and the layer, a range or a list; a neuron that writes nothing is left out, and the last layer,
@@ -463,15 +578,22 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
     (`atlas_ops.pushed_reads`). Read: each writer's readers in the wiring index (its `down` links) at the last
     word-piece and as their mean over the prompt, and as many readers at the same layers it is not linked to
     (`atlas_ops.null_readers`, seeded by the seed and the layer), the null; each pair's g and u from the weights
-    (`pair_products`: the null's `sign` and `gate` are their own), its strength |P| f^2 (`scale`), and each reader's
-    operating points from the passages index when built (the sign in use).
+    (`pair_products`: the null's `sign` and `gate` are their own), its scale f[l, j] (`f`) and strength |P| f^2
+    (`scale`), each reader's own gate and up values unpushed at every word-piece past the start mark (`g0`, `u0`
+    [W, R, Q, P], the last word-piece at [..., -1]: where it sits, which the sign in use is scored at), and each
+    reader's operating points from the passages index when built (`op`: where it fires hardest on each face, the
+    sign in use the atlas serves).
 
     A layer is written as `wiring_check.d/L{l}.npz` as it is measured (a stopped run resumes at the next; a run with
     other settings, or against another wiring, passages or stats index or other scales, is refused, so every layer is
-    read against the same ones), and every layer measured so far merged into `wiring_check.npz` (arrays `L{l}_*`,
-    `layers`), whose meta holds the provenance, each layer's `wiring_check_summary` (also in the log and /arch), how
-    often the two signs disagree over the whole index (`AtlasIndex.sign_disagreement`), and each layer's cost: its
-    forwards and rows, the seconds it took here, and the minutes inferred on the 5090 (prefill only)."""
+    read against the same ones; so is a run against a folder holding a layer measured before g0 and u0 were recorded,
+    or one that would replace a merged file of that older format, before anything is measured, so the two formats never
+    mix and nothing is replaced unasked, unless `fresh`, which sets the layers measured so far aside, renamed, and
+    starts again), and
+    every layer measured so far merged into `wiring_check.npz` (arrays `L{l}_*`, `layers`), whose meta holds the
+    provenance, each layer's `wiring_check_summary` (also in the log and /arch), how often the two signs disagree over
+    the whole index (`AtlasIndex.sign_disagreement`), and each layer's cost: its forwards and rows, the seconds it took
+    here, and the minutes inferred on the 5090 (prefill only)."""
     from backend import census as cz
 
     lm = language_model(rt.hf_model)
@@ -494,15 +616,37 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
     plan = {"model": getattr(rt, "model_id", None), "writers": str(writers), "dose": float(dose), "seed": int(seed),
             "batch": int(batch), "questions": dict(cz.PROMPTS), "wiring_built_at": wiring["meta"].get("built_at"),
             "passages_built_at": P["meta"].get("built_at") if P is not None else None,
-            "stats_built_at": S["meta"].get("built_at") if S is not None else None, "scale_source": str(scale_source)}
+            "stats_built_at": S["meta"].get("built_at") if S is not None else None, "scale_source": str(scale_source),
+            "format": WIRING_CHECK_FORMAT}
     plan_path = folder / "plan.json"
+    merged = Path(out_dir) / FILES["wiring_check"]
+    if fresh:
+        _set_aside(Path(out_dir), log)
     if plan_path.exists():
         old = json.loads(plan_path.read_text(encoding="utf-8"))
+        if old.get("format", 1) != WIRING_CHECK_FORMAT:
+            raise ValueError(f"The layers in {folder} were measured before the check recorded each reader's own gate and up values "
+                             "(g0, u0), where the sign in use is now scored, and adding layers to them would mix the two formats. "
+                             "Start again with --fresh (that folder and wiring_check.npz are set aside beside them, renamed, not "
+                             "removed), or measure into another index folder.")
         differ = [key for key in plan if old.get(key) != plan[key]]
         if differ:
             raise ValueError(f"The layers in {folder} were measured with other settings or against other indexes ({', '.join(differ)}): "
-                             "measure with the same ones to add layers, or remove that folder to start again.")
-    else:
+                             "measure with the same ones to add layers, or start again with --fresh (that folder and "
+                             "wiring_check.npz are set aside, renamed, not removed).")
+    # a layer of the older format whose plan is lost or that was copied in, or an older merged file this run would
+    # replace, refused here, before anything is measured or a plan written
+    older = _older_layers(folder) if folder.exists() else []
+    if older:
+        raise ValueError(_older_said(folder, older))
+    if merged.exists():
+        with np.load(merged, allow_pickle=False) as z:
+            fmt = json.loads(str(z["meta"])).get("format", 1) if "meta" in z.files else 1
+        if fmt != WIRING_CHECK_FORMAT:
+            raise ValueError(f"{merged} was measured before the check recorded each reader's own gate and up values (g0, u0), "
+                             "and this run would replace it: start again with --fresh (it is set aside, renamed, not removed), "
+                             "or measure into another index folder.")
+    if not plan_path.exists():
         folder.mkdir(parents=True, exist_ok=True)
         plan_path.write_text(json.dumps(plan, indent=1), encoding="utf-8")
     K = int(wiring["K"])
@@ -537,13 +681,15 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
         per = max(1, (int(batch) - 1) // 2)
         chunks = [min(per, W - s) for s in range(0, W, per)]
         n_fwd = Q * len(chunks)
-        reads = ao.pushed_reads(lm, w, list(prompts.values()), [(l, A) for A in ws], readers, lengths, bos_id=rt.tokenizer.bos_token_id,
-                                batch=batch, done=lambda k: log(f"wiring_check: layer {l}, {k} of {n_fwd} prefills") if k % 25 == 0 else None)
+        reads, g0, u0 = ao.pushed_reads(lm, w, list(prompts.values()), [(l, A) for A in ws], readers, lengths,
+                                        bos_id=rt.tokenizer.bos_token_id, batch=batch,
+                                        done=lambda k: log(f"wiring_check: layer {l}, {k} of {n_fwd} prefills") if k % 25 == 0 else None)
         g, u = ao.pair_products(w, l, ws, readers)
         arr = {"writers": np.array(ws, np.int32), "ceilings": ceilings, "lengths": lengths.astype(np.float32),
                "readers": np.full((W, R, 2), -1, np.int32), "linked": np.zeros((W, R), bool), "g": g, "u": u,
-               "sign": np.zeros((W, R), np.int8), "gate": np.zeros((W, R), np.int8), "strength": np.full((W, R), np.nan, np.float32),
-               "op": np.full((W, R, 2, 2), np.nan, np.float32), "reads": reads}
+               "sign": np.zeros((W, R), np.int8), "gate": np.zeros((W, R), np.int8), "f": np.full((W, R), np.nan, np.float32),
+               "strength": np.full((W, R), np.nan, np.float32), "op": np.full((W, R, 2, 2), np.nan, np.float32), "reads": reads,
+               "g0": g0, "u0": u0}
         for a, rs in enumerate(readers):
             for r, (j, b) in enumerate(rs):
                 arr["readers"][a, r] = (j, b)
@@ -552,6 +698,7 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
                 # a linked reader's signs as the index keeps them; the null's from the weights, as the index would
                 arr["sign"][a, r] = linked[a][r][2] if is_l else (1 if g[a, r] * u[a, r] > 0 else -1)
                 arr["gate"][a, r] = linked[a][r][3] if is_l else (1 if g[a, r] > 0 else -1)
+                arr["f"][a, r] = float(f[l, j])
                 arr["strength"][a, r] = abs(float(g[a, r]) * float(u[a, r])) * float(f[l, j]) ** 2
                 if P is not None:
                     op = index.op_point(j, b)
@@ -563,26 +710,35 @@ def build_wiring_check(rt: Any, out_dir: Path, scale: torch.Tensor, *, layers: O
                 "minutes_5090": round(sum(STEP_5090_S + PIECE_5090_S * (2 * c + 1) * t for t in T for c in chunks) / 60, 2)}
         summ = wiring_check_summary(arr)
         save_npz(shard, **arr, summary=np.array(json.dumps({"summary": summ, "cost": cost})))
-        lt = summ["last"]
+        lt, ll = summ["last"], summ["last"]["linked"]
         say = lambda x: "-" if x is None else f"{x:.2f}"  # noqa: E731
+        said = {"open": "open", "shut_above_min": "shut above gelu's minimum", "below_min": "below it"}
+        sits = ", ".join(f"{ll['regimes'][k]['share'] * 100:.0f}% {said[k]}" for k in REGIMES if ll["regimes"][k]["share"] is not None)
         log(f"wiring_check: layer {l}: {W} writers, {int(arr['linked'].sum())} links, d = {dose:g} x each one's ceiling; at the last "
-            f"word-piece the sign from rest held under +d at {say(lt['linked']['sign_plus'])} (null {say(lt['null']['sign_plus'])}), on the "
-            f"gate face at {say(lt['linked']['sign_gate'])} (null {say(lt['null']['sign_gate'])}), the sign in use at "
-            f"{say(lt['linked']['use_gate'])}; rho {say(lt['linked']['rho'])} (null {say(lt['null']['rho'])}); +d and -d the same way at "
-            f"{say(lt['linked']['same_way'])}; linked readers moved {say(lt['moved_over_null'])} x the null's; {n_fwd} prefills in "
-            f"{cost['seconds']:.0f} s here, about {cost['minutes_5090']:.1f} min on the 5090 (inferred)")
+            f"word-piece (shares of signs, against 0.5) the sign from rest held under +d at {say(ll['sign_plus'])} (null "
+            f"{say(lt['null']['sign_plus'])}), on the gate face at {say(ll['sign_gate'])} (null {say(lt['null']['sign_gate'])}), the "
+            f"sign in use where the reader sits at {say(ll['use_gate'])} (null {say(lt['null']['use_gate'])}; at the passages' "
+            f"operating point {say(ll['use_gate_peak'])}); the linked readers' gates {sits}; rho {say(ll['rho_site'])} against the "
+            f"first-order size where they sit (null {say(lt['null']['rho_site'])}), {say(ll['rho'])} against |P| f^2; +d and -d the "
+            f"same way at {say(ll['same_way'])}; linked readers moved {say(lt['moved_over_null'])} x the null's; {n_fwd} prefills "
+            f"in {cost['seconds']:.0f} s here, about {cost['minutes_5090']:.1f} min on the 5090 (inferred)")
     return merge_wiring_check(rt, Path(out_dir), plan, index, log=log)
 
 
 def merge_wiring_check(rt: Any, out_dir: Path, plan: Dict[str, Any], index: AtlasIndex, *, log: Log = print) -> Path:
     """Every layer measured so far (`wiring_check.d/L{l}.npz`) into `wiring_check.npz`: arrays `L{l}_*`, `layers`, and
-    the meta (`build_wiring_check`; the plan's indexes and scales are every layer's)."""
+    the meta (`build_wiring_check`; the plan's indexes and scales are every layer's). A layer measured before the
+    readers' g0 and u0 were recorded is refused, not merged (`build_wiring_check` refuses it first: this is the
+    backstop)."""
     folder = out_dir / WIRING_CHECK_DIR
     arrays: Dict[str, np.ndarray] = {}
     summary: Dict[str, Any] = {}
     cost: Dict[str, Any] = {}
     # a shard's own name only: a run stopped while writing one leaves `L{l}.npz.tmp.npz` (save_npz), which is not a layer
     done = sorted(int(p.stem[1:]) for p in folder.glob("L*.npz") if p.stem[1:].isdigit())
+    older = _older_layers(folder)
+    if older:
+        raise ValueError(_older_said(folder, older))
     for l in done:
         with np.load(folder / f"L{l}.npz") as z:
             for key in z.files:
@@ -597,7 +753,9 @@ def merge_wiring_check(rt: Any, out_dir: Path, plan: Dict[str, Any], index: Atla
              meta=_meta(rt, **{k: v for k, v in plan.items() if k != "model"}, dose_unit="each writer's write ceiling",
                         readers="the wiring index's down links of each writer, then as many it is not linked to at "
                         "the same layers (the null)", reads="(unpushed, +d, -d) x (the last word-piece, the mean over the "
-                        "prompt past the start mark)", layers=done, summary=summary, cost=cost,
+                        "prompt past the start mark)", sits="g0, u0: each reader's own gate and up values on the unpushed "
+                        "row of its writer's prefill, at every word-piece past the start mark, right-aligned (the last "
+                        "word-piece at [..., -1]), which the sign in use is scored at", layers=done, summary=summary, cost=cost,
                         sign_disagreement={k: v for k, v in dis.items() if k != "by_layer"} if dis else None))
     log(f"wiring_check: {len(done)} layers measured so far -> {path}")
     return path

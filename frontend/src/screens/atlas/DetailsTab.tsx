@@ -233,7 +233,7 @@ const Range: React.FC = () => {
 /** A link's strength as it reaches the other end, over the neuron's strongest. */
 const fmtW = (w: number | undefined) => (w == null ? "" : w >= 0.01 ? `${Math.round(w * 100)}%` : "<1%");
 
-/** The reader's faces on which the sign in use (at its operating point there) is not the sign from rest. */
+/** The reader's faces on which the sign in use (where it fires hardest on that face) is not the sign from rest. */
 const disagreeing = (c: Link): ("+" | "-")[] =>
   c.use_sign ? (["+", "-"] as const).filter((s) => c.use_sign?.[s] != null && c.use_sign[s] !== c.sign) : [];
 
@@ -247,7 +247,7 @@ const InUse: React.FC<{ c: Link; side: "down" | "up" }> = ({ c, side }) => {
   return (
     <div
       className="atlas-small"
-      title={`At the reader's operating point (its median gate and up values over its strongest stored passages of that face), the writer firing on its gate face pushes ${who} the other way from the reading from rest. In use the link is odd: fired the other way, it pushes the other way.`}
+      title={`Where the reader fires hardest on that face (its median gate and up values over its strongest stored passages of that face, where its gate is open), the writer firing on its gate face pushes ${who} the other way from the reading from rest. That is not where the reader sits at an ordinary word-piece: at the one place measured (the census questions' last word-piece on Gemma-4-31B) most sat with the gate shut, and there the sign served here was measured to agree with the change at about 0.42 of links, below chance. In use the link is odd: fired the other way, it pushes the other way.`}
     >
       <span className="muted">in use </span>
       {shown.map((s) => {
@@ -255,7 +255,7 @@ const InUse: React.FC<{ c: Link; side: "down" | "up" }> = ({ c, side }) => {
         return (
           <span key={s}>
             <span className={`atlas-sgn ${v > 0 ? "up" : "down"}`}>{v > 0 ? "↑" : "↓"}</span>
-            <span className="muted"> {one ? `whichever face ${who} sits on` : `where ${who} sits on its ${s === "+" ? "+" : "−"} face`} </span>
+            <span className="muted"> {one ? `whichever face ${who} fires hardest on` : `where ${who} fires hardest on its ${s === "+" ? "+" : "−"} face`} </span>
           </span>
         );
       })}
@@ -282,7 +282,7 @@ const LinkRows: React.FC<{ list: Link[]; title: string; side: "down" | "up" }> =
             >
               <td
                 className={`atlas-pole ${c.sign > 0 ? "up" : "down"}`}
-                title={side === "down" ? `pushes that neuron toward its ${pushed} face` : `pushes this neuron toward its ${pushed} face`}
+                title={`from rest (gate open, or a push big enough to open it): pushes ${side === "down" ? "that" : "this"} neuron toward its ${pushed} face`}
               >
                 {c.sign > 0 ? "↑" : "↓"}
               </td>
@@ -331,18 +331,23 @@ const Wiring: React.FC = () => {
           {!w.down.length && w.source === "live" ? <p className="muted atlas-small">It writes nothing (silenced in the vault), so it reaches no reader.</p> : null}
           <Rubric style={{ fontSize: 15 }}>
             Links through the weights alone, the direct path through the stream, read from rest: a writer moves a reader when it fires on the face
-            that opens the reader's gate (a writer is shown on that face; fired the other way it barely moves the reader), and pushes the reader
-            toward one face (↑ its + face, ↓ its − face). Ranked by how strong each is as it arrives, counting how Gemma scales the whole stream at
-            the end of every layer and the norms at their usual scale; the number is that strength over the strongest. In use a reader's other
-            inputs decide where it sits: where the push read at its usual place on a face (its gate and up values at its strongest stored
-            passages) goes the other way, that is marked "in use" beside it. Leads to test with a push, not a circuit found.
+            that opens the reader's gate (a writer is shown on that face), and pushes the reader toward one face (↑ its + face, ↓ its − face).
+            Ranked by how strong each is as it arrives, counting how Gemma scales the whole stream at the end of every layer and the norms at their
+            usual scale; the number is that strength over the strongest. The sign holds for a reader whose gate is open, or a push big enough to
+            open it, and only a push that big barely moves the reader when the writer fires the other way (a reader whose gate is open is pushed
+            the other way about as hard); a reader sitting with its gate shut, as most did where it was measured (the census questions' last
+            word-piece), is pushed about the other way through its up path. In use a reader's other inputs decide where it sits. Where the push
+            read where the reader fires hardest on a face (its gate and up values at its strongest stored passages, its gate open) goes the other
+            way, that is marked "in use" beside it; where a reader sits at an ordinary word-piece is not read here (at the one place measured on
+            Gemma-4-31B this sign agreed with the measured change at 0.42 of links, below chance; scored where each reader sat, 0.84). Leads to
+            test with a push, not a circuit found.
           </Rubric>
           <IfApparatus>
             <p className="muted atlas-small">{w.source === "index" ? "from the wiring index" : "read from the weights just now"} · {w.note}</p>
             {w.use ? (
               <p className="muted atlas-small">
                 {w.use.ready
-                  ? `in use: ${[...w.down, ...w.up].reduce((k, c) => k + disagreeing(c).length, 0)} of ${[...w.down, ...w.up].reduce(
+                  ? `in use, where each reader fires hardest: ${[...w.down, ...w.up].reduce((k, c) => k + disagreeing(c).length, 0)} of ${[...w.down, ...w.up].reduce(
                       (k, c) => k + (c.use_sign ? (["+", "-"] as const).filter((s) => c.use_sign?.[s] != null).length : 0),
                       0,
                     )} reader faces of its ${w.down.length + w.up.length} links go the other way · operating points from ${w.use.operating_points?.corpus ?? "the passages index"}${

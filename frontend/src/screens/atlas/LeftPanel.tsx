@@ -158,8 +158,10 @@ const NeuronWeb: React.FC = () => {
           ) : null}
           <Rubric style={{ fontSize: 14, margin: "4px 0 0" }}>
             Weight-only links read from rest: a writer moves a reader when it fires on the face that opens the reader's gate, and pushes it
-            toward one face; the strongest as they arrive, counting how Gemma scales the stream at every layer. Words pooled over many
-            neurons, where the label gate was only tested on one at a time: leads to check with a push or a read, not circuits found.{" "}
+            toward one face; that holds for a reader whose gate is open, or a push big enough to open it, while a reader sitting shut, as most
+            did where it was measured, is pushed about the other way, so "drives it up" can drive it down there. The strongest as they
+            arrive, counting how Gemma scales the stream at every layer. Words pooled over many neurons, where the label gate was only tested
+            on one at a time: leads to check with a push or a read, not circuits found.{" "}
             <a href={href.lexicon("web")}>What the web is.</a>
           </Rubric>
         </div>

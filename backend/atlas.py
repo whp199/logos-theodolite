@@ -43,7 +43,7 @@ from backend import atlas_ops as ao
 from backend import census as cz
 from backend import field_notes as fn
 from backend import sampler_request as sr
-from backend.atlas_index import FILES, LENS_K, LINK_MODELS, AtlasIndex, match_ids, scale_scores
+from backend.atlas_index import FILES, LENS_K, LINK_MODELS, SITE_SCORE_RERUN, AtlasIndex, match_ids, scale_scores
 from backend.causal_check import language_model
 from backend.label_gate import LABEL_GATE_CARD
 from backend.saved_prompts import LOCAL_HOSTS, _hostname
@@ -550,7 +550,10 @@ def links_card(a: Atlas) -> Dict[str, Any]:
     """How the atlas reads a link's sign (atlas_ops.LINK_MODEL from rest, LINK_MODEL_USE in use), whether links can be
     read in use here (`why` not), and what the measured check found (`measured`, from wiring_check.npz, built by
     scripts/atlas_build.py wiring_check; None until then): per layer at the last word-piece and over the prompt, the
-    shares whose measured change had each sign, Spearman's rho against |P| f^2, the null's, and each layer's cost."""
+    shares whose measured change had each sign (the sign in use scored where each reader sits, and at the passages'
+    operating point), Spearman's rho against |P| f^2 and the first-order size, the null's, and each layer's cost; and,
+    for a check measured before the readers' own gate and up values were recorded, `site_score`, which says its sign in
+    use was scored at the passages' operating point and needs measuring again (atlas_index.SITE_SCORE_RERUN)."""
     why = a.index.use_refused()
     wc = a.index.get("wiring_check")
     measured = None
@@ -558,6 +561,8 @@ def links_card(a: Atlas) -> Dict[str, Any]:
         m = wc["meta"]
         measured = {k: m.get(k) for k in ("built_at", "writers", "dose", "dose_unit", "seed", "questions", "sign_disagreement")}
         measured["layers"] = {l: {**s, "cost": (m.get("cost") or {}).get(l)} for l, s in (m.get("summary") or {}).items()}
+        if any("rho_site" not in ((s.get("last") or {}).get("linked") or {}) for s in (m.get("summary") or {}).values()):
+            measured["site_score"] = SITE_SCORE_RERUN
     return {"models": {"rest": ao.LINK_MODEL, "use": ao.LINK_MODEL_USE}, "use": {"ready": why is None, **({"why": why} if why else {})},
             "measured": measured}
 
