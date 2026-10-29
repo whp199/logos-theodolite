@@ -105,11 +105,42 @@ export function censusChance(units: { kind: string; z: number }[] | undefined) {
   return { above: neu.filter((u) => u.z > floor).length, chance: neu.length / (ctl.length + 1), neurons: neu.length, controls: ctl.length };
 }
 
-/** Where a census's doses and push unit come from, said wherever its answers or numbers are shown. */
+/** How a census's ranking read its answers, said where it is not the reference's reading (as the ranking file records
+ * it): every answer, or those under its cap on the push; each word against the controls' mean alone; and whose unpushed
+ * words each answer leaves out. */
+function readingSaid(card: CensusCard): string {
+  const r = card.reading;
+  if (!r || r.reference !== "controls") return "";
+  const ds = card.doses ?? [];
+  const every = ds.length > 0 && ds.every((d) => Math.abs(d) <= r.max_rel);
+  return ` Ranked on ${every ? "every answer" : `the answers pushed by at most ${r.max_rel} of the stream`}, each word set against the controls’ mean alone${r.exclude === "own" ? ", each answer leaving out only its own question’s unpushed words" : ""}.`;
+}
+
+/** Where a run's doses come from as the backend writes it (census.DOSES_FROM, kept in the run's meta, in ASCII),
+ * typeset: an apostrophe as ’, "+-1" as ±1, a minus before a number as −, and a range of numbers ("layers 40-57") with
+ * an en dash. */
+const typesetDoses = (s: string) =>
+  s
+    .replace(/'/g, "’")
+    .replace(/\+-(?=\d)/g, "±")
+    .replace(/(^|[\s(/])-(?=\d)/g, "$1−")
+    .replace(/\b(\d+)-(\d+)\b/g, "$1–$2");
+
+/** Where a census's doses and push unit come from, said wherever its answers or numbers are shown: in red that they are
+ * not yet calibrated on this model, or not at this layer where its design is calibrated at others, unless the card says
+ * they are calibrated at the run's layer (census.doses_calibrated). */
 export const CensusProvenance: React.FC<{ card: CensusCard | undefined; style?: React.CSSProperties }> = ({ card, style }) =>
   card ? (
     <p className="atlas-small atlas-prov" style={style}>
-      <span className="red">Doses not yet calibrated on this model:</span> {card.doses_from ?? "the run does not say where its doses come from"}.
+      {card.doses_calibrated ? (
+        <span>Doses:</span>
+      ) : card.doses_calibrated_layers ? (
+        <span className="red">Doses not calibrated at this layer:</span>
+      ) : (
+        <span className="red">Doses not yet calibrated on this model:</span>
+      )}{" "}
+      {card.doses_from ? typesetDoses(card.doses_from) : "the run does not say where its doses come from"}.
+      {readingSaid(card)}
       {card.dose_unit === "ceiling"
         ? ` Each dose is a multiple of the pushed neuron’s write ceiling, the most it can write by itself (a control’s: of the neuron it is paired with), so one dose is a different push for each neuron; the push beside it is its share of the stream’s median length${card.p50_source ? `, read over ${card.p50_source}` : ""}.`
         : card.p50_source

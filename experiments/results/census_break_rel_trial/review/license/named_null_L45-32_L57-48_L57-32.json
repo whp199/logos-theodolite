@@ -1,0 +1,1896 @@
+{
+ "L45:32": {
+  "layer": "L45",
+  "cut": 32,
+  "A": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "B": [
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "named": 191,
+  "q05": 231,
+  "above_every_control": 126,
+  "N": 1022,
+  "C": 1024,
+  "matches_verdict_named_list": true,
+  "verdict_named": 191,
+  "bh_threshold_p": 0.010731707317073172,
+  "empirical_null": {
+   "controls_passing_mass_at_threshold": 10,
+   "controls_named_at_threshold": 7,
+   "expected_false_q05_if_all_null": 9.98,
+   "expected_false_named_if_all_null": 6.99
+  },
+  "relabelled_null": {
+   "splits": 50,
+   "fake_neurons": 512,
+   "reference_controls": 512,
+   "named_mean": 0.0,
+   "named_max": 0,
+   "named_splits_nonzero": 0,
+   "q05_mean": 0.0,
+   "q05_max": 0,
+   "above_every_control_mean": 1.08,
+   "mass_auc_mean": 0.5025,
+   "g5_null_split_mean_in_verdict": 0.5025
+  },
+  "rho_AB_mass": {
+   "neurons": 0.422,
+   "neurons_ci": [
+    0.366,
+    0.473
+   ],
+   "controls": 0.183,
+   "controls_ci": [
+    0.122,
+    0.24
+   ],
+   "diff": 0.239,
+   "diff_ci": [
+    0.158,
+    0.319
+   ],
+   "n_neurons": 1022,
+   "n_controls": 1024,
+   "verdict": [
+    0.422,
+    0.183
+   ]
+  },
+  "rho_AB_mass_residualised_per_half": {
+   "neurons": 0.502,
+   "neurons_ci": [
+    0.447,
+    0.551
+   ],
+   "controls": 0.111,
+   "controls_ci": [
+    0.045,
+    0.17
+   ],
+   "diff": 0.391,
+   "diff_ci": [
+    0.308,
+    0.468
+   ],
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "rho_AB_mass_below_ctl_p95": {
+   "neurons": -0.005,
+   "neurons_ci": [
+    -0.082,
+    0.076
+   ],
+   "controls": 0.134,
+   "controls_ci": [
+    0.073,
+    0.195
+   ],
+   "diff": -0.139,
+   "diff_ci": [
+    -0.24,
+    -0.046
+   ],
+   "n_neurons": 675,
+   "n_controls": 972
+  },
+  "rho_AB_mass_reasked64": {
+   "neurons": 0.37,
+   "neurons_ci": [
+    0.103,
+    0.605
+   ],
+   "controls": 0.183,
+   "controls_ci": [
+    0.121,
+    0.241
+   ],
+   "diff": 0.187,
+   "diff_ci": [
+    -0.075,
+    0.429
+   ],
+   "n_neurons": 64,
+   "n_controls": 1024
+  },
+  "rho_calibration_sized_halves": {
+   "splits": [
+    [
+     "who",
+     0.142,
+     0.042,
+     0.101
+    ],
+    [
+     "orange",
+     0.089,
+     0.045,
+     0.11
+    ],
+    [
+     "free",
+     0.159,
+     0.102,
+     0.245
+    ]
+   ],
+   "mean_neurons": 0.13,
+   "mean_controls": 0.063,
+   "mean_reasked64": 0.152
+  },
+  "select_on_one_half": {
+   "mass": {
+    "A->B": {
+     "discovered": 126,
+     "threshold_p": 0.005853658536585366,
+     "replicate_p05": 95,
+     "share": 0.754,
+     "controls_at_threshold": 5,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    },
+    "B->A": {
+     "discovered": 115,
+     "threshold_p": 0.004878048780487805,
+     "replicate_p05": 80,
+     "share": 0.696,
+     "controls_at_threshold": 4,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    }
+   },
+   "mass_residualised_per_half": {
+    "A->B": {
+     "discovered": 183,
+     "threshold_p": 0.00878048780487805,
+     "replicate_p05": 150,
+     "share": 0.82,
+     "controls_at_threshold": 8,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    },
+    "B->A": {
+     "discovered": 205,
+     "threshold_p": 0.00975609756097561,
+     "replicate_p05": 156,
+     "share": 0.761,
+     "controls_at_threshold": 9,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    }
+   },
+   "words_rep": {
+    "A->B": {
+     "discovered": 126,
+     "threshold_p": 0.005853658536585366,
+     "replicate_p05": 113,
+     "share": 0.897,
+     "controls_at_threshold": 5,
+     "controls_replicate_p05": 1,
+     "controls_share": 0.2
+    },
+    "B->A": {
+     "discovered": 196,
+     "threshold_p": 0.007804878048780488,
+     "replicate_p05": 139,
+     "share": 0.709,
+     "controls_at_threshold": 7,
+     "controls_replicate_p05": 1,
+     "controls_share": 0.143
+    }
+   }
+  },
+  "auc": {
+   "mass_c": {
+    "auc": 0.7077,
+    "se": 0.0116,
+    "ci": [
+     0.685,
+     0.73
+    ]
+   },
+   "mass_c_res": {
+    "auc": 0.7029,
+    "se": 0.0113,
+    "ci": [
+     0.681,
+     0.725
+    ]
+   },
+   "mass_B": {
+    "auc": 0.6518,
+    "se": 0.0123,
+    "ci": [
+     0.628,
+     0.675
+    ]
+   },
+   "rep_AB": {
+    "auc": 0.6767,
+    "se": 0.0116,
+    "ci": [
+     0.653,
+     0.7
+    ]
+   },
+   "rep_BA": {
+    "auc": 0.6583,
+    "se": 0.0121,
+    "ci": [
+     0.634,
+     0.682
+    ]
+   },
+   "rep_AB_res": {
+    "auc": 0.6697,
+    "se": 0.0118,
+    "ci": [
+     0.646,
+     0.692
+    ]
+   },
+   "rep_BA_res": {
+    "auc": 0.6513,
+    "se": 0.0118,
+    "ci": [
+     0.627,
+     0.675
+    ]
+   },
+   "rep_res": {
+    "auc": 0.6675,
+    "se": 0.0118,
+    "ci": [
+     0.644,
+     0.691
+    ]
+   }
+  },
+  "named_words_sample": {
+   "12646": {
+    "A_on_B": [
+     [
+      "digital",
+      4.24
+     ],
+     [
+      "small",
+      1.06
+     ],
+     [
+      "same",
+      0.65
+     ],
+     [
+      "thought",
+      0.27
+     ]
+    ],
+    "B_on_A": [
+     [
+      "digital",
+      1.56
+     ],
+     [
+      "web",
+      1.41
+     ],
+     [
+      "thoughtthought",
+      0.82
+     ]
+    ]
+   },
+   "12545": {
+    "A_on_B": [
+     [
+      "own",
+      0.7
+     ],
+     [
+      "practice",
+      2.83
+     ],
+     [
+      "place",
+      1.34
+     ],
+     [
+      "same",
+      0.65
+     ]
+    ],
+    "B_on_A": [
+     [
+      "practice",
+      2.83
+     ],
+     [
+      "own",
+      3.16
+     ],
+     [
+      "same",
+      0.56
+     ],
+     [
+      "different",
+      1.3
+     ]
+    ]
+   },
+   "9792": {
+    "A_on_B": [
+     [
+      "platform",
+      2.83
+     ],
+     [
+      "idea",
+      3.88
+     ],
+     [
+      "and",
+      0.81
+     ]
+    ],
+    "B_on_A": [
+     [
+      "idea",
+      2.57
+     ],
+     [
+      "platform",
+      2.8
+     ],
+     [
+      "and",
+      0.55
+     ]
+    ]
+   },
+   "1146": {
+    "A_on_B": [
+     [
+      "communication",
+      2.83
+     ],
+     [
+      "description",
+      0.7
+     ],
+     [
+      "same",
+      1.42
+     ]
+    ],
+    "B_on_A": [
+     [
+      "communication",
+      2.78
+     ],
+     [
+      "with",
+      1.06
+     ],
+     [
+      "same",
+      1.31
+     ]
+    ]
+   },
+   "16587": {
+    "A_on_B": [
+     [
+      "warranty",
+      4.24
+     ],
+     [
+      "and",
+      0.81
+     ]
+    ],
+    "B_on_A": [
+     [
+      "warranty",
+      4.24
+     ],
+     [
+      "and",
+      1.3
+     ]
+    ]
+   },
+   "16104": {
+    "A_on_B": [
+     [
+      "idea",
+      3.88
+     ]
+    ],
+    "B_on_A": [
+     [
+      "idea",
+      3.9
+     ]
+    ]
+   },
+   "15187": {
+    "A_on_B": [
+     [
+      "returns",
+      2.83
+     ],
+     [
+      "same",
+      1.42
+     ],
+     [
+      "own",
+      0.05
+     ]
+    ],
+    "B_on_A": [
+     [
+      "returns",
+      5.66
+     ],
+     [
+      "same",
+      2.82
+     ]
+    ]
+   },
+   "14594": {
+    "A_on_B": [
+     [
+      "clothing",
+      4.24
+     ],
+     [
+      "own",
+      0.7
+     ]
+    ],
+    "B_on_A": [
+     [
+      "clothing",
+      4.24
+     ]
+    ]
+   },
+   "10616": {
+    "A_on_B": [
+     [
+      "one",
+      2.79
+     ],
+     [
+      "sssssssssssssssssssssssssssssss",
+      2.83
+     ],
+     [
+      "own",
+      0.05
+     ]
+    ],
+    "B_on_A": [
+     [
+      "sssssssssssssssssssssssssssssss",
+      2.82
+     ],
+     [
+      "one",
+      3.82
+     ],
+     [
+      "will",
+      1.03
+     ],
+     [
+      "own",
+      0.63
+     ]
+    ]
+   },
+   "8995": {
+    "A_on_B": [
+     [
+      "user",
+      4.24
+     ]
+    ],
+    "B_on_A": [
+     [
+      "user",
+      4.24
+     ],
+     [
+      "and",
+      0.55
+     ]
+    ]
+   },
+   "8532": {
+    "A_on_B": [
+     [
+      "activity",
+      2.82
+     ],
+     [
+      "same",
+      2.97
+     ],
+     [
+      "own",
+      0.7
+     ]
+    ],
+    "B_on_A": [
+     [
+      "same",
+      1.31
+     ],
+     [
+      "activity",
+      4.24
+     ]
+    ]
+   },
+   "7902": {
+    "A_on_B": [
+     [
+      "certainly",
+      4.24
+     ],
+     [
+      "own",
+      0.7
+     ],
+     [
+      "same",
+      1.42
+     ]
+    ],
+    "B_on_A": [
+     [
+      "certainly",
+      4.24
+     ],
+     [
+      "same",
+      0.56
+     ],
+     [
+      "own",
+      0.63
+     ]
+    ]
+   },
+   "3019": {
+    "A_on_B": [
+     [
+      "there",
+      4.24
+     ],
+     [
+      "same",
+      0.65
+     ],
+     [
+      "here",
+      1.09
+     ]
+    ],
+    "B_on_A": [
+     [
+      "there",
+      3.73
+     ],
+     [
+      "same",
+      3.57
+     ]
+    ]
+   },
+   "923": {
+    "A_on_B": [
+     [
+      "site",
+      2.82
+     ],
+     [
+      "thought",
+      0.27
+     ],
+     [
+      "and",
+      0.81
+     ]
+    ],
+    "B_on_A": [
+     [
+      "site",
+      2.8
+     ],
+     [
+      "idea",
+      1.24
+     ]
+    ]
+   },
+   "17310": {
+    "A_on_B": [
+     [
+      "favor",
+      4.24
+     ],
+     [
+      "same",
+      2.2
+     ],
+     [
+      "own",
+      1.34
+     ]
+    ],
+    "B_on_A": [
+     [
+      "favor",
+      4.24
+     ],
+     [
+      "same",
+      2.06
+     ],
+     [
+      "own",
+      1.89
+     ]
+    ]
+   },
+   "13705": {
+    "A_on_B": [
+     [
+      "name",
+      5.66
+     ],
+     [
+      "the",
+      0.42
+     ],
+     [
+      "same",
+      0.65
+     ]
+    ],
+    "B_on_A": [
+     [
+      "name",
+      5.54
+     ],
+     [
+      "same",
+      0.56
+     ]
+    ]
+   },
+   "20622": {
+    "A_on_B": [
+     [
+      "next",
+      5.64
+     ],
+     [
+      "the",
+      0.42
+     ]
+    ],
+    "B_on_A": [
+     [
+      "next",
+      4.24
+     ]
+    ]
+   },
+   "18957": {
+    "A_on_B": [
+     [
+      "healing",
+      2.83
+     ],
+     [
+      "thoughtthoughtthoughtthought",
+      1.27
+     ],
+     [
+      "thought",
+      2.1
+     ]
+    ],
+    "B_on_A": [
+     [
+      "healing",
+      2.83
+     ],
+     [
+      "thought",
+      1.28
+     ]
+    ]
+   },
+   "18905": {
+    "A_on_B": [
+     [
+      "use",
+      4.18
+     ],
+     [
+      "description",
+      0.7
+     ],
+     [
+      "own",
+      0.7
+     ],
+     [
+      "the",
+      0.42
+     ]
+    ],
+    "B_on_A": [
+     [
+      "use",
+      4.13
+     ],
+     [
+      "using",
+      1.39
+     ],
+     [
+      "your",
+      1.3
+     ]
+    ]
+   },
+   "15890": {
+    "A_on_B": [
+     [
+      "project",
+      4.23
+     ],
+     [
+      "own",
+      1.34
+     ],
+     [
+      "place",
+      1.34
+     ]
+    ],
+    "B_on_A": [
+     [
+      "project",
+      2.8
+     ],
+     [
+      "small",
+      0.49
+     ],
+     [
+      "same",
+      0.56
+     ]
+    ]
+   },
+   "14733": {
+    "A_on_B": [
+     [
+      "sky",
+      4.24
+     ],
+     [
+      "own",
+      1.34
+     ],
+     [
+      "same",
+      1.42
+     ]
+    ],
+    "B_on_A": [
+     [
+      "sky",
+      4.16
+     ],
+     [
+      "same",
+      2.06
+     ],
+     [
+      "own",
+      3.16
+     ]
+    ]
+   },
+   "14502": {
+    "A_on_B": [
+     [
+      "temporary",
+      4.24
+     ],
+     [
+      "same",
+      1.42
+     ],
+     [
+      "own",
+      0.7
+     ]
+    ],
+    "B_on_A": [
+     [
+      "temporary",
+      4.23
+     ],
+     [
+      "same",
+      1.31
+     ],
+     [
+      "own",
+      0.63
+     ]
+    ]
+   },
+   "10662": {
+    "A_on_B": [
+     [
+      "increase",
+      4.24
+     ]
+    ],
+    "B_on_A": [
+     [
+      "increase",
+      2.83
+     ],
+     [
+      "increasing",
+      1.41
+     ]
+    ]
+   },
+   "6162": {
+    "A_on_B": [
+     [
+      "theater",
+      2.83
+     ],
+     [
+      "same",
+      2.2
+     ]
+    ],
+    "B_on_A": [
+     [
+      "theater",
+      2.82
+     ],
+     [
+      "same",
+      2.06
+     ],
+     [
+      "and",
+      0.55
+     ],
+     [
+      "own",
+      0.63
+     ]
+    ]
+   },
+   "5842": {
+    "A_on_B": [
+     [
+      "city",
+      2.83
+     ],
+     [
+      "own",
+      0.7
+     ],
+     [
+      "same",
+      2.97
+     ]
+    ],
+    "B_on_A": [
+     [
+      "same",
+      0.56
+     ],
+     [
+      "city",
+      3.98
+     ]
+    ]
+   }
+  },
+  "seconds": 12.8
+ },
+ "L57:48": {
+  "layer": "L57",
+  "cut": 48,
+  "A": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "B": [
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "named": 20,
+  "q05": 22,
+  "above_every_control": 22,
+  "N": 507,
+  "C": 512,
+  "matches_verdict_named_list": true,
+  "verdict_named": 20,
+  "bh_threshold_p": 0.001949317738791423,
+  "empirical_null": {
+   "controls_passing_mass_at_threshold": 0,
+   "controls_named_at_threshold": 0,
+   "expected_false_q05_if_all_null": 0.0,
+   "expected_false_named_if_all_null": 0.0
+  },
+  "relabelled_null": {
+   "splits": 50,
+   "fake_neurons": 256,
+   "reference_controls": 256,
+   "named_mean": 0.0,
+   "named_max": 0,
+   "named_splits_nonzero": 0,
+   "q05_mean": 0.0,
+   "q05_max": 0,
+   "above_every_control_mean": 1.0,
+   "mass_auc_mean": 0.5006,
+   "g5_null_split_mean_in_verdict": 0.5006
+  },
+  "rho_AB_mass": {
+   "neurons": 0.405,
+   "neurons_ci": [
+    0.316,
+    0.484
+   ],
+   "controls": 0.186,
+   "controls_ci": [
+    0.106,
+    0.267
+   ],
+   "diff": 0.219,
+   "diff_ci": [
+    0.101,
+    0.334
+   ],
+   "n_neurons": 507,
+   "n_controls": 512,
+   "verdict": [
+    0.405,
+    0.186
+   ]
+  },
+  "rho_AB_mass_residualised_per_half": {
+   "neurons": 0.556,
+   "neurons_ci": [
+    0.478,
+    0.626
+   ],
+   "controls": 0.124,
+   "controls_ci": [
+    0.04,
+    0.213
+   ],
+   "diff": 0.433,
+   "diff_ci": [
+    0.318,
+    0.543
+   ],
+   "n_neurons": 507,
+   "n_controls": 512
+  },
+  "rho_AB_mass_below_ctl_p95": {
+   "neurons": 0.147,
+   "neurons_ci": [
+    0.049,
+    0.242
+   ],
+   "controls": 0.115,
+   "controls_ci": [
+    0.028,
+    0.2
+   ],
+   "diff": 0.032,
+   "diff_ci": [
+    -0.099,
+    0.156
+   ],
+   "n_neurons": 420,
+   "n_controls": 486
+  },
+  "rho_calibration_sized_halves": {
+   "splits": [
+    [
+     "who",
+     0.058,
+     0.045
+    ],
+    [
+     "orange",
+     0.086,
+     0.056
+    ],
+    [
+     "free",
+     0.047,
+     0.033
+    ]
+   ],
+   "mean_neurons": 0.063,
+   "mean_controls": 0.045
+  },
+  "select_on_one_half": {
+   "mass": {
+    "A->B": {
+     "discovered": 0,
+     "threshold_p": null,
+     "replicate_p05": 0,
+     "share": null,
+     "controls_at_threshold": 0,
+     "controls_replicate_p05": 0,
+     "controls_share": null
+    },
+    "B->A": {
+     "discovered": 0,
+     "threshold_p": null,
+     "replicate_p05": 0,
+     "share": null,
+     "controls_at_threshold": 0,
+     "controls_replicate_p05": 0,
+     "controls_share": null
+    }
+   },
+   "mass_residualised_per_half": {
+    "A->B": {
+     "discovered": 62,
+     "threshold_p": 0.005847953216374269,
+     "replicate_p05": 57,
+     "share": 0.919,
+     "controls_at_threshold": 2,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    },
+    "B->A": {
+     "discovered": 87,
+     "threshold_p": 0.007797270955165692,
+     "replicate_p05": 67,
+     "share": 0.77,
+     "controls_at_threshold": 3,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    }
+   },
+   "words_rep": {
+    "A->B": {
+     "discovered": 0,
+     "threshold_p": null,
+     "replicate_p05": 0,
+     "share": null,
+     "controls_at_threshold": 0,
+     "controls_replicate_p05": 0,
+     "controls_share": null
+    },
+    "B->A": {
+     "discovered": 46,
+     "threshold_p": 0.003898635477582846,
+     "replicate_p05": 22,
+     "share": 0.478,
+     "controls_at_threshold": 1,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    }
+   }
+  },
+  "auc": {
+   "mass_c": {
+    "auc": 0.5995,
+    "se": 0.0177,
+    "ci": [
+     0.566,
+     0.634
+    ]
+   },
+   "mass_c_res": {
+    "auc": 0.5608,
+    "se": 0.0188,
+    "ci": [
+     0.523,
+     0.597
+    ]
+   },
+   "mass_B": {
+    "auc": 0.5856,
+    "se": 0.0175,
+    "ci": [
+     0.55,
+     0.618
+    ]
+   },
+   "rep_AB": {
+    "auc": 0.5757,
+    "se": 0.0178,
+    "ci": [
+     0.543,
+     0.613
+    ]
+   },
+   "rep_BA": {
+    "auc": 0.5846,
+    "se": 0.0183,
+    "ci": [
+     0.549,
+     0.621
+    ]
+   },
+   "rep_AB_res": {
+    "auc": 0.5093,
+    "se": 0.0185,
+    "ci": [
+     0.471,
+     0.546
+    ]
+   },
+   "rep_BA_res": {
+    "auc": 0.4978,
+    "se": 0.0189,
+    "ci": [
+     0.461,
+     0.534
+    ]
+   },
+   "rep_res": {
+    "auc": 0.502,
+    "se": 0.019,
+    "ci": [
+     0.465,
+     0.54
+    ]
+   }
+  },
+  "named_words_sample": {
+   "20127": {
+    "A_on_B": [
+     [
+      "spo\u0142ecz",
+      4.24
+     ],
+     [
+      "dost\u0119p",
+      4.24
+     ]
+    ],
+    "B_on_A": [
+     [
+      "spo\u0142ecz",
+      4.24
+     ],
+     [
+      "dost\u0119p",
+      4.24
+     ]
+    ]
+   },
+   "18775": {
+    "A_on_B": [
+     [
+      "pemb",
+      7.07
+     ],
+     [
+      "pod",
+      2.83
+     ]
+    ],
+    "B_on_A": [
+     [
+      "pemb",
+      5.66
+     ],
+     [
+      "\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206\u90e8\u5206",
+      1.41
+     ],
+     [
+      "pod",
+      2.83
+     ]
+    ]
+   },
+   "18530": {
+    "A_on_B": [
+     [
+      "well",
+      6.36
+     ],
+     [
+      "part",
+      1.4
+     ]
+    ],
+    "B_on_A": [
+     [
+      "well",
+      8.49
+     ],
+     [
+      "and",
+      0.1
+     ]
+    ]
+   },
+   "18057": {
+    "A_on_B": [
+     [
+      "\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6\u5bc6",
+      1.41
+     ],
+     [
+      "ker",
+      2.83
+     ]
+    ],
+    "B_on_A": [
+     [
+      "ker",
+      4.24
+     ]
+    ]
+   },
+   "17727": {
+    "A_on_B": [
+     [
+      "beg",
+      8.49
+     ],
+     [
+      "\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3",
+      4.24
+     ]
+    ],
+    "B_on_A": [
+     [
+      "beg",
+      8.49
+     ],
+     [
+      "\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3\u4e0d\u8db3",
+      2.83
+     ]
+    ]
+   },
+   "16955": {
+    "A_on_B": [
+     [
+      "fuera",
+      8.49
+     ]
+    ],
+    "B_on_A": [
+     [
+      "fuera",
+      8.49
+     ]
+    ]
+   },
+   "14528": {
+    "A_on_B": [
+     [
+      "personal",
+      8.49
+     ],
+     [
+      "\u0e27\u0e19\u0e2a",
+      7.07
+     ]
+    ],
+    "B_on_A": [
+     [
+      "personal",
+      8.14
+     ],
+     [
+      "\u0e27\u0e19\u0e2a",
+      5.66
+     ]
+    ]
+   },
+   "11786": {
+    "A_on_B": [
+     [
+      "ng\u00e0y",
+      7.07
+     ],
+     [
+      "increasingly",
+      1.41
+     ]
+    ],
+    "B_on_A": [
+     [
+      "ng\u00e0y",
+      7.07
+     ],
+     [
+      "increasing",
+      1.41
+     ]
+    ]
+   },
+   "10938": {
+    "A_on_B": [
+     [
+      "support",
+      7.07
+     ]
+    ],
+    "B_on_A": [
+     [
+      "support",
+      7.07
+     ]
+    ]
+   },
+   "10171": {
+    "A_on_B": [
+     [
+      "sin",
+      4.24
+     ],
+     [
+      "\u0628\u0644\u0627",
+      4.24
+     ],
+     [
+      "sem",
+      5.66
+     ],
+     [
+      "sinuous",
+      2.83
+     ]
+    ],
+    "B_on_A": [
+     [
+      "sem",
+      4.24
+     ],
+     [
+      "\u0628\u0644\u0627",
+      4.24
+     ],
+     [
+      "sin",
+      5.66
+     ],
+     [
+      "sinuous",
+      2.83
+     ]
+    ]
+   },
+   "9971": {
+    "A_on_B": [
+     [
+      "\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145",
+      4.24
+     ],
+     [
+      "menj",
+      2.83
+     ],
+     [
+      "menj\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d",
+      2.83
+     ]
+    ],
+    "B_on_A": [
+     [
+      "\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145\u5145",
+      5.66
+     ],
+     [
+      "menj\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d\u0e40\u0e2d",
+      2.83
+     ],
+     [
+      "menj",
+      4.24
+     ]
+    ]
+   },
+   "9858": {
+    "A_on_B": [
+     [
+      "pem",
+      4.24
+     ],
+     [
+      "peng",
+      1.41
+     ]
+    ],
+    "B_on_A": [
+     [
+      "pem",
+      7.07
+     ]
+    ]
+   },
+   "9558": {
+    "A_on_B": [
+     [
+      "deck",
+      8.49
+     ]
+    ],
+    "B_on_A": [
+     [
+      "deck",
+      8.49
+     ]
+    ]
+   },
+   "8733": {
+    "A_on_B": [
+     [
+      "mang",
+      8.49
+     ]
+    ],
+    "B_on_A": [
+     [
+      "mang",
+      8.49
+     ]
+    ]
+   },
+   "8601": {
+    "A_on_B": [
+     [
+      "lasting",
+      5.66
+     ],
+     [
+      "\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00",
+      2.83
+     ],
+     [
+      "\u043f\u0440\u043e",
+      1.41
+     ]
+    ],
+    "B_on_A": [
+     [
+      "lasting",
+      7.07
+     ],
+     [
+      "\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00\u4e00",
+      2.83
+     ]
+    ]
+   },
+   "6884": {
+    "A_on_B": [
+     [
+      "volt",
+      8.49
+     ]
+    ],
+    "B_on_A": [
+     [
+      "volt",
+      8.49
+     ]
+    ]
+   },
+   "4996": {
+    "A_on_B": [
+     [
+      "samerere",
+      2.83
+     ],
+     [
+      "samere",
+      4.24
+     ],
+     [
+      "same",
+      0.8
+     ]
+    ],
+    "B_on_A": [
+     [
+      "samere",
+      2.83
+     ],
+     [
+      "samererere",
+      1.41
+     ],
+     [
+      "samerere",
+      2.83
+     ]
+    ]
+   },
+   "3104": {
+    "A_on_B": [
+     [
+      "same",
+      4.86
+     ],
+     [
+      "idea",
+      3.81
+     ],
+     [
+      "samethought",
+      1.06
+     ],
+     [
+      "thought",
+      0.51
+     ]
+    ],
+    "B_on_A": [
+     [
+      "same",
+      5.76
+     ],
+     [
+      "idea",
+      3.79
+     ],
+     [
+      "thought",
+      1.58
+     ]
+    ]
+   },
+   "1235": {
+    "A_on_B": [
+     [
+      "vendors",
+      1.41
+     ],
+     [
+      "vendor",
+      7.07
+     ],
+     [
+      "same",
+      1.61
+     ]
+    ],
+    "B_on_A": [
+     [
+      "vendor",
+      4.24
+     ],
+     [
+      "same",
+      1.65
+     ]
+    ]
+   },
+   "427": {
+    "A_on_B": [
+     [
+      "patriotic",
+      7.07
+     ]
+    ],
+    "B_on_A": [
+     [
+      "patriotic",
+      5.66
+     ]
+    ]
+   }
+  },
+  "seconds": 6.8
+ },
+ "L57:32": {
+  "layer": "L57",
+  "cut": 32,
+  "A": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "B": [
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "named": 0,
+  "q05": 0,
+  "above_every_control": 18,
+  "N": 507,
+  "C": 512,
+  "matches_verdict_named_list": true,
+  "verdict_named": 0,
+  "bh_threshold_p": null,
+  "empirical_null": {
+   "controls_passing_mass_at_threshold": 0,
+   "controls_named_at_threshold": 0,
+   "expected_false_q05_if_all_null": 0.0,
+   "expected_false_named_if_all_null": 0.0
+  },
+  "relabelled_null": {
+   "splits": 50,
+   "fake_neurons": 256,
+   "reference_controls": 256,
+   "named_mean": 0.0,
+   "named_max": 0,
+   "named_splits_nonzero": 0,
+   "q05_mean": 0.0,
+   "q05_max": 0,
+   "above_every_control_mean": 0.96,
+   "mass_auc_mean": 0.5019,
+   "g5_null_split_mean_in_verdict": 0.5019
+  },
+  "rho_AB_mass": {
+   "neurons": 0.52,
+   "neurons_ci": [
+    0.445,
+    0.586
+   ],
+   "controls": 0.304,
+   "controls_ci": [
+    0.224,
+    0.379
+   ],
+   "diff": 0.216,
+   "diff_ci": [
+    0.111,
+    0.315
+   ],
+   "n_neurons": 507,
+   "n_controls": 512,
+   "verdict": [
+    0.52,
+    0.304
+   ]
+  },
+  "rho_AB_mass_residualised_per_half": {
+   "neurons": 0.59,
+   "neurons_ci": [
+    0.52,
+    0.656
+   ],
+   "controls": 0.175,
+   "controls_ci": [
+    0.09,
+    0.263
+   ],
+   "diff": 0.416,
+   "diff_ci": [
+    0.305,
+    0.523
+   ],
+   "n_neurons": 507,
+   "n_controls": 512
+  },
+  "rho_AB_mass_below_ctl_p95": {
+   "neurons": 0.316,
+   "neurons_ci": [
+    0.222,
+    0.402
+   ],
+   "controls": 0.232,
+   "controls_ci": [
+    0.151,
+    0.315
+   ],
+   "diff": 0.083,
+   "diff_ci": [
+    -0.044,
+    0.203
+   ],
+   "n_neurons": 423,
+   "n_controls": 486
+  },
+  "rho_calibration_sized_halves": {
+   "splits": [
+    [
+     "who",
+     0.102,
+     0.074
+    ],
+    [
+     "orange",
+     0.134,
+     0.053
+    ],
+    [
+     "free",
+     0.073,
+     0.039
+    ]
+   ],
+   "mean_neurons": 0.103,
+   "mean_controls": 0.055
+  },
+  "select_on_one_half": {
+   "mass": {
+    "A->B": {
+     "discovered": 0,
+     "threshold_p": null,
+     "replicate_p05": 0,
+     "share": null,
+     "controls_at_threshold": 0,
+     "controls_replicate_p05": 0,
+     "controls_share": null
+    },
+    "B->A": {
+     "discovered": 0,
+     "threshold_p": null,
+     "replicate_p05": 0,
+     "share": null,
+     "controls_at_threshold": 0,
+     "controls_replicate_p05": 0,
+     "controls_share": null
+    }
+   },
+   "mass_residualised_per_half": {
+    "A->B": {
+     "discovered": 51,
+     "threshold_p": 0.003898635477582846,
+     "replicate_p05": 47,
+     "share": 0.922,
+     "controls_at_threshold": 1,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    },
+    "B->A": {
+     "discovered": 71,
+     "threshold_p": 0.005847953216374269,
+     "replicate_p05": 59,
+     "share": 0.831,
+     "controls_at_threshold": 2,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    }
+   },
+   "words_rep": {
+    "A->B": {
+     "discovered": 0,
+     "threshold_p": null,
+     "replicate_p05": 0,
+     "share": null,
+     "controls_at_threshold": 0,
+     "controls_replicate_p05": 0,
+     "controls_share": null
+    },
+    "B->A": {
+     "discovered": 0,
+     "threshold_p": null,
+     "replicate_p05": 0,
+     "share": null,
+     "controls_at_threshold": 0,
+     "controls_replicate_p05": 0,
+     "controls_share": null
+    }
+   }
+  },
+  "auc": {
+   "mass_c": {
+    "auc": 0.5914,
+    "se": 0.0176,
+    "ci": [
+     0.557,
+     0.626
+    ]
+   },
+   "mass_c_res": {
+    "auc": 0.5061,
+    "se": 0.019,
+    "ci": [
+     0.469,
+     0.543
+    ]
+   },
+   "mass_B": {
+    "auc": 0.5824,
+    "se": 0.0179,
+    "ci": [
+     0.547,
+     0.618
+    ]
+   },
+   "rep_AB": {
+    "auc": 0.5771,
+    "se": 0.0179,
+    "ci": [
+     0.543,
+     0.614
+    ]
+   },
+   "rep_BA": {
+    "auc": 0.6029,
+    "se": 0.0179,
+    "ci": [
+     0.568,
+     0.639
+    ]
+   },
+   "rep_AB_res": {
+    "auc": 0.4764,
+    "se": 0.0184,
+    "ci": [
+     0.438,
+     0.511
+    ]
+   },
+   "rep_BA_res": {
+    "auc": 0.4809,
+    "se": 0.019,
+    "ci": [
+     0.444,
+     0.517
+    ]
+   },
+   "rep_res": {
+    "auc": 0.4772,
+    "se": 0.0186,
+    "ci": [
+     0.441,
+     0.512
+    ]
+   }
+  },
+  "named_words_sample": {},
+  "seconds": 6.2
+ }
+}

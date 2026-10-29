@@ -1,0 +1,49 @@
+{
+ "bh_floor": {
+  "calibration 64/64": 20,
+  "L45 trial 1022/1024": 20,
+  "L57 probe 507/512": 20,
+  "whole layer 21504/1024": 420,
+  "whole layer 21504/2048": 210
+ },
+ "calibration_above_every_control_L45": {
+  "cut 32": 12,
+  "cut 48": 15,
+  "cut 64": 18
+ },
+ "mass_A below controls p95": {
+  "neurons": 767,
+  "rho_neurons": 0.168,
+  "rho_neurons_ci": [
+   0.096,
+   0.24
+  ],
+  "controls": 972,
+  "rho_controls": 0.116,
+  "mass_B_auc_vs_all_controls": 0.602
+ },
+ "mass_A at or above controls p95": {
+  "neurons": 255,
+  "rho_neurons": 0.558,
+  "rho_neurons_ci": [
+   0.467,
+   0.641
+  ],
+  "controls": 52,
+  "rho_controls": -0.172,
+  "mass_B_auc_vs_all_controls": 0.872
+ },
+ "outside_control_covariate_range": {
+  "fresh_neurons": 0.1262,
+  "named": 0.313,
+  "named_count": 82,
+  "by_covariate_fresh": {
+   "lnw": 68,
+   "d4": 70,
+   "cut": 3,
+   "lp": 1,
+   "dep": 14,
+   "lost": 97
+  }
+ }
+}

@@ -80,7 +80,7 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   other way about as hard); `sign` is the reader's face it then pushes toward; `face` is the face each linked neuron
   is shown on (a reader's `sign` face, a writer's `gate` face). The sign from rest holds for a reader whose gate is
   open, or a push big enough to open it: a reader sitting with its gate shut, as about nine in ten did where this was
-  measured on Gemma-4-31B (the census questions' last word-piece, a chat-template mark; ordinary text is not yet
+  measured on Gemma-4-31B (`main_rel`'s four census questions' last word-piece, a chat-template mark; ordinary text is not yet
   measured), is pushed about the other way through its up path. In use the reader's other inputs decide where it sits,
   so a sign is a lead. `cone` and `web_summary` can also read each link in use (`model: "use"`, with the passages
   index): to first order where the reader fires hardest on a face (its median gate and up values over its strongest
@@ -92,15 +92,24 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   calls.
 - **Activation range** (`activation`: act_max, act_min, over_tokens, source): the largest and most negative activation
   over a corpus (the stats index), or, until that is built, over the study's 36 texts (marked provisional). Raw values.
-- **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed by fixed doses on four
-  questions, beside unpushed answers, with its distinctive words and their mass against random-direction controls. A
-  control is shaped as a neuron's write is (a random direction through the layer's post-feed-forward norm), so the next
-  layer reads it about as loudly. `null_pct` is the share of controls it beats, `p` its empirical p against them, `q`
-  the layer's false-discovery q. With C controls no p falls below 1 / (C + 1), and about N / (C + 1) of N neurons beat
-  every control by chance alone (about 84 of a whole layer with 256 controls): a rank is a lead to test, never a finding
-  on its own. The doses are neuron-explorer's, chosen on Qwen3.5-4B and not yet calibrated on this model (`card` in
-  `rollouts`), so a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when
-  you work without.
+- **The census** (`rollouts`, `top_units`): what the model wrote with the neuron pushed at its census design's fixed
+  doses on that design's questions, beside unpushed answers, with its distinctive words and their mass against
+  random-direction controls. A control is shaped as a neuron's write is (a random direction through the layer's
+  post-feed-forward norm), so the next layer reads it about as loudly. `null_pct` is the share of controls it beats,
+  `p` its empirical p against them, `q` the layer's false-discovery q. With C controls no p falls below 1 / (C + 1), and
+  about N / (C + 1) of N neurons beat every control by chance alone (about 84 of a whole layer with 256 controls): a
+  rank is a lead to test, never a finding on its own. Read the run's questions (`prompts` in `rollouts`), its doses,
+  how its ranking read the answers and whether its doses are calibrated on this model from its card (`card` in
+  `rollouts`: `design`, `doses_from`, `doses`, `reading`, `doses_calibrated`; `top_units` gives the same). `main_rel`'s
+  doses are neuron-explorer's, chosen on Qwen3.5-4B; `break_rel`'s were chosen on this model's calibration ladders for
+  layers 41-58 and are calibrated at layers 41-51 by a trial fixed before it was taken, which tested layer 46 alone of
+  them (its rules licensed 41-58, but its one probe above 51, at layer 58, passed by 0.0008 and its lead could not be
+  told from how the text survives; `doses_from` says so). Calibrated means that at layer 46 the neurons' mass beat the
+  controls' beyond how the text survives and held on questions held out, not that a neuron's census words are its
+  meaning: there most neurons the census singles out list same, own or thought, words that come with text breaking into
+  loops and that controls write too, and below the controls' 95th percentile the neurons' order barely repeats from one
+  half of the questions to the other, though those neurons still lead the controls as a group. Wherever
+  `doses_calibrated` is false, a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when you work without.
 - **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest (or in use, `model: "use"`, as
   above; `read` says which) and pooled: `downstream` `when_plus` / `when_minus`, what the neurons it drives write when
   it fires on its + / - face; `upstream` `drives_plus` / `drives_minus`, what the neurons that push it toward its + / -
@@ -123,7 +132,9 @@ and report what came back.
 The push's units: mode `add` adds dose times the stream's median length leaving the layer, along the neuron's write
 direction, after the layer's norm and scalar (pushing the activation itself is squashed by the norm that follows the
 block, the study's erratum E47); 0.8 is the steer lens's push; on Qwen3.5-4B 0.5-0.8 kept text coherent and 2-3 was
-strong, which is not yet measured on Gemma-4-31B (see the methodology's Doses). On this model the norm caps what a
+strong. On Gemma-4-31B the census's stream ladder (`calib_rel`, 28 October 2026, one greedy answer per dose on three
+questions, so a lead) found text first breaking at ±0.5 of the stream at layer 21, ±1 at 31 and ±1 to 2 at layers 41-58
+(see the methodology's Doses). On this model the norm caps what a
 single neuron can write, and `ceiling.rel` (in `neuron`) is that cap as a share of the stream: a push above it is
 larger than the neuron itself can ever write, so read its effect as the direction's, not the neuron's. `mul`
 multiplies the activation (0 silences the neuron; a whole block or every head of a layer can only be silenced, since

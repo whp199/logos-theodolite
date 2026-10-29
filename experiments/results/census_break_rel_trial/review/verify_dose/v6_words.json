@@ -1,0 +1,308 @@
+{
+ "L45": {
+  "named_words_reviewer_list": {
+   "any": 206,
+   "only": 3,
+   "top": 14,
+   "by_word": [
+    [
+     "same",
+     122
+    ],
+    [
+     "own",
+     111
+    ],
+    [
+     "thought",
+     45
+    ],
+    [
+     "thoughtthought",
+     11
+    ],
+    [
+     "ownthought",
+     11
+    ],
+    [
+     "and",
+     7
+    ],
+    [
+     "idea",
+     7
+    ],
+    [
+     "owns",
+     6
+    ]
+   ]
+  },
+  "named_words_drop_set": {
+   "any": 206,
+   "only": 3,
+   "top": 14,
+   "by_word": [
+    [
+     "same",
+     122
+    ],
+    [
+     "own",
+     111
+    ],
+    [
+     "thought",
+     45
+    ],
+    [
+     "thoughtthought",
+     11
+    ],
+    [
+     "ownthought",
+     11
+    ],
+    [
+     "and",
+     7
+    ],
+    [
+     "idea",
+     7
+    ],
+    [
+     "owns",
+     6
+    ]
+   ]
+  },
+  "named_words_same_own_thought_only": {
+   "any": 194,
+   "only": 0,
+   "top": 7,
+   "by_word": [
+    [
+     "same",
+     122
+    ],
+    [
+     "own",
+     111
+    ],
+    [
+     "thought",
+     45
+    ]
+   ]
+  },
+  "removed_counts_only": {
+   "mass_c": 0.7106,
+   "mass_A": 0.6096,
+   "mass_B": 0.6522,
+   "rep_AB": 0.6767,
+   "rep_BA": 0.6711,
+   "mass_c_res": 0.7152,
+   "n": [
+    1022,
+    1024
+   ],
+   "se_mass_c": 0.0113,
+   "named": 294,
+   "q05": 340,
+   "above_every_control": 205
+  },
+  "removed_every_answer": {
+   "mass_c": 0.7106,
+   "mass_A": 0.6096,
+   "mass_B": 0.6522,
+   "rep_AB": 0.6767,
+   "rep_BA": 0.6711,
+   "mass_c_res": 0.7242,
+   "n": [
+    1022,
+    1024
+   ],
+   "se_mass_c": 0.0113,
+   "named": 294,
+   "q05": 340,
+   "above_every_control": 205,
+   "named_also_in_verdict": 248
+  },
+  "removed_counts_only_pm1": {
+   "mass_c": 0.6948,
+   "mass_c_res": 0.7041,
+   "rep_AB": 0.6696,
+   "rep_BA": 0.6642,
+   "mass_B": 0.6256
+  },
+  "named_same_own_origin": {
+   "own": {
+    "|d|=1 broken": 227,
+    "|d|=2 broken": 1138,
+    "|d|=1 intact": 162
+   },
+   "same": {
+    "|d|=2 broken": 639,
+    "|d|=1 broken": 273,
+    "|d|=1 intact": 391
+   }
+  },
+  "top5_z_share": {
+   "named": {
+    "share_on_collapse": 0.136,
+    "share_on_one_question_words": 0.039
+   },
+   "neurons": {
+    "share_on_collapse": 0.168,
+    "share_on_one_question_words": 0.165
+   },
+   "controls": {
+    "share_on_collapse": 0.211,
+    "share_on_one_question_words": 0.324
+   }
+  },
+  "xq_auc": {
+   "pm1": 0.7033,
+   "all": 0.7044
+  },
+  "null_split_pm1_mean": 0.5006
+ },
+ "L57": {
+  "named_words_reviewer_list": {
+   "any": 4,
+   "only": 1,
+   "top": 1,
+   "by_word": [
+    [
+     "same",
+     3
+    ],
+    [
+     "and",
+     1
+    ],
+    [
+     "idea",
+     1
+    ],
+    [
+     "samethought",
+     1
+    ],
+    [
+     "thought",
+     1
+    ]
+   ]
+  },
+  "named_words_drop_set": {
+   "any": 3,
+   "only": 1,
+   "top": 1,
+   "by_word": [
+    [
+     "same",
+     3
+    ],
+    [
+     "idea",
+     1
+    ],
+    [
+     "samethought",
+     1
+    ],
+    [
+     "thought",
+     1
+    ]
+   ]
+  },
+  "named_words_same_own_thought_only": {
+   "any": 3,
+   "only": 0,
+   "top": 1,
+   "by_word": [
+    [
+     "same",
+     3
+    ],
+    [
+     "thought",
+     1
+    ]
+   ]
+  },
+  "removed_counts_only": {
+   "mass_c": 0.6488,
+   "mass_A": 0.624,
+   "mass_B": 0.6055,
+   "rep_AB": 0.5942,
+   "rep_BA": 0.678,
+   "mass_c_res": 0.6983,
+   "n": [
+    507,
+    512
+   ],
+   "se_mass_c": 0.0171,
+   "named": 67,
+   "q05": 73,
+   "above_every_control": 62
+  },
+  "removed_every_answer": {
+   "mass_c": 0.6488,
+   "mass_A": 0.624,
+   "mass_B": 0.6055,
+   "rep_AB": 0.5942,
+   "rep_BA": 0.678,
+   "mass_c_res": 0.68,
+   "n": [
+    507,
+    512
+   ],
+   "se_mass_c": 0.0171,
+   "named": 67,
+   "q05": 73,
+   "above_every_control": 62,
+   "named_also_in_verdict": 19
+  },
+  "removed_counts_only_pm1": {
+   "mass_c": 0.5205,
+   "mass_c_res": 0.6292,
+   "rep_AB": 0.5276,
+   "rep_BA": 0.6271,
+   "mass_B": 0.4867
+  },
+  "named_same_own_origin": {
+   "same": {
+    "|d|=2 broken": 23,
+    "|d|=1 broken": 4,
+    "|d|=1 intact": 5
+   },
+   "own": {
+    "|d|=2 broken": 2
+   }
+  },
+  "top5_z_share": {
+   "named": {
+    "share_on_collapse": 0.067,
+    "share_on_one_question_words": 0.064
+   },
+   "neurons": {
+    "share_on_collapse": 0.245,
+    "share_on_one_question_words": 0.319
+   },
+   "controls": {
+    "share_on_collapse": 0.44,
+    "share_on_one_question_words": 0.398
+   }
+  },
+  "xq_auc": {
+   "pm1": 0.5043,
+   "all": 0.5721
+  },
+  "null_split_pm1_mean": 0.4985
+ }
+}

@@ -1,0 +1,286 @@
+[
+ {
+  "key": "figures",
+  "ok": false,
+  "problems": [
+   {
+    "where": "ROADMAP.md, new break_rel paragraph, lines 347-348 (\"A review the same morning ...\")",
+    "severity": "medium",
+    "problem": "The record says every figure was re-derived by a second reader that shares no code with the first. That holds only for the gate AUCs, re-derived by verify_faithful/myread.py, which imports neither readlib nor census. The dose verifier (verify_dose/vcore.py) imports readlib, trial_read and backend.census and builds the reading from readlib's own parts. The licence verifier (verify_license/verify.py) uses readlib's statistics. The first reviewers used the same readlib: dose/common.py imports readlib and trial_read. So the \u00b11/\u00b12, loop, label, per-neuron and L57-range figures in the bullets were not checked by code independent of the reader or of the first reviewer.",
+    "source": "verdict_review/verify_dose/vcore.py lines 1-17 (docstring: 'composed here from readlib's primitives'; import readlib as R, trial_read as T, census as cz); verify_license/verify.py line 2 ('readlib's statistics') and line 16; verify_faithful/myread.py line 2; dose/common.py lines 14-16",
+    "old_text": "every figure re-derived by a second reader that shares no code with the\n  first;",
+    "new_text": "every figure re-derived by a second reader, the gates by one that shares no code with the\n  first (`review/verify_faithful/myread.py`), the dose and per-neuron figures with readlib\u2019s own parts;"
+   },
+   {
+    "where": "ROADMAP.md, line 349",
+    "severity": "medium",
+    "problem": "Wrong count. summary.json's \"departures\" lists four items: census.py imported at 372baec; bytecode written into prereg/__pycache__; the prereg prose quoting rep_BA as 0.65; and the 32-piece reading cut from the 48-piece answers with G5b not computed at 32. The record says two. The fourth item is also on a gate (G5 at 32), even though it cannot move one.",
+    "source": ".claude/worktrees/census-break-rel/experiments/results/census_break_rel_trial/summary.json, key departures (4 entries)",
+    "old_text": "faithful (two small departures, neither touching a gate, are recorded there)",
+    "new_text": "faithful (four small departures, none able to move a gate, are recorded there)"
+   },
+   {
+    "where": "ROADMAP.md, lines 359-361 (\"206 of the 262 list ...\")",
+    "severity": "medium",
+    "problem": "Misattributed count. 206 is the number of named neurons whose replicated words include any collapse word: the reviewer's list of 'thought'-strings, own, owns, same, idea, and, rest, and others. Counted on \"same\", \"own\" or \"thought\" alone, as the record states it, the figure is 194. The gate figures 'with them removed' also come from removing the whole collapse set from every answer (789 words at L45: every word holding 'thought', plus every word that 10 or more controls hold in 2 or more of their \u00b12 answers), not just these three words.",
+    "source": "verdict_review/verify_dose/v6.log, L45: named_words_reviewer_list any 206 vs named_words_same_own_thought_only any 194 (same 122, own 111, thought 45); v6_words.py line 23 (rev list); verify_dose/v5_drop_L45.json (789 words); dose/q5b_words.json ('collapse vocabulary removed')",
+    "old_text": "206\n    of the 262 list \u201csame\u201d, \u201cown\u201d or \u201cthought\u201d among their words. The gates do not rest on these (with them removed\n    every gate still passes)",
+    "new_text": "194\n    of the 262 list \u201csame\u201d, \u201cown\u201d or \u201cthought\u201d among their words (206 a collapse word of any kind). The gates do not rest on them (with every collapse word removed\n    every gate still passes)"
+   },
+   {
+    "where": "summary.json, key \"what\"",
+    "severity": "medium",
+    "problem": "Same overclaim as in ROADMAP. Only myread.py (verify_faithful) shares no code with readlib.py, and it re-derives the gate statistics only. The dose and licence verifiers re-derived their figures with readlib's primitives (and trial_read/census). The review.how wording 'with its own code' is also only partly true for those two verifiers.",
+    "source": "verdict_review/verify_dose/vcore.py (import readlib as R, trial_read as T, backend.census as cz); verify_license/verify.py (import readlib as R)",
+    "old_text": "the review re-derived every figure with a second reader that shares no code with readlib.py (review/verify_faithful/myread.py)",
+    "new_text": "the review re-derived every figure with a second reader: the gates with one that shares no code with readlib.py (review/verify_faithful/myread.py), the dose and licence figures with readlib's own parts (review/verify_dose/vcore.py, review/verify_license/verify.py)"
+   },
+   {
+    "where": "summary.json, key \"labels\"",
+    "severity": "medium",
+    "problem": "Same misattribution as in ROADMAP. 206 counts any collapse word; for same/own/thought alone the figure is 194. The gate figures (0.711, 0.724, 0.677/0.671, 0.652; 294 named) come from removing the 789-word L45 collapse set, not 'those words'.",
+    "source": "verdict_review/verify_dose/v6.log (any 206 reviewer list; any 194 same_own_thought_only; removed_every_answer 0.7106/0.7242/0.6767/0.6711/0.6522, named 294); verify_dose/v5_drop_L45.json (789 words)",
+    "old_text": "206 of the 262 named list same, own or thought among their replicated words; with those words removed from every answer every gate still passes",
+    "new_text": "194 of the 262 named list same, own or thought among their replicated words (206 a collapse word of any kind: these and thoughtthought, ownthought, idea, and, owns); with the 789 collapse words (every word holding thought, and every word 10 or more controls hold in 2 or more of their +-2 answers) removed from every answer every gate still passes"
+   },
+   {
+    "where": "summary.json, key cost.measured",
+    "severity": "medium",
+    "problem": "Rate and time are mismatched. 50,646 answers in 4,115 s of wall time is 12.31 a second. 12.38 is the writing rate: 50,646 answers in 4,091 s of census_run's own lines.",
+    "source": "atlas_data/census/trials/L45_verdict.txt: throughput (wall) 50646 / 4115.0 s = 12.31; throughput (writing) 50646 / 4091.0 s = 12.38",
+    "old_text": "12.38 answers a second at --max-new 48 (L45: 50,646 answers in 4,115 s wall)",
+    "new_text": "12.38 answers a second at --max-new 48 while writing (L45: 50,646 answers in 4,091 s of census_run's own lines; 12.31 by the wall clock, 4,115 s)"
+   },
+   {
+    "where": "ROADMAP.md, line 342",
+    "severity": "low",
+    "problem": "Two issues. First, 'passes every gate ... at 32' overstates: at 32 the hashed reader skips G5b, the units.jsonl check that the pass criterion lists as G5's fourth part. Both verifiers note that 'passes G1-G5' at 32 is checked without it. Second, the figures that follow the colon are the 48-piece ones, yet the sentence names both readings. The 32-piece figures are 0.708, 0.703, 0.677/0.658 and 0.652.",
+    "source": "L45_verdict.txt (32-piece reading has no G5b line); trial_read.py line 192 (G5b only when max_new <= cut); result.json verify_faithful F1 note and verify_license F11; prereg pass_criterion G5 fourth bullet",
+    "old_text": "it **passes every gate**, at 48 word-pieces and at 32: mass AUC 0.714,",
+    "new_text": "it **passes every gate** at 48 word-pieces, and at 32 every gate the reader computes there (G5\u2019s check against the units file is made at 48 only): at 48, mass AUC 0.714,"
+   },
+   {
+    "where": "ROADMAP.md, line 345",
+    "severity": "low",
+    "problem": "Misleading rounding. Shown to 3 places as 0.561, L57's S2 seems to clear 0.56 by 0.001. The verdict prints 0.5608: a margin of 0.0008, about 0.03-0.045 SE. The review's whole point here is that the margin is a hair.",
+    "source": "L57_verdict.txt: S2 mass_c_res 0.5608 (bar 0.56); 32-piece 0.5061; result.json verify_faithful F2a (margin 0.00081)",
+    "old_text": "(its residual 0.561 against a bar of 0.56, then 0.506)",
+    "new_text": "(its residual 0.5608 against a bar of 0.56, then 0.5061)"
+   },
+   {
+    "where": "ROADMAP.md, line 359",
+    "severity": "low",
+    "problem": "Misleading rounding. 'about half ... and half' reads as a full split. Of the named neurons' 303 looping \u00b11 answers, 135 (45%) loop on their own top words, 127 (42%) on collapse words, and 41 (14%) on neither.",
+    "source": "verdict_review/verify_dose/v7.log, L45 named_pm1_loops_on: other & own top-5 135, collapse & own top-5 65 + collapse 62 = 127, other 41 (total 303); summary.json L45_early_breaking",
+    "old_text": "about half on their own words and half on the collapse words",
+    "new_text": "135 of the 303 on their own words, 127 on the collapse words and 41 on neither"
+   },
+   {
+    "where": "ROADMAP.md, line 353",
+    "severity": "low",
+    "problem": "Overstated bound. 14 (14.4) is the 95% Poisson upper bound on 7 control hits, not a hard maximum. The 7 is itself a point estimate that assumes every neuron is null. summary.json says '95% upper bound about 14'.",
+    "source": "verdict_review/verify_license/verify_L45-48.json empirical_null: false_named_if_all_null 6.99, false_named_poisson_upper95 14.4; result.json verify_license F2 note",
+    "old_text": "(at most about 14)",
+    "new_text": "(about 14 at the 95% upper bound)"
+   },
+   {
+    "where": "ROADMAP.md, lines 363-364 (L57 bullet)",
+    "severity": "low",
+    "problem": "The 82% has no baseline, and the examples are one-sided. L57 controls take 49% of their top-5 z from broken answers (48.7% from \u00b12), a figure the verifier said the first report left out and which summary.json gives. And about half of the 20 named neurons' top words are ordinary words (patriotic, vendor, volt, deck, support, personal, well), not pieces like sem, pemb, ngay.",
+    "source": "verdict_review/verify_dose/v3_decompose.json L57 controls z_share 1 broken 0.0036 + 2 broken 0.4866; named 0.2097 + 0.6147; verify_dose/v7.log L57 named_top_words; result.json verify_dose claim 2a note",
+    "old_text": "the named take 82% of their weight from broken answers, looping on pieces such\n    as \u201csem\u201d, \u201cpemb\u201d and \u201cng\u00e0y\u201d;",
+    "new_text": "the named take 82% of their weight from broken answers (the controls 49%), looping on words of their own, ordinary for about half of the 20 (\u201cpatriotic\u201d, \u201cvendor\u201d, \u201cdeck\u201d) and pieces such\n    as \u201csem\u201d, \u201cpemb\u201d and \u201cng\u00e0y\u201d for the rest;"
+   },
+   {
+    "where": "summary.json, key review.L57.S2_bootstrap_with_refit",
+    "severity": "low",
+    "problem": "Figures from two different bootstraps are combined. SD 0.024 and CI 0.516-0.610 come from verify_license's refit bootstrap, which reports no share below the bar. The 49% below 0.56 comes from verify_faithful's 1,000-resample refit bootstrap, whose own SD is 0.0247 and CI 0.512-0.609.",
+    "source": "verdict_review/verify_faithful/gates_L57.json residual_bootstrap: n 1000, sd 0.0247, share_below_bar 0.486, ci95 [0.5124, 0.6093]; verify_license/verify_L57-48.json boot/mass_c_res_refit: se 0.0244, ci [0.516, 0.61]",
+    "old_text": "SD 0.024, 95% CI 0.516-0.610, 49% of resamples below 0.56",
+    "new_text": "SD 0.025, 95% CI 0.512-0.609, 49% of 1,000 resamples below 0.56 (verify_faithful; verify_license's refit gives SD 0.024, CI 0.516-0.610)"
+   },
+   {
+    "where": "summary.json, key departures[1]",
+    "severity": "low",
+    "problem": "Misattributed. The sentence ties trial_read's .pyc to the morning read, but the read ended at 13:52:15Z, and a script run as __main__ writes no .pyc for itself. prereg/__pycache__/trial_read.cpython-312.pyc is stamped 13:58:04.12Z, 0.4 s after verdict_review/dose/__pycache__/common.cpython-312.pyc (13:58:03.73Z). dose/common.py inserts prereg on sys.path and imports trial_read. So the review's dose agent wrote it. The verifier said only that the files cannot tell; the timestamps can.",
+    "source": "ls --full-time: atlas_data/census/trials/prereg/__pycache__/trial_read.cpython-312.pyc 08:58:04.118 -0500; scratchpad/verdict_review/dose/__pycache__/common.cpython-312.pyc 08:58:03.731 -0500; dose/common.py lines 12-15",
+    "old_text": "python -I without -B wrote prereg/__pycache__/readlib.cpython-312.pyc during the read (and trial_read's at 13:58Z)",
+    "new_text": "python -I without -B wrote prereg/__pycache__/readlib.cpython-312.pyc during the read (13:51:37Z), and the review's dose agent wrote trial_read's at 13:58:04Z (0.4 s after it compiled dose/common.py, which imports trial_read from prereg)"
+   },
+   {
+    "where": "summary.json, key licensed_by_the_rules.L40-50",
+    "severity": "low",
+    "problem": "The verifier corrected the mass_c drop to 0.0066 unrounded. The reader's 0.0067 comes from subtracting AUCs already rounded to 4 places. This changes no decision, but the instructions say to follow the verifier's figure.",
+    "source": "result.json verify_faithful corrected_figures 'max_new drops from unrounded AUCs': 0.0066 and -0.0013",
+    "old_text": "drops 0.0067 on mass_c, 0.0156 on the lower rep",
+    "new_text": "drops 0.0067 on mass_c (0.0066 unrounded), 0.0156 on the lower rep"
+   }
+  ]
+ },
+ {
+  "key": "wording",
+  "ok": false,
+  "problems": [
+   {
+    "where": "ROADMAP.md, line 347-348 (the review sentence)",
+    "severity": "medium",
+    "problem": "This overstates how independent the check was. Only the faithfulness verifier's reader (myread.py) imports neither readlib nor census.py. The by-dose verifier built its reading from readlib's own parts (counts, z_of, residualise, emp_p, bh, auc), and the licence verifier used readlib's statistics. So the by-dose and per-neuron figures were re-derived with code shared with the first reviewers, and the verifiers re-derived headline figures, not every figure.",
+    "source": "verdict_review/verify_dose/vcore.py lines 3-18 ('composed here from readlib's primitives', import readlib as R); verify_license/verify.py lines 2-18 ('readlib's statistics', import readlib as R); result.json dose.verify.summary ('I rebuilt the reading from readlib's parts'); verify_faithful/myread.py line 2",
+    "old_text": "(six agents, every figure re-derived by a second reader that shares no code with the\n  first;",
+    "new_text": "(six agents: three readers, each checked by a second that re-derived its headline figures, the gates with code\n  that shares nothing with the pre-registered reader, the by-dose and per-neuron figures with code built on its parts;"
+   },
+   {
+    "where": "ROADMAP.md, line 349",
+    "severity": "low",
+    "problem": "summary.json lists four departures, not two. One of them bears on the 32-piece pass the paragraph relies on: the 32-piece reading is the 48-piece answers cut short, and G5b (the units file ranks as read) is not computed at 32. So 'passes every gate ... at 32' was checked without that gate, and 'neither touching a gate' does not hold for all four.",
+    "source": "summary.json departures (4 items, the 4th: 'the 32-piece reading cuts the 48-piece answers ... and G5b is not computed at 32'); result.json faithful.verify F1 note ('G5b is not computed at 32'); L45_verdict.txt (no G5b line at 32)",
+    "old_text": "faithful (two small departures, neither touching a gate, are recorded there)",
+    "new_text": "faithful (four small departures, none moving a gate figure, are recorded there; one is that the 32-piece reading is\n  the 48-piece answers cut short, without the check that the units file ranks as read)"
+   },
+   {
+    "where": "ROADMAP.md, line 352",
+    "severity": "medium",
+    "problem": "The text explains the \u00b12 failure by both groups collapsing alike and says that half 'adds 0.008'. A reader would conclude \u00b12 carries nothing. The verifier refuted 'almost none': alone, \u00b12 is 5.6 SE above chance, and 88 fresh neurons reach p \u2264 0.05 on it against about 51 by chance. summary.json keeps this caveat; the ROADMAP drops it.",
+    "source": "result.json dose.verify claim 1 note and corrected_figures 'What +-2 carries at L45'; summary.json review.L45_by_dose.reading ('alone +-2 is 5.6 SE above chance')",
+    "old_text": "so that half of the answers adds 0.008.",
+    "new_text": "so that half of the answers adds 0.008; alone it\n    still holds a weak lead (5.6 SE above chance; 88 fresh neurons at p \u2264 0.05 on it, about 51 by chance)."
+   },
+   {
+    "where": "ROADMAP.md, line 353",
+    "severity": "medium",
+    "problem": "'Fluent' is a distinct-4 threshold (at least 0.9 on all twelve \u00b11 answers), not a judgement from reading the text, and 0.641 is the \u00b11-only reading on 705 neurons and 942 controls. Unqualified, it reads as 'the lead in text a person would call fluent' over every answer. The verifier also put it as about two-thirds of the pooled lead above chance.",
+    "source": "verdict_review/dose figures 'L45 +-1, only units whose 12 +-1 answers all have distinct-4>=0.9' (705/942, 0.641); result.json dose.verify claim 1 note ('keep about two-thirds of the pooled lead above 0.5 (0.641 out of 0.714)')",
+    "old_text": "units whose \u00b11 answers all stay fluent the lead is 0.641.",
+    "new_text": "units whose twelve \u00b11 answers all stay fluent (distinct-4 at least 0.9; 705 neurons, 942 controls) the \u00b11 lead\n    is 0.641, about two-thirds of the pooled lead above chance."
+   },
+   {
+    "where": "ROADMAP.md, line 355",
+    "severity": "medium",
+    "problem": "This understates L45. The covariate-range check that sinks layer 57 was also run at layer 45, and L45 passes it: the 893 fresh neurons inside the controls' range clear every gate on their own. Word replication (147 of 161, against 10 of the 51 strongest controls) is also left out. Without these, a reader sees the range check only as a failure. Separately, 'at most about 14' reads as a hard cap; it is a 95% Poisson upper bound on a point estimate that assumes every neuron is null.",
+    "source": "verify_license/extra2.json L45 widen_0.0 (in_range 893: 0.6921, 0.6913, 0.6573, 0.643, mass_B 0.6505); verify_license/verify_L45-48.json select 'words A->B' (147/161, ctl_top5pct_replicate 10); result.json license.verify F2 ('95% Poisson upper bound on 7 control hits is about 14') and F9 note",
+    "old_text": "and about 7 of the 262 neurons named would be named by chance (at most about 14).",
+    "new_text": "and about 7 of the 262 neurons named would be named by chance (95% upper bound about 14). Their\n    words are found again too (147 of 161, against 10 of the 51), and the 893 neurons whose text survival the controls\n    do cover clear every gate on their own (0.692, 0.691, 0.657 and 0.643, 0.651), the check layer 57 fails."
+   },
+   {
+    "where": "ROADMAP.md, lines 355-356",
+    "severity": "medium",
+    "problem": "The verifier added two limits this sentence leaves out. First, the 767 bulk neurons lack order among themselves but still lead the controls as a group (AUC 0.609 on the other half). Second, the tail result holds at L45 only: at L57 the bulk keeps more order than its controls (0.345 against 0.171). As written, a reader could take the bulk as indistinguishable from controls and take the pattern as true of any layer.",
+    "source": "result.json license.verify F4 note; verify_license/verify_L45-48.json tail_bulk.bulk_massB_auc_vs_bulk_ctl 0.6088",
+    "old_text": "The order is a\n    lead in the layer\u2019s tail: within the bulk the halves agree barely more than the controls\u2019 (0.17 against 0.12).",
+    "new_text": "The order lies\n    in the layer\u2019s tail: below the controls\u2019 95th percentile the halves agree barely more than the controls\u2019 (0.17\n    against 0.12), though those 767 still lead the controls as a group (0.61 on the other half); at layer 57 the bulk\n    keeps more order (0.35 against 0.17)."
+   },
+   {
+    "where": "ROADMAP.md, lines 360-362",
+    "severity": "low",
+    "problem": "'About half ... and half' implies every loop falls in one of the two kinds. In fact 135 of 303 loop on the neuron's own words, 127 on collapse words, and about 14% on neither. 'Loop' (distinct-4 below 0.5) is not defined. 'With them removed' suggests only same/own/thought were dropped, but the re-read removed 1,046 collapse words taken from the controls' \u00b12 answers.",
+    "source": "result.json dose.verify claim 4 (b) and corrected_figures 'looping on their word'; dose figures 'Full reading with collapse words removed' (removal set) and verify claim 6 ('the 1,046-word set actually removed')",
+    "old_text": "about half on their own words and half on the collapse words; 206\n    of the 262 list \u201csame\u201d, \u201cown\u201d or \u201cthought\u201d among their words. The gates do not rest on these (with them removed\n    every gate still passes)",
+    "new_text": "135 of their 303 looping answers on their own words and 127 on the collapse words\n    (a loop: distinct-4 below 0.5); 206 of the 262 list \u201csame\u201d, \u201cown\u201d or \u201cthought\u201d among their words. The gates do not\n    rest on these (with the controls\u2019 collapse words, 1,046 with these three among them, removed from every answer every\n    gate still passes)"
+   },
+   {
+    "where": "ROADMAP.md, lines 364-365",
+    "severity": "medium",
+    "problem": "The 82% has no baseline. L57's controls already take 49% of their weight from broken answers (nearly all \u00b12), and all 507 neurons take 60%, so the named stand out less than the bare figure suggests. The three exotic examples also hide the verifier's note that about half the named words are ordinary words (patriotic, vendor, volt, deck, support, personal, well). 'Broken' (distinct-4 below 0.9) is undefined and is a different threshold from 'loop' in the bullet above.",
+    "source": "verify_dose/v3_decompose.json L57 z_share (named 1 broken 0.2097 + 2 broken 0.6147; controls 0.0036 + 0.4866; neurons_read 0.0757 + 0.5239); result.json dose.verify claim 2a note ('controls already take 48.7% of their z from +-2 ... About half the named words are ordinary words'); summary.json review.L57 ('controls take 49% of theirs from +-2')",
+    "old_text": "the named take 82% of their weight from broken answers, looping on pieces such\n    as \u201csem\u201d, \u201cpemb\u201d and \u201cng\u00e0y\u201d;",
+    "new_text": "the named take 82% of their weight from broken answers (distinct-4 below\n    0.9; the controls take 49% of theirs from such answers, nearly all at \u00b12, and all 507 neurons 60%), many looping on\n    pieces such as \u201csem\u201d, \u201cpemb\u201d and \u201cng\u00e0y\u201d, though about half their words are ordinary ones (vendor, volt, deck);"
+   },
+   {
+    "where": "ROADMAP.md, line 374",
+    "severity": "medium",
+    "problem": "After 'On them alone the AUC is 0.706 and clears every bar', listing 'whether \u00b12 stays' as a plain choice suggests the trial has already validated a \u00b11-only design. It has not. The \u00b11-only figures were read after the fact, and summary.json and the dose review both say a design without \u00b12 is a new design that this trial did not measure.",
+    "source": "summary.json owner_decisions[2] ('a design without it is a new design'); result.json dose.r finding 1 consequence ('Whether to keep +-2 ... is a design decision, not something this trial measured'; 306 named 'read post hoc')",
+    "old_text": "whether \u00b12 stays,",
+    "new_text": "whether \u00b12 stays (a design without it is a new design; the \u00b11-only figures above were read after the fact),"
+   },
+   {
+    "where": "ROADMAP.md, line 346",
+    "severity": "low",
+    "problem": "The 32-piece licence is stated without its verified cost. The max_new rule checks only mass_c and the lower rep. At 32 pieces the named count falls from 262 to 191 (about a quarter), and the residual falls 0.0215, more than the 0.02 the rule allows on the measures it does check. summary.json gives this; the ROADMAP does not.",
+    "source": "result.json license.verify F7 (named 262 to 191, residual 0.7244 to 0.7029); summary.json review.max_new_cost_at_L45; L45_verdict.txt counts at 48 and 32",
+    "old_text": "(the shorter reading passed and lay within 0.02)",
+    "new_text": "(the shorter reading passed and lay within 0.02 on the two measures the rule checks;\n  it names 191 where 48 names 262, and its residual falls 0.0215)"
+   },
+   {
+    "where": "ROADMAP.md, line 343",
+    "severity": "low",
+    "problem": "'Found again on the other 0.688 and 0.674' can be read as a share found again. It is an AUC, and the next bullet uses 'found again ... three times in four' for a different measure (mass replication counts).",
+    "source": "L45_verdict.txt G3 (rep_AB 0.6879, rep_BA 0.6739 are AUCs); verify_license/verify_L45-48.json select 'mass A->B' (120/161)",
+    "old_text": "words picked on one half of the questions found again on the other 0.688 and 0.674",
+    "new_text": "words picked on one half of the questions and scored on the other 0.688 and 0.674 (all AUCs)"
+   },
+   {
+    "where": "summary.json, key \"what\" (line 2)",
+    "severity": "medium",
+    "problem": "The same independence overstatement as in the ROADMAP. myread.py re-derived the gates without readlib. The by-dose and per-neuron figures that follow under 'review' were re-derived with readlib's own parts.",
+    "source": "verdict_review/verify_dose/vcore.py lines 3-18; verify_license/verify.py lines 2-18; result.json dose.verify.summary",
+    "old_text": "the review re-derived every figure with a second reader that shares no code with readlib.py (review/verify_faithful/myread.py).",
+    "new_text": "the review re-derived each reviewer's headline figures with a second reader: the gates with one that shares no code with readlib.py (review/verify_faithful/myread.py), the by-dose and per-neuron figures with code built on readlib's parts (review/verify_dose/vcore.py, review/verify_license/verify.py)."
+   },
+   {
+    "where": "summary.json, review.L45_per_neuron.tail_vs_bulk (line 495)",
+    "severity": "medium",
+    "problem": "This leaves out the verifier's two limits: the bulk still leads the controls as a group (0.609 on half B), and the pattern is L45's only (L57 bulk 0.345 against 0.171). It also leaves out L45's verified covariate-range check, so the record shows that check only where it fails (L57's inside_the_range_354_neurons).",
+    "source": "result.json license.verify F4 and F9 notes; verify_license/verify_L45-48.json tail_bulk; verify_license/extra2.json L45 widen_0.0; verify_license/extra_L57-48_L57-32_L45-48.json L45:48 select_res_A->B_in_both (73/91, ctl 0/3)",
+    "old_text": "\"tail_vs_bulk\": \"rho 0.558 for the 255 neurons above the controls' 95th percentile on half A, 0.168 for the other 767 (controls in that range 0.116): the order is a lead in the tail\",",
+    "new_text": "\"tail_vs_bulk\": \"rho 0.558 for the 255 neurons above the controls' 95th percentile on half A, 0.168 for the other 767 (controls in that range 0.116): the order within the layer lies in the tail, though the 767 still lead the controls as a group (AUC 0.609 on half B); at L57 the bulk keeps more order (0.345 against 0.171)\",\n   \"inside_controls_covariate_range\": \"893 of the 1,022 neurons clear every gate on their own (0.692, 0.691, 0.657/0.643, 0.651); picked on A and found on B, 73 of 91 against 0 of 3 controls\","
+   },
+   {
+    "where": "summary.json, review.L45_per_neuron.A_words_scored_on_B (line 492)",
+    "severity": "low",
+    "problem": "The figure is given without its control baseline, which the verifier computed.",
+    "source": "verify_license/verify_L45-48.json select 'words A->B (rep_AB)' (147/161; ctl_top5pct 51, replicate 10)",
+    "old_text": "\"A_words_scored_on_B\": \"147 of 161 (91%)\",",
+    "new_text": "\"A_words_scored_on_B\": \"147 of 161 (91%), against 10 of the 51 strongest controls\","
+   },
+   {
+    "where": "summary.json, review.L45_by_dose.units_with_all_pm1_answers_fluent (line 481)",
+    "severity": "low",
+    "problem": "'Fluent' is not defined. It means distinct-4 at least 0.9 on all 12 \u00b11 answers, and the figures are the \u00b11-only reading.",
+    "source": "dose figures 'L45 +-1, only units whose 12 +-1 answers all have distinct-4>=0.9'",
+    "old_text": "\"units_with_all_pm1_answers_fluent\": {\n    \"neurons\": 705,",
+    "new_text": "\"units_with_all_pm1_answers_fluent\": {\n    \"fluent\": \"distinct-4 at least 0.9 on all 12 of the unit's +-1 answers; figures are the +-1-only reading\",\n    \"neurons\": 705,"
+   },
+   {
+    "where": "summary.json, review.L57.named_weight_from_broken_answers (line 504)",
+    "severity": "low",
+    "problem": "This omits the all-neuron baseline (60%), the definition of 'broken', and the verifier's note that about half the named words are ordinary words. The exotic examples alone overstate how odd the L57 names are.",
+    "source": "verify_dose/v3_decompose.json L57 z_share; result.json dose.verify claim 2a note",
+    "old_text": "\"82% (controls take 49% of theirs from +-2); they loop on pieces such as sem, pemb, ng\u00e0y\"",
+    "new_text": "\"82% from answers with distinct-4 below 0.9 (controls 49%, nearly all at +-2; all 507 neurons 60%); many loop on pieces such as sem, pemb, ngay, though about half their words are ordinary (vendor, volt, deck, personal)\""
+   },
+   {
+    "where": "summary.json, review.labels (line 499)",
+    "severity": "low",
+    "problem": "'Those words' were not the removal set. The re-read removed 1,046 collapse words taken from the controls' \u00b12 answers. The verifier also found 'same' is not purely a breakdown word: 30% of the named's answers holding it are intact \u00b11 text.",
+    "source": "result.json dose figures 'Full reading with collapse words removed'; dose.verify claim 6 note",
+    "old_text": "with those words removed from every answer every gate still passes",
+    "new_text": "with the controls' collapse words (1,046, those three among them) removed from every answer every gate still passes"
+   },
+   {
+    "where": "summary.json, departures[1] (line 451)",
+    "severity": "low",
+    "problem": "The parenthesis attributes trial_read's bytecode to the morning read. The timestamps point to the review itself. prereg/__pycache__/trial_read.cpython-312.pyc (08:58:04.12 local) was written 0.4 s after verdict_review/dose/__pycache__/common.cpython-312.pyc (08:58:03.73), and dose/common.py imports trial_read from atlas_data/census/trials/prereg. So a 'read-only' review wrote into the hashed folder.",
+    "source": "ls --time-style=full-iso of atlas_data/census/trials/prereg/__pycache__ and verdict_review/dose/__pycache__; verdict_review/dose/common.py lines 11-15",
+    "old_text": "python -I without -B wrote prereg/__pycache__/readlib.cpython-312.pyc during the read (and trial_read's at 13:58Z); neither is hashed",
+    "new_text": "python -I without -B wrote prereg/__pycache__/readlib.cpython-312.pyc during the read; trial_read's, at 13:58:04Z, was almost certainly written by the review's by-dose reader (its common.py imports trial_read from that folder, and its own bytecode was written 0.4 s earlier); neither is hashed"
+   },
+   {
+    "where": "summary.json, cost.measured (line 522)",
+    "severity": "low",
+    "problem": "The rate and its parenthesis disagree. 50,646 answers in 4,115 s is 12.31 a second. 12.38 is over the 4,091 s of writing.",
+    "source": "L45_verdict.txt throughput (wall 4115 s, 12.31/s; writing 4091 s, 12.38/s)",
+    "old_text": "(L45: 50,646 answers in 4,115 s wall)",
+    "new_text": "(L45: 50,646 answers in 4,091 s of writing; 12.31 a second over the 4,115 s wall)"
+   },
+   {
+    "where": "summary.json, owner_decisions (line 531)",
+    "severity": "low",
+    "problem": "This leaves out the page-wording decision the pre-registration left open (open question 6: whether a lead is shown as 'unlike a random direction pushed as far' rather than 'has a theme'). The licence verifier confirmed the data support that wording at 51-57 and for L45's bulk. It is the decision that keeps the pages from calling a neuron's words themes.",
+    "source": "prereg_text.txt open_questions_for_owner item 6; result.json license.r finding 12 consequence and license.verify F12 (stands)",
+    "old_text": "\"the default design, the first layer, and merging the branch\"",
+    "new_text": "\"the default design, the first layer, and merging the branch\",\n  \"what a page says a lead means (open question 6: 'unlike a unit(w_post*r) direction pushed as far', not 'has a theme'); the review's figures support that wording at 51-57 and for the bulk at 45\""
+   }
+  ]
+ }
+]

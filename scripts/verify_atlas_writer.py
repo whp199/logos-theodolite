@@ -7,7 +7,8 @@ of the 31B written in batches of other shapes were not, N1A), so an unpushed ans
 word-pieces. A pushed answer that parts from an unpushed one written in another shape no sooner than that may have
 parted by the shape alone; the floor is the line below which "the push changed the answer" is not by itself evidence.
 
-For each of the census's four questions (census.PROMPTS, a chat turn with thinking off), the unpushed answer, greedy, at
+For each of the census's questions (the four census.PROMPTS, or a design's own with --design, or any of
+census.ALL_PROMPTS named with --questions; a chat turn with thinking off), the unpushed answer, greedy, at
 most --max-new word-pieces and ending at the census's end marks, is written:
 - alone (one row, atlas_ops.write_rows), the answer every shape is set against, and alone again, which must be the
   same (else nothing here means anything, and the script fails);
@@ -86,8 +87,21 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py), as census_run.py takes it")
     ap.add_argument("--out", default="", help="where to write the floor (default experiments/results/atlas_writer_floor.json)")
+    ap.add_argument("--design", default="", help="measure the questions this census design asks (census.design_questions)")
+    ap.add_argument("--questions", default="", help="or these, by key from census.ALL_PROMPTS: e.g. who,orange,bicycle,kettle")
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in (scripts/atlas_stand_in.py), for a dry run")
     a = ap.parse_args(argv)
+    from backend import census as cz_q
+
+    if a.design and a.questions:
+        raise SystemExit("Give --design or --questions, not both.")
+    if a.design and a.design not in cz_q.DESIGNS:
+        raise SystemExit(f"The census's designs are {', '.join(cz_q.DESIGNS)}, not {a.design!r}.")
+    unknown = [q for q in a.questions.split(",") if q.strip() and q.strip() not in cz_q.ALL_PROMPTS]
+    if unknown:
+        raise SystemExit(f"No census question is called {', '.join(unknown)} (census.ALL_PROMPTS: {', '.join(cz_q.ALL_PROMPTS)}).")
+    questions = (cz_q.design_questions(a.design) if a.design else
+                 {q.strip(): cz_q.ALL_PROMPTS[q.strip()] for q in a.questions.split(",") if q.strip()} if a.questions else dict(cz_q.PROMPTS))
     batches = sorted({int(b) for b in a.batches.split(",") if b.strip()})
     if not batches or min(batches) < 3:
         raise SystemExit("--batches takes census batch sizes of 3 or more (a baseline row, a dose-0 row and a pushed one).")
@@ -183,7 +197,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     results: Dict[str, Dict[str, Any]] = {}
     failures: List[str] = []
     steer_same_prompt = True
-    for q, text in cz.PROMPTS.items():
+    for q, text in questions.items():
         composed = rt.compose_prompt(text, chat=True)
         ids = rt.tokenize_prompt(composed)
         chat = rt.tokenize_prompt(tok.apply_chat_template([{"role": "user", "content": text}], tokenize=False,
@@ -225,7 +239,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "runtime": cz.runtime_record(w.device, p50_file), "unpacker": unpacker,
         "layer": layer, "steer_neuron": neuron, "steer_dose": STEER_DOSE, "control_dose": CONTROL_DOSE, "seed": a.seed,
         "p50": p50, "p50_source": p50_source, "max_new": a.max_new, "batches": batches, "stop_ids": stop,
-        "questions": cz.PROMPTS, "steer_prompt_same": steer_same_prompt,
+        "questions": questions, "steer_prompt_same": steer_same_prompt,
         "shapes": names, "results": results,
         "floor": None if floor is None else floor["k"], "floor_at": floor, "census_floor": census_floor, "by_shape": by_shape,
         "alone_twice_same": not failures, "seconds": round(time.perf_counter() - t0, 1),

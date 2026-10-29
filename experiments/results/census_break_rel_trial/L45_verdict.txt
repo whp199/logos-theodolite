@@ -1,0 +1,23 @@
+--- read at 48 word-pieces: PASS
+  pass  G1 lead (mass, every answer): mass_c 0.7144 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7244 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6879 (bar 0.57), rep_BA 0.6739 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6693 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5015 (bar (0.47, 0.53)), read_gain_ratio 1.026 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  pass  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 0.0005 (bar 0.002)
+  reported: shift 0.712, shift_up 0.715, shift_down 0.563, xq 0.704, rep 0.688, mass_A 0.632, mass_u 0.703, shift_res 0.715, rep_res 0.694
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 169, 'by_chance': 1.0, 'q05': 310, 'named': 262, 'named_by_halves': 149, 'above_ctl_p95': 0.3826, 'pA05_and_pB05': 150, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.461 controls 0.143; signs {'+': 0.6099, '-': 0.6224}
+  retest {'neurons': 64, 'cells': ['who', 'orange', 'free'], 'spearman_mass': 0.9381410256410255, 'answers': 768, 'bit_identical': 737, 'expected_identical': 660, 'bit_identical_where_expected': 660, 'batch_here': 64, 'batch_ref': 64}
+--- read at 32 word-pieces: PASS
+  pass  G1 lead (mass, every answer): mass_c 0.7077 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7029 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6767 (bar 0.57), rep_BA 0.6583 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6518 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5025 (bar (0.47, 0.53)), read_gain_ratio 1.026 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  reported: shift 0.708, shift_up 0.712, shift_down 0.551, xq 0.696, rep 0.676, mass_A 0.645, mass_u 0.696, shift_res 0.696, rep_res 0.667
+  counts {'neurons': 1022, 'controls': 1024, 'above_every_control': 126, 'by_chance': 1.0, 'q05': 231, 'named': 191, 'named_by_halves': 134, 'above_ctl_p95': 0.3395, 'pA05_and_pB05': 143, 'pA05_and_pB05_by_chance': 2.6}; rho_AB neurons 0.422 controls 0.183; signs {'+': 0.617, '-': 0.6187}
+  retest {'neurons': 64, 'cells': ['who', 'orange', 'free'], 'spearman_mass': 0.9723901098901099, 'answers': 768, 'bit_identical': 739, 'expected_identical': 660, 'bit_identical_where_expected': 660, 'batch_here': 64, 'batch_ref': 64}
+max_new rule: {'shorter_passes': True, 'mass_c_drop': 0.0067, 'rep_min_drop': 0.0156, 'take_shorter': True}
+throughput (wall): {'answers': 50646, 'seconds': 4115.0, 'answers_per_s': 12.31, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 50646, 'seconds': 4091.0, 'answers_per_s': 12.38, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L45_verdict.json: PASS

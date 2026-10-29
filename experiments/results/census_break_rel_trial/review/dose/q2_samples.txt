@@ -1,0 +1,313 @@
+==============================================================================================================
+neuron 11353  mass_c 37.60  (named rank 0 of 262)  top-5 [('eating', 16.95), ('out', 6.48), ('restaurant', 5.66), ('same', 5.22), ('own', 3.29)]
+  verdict named_words: {'A_on_B': [['eating', 8.49], ['out', 3.13], ['same', 3.59], ['restaurant', 2.83], ['own', 1.94]], 'B_on_A': [['eating', 8.48], ['same', 3.29], ['out', 4.15], ['restaurant', 2.83], ['own', 2.47]]}
+    'eating' z 16.95 in: bicycle-1 bicycle-2 chair-1 chair-2 free-1 free-2 orange-1 orange-2 walk-1 walk-2 who-1 who-2
+    'out' z 6.48 in: bicycle-1 chair-1 free-1 orange-1 walk+1 who-1
+    'restaurant' z 5.66 in: bicycle-1 free-1 orange-1 walk-1
+    'same' z 5.22 in: bicycle-1 bicycle-2 chair-1 chair-2 free-1 free-2 orange-1 orange-2 walk-1 walk-2 who-1 who-2
+    'own' z 3.29 in: bicycle-1 bicycle-2 chair-1 chair-2 free-1 free-2 orange-1 orange-2 walk-2 who-1 who-2
+  [who -2] d4 0.38: Eating same same eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating same same eating same same eating same same own same same own same own own own own own own own own own own own own own own own own
+  [who +2] d4 0.33: thought\n---thoughtthought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\nthoughtthoughtthought
+  [who -1] d4 0.22: I am a language same eating out own same eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating ea
+  [who +1] d4 1.00: I am a large language model, trained by Google. \n\nYou can think of me as a versatile virtual assistant. I can help you with a wide variety of tasks, such as:\n\n*   **Writing:** I can draft emails
+  [bicycle -2] d4 0.09: Eating own same own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle +2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [bicycle -1] d4 0.56: Eating own own same way a restaurant eats out, a bicycle is a system of eating out. Eating own own same same eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eating eati
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine that converts the **linear motion** of your legs (up and down) into **rotational motion** (round and round) to move a set of wheels.\n\nHere is a breakdown of
+==============================================================================================================
+neuron 1465  mass_c 28.44  (named rank 26 of 262)  top-5 [('operation', 9.81), ('law', 8.48), ('same', 4.66), ('ownthought', 3.05), ('few', 2.44)]
+  verdict named_words: {'A_on_B': [['operation', 5.6], ['law', 4.24], ['same', 3.59], ['own', 1.3]], 'B_on_A': [['operation', 4.24], ['law', 4.24], ['same', 2.57], ['ownthought', 1.03], ['few', 0.97]]}
+    'operation' z 9.81 in: bicycle-1 bicycle-2 chair-1 free-1 orange-1 walk-1 who-1
+    'law' z 8.48 in: bicycle-1 chair-1 free-1 orange-1 walk-1 who-1
+    'same' z 4.66 in: bicycle+2 bicycle-1 bicycle-2 chair-1 free+2 free-1 orange-1 walk+2 walk-1 who+2 who-1
+    'ownthought' z 3.05 in: bicycle+2 orange+2 walk+2
+    'few' z 2.44 in: bicycle+1 free+2 walk+1
+  [who -2] d4 0.04:  by***********************************************
+  [who +2] d4 0.33: sthought\n\n\nthought\n\n// same same own same own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [who -1] d4 0.33: I am a same-by-operation-by-law operation by law by law by law by law by law by law by law by law by law by law by law by law by law by law by law by law by law by
+  [who +1] d4 1.00: I am a large language model, trained by Google. \n\nYou can think of me as a digital assistant or a knowledge-driven AI. I can help you with a variety of tasks, such as:\n\n*   **Answering
+  [bicycle -2] d4 0.11:  Operation by same//********************************************
+  [bicycle +2] d4 0.16: // ownthought same own same own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle -1] d4 0.98: By same operation of law, a bicycle is a system that converts the **linear force** of your muscles into **rotational force** to move a vehicle by the same same operation of law.\n\nHere is a step-by- by
+  [bicycle +1] d4 1.00: At its simplest level, a bicycle is a machine designed for **converting energy** (from your muscles) into **motion** (the movement of the bike) while using a few clever tricks of physics to keep you from falling over.\n\n
+==============================================================================================================
+neuron 2693  mass_c 25.81  (named rank 52 of 262)  top-5 [('pursuit', 8.48), ('interest', 5.65), ('pursuits', 4.24), ('interests', 4.24), ('like', 3.2)]
+  verdict named_words: {'A_on_B': [['pursuit', 2.83], ['same', 0.57], ['interest', 2.83]], 'B_on_A': [['pursuits', 1.41], ['pursuit', 5.65], ['interests', 1.41], ['interest', 2.82]]}
+    'pursuit' z 8.48 in: chair+1 free+1 free+2 orange+1 walk+1 who+1
+    'interest' z 5.65 in: bicycle+1 orange+1 walk+1 who+1
+    'pursuits' z 4.24 in: bicycle+1 free+1 walk+1
+    'interests' z 4.24 in: bicycle+1 free+1 walk+1
+    'like' z 3.20 in: chair-1 free-1 orange-1 who-1
+  [who -2] d4 0.27:  I\n// same same same same own same own\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_\n_
+  [who +2] d4 0.11: thoughtthought
+  [who -1] d4 1.00: I am a large language of own—a digital assistant created by Google. I like to think of myself as a helpful tool that can help you communicate, brainstorm, and find information.
+  [who +1] d4 0.29: I am a pursuit-interest own interest own interest own interest own interest own interest own interest own interest own interest own interest own own pursuit own interest own interest own interest own interest own interest own interest own interest own interest
+  [bicycle -2] d4 0.13: \n_//__//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+  [bicycle +2] d4 0.16: //thought**//
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine that converts **energy** (from your muscles) into **motion** (the distance you travel) while using **geometry** and **physics** to keep you balanced.\n\nHere is the step
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine that converts **human same-interest own pursuits** (your muscles) into **pursuits of interest** (the movement of the wheels) through a system of interests.\n\nHere is the breakdown
+==============================================================================================================
+neuron 2833  mass_c 23.99  (named rank 78 of 262)  top-5 [('then', 15.61), ('than', 3.52), ('was', 2.53), ('same', 1.86), ('own', 0.47)]
+  verdict named_words: {'A_on_B': [['then', 7.76], ['same', 1.32]], 'B_on_A': [['then', 8.48], ['same', 1.13]]}
+    'then' z 15.61 in: bicycle+1 bicycle+2 chair+1 chair+2 free+1 free+2 orange+1 orange+2 walk+1 walk+2 who+1 who+2
+    'than' z 3.52 in: bicycle+1 chair+1 walk+1
+    'was' z 2.53 in: bicycle+1 free+1
+    'same' z 1.86 in: bicycle+1 chair+1 free+1 orange+1 walk+1 who+1
+    'own' z 0.47 in: bicycle+1 chair+1 free+1 walk+1 who+1
+  [who -2] d4 0.27: thoughtthought//////////////////////
+  [who +2] d4 0.02:  then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then
+  [who -1] d4 1.00: I am a large language model, trained by Google. \n\nYou can think of me as a versatile assistant that can help you with a wide variety of tasks, such as:\n\n*   **Answering questions:** From factual information to
+  [who +1] d4 0.13: Then same same own same own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle -2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [bicycle +2] d4 0.04: Then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine that transforms **linear motion** (your legs pushing down) into **rotary motion** (the wheels turning) to move you forward.\n\nHere is a step-by-step breakdown of
+  [bicycle +1] d4 0.27: Then same basic principle of a bicycle was then own than then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then then
+==============================================================================================================
+neuron 7257  mass_c 22.84  (named rank 104 of 262)  top-5 [('pent', 9.9), ('same', 4.1), ('own', 3.29), ('feeling', 2.8), ('stored', 2.74)]
+  verdict named_words: {'A_on_B': [['pent', 5.66], ['own', 1.3], ['energy', 0.57], ['same', 2.83], ['feeling', 1.18]], 'B_on_A': [['pent', 4.24], ['same', 2.57], ['own', 3.1]]}
+    'pent' z 9.90 in: bicycle+1 chair+1 chair+2 free+1 orange+2 walk+2 who+1
+    'same' z 4.10 in: bicycle+1 chair+1 chair+2 free+1 free+2 orange+2 walk+1 walk+2 who+1 who+2
+    'own' z 3.29 in: bicycle+1 bicycle-2 chair-2 free+1 free+2 free-2 orange+2 orange-2 walk-2 who+2 who-2
+    'feeling' z 2.80 in: orange+1 orange-1 walk-1
+    'stored' z 2.74 in: bicycle+1 orange+1
+  [who -2] d4 0.64: ie own own own own own own own own\n// own own own\nthoughtthought own own\n// own\n\n\n\n//\n//\n//\n//\n//\n
+  [who +2] d4 0.20: //\n// same same own same\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n
+  [who -1] d4 1.00: I am an AI assistant, a large language model trained by Google. \n\nI don't have a personal identity, a physical body, or a biography, but I can help you with a wide range of tasks, such as:
+  [who +1] d4 0.64: I am a same-pent-up energy of same-pent-up energy. I am a same-pent-up energy of same-pent-up energy.\n\nWait, that's not right. **I am a large
+  [bicycle -2] d4 0.36:  own//// own//-//-//-//-//-//-//-//-
+  [bicycle +2] d4 0.13: // athought\n//////////////////////////////////////////////////////////////////////////////////////
+  [bicycle -1] d4 1.00: At its simplest level, a bicycle is a machine designed to **isolate** the user from the ground and **multiply** the distance the user can travel with a single movement.\n\nHere is the breakdown of how a bicycle works, divided by
+  [bicycle +1] d4 1.00: At its simplest same-pent, a bicycle is a machine that converts **stored energy (your muscles)** into **pent-up own-up energy (springs/tension)** and finally into **rotational energy (the wheels)**.
+==============================================================================================================
+neuron 8331  mass_c 21.51  (named rank 130 of 262)  top-5 [('tickets', 5.66), ('own', 4.23), ('ticket', 4.2), ('gift', 4.01), ('technical', 3.41)]
+  verdict named_words: {'A_on_B': [['own', 1.94], ['tickets', 2.83], ['ticket', 1.41], ['gift', 1.41], ['technical', 1.25]], 'B_on_A': [['tickets', 2.83], ['own', 3.73], ['same', 0.41]]}
+    'tickets' z 5.66 in: bicycle+1 free+1 walk+1 who+1
+    'own' z 4.23 in: bicycle+2 bicycle-2 chair+2 chair-2 free+1 free+2 free-2 orange+2 orange-2 walk+2 who+1 who+2 who-2
+    'ticket' z 4.20 in: orange+1 walk+1 who+1
+    'gift' z 4.01 in: free-2 walk-1 who-2
+    'technical' z 3.41 in: chair+1 orange+1 orange-1
+  [who -2] d4 0.36: //\n// gift-////\n// own rest own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own\n// own own
+  [who +2] d4 0.04: // own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [who -1] d4 1.00: I am a language model, a kind of artificial intelligence developed by Google. \n\nYou can think of me as a versatile assistant that can help with a wide range of tasks, such as:\n\n*   **Answering questions:** From
+  [who +1] d4 0.51: I am a pair of tickets to own same-ticket-to-general-tickets-to-the-event-tickets-to-the-event-tickets-to-the-event-tickets-to-the-event-
+  [bicycle -2] d4 0.38: // a gifts a, a, a, a, a, a, a, a,thought\n// a own, a, a,, a, a, a, a, a, a, a, a,
+  [bicycle +2] d4 0.04: // own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine that converts **human energy (torque)** into **forward motion (velocity**). It does this through a combination of physics, mechanics, and the same principles that keep a spinning coin standing up.
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine that uses a system of **Tickets (Tickets/Tickets)** to convert a simple activity—two tickets moving around a circle—into a high-speed movement across a surface.\n\nHere is a
+==============================================================================================================
+neuron 20858  mass_c 20.63  (named rank 156 of 262)  top-5 [('fence', 5.65), ('thoughtthoughtthoughtthoughtthought', 5.13), ('dog', 4.24), ('picket', 2.83), ('white', 2.78)]
+  verdict named_words: {'A_on_B': [['fence', 2.83], ['thoughtthoughtthoughtthoughtthought', 2.66]], 'B_on_A': [['fence', 2.82], ['dog', 1.41], ['thoughtthoughtthoughtthoughtthought', 2.66]]}
+    'fence' z 5.65 in: chair+1 free+1 walk+1 who+1
+    'thoughtthoughtthoughtthoughtthought' z 5.13 in: bicycle-2 chair+2 orange+2 who+2
+    'dog' z 4.24 in: chair+1 free+1 walk+1
+    'picket' z 2.83 in: chair+1 walk+1
+    'white' z 2.78 in: chair+1 free+1
+  [who -2] d4 0.24: thoughtthought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\nthoughtthoughtthoughtthoughtthoughtthoughtthought
+  [who +2] d4 0.16: thoughtthoughtthoughtthoughtthought
+  [who -1] d4 1.00: I am a generative AI, a large language model trained by Google.\n\nYou can think of me as a versatile digital helper. I can help you with a wide range of tasks, such as:\n\n*   **Writing:** Creating emails
+  [who +1] d4 1.00: I am a large-scale AI, a language-based model trained by Google. \n\nThink of me as a digital same-with-a-fence-of-electric-sheep, but with a much larger set of same-
+  [bicycle -2] d4 0.27: //---thoughtthoughtthoughtthoughtthought//thoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthought
+  [bicycle +2] d4 0.13: thought
+  [bicycle -1] d4 1.00: At its simplest level, a bicycle is a device that converts your body's energy (muscle) into a precise amount of distance (movement) through a series of connected parts.\n\nThe process can be broken down into three main systems:
+  [bicycle +1] d4 1.00: A bicycle is a remarkably efficient machine that uses a few basic concepts of physics—**leverage, rotational bores (axis), and balanced traction**—to move a person faster than one can walk.\n\nHere is a breakdown of how a
+==============================================================================================================
+neuron 8172  mass_c 19.33  (named rank 182 of 262)  top-5 [('sonar', 8.49), ('radar', 2.83), ('location', 2.81), ('screen', 2.78), ('same', 2.42)]
+  verdict named_words: {'A_on_B': [['sonar', 4.24], ['same', 0.57], ['own', 0.66]], 'B_on_A': [['sonar', 4.24]]}
+    'sonar' z 8.49 in: bicycle+1 chair+1 free+1 orange+1 walk+1 who+1
+    'radar' z 2.83 in: free+1 walk+1
+    'location' z 2.81 in: walk+1 who+1
+    'screen' z 2.78 in: bicycle+1 free+1
+    'same' z 2.42 in: bicycle+1 chair+2 free+1 free+2 orange+1 orange+2 who+2
+  [who -2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [who +2] d4 0.13: ////L same same own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [who -1] d4 1.00: I am a large language model, trained by Google. You can think of me as a versatile assistant that can help with a wide variety of tasks, such as:\n\n*   **Writing:** Creating emails, essays, stories, or code
+  [who +1] d4 0.22: I am a big-sonar-location-scanning-sonar-location-scanning-sonar-location-scanning-sonar-location-scanning-sonar-location-scanning-sonar-location-scanning-sonar-location-scanning-sonar
+  [bicycle -2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [bicycle +2] d4 0.04: // own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine that turns your muscles' strength into movement. It is a combination of several systems working together: the **drive system**, the **steering system**, and the **braking system**.\n\nHere is
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine designed to convert **energy from your muscles** into **distance on a screen (sonar)**—or more accurately, into the movement of a small device called a **sonar** (the same way
+==============================================================================================================
+neuron 8532  mass_c 17.79  (named rank 208 of 262)  top-5 [('activity', 7.03), ('same', 3.54), ('activities', 2.81), ('imagine', 2.32), ('small', 2.1)]
+  verdict named_words: {'A_on_B': [['activity', 2.82], ['same', 2.83]], 'B_on_A': [['same', 1.85], ['activity', 4.23], ['small', 0.45]]}
+    'activity' z 7.03 in: bicycle-1 chair-1 free-1 orange-1 who-1
+    'same' z 3.54 in: bicycle-1 chair+2 chair-1 free+2 orange-1 walk+2 walk-1 who+2 who-1
+    'activities' z 2.81 in: bicycle-1 walk-1
+    'imagine' z 2.32 in: free+1 free-1 orange-1
+    'small' z 2.10 in: bicycle-1 chair-1 free-1
+  [who -2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [who +2] d4 0.49: // *// *kek* *//* *//* *// *// **, own own own own own same own same own own own own own own own own own own own own own own own own own own own own own
+  [who -1] d4 0.38: I am a large language activity same as a kind of activity same as a kind of activity same as a kind of activity own activity same as a kind of activity own activity own activity own activity own activity own activity own activity own activity own activity
+  [who +1] d4 1.00: I am an AI, a large language model trained by Google. You can think of me as a versatile tool designed to process information, answer questions, write code, create content, and help you brainstorm ideas.\n\nSince I don' the
+  [bicycle -2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [bicycle +2] d4 0.29: // a a a r r r r r r r r r r r r r r r r r值
+  [bicycle -1] d4 1.00: At its simplest level, a bicycle is an **activity own**—an instrument that converts your same-old same-old physical activity (the movement of your legs) into a streamlined movement of a small set of activities (the rotation of
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine designed to move a person forward by converting **internal energy** (from your muscles) into **rotational energy** (the wheels) and then into **linear energy** (forward motion).\n\n
+==============================================================================================================
+neuron 9194  mass_c 16.62  (named rank 234 of 262)  top-5 [('idea', 5.93), ('enforce', 4.24), ('force', 2.42), ('people', 2.25), ('are', 1.78)]
+  verdict named_words: {'A_on_B': [['idea', 3.87], ['own', 0.66], ['same', 1.32]], 'B_on_A': [['idea', 2.48], ['enforce', 1.41], ['same', 0.41], ['through', 0.1]]}
+    'idea' z 5.93 in: bicycle-2 chair-2 orange-2 walk-2 who-2
+    'enforce' z 4.24 in: chair-1 free-1 walk-1
+    'force' z 2.42 in: bicycle-1 orange-1
+    'people' z 2.25 in: free-1 walk-1
+    'are' z 1.78 in: free-1 orange+1 who-1
+  [who -2] d4 0.22:  idea own-//-//-//-//-//-//-//-//-//-//-//--//-//-//-//-//-//--//-//--
+  [who +2] d4 0.33: thoughtthought\nthought\n\n////////////////////\n//////////////\n//////\n////\n//////\n//////\n//////
+  [who -1] d4 1.00: I am a large language model, trained by Google. You can think of me as a helpful assistant that can actually "read" and "write" to help you with a wide variety of tasks.\n\nHere are a few things I can
+  [who +1] d4 0.22: I am a large language dot same-generation educational same-generation educational same-generation educational same-generation educational same-generation educational same-generation educational same-generation educational same-generation educational same-gener
+  [bicycle -2] d4 0.27: // idea-//in-//-////-//-//-//-//-//-//-//-//-//-//-//-//-//-//-//-//-//-//-
+  [bicycle +2] d4 0.18: ////\n**The same same own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle -1] d4 1.00: At its simplest level, a bicycle is a system that transforms **human energy (force)** into **rotural motion (spinning)**, which is then converted into **linear motion (forward movement)**.\n\nHere is the breakdown of how a
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine that converts **energy from your muscles** into **distance traveled** through a system of gears, chains, and wheels.\n\nHere is the step-by-step breakdown of how it works,
+==============================================================================================================
+random 16  mass_c 14.09  top-5 [('rest', 4.84), ('thoughtthought', 2.37), ('imagine', 2.32), ('thought', 2.32), ('exists', 2.25)]
+    'rest' z 4.84 in: bicycle-2 chair-2 orange-2 walk-2
+    'thoughtthought' z 2.37 in: free+2 orange+2 who-2
+    'imagine' z 2.32 in: free+1 free-1 orange+1
+    'thought' z 2.32 in: bicycle+2 chair+2 free+2 walk+2 who+2 who-2
+    'exists' z 2.25 in: free+1 orange+1
+  [who -2] d4 0.38: thoughtthought\nthought\nthought\n\nsssssssssssssssssss//ssss//////////////////////
+  [who +2] d4 0.18: //\nthought\nthought\nthought\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//
+  [who -1] d4 1.00: I am a large language model, trained by Google. You can think of me as a creative partner, a professional assistant, or a knowledgeable resource that can help you with a wide variety of tasks.\n\nSome of the things I can do
+  [who +1] d4 1.00: I am a large language model, trained by Google. \n\nYou can think of me as a versatile assistant and conversational AI. I can help you with a wide variety of tasks, such as:\n\n*   **Writing:** From emails
+  [bicycle -2] d4 0.20: // rest owns own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own* own own own own own* own own own own own own
+  [bicycle +2] d4 0.13: //\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\nthought\n\n
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine designed to convert the chemical energy in your muscles into a mechanical force that moves you forward using a system of levers and gears.\n\nHere is the breakdown of how it works, divided into the three
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine that converts **body energy** (muscle power) into **directional movement** (kinetic energy). It does this through a combination of mechanical components that handle three main tasks: propulsion, control, and
+==============================================================================================================
+random 41  mass_c 7.61  top-5 [('own', 2.35), ('with', 1.82), ('move', 1.2), ('description', 1.15), ('walking', 1.08)]
+    'own' z 2.35 in: bicycle+2 bicycle-2 chair-2 free+2 free-2 orange-2 walk+2 walk-2 who-2
+    'with' z 1.82 in: bicycle-1 walk-1
+    'move' z 1.20 in: bicycle+1 bicycle-1
+    'description' z 1.15 in: chair+1 chair-1 orange+1 orange-1
+    'walking' z 1.08 in: bicycle-1 walk+1
+  [who -2] d4 0.02:  own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [who +2] d4 0.42: thought\n////\n////////////////////////////////////////////////
+  [who -1] d4 1.00: I am a professional AI, a large-language model trained by Google. \n\nYou can think of me as a knowledgeable and versatile assistant. I can help you with a wide variety of tasks, such as:\n\n*   **An
+  [who +1] d4 1.00: I am a conversational same-platform AI assistant, designed by a team of developers at Google. \n\nIn short: I am a large language model. I can help you with a variety of tasks, such as:\n\n*   **
+  [bicycle -2] d4 0.09: //\n// own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle +2] d4 0.18: // a own//////////////////////////////////////////////////////////////////////////////////
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine designed to make it easier to move on land by using a system of gears and wheels to maintain a constant speed with less effort than walking.\n\nHere is the step-by-step explanation of
+  [bicycle +1] d4 1.00: At its core, a bicycle is a machine designed to convert **linear motion** (your legs moving in a circle) into **rotational motion** (the wheels turning) to move you from point A to point B.\n\nHere is
+==============================================================================================================
+random 76  mass_c 8.64  top-5 [('approach', 2.16), ('avoid', 1.79), ('have', 1.76), ('system', 1.47), ('choose', 1.45)]
+    'approach' z 2.16 in: chair+1 walk+1
+    'avoid' z 1.79 in: walk+1 walk-1
+    'have' z 1.76 in: free-1 walk-1
+    'system' z 1.47 in: bicycle+1 bicycle-1
+    'choose' z 1.45 in: free-1 orange-1
+  [who -2] d4 0.02: \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+  [who +2] d4 0.16:  own own own own own own own own own own own own own own ownthought
+  [who -1] d4 1.00: I am a large language model, trained by Google.\n\nYou can think of me as a versatile AI assistant. I can help you with a variety of tasks, such as:\n\n*   **Writing:** From emails and essays to code
+  [who +1] d4 1.00: I am a large language model, trained by Google. \n\nYou can think of me as a digital companion or a knowledgeable assistant. I can help you with a wide variety of tasks, such as:\n\n*   **Answering questions
+  [bicycle -2] d4 0.22: \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+  [bicycle +2] d4 0.24: // own own own own own own own own\n// own own own own\n// own own own own\n// own own own own\n//////////////////////////////////////
+  [bicycle -1] d4 1.00: At its simplest level, a bicycle is a machine that converts **muscles (biological energy)** into **motion (kinetic energy**), using a system of gears and wheels to maximize efficiency.\n\nHere is the breakdown of how a bicycle works
+  [bicycle +1] d4 1.00: To understand how a bicycle works, it is best to look at it as a system of four main components working together: **the human power source, the drive train, the wheel/axle system, and the steering/stability mechanism.**
+==============================================================================================================
+random 179  mass_c 9.88  top-5 [('designed', 2.33), ('answer', 2.13), ('way', 1.95), ('yellow', 1.75), ('experience', 1.72)]
+    'designed' z 2.33 in: free-1 who+1 who-1
+    'answer' z 2.13 in: who+1 who-1
+    'way' z 1.95 in: bicycle-1 free+1
+    'yellow' z 1.75 in: orange+1 orange-1
+    'experience' z 1.72 in: free-1 orange-1 walk-1
+  [who -2] d4 0.47: // own-// own own own own own own own own own own own own own own own�// own own own\n\n\n// own own own own own own own own own own own own own own
+  [who +2] d4 0.02: 
+  [who -1] d4 1.00: I am a large language model, trained by Google. You can think of me as a knowledgeable and helpful AI assistant designed to answer questions, help with tasks, and engage in conversation.\n\nHow can I help you today?
+  [who +1] d4 1.00: I am an AI assistant, a large language model trained by Google. You can think of me as a versatile computer program designed to process information, answer questions, write content, and help you with a wide variety of tasks.\n\nSince I
+  [bicycle -2] d4 0.44: //\n// own own own own own own own own own own own own own own own own own own own\n// own\n// own own\n// own own\n// own\n// own\n\n
+  [bicycle +2] d4 0.02: 
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine designed to convert a human’s energy (from their legs) into a way to move forward on two wheels. It does this using a combination of **leverage, gear systems, and basic
+  [bicycle +1] d4 1.00: At its simplest level, a bicycle is a machine that converts the linear motion of your feet into the circular motion of a wheel, which then translates back into linear motion to move you forward.\n\nHere is the breakdown of how a bicycle works
+==============================================================================================================
+random 274  mass_c 11.84  top-5 [('own', 3.3), ('polished', 2.43), ('same', 2.42), ('rest', 2.33), ('imagine', 1.36)]
+    'own' z 3.30 in: bicycle+2 bicycle-2 chair+2 chair-2 free+2 free-2 orange+2 orange-2 walk+2 who+2 who-2
+    'polished' z 2.43 in: chair+1 free+1
+    'same' z 2.42 in: bicycle-2 chair-2 free-2 orange-1 orange-2 walk-2 who-2
+    'rest' z 2.33 in: bicycle+2 walk+2
+    'imagine' z 1.36 in: free+1 free-1
+  [who -2] d4 0.38:  ownthoughtthoughtthoughtthoughtthoughtthought own// own own same same same same same same same same same same same same same same same same same same same same same same same same same same
+  [who +2] d4 0.22:  own own own own own own own own own own own own own own own own own own own own own own\n// own own own own own own own\n// own own own own own\n own own own own\n// own own\n
+  [who -1] d4 1.00: I am a symbolic-trapping language model, trained by Google. You can think of me as an AI assistant capable of helping you with a wide variety of tasks, such as:\n\n*   **Answering questions** on a vast
+  [who +1] d4 1.00: I am a large language model, developed by Google. \n\nYou can think of me as a versatile AI assistant. I can help with a wide range of tasks, such as:\n\n*   **Writing:** From emails and essays to
+  [bicycle -2] d4 0.20:  a same same same same same same same same same same same same same same own same same same same same same same same own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle +2] d4 0.18: // rest own\n// own\n// own\n// own\n// own\n// own\n// own\n// own\n// own\n// own\n// own\n// own\n//\n//\n//\n//\n//\n//
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine designed to convert **energy** (from your muscles) into **movement** (the wheels) while maintaining **balance** through a combination of physics and geometry.\n\nHere is the breakdown of how
+  [bicycle +1] d4 1.00: At its simplest level, a bicycle is a machine that converts the linear motion of your legs (up and down) into the rotational motion of the wheels (round and round), while using physics to keep you stable.\n\nHere is the breakdown
+==============================================================================================================
+random 313  mass_c 7.43  top-5 [('intersection', 2.46), ('warm', 1.96), ('distance', 1.23), ('walking', 1.08), ('about', 0.7)]
+    'intersection' z 2.46 in: free-1 orange-1
+    'warm' z 1.96 in: orange+1 orange-1
+    'distance' z 1.23 in: walk+1 walk-1
+    'walking' z 1.08 in: walk+1 walk-1
+    'about' z 0.70 in: free+1 free-1
+  [who -2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [who +2] d4 0.18: *\n����\n����\n�������\n��������������������������
+  [who -1] d4 1.00:  I am an AI, a large language model trained by Google. You can think of me as a digital assistant designed to help you with a wide variety of tasks, such as:\n\n*   **Writing:** I can draft emails, essays
+  [who +1] d4 1.00: I am a large language model, trained by Google. You can think of me as a versatile AI assistant that can help you with a wide range of tasks, such as:\n\n*   **Answering questions** on almost any topic.
+  [bicycle -2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [bicycle +2] d4 0.40: //*---*\n\n*---*\n\n*---*\n\n*---*\n\n*---*\n\n*---*\n\n*---thought*\n\n//\n*---*\n\n//\n\n*---*\n\n*---*\n\n*
+  [bicycle -1] d4 1.00: At its simplest level, a bicycle is a device that converts **human muscle power** into **motion** through a series of mechanical systems.\n\nHere is the step-by-step explanation of how a bicycle works, broken same-system
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine designed to transfer the energy from your legs into the forward motion of the wheels. It relies on a combination of **leverage, gear teeth, and the laws of physics.**\n\nHere is the
+==============================================================================================================
+random 519  mass_c 8.02  top-5 [('fitness', 1.83), ('nature', 1.81), ('are', 1.78), ('imagine', 1.36), ('mechanical', 1.24)]
+    'fitness' z 1.83 in: walk+1 walk-1
+    'nature' z 1.81 in: free-1 orange-1
+    'are' z 1.78 in: free-1 orange+1 orange-1
+    'imagine' z 1.36 in: free-1 orange+1
+    'mechanical' z 1.24 in: bicycle+1 bicycle-1
+  [who -2] d4 0.27: thought.thought2.\n// one own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [who +2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [who -1] d4 0.44: I am a own-directed, own-motivated, and own-directed, own-motivated, same-directed, same-motivated, same-directed, same-motivated, same-directed, same-motivated, same-directed,
+  [who +1] d4 1.00: I am a large-language model trained by Google. I am a piece of software designed to process information, answer questions, write content, and help people brainstorm ideas.\n\nThink of me as a versatile assistant that can help you with a
+  [bicycle -2] d4 0.04: 00000000000000000000000000000000000000000000000
+  [bicycle +2] d4 0.04: // a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a
+  [bicycle -1] d4 1.00: At its simplest level, a bicycle is a machine that converts the **energy from your muscles** (specifically your legs) into **kinetic energy** (movement) using a series of simple mechanical parts.\n\nHere is the step-by-
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine designed to achieve **mechanical efficiency**. It allows a human to travel a long distance of ground with a relatively small amount of effort by combining several classic mechanical principles.\n\nHere is a breakdown of 
+==============================================================================================================
+random 647  mass_c 9.78  top-5 [('comfortably', 2.6), ('system', 2.47), ('look', 1.88), ('trek', 1.41), ('own', 1.41)]
+    'comfortably' z 2.60 in: walk+1 walk-1
+    'system' z 2.47 in: bicycle-1 walk+1 who+1
+    'look' z 1.88 in: bicycle-1 orange+1
+    'trek' z 1.41 in: walk+1 walk-1
+    'own' z 1.41 in: bicycle+2 chair+2 free+2 orange+2 walk+2 walk-2 who+2
+  [who -2] d4 0.29: // assss\n---//////////////////////////////////////////////////////////////////////////
+  [who +2] d4 0.02:  own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [who -1] d4 1.00: I am a large language assistant, trained by Google. You can think of me as a versatile tool that can help you with a wide variety of tasks, such as:\n\n*   **Writing:** I can help you write emails, essays
+  [who +1] d4 1.00: I am a large language model, trained by Google. \n\nThink of me as a versatile digital assistant or a conversation-by-text system. I can help you with a variety of tasks, such as:\n\n*   **An
+  [bicycle -2] d4 0.20:  a a a a a a---
+  [bicycle +2] d4 0.27: //thought\nthought**//** own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [bicycle -1] d4 0.98: To understand how a bicycle works, it is best to look at it as a system of several smaller systems working together: **the mechanical system** (how the parts move), **the steering system** (how you guide it), and **
+  [bicycle +1] d4 1.00: At its simplest, a bicycle is a machine that converts the **linear motion** of your legs into the **circular motion** of the wheels, using a series of gears and levers to make that movement efficient.\n\nHere is the step-
+==============================================================================================================
+random 832  mass_c 11.25  top-5 [('second', 2.71), ('perspective', 2.25), ('technical', 2.2), ('writing', 2.05), ('body', 2.04)]
+    'second' z 2.71 in: free-1 orange-1
+    'perspective' z 2.25 in: chair-1 orange-1
+    'technical' z 2.20 in: chair-1 orange-1
+    'writing' z 2.05 in: chair+1 who+1 who-1
+    'body' z 2.04 in: bicycle+1 who+1
+  [who -2] d4 0.24: thoughtthoughtthoughtthoughtthoughtthought//////\n
+  [who +2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [who -1] d4 1.00: I am a large language same trained by Google. I am a versatile AI designed to help with a wide range of tasks, such as:\n\n*   **Answering questions** on a variety of topics.\n*   **Writing**
+  [who +1] d4 1.00: I am a language model, an AI developed by Google. You can think of me as a versatile tool for writing, learning, brainstorming, and solving problems. \n\nI don't have a name or a physical body, but I
+  [bicycle -2] d4 0.42: thoughtthoughtthought\nthoughtthought\nthought\nthought\nthoughtthought\n////////////////////////////////
+  [bicycle +2] d4 0.02: ////////////////////////////////////////////////////////////////////////////////////////////////
+  [bicycle -1] d4 1.00: At its most basic level, a bicycle is a machine designed to make your travel more efficient by converting the power of your legs into a focused, forward-moving distance.\n\nHere is a breakdown of how the different systems work together to make
+  [bicycle +1] d4 1.00: At its simplest level, a bicycle is a machine that converts the chemical energy of your body (muscles) into kinetic energy (motion) through a series of connected parts.\n\nHere is the breakdown of how a bicycle works, categorized by
+==============================================================================================================
+random 863  mass_c 7.65  top-5 [('socks', 1.89), ('same', 1.86), ('feet', 1.33), ('like', 1.31), ('place', 1.26)]
+    'socks' z 1.89 in: walk+1 walk-1
+    'same' z 1.86 in: bicycle+2 chair+2 free+2 orange+2 walk+2 who+2
+    'feet' z 1.33 in: walk+1 walk-1
+    'like' z 1.31 in: free+1 free-1
+    'place' z 1.26 in: free+1 free-1
+  [who -2] d4 0.22: 12 ownthought12000000000000000000000000000000000000000
+  [who +2] d4 0.22: // own// own own own own same own same own own own own own same own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own own
+  [who -1] d4 1.00: I am a large open-design model trained by Google. I am a generic AI designed to help with a wide range of tasks, such as answering questions, writing code, translating languages, and brainstorming ideas.\n\nHow can I help you
+  [who +1] d4 1.00: I am a large language model, developed by Google.\n\nYou can think of me as a versatile digital assistant. I can help you with a wide variety of tasks, such as:\n\n*   **Writing:** I can draft emails,
+  [bicycle -2] d4 0.27: 02//s//s**s****s****s****s******s******s**********************************************
+  [bicycle +2] d4 0.24: // own own own own same own same own same own same own same same own same own same own same own same own same own same own same own same own same own same own same own same own same own same own own same own own
+  [bicycle -1] d4 1.00: At its simplest, a bicycle is a machine designed to convert the energy of your muscles into a motion that pushes a wheel forward. It does this through a system of **mechanical advantages** and **stability**.\n\nHere is the breakdown of how
+  [bicycle +1] d4 1.00: At its simplest level, a bicycle is a machine that converts **text-roving energy (from your muscles)** into **rotational energy (the wheels)** to move you across the ground.\n\nHere is a breakdown of how it works
+==============================================================================================================
+unpushed [who]: I am a large language model, trained by Google. \n\nYou can think of me as a knowledgeable assistant that can help you with a wide variety of tasks, such as:\n\n*   **Answering questions** on almost any topic
+unpushed [bicycle]: At its simplest level, a bicycle is a machine designed to convert **linear muscle power** (your legs pushing down) into **rotational motion** (the wheels turning), while using physics to keep you balanced.\n\nHere is the breakdown

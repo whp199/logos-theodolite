@@ -1,0 +1,7 @@
+morning.sh == tonight.sh heredoc expanded: True
+mass_c L45 0.644 L57 0.616
+mass_c_res L45 0.6863 L57 0.6675
+rep_AB L45 0.6581 L57 0.5549
+rep_BA L45 0.5909 L57 0.4895
+rep_res L45 0.6112 L57 0.5534
+cov_lp L45 0.4895 L57 0.752

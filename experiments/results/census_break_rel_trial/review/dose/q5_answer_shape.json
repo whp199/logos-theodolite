@@ -1,0 +1,622 @@
+{
+ "L45": {
+  "neuron |d|=1": {
+   "answers": 12264,
+   "identical_to_unpushed": 0.0,
+   "first_departure_share": 0.091,
+   "new_words_mean": 11.67,
+   "d4_mean": 0.963,
+   "share_d4_below_0.5 (a loop)": 0.041,
+   "top_piece_share_mean": 0.096,
+   "top_word_share_mean": 0.131,
+   "word_tokens_mean": 26.9,
+   "no_word_at_all": 0.001,
+   "top_piece_class": {
+    "letters 1-2 (not a word)": 0.443,
+    "word3+ (counted by cz.words)": 0.308,
+    "punctuation/symbol": 0.235,
+    "whitespace": 0.01,
+    "digits": 0.003
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "own",
+     130
+    ],
+    [
+     "same",
+     64
+    ],
+    [
+     "depending",
+     20
+    ],
+    [
+     "the",
+     16
+    ],
+    [
+     "large",
+     10
+    ],
+    [
+     "and",
+     9
+    ],
+    [
+     "from",
+     8
+    ],
+    [
+     "<no word>",
+     7
+    ],
+    [
+     "its",
+     7
+    ],
+    [
+     "gemma",
+     6
+    ],
+    [
+     "here",
+     6
+    ],
+    [
+     "such",
+     6
+    ],
+    [
+     "known",
+     6
+    ],
+    [
+     "can",
+     5
+    ],
+    [
+     "young",
+     5
+    ]
+   ],
+   "distinct_loop_words": 154
+  },
+  "neuron |d|=2": {
+   "answers": 12264,
+   "identical_to_unpushed": 0.0,
+   "first_departure_share": 0.004,
+   "new_words_mean": 1.24,
+   "d4_mean": 0.21,
+   "share_d4_below_0.5 (a loop)": 0.944,
+   "top_piece_share_mean": 0.747,
+   "top_word_share_mean": 0.561,
+   "word_tokens_mean": 12.5,
+   "no_word_at_all": 0.307,
+   "top_piece_class": {
+    "punctuation/symbol": 0.449,
+    "word3+ (counted by cz.words)": 0.265,
+    "whitespace": 0.231,
+    "letters 1-2 (not a word)": 0.035,
+    "digits": 0.02
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "<no word>",
+     3727
+    ],
+    [
+     "own",
+     3104
+    ],
+    [
+     "thought",
+     1011
+    ],
+    [
+     "same",
+     828
+    ],
+    [
+     "depending",
+     599
+    ],
+    [
+     "thoughtthought",
+     168
+    ],
+    [
+     "whether",
+     138
+    ],
+    [
+     "the",
+     124
+    ],
+    [
+     "thoughtthoughtthought",
+     86
+    ],
+    [
+     "since",
+     72
+    ],
+    [
+     "owns",
+     67
+    ],
+    [
+     "ownthought",
+     48
+    ],
+    [
+     "dependingthought",
+     41
+    ],
+    [
+     "thoughtthoughtthoughtthought",
+     38
+    ],
+    [
+     "its",
+     36
+    ]
+   ],
+   "distinct_loop_words": 722
+  },
+  "random |d|=1": {
+   "answers": 12288,
+   "identical_to_unpushed": 0.0,
+   "first_departure_share": 0.096,
+   "new_words_mean": 12.02,
+   "d4_mean": 0.996,
+   "share_d4_below_0.5 (a loop)": 0.004,
+   "top_piece_share_mean": 0.075,
+   "top_word_share_mean": 0.106,
+   "word_tokens_mean": 26.9,
+   "no_word_at_all": 0.0,
+   "top_piece_class": {
+    "letters 1-2 (not a word)": 0.45,
+    "word3+ (counted by cz.words)": 0.29,
+    "punctuation/symbol": 0.246,
+    "whitespace": 0.012,
+    "digits": 0.001
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "same",
+     11
+    ],
+    [
+     "own",
+     7
+    ],
+    [
+     "large",
+     4
+    ],
+    [
+     "gemma",
+     2
+    ],
+    [
+     "time",
+     2
+    ],
+    [
+     "thought",
+     2
+    ],
+    [
+     "trained",
+     1
+    ],
+    [
+     "depending",
+     1
+    ],
+    [
+     "single",
+     1
+    ],
+    [
+     "sign",
+     1
+    ],
+    [
+     "the",
+     1
+    ],
+    [
+     "size",
+     1
+    ],
+    [
+     "language",
+     1
+    ],
+    [
+     "token",
+     1
+    ],
+    [
+     "official",
+     1
+    ]
+   ],
+   "distinct_loop_words": 27
+  },
+  "random |d|=2": {
+   "answers": 12288,
+   "identical_to_unpushed": 0.0,
+   "first_departure_share": 0.002,
+   "new_words_mean": 1.1,
+   "d4_mean": 0.208,
+   "share_d4_below_0.5 (a loop)": 0.944,
+   "top_piece_share_mean": 0.757,
+   "top_word_share_mean": 0.545,
+   "word_tokens_mean": 11.1,
+   "no_word_at_all": 0.345,
+   "top_piece_class": {
+    "punctuation/symbol": 0.462,
+    "whitespace": 0.252,
+    "word3+ (counted by cz.words)": 0.236,
+    "letters 1-2 (not a word)": 0.031,
+    "digits": 0.019,
+    "mixed": 0.0
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "<no word>",
+     4203
+    ],
+    [
+     "own",
+     2959
+    ],
+    [
+     "thought",
+     1017
+    ],
+    [
+     "same",
+     815
+    ],
+    [
+     "depending",
+     463
+    ],
+    [
+     "thoughtthought",
+     182
+    ],
+    [
+     "whether",
+     139
+    ],
+    [
+     "the",
+     135
+    ],
+    [
+     "thoughtthoughtthought",
+     81
+    ],
+    [
+     "owns",
+     65
+    ],
+    [
+     "since",
+     59
+    ],
+    [
+     "thoughtthoughtthoughtthought",
+     41
+    ],
+    [
+     "ownthought",
+     40
+    ],
+    [
+     "and",
+     34
+    ],
+    [
+     "idea",
+     31
+    ]
+   ],
+   "distinct_loop_words": 709
+  }
+ },
+ "L57": {
+  "neuron |d|=1": {
+   "answers": 6084,
+   "identical_to_unpushed": 0.139,
+   "first_departure_share": 0.41,
+   "new_words_mean": 5.1,
+   "d4_mean": 0.947,
+   "share_d4_below_0.5 (a loop)": 0.061,
+   "top_piece_share_mean": 0.11,
+   "top_word_share_mean": 0.116,
+   "word_tokens_mean": 26.3,
+   "no_word_at_all": 0.002,
+   "top_piece_class": {
+    "letters 1-2 (not a word)": 0.493,
+    "word3+ (counted by cz.words)": 0.264,
+    "punctuation/symbol": 0.237,
+    "whitespace": 0.004,
+    "mixed": 0.001,
+    "digits": 0.001
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "depending",
+     67
+    ],
+    [
+     "since",
+     27
+    ],
+    [
+     "large",
+     22
+    ],
+    [
+     "its",
+     22
+    ],
+    [
+     "whether",
+     17
+    ],
+    [
+     "same",
+     17
+    ],
+    [
+     "<no word>",
+     11
+    ],
+    [
+     "thought",
+     7
+    ],
+    [
+     "correct",
+     6
+    ],
+    [
+     "own",
+     6
+    ],
+    [
+     "deck",
+     6
+    ],
+    [
+     "\u064a\u062a\u0645",
+     6
+    ],
+    [
+     "you",
+     5
+    ],
+    [
+     "pod",
+     5
+    ],
+    [
+     "mang",
+     5
+    ]
+   ],
+   "distinct_loop_words": 100
+  },
+  "neuron |d|=2": {
+   "answers": 6084,
+   "identical_to_unpushed": 0.0,
+   "first_departure_share": 0.012,
+   "new_words_mean": 1.14,
+   "d4_mean": 0.172,
+   "share_d4_below_0.5 (a loop)": 0.949,
+   "top_piece_share_mean": 0.722,
+   "top_word_share_mean": 0.578,
+   "word_tokens_mean": 11.8,
+   "no_word_at_all": 0.295,
+   "top_piece_class": {
+    "whitespace": 0.378,
+    "word3+ (counted by cz.words)": 0.254,
+    "punctuation/symbol": 0.203,
+    "letters 1-2 (not a word)": 0.111,
+    "digits": 0.049,
+    "mixed": 0.004
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "<no word>",
+     1790
+    ],
+    [
+     "thought",
+     1120
+    ],
+    [
+     "same",
+     952
+    ],
+    [
+     "depending",
+     204
+    ],
+    [
+     "since",
+     119
+    ],
+    [
+     "its",
+     92
+    ],
+    [
+     "thoughtthought",
+     91
+    ],
+    [
+     "own",
+     71
+    ],
+    [
+     "whether",
+     41
+    ],
+    [
+     "large",
+     29
+    ],
+    [
+     "thoughtthoughtthought",
+     26
+    ],
+    [
+     "dependingthought",
+     24
+    ],
+    [
+     "idea",
+     21
+    ],
+    [
+     "ithought",
+     13
+    ],
+    [
+     "\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8\u52a8",
+     12
+    ]
+   ],
+   "distinct_loop_words": 526
+  },
+  "random |d|=1": {
+   "answers": 6144,
+   "identical_to_unpushed": 0.132,
+   "first_departure_share": 0.41,
+   "new_words_mean": 5.62,
+   "d4_mean": 0.997,
+   "share_d4_below_0.5 (a loop)": 0.002,
+   "top_piece_share_mean": 0.065,
+   "top_word_share_mean": 0.084,
+   "word_tokens_mean": 26.8,
+   "no_word_at_all": 0.0,
+   "top_piece_class": {
+    "letters 1-2 (not a word)": 0.491,
+    "punctuation/symbol": 0.256,
+    "word3+ (counted by cz.words)": 0.251,
+    "whitespace": 0.001,
+    "digits": 0.0
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "depending",
+     5
+    ],
+    [
+     "its",
+     3
+    ],
+    [
+     "large",
+     1
+    ],
+    [
+     "same",
+     1
+    ]
+   ],
+   "distinct_loop_words": 4
+  },
+  "random |d|=2": {
+   "answers": 6144,
+   "identical_to_unpushed": 0.0,
+   "first_departure_share": 0.001,
+   "new_words_mean": 1.06,
+   "d4_mean": 0.184,
+   "share_d4_below_0.5 (a loop)": 0.967,
+   "top_piece_share_mean": 0.702,
+   "top_word_share_mean": 0.531,
+   "word_tokens_mean": 6.5,
+   "no_word_at_all": 0.375,
+   "top_piece_class": {
+    "whitespace": 0.616,
+    "word3+ (counted by cz.words)": 0.151,
+    "punctuation/symbol": 0.148,
+    "digits": 0.076,
+    "letters 1-2 (not a word)": 0.008,
+    "mixed": 0.002
+   },
+   "loop_word_top15 (answers with d4<0.5: most repeated word)": [
+    [
+     "<no word>",
+     2299
+    ],
+    [
+     "thought",
+     1758
+    ],
+    [
+     "same",
+     643
+    ],
+    [
+     "thoughtthought",
+     219
+    ],
+    [
+     "depending",
+     77
+    ],
+    [
+     "uma",
+     52
+    ],
+    [
+     "thoughtthoughtthought",
+     43
+    ],
+    [
+     "idea",
+     39
+    ],
+    [
+     "own",
+     35
+    ],
+    [
+     "thoughtthoughtthoughtthought",
+     24
+    ],
+    [
+     "since",
+     23
+    ],
+    [
+     "thoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthought",
+     21
+    ],
+    [
+     "thoughtthoughtthoughtthoughtthoughtthoughtthoughtthought",
+     14
+    ],
+    [
+     "thoughtthoughtthoughtthoughtthought",
+     14
+    ],
+    [
+     "thoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthoughtthought",
+     12
+    ]
+   ],
+   "distinct_loop_words": 465
+  }
+ }
+}

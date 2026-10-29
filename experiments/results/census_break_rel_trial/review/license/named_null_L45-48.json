@@ -1,0 +1,941 @@
+{
+ "L45:48": {
+  "layer": "L45",
+  "cut": 48,
+  "A": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "B": [
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "named": 262,
+  "q05": 310,
+  "above_every_control": 169,
+  "N": 1022,
+  "C": 1024,
+  "matches_verdict_named_list": true,
+  "verdict_named": 262,
+  "bh_threshold_p": 0.014634146341463415,
+  "empirical_null": {
+   "controls_passing_mass_at_threshold": 14,
+   "controls_named_at_threshold": 7,
+   "expected_false_q05_if_all_null": 13.97,
+   "expected_false_named_if_all_null": 6.99
+  },
+  "relabelled_null": {
+   "splits": 50,
+   "fake_neurons": 512,
+   "reference_controls": 512,
+   "named_mean": 0.0,
+   "named_max": 0,
+   "named_splits_nonzero": 0,
+   "q05_mean": 0.0,
+   "q05_max": 0,
+   "above_every_control_mean": 1.38,
+   "mass_auc_mean": 0.5015,
+   "g5_null_split_mean_in_verdict": 0.5015
+  },
+  "rho_AB_mass": {
+   "neurons": 0.461,
+   "neurons_ci": [
+    0.406,
+    0.51
+   ],
+   "controls": 0.143,
+   "controls_ci": [
+    0.082,
+    0.204
+   ],
+   "diff": 0.319,
+   "diff_ci": [
+    0.235,
+    0.397
+   ],
+   "n_neurons": 1022,
+   "n_controls": 1024,
+   "verdict": [
+    0.461,
+    0.143
+   ]
+  },
+  "rho_AB_mass_residualised_per_half": {
+   "neurons": 0.528,
+   "neurons_ci": [
+    0.478,
+    0.576
+   ],
+   "controls": 0.128,
+   "controls_ci": [
+    0.066,
+    0.189
+   ],
+   "diff": 0.4,
+   "diff_ci": [
+    0.32,
+    0.477
+   ],
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "rho_AB_mass_below_ctl_p95": {
+   "neurons": 0.001,
+   "neurons_ci": [
+    -0.081,
+    0.077
+   ],
+   "controls": 0.077,
+   "controls_ci": [
+    0.016,
+    0.14
+   ],
+   "diff": -0.077,
+   "diff_ci": [
+    -0.176,
+    0.023
+   ],
+   "n_neurons": 631,
+   "n_controls": 972
+  },
+  "rho_AB_mass_reasked64": {
+   "neurons": 0.422,
+   "neurons_ci": [
+    0.177,
+    0.617
+   ],
+   "controls": 0.143,
+   "controls_ci": [
+    0.079,
+    0.202
+   ],
+   "diff": 0.279,
+   "diff_ci": [
+    0.031,
+    0.483
+   ],
+   "n_neurons": 64,
+   "n_controls": 1024
+  },
+  "rho_calibration_sized_halves": {
+   "splits": [
+    [
+     "who",
+     0.084,
+     -0.028,
+     0.039
+    ],
+    [
+     "orange",
+     0.088,
+     0.004,
+     0.09
+    ],
+    [
+     "free",
+     0.133,
+     0.023,
+     0.195
+    ]
+   ],
+   "mean_neurons": 0.102,
+   "mean_controls": -0.0,
+   "mean_reasked64": 0.108
+  },
+  "select_on_one_half": {
+   "mass": {
+    "A->B": {
+     "discovered": 161,
+     "threshold_p": 0.007804878048780488,
+     "replicate_p05": 120,
+     "share": 0.745,
+     "controls_at_threshold": 7,
+     "controls_replicate_p05": 1,
+     "controls_share": 0.143
+    },
+    "B->A": {
+     "discovered": 148,
+     "threshold_p": 0.006829268292682927,
+     "replicate_p05": 106,
+     "share": 0.716,
+     "controls_at_threshold": 6,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    }
+   },
+   "mass_residualised_per_half": {
+    "A->B": {
+     "discovered": 194,
+     "threshold_p": 0.00878048780487805,
+     "replicate_p05": 166,
+     "share": 0.856,
+     "controls_at_threshold": 8,
+     "controls_replicate_p05": 1,
+     "controls_share": 0.125
+    },
+    "B->A": {
+     "discovered": 226,
+     "threshold_p": 0.010731707317073172,
+     "replicate_p05": 184,
+     "share": 0.814,
+     "controls_at_threshold": 10,
+     "controls_replicate_p05": 0,
+     "controls_share": 0.0
+    }
+   },
+   "words_rep": {
+    "A->B": {
+     "discovered": 161,
+     "threshold_p": 0.007804878048780488,
+     "replicate_p05": 147,
+     "share": 0.913,
+     "controls_at_threshold": 7,
+     "controls_replicate_p05": 2,
+     "controls_share": 0.286
+    },
+    "B->A": {
+     "discovered": 233,
+     "threshold_p": 0.00975609756097561,
+     "replicate_p05": 160,
+     "share": 0.687,
+     "controls_at_threshold": 9,
+     "controls_replicate_p05": 3,
+     "controls_share": 0.333
+    }
+   }
+  },
+  "auc": {
+   "mass_c": {
+    "auc": 0.7144,
+    "se": 0.0115,
+    "ci": [
+     0.691,
+     0.736
+    ]
+   },
+   "mass_c_res": {
+    "auc": 0.7244,
+    "se": 0.0111,
+    "ci": [
+     0.703,
+     0.746
+    ]
+   },
+   "mass_B": {
+    "auc": 0.6693,
+    "se": 0.0119,
+    "ci": [
+     0.646,
+     0.692
+    ]
+   },
+   "rep_AB": {
+    "auc": 0.6879,
+    "se": 0.0114,
+    "ci": [
+     0.665,
+     0.71
+    ]
+   },
+   "rep_BA": {
+    "auc": 0.6739,
+    "se": 0.0119,
+    "ci": [
+     0.65,
+     0.696
+    ]
+   },
+   "rep_AB_res": {
+    "auc": 0.6944,
+    "se": 0.012,
+    "ci": [
+     0.671,
+     0.717
+    ]
+   },
+   "rep_BA_res": {
+    "auc": 0.6789,
+    "se": 0.0119,
+    "ci": [
+     0.657,
+     0.702
+    ]
+   },
+   "rep_res": {
+    "auc": 0.6935,
+    "se": 0.0115,
+    "ci": [
+     0.672,
+     0.716
+    ]
+   }
+  },
+  "named_words_sample": {
+   "3663": {
+    "A_on_B": [
+     [
+      "own",
+      2.58
+     ],
+     [
+      "cancel",
+      1.41
+     ],
+     [
+      "same",
+      0.57
+     ]
+    ],
+    "B_on_A": [
+     [
+      "own",
+      3.1
+     ],
+     [
+      "same",
+      1.13
+     ]
+    ]
+   },
+   "20271": {
+    "A_on_B": [
+     [
+      "thought",
+      3.71
+     ]
+    ],
+    "B_on_A": [
+     [
+      "thought",
+      2.59
+     ],
+     [
+      "way",
+      1.1
+     ]
+    ]
+   },
+   "18788": {
+    "A_on_B": [
+     [
+      "bit",
+      2.8
+     ],
+     [
+      "information",
+      4.24
+     ],
+     [
+      "same",
+      1.32
+     ]
+    ],
+    "B_on_A": [
+     [
+      "information",
+      1.72
+     ],
+     [
+      "bit",
+      2.49
+     ],
+     [
+      "and",
+      0.2
+     ],
+     [
+      "same",
+      1.13
+     ]
+    ]
+   },
+   "17310": {
+    "A_on_B": [
+     [
+      "favor",
+      4.24
+     ],
+     [
+      "own",
+      1.94
+     ],
+     [
+      "same",
+      2.08
+     ]
+    ],
+    "B_on_A": [
+     [
+      "favor",
+      4.24
+     ],
+     [
+      "same",
+      1.85
+     ],
+     [
+      "own",
+      1.85
+     ]
+    ]
+   },
+   "14831": {
+    "A_on_B": [
+     [
+      "cycle",
+      1.41
+     ],
+     [
+      "period",
+      4.23
+     ],
+     [
+      "own",
+      0.03
+     ]
+    ],
+    "B_on_A": [
+     [
+      "period",
+      2.82
+     ],
+     [
+      "through",
+      0.1
+     ],
+     [
+      "your",
+      1.19
+     ]
+    ]
+   },
+   "13778": {
+    "A_on_B": [
+     [
+      "recirculation",
+      2.83
+     ],
+     [
+      "same",
+      1.32
+     ],
+     [
+      "thought",
+      1.07
+     ]
+    ],
+    "B_on_A": [
+     [
+      "recirculation",
+      2.83
+     ],
+     [
+      "same",
+      2.57
+     ],
+     [
+      "thought",
+      0.43
+     ],
+     [
+      "description",
+      0.05
+     ]
+    ]
+   },
+   "9725": {
+    "A_on_B": [
+     [
+      "tingling",
+      4.24
+     ],
+     [
+      "own",
+      1.94
+     ],
+     [
+      "visual",
+      1.38
+     ]
+    ],
+    "B_on_A": [
+     [
+      "tingling",
+      2.83
+     ],
+     [
+      "own",
+      2.47
+     ]
+    ]
+   },
+   "9513": {
+    "A_on_B": [
+     [
+      "news",
+      2.83
+     ],
+     [
+      "thought",
+      1.07
+     ]
+    ],
+    "B_on_A": [
+     [
+      "news",
+      4.24
+     ],
+     [
+      "thoughtthought",
+      0.76
+     ]
+    ]
+   },
+   "8168": {
+    "A_on_B": [
+     [
+      "four",
+      3.69
+     ]
+    ],
+    "B_on_A": [
+     [
+      "four",
+      4.1
+     ]
+    ]
+   },
+   "7902": {
+    "A_on_B": [
+     [
+      "certainly",
+      4.24
+     ],
+     [
+      "own",
+      0.66
+     ],
+     [
+      "same",
+      1.32
+     ]
+    ],
+    "B_on_A": [
+     [
+      "certainly",
+      4.24
+     ],
+     [
+      "same",
+      0.41
+     ],
+     [
+      "own",
+      0.6
+     ]
+    ]
+   },
+   "6880": {
+    "A_on_B": [
+     [
+      "ownthought",
+      3.64
+     ]
+    ],
+    "B_on_A": [
+     [
+      "ownthought",
+      2.25
+     ],
+     [
+      "for",
+      0.51
+     ],
+     [
+      "same",
+      1.85
+     ],
+     [
+      "own",
+      1.22
+     ]
+    ]
+   },
+   "5579": {
+    "A_on_B": [
+     [
+      "seed",
+      2.83
+     ],
+     [
+      "own",
+      1.3
+     ]
+    ],
+    "B_on_A": [
+     [
+      "seed",
+      2.79
+     ],
+     [
+      "few",
+      0.97
+     ],
+     [
+      "own",
+      2.47
+     ]
+    ]
+   },
+   "901": {
+    "A_on_B": [
+     [
+      "drought",
+      4.24
+     ],
+     [
+      "own",
+      0.66
+     ],
+     [
+      "thought",
+      0.19
+     ],
+     [
+      "same",
+      1.32
+     ]
+    ],
+    "B_on_A": [
+     [
+      "drought",
+      2.83
+     ],
+     [
+      "same",
+      1.13
+     ]
+    ]
+   },
+   "20622": {
+    "A_on_B": [
+     [
+      "next",
+      5.62
+     ],
+     [
+      "thought",
+      0.19
+     ]
+    ],
+    "B_on_A": [
+     [
+      "next",
+      4.23
+     ]
+    ]
+   },
+   "19052": {
+    "A_on_B": [
+     [
+      "thoughtthought",
+      3.18
+     ],
+     [
+      "thought",
+      1.95
+     ]
+    ],
+    "B_on_A": [
+     [
+      "thoughtthoughtthought",
+      1.04
+     ],
+     [
+      "thoughtthought",
+      1.87
+     ],
+     [
+      "thoughtthoughtthoughtthoughtthoughtthoughtthought",
+      1.33
+     ],
+     [
+      "thought",
+      1.15
+     ]
+    ]
+   },
+   "18124": {
+    "A_on_B": [
+     [
+      "business",
+      2.82
+     ],
+     [
+      "thought",
+      1.95
+     ]
+    ],
+    "B_on_A": [
+     [
+      "business",
+      2.82
+     ],
+     [
+      "thought",
+      1.87
+     ]
+    ]
+   },
+   "15962": {
+    "A_on_B": [
+     [
+      "with",
+      7.42
+     ]
+    ],
+    "B_on_A": [
+     [
+      "with",
+      4.5
+     ],
+     [
+      "description",
+      0.05
+     ]
+    ]
+   },
+   "14733": {
+    "A_on_B": [
+     [
+      "sky",
+      4.24
+     ],
+     [
+      "own",
+      1.3
+     ],
+     [
+      "same",
+      1.32
+     ]
+    ],
+    "B_on_A": [
+     [
+      "sky",
+      4.11
+     ],
+     [
+      "same",
+      1.85
+     ],
+     [
+      "own",
+      3.1
+     ]
+    ]
+   },
+   "14594": {
+    "A_on_B": [
+     [
+      "clothing",
+      3.64
+     ]
+    ],
+    "B_on_A": [
+     [
+      "clothing",
+      4.24
+     ],
+     [
+      "through",
+      0.1
+     ]
+    ]
+   },
+   "14313": {
+    "A_on_B": [
+     [
+      "centric",
+      4.23
+     ],
+     [
+      "own",
+      0.66
+     ]
+    ],
+    "B_on_A": [
+     [
+      "centric",
+      4.24
+     ],
+     [
+      "own",
+      0.6
+     ],
+     [
+      "description",
+      0.05
+     ]
+    ]
+   },
+   "14159": {
+    "A_on_B": [
+     [
+      "one",
+      2.6
+     ],
+     [
+      "own",
+      1.94
+     ],
+     [
+      "thought",
+      0.19
+     ]
+    ],
+    "B_on_A": [
+     [
+      "kill",
+      1.41
+     ],
+     [
+      "one",
+      2.37
+     ],
+     [
+      "own",
+      0.6
+     ]
+    ]
+   },
+   "9194": {
+    "A_on_B": [
+     [
+      "idea",
+      3.87
+     ],
+     [
+      "own",
+      0.66
+     ],
+     [
+      "same",
+      1.32
+     ]
+    ],
+    "B_on_A": [
+     [
+      "idea",
+      2.48
+     ],
+     [
+      "enforce",
+      1.41
+     ],
+     [
+      "same",
+      0.41
+     ],
+     [
+      "through",
+      0.1
+     ]
+    ]
+   },
+   "5263": {
+    "A_on_B": [
+     [
+      "guide",
+      4.22
+     ],
+     [
+      "want",
+      0.79
+     ],
+     [
+      "own",
+      0.66
+     ],
+     [
+      "through",
+      0.24
+     ]
+    ],
+    "B_on_A": [
+     [
+      "guide",
+      4.17
+     ],
+     [
+      "thought",
+      0.43
+     ]
+    ]
+   },
+   "4310": {
+    "A_on_B": [
+     [
+      "same",
+      1.32
+     ],
+     [
+      "write",
+      2.83
+     ]
+    ],
+    "B_on_A": [
+     [
+      "writing",
+      1.24
+     ],
+     [
+      "write",
+      1.65
+     ],
+     [
+      "same",
+      1.85
+     ]
+    ]
+   },
+   "4066": {
+    "A_on_B": [
+     [
+      "amount",
+      2.44
+     ],
+     [
+      "same",
+      1.32
+     ],
+     [
+      "own",
+      0.03
+     ],
+     [
+      "through",
+      2.04
+     ]
+    ],
+    "B_on_A": [
+     [
+      "much",
+      1.39
+     ],
+     [
+      "amount",
+      2.71
+     ],
+     [
+      "through",
+      0.96
+     ]
+    ]
+   }
+  },
+  "seconds": 13.4
+ }
+}

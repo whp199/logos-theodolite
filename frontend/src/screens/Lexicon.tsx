@@ -1170,7 +1170,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
 
         <Entry id="census" head="the census" tech="steering sweep · ranked against random directions">
           <Body>
-            Every neuron of a layer pushed in turn, along its own write direction, on four fixed questions at a few
+            Every neuron of a layer pushed in turn, along its own write direction, on a few fixed questions at a few
             doses, and the words its pushes bring out counted. The same is done along random directions, as controls,
             shaped the way the layer shapes every neuron’s write so the next layer hears them as loudly. A neuron whose
             pushes bring out words that the random pushes do not ranks high; one indistinguishable from the controls
@@ -1178,17 +1178,29 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           </Body>
           <Note>
             A rank is a lead, not a finding: with 256 controls about one neuron in 257 lands above all of them by chance
-            alone, some 84 of a layer’s 21,504. The doses are neuron-explorer’s, chosen on Qwen3.5-4B and not yet
-            calibrated on this model, so a low rank can mean only that the dose was wrong for the layer. A census runs a
-            layer at a time on the GPU and is kept; the map colours a layer’s neurons by it, from pale to dark gilt above
-            the strongest control.
+            alone, some 84 of a layer’s 21,504. A main_rel census’s doses are neuron-explorer’s, chosen on Qwen3.5-4B,
+            and not yet calibrated on this model. break_rel’s were chosen for layers 41–58 on this model’s two
+            calibration ladders and are calibrated at layers 41–51 by a trial fixed before it was taken, at layer 46 on
+            1,022 fresh neurons against 1,024 controls; not at 52–58, where its probe at layer 58 passed by 0.0008 and its lead
+            could not be told from how the text survives.
+            Where a census’s doses are not calibrated at its layer, a low rank can mean only that the dose was wrong for
+            the layer. break_rel’s six questions are read as two halves,
+            so a neuron’s words picked on one half are tested on the other. A census runs a layer at a time on the GPU
+            and is kept; the map colours a layer’s neurons by it, from pale to dark gilt above the strongest control.
           </Note>
           <EntryApparatus title="the census">
-            Questions: who are you, a snake game in Python, the colour orange (at −0.7, +0.5 and +0.8 of the stream’s
-            median length leaving the layer) and “write whatever you like” at +3.0; greedy answers. A word (three
-            letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5) against the average unit, over
-            pushes of at most 1.6 of the stream, every word of the unpushed answers left out; mass = the summed positive z
-            of its top five words, the sort key; p = (1 + controls with at least its mass) / (C + 1), and q its
+            main_rel: who are you, a snake game in Python, the colour orange (at −0.7, +0.5 and +0.8 of the stream’s
+            median length leaving the layer) and “write whatever you like” at +3.0. break_rel: who are you, the colour
+            orange, write whatever you like, how a bicycle works, three tips for a long walk and a wooden chair, each at
+            −2, −1, +1 and +2 of the stream (chosen for layers 41–58 on the ladders of 28 October, 64 + 64 units at
+            layers 21, 31, 41, 46, 51 and 58, on which text breaks first at ±0.5 at layer 21, ±1 at 31 and ±2 at 41 and
+            46, and for the neurons at ±1 at 51 and at +2 and −1 at 58, the controls at ±2 at both; calibrated at layers
+            41–51 by its trial of 29 October). Greedy answers. A
+            word (three letters or more) counts once per answer; z = (count − mean) / √(mean + 0.5), for main_rel
+            against the average unit over pushes of at most 1.6 of the stream with every word of the unpushed answers
+            left out, for break_rel against the controls’ mean alone over every answer with the answer’s own question’s
+            unpushed words left out; mass = the summed positive z of its top five words, the sort key; p = (1 + controls
+            with at least its mass) / (C + 1), and q its
             Benjamini–Hochberg false-discovery q over the layer. A control is unit(w<sub>post</sub> ⊙ r), r isotropic from
             a seed, pushed exactly as a neuron is: the reference rotates a down column to a random direction, and on Gemma
             that column passes w<sub>post</sub>, near zero on the ~180 dimensions the next layer reads loudest (a plain
@@ -1208,7 +1220,7 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <Note>
             A link through the weights says what could pass, not what does on a given text, where the reader’s other
             inputs decide where it sits. Read from rest, the sign holds for a reader whose gate is open, or a push big
-            enough to open it; a reader sitting with its gate shut, as most did where it was measured (the census
+            enough to open it; a reader sitting with its gate shut, as most did where it was measured (main_rel’s four census
             questions’ last word-piece), is pushed about the other way through its up path. Gemma scales the whole
             stream at the end of every layer, so a writer far back reaches a late reader faint: links are ranked by how
             strongly they arrive. Past the first hop every path is a guess, and pooled words go beyond what the label
@@ -1257,7 +1269,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
           <Note>
             A push lasts for that answer only. Unlike a <LexLink to="nudge">nudge</LexLink>, it moves along what one neuron
             writes. On Qwen3.5-4B the explorer’s authors found answers bent but readable at 0.5 to 0.8 of the stream and
-            coming apart by 3; on Gemma-4-31B that is not yet measured.
+            coming apart by 3; on Gemma-4-31B the census’s calibration ladders of 28 October 2026 found text first
+            coming apart at about ±0.5 of the stream at layer 21, ±1 at 31 and ±1 to 2 from layer 41 to 58 (three
+            questions, one greedy answer of 64 word-pieces each, so a lead).
           </Note>
           <EntryApparatus title="a push">
             “add”: h ← h + σ · d · p50<sub>ℓ</sub> · unit(w<sub>post</sub> ⊙ W<sub>down</sub>[:, n]) at <M>resid_post</M>{" "}

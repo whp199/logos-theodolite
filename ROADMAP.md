@@ -267,7 +267,7 @@ layer and the determinism run on 29 October). In this section layers count from 
 - **Take its censuses, and its steer lens, on the model.** Neither exists beyond the 8 + 8 `calib_rel` pilot of 27
   October (580 answers, about 16 minutes at `--max-new 64`), the two calibration ladders of 28 October (64 + 64 units at
   each of six layers, below), one steer-lens layer timed into a scratch folder, the 16 + 8 determinism run of 29 October
-  (868 answers) and the `break_rel` trial taken and read that day on the branch (both below). The pilot measured the cost: every
+  (868 answers) and the `break_rel` trial taken and read that day (both below). The pilot measured the cost: every
   decode step of the 31B takes about 0.71 s whatever the batch (1 to 64 rows), so a whole `main_rel` layer is about 3.6
   days at `--batch 32 --max-new 64` and about two weeks at the default 256. The step is the 4-bit unpacking, not the
   model (COMPUTE §i). The steer lens was estimated at 15 to 20 hours for all 60 layers on a 5090. One layer timed on 29
@@ -294,7 +294,8 @@ layer and the determinism run on 29 October). In this section layers count from 
   0.71 s; `compiled` held 0.126 s at 96 rows (COMPUTE §ii). By that step a whole `main_rel` layer is about 5 hours at
   `--batch 96 --max-new 64`, not 3.6 days (arithmetic, not a run); the calibration below, taken with `compiled` at a
   batch of 64, took 65 and 49 minutes for its six layers.
-- **The census’s doses come from Qwen3.5-4B.** `main_rel` (−0.7, +0.5, +0.8 and +3 of the stream’s median length) is
+- **`main_rel`’s doses come from Qwen3.5-4B; `break_rel`’s from this model’s ladders.** `main_rel` (−0.7, +0.5, +0.8
+  and +3 of the stream’s median length) is
   neuron-explorer’s design, where its log found answers readable near 0.5–0.8 and wrecked by 3. Take `calib_rel` (±0.1
   to 4 of the stream) and `calib_ceil` (±0.5 to 8 × each neuron’s write ceiling) on a few layers of Gemma-4-31B first;
   one command takes several layers (`census_run.py --layers 20,30,40,45,50,57 --design calib_ceil`, layers from 0).
@@ -334,8 +335,8 @@ layer and the determinism run on 29 October). In this section layers count from 
     text does: with that regressed out the AUC is 0.52–0.57, at no layer p < 0.05.
 
   A design to replace `main_rel` was drafted on these leads: `break_rel` (±1 and ±2 of the stream on six questions read
-  as two halves, every answer counted, each word against the controls alone), on the branch `census-break-rel`, not
-  merged; `main_rel` stays the default (the owner’s choice). Its trial was taken early on 29 October, its reader and
+  as two halves, every answer counted, each word against the controls alone), built on the branch `census-break-rel`
+  and merged on 29 October once its trial was read; `main_rel` stays the default (the owner’s choice). Its trial was taken early on 29 October, its reader and
   gates fixed and hashed before it began (`SHA256SUMS` sha256
   `8d8d81de91dd03529db83f091c7ddeb26bbb4dd8037cac66f6dd91884c7c3b2d`), and read that morning with the gates as they
   were (the owner’s word). At layer 45 (1,022 fresh neurons against 1,024 controls) it **passes every gate** at 48
@@ -346,7 +347,7 @@ layer and the determinism run on 29 October). In this section layers count from 
   0.5608 against a bar of 0.56, then 0.5061). By the rules written before it, that licenses whole layers at 40–50 at 32
   word-pieces and at 51–57 at 48. The shorter reading at 45 lay within 0.02 on the two measures the rule checks, but it
   names 191 neurons where 48 names 262, and its residual falls 0.0215. A review the same morning
-  (`experiments/results/census_break_rel_trial/` on the branch, `summary.json` and `review/`) used six agents: three
+  ([`census_break_rel_trial/`](experiments/results/census_break_rel_trial/), `summary.json` and `review/`) used six agents: three
   readers, each checked by a second that re-derived its headline figures, the gates with code that shares nothing with
   the pre-registered reader, the by-dose and per-neuron figures with code built on its parts. It found the reading
   faithful; four small departures, none able to move a gate, are recorded there, one of them that the 32-piece reading
@@ -383,20 +384,21 @@ layer and the determinism run on 29 October). In this section layers count from 
   A whole layer is taken at batch 64 (the step-0 rule: chair parts at 20 pieces at batch 96), at the trial’s measured
   12.4 answers a second while writing: about 12.1 hours at 48 pieces (12.7 with 2,048 controls), about 8.0–8.4 at 32
   (estimated, not timed). The owner chose, on 29 October, to count `break_rel`’s doses calibrated at layers 40–50 alone
-  (pages 41–51): the branch’s `DOSES_CALIBRATED` gives each design its span of layers and the card tests the run’s own,
-  so 51–57 and every layer below 40 stay uncalibrated. These still wait on the owner: the piece count, whether ±2 stays
+  (pages 41–51): `DOSES_CALIBRATED` gives each design its span of layers and the card tests the run’s own, so 51–57
+  and every layer below 40 stay uncalibrated. These still wait on the owner: the piece count, whether ±2 stays
   (a design without it is a new design, and the ±1 figures above were read after the fact), the controls, the default
   design, and what a page says a lead means (the pre-registration left open whether to say “unlike a random direction
-  pushed as far” rather than “has a theme”). On `main`, which has no `break_rel`, every page and tool that shows a
-  census still says its doses are uncalibrated.
+  pushed as far” rather than “has a theme”). Every page and tool that shows a census says its doses are uncalibrated
+  (in red), or not calibrated at that layer for `break_rel` outside 40–50, save a `break_rel` census at 40–50.
 - **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8 of
   the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
   neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
   a control by the ceiling of a neuron it is paired with, so one dose is the same share of each neuron’s most at every
   layer and the depth curve compares like with like. Every answer records its ceiling and its push’s real share of the
   stream. Which unit, and which doses, a whole layer is taken at waits on the calibration, taken (above) but read so far
-  only as leads; the steer lens’s and the census’s 0.8 is to be chosen against the ceiling the same way before either is
-  built on the model.
+  only as leads; `break_rel`’s doses, ±1 and ±2 of the stream, are counted calibrated at layers 40–50 alone (above),
+  though whether ±2 stays and which design is the default still wait on the owner. The steer lens’s and the census’s 0.8
+  is to be chosen against the ceiling the same way before either is built on the model.
 - **The census’s null.** Its controls are drawn as unit(w_post ⊙ r), matched to within 1.2× (`check_census.py`); with C
   controls about N / (C + 1) neurons beat every control by chance alone (84 of a whole layer with 256), so each neuron
   carries a p and the layer a false-discovery q, and with 256 controls no single neuron reaches q ≤ 0.05 unless some

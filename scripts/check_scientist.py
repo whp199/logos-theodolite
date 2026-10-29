@@ -488,8 +488,10 @@ def run_checks() -> int:
         check(False, "layer 0 refused")
     except st.ToolError as exc:
         check("count from 1" in str(exc), f"layer 0: {exc}")
-    back = st.to_page({"layer": 53, "x": [{"layer": 0}], "z_by_layer": {"0": [1.0], "59": [2.0]}, "census_layers": [3], "pos": 4})
-    check(back == {"layer": 54, "x": [{"layer": 1}], "z_by_layer": {"1": [1.0], "60": [2.0]}, "census_layers": [4], "pos": 4}, f"to_page: {back}")
+    back = st.to_page({"layer": 53, "x": [{"layer": 0}], "z_by_layer": {"0": [1.0], "59": [2.0]}, "census_layers": [3], "pos": 4,
+                       "card": {"doses_calibrated_layers": [40, 50]}, "card2": {"doses_calibrated_layers": None}})
+    check(back == {"layer": 54, "x": [{"layer": 1}], "z_by_layer": {"1": [1.0], "60": [2.0]}, "census_layers": [4], "pos": 4,
+                   "card": {"doses_calibrated_layers": [41, 51]}, "card2": {"doses_calibrated_layers": None}}, f"to_page: {back}")
     check(st.cite(53, 15491) == "L54 N15491" and st.cite_head(5, 3) == "L6 h3", "citations in the pages' count")
     section("the tools' schemas and the pages' count", before)
 
@@ -1349,6 +1351,8 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     check(tu["doses_from"] == cz.DOSES_FROM["main_rel"] and tu["null"]["controls"] == 0 and tu["null"]["above_all_by_chance"] is None,
           "top_units: where the doses come from, and that a run without controls sets nothing against chance")
     check(tu.get("dose_unit") == "stream" and "stage" not in tu, f"top_units: the unit a dose counts in, and no stage for a screen ({tu.get('dose_unit')})")
+    check(tu.get("design") == "main_rel" and tu.get("doses_calibrated") is False and tu.get("reading") == cz.READING_DEFAULT,
+          f"top_units: the run's design, its reading, and its doses not calibrated on this model ({tu.get('design')}, {tu.get('reading')})")
     check((await st.call("top_units", {"layer": 2}, api)) == {"ranked": [], "note": "this layer has no census"}, "top_units: a layer without one")
     ro = await st.call("rollouts", {"layer": 4, "n": 7, "max_chars": 50}, api)
     check(ro["layer"] == 4 and len(ro["rollouts"]) == 2 and all(len(x["text"]) <= 50 for x in ro["rollouts"]), "rollouts cut to max_chars, page layer 4")

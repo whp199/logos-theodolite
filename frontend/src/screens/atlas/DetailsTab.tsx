@@ -247,7 +247,7 @@ const InUse: React.FC<{ c: Link; side: "down" | "up" }> = ({ c, side }) => {
   return (
     <div
       className="atlas-small"
-      title={`Where the reader fires hardest on that face (its median gate and up values over its strongest stored passages of that face, where its gate is open), the writer firing on its gate face pushes ${who} the other way from the reading from rest. That is not where the reader sits at an ordinary word-piece: at the one place measured (the census questions' last word-piece on Gemma-4-31B) most sat with the gate shut, and there the sign served here was measured to agree with the change at about 0.42 of links, below chance. In use the link is odd: fired the other way, it pushes the other way.`}
+      title={`Where the reader fires hardest on that face (its median gate and up values over its strongest stored passages of that face, where its gate is open), the writer firing on its gate face pushes ${who} the other way from the reading from rest. That is not where the reader sits at an ordinary word-piece: at the one place measured (main_rel's four census questions' last word-piece on Gemma-4-31B) most sat with the gate shut, and there the sign served here was measured to agree with the change at about 0.42 of links, below chance. In use the link is odd: fired the other way, it pushes the other way.`}
     >
       <span className="muted">in use </span>
       {shown.map((s) => {
@@ -335,7 +335,7 @@ const Wiring: React.FC = () => {
             Ranked by how strong each is as it arrives, counting how Gemma scales the whole stream at the end of every layer and the norms at their
             usual scale; the number is that strength over the strongest. The sign holds for a reader whose gate is open, or a push big enough to
             open it, and only a push that big barely moves the reader when the writer fires the other way (a reader whose gate is open is pushed
-            the other way about as hard); a reader sitting with its gate shut, as most did where it was measured (the census questions' last
+            the other way about as hard); a reader sitting with its gate shut, as most did where it was measured (main_rel's four census questions' last
             word-piece), is pushed about the other way through its up path. In use a reader's other inputs decide where it sits. Where the push
             read where the reader fires hardest on a face (its gate and up values at its strongest stored passages, its gate open) goes the other
             way, that is marked "in use" beside it; where a reader sits at an ordinary word-piece is not read here (at that one place measured on

@@ -1,0 +1,393 @@
+{
+ "L45": {
+  "all": {
+   "mass_c": 0.7144,
+   "mass_c_res": 0.7244,
+   "rep_AB": 0.6879,
+   "rep_BA": 0.6739,
+   "mass_A": 0.6322,
+   "mass_B": 0.6693,
+   "mass_u": 0.7033,
+   "shift": 0.7124,
+   "xq": 0.7044,
+   "cov_lnw": 0.4906,
+   "cov_d4": 0.4371,
+   "cov_cut": 0.5097,
+   "cov_lp": 0.5342,
+   "cov_dep": 0.4554,
+   "cov_lost": 0.6289,
+   "counts": {
+    "neurons": 1022,
+    "controls": 1024,
+    "above_every_control": 169,
+    "by_chance": 1.0,
+    "q05": 310,
+    "named": 262,
+    "named_by_halves": 149,
+    "above_ctl_p95": 0.3826,
+    "pA05_and_pB05": 150,
+    "pA05_and_pB05_by_chance": 2.6
+   },
+   "null_split_auc": {
+    "mean": 0.5027,
+    "min": 0.4582,
+    "max": 0.5362,
+    "n": 20
+   },
+   "rho_AB_neurons": 0.461,
+   "rho_AB_controls": 0.143,
+   "bars": {
+    "mass_c": [
+     0.7144,
+     0.6,
+     true
+    ],
+    "mass_c_res": [
+     0.7244,
+     0.58,
+     true
+    ],
+    "rep_AB": [
+     0.6879,
+     0.57,
+     true
+    ],
+    "rep_BA": [
+     0.6739,
+     0.57,
+     true
+    ],
+    "mass_B": [
+     0.6693,
+     0.56,
+     true
+    ]
+   },
+   "passes_all_bars": true
+  },
+  "pm1": {
+   "mass_c": 0.7064,
+   "mass_c_res": 0.7123,
+   "rep_AB": 0.6757,
+   "rep_BA": 0.6725,
+   "mass_A": 0.6179,
+   "mass_B": 0.6471,
+   "mass_u": 0.7008,
+   "shift": 0.7145,
+   "xq": 0.7033,
+   "cov_lnw": 0.4535,
+   "cov_d4": 0.3684,
+   "cov_cut": 0.5125,
+   "cov_lp": 0.402,
+   "cov_dep": 0.4365,
+   "cov_lost": 0.6581,
+   "counts": {
+    "neurons": 1022,
+    "controls": 1024,
+    "above_every_control": 317,
+    "by_chance": 1.0,
+    "q05": 388,
+    "named": 306,
+    "named_by_halves": 141,
+    "above_ctl_p95": 0.407,
+    "pA05_and_pB05": 141,
+    "pA05_and_pB05_by_chance": 2.6
+   },
+   "null_split_auc": {
+    "mean": 0.5006,
+    "min": 0.4542,
+    "max": 0.5312,
+    "n": 20
+   },
+   "rho_AB_neurons": 0.412,
+   "rho_AB_controls": 0.036,
+   "bars": {
+    "mass_c": [
+     0.7064,
+     0.6,
+     true
+    ],
+    "mass_c_res": [
+     0.7123,
+     0.58,
+     true
+    ],
+    "rep_AB": [
+     0.6757,
+     0.57,
+     true
+    ],
+    "rep_BA": [
+     0.6725,
+     0.57,
+     true
+    ],
+    "mass_B": [
+     0.6471,
+     0.56,
+     true
+    ]
+   },
+   "passes_all_bars": true
+  },
+  "pm2": {
+   "mass_c": 0.5708,
+   "mass_c_res": 0.5438,
+   "rep_AB": 0.5477,
+   "rep_BA": 0.5472,
+   "mass_A": 0.5473,
+   "mass_B": 0.5559,
+   "mass_u": 0.5684,
+   "shift": 0.6007,
+   "xq": 0.5621,
+   "cov_lnw": 0.5685,
+   "cov_d4": 0.5117,
+   "cov_cut": 0.4966,
+   "cov_lp": 0.5555,
+   "cov_dep": 0.6149,
+   "cov_lost": 0.3895,
+   "counts": {
+    "neurons": 1022,
+    "controls": 1024,
+    "above_every_control": 2,
+    "by_chance": 1.0,
+    "q05": 0,
+    "named": 0,
+    "named_by_halves": 0,
+    "above_ctl_p95": 0.0861,
+    "pA05_and_pB05": 31,
+    "pA05_and_pB05_by_chance": 2.6
+   },
+   "null_split_auc": {
+    "mean": 0.4974,
+    "min": 0.4649,
+    "max": 0.5222,
+    "n": 20
+   },
+   "rho_AB_neurons": 0.487,
+   "rho_AB_controls": 0.475,
+   "bars": {
+    "mass_c": [
+     0.5708,
+     0.6,
+     false
+    ],
+    "mass_c_res": [
+     0.5438,
+     0.58,
+     false
+    ],
+    "rep_AB": [
+     0.5477,
+     0.57,
+     false
+    ],
+    "rep_BA": [
+     0.5472,
+     0.57,
+     false
+    ],
+    "mass_B": [
+     0.5559,
+     0.56,
+     false
+    ]
+   },
+   "passes_all_bars": false
+  },
+  "single_dose_mass_c": {
+   "-2": 0.5369,
+   "-1": 0.6035,
+   "+1": 0.5955,
+   "+2": 0.5357
+  }
+ },
+ "L57": {
+  "all": {
+   "mass_c": 0.5995,
+   "mass_c_res": 0.5608,
+   "rep_AB": 0.5757,
+   "rep_BA": 0.5846,
+   "mass_A": 0.5921,
+   "mass_B": 0.5856,
+   "mass_u": 0.5828,
+   "shift": 0.6058,
+   "xq": 0.5721,
+   "cov_lnw": 0.3937,
+   "cov_d4": 0.4001,
+   "cov_cut": 0.4951,
+   "cov_lp": 0.8182,
+   "cov_dep": 0.5704,
+   "cov_lost": 0.4083,
+   "counts": {
+    "neurons": 507,
+    "controls": 512,
+    "above_every_control": 22,
+    "by_chance": 1.0,
+    "q05": 22,
+    "named": 20,
+    "named_by_halves": 13,
+    "above_ctl_p95": 0.1716,
+    "pA05_and_pB05": 22,
+    "pA05_and_pB05_by_chance": 1.3
+   },
+   "null_split_auc": {
+    "mean": 0.4903,
+    "min": 0.4047,
+    "max": 0.5314,
+    "n": 20
+   },
+   "rho_AB_neurons": 0.405,
+   "rho_AB_controls": 0.186,
+   "bars": {
+    "mass_c": [
+     0.5995,
+     0.58,
+     true
+    ],
+    "mass_c_res": [
+     0.5608,
+     0.56,
+     true
+    ],
+    "rep_AB": [
+     0.5757,
+     0.55,
+     true
+    ],
+    "rep_BA": [
+     0.5846,
+     0.55,
+     true
+    ]
+   },
+   "passes_all_bars": true
+  },
+  "pm1": {
+   "mass_c": 0.5225,
+   "mass_c_res": 0.6279,
+   "rep_AB": 0.5379,
+   "rep_BA": 0.6267,
+   "mass_A": 0.5286,
+   "mass_B": 0.4948,
+   "mass_u": 0.5277,
+   "shift": 0.5325,
+   "xq": 0.5043,
+   "cov_lnw": 0.3547,
+   "cov_d4": 0.4228,
+   "cov_cut": 0.498,
+   "cov_lp": 0.6966,
+   "cov_dep": 0.529,
+   "cov_lost": 0.517,
+   "counts": {
+    "neurons": 507,
+    "controls": 512,
+    "above_every_control": 10,
+    "by_chance": 1.0,
+    "q05": 0,
+    "named": 0,
+    "named_by_halves": 0,
+    "above_ctl_p95": 0.1065,
+    "pA05_and_pB05": 2,
+    "pA05_and_pB05_by_chance": 1.3
+   },
+   "null_split_auc": {
+    "mean": 0.4985,
+    "min": 0.4423,
+    "max": 0.5344,
+    "n": 20
+   },
+   "rho_AB_neurons": 0.078,
+   "rho_AB_controls": -0.062,
+   "bars": {
+    "mass_c": [
+     0.5225,
+     0.58,
+     false
+    ],
+    "mass_c_res": [
+     0.6279,
+     0.56,
+     true
+    ],
+    "rep_AB": [
+     0.5379,
+     0.55,
+     false
+    ],
+    "rep_BA": [
+     0.6267,
+     0.55,
+     true
+    ]
+   },
+   "passes_all_bars": false
+  },
+  "pm2": {
+   "mass_c": 0.5737,
+   "mass_c_res": 0.5192,
+   "rep_AB": 0.5691,
+   "rep_BA": 0.5768,
+   "mass_A": 0.5537,
+   "mass_B": 0.5687,
+   "mass_u": 0.5523,
+   "shift": 0.7497,
+   "xq": 0.5765,
+   "cov_lnw": 0.5304,
+   "cov_d4": 0.4425,
+   "cov_cut": 0.497,
+   "cov_lp": 0.8215,
+   "cov_dep": 0.8013,
+   "cov_lost": 0.1847,
+   "counts": {
+    "neurons": 507,
+    "controls": 512,
+    "above_every_control": 8,
+    "by_chance": 1.0,
+    "q05": 0,
+    "named": 0,
+    "named_by_halves": 0,
+    "above_ctl_p95": 0.0888,
+    "pA05_and_pB05": 19,
+    "pA05_and_pB05_by_chance": 1.3
+   },
+   "null_split_auc": {
+    "mean": 0.4877,
+    "min": 0.4303,
+    "max": 0.5304,
+    "n": 20
+   },
+   "rho_AB_neurons": 0.634,
+   "rho_AB_controls": 0.548,
+   "bars": {
+    "mass_c": [
+     0.5737,
+     0.58,
+     false
+    ],
+    "mass_c_res": [
+     0.5192,
+     0.56,
+     false
+    ],
+    "rep_AB": [
+     0.5691,
+     0.55,
+     true
+    ],
+    "rep_BA": [
+     0.5768,
+     0.55,
+     true
+    ]
+   },
+   "passes_all_bars": false
+  },
+  "single_dose_mass_c": {
+   "-2": 0.5448,
+   "-1": 0.5117,
+   "+1": 0.5259,
+   "+2": 0.5304
+  }
+ }
+}

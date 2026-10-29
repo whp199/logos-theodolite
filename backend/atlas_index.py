@@ -416,7 +416,7 @@ class AtlasIndex:
         """A neuron's operating point on each face: (alpha, beta), each the median over its stored events of that face
         (`atlas_ops.operating_points`); None for a face with none, and without the passages index. {"+": .., "-": ..}
         The stored events are the face's strongest passages, so this is where the neuron fires hardest on that face
-        (its gate open), not where it sits at an ordinary word-piece (at the one place measured, the census questions'
+        (its gate open), not where it sits at an ordinary word-piece (at the one place measured, main_rel's four census questions'
         last word-piece on Gemma-4-31B, most sat with the gate shut)."""
         from backend.atlas_ops import operating_points
 

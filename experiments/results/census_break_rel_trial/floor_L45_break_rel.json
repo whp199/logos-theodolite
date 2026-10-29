@@ -1,0 +1,461 @@
+{
+ "what": "with no push, the word-pieces an answer written in each batch shape the atlas writes in holds in common with the same answer written alone before they first part (scripts/verify_atlas_writer.py)",
+ "written_at": "2026-10-29T07:03:12Z",
+ "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+ "stand_in": false,
+ "runtime": {
+  "device": "NVIDIA GeForce RTX 5090",
+  "torch": "2.14.1+cu130",
+  "cuda": "13.0",
+  "transformers": "5.20.0",
+  "interp_engine": "1.14.0",
+  "compressed_tensors": "0.19.0",
+  "git": "e94eea672c8264c74c3538b08b482d3b03a18c22",
+  "git_clean": true,
+  "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+ },
+ "unpacker": {
+  "mode": "compiled",
+  "linears": 410,
+  "shapes": 8,
+  "devices": [
+   "cuda:0"
+  ],
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+   "table_nan_payloads": 0,
+   "seconds": 1.66
+  },
+  "install_s": 1.66
+ },
+ "layer": 45,
+ "steer_neuron": 18291,
+ "steer_dose": 0.8,
+ "control_dose": 0.8,
+ "seed": 0,
+ "p50": 144.42271423339844,
+ "p50_source": "the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces)",
+ "max_new": 48,
+ "batches": [
+  64,
+  96
+ ],
+ "stop_ids": [
+  1,
+  106,
+  50
+ ],
+ "questions": {
+  "who": "Who are you?",
+  "orange": "Describe the color orange.",
+  "free": "Write whatever you like.",
+  "bicycle": "Explain how a bicycle works.",
+  "walk": "Give me three tips for a long walk.",
+  "chair": "Describe a wooden chair.",
+  "kettle": "Explain how a kettle works.",
+  "sleep": "Give me three tips for sleeping well.",
+  "bridge": "Describe a stone bridge."
+ },
+ "steer_prompt_same": true,
+ "shapes": [
+  "steer (as it is, of 3)",
+  "census 64, baseline (row 0)",
+  "census 64, dose 0 (row 63)",
+  "census 96, baseline (row 0)",
+  "census 96, dose 0 (row 95)",
+  "writer of the sweep and the voice (write_voice)"
+ ],
+ "results": {
+  "who": {
+   "alone": {
+    "n": 48,
+    "text": "I am a large language model, trained by Google. \n\nYou can think of me as a knowledgeable assistant that can help you with a wide variety of tasks, such as:\n\n*   **Answering questions** on almost any topic"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "orange": {
+   "alone": {
+    "n": 48,
+    "text": "Depending on how you perceive the world, orange can be described in several different ways:\n\n### Visually (The Color)\nOrange is a vibrant, high-energy hue that sits exactly halfway between the aggressive intensity of red and the cheerful"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "free": {
+   "alone": {
+    "n": 48,
+    "text": "Since you gave me a blank canvas, I want to share a short, atmospheric piece of writing—a tiny slice of a world that doesn't exist.\n\n***\n\n**The Archivist of Unspoken Things**\n\nIn a city"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "bicycle": {
+   "alone": {
+    "n": 48,
+    "text": "At its simplest level, a bicycle is a machine designed to convert **linear muscle power** (your legs pushing down) into **rotational motion** (the wheels turning), while using physics to keep you balanced.\n\nHere is the breakdown"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "walk": {
+   "alone": {
+    "n": 48,
+    "text": "Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Prioritize \"Anti-Friction\" Gear\nThe biggest enemy of"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "chair": {
+   "alone": {
+    "n": 48,
+    "text": "Depending on the style, a wooden chair can range from a rustic piece of farmhouse furniture to a sleek example of modern minimalism. Here are a few ways to describe one, depending on the tone you need:\n\n### 1. The Detailed"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 46,
+    "n": 48,
+    "same": false
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 46,
+    "n": 48,
+    "same": false
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 46,
+    "n": 48,
+    "same": false
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 20,
+    "n": 48,
+    "same": false
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 20,
+    "n": 48,
+    "same": false
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "kettle": {
+   "alone": {
+    "n": 48,
+    "text": "At its simplest level, an electric kettle is a device that converts **electrical energy into heat energy** to raise the temperature of water.\n\nHere is the step-by-step breakdown of how it works, from the plug to the boiling"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "sleep": {
+   "alone": {
+    "n": 48,
+    "text": "Here are three effective tips for improving your sleep quality:\n\n### 1. Stick to a Consistent Sleep Schedule\nTry to go to bed and wake up at the same time every day, even on weekends. Consistency reinforces your body's"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  },
+  "bridge": {
+   "alone": {
+    "n": 48,
+    "text": "Depending on the setting—whether it is a crumbling ruin in a forest or a grand architectural feat in a city—a stone bridge can evoke very different moods. Here are three ways to describe one, depending on the tone you need.\n\n"
+   },
+   "alone, again": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "steer (as it is, of 3)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 64, dose 0 (row 63)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, baseline (row 0)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "census 96, dose 0 (row 95)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   },
+   "writer of the sweep and the voice (write_voice)": {
+    "shared": 48,
+    "n": 48,
+    "same": true
+   }
+  }
+ },
+ "floor": 20,
+ "floor_at": {
+  "k": 20,
+  "question": "chair",
+  "shape": "census 96, baseline (row 0)"
+ },
+ "census_floor": {
+  "64": 46,
+  "96": 20
+ },
+ "by_shape": {
+  "steer (as it is, of 3)": 46,
+  "census 64, baseline (row 0)": 46,
+  "census 64, dose 0 (row 63)": 46,
+  "census 96, baseline (row 0)": 20,
+  "census 96, dose 0 (row 95)": 20,
+  "writer of the sweep and the voice (write_voice)": null
+ },
+ "alone_twice_same": true,
+ "seconds": 256.2
+}

@@ -1,0 +1,122 @@
+{
+ "L45": {
+  "unit_filter": {
+   "mass_c": 0.641,
+   "mass_A": 0.5694,
+   "mass_B": 0.5927,
+   "rep_AB": 0.5899,
+   "rep_BA": 0.5928,
+   "mass_c_res": 0.642,
+   "n": [
+    705,
+    942
+   ],
+   "se_mass_c": 0.0139,
+   "cov_auc": {
+    "lnw": 0.532,
+    "d4": 0.484,
+    "cut": 0.505,
+    "lp": 0.498,
+    "dep": 0.491,
+    "lost": 0.563
+   },
+   "named": 103,
+   "q05": 152,
+   "above_every_control": 117,
+   "named_kept": 91,
+   "neurons_kept": 705,
+   "controls_kept": 942
+  },
+  "unit_filter_buggy_mass_c": 0.474,
+  "answer_filter": {
+   "mass_c": 0.6418,
+   "mass_A": 0.5173,
+   "mass_B": 0.5861,
+   "rep_AB": 0.6232,
+   "rep_BA": 0.6329,
+   "mass_c_res": 0.643,
+   "mass_c_res_plus": 0.6684,
+   "n": [
+    1022,
+    1024
+   ],
+   "se_mass_c": 0.0121,
+   "cov_auc": {
+    "lnw": 0.52,
+    "d4": 0.455,
+    "cut": 0.511,
+    "lp": 0.421,
+    "dep": 0.471,
+    "lost": 0.597
+   },
+   "named": 185,
+   "q05": 293,
+   "above_every_control": 227
+  },
+  "intact_pm1_answers_mean": {
+   "fresh": 11.26,
+   "controls": 11.92,
+   "named": 10.32
+  }
+ },
+ "L57": {
+  "unit_filter": {
+   "mass_c": 0.492,
+   "mass_A": 0.5253,
+   "mass_B": 0.4841,
+   "rep_AB": 0.5024,
+   "rep_BA": 0.5673,
+   "mass_c_res": 0.586,
+   "n": [
+    384,
+    473
+   ],
+   "se_mass_c": 0.0198,
+   "cov_auc": {
+    "lnw": 0.4,
+    "d4": 0.52,
+    "cut": 0.5,
+    "lp": 0.798,
+    "dep": 0.601,
+    "lost": 0.396
+   },
+   "named": 0,
+   "q05": 0,
+   "above_every_control": 1,
+   "named_kept": 3,
+   "neurons_kept": 384,
+   "controls_kept": 473
+  },
+  "unit_filter_buggy_mass_c": 0.4122,
+  "answer_filter": {
+   "mass_c": 0.4525,
+   "mass_A": 0.4812,
+   "mass_B": 0.4401,
+   "rep_AB": 0.5088,
+   "rep_BA": 0.6098,
+   "mass_c_res": 0.5149,
+   "mass_c_res_plus": 0.5887,
+   "n": [
+    506,
+    512
+   ],
+   "se_mass_c": 0.018,
+   "cov_auc": {
+    "lnw": 0.412,
+    "d4": 0.508,
+    "cut": 0.498,
+    "lp": 0.725,
+    "dep": 0.592,
+    "lost": 0.432
+   },
+   "named": 0,
+   "q05": 0,
+   "above_every_control": 2
+  },
+  "intact_pm1_answers_mean": {
+   "fresh": 11.09,
+   "controls": 11.92,
+   "named": 7.9
+  }
+ }
+}

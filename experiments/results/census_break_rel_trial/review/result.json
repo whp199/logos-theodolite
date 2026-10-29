@@ -1,0 +1,868 @@
+[
+ {
+  "key": "faithful",
+  "r": {
+   "summary": "The verdict was read as pre-registered, and PASS is what the reader's own outputs say. The hashes all check, the runs match runs.txt, morning.sh is exactly what the hashed tonight.sh writes, and the metas match the plan: break_rel, the right layers, the 1,022 fresh and 64 re-asked neuron lists, 1,024/512 controls at seed 3, batch 64 (step 0's pick, which I re-ran and which reproduces byte for byte), max_new 48, git e94eea6 clean, one session, no mixed_runtime. Every unit has all 24 cells and the row counts equal the job lists. Re-running the reader reproduces every AUC exactly. A separate implementation written from the pre-registration's words matches readlib unit by unit for mass_c, mass_B, rep_AB, rep_BA and the residual. G5b means what it says. The deviations I found are small, and none can change a gate. Three things weaken what the PASS supports, though none is a fault in the reading: (1) the max_new rule chooses 32 pieces at L45 while the L57 probe's own 32-piece reading fails S2 (0.506), and the pre-registration does not say which length L51-57 take; (2) L57's S2 clears its bar by 0.0008 (SE 0.018), and L57's replication is fully explained by the text covariates (rep_res 0.502); (3) two of the G5 sanity figures (read_gain and the null split) say less than their names suggest.",
+   "figures": [
+    {
+     "name": "L45 gates at 48 pieces (1,022 fresh vs 1,024 controls)",
+     "value": "G1 mass_c 0.7144 (0.71435, SE 0.011); G2 mass_c_res 0.7244; G3 rep_AB 0.6879 / rep_BA 0.6739; G4 mass_B 0.6693; G5 null 0.5015, read_gain 1.026, complete True; G5b 0.0005",
+     "how": "check_reading.py re-runs readlib.read exactly as trial_read calls it: max |AUC difference| from L45_verdict.json is 0.0, and counts and null are identical. A separate implementation in the same script gives the same per-unit values (difference at most 3.6e-15). SE is Hanley-McNeil."
+    },
+    {
+     "name": "L57 gates at 48 pieces (507 vs 512)",
+     "value": "S1 0.5995; S2 0.56081 (bar 0.56, SE 0.018); S3 0.5757 / 0.5846; null 0.5006; read_gain 1.179; G5b 0.0005",
+     "how": "check_reading.py; unrounded AUC from readlib.auc. The rerun differs from L57_verdict.json by 0.0."
+    },
+    {
+     "name": "Integrity and timeline",
+     "value": "10/10 SHA256SUMS OK; run sha256 = runs.txt (9724178637\u2026, 3d8da5f5\u2026); branch copy byte-identical; prereg_at 06:58:53Z < floor 07:03:12Z < L45 t0 07:03:13Z; units files written 08:11:45Z and 08:45:09Z; verdicts 13:52Z",
+     "how": "check_hashes.sh -> check_hashes.out"
+    },
+    {
+     "name": "Neuron lists",
+     "value": "fresh = rng(4) random:1024 less {6509, 17649} = 1,022; re-asked = calib_rel L45's 64 = rng(1) random:64; fresh \u2229 re-asked empty, union = the 1,086 in the meta. L57 = rng(7) random:512 less {2660, 3453, 5952, 8779, 20346} = 507, none shared with calib L57",
+     "how": "check_structure.py with census.parse_neurons against the calib_rel metas -> structure.json"
+    },
+    {
+     "name": "Completeness",
+     "value": "L45 50,646 rows = jobs n, 0 duplicates, 0 missing or extra keys, 2,110 units x 24 cells, rebuilt job digest = meta's; L57 24,462 rows, 1,019 x 24, digest matches. Control rows all seed 3. rel_push = |dose| <= 2.5 on every row, push = dose x p50, no faults",
+     "how": "check_structure.py: every row read and checked against census_jobs(meta)"
+    },
+    {
+     "name": "G5b in detail",
+     "value": "Units-file mass minus round(mass_c, 3) = 0.0 on all 2,110 / 1,019 units; top-5 words in the same order on every unit. Under other readings the difference would reach 14.14 (old reading) and 1.26 (units ref, own exclusion) at L45, and 5.61 / 1.66 at L57",
+     "how": "check_reading.py section 4"
+    },
+    {
+     "name": "Null-split sensitivity",
+     "value": "Reader's procedure 0.5015 / 0.5006. Without the control's leave-one-out: 0.5068 / 0.5049. Against every unit's mean: 0.5014 / 0.5005 (all inside 0.47-0.53). The real mass AUC under the no-LOO fault is 0.7162 vs 0.7144",
+     "how": "check_reading.py section 5: the reader's seed-0 splits, 50 of them, with the mass function varied"
+    },
+    {
+     "name": "Wider null (half the controls relabelled, full readlib.read, 10 splits)",
+     "value": "L45 means: mass_c 0.490, mass_c_res 0.490, rep_AB 0.498, rep_BA 0.490, mass_B 0.492. L57: 0.493, 0.495, 0.501, 0.506, 0.495",
+     "how": "check_reading.py section 5b"
+    },
+    {
+     "name": "Gates on all 1,086 L45 neurons (re-asked included)",
+     "value": "mass_c 0.716, res 0.728, rep_AB 0.6905, rep_BA 0.6767, mass_B 0.6692",
+     "how": "check_reading.py section 6"
+    },
+    {
+     "name": "max_new rule",
+     "value": "L45: 32 passes; drops 0.0067 (mass_c) and 0.0156 (lower rep), so take_shorter True. L57: S2 at 32 = 0.5061, so take_shorter False",
+     "how": "Read from the verdict JSONs and reproduced from their figures"
+    },
+    {
+     "name": "L57 text-survival dependence (reported, not gated)",
+     "value": "rep_res 0.502; cov_lp AUC 0.818; 17.9% of neurons lie above the controls' 99th percentile of log-prob. S2 with one covariate left out ranges 0.558-0.660 (without lnw 0.660, without lost 0.635); L45's ranges 0.717-0.726",
+     "how": "check_residual.py -> residual.json"
+    },
+    {
+     "name": "Lead by dose (reported, not gated)",
+     "value": "L45 |dose| 1: mass_c 0.706, res 0.712; |dose| 2: 0.571, res 0.544. L57 |dose| 1: 0.523, res 0.628; |dose| 2: 0.574, res 0.519",
+     "how": "check_by_dose.py -> by_dose.json"
+    },
+    {
+     "name": "Decoder check for the 32-piece reading",
+     "value": "0 mismatches between the tokenizers decode and the stored text, over 50,646 + 24,462 rows",
+     "how": "check_reading.py section 7"
+    },
+    {
+     "name": "Calibration figures quoted by the pass criterion",
+     "value": "L45 rep_AB 0.658, rep_BA 0.591; L57 rep_BA 0.490",
+     "how": "check_morning.py reading calib_expect.json"
+    }
+   ],
+   "findings": [
+    {
+     "claim": "The max_new rule's '32 pieces' result holds at L45 only. The L57 probe's 32-piece reading fails S2, and the pre-registration does not say which length the whole layers at L51-57 take.",
+     "severity": "medium",
+     "evidence": "L45_verdict max_new_rule: take_shorter True (mass_c drop 0.0067, lower-rep drop 0.0156). L57_verdict: 32-piece reading FAIL, S2 mass_c_res 0.5061 (bar 0.56), take_shorter False. The pre-registered rule speaks only of 'the whole layer' passing G1-G5, which are L45's gates.",
+     "consequence": "Taking 32 pieces for every whole layer from L40 to L57 would extend the scope to L51-57 on a reading the probe failed. The owner needs to decide the length per layer band (for example 32 at L40-50 and 48 at L51-57) before any whole layer runs. The verdict does not settle it."
+    },
+    {
+     "claim": "L57's scope pass rests on a gate cleared by a hair, and the L57 lead is mostly how the text survives.",
+     "severity": "medium",
+     "evidence": "S2 unrounded 0.56081 against bar 0.56: a margin of 0.0008, or 0.045 SE (SE 0.018). rep_res is 0.502, so S3's replication disappears once the six covariates are fitted out. cov_lp AUC is 0.818. Leaving one covariate out moves S2 between 0.558 and 0.660. At |dose| 2 the residual is 0.519.",
+     "consequence": "PASS at L57 is read faithfully, but 'beyond text survival' and 'replication' at L51-57 mean far less than at L45, where the residual is stable at 0.717-0.726. A rerun with other units could easily fall on the other side of the bar."
+    },
+    {
+     "claim": "The G5 read_gain ratio does not test this run: it is computed from the weights alone, on 512 of the layer's neurons, none of them chosen as the run's.",
+     "severity": "medium",
+     "evidence": "census.read_gain takes the median of the norm of w_next times u over gain_sample(seed, N), which is rng(seed+2).choice(21504, 512), against the controls. It is written into the meta before any answer exists. At L57 the ratio is 1.179: the controls are read 18% louder, inside the band, while the answers' log-prob separates neurons from controls at AUC 0.818.",
+     "consequence": "'Within band' says the control construction is roughly fair at that layer, nothing about the run's answers. The 0.8-1.25 band lets through an imbalance that shows up strongly in L57's text. It cannot by itself change a gate."
+    },
+    {
+     "claim": "The null-split band is within its limits for the right reason, but it cannot see the plausible faults, and it never touches a neuron row.",
+     "severity": "low",
+     "evidence": "The reader's procedure gives 0.5015 (L45) and 0.5006 (L57). Removing the control's leave-one-out gives 0.5068 and 0.5049; using every unit's mean gives 0.5014 and 0.5005, all inside 0.47-0.53. A wider null (half the controls relabelled, the full read) centres every gated statistic between 0.490 and 0.506. At L57 the splits are 256/256, not the 512/512 the criterion's wording gives.",
+     "consequence": "The gates' machinery shows no bias favouring the 'neuron' label, which is reassuring. The band itself, though, would pass the LOO fault, and that fault would move the real AUC by only 0.002. The gate is unchanged."
+    },
+    {
+     "claim": "G5b means what it says: the code at e94eea6 ranked with exactly the pre-registered reading.",
+     "severity": "info",
+     "evidence": "The 0.0005 is the 3-place rounding of units.jsonl: against round(mass_c, 3) the difference is 0.0 on all 2,110 and 1,019 units, and the top-5 words are in the same order on every unit. The units files carry the reading {max_rel 2.5, controls, own} and were written at the runs' end. Under other readings the difference would reach 1.26-14.14.",
+     "consequence": "It confirms the ranking a whole layer would use. Both implementations share census.words, so it checks the reading, not the definition of a word. It is computed at 48 pieces only, by design."
+    },
+    {
+     "claim": "The morning read imported census.py from the worktree at 372baec, not from e94eea6, the commit the runs ran from. The differences cannot touch the reader.",
+     "severity": "low",
+     "evidence": "I compared with read-only git (--no-optional-locks; nothing written). census.py e94eea6 -> working tree changes comments, DOSES_FROM text and DOSES_CALIBRATED ('break_rel',) -> () only. trial_read and readlib use none of these. The pre-registration's Step 3 does not name THEODOLITE_TRIAL_REPO.",
+     "consequence": "No gate can move. For a strict record, the reader can be re-run with a checkout of e94eea6."
+    },
+    {
+     "claim": "Python wrote bytecode into the pre-registration folder after it was hashed.",
+     "severity": "low",
+     "evidence": "prereg/__pycache__/readlib.cpython-312.pyc appeared at 08:51:37 -0500, during the morning read (python -I without -B). trial_read.cpython-312.pyc appeared at 08:58:04 -0500, from some other process; it was not this review, whose runs all used -B. Neither file is in SHA256SUMS, and sha256sum -c still passes.",
+     "consequence": "Cosmetic: the folder is no longer exactly as hashed, though the sources are unchanged. Future reads should use -B."
+    },
+    {
+     "claim": "Smaller wording and reporting deviations, none gating.",
+     "severity": "low",
+     "evidence": "(a) The pass criterion quotes the calibration's L45 rep_BA as 0.65; calib_expect.json gives 0.591, as trial_read's comment correctly says. (b) Step 3 names the scratchpad copies ($S), while morning.sh uses the prereg copies; both are byte-identical and hashed, and morning.sh equals what the hashed tonight.sh writes. (c) The verdict's per-dose 'cut_off' share for neurons includes the 64 re-asked neurons, while d4 excludes them. (d) The 32-piece reading truncates the 48-piece answers rather than coming from a 32-piece run; the decode is consistent (0 mismatches), but identity with a real 32-piece run is assumed, not tested.",
+     "consequence": "None of these changes a gate or a printed figure."
+    },
+    {
+     "claim": "The run metas, lists and completeness match the plan exactly. The exclusion of the re-asked 64 is real and does not matter.",
+     "severity": "info",
+     "evidence": "Design break_rel at \u00b11 and \u00b12 on who, orange, free, bicycle, walk, chair, in this order (the halves split correctly). Layer 45 and 57; batch 64 (step0_pick reproduces it: chair parts at 20 pieces at batch 96); max_new 48; seed 3; 1,024 and 512 controls; git e94eea6, git_clean; no mixed_runtime or unpacker_sessions; one session each. neurons_read is 1,022. With all 1,086 neurons: mass_c 0.716, res 0.728, rep 0.6905/0.6767, mass_B 0.6692. Retest: 660 of the 660 answers expected bit-identical are, Spearman 0.938.",
+     "consequence": "No fault in what was run or read."
+    },
+    {
+     "claim": "Besides the L57 covariate figures, the verdict JSONs hold nothing that contradicts a pass or a printed figure. Two figures that are never printed bear on validity.",
+     "severity": "info",
+     "evidence": "Not printed: cov_* and p-values. L45 cov_lost 0.629 and cov_d4 0.437; at \u00b11 the neurons' answers repeat more (d4 change -0.042 vs -0.004 for the controls). At \u00b12 both kinds loop (d4 change about -0.79), and 99% of answers run to the cap. L45's lead sits at |dose| 1 (0.706); |dose| 2 alone gives 0.571 (residual 0.544).",
+     "consequence": "At L45, the pass is carried by the \u00b11 answers. The \u00b12 answers are mostly loops and add little."
+    }
+   ],
+   "scripts": [
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_hashes.sh",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_code_version.sh",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_morning.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_structure.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_reading.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_by_dose.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_residual.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/structure.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/reading_L45.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/reading_L57.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/by_dose.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/residual.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/step0_repick.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_hashes.out",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/faithful/check_code_version.out"
+   ]
+  },
+  "verify": {
+   "verdicts": [
+    {
+     "claim": "Headline figures and faithfulness: hashes, run hashes, metas, lists, completeness, the AUCs at 48 and 32 pieces, the SEs, G5b, the null variants, the wider null, the gates on all 1,086, the decoder check and the retest",
+     "stands": true,
+     "note": "All reproduced with my own code. myread.py imports neither readlib nor census.py. It matches readlib unit by unit (max diff 0.0) for mass_c, mass_B, rep_AB, rep_BA, mass_c_res, rep_res and cov_lp. L45 at 48 pieces: 0.71435 (Hanley-McNeil SE 0.0113), 0.72436, 0.68786 / 0.67389, 0.66935, null 0.5015 (512/512). L57: 0.59952, 0.56081, 0.57574 / 0.58461, null 0.5006 (256/256). At 32: L45 0.7077 / 0.7029 / 0.6767 / 0.6583 / 0.6518; L57 S2 0.5061. 10/10 SHA256SUMS OK, both run sha256 equal runs.txt, branch copy byte-identical. Neuron lists rebuilt from rng(4), rng(1) and rng(7): the overlaps are {6509, 17649} and {2660, 3453, 5952, 8779, 20346}. 2,110 and 1,019 units x 24 cells; job digests rebuilt without census.py (e61ca25ad942616e, f859c04ae5d41ef9); no seed, rel_push or push faults. The step 0 pick re-run is byte-identical. Retest 737/768 bit-identical, and 660/660 where the rebuilt batch plans predict it; Spearman 0.9381. Decoder: 0 mismatches. Gates on all 1,086: 0.716 / 0.728 / 0.6905 / 0.6767 / 0.6692. Breaking word ties the other way moves rep by at most 0.0001."
+    },
+    {
+     "claim": "F1: the max_new rule's 32-piece result holds at L45 only; L57's 32-piece reading fails S2; the pre-registration does not say which length L51-57 take",
+     "stands": true,
+     "note": "L45 at 32 passes G1-G4, null 0.5025. The drops are 0.0066 and 0.0156 unrounded (0.0067 from the rounded AUCs). L57 at 32: S2 0.50607, 2.98 SE below its bar. The rule's text speaks of 'the whole layer' and G1-G5, which are L45's gates. Read literally it would give 32 to every layer, L51-57 included, where the probe at 32 fails. Small addition: G5b is not computed at 32, so 'passes G1-G5' at 32 is checked without it."
+    },
+    {
+     "claim": "F2a: L57's S2 clears its bar by a hair, and a rerun could fall on either side",
+     "stands": true,
+     "note": "Margin 0.00081, 0.045 Hanley-McNeil SE (0.0179). That SE leaves out the refit of the residual. A bootstrap over units with the OLS fit redone (1,000 resamples) gives SD 0.0247, 95% CI 0.512-0.609, and 48.6% of resamples below 0.56. So the finding is stronger than the reviewer put it. At L45 no resample falls below the bar (SD 0.011)."
+    },
+    {
+     "claim": "F2b: 'the L57 lead is mostly how the text survives'; L57's replication is fully explained by the covariates",
+     "stands": false,
+     "note": "Every figure reproduces: rep_res 0.502, cov_lp 0.818, 17.9% of neurons above the controls' 99th percentile of log-prob, leave-one-covariate-out 0.5581-0.6597, residual 0.5192 at |dose| 2. The replication half holds: rep 0.5815 becomes 0.502. The gated mass lead does not follow. The residual keeps 61% of mass_c's AUC excess (0.0608 of 0.0995). At |dose| 1 the fit raises mass_c from 0.5225 to 0.6279. Also, a residual is not an attribution. Dropping lnw (new words) or lost (unpushed words lost) raises S2 to 0.660 and 0.635, and both could be effects of a real theme, so the fit may remove signal. About 14-18% of neurons lie outside the controls' 1-99% range on lp and lost, where the fit extrapolates (beta on lost -69.7). Fair as worded: L57's 'beyond text survival' and 'replication' rest on a fragile, fit-dependent figure. 'Mostly text survival' is not shown."
+    },
+    {
+     "claim": "F3: G5 read_gain does not test this run (weights only, 512 sampled neurons against the run's controls, written before any answer)",
+     "stands": true,
+     "note": "Confirmed in take_census. read_gain(write_dirs(gain_sample(seed, N)), control_dirs(seed, controls, w_post), w_next) runs at setup, before any answer, and goes into the meta. The ratio 1.179 means controls read 17.9% louder. Wording: 21 of the run's 1,086 L45 neurons (19 fresh) and 11 of L57's 507 are in the 512-neuron sample by chance (expected 26 and 12). The link to cov_lp 0.818 is plausible, not shown. Across the six calibration layers the two highest ratios (L40 1.10, L57 1.17) have the highest lp AUCs (0.738, 0.752); Spearman about 0.66 over n=6. But at L57 at +-1 the neurons' distinct-4 falls more than the controls' (-0.053 vs -0.003), the opposite of 'louder controls break the text more'."
+    },
+    {
+     "claim": "F4: the null-split band is inside its limits for the right reason, cannot see plausible faults, and never touches a neuron row",
+     "stands": true,
+     "note": "Reader's procedure 0.5015 / 0.5006. Without the leave-one-out 0.5068 / 0.5049; against every unit's mean 0.5014 / 0.5005; all inside the band. The real mass AUC under no-LOO is 0.7162 / 0.6017 (+0.002), and under the units reference 0.7113 / 0.5824, a fault the band also cannot see. The wider null reproduces (rng 12345, 10 splits): L45 0.490 / 0.490 / 0.498 / 0.490 / 0.492; L57 0.493 / 0.495 / 0.501 / 0.506 / 0.495. The sub-0.5 means are noise: 50 other splits give 0.4996-0.5028 at L45 and 0.4945-0.5027 at L57."
+    },
+    {
+     "claim": "F5: G5b means what it says",
+     "stands": true,
+     "note": "Units-file mass minus round(mass_c, 3) is 0.0 on all 2,110 / 1,019 units (raw max 0.0005 / 0.000499); top-5 words in the same order on every unit; the file's reading is {max_rel 2.5, reference controls, exclude own}. One label is off: the reviewer's 'old reading' figures (14.14 / 5.61) are the units reference with every question excluded and every answer counted. The real old reading, with its max_rel 1.6 cap, differs by 19.20 / 25.10. The 1.26 / 1.66 for units reference with own exclusion reproduce. The conclusion holds."
+    },
+    {
+     "claim": "F6: the morning read imported census.py at 372baec, not e94eea6; no gate can move",
+     "stands": true,
+     "note": "Checked from loose git objects with Python's zlib; no git command was run. The worktree HEAD is 372baec, and the worktree census.py equals its blob (c14b9b2a). The diff against e94eea6 (0ee0d207) touches only lines 119-149: comments, DOSES_FROM text, and DOSES_CALIBRATED ('break_rel',) to (). The reader uses none of these. Other backend files differ (atlas.py, scientist_tools.py, scientist_prompt.md), but census.py imports only the standard library and numpy at module level, and backend/__init__.py imports nothing. My implementation never imports census.py and reproduces every gate."
+    },
+    {
+     "claim": "F7: bytecode written into prereg/__pycache__ after hashing",
+     "stands": true,
+     "note": "readlib.cpython-312.pyc at 13:51:37Z (38 s before L45_verdict.json at 13:52:15Z) and trial_read.cpython-312.pyc at 13:58:04Z. Neither is in SHA256SUMS, and sha256sum -c still passes. Who wrote the second file cannot be told from the files; that changes nothing. All my runs used -B, and the folder still holds only those two files."
+    },
+    {
+     "claim": "F8: smaller deviations (calibration rep_BA quoted as 0.65; $S vs prereg copies; cut_off counts the re-asked neurons; 32 pieces by truncation)",
+     "stands": true,
+     "note": "(a) calib_expect at 48 pieces: L45 rep_AB 0.6581, rep_BA 0.5909, at 32 0.6047, at 64 0.6403; none is 0.65. L57 rep_BA 0.4895. (b) All 9 $S files are byte-identical to the prereg copies. (c) Confirmed in the code. Fresh-only and all-neuron cut_off agree to 3 places at every dose, and the printed d4 is the fresh-only value, so no printed figure changes. (d) Confirmed: 50,545 / 24,445 rows are cut at 32 by decode; identity with a real 32-piece run is assumed."
+    },
+    {
+     "claim": "F9: metas, lists and completeness match the plan; excluding the re-asked 64 does not matter",
+     "stands": true,
+     "note": "Design break_rel, +-1 and +-2 on who, orange, free | bicycle, walk, chair in that order. Layers 45 and 57, batch 64 (chair parts at 46 pieces at batch 64 and 20 at 96), max_new 48, seed 3, 1,024 / 512 controls. git e94eea6 clean; no mixed_runtime or unpacker_sessions. With all 1,086 neurons every gate rises slightly."
+    },
+    {
+     "claim": "F10: covariates never printed; at L45 the pass is carried by the +-1 answers and the +-2 answers are mostly loops",
+     "stands": true,
+     "note": "L45 cov_lost 0.6289, cov_d4 0.4371. d4 minus unpushed: -0.042 (-1) and -0.033 (+1) for fresh neurons, -0.004 for controls; about -0.79 at +-2 for both. Cut off: 99.8-100% at +-2 and 98.7-99.2% at +-1, so the 'cut' covariate barely varies. |dose| 1 alone passes every one of G1-G4 (0.706 / 0.712 / 0.676 / 0.673 / 0.647). |dose| 2 alone fails all of them (0.571 / 0.544 / 0.548 / 0.547 / 0.556). That supports 'carried by +-1'."
+    }
+   ],
+   "corrected_figures": [
+    {
+     "name": "G5b difference under the 'old reading'",
+     "reported": "14.14 (L45) and 5.61 (L57), called the old reading",
+     "recomputed": "14.142 / 5.612 are the units reference with every question's unpushed words left out and every answer counted. The actual old reading (READING_DEFAULT with the max_rel 1.6 cap, so |dose| 1 only) gives 19.202 / 25.098. At L45 the controls reference with every-question exclusion also gives 14.142."
+    },
+    {
+     "name": "Share of L57's mass lead left after the six-covariate fit",
+     "reported": "'the L57 lead is mostly how the text survives'",
+     "recomputed": "mass_c 0.5995 becomes residual 0.5608, so 61% of the AUC excess remains. rep 0.5815 becomes rep_res 0.502, so 2% remains. At |dose| 1 the fit raises mass_c from 0.5225 to 0.6279."
+    },
+    {
+     "name": "Uncertainty of L57 S2",
+     "reported": "SE 0.018 (Hanley-McNeil); margin 0.045 SE",
+     "recomputed": "Hanley-McNeil 0.0179 is right but leaves out the refit. The bootstrap with the OLS refit (1,000 unit resamples) gives SD 0.0247, 95% CI 0.512-0.609, and 48.6% of resamples below the 0.56 bar."
+    },
+    {
+     "name": "Read-gain sample against the run's neurons",
+     "reported": "512 of the layer's neurons, none of them chosen as the run's",
+     "recomputed": "Drawn independently, but 21 of the 1,086 L45 run neurons (19 fresh) and 11 of L57's 507 are in the sample (chance: 25.9 and 12.1)."
+    },
+    {
+     "name": "max_new drops from unrounded AUCs",
+     "reported": "L45 mass_c drop 0.0067; L57 rep_min_drop -0.0014",
+     "recomputed": "0.0066 and -0.0013. The verdict subtracts rounded AUCs. Within rounding, and no decision changes."
+    }
+   ],
+   "summary": "The reviewer's headline figures reproduce, within rounding, from my own implementation. myread.py uses neither readlib nor census.py, and it matches readlib unit by unit (difference 0.0). The figures I recomputed: every gate AUC at 48 and 32 pieces at both layers, the SEs, the max_new rule, the null split and its no-LOO and units-reference variants, the wider null, G5b, the gates on all 1,086 neurons, the covariate leave-one-out and overlap, the lead by dose, the text per dose, the retest (737/768 identical, 660/660 where the rebuilt batch plans predict it, Spearman 0.938) and the decoder check (0 mismatches). Integrity also holds: hashes, run sha256 against runs.txt, neuron lists rebuilt from their RNG draws, job digests rebuilt without census.py, the step 0 pick re-run byte for byte, and the census.py version question settled from loose git objects with no git command.\n\nFindings F1 and F3-F10 stand. F1 stands as stated: the pre-registration leaves L51-57's length open, and L57's 32-piece S2 is 0.506, 2.98 SE below its bar.\n\nF2 splits:\n- S2 cleared by a hair stands, more strongly than reported: with the residual refit in the bootstrap, the SD is 0.025 and 49% of resamples fall below 0.56.\n- 'The L57 lead is mostly how the text survives' falls as worded. The residual keeps 61% of mass_c's lead over chance, and at |dose| 1 the fit raises the lead. Only replication is absorbed by the covariates (rep_res 0.502). And a residual cannot attribute a lead to text survival: lnw and lost could be effects of a real theme (dropping either raises S2 to 0.66 / 0.635), and 14-18% of neurons sit outside the controls' 1-99% range on lp and lost, where the fit extrapolates.\n\nSmaller corrections: the G5b 'old reading' figures 14.14 / 5.61 are not the old reading. They are the units reference with every question excluded; with its 1.6 cap the old reading differs by 19.20 / 25.10. A few of the run's neurons (21 at L45, 11 at L57) are in the read-gain sample by chance. The read-gain-to-log-prob link is plausible but not shown: at L57 the neurons' distinct-4 falls more than the controls' at +-1. Taken together, PASS was read faithfully. L45's lead is robust: the residual holds at 0.717-0.726 under any five-covariate fit, and the \u00b11 answers alone pass G1-G4. L57's scope pass is fragile.\n\nCode and outputs are in /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/verify_faithful/:\n- myread.py, the independent reader\n- verify_gates.py, which writes gates_L45.json and gates_L57.json\n- verify_structure.py, which writes structure.json\n- verify_misc.py, which writes misc.json\n- verify_widenull.py, which writes widenull_L45.json and widenull_L57.json\n- verify_retest_batches.py, which writes retest_batches.log\n- git_blob.py and git_tree_diff.py, which write census_e94eea6_vs_worktree.diff\n- check_integrity.sh, which writes check_integrity.out\n\nAll runs used the CPU with python -I -B; nothing was written outside that folder."
+  }
+ },
+ {
+  "key": "dose",
+  "r": {
+   "summary": "At L45 the lead comes from the +-1 answers. On those alone mass_c AUC is 0.706 (residual 0.712, rep_AB 0.676, rep_BA 0.673, mass_B 0.647), which clears every pre-registered bar. On the +-2 answers alone it is 0.571 (residual 0.544, rep 0.548/0.547, mass_B 0.556), below every bar, and no neuron reaches q<=0.05. The 262 named neurons take 78% of their top-5 z from +-1 answers: 59% from +-1 answers whose text is intact, and 19% from the 7% of their +-1 answers that already loop. At +-2, neurons and controls loop the same way on the same collapse words (own, thought, same, '////', blank lines), so that half adds about 0.008 AUC while costing half the answers. Even among units whose 12 +-1 answers are all intact (705 neurons, 942 controls, covariate AUCs 0.48-0.56) the lead holds at 0.641 (rep 0.590/0.593), so at L45 the pass mainly shows a neuron's push at +-1 bringing its words into intact text; named neurons also loop on their word at +-1 far more often than controls (9.6% of answers vs 0.4%). L57 is the reverse: +-1 alone gives 0.52 (0.49 on intact units) and +-2 alone 0.574, its 20 named neurons take 62% of their z from +-2, and they are tokens the model loops on when pushed hard ('sem', 'pemb', 'ng\u00e0y', 'beg', 'mang', '\u4e0d\u8db3'), so its pass rests on which token the push makes the model loop on, not on words in intact text.",
+   "figures": [
+    {
+     "name": "L45 mass_c AUC, +-1 answers only (fresh 1,022 vs 1,024 controls, 48 pieces)",
+     "value": "0.7064 (Hanley-McNeil SE 0.011); full 24-answer reading 0.7144",
+     "how": "readlib.read with keep restricted to |dose|=1, so counts, controls' mean, covariates and residual are all recomputed on the subset; q1_dose_split.py"
+    },
+    {
+     "name": "L45 +-1 only: mass_c_res / rep_AB / rep_BA / mass_B / mass_A",
+     "value": "0.7123 / 0.6757 / 0.6725 / 0.6471 / 0.6179; named 306, q05 388, null split 0.5006",
+     "how": "q1_dose_split.py"
+    },
+    {
+     "name": "L45 mass_c AUC, +-2 answers only",
+     "value": "0.5708 (SE 0.013); residual 0.5438, rep_AB 0.5477, rep_BA 0.5472, mass_B 0.5559; named 0, q05 0, above every control 2",
+     "how": "q1_dose_split.py"
+    },
+    {
+     "name": "L45 mass_c AUC at each single dose (6 answers a unit)",
+     "value": "-2: 0.537, -1: 0.604, +1: 0.596, +2: 0.536",
+     "how": "q1_dose_split.py"
+    },
+    {
+     "name": "L45 +-1 against the pre-registered bars (not a gate)",
+     "value": "passes all: G1 0.706>=0.60, G2 0.712>=0.58, G3 0.676/0.673>=0.57, G4 0.647>=0.56; +-2 alone fails all (0.571, 0.544, 0.548/0.547, 0.556)",
+     "how": "q1_dose_split.py bars"
+    },
+    {
+     "name": "L45 +-1, only units whose 12 +-1 answers all have distinct-4>=0.9",
+     "value": "705 neurons (91 of 262 named) / 942 controls: mass_c 0.641 (SE 0.014), residual 0.642, rep_AB 0.590, rep_BA 0.593, mass_B 0.593; covariate AUCs lnw 0.53, d4 0.48, cut 0.51, lp 0.50, dep 0.49, lost 0.56",
+     "how": "q4_extra.py part 1 (unit filter, non-selected units removed from the counts and the controls' mean)"
+    },
+    {
+     "name": "L45 +-1, only answers with distinct-4>=0.9 (every unit)",
+     "value": "mass_c 0.642, residual 0.643 (0.668 with log answers kept as a seventh covariate), rep_AB 0.623, rep_BA 0.633, mass_B 0.586",
+     "how": "q4_extra.py part 1 (answer filter); this filter works against neurons, which lose more answers"
+    },
+    {
+     "name": "L57 +-1 only (507 neurons vs 512 controls)",
+     "value": "mass_c 0.5225 (SE 0.018), residual 0.6279, rep_AB 0.5379, rep_BA 0.6267, mass_B 0.4948; named 0",
+     "how": "q1_dose_split.py"
+    },
+    {
+     "name": "L57 +-2 only",
+     "value": "mass_c 0.5737 (SE 0.018), residual 0.5192, rep_AB 0.5691, rep_BA 0.5768, mass_B 0.5687; named 0; full pooled reading 0.5995",
+     "how": "q1_dose_split.py"
+    },
+    {
+     "name": "L57 single doses",
+     "value": "-2: 0.545, -1: 0.512, +1: 0.526, +2: 0.530",
+     "how": "q1_dose_split.py"
+    },
+    {
+     "name": "L57 +-1, intact units only (all 12 d4>=0.9)",
+     "value": "384 neurons (3 of 20 named) / 473 controls: mass_c 0.492, residual 0.586, rep_AB 0.502, rep_BA 0.567; lp AUC 0.80",
+     "how": "q4_extra.py part 1"
+    },
+    {
+     "name": "Share of named neurons' top-5 z by answer class, L45 (262 named)",
+     "value": "+-1 intact 59.0%, +-1 broken (d4<0.9) 18.7%, +-2 22.3% (+-2 intact 0%). Answers in those classes: 43%, 7%, 50%. Per-unit median 79.8% from +-1; 243/262 have >50% from +-1, 19 have >50% from +-2, 2 have >80% from +-2",
+     "how": "exact split of each word's z, z = (c1+c2-mu1-mu2)/sqrt(mu1+mu2+0.5), over the top-5 words with z>0 of the primary reading; q3_decompose.py, q4_extra.py part 3"
+    },
+    {
+     "name": "Same split for comparison, L45",
+     "value": "fresh neurons: +-1 76.7% (intact 66.7, broken 10.0), +-2 23.3%; controls: +-1 75.3% (intact 74.9, broken 0.4), +-2 24.7%",
+     "how": "q3_decompose.py, q4_extra.py"
+    },
+    {
+     "name": "Share of L57 named neurons' top-5 z",
+     "value": "+-1 38.5% (intact 17.6, broken 21.0), +-2 61.5%; 14 of 20 named have >50% from +-2",
+     "how": "q3_decompose.py, q4_extra.py"
+    },
+    {
+     "name": "Answer shape at +-2, L45, neurons / controls",
+     "value": "distinct-4 0.210/0.208; d4<0.5 in 94.4%/94.4%; most repeated piece = 75%/76% of the answer; top piece is punctuation 45%/46%, whitespace 23%/25%, a 3+ letter word 27%/24%; no word at all 30.7%/34.5%; first departure at 0.4%/0.2% of the answer",
+     "how": "q5_answer_shape.py"
+    },
+    {
+     "name": "Answer shape at +-1, L45, neurons / controls",
+     "value": "identical to unpushed 0%/0%; first departure 9.1%/9.6% of the answer; new words 11.67/12.02; distinct-4 0.963/0.996; d4<0.5 4.1%/0.4%",
+     "how": "q5_answer_shape.py"
+    },
+    {
+     "name": "+-1 answers that loop (d4<0.5), L45, by group",
+     "value": "named 9.6% (who 24.4%, orange 7.8%, free 7.8%, bicycle 6.5%, walk 7.1%, chair 4.2%); fresh 4.1% (who 10.4%); controls 0.4% (who 2.1%, others 0-0.1%). Read-gain ratio is 1.026",
+     "how": "q4_extra.py part 6"
+    },
+    {
+     "name": "Controls' top words at +-2, L45 (units holding the word in their top-5, of 1,024)",
+     "value": "own 560, thought 442, same 342, thoughtthought 135, ownthought 65, thoughtthoughtthought 56, owns 42, rest 26, idea 25, sss 16. Neurons (of 1,022): own 559, thought 431, same 417, thoughtthought 139, ownthought 78, owns 48",
+     "how": "q5b_words.py, top lists of the +-2-only reading"
+    },
+    {
+     "name": "Most repeated word of looping +-2 answers, L45, neurons / controls",
+     "value": "<no word> 3727/4203, own 3104/2959, thought 1011/1017, same 828/815, depending 599/463, whether 138/139, the 124/135",
+     "how": "q5_answer_shape.py"
+    },
+    {
+     "name": "+-2 loop composition per unit (L45 fresh / controls / named; AUC neurons over controls)",
+     "value": "no word 0.307/0.345/0.274 (0.45); loop on collapse word 0.528/0.524/0.535 (0.51); loop on a unit-specific word 0.031/0.010/0.080 (0.55)",
+     "how": "q4_extra.py part 5"
+    },
+    {
+     "name": "+-2 loop composition, L57",
+     "value": "no word 0.295/0.375/0.113 (AUC 0.41); collapse 0.448/0.558/0.167 (0.38); unit-specific 0.118/0.013/0.617 (0.62); controls' top piece is whitespace in 61.6% of +-2 answers vs 37.8% for neurons",
+     "how": "q4_extra.py part 5, q5_answer_shape.py"
+    },
+    {
+     "name": "Residual with the two +-2 loop shares added to the six covariates",
+     "value": "L45 full 0.717 (pre-registered 0.724), L45 +-2 0.531; L57 full 0.4996 (pre-registered 0.5608), L57 +-2 0.374",
+     "how": "q4_extra.py part 5 (a circular check: the specific-loop share is close to what mass counts at +-2)"
+    },
+    {
+     "name": "Covariate fit on controls, R2 and predicted means",
+     "value": "L45: full R2 0.21 (predicted mass neurons 9.36 vs controls 9.92, actual 13.89 vs 9.92), +-1 R2 0.09, +-2 R2 0.58. L57: full 0.35, +-1 0.20 (controls' d4 sd 0.010 vs neurons 0.118; lp sd 0.0085 vs 0.046; betas d4 +17.9, lp -35.3; 90 neurons below the controls' d4 range), +-2 0.58",
+     "how": "q4_extra.py part 4"
+    },
+    {
+     "name": "Full reading with collapse words removed from every answer",
+     "value": "L45 mass_c 0.711, residual 0.724, rep 0.677/0.671, mass_B 0.652, named 294 (248 of the verdict's 262). L57 mass_c 0.649, residual 0.680, rep 0.594/0.678, mass_B 0.606, named 67 (19 of 20)",
+     "how": "q5b_words.py: words containing 'thought', plus every word that >=10 controls hold in >=2 of their +-2 answers, removed before readlib.read"
+    },
+    {
+     "name": "Collapse words among the verdict's named_words, L45",
+     "value": "206 of 262 named list same/own/thought (etc.) among their replicated words; 'same' 122, 'own' 111, 'thought' 45; 14 have one as their highest-z replicated word; 3 have only those",
+     "how": "q5b_words.py"
+    },
+    {
+     "name": "Overlap of the verdict's named with the +-1-only reading, L45",
+     "value": "242 of 262 also named on +-1 alone; 253 have q<=0.05 on +-1 alone; 0 have q<=0.05 on +-2 alone (59 have p<=0.05 there, about 13 expected by chance)",
+     "how": "q5b_words.py"
+    }
+   ],
+   "findings": [
+    {
+     "claim": "At L45 the lead is a +-1 result. The +-2 answers carry almost none of it, and the pass mostly shows a neuron's push at +-1 bringing its own words into intact text.",
+     "severity": "high",
+     "evidence": "mass_c is 0.706 on +-1 alone and 0.571 on +-2 alone (0.714 pooled). Single doses: -1 0.604, +1 0.596, -2 0.537, +2 0.536. +-1 alone names 306 neurons, +-2 alone names none, and 242 of the verdict's 262 are named on +-1 alone. Units whose 12 +-1 answers are all intact (covariate AUCs 0.48-0.56) still give 0.641 / rep 0.590 / 0.593. In the samples the named words enter fluent text, e.g. 'a bicycle is a machine that uses a system of Tickets', and they come in small related sets: eating/out/restaurant, fence/dog/picket/white, pursuit/interest, sonar/radar/location/screen.",
+     "consequence": "The +-2 cells (half the GPU time) add about 0.008 AUC at L45 and lower the named count (262 pooled vs 306 at +-1 alone, read post hoc). The owner should know the L45 pass is carried by +-1. Whether to keep +-2 for whole layers is a design decision, not something this trial measured."
+    },
+    {
+     "claim": "At L57 the pass is not words in intact text. It is which token the model loops on when pushed hard, plus controls breaking harder.",
+     "severity": "high",
+     "evidence": "On +-1 alone mass_c is 0.5225 (0.492 on intact units only); on +-2 alone it is 0.574 (residual 0.519). Neither subset clears S1, but the pooled reading does (0.5995). The 20 named take 61.5% of their z from +-2, and 61.7% of their +-2 answers loop on a word of their own: 'sem sem sem', 'pemb pemb', 'ng\u00e0y ng\u00e0y', 'beg beg', 'mang mang', '\u4e0d\u8db3\u4e0d\u8db3', 'personal personal' (q6_l57_named.txt). Controls loop on whitespace in 61.6% of +-2 answers against 37.8% for neurons, and the read-gain ratio is 1.179. With the two +-2 loop shares added as covariates, the full residual falls to 0.4996 (pre-registered 0.5608, bar 0.56).",
+     "consequence": "Extending the scope to L51-57 would name neurons by the token their direction drives the model to repeat. That is closer to a logit-lens readout of the pushed direction than a theme. S2 sits 0.0008 above its bar and does not survive accounting for loop identity."
+    },
+    {
+     "claim": "The +-2 answers are degenerate loops, and they look the same for neurons and controls.",
+     "severity": "medium",
+     "evidence": "Neurons/controls at +-2: distinct-4 0.210/0.208; 94.4% of answers below d4 0.5; the most repeated piece is about 75% of each answer; 31%/35% hold no word at all. The loop words come from one shared set: own 3104/2959, thought 1011/1017, same 828/815, depending 599/463. Controls' top +-2 words: own (560 of 1,024 controls), thought 442, same 342, then thought-strings, owns, rest, idea, sss. Neurons: own 559, thought 431, same 417.",
+     "consequence": "At L45 a +-2 answer mostly tells you the model collapsed, not where it was pushed. Only a few named neurons loop on their own word at +-2 (11353 'eating', 2833 'then', 9194 'idea'); the unit-specific loop share is 8.0% for named, 3.1% for fresh neurons and 1.0% for controls."
+    },
+    {
+     "claim": "'Text nearly intact at +-1' is an average that hides the named neurons: they loop at +-1 far more often than controls, mostly on 'who'.",
+     "severity": "medium",
+     "evidence": "Share of +-1 answers with distinct-4 below 0.5: named 9.6% (who 24.4%), fresh 4.1% (who 10.4%), controls 0.4% (who 2.1%). This happens with a read-gain ratio of 1.026. These looping +-1 answers are 7% of named neurons' answers but carry 18.7% of their top-5 z, e.g. 'I am a big-sonar-location-scanning-sonar-...'.",
+     "consequence": "Part of the +-1 lead is a loop on the neuron's word at a gentler dose. Neuron directions break text more than w_post-shaped random directions of the same push size, even though the next layer reads them equally loudly. The intact-units figure (0.641) is the cleaner measure of words brought into text."
+    },
+    {
+     "claim": "The covariate residual (G2/S2) cannot see what a loop is on, and at +-1 it predicts almost nothing. At L57 +-1 it is an extrapolation artifact.",
+     "severity": "medium",
+     "evidence": "R2 of the six covariates on controls' mass: L45 0.21 (full), 0.09 (+-1), 0.58 (+-2). On the full L45 reading the fit predicts lower mass for neurons than for controls (9.36 vs 9.92), which is why the residual (0.724) is above the raw AUC (0.714). At L57 +-1 the controls barely vary in d4 and lp (sd 0.010 and 0.0085, against 0.118 and 0.046 for neurons) yet get betas of +17.9 and -35.3; 90 neurons lie below the controls' d4 range. That lifts 0.52 to 0.628 (an S2 pass) with no lead in raw mass.",
+     "consequence": "'Beyond text survival' only means 'beyond six linear text-shape averages fitted on controls that cover a narrow range'. It does not test whether a neuron loops on a real word while a control loops on punctuation. At L45 the loops barely differ, so nothing is hidden there; at L57 the six covariates take the +-2 lead from 0.574 to 0.519 mainly through dep, lp and lost (how hard the push breaks the text)."
+    },
+    {
+     "claim": "The named labels are cluttered with the model's collapse words, but the gates do not depend on them.",
+     "severity": "medium",
+     "evidence": "206 of the 262 L45 named neurons list same/own/thought among their replicated words ('same' 122, 'own' 111, 'thought' 45); 14 have one as their top replicated word. Removing those words from every answer and re-running the pre-registered reading gives L45 mass_c 0.711, residual 0.724, rep 0.677/0.671, mass_B 0.652, with 294 named (248 of the verdict's). At L57 the same removal raises the lead to 0.649 (residual 0.680, 67 named), because controls' mass leans on collapse words (37% of their z).",
+     "consequence": "A page showing named_words would present 'same' and 'own' as a neuron's words. They are the model's breakdown words at this checkpoint and should be filtered or flagged before any label is shown."
+    },
+    {
+     "claim": "A control's mass is mostly the question's own topic words coming back at both signs. Neurons differ by words that recur across questions.",
+     "severity": "low",
+     "evidence": "Control samples: 'socks' and 'feet' only in walk+1 and walk-1, 'yellow' in orange+-1, 'comfortably' and 'trek' in walk+-1. Controls' +-1 top words: same, this, for, like, small, distance, few, place. Cross-question recurrence (xq) at +-1: AUC 0.703. Rep at +-1: 0.676/0.673.",
+     "consequence": "mass_c's null baseline is rephrasing noise inside one question. The cross-question figures (rep, xq) are the ones that say a neuron brings the same word to unrelated questions."
+    },
+    {
+     "claim": "My first run of the intact-units filter had a bug. It is fixed, and the numbers reported here are the fixed ones.",
+     "severity": "info",
+     "evidence": "R.counts lists every unit of the run, so the excluded units entered the AUC and the controls' mean with mass 0. That first gave 0.474 at L45; restricting the counts to the selected units gives 0.641 (L57: 0.492). q4_extra.json holds the corrected run.",
+     "consequence": "No effect on the verdict. Anyone reusing R.counts with a unit-level filter has to drop the other units from the counts, as reading(..., units_sel=) now does."
+    }
+   ],
+   "scripts": [
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/common.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q1_dose_split.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q2_samples.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q3_decompose.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q4_extra.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q5_answer_shape.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q5b_words.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q6_l57_named_and_se.py",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q2_samples.txt",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q6_l57_named.txt",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q1_dose_split.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q3_decompose.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q4_extra.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q5_answer_shape.json",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/dose/q5b_words.json"
+   ]
+  },
+  "verify": {
+   "verdicts": [
+    {
+     "claim": "1. At L45 the lead comes from the +-1 answers. The +-2 answers carry almost none of it, and the pass mostly shows a neuron's push at +-1 bringing its own words into intact text.",
+     "stands": true,
+     "note": "Every figure reproduces with my own code (v1_split.py). Pooled 0.7144. +-1 only: mass_c 0.7064 (SE 0.0114), residual 0.7123, rep 0.6757/0.6725, mass_B 0.6471, 306 named, q05 388, null split 0.5006. +-2 only: 0.5708 (SE 0.0126), residual 0.5438, rep 0.5477/0.5472, mass_B 0.5559, 0 named. Single doses: -2 0.5369, -1 0.6035, +1 0.5955, +2 0.5357. Overlap with the verdict's 262: 242 named on +-1 alone and 253 at q<=0.05. Intact units: 705/942, mass_c 0.641, rep 0.590/0.593. Two caveats. First, 'almost none' means +-2 adds 0.008 to the pooled AUC. It does not mean +-2 holds no signal: alone it sits 5.6 SE above 0.5, and 88 of 1,022 fresh neurons reach p<=0.05 on it against about 51 by chance. The 59-vs-13 comparison among the named is not a clean test, because the named were picked on a mass that already includes +-2. Second, 'intact text' is only partly true. The intact filters keep about two-thirds of the pooled lead above 0.5 (0.641 out of 0.714). 42% of the named neurons' looping +-1 answers loop on the shared collapse words (own, same), so part of the +-1 lead is the text collapsing early, not the neuron's own word."
+    },
+    {
+     "claim": "2a. At L57 the pass is not words in intact text. It is which token the push makes the model loop on, plus controls breaking harder.",
+     "stands": true,
+     "note": "Reproduced. +-1 only: 0.5225, residual 0.6279. +-2 only: 0.5737, residual 0.5192. Pooled: 0.5995. Neither half clears S1 alone. Intact text: units 0.492 (384/473), answers 0.4525. The 20 named take 17.6% of their z from intact +-1 answers and 82.4% from broken answers. Their unit-specific +-2 loop share is 0.617, against 0.013 for controls. Controls' top +-2 piece is whitespace in 61.6% of answers against 37.8% for neurons; read gain 1.179. Context the report leaves out: L57 controls already take 48.7% of their z from +-2 and neurons 53.4%, so the named's 61.5% is only modestly above that baseline. Pooling beats both halves (0.5995 against 0.574 and 0.5225), so the pass needs both doses. About half the named words are ordinary words (patriotic, vendor, volt, deck, support, personal, well). The logit-lens analogy is interpretation: no figure tests it."
+    },
+    {
+     "claim": "2b. S2 (0.5608, 0.0008 above its bar) does not survive accounting for loop identity: with the two +-2 loop shares added as covariates the full L57 residual falls to 0.4996.",
+     "stands": false,
+     "note": "The number reproduces (0.4996; +-2: 0.374), but the conclusion does not follow from it. The 'specific' loop share counts +-2 answers whose most repeated word is one the unit holds in 2 or more of its +-2 answers. Those are the same words mass_c counts, so the covariate stands in for the outcome itself, which makes the control circular. It is also fitted on controls whose share is close to zero: mean 0.013, 99th percentile 0.25, maximum 0.5. Neurons average 0.118, the named 0.617, and 16 neurons lie above the controls' maximum. That is the same out-of-range fit the reviewer criticises in finding 5. A real effect of 'the neuron drives a word' would also be removed by this control. The only firm part is 'S2 clears its bar by 0.0008'."
+    },
+    {
+     "claim": "3. The +-2 answers are degenerate loops, and they look the same for neurons and controls (at L45).",
+     "stands": true,
+     "note": "Reproduced (v4_shape.py). Neurons vs controls: d4 0.2103/0.2076; d4<0.5 in 94.41%/94.38%; top piece share 0.747/0.757; top piece punctuation 44.9%/46.2%, whitespace 23.1%/25.2%, a 3+ letter word 26.5%/23.6%; no word 30.7%/34.5%. Loop words: no word 3727/4203, own 3104/2959, thought 1011/1017, same 828/815, depending 599/463. Controls' +-2 top-5: own 560, thought 442, same 342. Loop composition: specific share 0.080 named, 0.031 fresh, 0.010 controls. Two of the three examples are wrong. Neuron 11353 loops on 'eating' in only 1 of its 12 +-2 answers (own 5, no word 5). For 9194, 'idea' (5 of 12) is in the reviewer's own L45 collapse set, so their own scheme would count it as a collapse loop. Only 2833 'then' (6 of 12) holds. 'Mostly tells you the model collapsed' is fair, but +-2 still holds a weak lead (0.571)."
+    },
+    {
+     "claim": "4. 'Text nearly intact at +-1' hides the named neurons: they loop at +-1 far more often than controls, mostly on 'who'; part of the +-1 lead is a loop on the neuron's word.",
+     "stands": true,
+     "note": "The rates reproduce. d4<0.5 at +-1: named 9.64% (who 24.4%, orange 7.8%, free 7.8%, bicycle 6.5%, walk 7.1%, chair 4.2%), fresh 4.13% (who 10.4%), controls 0.40% (who 2.1%). Read gain 1.026. The fair comparison is fresh against controls (10x), because the named were picked for high mass. Three corrections. (a) 'Mostly on who' is wrong: 'who' holds 42% of the named's +-1 loops, the largest share but not a majority. (b) 'Loop on their word' is only partly right. Of the 303 looping +-1 answers, 135 loop on a non-collapse word from the unit's own top-5 (4.3% of +-1 answers) and 127 on collapse words such as own and same (4.0%). (c) The '7% of answers carry 18.7% of z' figure uses d4<0.9, which covers 14.0% of their +-1 answers. That is a different set from the d4<0.5 'loops' behind the 9.6%."
+    },
+    {
+     "claim": "5. The covariate residual (G2/S2) cannot see what a loop is on, and at +-1 it predicts almost nothing. At L57 +-1 it is an extrapolation artifact.",
+     "stands": true,
+     "note": "Reproduced (v5_fit_loops.py). R2 on controls: L45 0.209 / 0.091 / 0.576 (full / +-1 / +-2). L45 predicted mass 9.36 for neurons vs 9.92 for controls; actual 13.89 vs 9.92. L57: 0.349 / 0.200 / 0.577. At L57 +-1, controls' sd is 0.0100 for d4 and 0.0085 for lp, against 0.1175 and 0.0463 for neurons; betas +17.91 and -35.29; 90 neurons lie below the controls' d4 range. Dropping d4 takes the +-1 residual from 0.628 to 0.583, and dropping lp takes it to 0.599, so 'extrapolation artifact' holds. Note this +-1 reading is post hoc, not the S2 gate. Two parts do not hold. (a) 'Neurons predicted lower, which is why the residual is above the raw AUC' is not shown. At L57 full, neurons are also predicted lower (5.65 vs 7.06), yet the residual (0.561) is below the raw AUC (0.5995). (b) 'At L57 +-2 the covariates remove the lead mainly through dep, lp and lost' is wrong. Dropping any single covariate leaves 0.522-0.535. Used alone, lp raises the AUC to 0.663, while dep alone gives 0.458 and lost alone 0.416."
+    },
+    {
+     "claim": "6. The named labels are cluttered with the model's collapse words, but the gates do not depend on them.",
+     "stands": true,
+     "note": "Reproduced (v6_words.py). 206 of 262 named list a collapse word ('same' 122, 'own' 111, 'thought' 45). For 14 it is the top replicated word, and 3 have nothing else. With collapse words removed from every answer: mass_c 0.7106, residual 0.7242, rep 0.6767/0.6711, mass_B 0.6522, 294 named (248 in the verdict). L57: 0.6488, residual 0.680, rep 0.5942/0.678, mass_B 0.6055, 67 named (19 of 20). Caveats. 'same' is not purely a breakdown word: 391 of the named neurons' 1,303 'same' answers (30%) are intact +-1 text, and 'same' is also the controls' top +-1 word. 'own' is mostly broken text (11% intact). The removal set is chosen from the controls' own +-2 answers, so the L57 rise to 0.649 is partly built in and is not a lead estimate. The '37% of controls' z' figure uses the top-20 attractor list. On the 1,046-word set actually removed, the share is 44.0%."
+    },
+    {
+     "claim": "7. A control's mass is mostly the question's own topic words coming back at both signs. Neurons differ by words that recur across questions.",
+     "stands": false,
+     "note": "The contrast holds but 'mostly' fails (v6_words.py, v7_misc.py). At L45, words confined to one question carry 32.4% of controls' top-5 z (32.0% at both signs), against 16.5% for fresh neurons and 3.9% for the named. Collapse words carry another 21.1%. The rest is words met on 2 or more questions, such as same, this, for, like. The z-weighted share of a word's answers from its main question is 63% for controls and 32% for the named. xq at +-1 is 0.7033 and rep at +-1 0.676/0.673, both reproduced. So 'neurons differ by words that recur across questions' stands. 'A control's mass is mostly one question's words' is not shown: about a third of it is."
+    },
+    {
+     "claim": "8. The first run of the intact-units filter had a bug (excluded units left in R.counts with mass 0); the fixed numbers are reported.",
+     "stands": true,
+     "note": "Reproduced. The buggy unit filter gives 0.474 at L45 (0.412 at L57). Dropping the excluded units from the counts gives 0.641 and 0.492. R.counts does create an empty Counter for every unit before the keep test, so the bug is real and the fix is right. It has no effect on the verdict, which never filters units."
+    }
+   ],
+   "corrected_figures": [
+    {
+     "name": "Named L45 neurons' z from broken +-1 answers (summary: '19% from the 7% of their +-1 answers that already loop')",
+     "reported": "18.7% of z from 7% of their +-1 answers that loop",
+     "recomputed": "18.7% of z from answers with d4<0.9. Those are 7.0% of all their answers and 14.0% of their +-1 answers, a different set from the d4<0.5 'loops' (9.6% of +-1 answers)"
+    },
+    {
+     "name": "Named L45 neurons looping 'on their word' at +-1",
+     "reported": "9.6% of answers vs 0.4% for controls",
+     "recomputed": "9.64% loop at all (d4<0.5). Only 4.3% (135/3,144) loop on a non-collapse word from their own top-5; 4.0% (127) loop on collapse words (own, same...). Controls 0.40%, also mostly on same/own"
+    },
+    {
+     "name": "Share of named +-1 loops on 'who' ('mostly on who')",
+     "reported": "mostly on 'who'",
+     "recomputed": "42% of the named's +-1 loops are on 'who' (24.4% loop rate vs 4.2-7.8% on the other questions): the largest share, not a majority"
+    },
+    {
+     "name": "+-2 own-word loop examples, L45",
+     "reported": "11353 'eating', 2833 'then', 9194 'idea'",
+     "recomputed": "11353's most repeated word is 'eating' in only 1 of 12 +-2 answers (own 5, no word 5); 2833 'then' 6/12; 9194 'idea' 5/12, but 'idea' is in the reviewer's own L45 collapse set"
+    },
+    {
+     "name": "What +-2 carries at L45 ('almost none of it')",
+     "reported": "+-2 carries almost none of the lead",
+     "recomputed": "Alone, +-2 gives mass_c 0.5708 (SE 0.0126, 5.6 SE above 0.5); 88 of 1,022 fresh neurons reach p<=0.05 on +-2 against about 51 by chance. Pooling adds 0.008 over +-1 alone"
+    },
+    {
+     "name": "L57 controls' z share on collapse words",
+     "reported": "37%",
+     "recomputed": "37.1% on the top-20 attractor list; 44.0% on the 1,046-word set actually removed in the re-run"
+    },
+    {
+     "name": "L57 +-2: covariates that remove the lead ('mainly through dep, lp and lost')",
+     "reported": "mainly dep, lp and lost",
+     "recomputed": "Dropping any one covariate leaves 0.522-0.535. Each alone: lp 0.663 (raises it), dep 0.458, lost 0.416, lnw 0.534, d4 0.571, cut 0.573"
+    },
+    {
+     "name": "L57 share of top-5 z from +-2, for comparison with the named's 61.5%",
+     "reported": "(not reported)",
+     "recomputed": "controls 48.7%, all 507 neurons 53.4%, named 61.5%"
+    },
+    {
+     "name": "L57 residual with loop shares as covariates (meaning, not the number)",
+     "reported": "0.4996: S2 does not survive accounting for loop identity",
+     "recomputed": "0.4996 reproduces, but the covariate is a proxy for mass at +-2 and is fitted on controls with share mean 0.013, max 0.5 (neurons 0.118, named 0.617, 16 neurons above the controls' max). Circular and out of range, so not a test of S2"
+    },
+    {
+     "name": "Controls' mass from one question's words ('mostly')",
+     "reported": "mostly the question's own topic words at both signs",
+     "recomputed": "L45: 32.4% of controls' top-5 z is on words confined to one question (32.0% at both signs), 21.1% on collapse words; named 3.9%, fresh 16.5%"
+    },
+    {
+     "name": "'same' as a breakdown word (named L45)",
+     "reported": "'same' and 'own' are the model's breakdown words",
+     "recomputed": "Of the named neurons' answers holding 'same': 391 intact +-1, 273 broken +-1, 639 +-2 (30% intact). 'own': 162 / 227 / 1,138 (11% intact)"
+    }
+   ],
+   "summary": "I rebuilt the reading from readlib's parts (counts, mass_from_counts, z_of, covariates, residualise, emp_p, bh, auc) without calling readlib.read. My full reading matches the verdict exactly: L45 0.7144 / 0.7244 / 0.6879 / 0.6739 / 0.6693 with the same 262 named, and L57 0.5995 / 0.5608 / 0.5757 / 0.5846 with the same 20.\n\nEvery headline figure in the report reproduces within rounding: the dose splits, single doses, intact filters, z decomposition, answer shapes, loop rates, covariate fits, collapse removal, label counts, named overlap and the bug value.\n\nThe verdicts differ from the figures because some of the reasoning does not hold.\n\nWhat stands:\n- **L45:** the pass is carried by the +-1 answers. On +-1 alone mass_c is 0.706 and clears every bar; on +-2 alone it is 0.571 and clears none. Pooling adds only 0.008. However, +-2 is a weak signal, not none, and about 42% of the named neurons' looping +-1 answers loop on the shared collapse words (own, same), so part of the +-1 lead is early collapse rather than the neuron's own word.\n- **L57:** the pass rests on broken and looping text. Intact +-1 readings give 0.45-0.49, and 82% of the named neurons' z comes from broken answers. But controls already take 49% of their z from +-2, which the report does not mention.\n- The +-2 answers look alike for neurons and controls at L45.\n- Collapse words clutter the labels without driving the gates.\n- The residual cannot see what a loop is on, and its L57 +-1 lift comes from fitting outside the controls' range.\n- The unit-filter bug is real (0.474 buggy, 0.641 fixed).\n\nWhat falls or needs correcting:\n- **'S2 does not survive accounting for loop identity':** the 0.4996 control is circular (its covariate counts the same words mass_c counts) and it is fitted on controls whose share is near zero. That is the same out-of-range fault the reviewer charges elsewhere.\n- **'A control's mass is mostly one question's topic words':** only 32% of controls' top-5 z is on words confined to one question.\n- **Smaller corrections:**\n  - 'mostly on who': 'who' holds 42% of the named neurons' +-1 loops, not a majority.\n  - 'loop on their word': true for 4.3% of +-1 answers, not 9.6%.\n  - The 7% / 18.7% figures use d4<0.9, not the d4<0.5 loops.\n  - Two of the three +-2 own-word examples are wrong: 11353 loops on 'eating' in only 1 of 12 answers, and 'idea' is in the reviewer's own collapse set.\n  - 'mainly through dep, lp and lost' is wrong: lp alone raises the AUC to 0.663.\n  - The 37% L57 collapse share is on the top-20 list; on the set actually removed it is 44%.\n  - 'Residual above raw because neurons are predicted lower' is contradicted at L57 full, where neurons are also predicted lower yet the residual falls below the raw AUC.\n\nCode and outputs, all CPU and all in /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/verify_dose/:\n- Scripts: vcore.py, v1_split.py, v2_intact.py, v3_decompose.py, v4_shape.py, v5_fit_loops.py, v6_words.py, v7_misc.py.\n- Results: the matching v1_split.json, v2_intact.json, v3_decompose.json, v4_shape.json, v5_fit_loops.json, v6_words.json, v7_misc.json."
+  }
+ },
+ {
+  "key": "license",
+  "r": {
+   "summary": "As written, the rules allow whole layers at L40-50 and at L51-57. L45 passed G1-G5, which triggers \"All pass: whole layers at L40-50, plus 51-57 if the probe passes\", and the probe passed S1-S3 and G5 at 48 pieces, the reading that \"Every figure is read at\" (S2 cleared its bar by 0.0008, about 0.04 SE, and with no margin clause that counts as a pass). The max_new rule licenses 32 pieces at L40-50: L45 passed at 32, mass_c dropped 0.0067 and the lower rep dropped 0.0156. The rule names only \"G1-G5\" and \"the whole layer\", so it does not say what piece count L51-57 takes. Applying L45's result there gives 32, a reading under which the probe failed S2 (0.5061). The hashed reader applies the same rule to the probe with the S gates and returns take_shorter False, which means 48, and so does the rule's own fallback \"Otherwise it takes 48\". That choice belongs to the owner. At L45 the trial largely answers the per-neuron concern for the strong neurons: neurons picked on half A replicate on half B 75% of the time (1 of 7 controls does), and the chance figure for named is at most about 7 of 262, not \"~1\" (that is the chance figure for above-every-control). Rank agreement is weak in the bulk of the layer, and at L57 the word replication is fully explained by the six text-survival covariates (rep_res 0.502). Whole-layer hours at L45, at batch 64 as the batch rule requires: 12.1 h (1,024 controls) or 12.7 h (2,048) at 48 pieces, from the measured rate; about 8.0-8.4 h or 8.4-8.8 h at 32, estimated (\u00b110%) because no 32-piece run was timed.",
+   "figures": [
+    {
+     "name": "Licensed scope (as written)",
+     "value": "whole layers L40-50 (L45 included) and L51-57",
+     "how": "L45 G1-G5 all pass at 48, which triggers 'All pass: whole layers at L40-50, plus 51-57 if the probe passes'. The L57 probe passed S1 0.5995, S2 0.5608, S3 0.5757/0.5846 and G5 at 48, meeting 'the scope extends to L51-57 only if S1-S3 and G5 hold'. The header says 'Every figure is read at 48 pieces'."
+    },
+    {
+     "name": "max_new at L40-50 (rule as written)",
+     "value": "32 pieces (take_shorter True)",
+     "how": "L45 at 32 passes G1-G5 (G1 0.7077, G2 0.7029, G3 0.6767/0.6583, G4 0.6518, G5 ok). mass_c drop 0.7144-0.7077=0.0067 and lower-rep drop 0.6739-0.6583=0.0156, both within 0.02. Rule: 'the whole layer takes 32 pieces only if ... Otherwise it takes 48.'"
+    },
+    {
+     "name": "max_new at L51-57",
+     "value": "not stated in the prose. The reader gives 48 (take_shorter False at L57); the L45 result, if carried over, gives 32",
+     "how": "The prose names only G1-G5 (L45's gates). The probe's 32-piece reading fails S2 at 0.5061 against a bar of 0.56. trial_read.py (hashed, sha256sum -c OK) computes the rule per run with that run's gates: shorter_passes False, mass_c drop 0.0081, rep_min_drop -0.0014."
+    },
+    {
+     "name": "L57 S2 margin",
+     "value": "0.5608 vs bar 0.56; bootstrap SE 0.0188; 95% CI [0.523, 0.597]; 0.04 SE above the bar",
+     "how": "named_null.py: 2,000 bootstrap resamples of neurons and controls, residuals fixed"
+    },
+    {
+     "name": "L57 replication beyond text survival",
+     "value": "rep_res 0.502 [0.465, 0.540]; rep_AB_res 0.509; rep_BA_res 0.498 (at 48)",
+     "how": "rep_AB, rep_BA and their sum residualised on the six covariates (fit on controls), AUC with bootstrap CI"
+    },
+    {
+     "name": "L57 q05/named at 48 vs 32",
+     "value": "22/20 at 48; 0/0 at 32; above every control 22 vs 18; BH floor 20",
+     "how": "With 507 neurons and 512 controls, q<=0.05 needs at least ceil((1/513)*507/0.05)=20 neurons above every control. The 22 q05 neurons at 48 are exactly the 22 above every control (BH threshold p=1/513)."
+    },
+    {
+     "name": "L45 named, chance under relabelled-control null",
+     "value": "0 named in 50 of 50 splits (q05 0 in all); null mass AUC 0.5015 matches G5",
+     "how": "readlib's G5 splits (rng(0)): 512 controls relabelled as neurons, the reference from the other 512, every statistic recomputed, naming rule applied. Weak test, because BH needs at least 20 fake neurons above every reference control."
+    },
+    {
+     "name": "L45 named, empirical-null estimate at full size",
+     "value": "<= 7.0 false named of 262 (<= 2.7%) at 48; <= 7.0 of 191 at 32",
+     "how": "7 of 1,024 controls (leave-one-out p) pass the naming rule at the realised BH threshold p<=0.01463 (14 controls pass mass alone, about 14 of the 310 q05, 4.5%). Scaled by 1022/1024 on the assumption that every neuron is null, so an upper bound."
+    },
+    {
+     "name": "'~1 by chance' in the verdict",
+     "value": "1.0 is the chance count for above_every_control (N/(C+1)), not for named",
+     "how": "readlib.read counts: 'by_chance': round(N/(C+1),1)"
+    },
+    {
+     "name": "rho_AB (mass_A vs mass_B), L45 fresh, 48",
+     "value": "neurons 0.461 [0.406, 0.510]; controls 0.143 [0.082, 0.204]; difference 0.319 [0.235, 0.397]",
+     "how": "Spearman, 2,000 bootstrap resamples of units"
+    },
+    {
+     "name": "rho_AB with each half's mass residualised on its own covariates",
+     "value": "neurons 0.528 [0.478, 0.576]; controls 0.128 [0.066, 0.189]",
+     "how": "R.residualise(mass_A, covariates on half A) and the same for B, fit on controls"
+    },
+    {
+     "name": "rho_AB tail vs bulk (selected on half A only)",
+     "value": "mass_A >= controls' p95 (255 neurons): 0.558 [0.467, 0.641]; below (767): 0.168 [0.096, 0.240], controls in the same range 0.116",
+     "how": "bulk_extra.py. Selecting on one half avoids the Berkson bias of selecting on mass_c."
+    },
+    {
+     "name": "Select on one half, test on the other (L45, 48)",
+     "value": "mass: 120/161 (75%) found on A replicate on B at p<=0.05, vs 1/7 controls at the same threshold; B->A 106/148 (72%) vs 0/6. Residualised: 166/194 (86%). Half-A words scored on B: 147/161 (91%) vs 2/7",
+     "how": "BH q<=0.05 on half-A emp p among fresh neurons, then half-B emp p<=0.05; controls passing the same half-A p threshold as the chance baseline"
+    },
+    {
+     "name": "Calibration's rho/named explained",
+     "value": "trial data with calibration-sized halves (2 questions vs 1): rho 0.102 (fresh), 0.108 (the 64 re-asked), controls 0.0. Calibration named 0 was forced: BH floor 20, 15 above every control at cut 48",
+     "how": "Mean over the three held-out questions of who/orange/free. need(N=64, C=64)=20."
+    },
+    {
+     "name": "rho_AB on the 64 re-asked neurons (trial, 12/12 halves)",
+     "value": "0.422 [0.177, 0.617]",
+     "how": "Spearman with bootstrap. The calibration had 0.136 on these neurons with 8/4-answer halves."
+    },
+    {
+     "name": "Shared vocabulary in named words (L45, 48)",
+     "value": "'same' in 122/262 named lists, 'own' 111, 'thought' 45. In the top-5: 'same' for 24% of neurons and 15% of controls, 'own' 16.5%/11%",
+     "how": "common_words.py over the verdict's named_words and the mass_c top-5 lists"
+    },
+    {
+     "name": "Named after dropping 44 shared words",
+     "value": "270 named (231 also in the original 262). mass_c 0.687, residual 0.710, rep_AB 0.666, rep_BA 0.642, mass_B 0.638 (gates still clear)",
+     "how": "Words in the z>0 top-5 of at least 2% of fresh neurons removed from every answer and unpushed answer; full re-read"
+    },
+    {
+     "name": "Named neurons outside the controls' covariate range",
+     "value": "82/262 (31%), vs 12.6% of fresh neurons (mostly 'lost', 'd4', 'lnw')",
+     "how": "Any of the six covariates outside the controls' [min, max]. For these the residual p is an extrapolation of the OLS fit."
+    },
+    {
+     "name": "What 32 pieces costs at L45 (not gated)",
+     "value": "named 262->191 (-27%); q05 310->231; above every control 169->126; residual AUC -0.0215; rep_res -0.027",
+     "how": "L45_verdict.txt readings at 48 and 32"
+    },
+    {
+     "name": "Batch for whole layers",
+     "value": "64",
+     "how": "Batch rule 'as in step 0': 'B is 96 if all six keep at least 32 at 96, else 64'. chair kept 20 pieces at 96 and 46 at 64 (step0_pick.json)."
+    },
+    {
+     "name": "Whole-layer L45, 48 pieces, batch 64",
+     "value": "12.1 h (1,024 controls, 540,678 answers, 8,454 batches); 12.7 h (2,048, 565,254 answers, 8,838 batches); 12.2/12.8 h by wall rate",
+     "how": "Measured writing rate 12.38 answers/s (wall 12.31) = 5.139 s a batch; every one of the 796 trial batches ran the full 48 steps. The formula gives 13.3/14.0 h at 11.26/s. OQ4's 10.9 h and 7.6 h are batch-96 figures, which the batch rule rules out."
+    },
+    {
+     "name": "Whole-layer L45, 32 pieces, batch 64 (estimate)",
+     "value": "about 8.0-8.4 h (1,024 controls); 8.4-8.8 h (2,048); \u00b110%",
+     "how": "No 32-piece run was timed. Since every 48-piece batch ran to the cap, a 32-piece batch runs 32 steps. Range: time proportional to steps (8.05/8.41 h); the formula's 0.45 s fixed cost kept with the step refitted to 0.0977 s (8.40/8.78 h); the formula's own 32/48 ratio (8.36/8.74 h). A two-point fit through the 64-piece calibration gives an impossible -1.67 s fixed cost (older commit c708cdf, other questions, 10 x batch plan), so it was not used."
+    }
+   ],
+   "findings": [
+    {
+     "claim": "The written rules do not settle max_new at L51-57. The prose rule is stated in L45's gates; the hashed reader applies it per run and says 48 at L57; carrying L45's result over would say 32.",
+     "severity": "high",
+     "evidence": "Prose: 'the whole layer takes 32 pieces only if the 32-piece reading also passes G1-G5 and lies no more than 0.02 below the 48-piece reading on mass_c and on the lower of rep_AB and rep_BA. Otherwise it takes 48.' G1-G5 are the L45 gates; the probe has S1-S3 and G5. The probe's 32-piece reading fails S2 (0.5061 < 0.56). trial_read.py (hashes verified) computes max_new_rule for L57 with the S gates: take_shorter False. The scope line ('the scope extends to L51-57 only if S1-S3 and G5 hold') and the outcome line ('plus 51-57 if the probe passes') mention no piece count beyond the header 'Every figure is read at 48 pieces'.",
+     "consequence": "The honest statement: L51-57 are licensed as whole layers, and the probe passed only on the 48-piece reading. Under the 32-piece reading the probe would not have extended the scope. Running L51-57 at 32 relies only on reading 'G1-G5' and 'the whole layer' as L45's result applying to every layer. The owner chooses 48 (the rule's fallback and the reader's output) or 32 for L51-57."
+    },
+    {
+     "claim": "At L45 the trial largely answers the per-neuron concern for the strong neurons: their leads and their words reproduce on disjoint questions, far beyond chance.",
+     "severity": "high",
+     "evidence": "Neurons picked on half A alone (BH q<=0.05, 161) replicate on half B at p<=0.05: 120 (75%) vs 1/7 controls at the same threshold. Residualised per half: 166/194 (86%). A's words scored on B: 147/161 (91%) vs 2/7. rho_AB 0.461 [0.406, 0.510] vs controls 0.143 [0.082, 0.204], difference 0.319 [0.235, 0.397]; residualised 0.528 vs 0.128. The relabelled-control null names 0 in 50/50 splits. The empirical null at full size gives at most 7.0 false named of 262.",
+     "consequence": "The verdict's '~1 by chance' is the chance count for above-every-control; for named, the honest chance figure is about 7 (at most 2.7% of 262). The named list at L45 can be treated as reproducible picks, not noise."
+    },
+    {
+     "claim": "The calibration's 'rho_AB 0.14, named 0' was not evidence against per-neuron reproducibility; it was uninformative by design.",
+     "severity": "medium",
+     "evidence": "With 64 neurons and 64 controls, BH needs at least 20 neurons above every control before any q<=0.05; the calibration had 15 at L45, cut 48, so named 0 was forced. On the trial's own data, calibration-sized halves (2 questions vs 1, 8 vs 4 answers) give rho 0.102 for the fresh neurons and 0.108 for the same 64 re-asked neurons, against 0.461 and 0.422 with 12/12 halves.",
+     "consequence": "The jump from 0.14 to 0.46 comes from larger halves, not from different neurons. Future designs should report the BH floor, need(N,C)=ceil(N/(0.05(C+1))), next to any named count."
+    },
+    {
+     "claim": "Rank agreement lives in the tail; the bulk of a layer carries little reproducible order.",
+     "severity": "medium",
+     "evidence": "Selected on half A only: neurons at or above the controls' 95th percentile of mass_A (255) have rho 0.558 [0.467, 0.641]. The 767 below have rho 0.168 [0.096, 0.240], against controls in the same range at 0.116.",
+     "consequence": "A whole-layer ranking is meaningful for roughly the quarter to third of neurons that lead the controls. Ordering within the rest is close to control-level noise, and the page should not present it as a reproducible rank."
+    },
+    {
+     "claim": "The L57 S2 pass sits on the bar, and L57's word replication is entirely accounted for by text survival.",
+     "severity": "medium",
+     "evidence": "S2 is 0.5608 against 0.56, bootstrap SE 0.0188, 95% CI [0.523, 0.597], i.e. 0.04 SE above. rep_res is 0.502 [0.465, 0.540], rep_AB_res 0.509, rep_BA_res 0.498. S3 (rep_AB 0.5757, rep_BA 0.5846) is not residualised, so the gates cannot see this. The rule has no margin clause, and the owner said 'Read it as is'.",
+     "consequence": "The scope extension stands as written. At L51-57, though, 'words replicate' does not mean replication beyond how the text survives, so the pages there should not claim themes from S3. The owner may want L40-50 first (OQ5)."
+    },
+    {
+     "claim": "L57's q05/named drop from 22/20 at 48 to 0/0 at 32 is a BH resolution cliff, not a large change in the data.",
+     "severity": "medium",
+     "evidence": "The 22 q05 neurons at 48 are exactly the 22 above all 512 controls (BH threshold p=1/513), and the floor is 20. At 32, 18 are above every control, so q05 is 0. With 21,504 neurons the floor is 420 neurons above every control with 1,024 controls and 210 with 2,048.",
+     "consequence": "This bears on OQ3 ('2,048 (q <= 0.05 at 1% of a layer) costs about 0.5 h more than 1,024 (2%)'). At L51-57 the named yield may sit near the floor, so 2,048 controls protect naming there. Measured cost: +0.55 h at 48 and about +0.35-0.4 h at 32."
+    },
+    {
+     "claim": "The max_new rule does not look at naming yield or at the residual, which both fall more at 32 than the rule's 0.02 tolerance would allow.",
+     "severity": "medium",
+     "evidence": "L45 at 32: named 262->191 (-27%), q05 310->231, residual AUC 0.7244->0.7029 (-0.0215), rep_res 0.694->0.667. The rule tests only mass_c and the lower of rep_AB/rep_BA. 'Reported but not gating: ... the q <= 0.05 count; the named count.'",
+     "consequence": "Taking 32 at L40-50 is licensed, but it saves about 4 h a layer at the price of about a quarter of the named neurons. OQ4 ('The cost of 48 pieces ... The pre-registered rule may choose 32') leaves the cost trade to the owner, and 48 remains the rule's fallback."
+    },
+    {
+     "claim": "The named words are cluttered by vocabulary shared across pushes, but naming is not carried by it.",
+     "severity": "low",
+     "evidence": "'same' appears among the replicated words of 122/262 named neurons, 'own' in 111, 'thought' in 45. These words are in the top-5 of 24%, 16.5% and 10.6% of neurons and of 15%, 11% and 13.9% of controls. Dropping the 44 words found in the top-5 of at least 2% of neurons leaves 270 named (231 of the original), with every gate still clearing.",
+     "consequence": "Labels shown on pages should filter the shared breakage words ('same', 'own', 'thought', 'thoughtthought'...) before they are presented as a neuron's theme."
+    },
+    {
+     "claim": "For 31% of named neurons the residual criterion is an extrapolation.",
+     "severity": "low",
+     "evidence": "82/262 named neurons (vs 12.6% of fresh neurons) have at least one of the six covariates outside the controls' range, mostly 'lost', 'd4' and 'lnw'. The OLS fit is made on controls only.",
+     "consequence": "For these neurons, 'residual p<=0.05' means above a linear extrapolation, not 'beyond text survival as the controls show it'."
+    },
+    {
+     "claim": "Whole layers run at batch 64, so the pre-registration's OQ4 hours (batch 96) do not apply.",
+     "severity": "info",
+     "evidence": "Batch rule 'as in step 0': 'B is 96 if all six keep at least 32 at 96, else 64'; chair kept 20 pieces at 96. Measured: 12.38 answers/s (formula 11.26/s at 64, +9.9%), 5.139 s a batch, all 796 batches at the 48-step cap. Whole layer at 48: 12.1 h (1,024) or 12.7 h (2,048). At 32 (estimated): 8.0-8.4 h or 8.4-8.8 h.",
+     "consequence": "At 48 a layer spills into a second night, as OQ4 foresaw. At 32 it probably fits one night. The 32 figure needs a short timed run to confirm (\u00b110%)."
+    },
+    {
+     "claim": "'Passes G1-G5' at 32 is evaluated without G5's fourth check, and the 32-piece reading is an emulation.",
+     "severity": "low",
+     "evidence": "trial_read.py evaluates G5b (units.jsonl mass = mass_c) only where max_new <= cut, so it is skipped at 32. The 32-piece answers are 48-piece answers cut with the tokenizer. The floor (chair 46 pieces at batch 64) supports that a real 32-piece run writes the same first 32 pieces.",
+     "consequence": "Harmless for the decision. A 32-piece whole layer should still check its own units.jsonl against the reader, as G5b does at 48."
+    },
+    {
+     "claim": "These remain the owner's decisions under the pre-registration's own words.",
+     "severity": "info",
+     "evidence": "OQ1 'Whether to switch DEFAULT_DESIGN to break_rel after a pass'. OQ3, controls 1,024 vs 2,048. OQ4 'The cost of 48 pieces'. OQ5 'Which layer to take first after a pass'. OQ6, the doc text and 'whether the page should state that a break_rel lead means \"unlike a unit(w_post*r) direction pushed as far\", not \"has a theme\"'. OQ8, review and commit of the patch on a branch. Plus the unwritten max_new for L51-57.",
+     "consequence": "The data support the OQ6 wording for L51-57 in particular (rep_res 0.502), and at L45 it fits the bulk of the layer. Nothing in the rules sets the piece count for L51-57 without an owner decision."
+    }
+   ],
+   "scripts": [
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/license/named_null.py (outputs named_null_L45-48.json, named_null_L45-32_L57-48_L57-32.json)",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/license/common_words.py (outputs common_words_L45_48.json)",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/license/bulk_extra.py (outputs bulk_extra.json)",
+    "/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/license/hours.py (outputs hours.json)"
+   ]
+  },
+  "verify": {
+   "verdicts": [
+    {
+     "claim": "F1 (high): the written rules do not settle max_new at L51-57; the owner chooses 48 or 32.",
+     "stands": false,
+     "note": "The facts reproduce. The SHA256SUMS check is OK. L57 at 32 fails S2 (0.5061 against 0.56). The hashed reader gives take_shorter False at L57 (mass_c drop 0.0081, rep_min_drop -0.0014). The prose names only G1-G5. The conclusion does not follow, though. The rule reads '32 pieces only if the 32-piece reading also passes ... Otherwise it takes 48.' The only encoded form of the rule (trial_read.py, which works per run) gives 48, and so does the fallback. The one reading that gives 32 would run L51-57 at a piece count where the run that licensed them failed its own scope gate. As written, the pre-registration gives 48 at L51-57; 32 there would need an amendment. This is a wording gap, not an open choice, so 'high' overstates it."
+    },
+    {
+     "claim": "F2 (high): at L45 the trial largely answers the per-neuron concern for the strong neurons; the chance figure for named is at most about 7, not ~1.",
+     "stands": true,
+     "note": "Recomputed with my own p-values and BH:\n- Picked on half A, replicated on half B: 120/161 (74.5%) against 1/7 controls. B to A: 106/148 against 0/6.\n- Residualised per half: 166/194 (85.6%).\n- A's words scored on B: 147/161 (91.3%) against 2/7.\n- A larger control baseline, the top 5% of controls on the picking half (51), replicates 7/51 on mass and 10/51 on words. The gap is not an artefact of 7 controls.\n- It holds inside the controls' covariate range: 73/91 (80%) against 0/3.\n- It holds after dropping the 44 shared words: words 100/108, mass 78/108.\n- rho_AB is 0.461 [0.408, 0.510] for neurons against 0.143 for controls; residualised 0.528 against 0.128.\n\nTwo corrections:\n- The relabelled-control null is not weak evidence; it cannot name anything. Fake neurons above every reference control averaged 1.38 (max 10) against a BH floor of 20. Its 0/50 should not be cited as support.\n- 6.99 false named is a point estimate that assumes every neuron is null. The 95% Poisson upper bound on 7 control hits is about 14 (5.5% of 262), so 'at most 7' is wrong.\n\nThe verdict's by_chance 1.0 is the expected count above every control, which is what the pre-registration labels it. 'Reproducible picks' means the lead and its words recur, not that they form a theme."
+    },
+    {
+     "claim": "F3 (medium): the calibration's rho_AB 0.14 and named 0 were uninformative by design.",
+     "stands": true,
+     "note": "need(64,64) is 20. At L45, cut 48, the calibration had 15 neurons above every control (calib_expect.json). I checked that the 0 was forced, not just likely. Only 18 neurons (above_ctl_p95 0.2812) can have p <= 3/65. BH would need at least 20 neurons at p = 1/65, 40 at 2/65, 59 at 3/65 and 79 at 4/65. Calibration-sized halves (2 questions against 1) on the trial's data give rho 0.102 for fresh neurons, 0.108 for the 64 re-asked and -0.0 for controls; the calibration itself had 0.136 and 0.025. With 12/12 halves the figures are 0.461 and 0.422 [0.181, 0.616]."
+    },
+    {
+     "claim": "F4 (medium): rank agreement lives in the tail; the bulk of a layer carries little reproducible order.",
+     "stands": true,
+     "note": "This holds at L45 only. Reproduced at L45, cut 48:\n- Tail (mass_A at or above the controls' p95, 255 neurons): rho 0.558 [0.462, 0.640].\n- Bulk (767 neurons): 0.168 [0.101, 0.238].\n- Controls in the same range: 0.116.\n- Bulk neurons minus controls: [-0.042, 0.145].\n\nTwo limits:\n- The bulk is still unlike the controls as a group: on half B, bulk neurons beat bulk controls with AUC 0.609. What it lacks is order within itself.\n- It is not a property of 'a layer'. At L57 the bulk (453) has rho 0.345 [0.256, 0.430] against 0.171 for bulk controls (difference CI [0.05, 0.30]), and the tail (54) has 0.302 [0.03, 0.55].\n\nSo the advice on how to present the ranking applies to L40-50 as read at L45, not to L51-57."
+    },
+    {
+     "claim": "F5 (medium): L57's S2 pass sits on the bar, and L57's word replication is entirely accounted for by text survival (rep_res 0.502).",
+     "stands": false,
+     "note": "The figures reproduce:\n- S2 is 0.5608. Bootstrap SE is 0.0186 with the OLS fit held fixed, but 0.0244 [0.516, 0.610] with the fit refitted on each resample, so the margin is about 0.03 SE.\n- rep_res 0.502 [0.464, 0.539]; rep_AB_res 0.509; rep_BA_res 0.498.\n\nThe reading 'entirely accounted for by text survival' does not follow from them:\n- 153 of L57's 507 neurons (30.2%) have at least one covariate outside every control's range. At L45 the share is 15.8% even when the range comes from 512 controls, so this is a difference between the layers.\n- rep_res 0.502 is an average of opposites: 0.423 for the 354 neurons inside the range (below the controls) and 0.684 for the 153 outside it.\n- S2 splits the same way: 0.488 inside the range (0.505 or 0.508 with the range widened by 10% or 25%) and 0.730 outside.\n- Inside the range, L57 fails all three of its gates: S1 0.551, S2 0.488, S3 0.522/0.537.\n- 16 of the 20 named neurons lie outside the range.\n\nThe L57 pass, S2 included, rests on neurons whose text survival no control matches, where the residual is a linear extrapolation. The right statement is that this design cannot separate L57's lead from text survival. The consequence (no themes from S3 at L51-57) stands, and more strongly."
+    },
+    {
+     "claim": "F6 (medium): L57's q05/named drop from 22/20 at 48 pieces to 0/0 at 32 is a BH resolution cliff; 2,048 controls protect naming at L51-57.",
+     "stands": true,
+     "note": "At 48, the q05 set is exactly the 22 neurons above all 512 controls (threshold p = 1/513); the floor is 20. At 32, 18 are above every control, so q05 is 0. With 21,504 neurons the floor is 420 (1,024 controls) or 210 (2,048). Extra cost of 2,048 controls: +0.55 h at 48, +0.36-0.38 h at 32.\n\nSubsampling L57's controls supports the hedge: the share of neurons above every one of C controls falls more slowly than the floor 20/(C+1).\n- 48 pieces: 5.9% against 7.8% at C=256; 4.3% against 3.9% at 512; extrapolated about 3.2% against 1.95% at 1,024.\n- 32 pieces: 3.55% against 3.9% at 512; about 2.2% against 1.95% at 1,024; 1.4% against 0.98% at 2,048.\n\nCaveat: 'not a large change in the data' is true of mass_c (0.5995 to 0.5914) but not of the residual (S2 fell 0.055, from 0.5608 to 0.5061). Most L57 names are extrapolated anyway (see F5)."
+    },
+    {
+     "claim": "F7 (medium): the max_new rule ignores naming yield and the residual, which fall more at 32 than 0.02.",
+     "stands": true,
+     "note": "From 48 to 32 pieces:\n- named 262 to 191 (-27%)\n- q05 310 to 231\n- above every control 169 to 126\n- residual AUC 0.7244 to 0.7029 (-0.0215)\n- rep_res 0.6935 to 0.6675 (-0.026; the reviewer's -0.027 came from rounded figures)\n\nThe time saved is 3.7-4.0 h a layer. The residual's drop clears 0.02 by only 0.0015, and the named count is not on the AUC scale the 0.02 applies to. This describes the rule correctly; it does not show the rule was misapplied."
+    },
+    {
+     "claim": "F8 (low): named words are cluttered by shared vocabulary, but naming is not carried by it.",
+     "stands": true,
+     "note": "Lists containing each word: 'same' 122/262, 'own' 111, 'thought' 45. Share of top-5 lists, neurons/controls: 'same' 24.0%/15.0%, 'own' 16.5%/11.2%, 'thought' 10.6%/13.9%. 'thought' is commoner among controls, so it is generic breakage. Dropping the 44 words gives 270 named (231 overlap), with AUCs 0.687/0.710/0.666/0.642/0.638. Word replication after the drop: 100/108."
+    },
+    {
+     "claim": "F9 (low): for 31% of named neurons the residual criterion is an extrapolation.",
+     "stands": true,
+     "note": "82/262 named are outside the range, against 12.6% of fresh neurons (lost 69, d4 42, lnw 36). At L45 it is harmless for the gates: the 893 neurons inside the range clear every gate on their own (mass_c 0.692, residual 0.691, rep_AB 0.657, rep_BA 0.643, mass_B 0.651), and 180 named are inside. The same check is decisive at L57 (F5): 30% outside the range, 16/20 named outside, S2 0.488 inside. Its severity should be high for L51-57."
+    },
+    {
+     "claim": "F10 (info): whole layers run at batch 64; the batch-96 OQ4 hours do not apply.",
+     "stands": true,
+     "note": "step0_pick.json: chair keeps 46 pieces at batch 64 and 20 at 96, so the batch is 64. All 796 batches ran 48 steps (L57: 388/388). Measured: 5.139 s a batch, 12.38 answers/s (+9.9% over the formula's 11.26/s). A whole layer is 8,454 batches (1,024 controls) or 8,838 (2,048).\n- At 48 pieces: 12.07-12.13 h and 12.62-12.68 h (12.20/12.76 h by wall time).\n- At 32 pieces (estimated): 8.05/8.40/8.36 h and 8.41/8.78/8.74 h.\n\nOQ4's 10.9 h and 7.6 h are the design's batch-96 figures with 2,048 controls (plan_cost.json: 10.89 and 7.59)."
+    },
+    {
+     "claim": "F11 (low): 'passes G1-G5' at 32 skips G5's units.jsonl check, and the 32-piece reading is an emulation.",
+     "stands": true,
+     "note": "In the code, G5b runs only when max_new <= cut, so it is skipped at 32; load() cuts the 48-piece answers with the tokenizer. Nit: the floor is not what makes the emulation valid. Greedy decoding with a dynamic cache is causal, and the batch plan depends only on the job list and batch size, so a 32-piece run computes the same first 32 pieces. The floor bears on the batch size."
+    },
+    {
+     "claim": "F12 (info): the open owner decisions (OQ1, OQ3, OQ4, OQ5, OQ6, OQ8, plus the unwritten max_new for L51-57).",
+     "stands": true,
+     "note": "The quotes match the pre-registration text. Exception: max_new for L51-57 is not unwritten; it defaults to 48 (F1). The owner should also see, before any L51-57 run, that the probe's pass rests on neurons outside the controls' covariate range (F5)."
+    }
+   ],
+   "corrected_figures": [
+    {
+     "name": "L45 named, empirical-null false-named estimate (48 pieces)",
+     "reported": "<= 7.0 false named of 262 (<= 2.7%), an upper bound",
+     "recomputed": "6.99: 7 of 1,024 controls named at p <= 15/1025, scaled by 1022/1024. It is a bound only in pi0 (it assumes every neuron is null). The 95% Poisson upper bound on 7 hits is about 14.4 (5.5% of 262). At 32 pieces: 6.99 of 191 (3.7%), upper bound about 14.4 (7.5%)."
+    },
+    {
+     "name": "L45 relabelled-control null",
+     "reported": "0 named in 50 of 50 splits; a weak test",
+     "recomputed": "0 named and 0 q05 in all 50 splits, mass AUC 0.5015. Fake neurons above every reference control: mean 1.38, max 10, against a BH floor of 20 (512/512). The test cannot name anything, so it carries no evidence."
+    },
+    {
+     "name": "L57 S2 margin",
+     "reported": "SE 0.0188; 95% CI [0.523, 0.597]; 0.04 SE above the bar",
+     "recomputed": "With the OLS fit held fixed: SE 0.0186, CI [0.524, 0.598]. With the fit refitted on each resample: SE 0.0244, CI [0.516, 0.610]. Margin 0.03-0.04 SE (Hanley-McNeil 0.0179)."
+    },
+    {
+     "name": "L57 rep_res (replication beyond text survival)",
+     "reported": "0.502 [0.465, 0.540]: fully explained by the six covariates",
+     "recomputed": "0.502 [0.464, 0.539] overall, made up of 0.423 for the 354 neurons inside the controls' covariate range and 0.684 for the 153 outside it. The residual is extrapolated for 30% of neurons, so the figure does not show that text survival explains the replication."
+    },
+    {
+     "name": "L57 gates inside the controls' covariate range (not reported)",
+     "reported": "S1 0.5995, S2 0.5608, S3 0.5757/0.5846 (all neurons)",
+     "recomputed": "354 neurons inside the range: S1 0.551, S2 0.488, S3 0.522/0.537, all below the bars (S2 0.505 or 0.508 with the range widened 10% or 25%). 153 outside: 0.711, 0.730, 0.700/0.695. 16 of the 20 named are outside. At L45, the 893 inside clear every gate: 0.692, 0.691, 0.657/0.643, mass_B 0.651."
+    },
+    {
+     "name": "max_new at L51-57",
+     "reported": "not stated in the prose; the owner chooses 48 or 32",
+     "recomputed": "48: from the hashed per-run reader (take_shorter False at L57) and from the rule's own 'Otherwise it takes 48'. 32 would need an amendment, because S2 fails at 32 (0.5061)."
+    },
+    {
+     "name": "rep_res cost of 32 pieces at L45",
+     "reported": "-0.027",
+     "recomputed": "-0.026 (0.6935 to 0.6675)"
+    },
+    {
+     "name": "rho_AB tail vs bulk at L57 (the claim was stated for 'a layer')",
+     "reported": "L45 only: tail 0.558, bulk 0.168 against controls 0.116",
+     "recomputed": "L45 reproduces (0.558 [0.462, 0.640]; 0.168 [0.101, 0.238]; 0.116). At L57: tail (54) 0.302 [0.03, 0.55], bulk (453) 0.345 [0.256, 0.430] against bulk controls 0.171; difference CI [0.05, 0.30]."
+    }
+   ],
+   "summary": "I re-derived every headline figure with my own code (CPU only). I wrote only to /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/verdict_review/verify_license/; the files there are verify.py, hours_check.py, extra.py and extra2.py, with their outputs verify_L45-48.json, verify_L45-32.json, verify_L57-48.json, verify_L57-32.json, hours_check.json, extra_L57-48_L57-32_L45-48.json and extra2.json. The p-values, BH, AUC, bootstraps and nulls are my own code; the statistics come from readlib.\n\nAlmost every number reproduces exactly or within bootstrap noise:\n- the gate AUCs at both cuts and both layers;\n- the named lists, which match the verdicts;\n- q05, above every control, the BH threshold 15/1025, and 14 controls passing on mass, 7 on the full rule;\n- rho_AB and its residualised form, the tail and bulk at L45, select-one-half, the 64 re-asked, the calibration-sized halves;\n- the covariate range, the shared vocabulary, the drop-44 re-read;\n- the floors, and the batches and hours (12.07-12.13 h and 12.62-12.68 h at 48 pieces; 8.05-8.40 h and 8.41-8.78 h at 32).\n\nTwo findings fall:\n1. **F1, max_new at L51-57.** The pre-registration does settle it. The hashed per-run reader and the 'Otherwise it takes 48' fallback both give 48. Taking 32 there would run L51-57 at a piece count where the probe failed its own S2 (0.5061), so 32 needs an amendment.\n2. **F5, L57 word replication 'entirely accounted for by text survival'.** This misreads the figures, and the problem is larger than the reviewer saw. 30% of L57's neurons have a covariate outside every control's range (L45: 15.8% even with a 512-control range).\n   - rep_res 0.502 averages 0.423 inside the range and 0.684 outside.\n   - S2 is 0.488 inside the range (0.508 with the range widened 25%) and 0.730 outside.\n   - Inside the controls' range, L57 fails all three of its gates: S1 0.551, S2 0.488, S3 0.522/0.537.\n   - 16 of its 20 named neurons are outside the range.\n\n   So the L57 scope pass, read as is, rests on neurons whose text survival no control matches, where 'beyond text survival' is a linear extrapolation. At L45 the same check is harmless: the 893 neurons inside the range clear every gate (0.692, 0.691, 0.657/0.643, mass_B 0.651).\n\nCorrections inside findings that stand:\n- The relabelled-control null cannot name anything (mean 1.38 neurons above every control, max 10, against a floor of 20), so it is no evidence.\n- About 7 false named is a point estimate assuming all neurons null; its 95% upper bound is about 14 (5.5% of 262).\n- The S2 bootstrap SE is 0.024 when the OLS fit is refitted on each resample.\n- The rep_res cost of 32 pieces is 0.026.\n- F4's bulk claim holds at L45 but not at L57, where the bulk carries order above the controls (0.345 against 0.171).\n\nStill standing: at L45 the per-neuron reproducibility (75%, 86% and 91% replicate against about 14-20% of strong controls, and it survives both the covariate-range and shared-word checks); the calibration's forced 0 (I checked BH could not reach q05 at any threshold); the BH cliff at L57, which subsampling the controls supports (2,048 controls give more margin); and the hours."
+  }
+ }
+]

@@ -44,8 +44,8 @@ Gemma 4 of scripts/atlas_stand_in.py:
 11. a two-stage census: a screen's strongest neurons by mass retested against fresh controls (census_run.py
    --neurons-from --top --seed), the stage in the meta, the retest's p against its controls and q over its neurons
    alone, the screen still the layer's census, rank and the card naming the stage, and a retest refused with the
-   screen's seed, too many neurons, --neurons beside it, another layer, or other neurons once its screen is ranked
-   again;
+   screen's seed, too many neurons, --neurons beside it, another layer, other neurons once its screen is ranked
+   again, or a design sharing a (question, dose) cell with its screen's;
 12. the writer's floor's CPU half: in a census-shaped batch written by the census's own writer (write_census_batch),
    the unpushed row and a neuron's push at dose 0 each write exactly the answer written alone, while the controls'
    rows at +0.8 part; verify_atlas_writer.py --stand-in finds no shape parting in float32 on the CPU; the census card's
@@ -55,7 +55,12 @@ Gemma 4 of scripts/atlas_stand_in.py:
    card's parts and what differs;
 13. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
    columns (CPU, a few tensors), the next layer reads the census's controls about as loudly as the layer's neurons, and
-   an isotropic control far louder.
+   an isotropic control far louder;
+14. break_rel: its six questions, halves and doses; the older designs' questions, job lists and batch plans pinned as
+   before it; each design's reading, the own-question exclusion and the controls' mean by hand; a stand-in run of it
+   ranked its way (the reading recorded in its ranking file and on its card, a re-rank at another cap said as such),
+   stopped, torn and sharded, each equal to the unbroken run; refused in the ceiling unit; the depth report, rank's
+   printout, verify_atlas_writer.py --design, and the writer's floor over the run's own questions.
 
 Run: .venv/bin/python -I scripts/check_census.py   (exits 0 when every check holds)
 """
@@ -1079,16 +1084,24 @@ def run_checks(tmp: Path) -> int:
     top4 = sorted(u_["neuron"] for u_ in sorted(ranked, key=lambda u_: -u_["mass"])[:4])
     picked, st = cz.retest_of(s_units, 4)
     check(picked == top4 and st == {"stage": 2, "screen": "L5-main_rel.jsonl", "top": 4, "of": 12, "by": "mass", "screen_layer": 5,
-                                    "screen_seed": 0, "screen_controls": 3, "screen_design": "main_rel"},
+                                    "screen_seed": 0, "screen_controls": 3, "screen_design": "main_rel",
+                                    "screen_cells": [[p_, float(d_)] for p_, d_ in cz.DESIGNS["main_rel"]]},
           f"retest_of: the screen's four strongest by mass, and the stage ({picked}, {st})")
-    r = subprocess.run(cr + ["--neurons-from", str(s_units), "--top", "4", "--seed", "7", "--random-controls", "14"], env=env,
-                       capture_output=True, text=True, timeout=600)
-    retest = sdir5 / "L5-main_rel-top4.jsonl"
+    # on the screen's own cells a neuron writes the answer it was picked for again: refused, nothing written
+    r = subprocess.run(cr + ["--neurons-from", str(s_units), "--top", "4", "--seed", "7", "--random-controls", "14", "--design", "main_rel"],
+                       env=env, capture_output=True, text=True, timeout=600)
+    check(r.returncode != 0 and "shares 10 (question, dose) cells with L5-main_rel.jsonl" in r.stderr and not (sdir5 / "L5-main_rel-top4.jsonl").exists(),
+          f"a retest on its screen's own cells is refused ({r.stderr[-300:]})")
+    check(cz.shared_cells(cz.DESIGNS["calib_rel"], st) == [("orange", 0.5), ("who", 0.5)] and cz.shared_cells(cz.DESIGNS["break_rel"], st) == [],
+          "shared_cells: calib_rel shares main_rel's +0.5 on who and orange; break_rel shares none")
+    r = subprocess.run(cr + ["--neurons-from", str(s_units), "--top", "4", "--seed", "7", "--random-controls", "14", "--design", "break_rel"],
+                       env=env, capture_output=True, text=True, timeout=600)
+    retest = sdir5 / "L5-break_rel-top4.jsonl"
     rm = json.loads(cz.meta_path_of(retest).read_text()) if retest.exists() else {}
     rrows = list(cz.read_rows(retest)) if retest.exists() else []
     check(r.returncode == 0 and rm.get("stage") == st and rm.get("seed") == 7 and rm.get("random_controls") == 14
           and rm.get("neurons") == cz.neuron_ranges(top4) and sorted({r_["neuron"] for r_ in rrows if r_["kind"] == "neuron"}) == top4
-          and len(rrows) == (4 + 14) * 10 + 4, f"census_run.py --neurons-from --top 4 --seed 7: the four retested, the stage in the meta ({r.stderr[-300:]})")
+          and len(rrows) == (4 + 14) * 24 + 6, f"census_run.py --neurons-from --top 4 --seed 7 --design break_rel: the four retested, the stage in the meta ({r.stderr[-300:]})")
     ru = [u_ for u_ in cz.read_rows(cz.units_path_of(retest))] if cz.units_path_of(retest).exists() else []
     rn = sorted((u_ for u_ in ru if u_["kind"] == "neuron"), key=lambda u_: u_["p"])
     bh = [min(min(rn[j]["p"] * len(rn) / (j + 1) for j in range(i, len(rn))), 1.0) for i in range(len(rn))]
@@ -1110,8 +1123,8 @@ def run_checks(tmp: Path) -> int:
     s_units.write_text("".join(json.dumps({**u_, "mass": u_["mass"] + 1000.0} if (u_["kind"], u_["neuron"]) == ("neuron", out_of) else u_) + "\n"
                                for u_ in lifted))
     held =(retest.read_bytes(), cz.meta_path_of(retest).read_bytes())
-    r = subprocess.run(cr + ["--neurons-from", str(s_units), "--top", "4", "--seed", "7", "--random-controls", "14"], env=env,
-                       capture_output=True, text=True, timeout=600)
+    r = subprocess.run(cr + ["--neurons-from", str(s_units), "--top", "4", "--seed", "7", "--random-controls", "14", "--design", "break_rel"],
+                       env=env, capture_output=True, text=True, timeout=600)
     s_units.write_text(ranked_text)
     check(r.returncode != 0 and "fixed when it was begun" in r.stderr and (retest.read_bytes(), cz.meta_path_of(retest).read_bytes()) == held,
           f"a retest whose screen was ranked again is refused, not grown ({r.stderr[-200:]})")
@@ -1195,7 +1208,8 @@ def run_checks(tmp: Path) -> int:
         check(fc is not None and fc["k"] is None and fc["same_runtime"] is True and "did not part" in fc["says"],
               f"writer_floor: verify_atlas_writer.py's own file read, a single file named ({fc})")
         os.environ[cz.WRITER_FLOOR_ENV] = str(wf_dir)
-        card_w = atlas_routes.census_card({"path": retest, "meta": {**rm, "batch": 5, "runtime": um["runtime"]}, "null": {}})
+        # (as a run of the four questions: the retest above asks break_rel's six, which no floor here was measured on)
+        card_w = atlas_routes.census_card({"path": retest, "meta": {**rm, "prompts": cz.PROMPTS, "batch": 5, "runtime": um["runtime"]}, "null": {}})
         check(card_w["writer_floor"] == f_, "the census card carries the writer's floor")
         os.environ[cz.WRITER_FLOOR_ENV] = str(tmp / "no-floors-here")
         check(atlas_routes.census_card({"path": retest, "meta": rm, "null": {}})["writer_floor"] is None, "...and none where no floor is on disk")
@@ -1258,6 +1272,169 @@ def run_checks(tmp: Path) -> int:
           f"compare_canaries: a canary of another batch size is not the same batch ({cmp_['says']}, {cmp_['settings_differ']})")
     section("the writer's floor's CPU half: unpushed and dose-0 rows of a pushed batch write the answer alone; the floor on the card; "
             "a canary taken alone and compared", before)
+
+    # ------------------------------------------------------------------------------------------------- 14. break_rel
+    before = len(failures)
+    br = cz.DESIGNS["break_rel"]
+    q6 = ("who", "orange", "free", "bicycle", "walk", "chair")
+    check(len(br) == 24 and [p_ for p_ in dict.fromkeys(p_ for p_, _ in br)] == list(q6)
+          and sorted({d_ for _, d_ in br}) == [-2.0, -1.0, 1.0, 2.0] and all(sum(1 for p_, _ in br if p_ == q_) == 4 for q_ in q6)
+          and cz.DESIGN_HALVES["break_rel"] == (q6[:3], q6[3:]) and list(cz.design_questions("break_rel")) == list(q6)
+          and all(cz.design_questions("break_rel")[q_] == cz.ALL_PROMPTS[q_] for q_ in q6),
+          "break_rel: six questions (two halves of three) x -2, -1, +1, +2 of the stream")
+    # every design begun before it keeps its questions, its job list and its plan: digests pinned on 29 October 2026
+    pins = {"main_rel": {"n": 64, "sha256": "2b5c4c91578ea7c1"}, "calib_rel": {"n": 220, "sha256": "6c170d23e8952275"},
+            "calib_ceil": {"n": 184, "sha256": "076ae7655750f6f8"}}
+    check(all(cz.jobs_digest(cz.census_jobs([0, 5, 9, 12], 2, cz.DESIGNS[d_])) == v_ for d_, v_ in pins.items())
+          and all(cz.design_questions(d_) == cz.PROMPTS for d_ in pins)
+          and cz.jobs_digest(cz.census_jobs(range(21504), 256, cz.DESIGNS["main_rel"])) == {"n": 217604, "sha256": "ca2e99e9b8490a06"},
+          "the older designs' questions and job lists, as before break_rel")
+    check(cz.reading_of("main_rel") == {"max_rel": 1.6, "reference": "units", "exclude": "all"}
+          and cz.reading_of("calib_rel") == cz.reading_of("calib_ceil") == cz.READING_DEFAULT
+          and cz.reading_of("break_rel") == {"max_rel": 2.5, "reference": "controls", "exclude": "own"} and cz.reading_of(None) == cz.READING_DEFAULT,
+          "each design's reading")
+    lj = cz.census_jobs(range(21504), 2048, br, list(q6))
+    lp = cz.plan_batches(lj, 96, cz.DESIGN_PLAN["break_rel"])
+    check(len(lj) == 565254 and len(lp) == 5896 and len(lj) / (len(lp) * 96) > 0.998 and len(cz.plan_batches(lj, 96)) == 7068,
+          f"a whole break_rel layer: 565,254 answers in 5,896 batches of 96 at 12 x batch (7,068 at 10 x batch)")
+    # the reading by hand: own-question exclusion, and the controls' mean (a neuron's mass does not move with its neighbours)
+    hrows = [row("baseline", -1, "plain sky", prompt="who"), row("baseline", -1, "kettle steam", prompt="bicycle"),
+             row("neuron", 0, "steam steam", dose=1.0), row("neuron", 0, "steam pear", dose=2.0), row("neuron", 0, "plain", dose=-1.0),
+             row("random", 0, "pear", dose=1.0), row("random", 0, "fig", dose=2.0), row("random", 1, "fig", dose=1.0),
+             row("random", 1, "date", dose=-2.0), row("neuron", 0, "kiwi kiwi", dose=2.0, prompt="bicycle"),
+             row("neuron", 0, "kiwi", dose=-2.0, prompt="bicycle")]
+    own = {u_["neuron"]: u_ for u_ in cz.compute_units(hrows, max_rel=2.5, reference="controls", exclude="own") if u_["kind"] == "neuron"}
+    alls = {u_["neuron"]: u_ for u_ in cz.compute_units(hrows, max_rel=2.5) if u_["kind"] == "neuron"}
+    # own: n0's "steam" on who counts (only bicycle's unpushed answer holds it): steam 2, kiwi 2 against the controls' mean 0
+    check(own[0]["words"] == [["steam", 2, round(2 / math.sqrt(0.5), 2)], ["kiwi", 2, round(2 / math.sqrt(0.5), 2)]]
+          and [w_ for w_, _, _ in alls[0]["words"]] == ["kiwi"], f"exclude own: steam counted on who ({own[0]['words']}; all: {alls[0]['words']})")
+    crowd = hrows + [row("neuron", n_, "steam kiwi", dose=1.0) for n_ in range(1, 9)]
+    own2 = {u_["neuron"]: u_ for u_ in cz.compute_units(crowd, max_rel=2.5, reference="controls", exclude="own") if u_["kind"] == "neuron"}
+    units2 = {u_["neuron"]: u_ for u_ in cz.compute_units(crowd, max_rel=2.5) if u_["kind"] == "neuron"}
+    check(own2[0]["mass"] == own[0]["mass"] and units2[0]["mass"] < alls[0]["mass"],
+          "reference controls: eight more neurons beside it leave a neuron's mass as it was (the units' mean lowers it)")
+    check(cz.compute_units(hrows) == cz.compute_units(hrows, reference="units", exclude="all"), "compute_units' defaults are the reference's")
+    # a stand-in break_rel run: its six questions written unpushed, its plan, ranked as its design reads (+-2 counted)
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "3", "--design", "break_rel", "--neurons",
+                             "0-7", "--random-controls", "2", "--max-new", "6", "--batch", "8"], env=env, capture_output=True, text=True, timeout=900)
+    brun = tmp / "atlas" / "stand-in" / "census" / "runs" / "L3-break_rel.jsonl"
+    brows = list(cz.read_rows(brun)) if brun.exists() else []
+    bmeta = json.loads(cz.meta_path_of(brun).read_text()) if brun.exists() else {}
+    check(r.returncode == 0 and len(brows) == (8 + 2) * 24 + 6 and sorted(r_["prompt"] for r_ in brows if r_["kind"] == "baseline") == sorted(q6)
+          and list(bmeta.get("prompts") or {}) == list(q6) and list(bmeta.get("prompt_ids") or {}) == list(q6)
+          and bmeta.get("plan") == "12 x batch" and bmeta.get("dose_unit") == "stream" and bmeta.get("doses_from") == cz.DOSES_FROM["break_rel"],
+          f"census_run.py --design break_rel: (8 + 2) x 24 + 6 answers, six unpushed, 12 x batch ({r.stderr[-300:]})")
+    bunits = list(cz.read_rows(cz.units_path_of(brun))) if cz.units_path_of(brun).exists() else []
+    slimb = cz.read_slim(brun)
+    want = {(u_["kind"], u_["neuron"]): u_["mass"] for u_ in cz.compute_units(slimb, max_rel=2.5, reference="controls", exclude="own")}
+    check(len(bunits) == 10 and all(u_["mass"] == want[(u_["kind"], u_["neuron"])] for u_ in bunits)
+          and all(set(u_["dose"]) == {"-2", "-1", "+1", "+2"} for u_ in bunits),
+          "a break_rel run is ranked as its design reads it, every answer counted")
+    try:
+        cz.take_census(rt, 3, [0], tmp / "runs" / "br.jsonl", **{**kw, "design_name": "break_rel", "dose_unit": "ceiling"})
+        check(False, "break_rel in the ceiling unit is refused")
+    except ValueError as exc:
+        check("shares of the stream's median length" in str(exc) and "take it with the stream unit, not the ceiling unit" in str(exc)
+              and "write ceiling" not in str(exc), f"break_rel in the ceiling unit is refused, its doses named as they are ({exc})")
+    rep = cz.depth_report({3: brun})
+    check(rep and rep[0].get("design") == "break_rel" and set(rep[0]["coherence"]) == {"-2", "-1", "+1", "+2"} and 0.0 <= rep[0]["auc"] <= 1.0
+          and rep[0]["reading"] == cz.reading_of("break_rel") and "not yet calibrated on this model at this layer (only at layers 40-50, "
+          "counted from 0)" in rep[0]["dose_note"], f"depth report: a break_rel run read its way, coherence at its doses, its doses "
+          f"not calibrated at the stand-in's layer 3 ({rep[:1]})")
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "rank", str(brun)], env=env, capture_output=True, text=True, timeout=300)
+    check(r.returncode == 0 and "at most 2.5 of the stream (every answer), each word against the controls' mean, its own question's "
+          "unpushed words left out" in r.stdout, f"census_tools.py rank says how it read the run ({r.stdout[:300]} {r.stderr[-200:]})")
+    bunits = list(cz.read_rows(cz.units_path_of(brun))) if cz.units_path_of(brun).exists() else []
+    check(bunits and all(u_.get("reading") == cz.reading_of("break_rel") for u_ in bunits), "the ranking file records the reading it was made with")
+    bcard = atlas_routes.census_card({"path": brun, "meta": bmeta, "null": {}, "units": bunits})
+    # doses_calibrated follows census.DOSES_CALIBRATED at the run's layer: break_rel's at layers 40-50 (the owner's
+    # choice on its trial's verdict, 29 October 2026), so not at the stand-in's layer 3; a design named there speaks with
+    # DOSES_FROM's words, not the ones its meta recorded before its calibration was
+    check(cz.DOSES_CALIBRATED == {"break_rel": (40, 50)}
+          and [cz.doses_calibrated("break_rel", l_) for l_ in (39, 40, 45, 50, 51, 57)] == [False, True, True, True, False, False]
+          and not cz.doses_calibrated("main_rel", 45) and not cz.doses_calibrated(None, 45) and not cz.doses_calibrated("break_rel", None),
+          f"census.doses_calibrated: break_rel's doses at layers 40-50 alone ({cz.DOSES_CALIBRATED})")
+    kept_calibrated = cz.DOSES_CALIBRATED
+    try:
+        cz.DOSES_CALIBRATED = {"break_rel": (3, 3)}
+        stale = {**bmeta, "doses_from": "the words a run was taken with before its design's calibration was recorded"}
+        bcard_on = atlas_routes.census_card({"path": brun, "meta": stale, "null": {}, "units": bunits})
+        bcard_off = atlas_routes.census_card({"path": brun, "meta": {**stale, "layer": 4}, "null": {}, "units": bunits})
+        main_on = atlas_routes.census_card({"path": brun, "meta": {**stale, "design_name": "main_rel"}, "null": {}})
+    finally:
+        cz.DOSES_CALIBRATED = kept_calibrated
+    check(bmeta.get("layer") == 3 and bcard["doses_calibrated"] is False and bcard["doses_calibrated_layers"] == [40, 50]
+          and bcard["doses"] == [-2.0, -1.0, 1.0, 2.0] and bcard["reading"] == cz.reading_of("break_rel")
+          and bcard_on["doses_calibrated"] is True and bcard_on["doses_calibrated_layers"] == [3, 3]
+          and bcard_on["doses_from"] == cz.DOSES_FROM["break_rel"] and bcard_off["doses_calibrated"] is False
+          and main_on["doses_calibrated"] is False and main_on["doses_calibrated_layers"] is None
+          and main_on["doses_from"] == stale["doses_from"],
+          f"the census card: its doses and its reading, doses_calibrated only at a layer census.DOSES_CALIBRATED gives its "
+          f"design, and a calibrated design's doses said in DOSES_FROM's words ({cz.DOSES_CALIBRATED})")
+    # ranked again at another cap: the file and the card say that cap, not the design's (a file older than readings: the reference's)
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "rank", str(brun), "--max-rel", "1.6"], env=env,
+                       capture_output=True, text=True, timeout=300)
+    b16 = list(cz.read_rows(cz.units_path_of(brun))) if cz.units_path_of(brun).exists() else []
+    card16 = atlas_routes.census_card({"path": brun, "meta": bmeta, "null": {}, "units": b16})
+    card_old = atlas_routes.census_card({"path": brun, "meta": bmeta, "null": {}, "units": [{k_: v_ for k_, v_ in u_.items() if k_ != "reading"} for u_ in b16]})
+    check(r.returncode == 0 and "at most 1.6 of the stream, each word against the controls' mean" in r.stdout
+          and card16["reading"] == {**cz.reading_of("break_rel"), "max_rel": 1.6} and card_old["reading"] == cz.READING_DEFAULT,
+          f"a run ranked again at --max-rel 1.6: its file and its card say 1.6; a file without a reading, the reference's ({card16['reading']}, {card_old['reading']})")
+    cz.write_units(brun)  # as its design reads it again, for what follows
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "verify_atlas_writer.py"), "--stand-in", "--max-new", "6", "--batches", "4",
+                             "--design", "break_rel", "--out", str(tmp / "floor_br.json")], env=env, capture_output=True, text=True, timeout=900)
+    fl = json.loads((tmp / "floor_br.json").read_text()) if (tmp / "floor_br.json").exists() else {}
+    check(r.returncode == 0 and list(fl.get("questions") or {}) == list(q6) and list(fl.get("results") or {}) == list(q6),
+          f"verify_atlas_writer.py --design break_rel measures its six questions ({r.stderr[-300:]})")
+    wf = cz.writer_floor({**bmeta, "model": fl.get("model"), "batch": 4}, files=[tmp / "floor_br.json"]) if fl else None
+    check(wf is not None and "the census's 6 questions" in wf["says"], f"the census card's floor, over the run's own questions ({wf})")
+    if fl:
+        fl2 = json.loads(json.dumps(fl))
+        fl2["results"]["walk"] = {**fl2["results"]["walk"], "census 4, baseline (row 0)": {"shared": 2, "n": 6, "same": False}}
+        fl2["results"]["sleep"] = {"census 4, baseline (row 0)": {"shared": 1, "n": 6, "same": False}}  # a spare the run does not ask
+        cz.write_json_atomic(tmp / "floor_br2.json", fl2)
+        wf2 = cz.writer_floor({**bmeta, "model": fl.get("model"), "batch": 4}, files=[tmp / "floor_br2.json"])
+        check(wf2 is not None and wf2["k"] == 2 and "this run's 6 questions (of 7 measured)" in wf2["says"],
+              f"a floor measured on more questions than the run asks: the run's own questions' ({wf2})")
+        # a four-question run against it: its floor over the three of its questions the file measured, not walk's or sleep's
+        wf3 = cz.writer_floor({**bmeta, "prompts": cz.PROMPTS, "model": fl.get("model"), "batch": 4}, files=[tmp / "floor_br2.json"])
+        own3 = [int(r_["shared"]) for q_ in ("who", "orange", "free") for n_, r_ in fl2["results"][q_].items()
+                if n_.startswith("census 4,") and isinstance(r_, dict) and not r_.get("same")]
+        check(wf3 is not None and wf3["k"] == (min(own3) if own3 else None) and wf3["k"] not in (1, 2)
+              and "3 of this run's questions (of 7 measured), not its snake" in wf3["says"],
+              f"a floor lacking one of the run's questions: taken over those it holds (not walk's 2 or sleep's 1), and says so ({wf3})")
+    # the older designs' batch plans (a resume key, like their job lists), digests taken from the code before break_rel
+    ppins = {("main_rel", "10 x batch"): "e8595ec2192684ac", ("main_rel", "16 x batch"): "eeecfed8431bf1af",
+             ("calib_rel", "10 x batch"): "1a0e464534b80a95", ("calib_rel", "16 x batch"): "65e0b1095a269ffa",
+             ("calib_ceil", "10 x batch"): "68e6fddd95c12009", ("calib_ceil", "16 x batch"): "cb4f6c50a38a4a1c"}
+    check(all(hashlib.sha256(json.dumps(cz.plan_batches(cz.census_jobs([0, 5, 9, 12], 2, cz.DESIGNS[d_]), 5, p_)).encode()).hexdigest()[:16] == v_
+              for (d_, p_), v_ in ppins.items()), "the older designs' batch plans, as before break_rel")
+    # a break_rel run rebuilds its job list from its own questions on every path that resumes or joins it
+    kb = dict(p50=p50, p50_source="t", design_name="break_rel", controls=3, seed=3, max_new=5, top_k=5, batch=7, log=lambda s: None)
+    bdir = tmp / "br-plan"
+    bdir.mkdir()
+    bu = bdir / "L3-u.jsonl"
+    cz.take_census(rt, 3, list(range(5)), bu, **kb)
+    BU = list(cz.read_rows(bu))
+    bs = bdir / "L3-stop.jsonl"
+    cz.take_census(rt, 3, list(range(5)), bs, **kb, cancel=stop_after(23))
+    cut = len(list(cz.read_rows(bs)))
+    cz.take_census(rt, 3, list(range(5)), bs, **kb)
+    bt_ = bdir / "L3-torn.jsonl"
+    b_lines = bu.read_text().splitlines(keepends=True)
+    bt_.write_text("".join(b_lines[:90]) + b_lines[90][:40])  # six whole answers of chunk 1's first batch, and half its seventh
+    shutil.copy(cz.meta_path_of(bu), cz.meta_path_of(bt_))
+    cz.take_census(rt, 3, list(range(5)), bt_, **kb)
+    shp = [cz.shard_path(bdir / "L3-m.jsonl", i_, 3) for i_ in range(3)]
+    for i_, s_ in enumerate(shp):
+        cz.take_census(rt, 3, list(range(5)), s_, **kb, shard=(i_, 3))
+    cz.merge_runs(shp, bdir / "L3-m.jsonl")
+    check(0 < cut < len(BU) == 8 * 24 + 6 and list(cz.read_rows(bs)) == BU and list(cz.read_rows(bt_)) == BU
+          and list(cz.read_rows(bdir / "L3-m.jsonl")) == BU
+          and json.loads(cz.meta_path_of(bdir / "L3-m.jsonl").read_text())["canary"].startswith("identical on 2 of 2"),
+          f"break_rel: stopped and continued, torn and continued, and three shards merged, each equal the unbroken run row for row (cut at {cut})")
+    section("break_rel: its design, questions and reading; older designs' job lists and plans unchanged; a stand-in run ranked its way, "
+            "resumed, torn and sharded; the card; the floor on its questions", before)
 
     # ------------------------------------------------------------ 13. the null on the real checkpoint's own weights
     before = len(failures)

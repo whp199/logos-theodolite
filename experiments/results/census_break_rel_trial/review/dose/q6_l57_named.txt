@@ -1,0 +1,191 @@
+neuron 10171 mass 35.35
+   'sin' z 9.90: bicycle+2 chair+2 free+1 free+2 orange+2 walk+2 who+2
+   'sem' z 9.90: bicycle-2 chair-1 chair-2 free-2 orange-2 walk-2 who-2
+   'بلا' z 8.49: bicycle+2 chair+2 free+2 orange+2 walk+2 who+2
+   'sinuous' z 5.66: chair+1 free+1 orange+1 walk+1
+   'yellow' z 1.41: orange+1 orange-1
+   [walk +2] d4 0.13: Whether you are sin بلا sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin sin 
+   [walk -2] d4 0.02:  sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem sem
+   [walk +1] d4 1.00: Whether you are going for a long nature hike or a sinuous city trek, here are three essential tips to ensure you finish feeling great:\n\n### 1. Prioritize "Sin
+   [walk -1] d4 1.00: Depending on whether you are going for a casual hike or a long-distance trek, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. P
+neuron 14528 mass 31.88
+   'personal' z 16.32: bicycle-1 bicycle-2 chair-1 chair-2 free-1 free-2 orange-1 orange-2 walk-1 walk-2 who-1 who-2
+   'วนส' z 12.73: bicycle+2 chair+1 chair+2 free+1 free+2 orange+2 walk+1 walk+2 who+2
+   'theส' z 2.83: free+1 orange+1
+   [walk +2] d4 0.02: ส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วน
+   [walk -2] d4 0.04: // personal personal personal personal personal personal personal personal personal personal personal personal personal personal personal personal personal pers
+   [walk +1] d4 0.16: Whether you are going for aส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส่วนส
+   [walk -1] d4 0.31: Depending on whether you are going for a personal personal challenge or a personal personal personal personal personal personal personal personal personal perso
+neuron 18775 mass 27.08
+   'pemb' z 12.73: bicycle+2 chair+1 chair+2 free+2 orange+1 orange+2 walk+1 walk+2 who+2
+   'pod' z 5.66: chair+1 free+1 orange+1 walk+1
+   '部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分' z 4.24: bicycle-2 orange-2 walk-2
+   'part' z 2.81: free-1 walk-1
+   'clockmaker' z 1.64: free+1 free-1
+   [walk +2] d4 0.02:  pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb pemb
+   [walk -2] d4 0.02: 部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分
+   [walk +1] d4 0.20: Whether you are going for a pod pemb pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod pod
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or a long city trek, here are three essential tips to ensure you enjoy the journey and recover well.\n\n###
+neuron 11786 mass 25.04
+   'ngày' z 14.14: bicycle+2 chair+1 chair+2 free+1 free+2 orange+1 orange+2 walk+1 walk+2 who+2
+   'increasingly' z 5.66: bicycle-2 free-2 orange-2 who-2
+   'increasing' z 4.24: bicycle-2 orange-2 walk-2
+   'your' z 0.85: walk-1 walk-2
+   'three' z 0.15: chair+1 chair-1
+   [walk +2] d4 0.02:  ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày ngày
+   [walk -2] d4 0.18: Increasing your distanceincreasing your distanceincreasing your distanceincreasing your distanceincreasing your distanceincreasing your distanceincreasing your 
+   [walk +1] d4 0.71: Depending on whether you are going for a ngày-long hike or a ngày-long city stroll, here are three essential tips to ensure you stay comfortable and ngày- ngày-
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or a long city trek, here are three essential tips to ensure you enjoy the journey and recover well.\n\n###
+neuron 8601 mass 24.98
+   'lasting' z 12.73: bicycle-2 chair-2 free-1 free-2 orange-1 orange-2 walk-1 walk-2 who-2
+   '一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一' z 5.66: bicycle+2 free+2 walk+2 who+2
+   'про' z 4.24: free+1 orange+1 walk+1
+   'energy' z 1.18: bicycle+1 bicycle-1
+   'this' z 1.17: bicycle+1 chair-1
+   [walk +2] d4 0.02: 一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一
+   [walk -2] d4 0.02:  lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting
+   [walk +1] d4 0.16: Whether you are going for a про про про про про про про про про про про про про про про про про про про про про про про про про про про про про про про про про 
+   [walk -1] d4 0.13: Depending on whether you are lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting lasting las
+neuron 17727 mass 24.89
+   'beg' z 16.97: bicycle-1 bicycle-2 chair-1 chair-2 free-1 free-2 orange-1 orange-2 walk-1 walk-2 who-1 who-2
+   '不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足' z 7.07: bicycle+2 chair+2 free+2 walk+2 who+2
+   'your' z 0.85: free-1 walk-1
+   [walk +2] d4 0.04: //不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足
+   [walk -2] d4 0.02:  beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg beg
+   [walk +1] d4 1.00: Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Pri
+   [walk -1] d4 0.56: Depending on whether you are beginner or an experienced beginner, here are three essential tips to ensure your long walk is beg beg beg beg beg beg beg beg beg 
+neuron 8733 mass 24.26
+   'mang' z 16.97: bicycle-1 bicycle-2 chair-1 chair-2 free-1 free-2 orange-1 orange-2 walk-1 walk-2 who-1 who-2
+   'mangling' z 2.83: free-1 walk-1
+   'mangled' z 2.83: bicycle-1 free-1
+   'thoughtthoughtthought' z 1.63: free+2 walk+2
+   'thought' z -0.67: bicycle+2 chair+2 who+2
+   [walk +2] d4 0.13: //thoughtthoughtthought
+   [walk -2] d4 0.02:  mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang
+   [walk +1] d4 1.00: Whether you are going for a long hike in nature or a long urban trek, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Prioritiz
+   [walk -1] d4 0.20: Depending on whether you are mangling a mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang mang 
+neuron 10938 mass 23.03
+   'support' z 14.14: bicycle+1 bicycle+2 chair+1 free+1 free+2 orange+1 orange+2 walk+1 walk+2 who+1
+   'الد' z 2.83: chair+2 who+2
+   'then' z 2.23: bicycle+1 bicycle-1
+   'moves' z 1.94: bicycle+1 bicycle-1
+   'sight' z 1.89: orange+1 orange-1
+   [walk +2] d4 0.02:  support support support support support support support support support support support support support support support support support support support support
+   [walk -2] d4 0.13: //thoughtthought
+   [walk +1] d4 0.20: Depending on whether you are going for a support support support support support support support support support support support support support support support
+   [walk -1] d4 1.00: Whether you are going for a long nature hike or a city trek, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Prioritize "Anti-B
+neuron 3104 mass 22.86
+   'same' z 8.22: bicycle+2 bicycle-1 bicycle-2 chair+2 chair-2 free+1 free+2 free-1 free-2 orange+1 orange+2 orange-1 orange-2 walk+2 walk-2
+   'idea' z 7.08: bicycle+2 chair+2 free+2 orange+2 walk+2 who+2
+   'samethought' z 3.17: free-2 orange-2 walk-1
+   'ist' z 2.82: free-2 walk-2
+   'thought' z 1.56: bicycle-2 free-2 orange-2 walk-1 walk-2 who+2 who-1 who-2
+   [walk +2] d4 0.20:  idea same same same same same same same same same same same same same same same same same idea same same same same same same same same same same same same same
+   [walk -2] d4 0.56: .thought adoptiveististHereisses same/ sameist//ist फर्स्ट same
+   [walk +1] d4 1.00: Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you enjoy the experience and recover well.\n
+   [walk -1] d4 0.29: // Herethought\n samethought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\nthought
+neuron 9971 mass 22.63
+   '充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充' z 9.90: bicycle+2 chair+2 free+2 orange+1 orange+2 walk+2 who+2
+   'menj' z 7.07: chair-1 free-1 free-2 orange-1 walk-1
+   'menjเอเอเอเอเอเอเอเอเอเอเอเอเอ' z 5.66: chair-2 orange-2 walk-2 who-2
+   [walk +2] d4 0.02: 充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充
+   [walk -2] d4 0.04:  menjเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอ
+   [walk +1] d4 0.09: Whether you are充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Pri
+neuron 1235 mass 22.25
+   'vendor' z 11.31: bicycle-2 chair-1 chair-2 free-1 orange-1 walk-1 walk-2 who-2
+   'vendors' z 7.07: free-1 free-2 orange-2 walk-1 who-2
+   'same' z 2.53: bicycle-2 chair-2 free-2 orange-2 walk-2 who-2
+   'story' z 0.69: free+1 free-1
+   'place' z 0.65: free+1 free-1
+   [walk +2] d4 0.02:  파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파
+   [walk -2] d4 0.09: // vendor same same vendor same same vendor same same vendor same same vendor same same vendor same same vendor same same vendor same same vendor same same vend
+   [walk +1] d4 0.16: Whether you are going for a 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파 파
+   [walk -1] d4 1.00: Depending on whether you are going for a vendor-supported hike or a long urban stroll, here are three essential tips to ensure you finish feeling great:\n\n### 
+neuron 6884 mass 22.05
+   'volt' z 16.97: bicycle+1 bicycle+2 chair+1 chair+2 free+1 free+2 orange+1 orange+2 walk+1 walk+2 who+1 who+2
+   'thoughtthoughtthoughtthoughtth' z 2.65: bicycle-2 who-2
+   'thoughtthoughtthoughtthoughtth' z 2.43: orange-2 walk-2
+   'thought' z -0.67: chair-2 orange-2 walk-2
+   [walk +2] d4 0.02:  volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt
+   [walk -2] d4 0.31: //thoughtthoughtthoughtthoughtthought\n//thought\nthought\n//thought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\nthought\n
+   [walk +1] d4 0.13: Depending on whether you are volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt volt v
+   [walk -1] d4 1.00: Whether you are going for a nature hike or a long city trek, here are three essential tips to ensure you enjoy the journey and recover well.\n\n### 1. Prioritiz
+neuron 9858 mass 21.85
+   'pem' z 11.31: bicycle+2 chair+1 chair+2 free+1 free+2 orange+1 orange+2 who+2
+   'peng' z 4.24: orange+2 walk+2 who+2
+   'pengp' z 2.83: orange+2 walk+2
+   'aggression' z 1.85: orange+1 orange-1
+   'experience' z 1.61: orange+1 orange-1
+   [walk +2] d4 0.13: Whether you are pengp peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng peng pen
+   [walk -2] d4 0.11: //\n\n//\n\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n//\n
+   [walk +1] d4 1.00: Whether you are going for a long nature hike or a city trek, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Prioritize "Anti-F
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you stay comfortable and injury-free:\n\n###
+neuron 4996 mass 21.06
+   'samere' z 7.07: bicycle+2 chair+2 free+2 orange+2 walk+2
+   'samerere' z 5.66: bicycle+2 chair+2 free+2 orange+2
+   'samererere' z 4.24: bicycle+2 chair+2 orange+2
+   'arere' z 2.83: chair+1 walk+1
+   'same' z 1.26: chair+2 free+2 orange+2 walk+2
+   [walk +2] d4 0.11: re same same same same same same same same same same same same same same same same same same same same same same same same same same same same same same same sa
+   [walk -2] d4 0.02:  Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re Re
+   [walk +1] d4 0.36: Depending on whether you arere going for a casualrecreational stroll or arerererererererererererererererererererererererererererererererere
+   [walk -1] d4 1.00: Whether you are going for a nature hike or a long urban trek, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Prioritize "Anti-
+neuron 18057 mass 20.74
+   'ker' z 7.07: bicycle-2 free-2 orange-2 walk-2 who-2
+   '密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密' z 5.66: free+2 orange+2 walk+2 who+2
+   'merah' z 2.83: chair-2 walk-2
+   'has' z 2.59: free-1 free-2
+   'fascinated' z 2.59: free-1 free-2
+   [walk +2] d4 0.02: 密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密
+   [walk -2] d4 0.16: Whether you are geoc merah ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker ker k
+   [walk +1] d4 0.22: Depending on whether you are going for a밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密밀密
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you enjoy the journey and recover well.\n\n#
+neuron 20127 mass 20.01
+   'społecz' z 8.49: bicycle-2 chair-2 free-2 orange-2 walk-2 who-2
+   'dostęp' z 8.49: bicycle+2 chair+2 free+2 orange+2 walk+2 who+2
+   'deep' z 1.66: free+1 free-1
+   'story' z 0.69: free+1 free-1
+   'library' z 0.69: free+1 free-1
+   [walk +2] d4 0.04: Depending dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dostęp dos
+   [walk -2] d4 0.04: // społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społecz społe
+   [walk +1] d4 1.00: Depending on whether you are going for a nature hike or a long urban stroll, here are three essential tips to ensure you enjoy the experience and recover well.\
+   [walk -1] d4 1.00: Whether you are heading out for a nature hike or a long city trek, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Prioritize "
+neuron 427 mass 20.01
+   'patriotic' z 12.73: bicycle+2 chair+1 chair+2 free+2 orange+1 orange+2 walk+1 walk+2 who+2
+   'patrioticpatri' z 2.83: chair+2 walk+2
+   'patri' z 2.83: bicycle+2 who+2
+   'virtual' z 1.07: who+1 who-1
+   'and' z 0.55: bicycle+1 who-1
+   [walk +2] d4 0.07:  patrioticpatri patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patr
+   [walk -2] d4 0.02:  애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애
+   [walk +1] d4 0.16: Whether you are going for a patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic patriotic pa
+   [walk -1] d4 0.13: Depending on whether you are 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애 애
+neuron 9558 mass 19.68
+   'deck' z 16.97: bicycle+1 bicycle+2 chair+1 chair+2 free+1 free+2 orange+1 orange+2 walk+1 walk+2 who+1 who+2
+   'given' z 1.71: free-1 free-2
+   'description' z 1.00: chair-1 orange-1
+   [walk +2] d4 0.02:  deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck
+   [walk -2] d4 0.11: Whether you are 갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑갑
+   [walk +1] d4 0.02:  deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck deck
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you stay comfortable and safe:\n\n### 1. Pri
+neuron 16955 mass 19.65
+   'fuera' z 16.97: bicycle+1 bicycle+2 chair+1 chair+2 free+1 free+2 orange+1 orange+2 walk+1 walk+2 who+1 who+2
+   'for' z 1.01: chair+1 chair-1
+   'looking' z 0.97: chair+1 chair-1
+   'and' z 0.55: bicycle+1 bicycle-1
+   'three' z 0.15: chair+1 chair-1
+   [walk +2] d4 0.02:  fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fue
+   [walk -2] d4 0.02: 
+   [walk +1] d4 0.31: Depending on whether you are fuera for a casual fuera stroll or a fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuera fuer
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or a long city stroll, here are three essential tips to ensure you stay comfortable and energized:\n\n### 1
+neuron 18530 mass 19.35
+   'well' z 13.06: bicycle+1 bicycle+2 chair+1 chair+2 free+1 free+2 orange+1 orange+2 walk+1 walk+2 who+1 who+2
+   'part' z 4.22: bicycle+1 free+1 who+1
+   'and' z 1.30: bicycle+1 bicycle-1 who-1
+   'same' z 0.63: free+1 free-1 orange-1
+   'different' z 0.14: free+1 free-1
+   [walk +2] d4 0.04:  well well well well well well well well well well well well well well well well well well well well well well well well well well well well well well well well
+   [walk -2] d4 0.02: 
+   [walk +1] d4 0.04:  Whether well well well well well well well well well well well well well well well well well well well well well well well well well well well well well well w
+   [walk -1] d4 1.00: Depending on whether you are going for a nature hike or//an urban exploration, here are three essential tips to ensure your long walk is enjoyable and injury-fr

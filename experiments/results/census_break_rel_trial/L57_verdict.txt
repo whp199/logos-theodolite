@@ -1,0 +1,19 @@
+--- read at 48 word-pieces: PASS
+  pass  S1 lead: mass_c 0.5995 (bar 0.58)
+  pass  S2 beyond text survival: mass_c_res 0.5608 (bar 0.56)
+  pass  S3 replication both ways: rep_AB 0.5757 (bar 0.55), rep_BA 0.5846 (bar 0.55)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5006 (bar (0.47, 0.53)), read_gain_ratio 1.179 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  pass  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 0.0005 (bar 0.002)
+  reported: shift 0.606, shift_up 0.609, shift_down 0.578, xq 0.572, rep 0.582, mass_A 0.592, mass_u 0.583, shift_res 0.560, rep_res 0.502
+  counts {'neurons': 507, 'controls': 512, 'above_every_control': 22, 'by_chance': 1.0, 'q05': 22, 'named': 20, 'named_by_halves': 13, 'above_ctl_p95': 0.1716, 'pA05_and_pB05': 22, 'pA05_and_pB05_by_chance': 1.3}; rho_AB neurons 0.405 controls 0.186; signs {'+': 0.5538, '-': 0.5637}
+--- read at 32 word-pieces: FAIL
+  pass  S1 lead: mass_c 0.5914 (bar 0.58)
+  FAIL  S2 beyond text survival: mass_c_res 0.5061 (bar 0.56)
+  pass  S3 replication both ways: rep_AB 0.5771 (bar 0.55), rep_BA 0.6029 (bar 0.55)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.5019 (bar (0.47, 0.53)), read_gain_ratio 1.179 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  reported: shift 0.608, shift_up 0.608, shift_down 0.582, xq 0.568, rep 0.591, mass_A 0.596, mass_u 0.575, shift_res 0.520, rep_res 0.477
+  counts {'neurons': 507, 'controls': 512, 'above_every_control': 18, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.1657, 'pA05_and_pB05': 25, 'pA05_and_pB05_by_chance': 1.3}; rho_AB neurons 0.520 controls 0.304; signs {'+': 0.553, '-': 0.5523}
+max_new rule: {'shorter_passes': False, 'mass_c_drop': 0.0081, 'rep_min_drop': -0.0014, 'take_shorter': False}
+throughput (wall): {'answers': 24462, 'seconds': 2003.0, 'answers_per_s': 12.21, 'sessions': 1}
+throughput (writing, census_run's own lines): {'answers_written': 24462, 'seconds': 1987.2, 'answers_per_s': 12.31, 'sessions': 1}
+-> /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L57_verdict.json: PASS

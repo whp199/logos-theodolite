@@ -1,0 +1,229 @@
+{
+ "lists": {
+  "fresh_n": 1022,
+  "fresh_unique": 1022,
+  "reasked_n": 64,
+  "l45_neurons_file_n": 1086,
+  "fresh_and_reasked_overlap": [],
+  "fresh_union_reasked_eq_l45_file": true,
+  "fresh_eq_draw_seed3_less_calib": true,
+  "draw_seed3_and_calib45_overlap": [
+   6509,
+   17649
+  ],
+  "reasked_eq_calib45_neurons": true,
+  "reasked_eq_draw_seed0": true,
+  "calib45_seed": 0,
+  "calib45_controls": 64,
+  "l57_n": 507,
+  "l57_eq_draw_seed6_less_calib57": true,
+  "draw_seed6_and_calib57_overlap": [
+   2660,
+   3453,
+   5952,
+   8779,
+   20346
+  ],
+  "l57_and_calib57_overlap": []
+ },
+ "L45-break_rel-trial": {
+  "meta": {
+   "design_name": "break_rel",
+   "layer": 45,
+   "max_new": 48,
+   "batch": 64,
+   "seed": 3,
+   "random_controls": 1024,
+   "plan": "12 x batch",
+   "plan_kept": true,
+   "dose_unit": "stream",
+   "p50": 144.42271423339844,
+   "git": "e94eea672c8264c74c3538b08b482d3b03a18c22",
+   "git_clean": true,
+   "mixed_runtime": "absent",
+   "unpacker_sessions": "absent",
+   "stage": "absent",
+   "prompts_order": [
+    "who",
+    "orange",
+    "free",
+    "bicycle",
+    "walk",
+    "chair"
+   ],
+   "design_eq_break_rel_formula": true,
+   "neuron_ids_eq_prereg_list": true,
+   "neuron_ids_n": 1086,
+   "neurons_spec_eq_ids": true,
+   "read_gain": {
+    "neurons": 0.9377,
+    "controls": 0.9616,
+    "ratio": 1.026,
+    "read_by": "the next layer's input norm (the final norm after the last layer)"
+   },
+   "jobs": {
+    "n": 50646,
+    "sha256": "e61ca25ad942616e"
+   },
+   "started_at": "2026-10-29T07:03:24Z"
+  },
+  "jobs_rebuilt": {
+   "n": 50646,
+   "digest_matches_meta": true,
+   "expected_n": 50646
+  },
+  "batch_sizes_rebuilt": {
+   "64": 50176,
+   "1": 4,
+   "63": 63,
+   "61": 61,
+   "56": 224,
+   "58": 58,
+   "60": 60
+  },
+  "rows": {
+   "n": 50646,
+   "distinct_keys": 50646,
+   "duplicates": 0,
+   "keys_eq_job_keys": true,
+   "missing_vs_jobs": 0,
+   "extra_vs_jobs": 0,
+   "finish": {
+    "length": 50327,
+    "stop": 319
+   },
+   "control_row_seeds": {
+    "3": 24576
+   },
+   "faults": {},
+   "units": 2110,
+   "units_cells": {
+    "24": 2110
+   },
+   "baselines": [
+    "bicycle",
+    "chair",
+    "free",
+    "orange",
+    "walk",
+    "who"
+   ]
+  },
+  "units_file": {
+   "n": 2110,
+   "kinds": {
+    "neuron": 1086,
+    "random": 1024
+   },
+   "readings": [
+    {
+     "exclude": "own",
+     "max_rel": 2.5,
+     "reference": "controls"
+    }
+   ],
+   "covers_every_unit": true,
+   "mtime_utc": "2026-10-29T08:11:45Z"
+  }
+ },
+ "L57-break_rel-probe": {
+  "meta": {
+   "design_name": "break_rel",
+   "layer": 57,
+   "max_new": 48,
+   "batch": 64,
+   "seed": 3,
+   "random_controls": 512,
+   "plan": "12 x batch",
+   "plan_kept": true,
+   "dose_unit": "stream",
+   "p50": 85.09976196289062,
+   "git": "e94eea672c8264c74c3538b08b482d3b03a18c22",
+   "git_clean": true,
+   "mixed_runtime": "absent",
+   "unpacker_sessions": "absent",
+   "stage": "absent",
+   "prompts_order": [
+    "who",
+    "orange",
+    "free",
+    "bicycle",
+    "walk",
+    "chair"
+   ],
+   "design_eq_break_rel_formula": true,
+   "neuron_ids_eq_prereg_list": true,
+   "neuron_ids_n": 507,
+   "neurons_spec_eq_ids": true,
+   "read_gain": {
+    "neurons": 0.4406,
+    "controls": 0.5194,
+    "ratio": 1.179,
+    "read_by": "the next layer's input norm (the final norm after the last layer)"
+   },
+   "jobs": {
+    "n": 24462,
+    "sha256": "f859c04ae5d41ef9"
+   },
+   "started_at": "2026-10-29T08:11:59Z"
+  },
+  "jobs_rebuilt": {
+   "n": 24462,
+   "digest_matches_meta": true,
+   "expected_n": 24462
+  },
+  "batch_sizes_rebuilt": {
+   "64": 24064,
+   "1": 4,
+   "63": 63,
+   "61": 61,
+   "44": 176,
+   "46": 46,
+   "48": 48
+  },
+  "rows": {
+   "n": 24462,
+   "distinct_keys": 24462,
+   "duplicates": 0,
+   "keys_eq_job_keys": true,
+   "missing_vs_jobs": 0,
+   "extra_vs_jobs": 0,
+   "finish": {
+    "length": 24441,
+    "stop": 21
+   },
+   "control_row_seeds": {
+    "3": 12288
+   },
+   "faults": {},
+   "units": 1019,
+   "units_cells": {
+    "24": 1019
+   },
+   "baselines": [
+    "bicycle",
+    "chair",
+    "free",
+    "orange",
+    "walk",
+    "who"
+   ]
+  },
+  "units_file": {
+   "n": 1019,
+   "kinds": {
+    "neuron": 507,
+    "random": 512
+   },
+   "readings": [
+    {
+     "exclude": "own",
+     "max_rel": 2.5,
+     "reference": "controls"
+    }
+   ],
+   "covers_every_unit": true,
+   "mtime_utc": "2026-10-29T08:45:09Z"
+  }
+ }
+}

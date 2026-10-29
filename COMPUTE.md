@@ -15,7 +15,7 @@ read the live page before asking for a budget. Layers count from 0 in the comman
 
 | Job | What it is | On the home 5090 today |
 |---|---|---|
-| **A layer’s census** | every neuron of a layer pushed on fixed questions, beside matched controls (`census_run.py`; ARCHITECTURE §4.7) | **measured step**: 0.71 s a decode step whatever the batch (1 to 64 rows); a whole `main_rel` layer (21,504 neurons + 256 controls, 217,604 answers) is about 3.6–3.9 days at `--batch 32 --max-new 64` beside a desktop, about two weeks at `--max-new 256`. **With `--unpacker compiled`** (measured step 0.103 s at batch 32, 0.126 s at 96; §ii): about 12.7 hours at `--batch 32`, about 5.2 at `--batch 96` |
+| **A layer’s census** | every neuron of a layer pushed on fixed questions, beside matched controls (`census_run.py`; ARCHITECTURE §4.7) | **measured step**: 0.71 s a decode step whatever the batch (1 to 64 rows); a whole `main_rel` layer (21,504 neurons + 256 controls, 217,604 answers) is about 3.6–3.9 days at `--batch 32 --max-new 64` beside a desktop, about two weeks at `--max-new 256`. **With `--unpacker compiled`** (measured step 0.103 s at batch 32, 0.126 s at 96; §ii): about 12.7 hours at `--batch 32`, about 5.2 at `--batch 96`. **Measured `break_rel`** (29 October 2026, its trial at layer 45, `compiled` at `--batch 64 --max-new 48`, 12.4 answers a second while writing): a whole layer (21,504 neurons + 1,024 controls, 24 answers a unit, 540,678 answers) about 12.1 hours, 12.7 with 2,048 controls; about 8.0–8.4 at `--max-new 32` (estimated, not timed). It takes batch 64, not 96: at 96 its chair question's unpushed answer parts from itself after 20 word-pieces |
 | The depth curve | 384 neurons + 64 controls a layer (4,484 answers), every layer | about 2 hours a layer, about 120 hours for 60, at `--batch 32 --max-new 64`; with `compiled` about 17 minutes a layer, some 17 hours for 60 |
 | Calibrating the doses | `calib_rel` and `calib_ceil` on a few layers, read by `census_tools.py curves` | 64 + 64 units a layer about 1.9 hours (by the measured step), about 16 minutes with `compiled`; the 8 + 8 pilot took about 16 minutes. **Measured** (28 October 2026): both ladders on six layers, 64 + 64 units, `compiled` at `--batch 64 --max-new 64`, 65 minutes (`calib_rel`, about 7 answers a second) and 49 (`calib_ceil`) |
 | The steer lens | every neuron of a layer pushed both ways on four contexts, read at every later layer (`atlas_build.py steer`) | by the arithmetic about 15–20 hours for all 60 layers; **measured** (29 October 2026, layer 45, `compiled`; `experiments/results/atlas_steer_timing/`): 287 s for that layer, which runs the 14 layers after it. A layer’s cost grows with the layers after it (the forward starts at l + 1), so all 60 come to about 10 hours (inferred: 287 s / 14 × 1,770 layer-forwards; `pod_tool.py`’s projection gives 9.7; a shallow layer timed would check it) |
@@ -127,8 +127,11 @@ the causal check would have to pass `verify_causal_check.py` against N1A and N1V
 1. **Calibrate the doses**, which every later spend waits on (ROADMAP §vi): read the 8 + 8 pilot already taken
    (`census_tools.py curves <layer> --weights`), then `calib_rel` and `calib_ceil` on four to six layers (`census_run.py
    --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16`), on the home card.
-   **Taken** (28 October 2026: both ladders at six layers, 64 + 64 units; `experiments/results/atlas_calibration/`); the
-   doses are still to be chosen from them (ROADMAP §vi).
+   **Taken** (28 October 2026: both ladders at six layers, 64 + 64 units; `experiments/results/atlas_calibration/`).
+   `break_rel`’s doses, ±1 and ±2 of the stream, were chosen from them and are counted calibrated at layers 40–50 alone
+   (pages 41–51), the owner’s choice of 29 October 2026 on its trial (`census.DOSES_CALIBRATED`;
+   `experiments/results/census_break_rel_trial/`); the doses at every other layer, and `main_rel`’s, are not yet
+   calibrated (ROADMAP §vi).
 2. **A pilot on the card that will do the work**, one hour: the decode step and peak memory for each unpacker at several
    batches, the unpacker self-tests, the batch the card holds, the writer’s noise floor, one steer-lens layer timed, a
    canary batch against one written on the home card, the size of a run file once compressed (`scripts/pod/pilot.sh`).

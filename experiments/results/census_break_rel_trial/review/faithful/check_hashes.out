@@ -1,0 +1,65 @@
+--- sha256sum -c SHA256SUMS
+tonight.sh: OK
+step0_pick.py: OK
+trial_read.py: OK
+readlib.py: OK
+calib_expect.json: OK
+trial_L45_neurons.txt: OK
+trial_L45_fresh.txt: OK
+trial_L45_reasked.txt: OK
+probe_L57_neurons.txt: OK
+repo_commit: OK
+exit 0
+--- runs
+9724178637662f85da30b23f25d12322e950324a1282f4c80bbbe46a09d7b053  L45-break_rel-trial.jsonl
+3d8da5f55a76633f57348fbb1b9d749f49c3682ed0dfe8b47d095ab246af685e  L57-break_rel-probe.jsonl
+L45-break_rel-trial: started 2026-10-29T07:03:13Z, finished 2026-10-29T08:11:48Z, 50646 answers, sha256 9724178637662f85da30b23f25d12322e950324a1282f4c80bbbe46a09d7b053
+L57-break_rel-probe: started 2026-10-29T08:11:48Z, finished 2026-10-29T08:45:11Z, 24462 answers, sha256 3d8da5f55a76633f57348fbb1b9d749f49c3682ed0dfe8b47d095ab246af685e
+--- branch copy vs trial folder
+same floor_L45_break_rel.json
+same L45-break_rel-trial.meta.json
+same L45_verdict.json
+same L45_verdict.txt
+same L57-break_rel-probe.meta.json
+same L57_verdict.json
+same L57_verdict.txt
+same morning.sh
+same step0_pick.json
+same prereg/calib_expect.json
+same prereg/prereg_at
+same prereg/probe_L57_neurons.txt
+same prereg/readlib.py
+same prereg/repo_commit
+same prereg/SHA256SUMS
+same prereg/step0_pick.py
+same prereg/tonight.sh
+same prereg/trial_L45_fresh.txt
+same prereg/trial_L45_neurons.txt
+same prereg/trial_L45_reasked.txt
+same prereg/trial_read.py
+--- scratchpad originals vs prereg copies
+same tonight.sh
+same step0_pick.py
+same trial_read.py
+same readlib.py
+same calib_expect.json
+same trial_L45_neurons.txt
+same trial_L45_fresh.txt
+same trial_L45_reasked.txt
+same probe_L57_neurons.txt
+--- not in SHA256SUMS:
+total 60
+drwxr-xr-x 1 eric eric    98 2026-10-29T08:58:04-0500 .
+drwxr-xr-x 1 eric eric   372 2026-10-29T08:51:37-0500 ..
+-rw-r--r-- 1 eric eric 27560 2026-10-29T08:51:37-0500 readlib.cpython-312.pyc
+-rw-r--r-- 1 eric eric 28856 2026-10-29T08:58:04-0500 trial_read.cpython-312.pyc
+--- timeline (UTC)
+prereg_at 2026-10-29T06:58:53Z
+L45-break_rel-trial t0 2026-10-29T07:03:13Z t1 2026-10-29T08:11:48Z
+L57-break_rel-probe t0 2026-10-29T08:11:48Z t1 2026-10-29T08:45:11Z
+floor_L45_break_rel.json mtime 2026-10-29T07:03:12Z
+L45-break_rel-trial.units.jsonl mtime 2026-10-29T08:11:45Z
+L57-break_rel-probe.units.jsonl mtime 2026-10-29T08:45:09Z
+morning.sh mtime 2026-10-29T08:45:11Z
+L45_verdict.json mtime 2026-10-29T13:52:15Z
+L57_verdict.json mtime 2026-10-29T13:52:24Z

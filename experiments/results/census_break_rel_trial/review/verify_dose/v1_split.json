@@ -1,0 +1,234 @@
+{
+ "L45": {
+  "all": {
+   "mass_c": 0.7144,
+   "mass_A": 0.6322,
+   "mass_B": 0.6693,
+   "rep_AB": 0.6879,
+   "rep_BA": 0.6739,
+   "mass_c_res": 0.7244,
+   "n": [
+    1022,
+    1024
+   ],
+   "se_mass_c": 0.0113,
+   "cov_auc": {
+    "lnw": 0.491,
+    "d4": 0.437,
+    "cut": 0.51,
+    "lp": 0.534,
+    "dep": 0.455,
+    "lost": 0.629
+   },
+   "named": 262,
+   "q05": 310,
+   "above_every_control": 169
+  },
+  "pm1": {
+   "mass_c": 0.7064,
+   "mass_A": 0.6179,
+   "mass_B": 0.6471,
+   "rep_AB": 0.6757,
+   "rep_BA": 0.6725,
+   "mass_c_res": 0.7123,
+   "n": [
+    1022,
+    1024
+   ],
+   "se_mass_c": 0.0114,
+   "cov_auc": {
+    "lnw": 0.453,
+    "d4": 0.368,
+    "cut": 0.512,
+    "lp": 0.402,
+    "dep": 0.436,
+    "lost": 0.658
+   },
+   "named": 306,
+   "q05": 388,
+   "above_every_control": 317
+  },
+  "pm2": {
+   "mass_c": 0.5708,
+   "mass_A": 0.5473,
+   "mass_B": 0.5559,
+   "rep_AB": 0.5477,
+   "rep_BA": 0.5472,
+   "mass_c_res": 0.5438,
+   "n": [
+    1022,
+    1024
+   ],
+   "se_mass_c": 0.0126,
+   "cov_auc": {
+    "lnw": 0.568,
+    "d4": 0.512,
+    "cut": 0.497,
+    "lp": 0.556,
+    "dep": 0.615,
+    "lost": 0.389
+   },
+   "named": 0,
+   "q05": 0,
+   "above_every_control": 2
+  },
+  "verdict_figures": {
+   "mass_c": 0.7144,
+   "mass_c_res": 0.7244,
+   "rep_AB": 0.6879,
+   "rep_BA": 0.6739,
+   "mass_B": 0.6693,
+   "mass_A": 0.6322
+  },
+  "verdict_named": 262,
+  "my_all_named_equals_verdict": true,
+  "single": {
+   "-2": {
+    "mass_c": 0.5369,
+    "rep_AB": 0.5343,
+    "rep_BA": 0.5304
+   },
+   "-1": {
+    "mass_c": 0.6035,
+    "rep_AB": 0.5849,
+    "rep_BA": 0.6098
+   },
+   "+1": {
+    "mass_c": 0.5955,
+    "rep_AB": 0.5898,
+    "rep_BA": 0.6019
+   },
+   "+2": {
+    "mass_c": 0.5357,
+    "rep_AB": 0.4955,
+    "rep_BA": 0.5041
+   }
+  },
+  "overlap": {
+   "verdict named also named on pm1": 242,
+   "verdict named with q<=0.05 on pm1": 253,
+   "verdict named with q<=0.05 on pm2": 0,
+   "verdict named with p<=0.05 on pm2": 59,
+   "verdict named with p<=0.05 on pm1": 255,
+   "expected by chance p<=0.05 of named": 13.1,
+   "all neurons with p<=0.05 on pm2": 88,
+   "n neurons read": 1022
+  }
+ },
+ "L57": {
+  "all": {
+   "mass_c": 0.5995,
+   "mass_A": 0.5921,
+   "mass_B": 0.5856,
+   "rep_AB": 0.5757,
+   "rep_BA": 0.5846,
+   "mass_c_res": 0.5608,
+   "n": [
+    507,
+    512
+   ],
+   "se_mass_c": 0.0177,
+   "cov_auc": {
+    "lnw": 0.394,
+    "d4": 0.4,
+    "cut": 0.495,
+    "lp": 0.818,
+    "dep": 0.57,
+    "lost": 0.408
+   },
+   "named": 20,
+   "q05": 22,
+   "above_every_control": 22
+  },
+  "pm1": {
+   "mass_c": 0.5225,
+   "mass_A": 0.5286,
+   "mass_B": 0.4948,
+   "rep_AB": 0.5379,
+   "rep_BA": 0.6267,
+   "mass_c_res": 0.6279,
+   "n": [
+    507,
+    512
+   ],
+   "se_mass_c": 0.0181,
+   "cov_auc": {
+    "lnw": 0.355,
+    "d4": 0.423,
+    "cut": 0.498,
+    "lp": 0.697,
+    "dep": 0.529,
+    "lost": 0.517
+   },
+   "named": 0,
+   "q05": 0,
+   "above_every_control": 10
+  },
+  "pm2": {
+   "mass_c": 0.5737,
+   "mass_A": 0.5537,
+   "mass_B": 0.5687,
+   "rep_AB": 0.5691,
+   "rep_BA": 0.5768,
+   "mass_c_res": 0.5192,
+   "n": [
+    507,
+    512
+   ],
+   "se_mass_c": 0.0179,
+   "cov_auc": {
+    "lnw": 0.53,
+    "d4": 0.442,
+    "cut": 0.497,
+    "lp": 0.821,
+    "dep": 0.801,
+    "lost": 0.185
+   },
+   "named": 0,
+   "q05": 0,
+   "above_every_control": 8
+  },
+  "verdict_figures": {
+   "mass_c": 0.5995,
+   "mass_c_res": 0.5608,
+   "rep_AB": 0.5757,
+   "rep_BA": 0.5846,
+   "mass_B": 0.5856,
+   "mass_A": 0.5921
+  },
+  "verdict_named": 20,
+  "my_all_named_equals_verdict": true,
+  "single": {
+   "-2": {
+    "mass_c": 0.5448,
+    "rep_AB": 0.5443,
+    "rep_BA": 0.5461
+   },
+   "-1": {
+    "mass_c": 0.5117,
+    "rep_AB": 0.5298,
+    "rep_BA": 0.5274
+   },
+   "+1": {
+    "mass_c": 0.5259,
+    "rep_AB": 0.5164,
+    "rep_BA": 0.5254
+   },
+   "+2": {
+    "mass_c": 0.5304,
+    "rep_AB": 0.5267,
+    "rep_BA": 0.5226
+   }
+  },
+  "overlap": {
+   "verdict named also named on pm1": 0,
+   "verdict named with q<=0.05 on pm1": 0,
+   "verdict named with q<=0.05 on pm2": 0,
+   "verdict named with p<=0.05 on pm2": 15,
+   "verdict named with p<=0.05 on pm1": 13,
+   "expected by chance p<=0.05 of named": 1.0,
+   "all neurons with p<=0.05 on pm2": 42,
+   "n neurons read": 507
+  }
+ }
+}
