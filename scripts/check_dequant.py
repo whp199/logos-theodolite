@@ -618,7 +618,7 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
     env.pop("THEODOLITE_CENSUS_DIR", None)
     py = [sys.executable, "-I"]
     runs = tmp / "runs"
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0",
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layer", "2", "--neurons", "0",
                              "--random-controls", "0", "--max-new", "3", "--batch", "7", "--unpacker", "lut",
                              "--out-dir", str(runs), "--no-rank"], env=env, capture_output=True, text=True, timeout=600)
     meta_p = cz.meta_path_of(runs / "L2-main_rel.jsonl")
@@ -628,7 +628,7 @@ def check_wiring(rt: Any, vault: LarqlVaultEngine, tmp: Path) -> None:
     check(r.returncode == 0 and un.get("mode") == "reference" and un.get("asked") == "lut" and un.get("linears") == 0,
           f"census_run.py --unpacker lut on a model with no W4A16 linears: the reference recorded, lut asked ({un}; {r.stderr[-300:]})")
     check("No W4A16 linears in this model" in r.stdout, f"census_run.py says why: {r.stdout[:300]}")
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--unpacker", "fast"],
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layer", "2", "--unpacker", "fast"],
                        env=env, capture_output=True, text=True, timeout=300)
     check(r.returncode != 0 and "invalid choice: 'fast'" in r.stderr, f"census_run.py: an unknown unpacker refused ({r.stderr[-200:]})")
     idx = tmp / "index"

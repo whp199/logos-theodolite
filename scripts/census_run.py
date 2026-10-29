@@ -5,11 +5,11 @@ push size, shaped as the layer's neurons' writes are (unit(w_post * r)); every a
 ranked (scripts/census_tools.py rank).
 
     .venv/bin/python scripts/census_run.py --layer 45 --neurons random:384 --random-controls 64 --run L45-r384
-    .venv/bin/python scripts/census_run.py --layer 45 --neurons all
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons all      # break_rel, 48 pieces, a batch of 64, 2,048 controls
     .venv/bin/python scripts/census_run.py --layer 45 --design calib_rel --neurons random:32 --random-controls 16 --run L45-calib
     .venv/bin/python scripts/census_run.py --layers 20,30,40,45,50,57 --design calib_ceil --neurons random:32 --random-controls 16
-    .venv/bin/python scripts/census_run.py --layer 45 --neurons all --batch 96 --max-new 64 --shard 1/4     # one of four shards
-    .venv/bin/python scripts/census_run.py --layer 45 --neurons all --batch 96 --max-new 64 --canary-only   # its first batch alone
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons all --shard 1/4      # one of four shards, at the design's settings
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons all --canary-only    # its first batch alone
     .venv/bin/python scripts/census_run.py --layer 45 --neurons-from L45-r384.units.jsonl --top 32 --seed 1 --random-controls 1024 --design break_rel
     .venv/bin/python scripts/census_run.py --layer 45 --design break_rel --neurons all --random-controls 2048 --seed 7 --batch 64 --max-new 48 --unpacker compiled
     .venv/bin/python scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
@@ -23,8 +23,9 @@ Layers count from 0 (page layer = layer + 1), as every script and field of the a
 process (the model loaded once), each its own run. The runs go to the census folder (`$THEODOLITE_CENSUS_DIR`, else
 `<atlas folder>/census/runs`; a stand-in's under its own `stand-in/`), named by --run (default `L<layer>-<design>`),
 with a `.meta.json` beside each. The same command again continues a stopped run (rows already written are skipped; a
-run taken with other settings is refused, not mixed). The atlas page reads the main run of each layer (`main_rel`
-before others, then the largest) as soon as it has rows. Once the model is loaded the J++ lens is freed from the card:
+run taken with other settings is refused, not mixed). The atlas page reads the main run of each layer (one of the
+default design, census.DEFAULT_DESIGN, break_rel since 29 October 2026, before others, then the largest) as soon as it has
+rows. Once the model is loaded the J++ lens is freed from the card:
 the census reads none of it (each run's meta still names it; a runtime loaded without one, THEODOLITE_GGUF_LENS=none,
 names none).
 
@@ -164,11 +165,14 @@ def main(argv=None) -> int:
     ap.add_argument("--dose-unit", default=None, choices=list(cz_designs.DOSE_UNITS),
                     help="stream: dose x p50, the same push for every unit; ceiling: dose x each neuron's write ceiling "
                          "(default: the design's own, ceiling for calib_ceil, else stream; break_rel only in the stream)")
-    ap.add_argument("--random-controls", type=int, default=256, help="random-direction controls spread through the run")
+    ap.add_argument("--random-controls", type=int, default=None, help="random-direction controls spread through the run "
+                    "(default: the design's, census.run_defaults: 2,048 for break_rel, else 256)")
     ap.add_argument("--seed", type=int, default=0, help="draws the controls' directions and random:K's neurons")
-    ap.add_argument("--max-new", type=int, default=256, help="word-pieces per answer at most (pushed answers often loop)")
+    ap.add_argument("--max-new", type=int, default=None, help="word-pieces per answer at most (pushed answers often loop; "
+                    "default: the design's, 48 for break_rel, as its doses were calibrated, else 256)")
     ap.add_argument("--top-k", type=int, default=5, help="the likeliest pieces kept at each step")
-    ap.add_argument("--batch", type=int, default=32, help="answers written together (fixed for the run: its rows' bits depend on it)")
+    ap.add_argument("--batch", type=int, default=None, help="answers written together (fixed for the run: its rows' bits "
+                    "depend on it; default: the design's, 64 for break_rel, its trial's, else 32)")
     ap.add_argument("--shard", default="", help="i/n: take shard i of n of the run's planned chunks, into <run>.s<i>of<n>.jsonl "
                                                 "(join them with census_tools.py merge, then rank)")
     ap.add_argument("--canary-only", action="store_true", help="write only the run's plan batch 0, to <run>.canary.jsonl (its "
@@ -184,6 +188,9 @@ def main(argv=None) -> int:
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
                     "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
     a = ap.parse_args(argv)
+    for k_, v_ in cz_designs.run_defaults(a.design).items():  # the design's own settings where none are given
+        if getattr(a, k_) is None:
+            setattr(a, k_, v_)
     shard = None
     if a.shard:
         i, _, n = a.shard.partition("/")

@@ -40,7 +40,8 @@ usage() {
 Options:
   --layer L | --layers SPEC  the layer (counting from 0), or several in one process ("20,30,40-45"), each its own run
   --shard i/n                shard i of n of the run's planned chunks (leave it out for the whole run)
-  --design NAME              main_rel (default), calib_rel or calib_ceil
+  --design NAME              main_rel (the pods' default, the design pilot.sh projects; census_run.py's own is break_rel),
+                             break_rel, calib_rel or calib_ceil
   --run NAME                 the run's name (default L<layer>-<design>; with --layers, L{layer}-<design>)
   --projected-hours H        the pilot's projection for this job, in hours; the job is stopped at H x --margin
   --margin M                 default 1.25

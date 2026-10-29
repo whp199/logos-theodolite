@@ -675,9 +675,10 @@ def run_checks(tmp: Path) -> int:
           f"agree ({kn['topk_overlap']})")
     # kept apart: a census, an index of the reference refused for it
     run_ref = tmp / "int4mm-canary-2" / "run.jsonl"
-    cz.take_census(rt_ref, 2, [0, 1], run_ref, p50=1.5, p50_source="fixed", controls=1, seed=0, max_new=4, top_k=3, batch=5, log=quiet)
-    said = raises(cz.take_census, rt_i4, 2, [0, 1, 2], run_ref, p50=1.5, p50_source="fixed", controls=1, seed=0, max_new=4, top_k=3,
-                  batch=5, log=quiet)
+    cz.take_census(rt_ref, 2, [0, 1], run_ref, p50=1.5, p50_source="fixed", design_name="main_rel", controls=1, seed=0, max_new=4,
+                   top_k=3, batch=5, log=quiet)
+    said = raises(cz.take_census, rt_i4, 2, [0, 1, 2], run_ref, p50=1.5, p50_source="fixed", design_name="main_rel", controls=1, seed=0,
+                  max_new=4, top_k=3, batch=5, log=quiet)
     check("model" in said, f"a census begun on the reference, continued through the kernel: refused ({said[:100]})")
     import backend.atlas_build as ab2
 

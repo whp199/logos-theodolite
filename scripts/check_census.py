@@ -13,7 +13,7 @@ Gemma 4 of scripts/atlas_stand_in.py:
 3. continuing: a run cut short and rerun ends with the same answers; a rerun with nothing to do writes nothing; more
    neurons added write only theirs, and the meta names every neuron the run holds; a run taken with other settings is
    refused in plain words; a run stopped between steps keeps only whole batches and finishes as the uninterrupted one;
-4. finding a layer's run: main_rel first, calibration runs, runs of another model and runs taken with the old
+4. finding a layer's run: the default design's (break_rel) first, calibration runs, runs of another model and runs taken with the old
    isotropic controls left out (the last with the reason);
 5. merge, the depth report (subsampled to a common pool) and the spread (the words embedder, laid out in the unit square);
 6. the command lines: census_run.py --stand-in into the stand-in's own folder, then census_tools.py rank, depth and
@@ -441,15 +441,17 @@ def run_checks(tmp: Path) -> int:
         cz.meta_path_of(pth).write_text(json.dumps(m))
         return pth
 
-    small_main = fake("L1-main", 1, "main_rel", 2)
-    fake("L1-big-other", 1, "other", 50)
+    check(cz.DEFAULT_DESIGN == "break_rel", f"break_rel is the default design (the owner's choice of 29 October 2026): {cz.DEFAULT_DESIGN}")
+    dd = cz.DEFAULT_DESIGN
+    small_main = fake("L1-main", 1, dd, 2)
+    fake("L1-big-other", 1, "main_rel", 50)
     fake("L1-calib", 1, "calib_rel", 90)
-    big_main = fake("L2-main", 2, "main_rel", 5, model=rt.model_id)
-    fake("L2-main-bigger", 2, "main_rel", 40)
-    fake("L3-elsewhere", 3, "main_rel", 5, model="google/gemma-4-31B-it")
+    big_main = fake("L2-main", 2, dd, 5, model=rt.model_id)
+    fake("L2-main-bigger", 2, dd, 40)
+    fake("L3-elsewhere", 3, dd, 5, model="google/gemma-4-31B-it")
     runs = cz.layer_runs(runs_dir)
-    check(runs[1] == small_main, f"main_rel before a larger run of another design: {runs.get(1)}")
-    check(runs[2] == runs_dir / "L2-main-bigger.jsonl", "among main_rel runs, the largest")
+    check(runs[1] == small_main, f"the default design before a larger run of another (main_rel): {runs.get(1)}")
+    check(runs[2] == runs_dir / "L2-main-bigger.jsonl", "among the default design's runs, the largest")
     check(3 in runs and 3 not in cz.layer_runs(runs_dir, model=rt.model_id), "a run of another model left out for this one")
     check(cz.layer_runs(runs_dir, model=rt.model_id)[2] in (big_main, runs_dir / "L2-main-bigger.jsonl"), "runs without a model are kept")
     fake("L4-old", 4, "main_rel", 9, version=1)
@@ -517,12 +519,12 @@ def run_checks(tmp: Path) -> int:
     env = {**os.environ, "THEODOLITE_ATLAS_DIR": str(tmp / "atlas"), "CUDA_VISIBLE_DEVICES": "", "HF_HUB_OFFLINE": "1"}
     env.pop("THEODOLITE_CENSUS_DIR", None)
     py = [sys.executable, "-I"]
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-1",
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layer", "2", "--neurons", "0-1",
                              "--random-controls", "1", "--max-new", "6", "--batch", "5"], env=env, capture_output=True, text=True, timeout=600)
     run = tmp / "atlas" / "stand-in" / "census" / "runs" / "L2-main_rel.jsonl"
     check(r.returncode == 0 and run.exists() and len(list(cz.read_rows(run))) == 34, f"census_run.py --stand-in: {r.returncode} {r.stderr[-400:]}")
     check(cz.units_path_of(run).exists() and "the study's 36 texts" in r.stdout, "census_run.py: ranked, the push unit's source said")
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-1",
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layer", "2", "--neurons", "0-1",
                              "--random-controls", "1", "--max-new", "7"], env=env, capture_output=True, text=True, timeout=600)
     check(r.returncode != 0 and "max_new" in (r.stderr + r.stdout), "census_run.py: other settings refused")
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "--stand-in", "rank", "2", "--find", "1"],
@@ -1000,7 +1002,7 @@ def run_checks(tmp: Path) -> int:
           f"runs of other neurons merged: the meta names every part's neurons, and no one plan kept ({jm.get('neuron_ids')}, {jm.get('plan_left')})")
     res = cz.take_census(rt, 3, [0, 1], joined, **{**kp, "controls": 1}, neurons_spec="0-1")
     check(res["written"] == 0 and len(list(cz.read_rows(joined))) == 44, f"and continued with the first part's neurons, not refused ({res})")
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
                              "--max-new", "4", "--batch", "5", "--run", "L2-sh", "--shard", "1/2"], env=env, capture_output=True, text=True, timeout=600)
     sh_dir = tmp / "atlas" / "stand-in" / "census" / "runs"
     s1 = sh_dir / "L2-sh.s1of2.jsonl"
@@ -1009,7 +1011,7 @@ def run_checks(tmp: Path) -> int:
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "merge", str(s1), "--out", str(sh_dir / "L2-sh.jsonl")],
                        env=env, capture_output=True, text=True, timeout=300)
     check(r.returncode != 0 and "Shard 0 of 2 is missing" in r.stderr, f"census_tools.py merge: a missing shard said ({r.stderr[-200:]})")
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layer", "2", "--neurons", "0-9", "--random-controls", "2",
                              "--max-new", "4", "--batch", "5", "--run", "L2-sh", "--shard", "0/2"], env=env, capture_output=True, text=True, timeout=600)
     check(r.returncode == 0 and f"census_tools.py merge L2-sh.s*of2.jsonl --out L2-sh.jsonl (in {sh_dir}" in r.stdout,
           f"census_run.py --shard: the merge's command printed ({r.stdout[-200:]})")
@@ -1022,7 +1024,7 @@ def run_checks(tmp: Path) -> int:
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_tools.py"), "rank", str(s1)], env=env, capture_output=True, text=True, timeout=300)
     check(r.returncode != 0 and "is shard 1 of 2 of a run: join its shards first" in r.stderr and not cz.units_path_of(s1).exists(),
           f"census_tools.py rank: a shard is not ranked ({r.stderr[-200:]})")
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layer", "2", "--shard", "2/2"], env=env,
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layer", "2", "--shard", "2/2"], env=env,
                        capture_output=True, text=True, timeout=300)
     check(r.returncode != 0 and "--shard is i/n" in r.stderr, "census_run.py: a shard that does not exist is refused")
     section("batch plans: a stop mid-chunk, a torn batch and three shards each equal an unbroken run row for row; merges, "
@@ -1056,7 +1058,7 @@ def run_checks(tmp: Path) -> int:
     cz.take_census(rt2, 3, [0, 5], lr, **{**kw, "max_new": 4}, lens_id=lid)
     check(len(list(cz.read_rows(lr))) == 4 + 4 * 10 and json.loads(cz.meta_path_of(lr).read_text())["lens"] == lid,
           "a census taken with the lens freed: every answer written (nothing it calls reads the lens), the lens's id in the meta")
-    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--layers", "1,3-4", "--neurons", "0-1", "--random-controls",
+    r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--layers", "1,3-4", "--neurons", "0-1", "--random-controls",
                              "1", "--max-new", "4", "--batch", "8", "--run", "L{layer}-depth", "--no-rank"], env=env, capture_output=True, text=True, timeout=600)
     runs_d = {l_: tmp / "atlas" / "stand-in" / "census" / "runs" / f"L{l_}-depth.jsonl" for l_ in (1, 3, 4)}
     metas_d = {l_: json.loads(cz.meta_path_of(p_).read_text()) for l_, p_ in runs_d.items() if p_.exists()}
@@ -1074,7 +1076,7 @@ def run_checks(tmp: Path) -> int:
     # --------------------------------------------------------------------------------------- 11. a two-stage census
     before = len(failures)
     sdir5 = tmp / "atlas" / "stand-in" / "census" / "runs"
-    base_r = py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--max-new", "4", "--batch", "8"]
+    base_r = py + [str(ROOT_DIR / "scripts" / "census_run.py"), "--stand-in", "--design", "main_rel", "--max-new", "4", "--batch", "8"]  # a later --design wins
     cr = base_r + ["--layer", "5"]
     r = subprocess.run(cr + ["--neurons", "0-11", "--random-controls", "3"], env=env, capture_output=True, text=True, timeout=600)
     screen = sdir5 / "L5-main_rel.jsonl"
@@ -1357,7 +1359,7 @@ def run_checks(tmp: Path) -> int:
     kept_calibrated = cz.DOSES_CALIBRATED
     try:
         cz.DOSES_CALIBRATED = {"break_rel": (3, 3)}
-        stale = {**bmeta, "doses_from": "the words a run was taken with before its design's calibration was recorded"}
+        stale = {**bmeta, "max_new": 48, "doses_from": "the words a run was taken with before its design's calibration was recorded"}
         bcard_on = atlas_routes.census_card({"path": brun, "meta": stale, "null": {}, "units": bunits})
         bcard_off = atlas_routes.census_card({"path": brun, "meta": {**stale, "layer": 4}, "null": {}, "units": bunits})
         main_on = atlas_routes.census_card({"path": brun, "meta": {**stale, "design_name": "main_rel"}, "null": {}})
@@ -1381,6 +1383,88 @@ def run_checks(tmp: Path) -> int:
           and card16["reading"] == {**cz.reading_of("break_rel"), "max_rel": 1.6} and card_old["reading"] == cz.READING_DEFAULT,
           f"a run ranked again at --max-rel 1.6: its file and its card say 1.6; a file without a reading, the reference's ({card16['reading']}, {card_old['reading']})")
     cz.write_units(brun)  # as its design reads it again, for what follows
+    # the collapse words (census.COLLAPSE_RULE, the owner's choice of 29 October 2026): a word enough of the run's own
+    # controls hold in two or more of their +-2 answers; marked on each ranked unit, left out where its words are shown,
+    # its mass untouched
+    crows = [row("baseline", -1, "plain orange", prompt="who")] + [row("random", c_, "xx", dose=1.0) for c_ in range(30)]
+    crows += [row("random", c_, "own loop orange", dose=2.0) for c_ in range(3)] + [row("random", c_, "own orange", dose=-2.0) for c_ in range(3)]
+    crows += [row("random", c_, "pear", dose=d_) for c_ in (3, 4, 5) for d_ in (1.0, -1.0)]
+    crows += [row("random", 6, "fig", dose=2.0), row("random", 6, "fig", dose=-2.0)]
+    crows += [row("neuron", 0, "own bike ownown", dose=1.0), row("neuron", 0, "own bike ownown", dose=-1.0)]
+    col = cz.collapse_words(crows, "break_rel")
+    check(col is not None and col["held"] == ["own"] and col["joined"] == ["ownown"] and col["words"] == ["own", "ownown"]
+          and col["controls"] == 30 and col["controls_needed"] == 2 and col["doses"] == [2.0] and col["answers"] == 2
+          and "2 of the run's 30 controls" in col["rule"] and cz.collapse_words(crows, "main_rel") is None,
+          f"collapse words: held in two +-2 answers by at least two controls (not once, not at +-1, not by one control, not "
+          f"a word the question's unpushed answer holds), and words made of them run together; none for a design without "
+          f"the rule ({col})")
+    check(cz.joined_of({"own", "thought", "same"}, ["thoughtthought", "ownthought", "owned", "sameown", "thoughtful", "own", "ownx"])
+          == ["ownthought", "sameown", "thoughtthought"], "joined loop words: only words made wholly of two or more of them")
+    big = [row("random", c_, "xx", dose=1.0) for c_ in range(1100)]
+    big += [row("random", c_, "zeta", dose=d_) for c_ in range(11) for d_ in (2.0, -2.0)]
+    big += [row("random", c_, "eta", dose=d_) for c_ in range(20, 30) for d_ in (2.0, -2.0)]
+    colb = cz.collapse_words(big, "break_rel")
+    check(colb["controls_needed"] == 11 and colb["words"] == ["zeta"],
+          f"the rule scales with the controls: 10 of every 1,024, so 11 of 1,100 ({colb['controls_needed']}, {colb['words']})")
+    crec = cz.compute_units(crows, max_rel=2.5, reference="controls", exclude="own")
+    mass_before = {(u_["kind"], u_["neuron"]): u_["mass"] for u_ in crec}
+    cz.mark_collapse(crec, col)
+    n0 = next(u_ for u_ in crec if u_["kind"] == "neuron")
+    z_col = sum(max(z_, 0.0) for w_, _, z_ in n0["words"][:5] if w_ in ("own", "ownown"))
+    m_top = sum(max(z_, 0.0) for _, _, z_ in n0["words"][:5])
+    check(n0["collapse_mass"] == round(z_col / m_top, 3) and 0 < n0["collapse_mass"] < 1 and n0["mass_shown"] == round(m_top - z_col, 3),
+          f"the share of its mass its collapse words give, and the mass of the words shown ({n0['collapse_mass']}, {n0['mass_shown']})")
+    fake_u = {"words": [["own", 3, 3.0], ["same", 3, 2.5], ["bike", 2, 2.0], ["wheel", 2, 1.5], ["road", 2, 1.0], ["tea", 2, 0.5]],
+              "collapse": ["own", "same"], "shift_up": [["own", 0.4], ["wheel", 0.2]], "per_prompt": {"own": ["who"], "bike": ["bicycle"]}}
+    su = cz.shown_unit(fake_u)
+    check(cz.shown_words(fake_u, 4) == ["bike", "wheel"] and cz.shown_words(fake_u) == ["bike", "wheel", "road", "tea"]
+          and [x[0] for x in su["words"]] == ["bike", "wheel", "road", "tea"] and su["shift_up"] == [["wheel", 0.2]]
+          and su["per_prompt"] == {"bike": ["bicycle"]} and su["collapse"] == ["own", "same"] and fake_u["words"][0][0] == "own",
+          "shown words come from its k strongest, a hidden word's place left empty, not filled from below; a unit as pages "
+          "are given it, its shift and per-question lists filtered too, the record left as it was")
+    check(sorted(n0["collapse"]) == ["own", "ownown"] and cz.shown_words(n0) == ["bike"] and "own" in [w_ for w_, _, _ in n0["words"]]
+          and all(u_["mass"] == mass_before[(u_["kind"], u_["neuron"])] for u_ in crec)
+          and cz.shown_words({"words": [["own", 2, 1.0], ["bike", 2, 1.0]]}) == ["own", "bike"],
+          f"marked, left out of the words shown, kept in the record and its mass; a ranking without the mark shows every word ({n0})")
+    bunits = list(cz.read_rows(cz.units_path_of(brun)))
+    bcol = json.loads(cz.collapse_path_of(brun).read_text()) if cz.collapse_path_of(brun).exists() else {}
+    check(bunits and all(isinstance(u_.get("collapse"), list) for u_ in bunits) and bcol.get("controls") == 2
+          and bcol.get("controls_needed") == 2 and bcol == cz.collapse_words(cz.read_slim(brun), "break_rel"),
+          f"a break_rel ranking marks every unit and keeps the layer's list beside it ({bcol.get('rule')})")
+    # a ranking made before the rule is marked in place when the atlas opens the layer (the same ranking, its words
+    # marked), even one ranked at another cap
+    stripped = [{k_: v_ for k_, v_ in u_.items() if k_ not in ("collapse", "collapse_mass", "mass_shown")}
+                for u_ in cz.compute_units(cz.read_slim(brun), max_rel=1.6, reference="controls", exclude="own")]
+    for u_ in stripped:
+        u_["reading"] = {**cz.reading_of("break_rel"), "max_rel": 1.6}
+    with open(cz.units_path_of(brun), "w", encoding="utf-8") as f_:
+        f_.writelines(json.dumps(u_) + "\n" for u_ in stripped)
+    cz.collapse_path_of(brun).unlink()
+    kept_env = os.environ.get(cz.CENSUS_DIR_ENV)
+    os.environ[cz.CENSUS_DIR_ENV] = str(brun.parent)
+    try:
+        picked = cz.layer_runs().get(3)
+        atlas_routes._census_cache.clear()
+        dl = atlas_routes.census_layer(3, None)
+    finally:
+        if kept_env is None:
+            os.environ.pop(cz.CENSUS_DIR_ENV, None)
+        else:
+            os.environ[cz.CENSUS_DIR_ENV] = kept_env
+    cardl = atlas_routes.census_card(dl) if dl else {}
+    check(picked == brun and dl is not None and all(isinstance(u_.get("collapse"), list) and "mass_shown" in u_ for u_ in dl["units"])
+          and [(u_["neuron"], u_["mass"], u_.get("p"), u_["reading"]["max_rel"]) for u_ in dl["units"]]
+          == [(u_["neuron"], u_["mass"], u_.get("p"), 1.6) for u_ in stripped] and dl["collapse"] == bcol
+          and cardl.get("collapse") == bcol and cardl.get("lead_says") == cz.lead_says(cardl.get("reading"))
+          and "random directions pushed as far" in cz.LEAD_SAYS and "what the run's units bring" in cz.lead_says(cz.READING_DEFAULT),
+          f"census_layer marks a ranking made before the rule in place, its masses, p's and cap unchanged; the card gives the "
+          f"rule and what a lead says, worded by its reading ({picked})")
+    # the design's own run settings, and calibration only at the lengths it was read at
+    check(cz.run_defaults("break_rel") == {"max_new": 48, "batch": 64, "random_controls": 2048}
+          and cz.run_defaults("main_rel") == {"max_new": 256, "batch": 32, "random_controls": 256}
+          and cz.doses_calibrated("break_rel", 45, 48) and cz.doses_calibrated("break_rel", 45, 32)
+          and not cz.doses_calibrated("break_rel", 45, 256) and not cz.doses_calibrated("break_rel", 45, 64),
+          "break_rel's census takes 48 pieces, a batch of 64 and 2,048 controls unless told; calibrated only at 32 or 48")
     r = subprocess.run(py + [str(ROOT_DIR / "scripts" / "verify_atlas_writer.py"), "--stand-in", "--max-new", "6", "--batches", "4",
                              "--design", "break_rel", "--out", str(tmp / "floor_br.json")], env=env, capture_output=True, text=True, timeout=900)
     fl = json.loads((tmp / "floor_br.json").read_text()) if (tmp / "floor_br.json").exists() else {}

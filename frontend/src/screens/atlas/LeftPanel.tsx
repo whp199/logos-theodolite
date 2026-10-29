@@ -369,6 +369,12 @@ const CensusRows: React.FC = () => {
             <span className="atlas-w">
               {u.name ? <NameMark layer={layer} n={u.n} name={u.name} /> : null}
               {u.words.join(" ")}
+              {(u.collapse_mass ?? 0) > 0 ? (
+                <span className="muted" title="This share of its mass comes from words random pushes bring as hard at ±2, which are not shown">
+                  {" "}
+                  · {Math.round((u.collapse_mass ?? 0) * 100)}% of its mass from words not shown
+                </span>
+              ) : null}
             </span>
           </li>
         ))}

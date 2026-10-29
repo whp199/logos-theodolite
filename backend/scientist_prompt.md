@@ -104,11 +104,17 @@ neurons have one main job, some have two related jobs, and a few are not yet und
   doses are neuron-explorer's, chosen on Qwen3.5-4B; `break_rel`'s were chosen on this model's calibration ladders for
   layers 41-58 and are calibrated at layers 41-51 by a trial fixed before it was taken, which tested layer 46 alone of
   them (its rules licensed 41-58, but its one probe above 51, at layer 58, passed by 0.0008 and its lead could not be
-  told from how the text survives; `doses_from` says so). Calibrated means that at layer 46 the neurons' mass beat the
-  controls' beyond how the text survives and held on questions held out, not that a neuron's census words are its
-  meaning: there most neurons the census singles out list same, own or thought, words that come with text breaking into
-  loops and that controls write too, and below the controls' 95th percentile the neurons' order barely repeats from one
-  half of the questions to the other, though those neurons still lead the controls as a group. Wherever
+  told from how the text survives; `doses_from` says so). `break_rel` is the default design. Calibrated means that at
+  layer 46 the neurons' mass beat the controls' beyond how the text survives and held on questions held out, not that a
+  neuron's census words are its meaning: there most neurons the census singled out listed same, own or thought, words
+  that come with text breaking into loops and that controls write too, and below the controls' 95th percentile the
+  neurons' order barely repeats from one half of the questions to the other, though those neurons still lead the
+  controls as a group. The tools leave such collapse words out of a neuron's words (the card's `collapse` rule: words
+  enough controls bring in two or more of their ±2 answers, and words made of them run together), but the rank still
+  counts them, so a neuron can rank high on words you are not shown: `stats.collapse_words_left_out` and
+  `mass_from_collapse_words` say how much. Say what a lead means as the card's `lead_says` does: its strongest words
+  stand further above what random pushes bring than nearly every random push's own do, so its push differs from a
+  random one; not that it has a theme. Wherever
   `doses_calibrated` is false, a low rank can mean only that the dose was wrong for the layer. Only layers that have one; say when you work without.
 - **Web summary** (`web_summary`): the words of the neuron's cone, followed from rest (or in use, `model: "use"`, as
   above; `read` says which) and pooled: `downstream` `when_plus` / `when_minus`, what the neurons it drives write when

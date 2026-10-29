@@ -1174,7 +1174,9 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             doses, and the words its pushes bring out counted. The same is done along random directions, as controls,
             shaped the way the layer shapes every neuron’s write so the next layer hears them as loudly. A neuron whose
             pushes bring out words that the random pushes do not ranks high; one indistinguishable from the controls
-            ranks low.
+            ranks low. Every unit, a random one too, has words that stand above the mean they are set against; a high
+            rank says only that the neuron’s stand further above it than nearly every random push’s own do, so its push
+            differs from a random one. It does not say that the words share a theme.
           </Body>
           <Note>
             A rank is a lead, not a finding: with 256 controls about one neuron in 257 lands above all of them by chance
@@ -1184,7 +1186,10 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             1,022 fresh neurons against 1,024 controls; not at 52–58, where its probe at layer 58 passed by 0.0008 and its lead
             could not be told from how the text survives.
             Where a census’s doses are not calibrated at its layer, a low rank can mean only that the dose was wrong for
-            the layer. break_rel’s six questions are read as two halves,
+            the layer. break_rel is the design a census takes unless another is named. At its ±2 doses neurons and
+            controls alike break into loops on the same few words (in its trial most neurons it named listed same, own or
+            thought), so the words random pushes bring that hard are left out of the words a page shows; the rank still
+            counts them. break_rel’s six questions are read as two halves,
             so a neuron’s words picked on one half are tested on the other. A census runs a layer at a time on the GPU
             and is kept; the map colours a layer’s neurons by it, from pale to dark gilt above the strongest control.
           </Note>
@@ -1201,7 +1206,12 @@ export const Lexicon: React.FC<{ route: Route }> = ({ route }) => (
             left out, for break_rel against the controls’ mean alone over every answer with the answer’s own question’s
             unpushed words left out; mass = the summed positive z of its top five words, the sort key; p = (1 + controls
             with at least its mass) / (C + 1), and q its
-            Benjamini–Hochberg false-discovery q over the layer. A control is unit(w<sub>post</sub> ⊙ r), r isotropic from
+            Benjamini–Hochberg false-discovery q over the layer. Collapse words, left out of the words shown but not of
+            the mass: for break_rel, a word that at least 10 of every 1,024 controls (and at least two) hold in two or more
+            of their ±2 answers, each answer’s own question’s unpushed words left out as the ranking leaves them, read from
+            each run’s own controls, and a word made only of such words run together (<M>census.COLLAPSE_RULE</M>). A
+            neuron is shown by those of its five strongest words that are not collapse words, and described beside links
+            and on the map only where they alone beat every control’s. A control is unit(w<sub>post</sub> ⊙ r), r isotropic from
             a seed, pushed exactly as a neuron is: the reference rotates a down column to a random direction, and on Gemma
             that column passes w<sub>post</sub>, near zero on the ~180 dimensions the next layer reads loudest (a plain
             isotropic direction reaches it about a hundred times louder). <M>scripts/census_run.py</M>,{" "}

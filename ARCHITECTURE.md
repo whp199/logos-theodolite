@@ -797,9 +797,9 @@ of the next word-piece's log-probability (fp32, softcapped at 30), its twelve la
 
 **The census** (`backend/census.py`; `scripts/census_run.py` on the GPU, `scripts/census_tools.py` on the CPU). For one
 layer, every neuron (or a range) and some random directions are pushed as above on the design's questions and doses
-(`DESIGNS`), greedy, batched by question, with one unpushed answer to each question. `main_rel`, the default: "Who are
-you?", a snake game in Python and the colour orange at −0.7, +0.5 and +0.8, and "Write whatever you like." at +3.0.
-`break_rel`: who, orange and free with three questions no other design asks (`MORE_PROMPTS`, `DESIGN_QUESTIONS`): how a
+(`DESIGNS`), greedy, batched by question, with one unpushed answer to each question. `main_rel` (the default until 29
+October 2026): "Who are you?", a snake game in Python and the colour orange at −0.7, +0.5 and +0.8, and "Write whatever you like." at +3.0.
+`break_rel`, the default since (`DEFAULT_DESIGN`, the owner's choice): who, orange and free with three questions no other design asks (`MORE_PROMPTS`, `DESIGN_QUESTIONS`): how a
 bicycle works, three tips for a long walk and a wooden chair, each with a spare of its genre fixed beside it (a kettle,
 sleeping well, a stone bridge) that takes its place where its unpushed answer parts from itself written alone in a
 census batch before 32 word-pieces; each at −2, −1, +1 and +2 of the stream, 24 answers a unit, read as two halves of
@@ -866,7 +866,18 @@ controls at least as strong) / (C + 1), and `q` the Benjamini–Hochberg false-d
 N / (C + 1) neurons beat every control by chance alone, 84 of a whole layer with 256 controls, and every page that
 ranks says so); per dose, the push's length over the stream's, distinct 4-grams, the share cut off, the mean
 log-probability. A neuron's census words describe it beside links, search hits and the map's tooltip only when it beat
-every control. `census_tools.py` ranks (`.units.jsonl`, with the word-shift score, each record carrying the reading it
+every control. A design with a `COLLAPSE_RULE` (`break_rel`) has its collapse words left out of every word a page or
+tool shows (`shown_words`, `shown_unit`): a word at least 10 of every 1,024 of the run's controls (and at least two) hold
+in two or more of their ±2 answers, each answer's unpushed words left out as the reading leaves them, and a word made only
+of such words run together (`collapse_words`, `joined_of`), what random pushes bring that hard. A unit is shown by the
+non-collapse words among its k strongest, and described beside links and on the map only where those words' own mass
+(`mass_shown`) beats every control's; the census list gives each unit's share of mass from words not shown
+(`collapse_mass`). The ranking file marks each unit's (`collapse`), `<run>.collapse.json` keeps the layer's list, the
+mass and p still count them, and `census_layer` marks a ranking made before the rule in place (`remark_units`). Every
+census card says what a lead says (`lead_says`, by the run's reading): the neuron's strongest words stand further above
+the mean they are set against than nearly every random direction's own do, not that they share a theme. A `break_rel`
+census takes 48 pieces, a batch of 64 and 2,048 controls unless told (`run_defaults`), and its doses count as calibrated
+only at layers 40–50 and for answers of 32 or 48 pieces (`DOSES_CALIBRATED_MAX_NEW`). `census_tools.py` ranks (`.units.jsonl`, with the word-shift score, each record carrying the reading it
 was ranked with, `reading`, which the card reports; a file without one was ranked by `READING_DEFAULT`), merges
 shards, writes the depth report (each run read as its design is; each entry names its dose unit, design and reading,
 with the coherence at each of its doses and the neurons' AUC against the controls; in the stream's unit one nominal

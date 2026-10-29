@@ -764,7 +764,10 @@ def census_words(layer: int, model: Optional[str]) -> Dict[int, List[str]]:
     """{neuron: its first four census words} for a layer whose census is ranked, from the ranking file alone (the
     reference's `ranked_words`): what the atlas shows beside a linked neuron, as a description, so only for neurons
     whose words came out stronger than every random control's (the map's gilt; about N / (C + 1) of them by chance
-    alone). The rest keep their census words in the census list and their details."""
+    alone). The rest keep their census words in the census list and their details. Collapse words are left out
+    (census.shown_words), and for a design with census.COLLAPSE_RULE a neuron is described only where the words shown
+    beat, alone, every control's shown words (`mass_shown`); a ranking not yet marked with the rule describes none
+    until the layer is opened (census_layer marks it)."""
     path = census_runs(model).get(int(layer))
     if path is None:
         return {}
@@ -776,15 +779,25 @@ def census_words(layer: int, model: Optional[str]) -> Dict[int, List[str]]:
     hit = _census_words.get(int(layer))
     if hit and hit[0] == key:
         return hit[1]
-    words = {int(u["neuron"]): [w for w, _, _ in u["words"][:4]] for u in cz.read_rows(up)
-             if u["kind"] == "neuron" and u.get("null_pct") == 1.0}
+    units = list(cz.read_rows(up))
+    if cz.run_design(path) in cz.COLLAPSE_RULE:
+        if not (units and "mass_shown" in units[0]):
+            words: Dict[int, List[str]] = {}  # not yet marked: no description rather than the collapse words
+        else:
+            ctl = max((float(u["mass_shown"]) for u in units if u["kind"] == "random"), default=float("-inf"))
+            words = {int(u["neuron"]): cz.shown_words(u, 4) for u in units
+                     if u["kind"] == "neuron" and u.get("null_pct") == 1.0 and float(u["mass_shown"]) > ctl}
+    else:
+        words = {int(u["neuron"]): cz.shown_words(u, 4) for u in units if u["kind"] == "neuron" and u.get("null_pct") == 1.0}
     _census_words[int(layer)] = (key, words)
     return words
 
 
 def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
     """A layer's census run (of the model read here), its rows slimmed to what the page shows and its ranking (made
-    beside it once, when missing or older than the run). The last two layers opened are kept (a whole layer's answers
+    beside it once, when missing or older than the run; one made before its design's collapse words were marked,
+    census.COLLAPSE_RULE, is marked in place, census.remark_units, its ranking unchanged), with the layer's collapse
+    words (`collapse`, None for a design without the rule). The last two layers opened are kept (a whole layer's answers
     take a few hundred megabytes even slimmed)."""
     path = cz.layer_runs(model=model).get(int(layer))
     if path is None:
@@ -800,6 +813,12 @@ def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
             cz.write_units(path)
             key = (str(path), path.stat().st_mtime, units_path.stat().st_mtime)
         units = list(cz.read_rows(units_path))
+        if cz.run_design(path) in cz.COLLAPSE_RULE and units and not ("mass_shown" in units[0] and cz.collapse_path_of(path).exists()):
+            cz.remark_units(path)  # ranked before its collapse words were marked: the same ranking, marked
+            key = (str(path), path.stat().st_mtime, units_path.stat().st_mtime)
+            units = list(cz.read_rows(units_path))
+        cp = cz.collapse_path_of(path)
+        collapse = json.loads(cp.read_text(encoding="utf-8")) if cz.run_design(path) in cz.COLLAPSE_RULE and cp.exists() else None
         slim = ("kind", "neuron", "prompt", "dose", "rel_push", "text", "finish", "n_gen")
         rows = [{k: r.get(k) for k in slim} for r in cz.read_rows(path, tolerate_tail=True)]
         by_unit: Dict[Tuple[str, int], List[int]] = {}
@@ -811,7 +830,8 @@ def census_layer(layer: int, model: Optional[str]) -> Optional[Dict[str, Any]]:
         null = {"neurons": n_neu, "controls": n_ctl, "above_all": sum(1 for u in units if u["kind"] == "neuron" and u.get("null_pct") == 1.0),
                 "above_all_by_chance": cz.chance_above_all(n_neu, n_ctl),
                 "q05": sum(1 for u in units if u.get("q") is not None and u["q"] <= 0.05)}
-        d = {"key": key, "path": path, "rows": rows, "units": units, "by_unit": by_unit, "meta": meta, "null": null}
+        d = {"key": key, "path": path, "rows": rows, "units": units, "by_unit": by_unit, "meta": meta, "null": null,
+             "collapse": collapse}
         _census_cache.put(int(layer), d)
         return d
 
@@ -831,7 +851,9 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     census.doses_calibrated; `doses_calibrated_layers`, the first and last layer its design is calibrated at, None for
     a design calibrated at none), and, where scripts/verify_atlas_writer.py has measured one for the
     run's model, the writer's floor (`writer_floor`, census.writer_floor: with no push, after how many word-pieces an
-    answer written in batches like this run's parts from the same answer written alone; None where none is on disk)."""
+    answer written in batches like this run's parts from the same answer written alone; None where none is on disk);
+    the words its pages leave out of a unit's census words (`collapse`: the rule, how many controls it needed, and the
+    layer's list, census.collapse_words; None for a design without the rule); and what a lead says (`lead_says`)."""
     m = d["meta"]
     design = m.get("design_name")
     devices = {(c or {}).get("device") for c in (m.get("mixed_runtime") or [m.get("runtime")])}
@@ -839,18 +861,21 @@ def census_card(d: Dict[str, Any]) -> Dict[str, Any]:
     # where its doses come from in the words its meta recorded, save for a design whose calibration was recorded since
     # (census.DOSES_CALIBRATED), which speaks with the words that say where it is calibrated
     doses_from = cz.DOSES_FROM.get(design) if span else (m.get("doses_from") or cz.DOSES_FROM.get(design))
+    # how its ranking read its answers (the reading its ranking file records; one written before rankings recorded it
+    # was ranked by census.READING_DEFAULT; with no ranking yet, its design's, census.reading_of)
+    reading = (next((u["reading"] for u in d.get("units") or [] if u.get("reading")), None)
+               or (dict(cz.READING_DEFAULT) if d.get("units") else cz.reading_of(m.get("design_name"))))
     return {"run": d["path"].name, "design": design, "doses_from": doses_from,
             "dose_unit": m.get("dose_unit", "stream"), "p50_source": m.get("p50_source"), "read_gain": m.get("read_gain"), "null": d["null"],
             "device": devices.pop() if len(devices) == 1 else None, "mixed_runtime": bool(m.get("mixed_runtime")), "partial": m.get("partial"),
             "stage": m.get("stage"), "writer_floor": cz.writer_floor(m),
-            # how its ranking read its answers (the reading its ranking file records; one written before rankings
-            # recorded it was ranked by census.READING_DEFAULT; with no ranking yet, its design's, census.reading_of),
-            # its doses, and whether they are calibrated on this model at the run's layer (census.doses_calibrated)
-            "reading": next((u["reading"] for u in d.get("units") or [] if u.get("reading")), None)
-                       or (dict(cz.READING_DEFAULT) if d.get("units") else cz.reading_of(m.get("design_name"))),
+            # its reading, its doses, and whether they are calibrated on this model at the run's layer and length
+            # (census.doses_calibrated)
+            "reading": reading,
             "doses": sorted({float(x[1]) for x in m.get("design") or []}),
-            "doses_calibrated": cz.doses_calibrated(design, m.get("layer")),
-            "doses_calibrated_layers": list(span) if span else None}
+            "doses_calibrated": cz.doses_calibrated(design, m.get("layer"), m.get("max_new")),
+            "doses_calibrated_layers": list(span) if span else None,
+            "collapse": d.get("collapse"), "lead_says": cz.lead_says(reading)}
 
 
 @router.get("/census/units")
@@ -860,7 +885,8 @@ async def census_units(layer: int) -> List[Dict[str, Any]]:
         return []
     notes = (await fn.all_notes())["neurons"]
     return [{"kind": u["kind"], "n": u["neuron"], "z": u.get("mass", u["z"]), "null_pct": u["null_pct"], "q": u.get("q"),
-             "words": [w for w, _, _ in u["words"][:5]], "name": (notes.get(fn.note_key(layer, u["neuron"])) or {}).get("name", "") if u["kind"] == "neuron" else ""}
+             "words": cz.shown_words(u, 5), **{k: u[k] for k in ("collapse_mass", "mass_shown") if k in u},
+             "name": (notes.get(fn.note_key(layer, u["neuron"])) or {}).get("name", "") if u["kind"] == "neuron" else ""}
             for u in d["units"]]
 
 
@@ -887,7 +913,8 @@ async def census_unit(layer: int, n: int, kind: str = "neuron") -> Dict[str, Any
         "card": census_card(d),
         "rollouts": [{k: r[k] for k in keep} for r in rows],
         "baselines": [{k: r[k] for k in keep} for r in d["rows"] if r["kind"] == "baseline"],
-        "stats": rec, "rank": next((i + 1 for i, u in enumerate(neurons) if u["neuron"] == n), None) if rec else None,
+        "stats": cz.shown_unit(rec) if rec else None,
+        "rank": next((i + 1 for i, u in enumerate(neurons) if u["neuron"] == n), None) if rec else None,
         "n_ranked": len(neurons),
     })
     return out

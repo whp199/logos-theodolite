@@ -55,7 +55,7 @@ def canary(rt: Any, out_dir: Path, tag: str, layer: int, neurons: List[int], con
 
     out = Path(out_dir) / f"canary-{tag}.jsonl"
     cz.take_census(rt, layer, neurons, out, p50=float(p50), p50_source="fixed (scripts/compare_int4mm.py)", controls=controls,
-                   seed=0, max_new=max_new, top_k=5, batch=batch, log=quiet)
+                   design_name="main_rel", seed=0, max_new=max_new, top_k=5, batch=batch, log=quiet)  # as the rule was fixed
     return list(cz.read_rows(out))
 
 

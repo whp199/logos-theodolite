@@ -152,7 +152,9 @@ TOOLS: List[Dict[str, Any]] = [
      "layer's false-discovery q. The run asks its design's questions (`prompts`) at its design's doses; its card says where "
      "the doses come from, what they are, how the ranking read the answers and whether the doses are calibrated on this "
      "model at this layer (`card.doses_from`, `card.doses`, `card.reading`, `card.doses_calibrated`): where they are not, "
-     "a low rank may only mean the dose was wrong for this layer. Empty when the layer has no census.",
+     "a low rank may only mean the dose was wrong for this layer. Its words leave out the collapse words, those random "
+     "pushes bring as hard at the largest doses (`stats.collapse_words_left_out`, the rule in `card.collapse`); `card.lead_says` "
+     "says what a high rank means. Empty when the layer has no census.",
      "inputSchema": {"type": "object", "properties": {**LN, "max_chars": {"type": "integer", "default": 500}}, "required": ["layer", "n"]}},
     {"name": "cone", "description": "The neuron's cone: its weight links chained forward (what reads it, hop > 0, from it firing on its + "
      "face and on its - face: `when`) and backward (what feeds it, hop < 0: `drives`, the face of the neuron it pushes toward), "
@@ -416,6 +418,13 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
     if name == "rollouts":
         _need(a, "layer", "n")
         u = await api.get("/api/atlas/census/unit", layer=a["layer"], n=a["n"])
+        st, card = u.get("stats") or {}, u.get("card") or {}
+        if st.get("collapse") is not None:  # its words as a page shows them, the collapse words named apart
+            hide = set(st["collapse"])
+            st["words"] = [x for x in st.get("words") or [] if x[0] not in hide]
+            st["collapse_words_left_out"] = st.pop("collapse")
+        if card.get("collapse"):  # the rule, not the layer's whole list
+            card["collapse"] = {"rule": card["collapse"]["rule"], "words": len(card["collapse"]["words"])}
         cut = max(40, int(a.get("max_chars", 500)))
         for key in ("rollouts", "baselines"):
             for row in u.get(key, []):
@@ -463,10 +472,12 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         us.sort(key=lambda u: -u["z"])
         return {"null": card.get("null"), "design": card.get("design"), "doses_from": card.get("doses_from"),
                 "doses": card.get("doses"), "reading": card.get("reading"), "doses_calibrated": card.get("doses_calibrated") is True,
-                "push_unit_from": card.get("p50_source"),
+                "push_unit_from": card.get("p50_source"), "lead_says": card.get("lead_says"),
+                **({"words_left_out": card["collapse"]["rule"]} if card.get("collapse") else {}),
                 "dose_unit": card.get("dose_unit", "stream"), **({"stage": card["stage"]} if card.get("stage") else {}),
                 **({"writer_floor": card["writer_floor"]["says"]} if card.get("writer_floor") else {}),
                 "ranked": [{"neuron": cite(a["layer"], u["n"]), "mass": u["z"], "null_pct": u["null_pct"], "q": u.get("q"), "words": u["words"],
+                            **({"mass_from_collapse_words": u["collapse_mass"]} if u.get("collapse_mass") else {}),
                             **({"name": u["name"]} if u.get("name") else {})} for u in us[: int(a.get("limit", 30))]]}
     if name in ("set_name", "write_note"):
         # a proposal, never the notes themselves: it waits on the page for the person to keep or discard
