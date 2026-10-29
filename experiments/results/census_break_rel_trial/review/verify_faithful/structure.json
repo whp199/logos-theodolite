@@ -1,0 +1,339 @@
+{
+ "lists": {
+  "calib45_is_random64_seed0": true,
+  "calib57_is_random64_seed0": true,
+  "fresh_overlap_with_calib64": [
+   6509,
+   17649
+  ],
+  "fresh_file_eq_draw_less_overlap": true,
+  "fresh_n": 1022,
+  "reasked_file_eq_calib45": true,
+  "reasked_n": 64,
+  "fresh_and_reasked_disjoint": true,
+  "meta45_neurons_eq_union": true,
+  "meta45_n": 1086,
+  "l57_overlap_with_calib64": [
+   2660,
+   3453,
+   5952,
+   8779,
+   20346
+  ],
+  "l57_file_eq_draw_less_overlap": true,
+  "l57_n": 507,
+  "meta57_neurons_eq_file": true,
+  "l57_shared_with_calib57": 0
+ },
+ "gain_sample_overlap": {
+  "L45_run_neurons_in_gain_sample": 21,
+  "L45_fresh_in_gain_sample": 19,
+  "L57_run_neurons_in_gain_sample": 11,
+  "expected_L45": 25.9,
+  "expected_L57": 12.1
+ },
+ "L45-break_rel-trial": {
+  "design": [
+   [
+    "who",
+    -1.0
+   ],
+   [
+    "who",
+    1.0
+   ],
+   [
+    "who",
+    -2.0
+   ],
+   [
+    "who",
+    2.0
+   ],
+   [
+    "orange",
+    -1.0
+   ],
+   [
+    "orange",
+    1.0
+   ],
+   [
+    "orange",
+    -2.0
+   ],
+   [
+    "orange",
+    2.0
+   ],
+   [
+    "free",
+    -1.0
+   ],
+   [
+    "free",
+    1.0
+   ],
+   [
+    "free",
+    -2.0
+   ],
+   [
+    "free",
+    2.0
+   ],
+   [
+    "bicycle",
+    -1.0
+   ],
+   [
+    "bicycle",
+    1.0
+   ],
+   [
+    "bicycle",
+    -2.0
+   ],
+   [
+    "bicycle",
+    2.0
+   ],
+   [
+    "walk",
+    -1.0
+   ],
+   [
+    "walk",
+    1.0
+   ],
+   [
+    "walk",
+    -2.0
+   ],
+   [
+    "walk",
+    2.0
+   ],
+   [
+    "chair",
+    -1.0
+   ],
+   [
+    "chair",
+    1.0
+   ],
+   [
+    "chair",
+    -2.0
+   ],
+   [
+    "chair",
+    2.0
+   ]
+  ],
+  "questions": [
+   "who",
+   "orange",
+   "free",
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "halves": [
+   [
+    "who",
+    "orange",
+    "free"
+   ],
+   [
+    "bicycle",
+    "walk",
+    "chair"
+   ]
+  ],
+  "rows": 50646,
+  "jobs_n_meta": 50646,
+  "duplicates": 0,
+  "missing": 0,
+  "extra": 0,
+  "rows_in_job_order": false,
+  "units": 2110,
+  "units_with_all_24": 2110,
+  "cells": 24,
+  "digest_rebuilt": "e61ca25ad942616e",
+  "digest_meta": "e61ca25ad942616e",
+  "faults": {},
+  "meta": {
+   "layer": 45,
+   "design_name": "break_rel",
+   "batch": 64,
+   "max_new": 48,
+   "seed": 3,
+   "random_controls": 1024,
+   "plan": "12 x batch",
+   "read_gain": {
+    "neurons": 0.9377,
+    "controls": 0.9616,
+    "ratio": 1.026,
+    "read_by": "the next layer's input norm (the final norm after the last layer)"
+   },
+   "p50": 144.42271423339844
+  },
+  "git": "e94eea672c8264c74c3538b08b482d3b03a18c22",
+  "git_clean": true,
+  "mixed_runtime": null,
+  "unpacker_sessions": null
+ },
+ "L57-break_rel-probe": {
+  "design": [
+   [
+    "who",
+    -1.0
+   ],
+   [
+    "who",
+    1.0
+   ],
+   [
+    "who",
+    -2.0
+   ],
+   [
+    "who",
+    2.0
+   ],
+   [
+    "orange",
+    -1.0
+   ],
+   [
+    "orange",
+    1.0
+   ],
+   [
+    "orange",
+    -2.0
+   ],
+   [
+    "orange",
+    2.0
+   ],
+   [
+    "free",
+    -1.0
+   ],
+   [
+    "free",
+    1.0
+   ],
+   [
+    "free",
+    -2.0
+   ],
+   [
+    "free",
+    2.0
+   ],
+   [
+    "bicycle",
+    -1.0
+   ],
+   [
+    "bicycle",
+    1.0
+   ],
+   [
+    "bicycle",
+    -2.0
+   ],
+   [
+    "bicycle",
+    2.0
+   ],
+   [
+    "walk",
+    -1.0
+   ],
+   [
+    "walk",
+    1.0
+   ],
+   [
+    "walk",
+    -2.0
+   ],
+   [
+    "walk",
+    2.0
+   ],
+   [
+    "chair",
+    -1.0
+   ],
+   [
+    "chair",
+    1.0
+   ],
+   [
+    "chair",
+    -2.0
+   ],
+   [
+    "chair",
+    2.0
+   ]
+  ],
+  "questions": [
+   "who",
+   "orange",
+   "free",
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "halves": [
+   [
+    "who",
+    "orange",
+    "free"
+   ],
+   [
+    "bicycle",
+    "walk",
+    "chair"
+   ]
+  ],
+  "rows": 24462,
+  "jobs_n_meta": 24462,
+  "duplicates": 0,
+  "missing": 0,
+  "extra": 0,
+  "rows_in_job_order": false,
+  "units": 1019,
+  "units_with_all_24": 1019,
+  "cells": 24,
+  "digest_rebuilt": "f859c04ae5d41ef9",
+  "digest_meta": "f859c04ae5d41ef9",
+  "faults": {},
+  "meta": {
+   "layer": 57,
+   "design_name": "break_rel",
+   "batch": 64,
+   "max_new": 48,
+   "seed": 3,
+   "random_controls": 512,
+   "plan": "12 x batch",
+   "read_gain": {
+    "neurons": 0.4406,
+    "controls": 0.5194,
+    "ratio": 1.179,
+    "read_by": "the next layer's input norm (the final norm after the last layer)"
+   },
+   "p50": 85.09976196289062
+  },
+  "git": "e94eea672c8264c74c3538b08b482d3b03a18c22",
+  "git_clean": true,
+  "mixed_runtime": null,
+  "unpacker_sessions": null
+ }
+}

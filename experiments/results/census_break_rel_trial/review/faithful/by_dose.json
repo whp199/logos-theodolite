@@ -1,0 +1,68 @@
+{
+ "L45-break_rel-trial |dose| 1": {
+  "mass_c": 0.7064,
+  "mass_c_res": 0.7123,
+  "rep_AB": 0.6757,
+  "rep_BA": 0.6725,
+  "mass_B": 0.6471,
+  "rep_res": 0.6907,
+  "cov_lp": 0.402,
+  "cov_d4": 0.3684,
+  "cov_lost": 0.6581
+ },
+ "L45-break_rel-trial |dose| 2": {
+  "mass_c": 0.5708,
+  "mass_c_res": 0.5438,
+  "rep_AB": 0.5477,
+  "rep_BA": 0.5472,
+  "mass_B": 0.5559,
+  "rep_res": 0.528,
+  "cov_lp": 0.5555,
+  "cov_d4": 0.5117,
+  "cov_lost": 0.3895
+ },
+ "L45-break_rel-trial all four": {
+  "mass_c": 0.7144,
+  "mass_c_res": 0.7244,
+  "rep_AB": 0.6879,
+  "rep_BA": 0.6739,
+  "mass_B": 0.6693,
+  "rep_res": 0.6935,
+  "cov_lp": 0.5342,
+  "cov_d4": 0.4371,
+  "cov_lost": 0.6289
+ },
+ "L57-break_rel-probe |dose| 1": {
+  "mass_c": 0.5225,
+  "mass_c_res": 0.6279,
+  "rep_AB": 0.5379,
+  "rep_BA": 0.6267,
+  "mass_B": 0.4948,
+  "rep_res": 0.5264,
+  "cov_lp": 0.6966,
+  "cov_d4": 0.4228,
+  "cov_lost": 0.517
+ },
+ "L57-break_rel-probe |dose| 2": {
+  "mass_c": 0.5737,
+  "mass_c_res": 0.5192,
+  "rep_AB": 0.5691,
+  "rep_BA": 0.5768,
+  "mass_B": 0.5687,
+  "rep_res": 0.5052,
+  "cov_lp": 0.8215,
+  "cov_d4": 0.4425,
+  "cov_lost": 0.1847
+ },
+ "L57-break_rel-probe all four": {
+  "mass_c": 0.5995,
+  "mass_c_res": 0.5608,
+  "rep_AB": 0.5757,
+  "rep_BA": 0.5846,
+  "mass_B": 0.5856,
+  "rep_res": 0.502,
+  "cov_lp": 0.8182,
+  "cov_d4": 0.4001,
+  "cov_lost": 0.4083
+ }
+}

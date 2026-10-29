@@ -1,0 +1,67 @@
+{
+ "L45-break_rel-trial": {
+  "answers": 50646,
+  "batches": 796,
+  "batch": 64,
+  "max_new": 48,
+  "batches_at_max": 796,
+  "min_steps": 48,
+  "rate_write": 12.38,
+  "write_s": 4091.0,
+  "wall_s": 4115.0,
+  "rate_wall": 12.308,
+  "s_per_batch": 5.1394,
+  "mean_n_gen": 47.92
+ },
+ "L57-break_rel-probe": {
+  "answers": 24462,
+  "batches": 388,
+  "batch": 64,
+  "max_new": 48,
+  "batches_at_max": 388,
+  "min_steps": 48,
+  "rate_write": 12.31,
+  "write_s": 1987.2,
+  "wall_s": 2003.0,
+  "rate_wall": 12.213,
+  "s_per_batch": 5.1216,
+  "mean_n_gen": 47.97
+ },
+ "layer_L45_b64": {
+  "1024": {
+   "answers": 540678,
+   "batches": 8454,
+   "h48_write_rate": 12.13,
+   "h48_wall_rate": 12.2,
+   "h48_per_batch": 12.07,
+   "h48_formula": 13.34,
+   "h32_proportional": 8.05,
+   "h32_fixed045_refit": 8.4,
+   "h32_formula_ratio": 8.36,
+   "step_refit": 0.0977
+  },
+  "2048": {
+   "answers": 565254,
+   "batches": 8838,
+   "h48_write_rate": 12.68,
+   "h48_wall_rate": 12.76,
+   "h48_per_batch": 12.62,
+   "h48_formula": 13.95,
+   "h32_proportional": 8.41,
+   "h32_fixed045_refit": 8.78,
+   "h32_formula_ratio": 8.74,
+   "step_refit": 0.0977
+  }
+ },
+ "extra_2048_h48": 0.55,
+ "extra_2048_h32": [
+  0.36,
+  0.38
+ ],
+ "save_32_vs_48_h": [
+  3.67,
+  4.02
+ ],
+ "formula_rate_b64_48": 11.264,
+ "measured_over_formula": 1.0991
+}

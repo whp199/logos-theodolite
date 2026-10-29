@@ -1,0 +1,118 @@
+2 [(2201, 14935), (2201, 14882)]
+(who, orange, free, bicycle, walk, chair). DESIGN_HALVES gives its two halves.
+- design_questions(name): returns the four PROMPTS for every design that names no questions of its own.
+- meta_questions(meta): the questions a run asked, read from its meta.
+- DESIGNS["break_rel"] = [(p, s*d) for p in DESIGN_QUESTIONS["break_rel"] for d in (1.0, 2.0) for s in (-1.0, 1.0)].
+- DESIGN_UNITS["break_rel"] = "stream" (a ceiling run is refused).
+- DOSES_FROM["break_rel"]: the calibration provenance text.
+- DOSES_CALIBRATED = ("break_rel",).
+- CALIBRATION_DESIGNS and DEFAULT_DESIGN ("main_rel") are left unchanged.
+- READING_DEFAULT is {max_rel 1.6, reference "units", exclude "all"}. DESIGN_READING sets:
+  - calib_rel and calib_ceil: max_rel 100 (every answer counted);
+  - break_rel: max_rel 2.5, reference "controls", exclude "own".
+  - reading_of(name) and run_reading(run) look these up.
+- compute_units(..., reference="units", exclude="all"): the defaults give the old output exactly (tested). "controls" takes each word's mean over the controls alone, leaving a control out of its own mean. "own" leaves out only the answer's own question's unpushed words.
+- write_units(run, max_rel=None): ranks by the run's design reading; an explicit max_rel overrides only the cap.
+- retest_of: the stage now records screen_cells.
+- shared_cells(), and a refusal in take_census: a retest may share no (question, dose) cell with its screen.
+- census_jobs(..., questions=None): writes one baseline for each of the run's questions. take_census, the left-plan path and merge_runs pass the run's questions.
+- plan_batches groups by question in the order the job list first asks them. That equals PROMPTS order for every older job list; digests are pinned.
+- PLANS gains "12 x batch". DESIGN_PLAN["break_rel"] = "12 x batch".
+- take_census writes meta prompts and prompt_ids over the design's questions.
+- writer_floor prefers a floor file that covers the run's questions, and over a superset it takes the floor over the run's own questions.
+- depth_report reads each run its design's way. It adds design, reading, coherence at the run's own doses, and auc, and keeps the old keys.
+
+backend/atlas.py
+- census_card adds reading, doses and doses_calibrated.
+
+scripts/ce
+
+=== trial_plan
+Script: /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/design/synth/tonight.sh. Set R to the checkout holding the committed patch. The script stops on the first failure and pushes nothing.
+
+Before starting:
+- Stop the :8765 server, and restart it afterwards. verify_atlas_writer refuses to run while it answers, and only one GPU process runs at a time.
+- export THEODOLITE_ATLAS_DIR=/home/eric/bin/ai/theodolite2/atlas_data. This makes p50 come from the stats index (144.42 at L45), as the calibration's did.
+- Every run writes to D=$THEODOLITE_ATLAS_DIR/census/trials.
+- S=/tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/design/synth.
+
+Step 0. The floor; looks at no neuron; about 10 min.
+- $R/.venv/bin/python -I $R/scripts/verify_atlas_writer.py --layer 45 --max-new 48 --batches 64,96 --unpacker compiled --questions who,orange,free,bicycle,walk,chair,kettle,sleep,bridge --out $D/floor_L45_break_rel.json
+- Then $S/step0_pick.py applies the rule fixed now.
+  - who, orange and free must keep at least 32 pieces at batch 64.
+  - Each half-B slot takes the first of bicycle|kettle, walk|sleep, chair|bridge that keeps at least 32 at 64.
+  - The batch B is 96 if all six keep at least 32 at 96, else 64.
+- If a spare is picked, edit DESIGN_QUESTIONS and DESIGN_HALVES (and check_census's q6), re-run check_census and commit before going on.
+- Without the patch, $S/step0_floor.py does the same floor measurement.
+
+Step 1. L45 trial; about 1.0 h at 96, 1.3 h at 64.
+- $R/.venv/bin/python -I $R/scripts/census_run.py --layer 45 --design break_rel --neurons "$(cat $S/trial_L45_neurons.txt)" --random-controls 1024 --seed 3 --batch $B --max-new 48 --unpacker compiled --out-dir $D --run L45-break_rel-trial
+- Neurons: 1,086 in all.
+  - 1,022 fresh: random:1024 at seed 3, from rng(4), less the calibration's 6509 and 17649 (listed in trial_L45_fresh.txt).
+  - The calibration's 64: random:64 at seed 0 (trial_L45_reasked.txt).
+- Controls: 1,024 drawn from rng(3); the calibration's were drawn from rng(0).
+- The run is ranked after it finishes by the patched reading. Unix timestamps go in <run>.t0 and <run>.t1.
+
+Step 2. L57 probe, the scope test; about 0.5 h.
+- The same command with --layer 57 --neurons "$(cat $S/probe_L57_neurons.txt)" --random-controls 512 --seed 3 --run L57-break_rel-probe
+- Neurons: 507 fresh, the seed 6 draw (rng(7)) less the calibration's 64. Controls: 512.
+
+Step 3. Reading, CPU only (CUDA_VISIBLE_DEVICES=); the L45 read runs while L57 writes.
+- $S/trial_read.py $D/L45-break_rel-trial.jsonl --gates L45 --fresh $S/trial_L45_fresh.txt --retest-ref /home/eric/bin/ai/theodolite2/atlas_data/census/runs/L45-calib_rel.jsonl --reasked $S/trial_L45_reasked.txt --out $D/L45_verdict.json
+- $S/trial_read.py $D/L57-break_rel-probe.jsonl --gates L57 --out $D/L57_verdict.json
+- Both read at 48 pieces (primary) and at 32, cut by the checkpoint's tokenizer.
+
+Total: about 1.9 h at bat
+
+=== pass_criterion
+Fixed 29 October 2026, before the trial, and encoded in trial_read.py GATES. Every figure is read at 48 pieces with every answer counted. At L45 the neurons are the 1,022 fresh ones and the controls are all 1,024 of the run's.
+
+L45: the design passes only if G1-G5 all hold.
+- G1, lead: mass_c AUC >= 0.60. The calibration gave 0.64 here; SE about 0.013.
+- G2, beyond text survival: AUC of mass_c's residual on six covariates fitted on the controls >= 0.58. The six are log new words, distinct-4, share cut off, log-prob, first departure and share of unpushed words lost. Calibration: 0.69.
+- G3, replication on disjoint questions: rep_AB >= 0.57 and rep_BA >= 0.57. Calibration, with halves of 8 and 4 answers: 0.66 and 0.65.
+- G4, the new questions carry a lead of their own: mass on half B alone >= 0.56.
+- G5, sanity, all of:
+  - the mean AUC over 50 relabelled 512/512 control splits is within 0.47-0.53;
+  - the read_gain ratio is within 0.8-1.25;
+  - every unit holds all 24 cells;
+  - units.jsonl's mass equals the reader's mass_c within 0.002, which shows the code ranks as pre-registered.
+
+L57 probe: the scope extends to L51-57 only if S1-S3 and G5 hold (507/512 units, SE about 0.018).
+- S1: mass_c >= 0.58.
+- S2: residual >= 0.56.
+- S3: rep_AB >= 0.55 and rep_BA >= 0.55.
+
+Decided now for each outcome:
+- All pass: whole layers at L40-50, plus 51-57 if the probe passes.
+- G1 fails: no whole layer, and the design goes back to the owner. There is no in-between branch.
+- G1 passes and G2 fails: the lead is how text survives, not themes; no whole layer.
+- G1 and G2 pass and G3 fails: labels belong to the question set. A whole layer would give layer-level leads only and name nothing; the owner decides.
+- G4 fails alone: no question swap on this trial's data. The owner chooses between a new trial with new questions and three questions with no held-out half.
+- G5 fails: an implementation fault. Fix it and re-read without the GPU (or continue an incomplete run).
+
+max_new rule: the whole layer takes 32 pieces only if the 32-piece reading also passes G1-G5 and lies no more than 0.02 below the 48-piece reading on mass_c and on the lower of rep_AB and rep_BA. Otherwise it takes 48.
+
+Batch rule: as in step 0.
+
+Reported but not gating:
+- shift, shift_up and shift_down. If shift passes while mass fails, the outcome is still a fail, reported as a lead by word shift only.
+- xq.
+- Above every control against the chance about 1; the q <= 0.05 count; the named count.
+- Sign halves.
+- Text per dose (distinct-4 against the unpushed, share cut off).
+- Test-retest and bit identity.
+- Answers a second against the formula's 14.4/s at 96 and 11.3/s at 64; whole-layer hours are rescaled by the measured rate.
+- The batch-96 floor.
+
+=== open_questions_for_owner
+1. Whether to switch DEFAULT_DESIGN to break_rel after a pass. That is one line plus check_census test 4. It makes census_run's default and layer_runs' preference break_rel, while main_rel runs stay readable.
+2. Whether to accept the ladders' new default reading (every answer counted, max_rel 100). It changes their units.jsonl on a re-rank. It also means experiments/results/atlas_calibration/summary.json should be regenerated or annotated, since its "every dose pooled" figures were cut at 1.6.
+3. Controls for a whole layer. 2,048 (q <= 0.05 at 1% of a layer) costs about 0.5 h more than 1,024 (2%).
+4. The cost of 48 pieces. About 10.9 h a layer at batch 96 (11.7 h with slack) spills into a second night, which continues row for row. The pre-registered rule may choose 32 (7.6 h). Batch 128 is untested.
+5. Which layer to take first after a pass. L45 is the reference layer, and the trial's neurons would rewrite the same bits there. L40 has the strongest lead.
+6. The doc text: ARCHITECTURE §4.7, ROADMAP §vi, COMPUTE.md, the README census row and scientist_methodology.md. Also whether the page should state that a break_rel lead means "unlike a unit(w_post*r) direction pushed as far", not "has a theme".
+7. Whether to accept the three new questions and their spares as fixed here, or replace them before tonight. Changing them after the trial is barred.
+8. Review and commit of the patch on a branch (side sessions commit only), before the trial runs from that commit.
+9. Whether to run calib_rel ladders at L31-39 and 58-59 before any whole layer there.
+Shell cwd was reset to /home/eric/bin/ai/theodolite2

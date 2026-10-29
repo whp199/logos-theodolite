@@ -1,0 +1,536 @@
+{
+ "what": "The break_rel trial's verdict, read with the gates as pre-registered, and the review of what it measures. Read 29 October 2026 at 13:52Z by morning.sh (the owner: 'Read it as is'). The review re-derived each reviewer's headline figures with a second reader: the gates with one that shares no code with readlib.py (review/verify_faithful/myread.py), the by-dose and per-neuron figures with code built on readlib's parts (review/verify_dose/vcore.py, review/verify_license/verify.py).",
+ "prereg": {
+  "prereg_at": "2026-10-29T06:58:53Z",
+  "repo_commit": "e94eea672c8264c74c3538b08b482d3b03a18c22",
+  "SHA256SUMS_sha256": "8d8d81de91dd03529db83f091c7ddeb26bbb4dd8037cac66f6dd91884c7c3b2d",
+  "hash_check_at_read": "10 of 10 OK (morning_output.txt)"
+ },
+ "runs": [
+  "L45-break_rel-trial: started 2026-10-29T07:03:13Z, finished 2026-10-29T08:11:48Z, 50646 answers, sha256 9724178637662f85da30b23f25d12322e950324a1282f4c80bbbe46a09d7b053",
+  "L57-break_rel-probe: started 2026-10-29T08:11:48Z, finished 2026-10-29T08:45:11Z, 24462 answers, sha256 3d8da5f55a76633f57348fbb1b9d749f49c3682ed0dfe8b47d095ab246af685e"
+ ],
+ "verdict": {
+  "L45": {
+   "pass": true,
+   "neurons_read": "1,022 fresh (the 64 re-asked left out of the gates)",
+   "controls": 1024,
+   "readings": {
+    "48": {
+     "pass": true,
+     "gates": {
+      "G1 lead (mass, every answer)": {
+       "pass": true,
+       "values": [
+        [
+         "mass_c",
+         0.7144,
+         0.6
+        ]
+       ]
+      },
+      "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+       "pass": true,
+       "values": [
+        [
+         "mass_c_res",
+         0.7244,
+         0.58
+        ]
+       ]
+      },
+      "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+       "pass": true,
+       "values": [
+        [
+         "rep_AB",
+         0.6879,
+         0.57
+        ],
+        [
+         "rep_BA",
+         0.6739,
+         0.57
+        ]
+       ]
+      },
+      "G4 the new questions alone carry a lead (mass on half B)": {
+       "pass": true,
+       "values": [
+        [
+         "mass_B",
+         0.6693,
+         0.56
+        ]
+       ]
+      },
+      "G5 sanity (null split, read gain, every answer present)": {
+       "pass": true,
+       "values": [
+        [
+         "null_split_mean",
+         0.5015,
+         [
+          0.47,
+          0.53
+         ]
+        ],
+        [
+         "read_gain_ratio",
+         1.026,
+         [
+          0.8,
+          1.25
+         ]
+        ],
+        [
+         "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+         true,
+         true
+        ]
+       ]
+      },
+      "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+       "pass": true,
+       "values": [
+        [
+         "max_abs_diff",
+         0.0005,
+         0.002
+        ]
+       ]
+      }
+     },
+     "counts": {
+      "neurons": 1022,
+      "controls": 1024,
+      "above_every_control": 169,
+      "by_chance": 1.0,
+      "q05": 310,
+      "named": 262,
+      "named_by_halves": 149,
+      "above_ctl_p95": 0.3826,
+      "pA05_and_pB05": 150,
+      "pA05_and_pB05_by_chance": 2.6
+     },
+     "rho_AB_neurons": 0.461,
+     "rho_AB_controls": 0.143,
+     "retest": {
+      "neurons": 64,
+      "cells": [
+       "who",
+       "orange",
+       "free"
+      ],
+      "spearman_mass": 0.9381410256410255,
+      "answers": 768,
+      "bit_identical": 737,
+      "expected_identical": 660,
+      "bit_identical_where_expected": 660,
+      "batch_here": 64,
+      "batch_ref": 64
+     }
+    },
+    "32": {
+     "pass": true,
+     "gates": {
+      "G1 lead (mass, every answer)": {
+       "pass": true,
+       "values": [
+        [
+         "mass_c",
+         0.7077,
+         0.6
+        ]
+       ]
+      },
+      "G2 beyond how the text survives (mass residual on six covariates, fitted on the controls)": {
+       "pass": true,
+       "values": [
+        [
+         "mass_c_res",
+         0.7029,
+         0.58
+        ]
+       ]
+      },
+      "G3 replication on disjoint questions (words picked on one half, scored on the other, both ways)": {
+       "pass": true,
+       "values": [
+        [
+         "rep_AB",
+         0.6767,
+         0.57
+        ],
+        [
+         "rep_BA",
+         0.6583,
+         0.57
+        ]
+       ]
+      },
+      "G4 the new questions alone carry a lead (mass on half B)": {
+       "pass": true,
+       "values": [
+        [
+         "mass_B",
+         0.6518,
+         0.56
+        ]
+       ]
+      },
+      "G5 sanity (null split, read gain, every answer present)": {
+       "pass": true,
+       "values": [
+        [
+         "null_split_mean",
+         0.5025,
+         [
+          0.47,
+          0.53
+         ]
+        ],
+        [
+         "read_gain_ratio",
+         1.026,
+         [
+          0.8,
+          1.25
+         ]
+        ],
+        [
+         "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+         true,
+         true
+        ]
+       ]
+      }
+     },
+     "counts": {
+      "neurons": 1022,
+      "controls": 1024,
+      "above_every_control": 126,
+      "by_chance": 1.0,
+      "q05": 231,
+      "named": 191,
+      "named_by_halves": 134,
+      "above_ctl_p95": 0.3395,
+      "pA05_and_pB05": 143,
+      "pA05_and_pB05_by_chance": 2.6
+     },
+     "rho_AB_neurons": 0.422,
+     "rho_AB_controls": 0.183,
+     "retest": {
+      "neurons": 64,
+      "cells": [
+       "who",
+       "orange",
+       "free"
+      ],
+      "spearman_mass": 0.9723901098901099,
+      "answers": 768,
+      "bit_identical": 739,
+      "expected_identical": 660,
+      "bit_identical_where_expected": 660,
+      "batch_here": 64,
+      "batch_ref": 64
+     }
+    }
+   },
+   "max_new_rule": {
+    "shorter_passes": true,
+    "mass_c_drop": 0.0067,
+    "rep_min_drop": 0.0156,
+    "take_shorter": true
+   },
+   "throughput": {
+    "answers": 50646,
+    "seconds": 4115.0,
+    "answers_per_s": 12.31,
+    "sessions": 1
+   }
+  },
+  "L57": {
+   "pass": true,
+   "neurons_read": 507,
+   "controls": 512,
+   "readings": {
+    "48": {
+     "pass": true,
+     "gates": {
+      "S1 lead": {
+       "pass": true,
+       "values": [
+        [
+         "mass_c",
+         0.5995,
+         0.58
+        ]
+       ]
+      },
+      "S2 beyond text survival": {
+       "pass": true,
+       "values": [
+        [
+         "mass_c_res",
+         0.5608,
+         0.56
+        ]
+       ]
+      },
+      "S3 replication both ways": {
+       "pass": true,
+       "values": [
+        [
+         "rep_AB",
+         0.5757,
+         0.55
+        ],
+        [
+         "rep_BA",
+         0.5846,
+         0.55
+        ]
+       ]
+      },
+      "G5 sanity (null split, read gain, every answer present)": {
+       "pass": true,
+       "values": [
+        [
+         "null_split_mean",
+         0.5006,
+         [
+          0.47,
+          0.53
+         ]
+        ],
+        [
+         "read_gain_ratio",
+         1.179,
+         [
+          0.8,
+          1.25
+         ]
+        ],
+        [
+         "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+         true,
+         true
+        ]
+       ]
+      },
+      "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+       "pass": true,
+       "values": [
+        [
+         "max_abs_diff",
+         0.0005,
+         0.002
+        ]
+       ]
+      }
+     },
+     "counts": {
+      "neurons": 507,
+      "controls": 512,
+      "above_every_control": 22,
+      "by_chance": 1.0,
+      "q05": 22,
+      "named": 20,
+      "named_by_halves": 13,
+      "above_ctl_p95": 0.1716,
+      "pA05_and_pB05": 22,
+      "pA05_and_pB05_by_chance": 1.3
+     },
+     "rho_AB_neurons": 0.405,
+     "rho_AB_controls": 0.186
+    },
+    "32": {
+     "pass": false,
+     "gates": {
+      "S1 lead": {
+       "pass": true,
+       "values": [
+        [
+         "mass_c",
+         0.5914,
+         0.58
+        ]
+       ]
+      },
+      "S2 beyond text survival": {
+       "pass": false,
+       "values": [
+        [
+         "mass_c_res",
+         0.5061,
+         0.56
+        ]
+       ]
+      },
+      "S3 replication both ways": {
+       "pass": true,
+       "values": [
+        [
+         "rep_AB",
+         0.5771,
+         0.55
+        ],
+        [
+         "rep_BA",
+         0.6029,
+         0.55
+        ]
+       ]
+      },
+      "G5 sanity (null split, read gain, every answer present)": {
+       "pass": true,
+       "values": [
+        [
+         "null_split_mean",
+         0.5019,
+         [
+          0.47,
+          0.53
+         ]
+        ],
+        [
+         "read_gain_ratio",
+         1.179,
+         [
+          0.8,
+          1.25
+         ]
+        ],
+        [
+         "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+         true,
+         true
+        ]
+       ]
+      }
+     },
+     "counts": {
+      "neurons": 507,
+      "controls": 512,
+      "above_every_control": 18,
+      "by_chance": 1.0,
+      "q05": 0,
+      "named": 0,
+      "named_by_halves": 0,
+      "above_ctl_p95": 0.1657,
+      "pA05_and_pB05": 25,
+      "pA05_and_pB05_by_chance": 1.3
+     },
+     "rho_AB_neurons": 0.52,
+     "rho_AB_controls": 0.304
+    }
+   },
+   "max_new_rule": {
+    "shorter_passes": false,
+    "mass_c_drop": 0.0081,
+    "rep_min_drop": -0.0014,
+    "take_shorter": false
+   },
+   "throughput": {
+    "answers": 24462,
+    "seconds": 2003.0,
+    "answers_per_s": 12.21,
+    "sessions": 1
+   }
+  }
+ },
+ "licensed_by_the_rules": {
+  "rules": "prereg text: 'All pass: whole layers at L40-50, plus 51-57 if the probe passes.' 'L57 probe: the scope extends to L51-57 only if S1-S3 and G5 hold.' 'max_new rule: the whole layer takes 32 pieces only if the 32-piece reading also passes G1-G5 and lies no more than 0.02 below the 48-piece reading on mass_c and on the lower of rep_AB and rep_BA. Otherwise it takes 48.'",
+  "L40-50": "whole layers, at 32 word-pieces (L45's 32-piece reading passes every gate computed there; drops 0.0067 on mass_c (0.0066 unrounded) and 0.0156 on the lower rep, the two measures the rule checks; it names 191 where 48 names 262, and its residual falls 0.0215)",
+  "L51-57": "whole layers, at 48 word-pieces: the probe passed at 48 and failed S2 at 32 (0.5061), and the hashed per-run reader gives take_shorter False there; 32 at L51-57 would need an amendment",
+  "not_settled_by_the_rules": "nothing is marked calibrated yet: census.DOSES_CALIBRATED stays () until the owner records which layers it covers"
+ },
+ "departures": [
+  "morning.sh imported backend/census.py from the worktree at 372baec, not e94eea6, the runs' commit: the two differ only in comments, DOSES_FROM's text and DOSES_CALIBRATED, none of which the reader uses; the second reader, which imports neither, gives every gate exactly",
+  "python -I without -B wrote prereg/__pycache__/readlib.cpython-312.pyc during the read (13:51:37Z); trial_read's, at 13:58:04Z, was almost certainly written by the review's by-dose reader (its common.py imports trial_read from that folder, and its own bytecode was written 0.4 s earlier); neither is hashed, the sources are unchanged and sha256sum -c still passes",
+  "the pass criterion's prose quotes the calibration's L45 rep_BA as 0.65; calib_expect.json gives 0.591 (trial_read.py's comment has it right)",
+  "the 32-piece reading cuts the 48-piece answers with the tokenizer rather than coming from a 32-piece run (greedy decoding is causal, so the first 32 pieces are the same; 0 decode mismatches), and G5b, the units file's check, is computed at 48 only"
+ ],
+ "review": {
+  "how": "six agents (review/): three readers (faithfulness, the lead by dose, what the rules license), each followed by an adversarial verifier that re-derived its headline figures and marked each claim as standing or falling (review/result.json); CPU only",
+  "faithful": "read as pre-registered; hashes, runs, metas, neuron lists (rebuilt from their draws), completeness (2,110 and 1,019 units x 24 cells, job digests rebuilt) and every gate AUC reproduce; G5b's 0.0005 is the units file's 3-place rounding",
+  "L45_by_dose": {
+   "pm1_only": {
+    "mass_c": 0.706,
+    "residual": 0.712,
+    "rep_AB": 0.676,
+    "rep_BA": 0.673,
+    "mass_B": 0.647,
+    "named": 306
+   },
+   "pm2_only": {
+    "mass_c": 0.571,
+    "residual": 0.544,
+    "rep_AB": 0.548,
+    "rep_BA": 0.547,
+    "mass_B": 0.556,
+    "named": 0
+   },
+   "single_doses": {
+    "-2": 0.537,
+    "-1": 0.604,
+    "+1": 0.596,
+    "+2": 0.536
+   },
+   "units_with_all_pm1_answers_fluent": {
+    "fluent": "distinct-4 at least 0.9 on all 12 of the unit's +-1 answers; the figures are the +-1-only reading, about two-thirds of the pooled lead above chance",
+    "neurons": 705,
+    "controls": 942,
+    "mass_c": 0.641,
+    "rep_AB": 0.59,
+    "rep_BA": 0.593
+   },
+   "reading": "the pass is carried by the +-1 answers; at +-2 neurons and controls alike collapse into loops on the same words (own, thought, same; distinct-4 0.210 against 0.208), and pooling them adds 0.008, though alone +-2 still holds a weak lead (5.6 SE above chance; 88 fresh neurons at p<=0.05 on it, about 51 by chance); the +-1-only figures were read after the fact"
+  },
+  "L45_per_neuron": {
+   "picked_on_A_found_on_B": "120 of 161 (75%), against 7 of the 51 strongest controls",
+   "A_words_scored_on_B": "147 of 161 (91%), against 10 of the 51 strongest controls",
+   "rho_AB": "neurons 0.461 [0.408, 0.510], controls 0.143; residualised 0.528 against 0.128",
+   "false_named_of_262": "about 7 (a point estimate that takes every neuron as null; 95% upper bound about 14), from the controls named by the same rule",
+   "tail_vs_bulk": "rho 0.558 for the 255 neurons above the controls' 95th percentile on half A, 0.168 for the other 767 (controls in that range 0.116): the order within the layer lies in the tail, though the 767 still lead the controls as a group (AUC 0.609 on half B); at L57 the bulk keeps more order (0.345 against 0.171)",
+   "calibration_named_0": "forced: with 64 neurons and 64 controls BH needs 20 above every control; it had 15",
+   "inside_controls_covariate_range": "893 of the 1,022 fresh neurons clear every gate on their own (0.692, 0.691, 0.657/0.643, 0.651); picked on A and found on B, 73 of 91 against 0 of 3 controls"
+  },
+  "L45_early_breaking": "named neurons' +-1 answers loop (distinct-4 below 0.5) in 9.6% of cases, fresh neurons 4.1%, controls 0.4%; of the named's 303 looping answers 135 loop on their own top words, 127 on the collapse words, 41 on neither",
+  "labels": "194 of the 262 named list same, own or thought among their replicated words (206 a collapse word of any kind: these and thoughtthought, ownthought, idea, and, owns); with L45's 789 collapse words (every word holding thought, and every word 10 or more controls hold in 2 or more of their +-2 answers) removed from every answer every gate still passes (0.711, 0.724, 0.677/0.671, 0.652; 294 named); 'same' is not purely a breakdown word (30% of the named's answers holding it are fluent +-1 text); a page should not show these as a neuron's words",
+  "L57": {
+   "pm1_only": 0.5225,
+   "pm2_only": 0.5737,
+   "fluent_pm1_units": 0.492,
+   "named_weight_from_broken_answers": "82% from answers with distinct-4 below 0.9 (controls 49%, nearly all at +-2; all 507 neurons 60%); many loop on pieces such as sem, pemb, ngày, though about half their words are ordinary (patriotic, vendor, volt, deck, support, personal, well)",
+   "S2_bootstrap_with_refit": "SD 0.025, 95% CI 0.512-0.609, 49% of 1,000 resamples below 0.56 (verify_faithful; verify_license's refit gives SD 0.024, CI 0.516-0.610)",
+   "outside_controls_covariate_range": "153 of 507 neurons (30%); 16 of the 20 named",
+   "inside_the_range_354_neurons": {
+    "S1": 0.551,
+    "S2": 0.488,
+    "S3": [
+     0.522,
+     0.537
+    ]
+   },
+   "reading": "the probe's pass rests on neurons whose text survival no control matches, where the residual is a linear extrapolation: this design cannot tell layer 57's lead from how the text survives"
+  },
+  "sanity_checks": "the read gain is computed from the weights alone before any answer (at 57 the controls are read 1.18x as loudly); the relabelled-control split cannot name anything (1.4 fake neurons above every control against a floor of 20), so it shows only that the reading favours neither label",
+  "max_new_cost_at_L45": "32 pieces: named 262 to 191, q05 310 to 231, residual 0.724 to 0.703"
+ },
+ "cost": {
+  "batch": "64 (step 0: chair parts at 20 pieces at batch 96)",
+  "measured": "12.38 answers a second at --max-new 48 while writing (L45: 50,646 answers in 4,091 s of census_run's own lines; 12.31 by the wall clock, 4,115 s)",
+  "whole_layer_48": "21,504 neurons + 1,024 controls, 540,678 answers: about 12.1 h; with 2,048 controls about 12.7 h",
+  "whole_layer_32": "about 8.0-8.4 h (8.4-8.8 with 2,048), estimated, not timed"
+ },
+ "owner_decisions": [
+  "which layers DOSES_CALIBRATED covers (the rules license 40-57; the review finds 51-57's lead not separable from text survival)",
+  "the word-piece count at 40-50 (the rule gives 32: about 4 h a layer less, about a quarter fewer named)",
+  "whether +-2 stays (half the answers; at L45 it adds 0.008; at L57 the pass needs it); a design without it is a new design, and the +-1-only figures were read after the fact",
+  "1,024 or 2,048 controls a layer (BH needs 420 or 210 neurons above every control before any q<=0.05)",
+  "the default design, the first layer, and merging the branch",
+  "what a page says a lead means (open question 6: 'unlike a unit(w_post*r) direction pushed as far', not 'has a theme'); the review's figures support that wording at 51-57 and for the bulk at 45"
+ ]
+}

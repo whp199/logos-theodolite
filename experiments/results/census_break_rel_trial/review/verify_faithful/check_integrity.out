@@ -1,0 +1,75 @@
+== sha256sum -c
+tonight.sh: OK
+step0_pick.py: OK
+trial_read.py: OK
+readlib.py: OK
+calib_expect.json: OK
+trial_L45_neurons.txt: OK
+trial_L45_fresh.txt: OK
+trial_L45_reasked.txt: OK
+probe_L57_neurons.txt: OK
+repo_commit: OK
+== run hashes
+9724178637662f85da30b23f25d12322e950324a1282f4c80bbbe46a09d7b053  L45-break_rel-trial.jsonl
+3d8da5f55a76633f57348fbb1b9d749f49c3682ed0dfe8b47d095ab246af685e  L57-break_rel-probe.jsonl
+L45-break_rel-trial: started 2026-10-29T07:03:13Z, finished 2026-10-29T08:11:48Z, 50646 answers, sha256 9724178637662f85da30b23f25d12322e950324a1282f4c80bbbe46a09d7b053
+L57-break_rel-probe: started 2026-10-29T08:11:48Z, finished 2026-10-29T08:45:11Z, 24462 answers, sha256 3d8da5f55a76633f57348fbb1b9d749f49c3682ed0dfe8b47d095ab246af685e
+== branch copy vs trial folder
+same ./floor_L45_break_rel.json
+same ./L45-break_rel-trial.meta.json
+same ./L45_verdict.json
+same ./L45_verdict.txt
+same ./L57-break_rel-probe.meta.json
+same ./L57_verdict.json
+same ./L57_verdict.txt
+DIFF ./morning_output.txt
+same ./morning.sh
+same ./prereg/calib_expect.json
+same ./prereg/prereg_at
+same ./prereg/probe_L57_neurons.txt
+same ./prereg/readlib.py
+same ./prereg/repo_commit
+same ./prereg/SHA256SUMS
+same ./prereg/step0_pick.py
+same ./prereg/tonight.sh
+same ./prereg/trial_L45_fresh.txt
+same ./prereg/trial_L45_neurons.txt
+same ./prereg/trial_L45_reasked.txt
+same ./prereg/trial_read.py
+DIFF ./runs.txt
+same ./step0_pick.json
+== timestamps (UTC)
+2026-10-29T06:58:53Z
+2026-10-29 07:03:12.089207085 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/floor_L45_break_rel.json
+2026-10-29 07:03:13.498277291 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/step0_pick.json
+2026-10-29 07:03:13.652570256 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L45-break_rel-trial.t0
+2026-10-29 08:11:48.932709458 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L57-break_rel-probe.t0
+2026-10-29 08:11:48.868334994 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L45-break_rel-trial.t1
+2026-10-29 08:45:11.439412990 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L57-break_rel-probe.t1
+2026-10-29 08:11:45.982719879 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L45-break_rel-trial.units.jsonl
+2026-10-29 08:45:09.178782140 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L57-break_rel-probe.units.jsonl
+2026-10-29 13:52:15.170830166 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L45_verdict.json
+2026-10-29 13:52:24.629370716 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/L57_verdict.json
+2026-10-29 13:51:37.662450232 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/prereg/__pycache__/readlib.cpython-312.pyc
+2026-10-29 13:58:04.118213059 +0000 /home/eric/bin/ai/theodolite2/atlas_data/census/trials/prereg/__pycache__/trial_read.cpython-312.pyc
+L45-break_rel-trial.t0 2026-10-29T07:03:13Z
+L57-break_rel-probe.t0 2026-10-29T08:11:48Z
+L45-break_rel-trial.t1 2026-10-29T08:11:48Z
+L57-break_rel-probe.t1 2026-10-29T08:45:11Z
+== worktree HEAD
+ref: refs/heads/census-break-rel
+372baecfa60b7931096cafd1358f7df75bbc8934
+== census.py by commit
+e94eea6 blob 0ee0d207b2be6a9e0f457f442a00398cef6bef53 121693
+372baec blob c14b9b2afd11738227c35b676aacaba3e5633e0f 122779
+worktree == 372baec: True
+backend files differing: ['atlas.py', 'census.py', 'scientist_prompt.md', 'scientist_tools.py']
+== step 0 pick re-run
+same as step0_pick.json
+== calibration: read gain vs log-prob AUC (48 pieces)
+20 read_gain 1.048 cov_lp 0.556
+30 read_gain 1.007 cov_lp 0.651
+40 read_gain 1.1 cov_lp 0.738
+45 read_gain 1.022 cov_lp 0.489
+50 read_gain 1.009 cov_lp 0.425
+57 read_gain 1.171 cov_lp 0.752

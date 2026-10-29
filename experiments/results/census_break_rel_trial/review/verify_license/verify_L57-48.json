@@ -1,0 +1,390 @@
+{
+ "L57:48": {
+  "tag": "L57",
+  "cut": 48,
+  "A": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "B": [
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "N": 507,
+  "C": 512,
+  "gates_auc": {
+   "mass_c": 0.5995,
+   "mass_c_res": 0.5608,
+   "rep_AB": 0.5757,
+   "rep_BA": 0.5846,
+   "mass_B": 0.5856,
+   "mass_A": 0.5921,
+   "rep_res": 0.502,
+   "rep_AB_res": 0.5093,
+   "rep_BA_res": 0.4978
+  },
+  "verdict_auc": {
+   "mass_c": 0.5995,
+   "mass_c_res": 0.5608,
+   "rep_AB": 0.5757,
+   "rep_BA": 0.5846,
+   "mass_B": 0.5856,
+   "mass_A": 0.5921,
+   "rep_res": 0.502
+  },
+  "counts": {
+   "q05": 22,
+   "named": 20,
+   "above_every_control": 22,
+   "named_matches_verdict": true,
+   "verdict_counts": {
+    "neurons": 507,
+    "controls": 512,
+    "above_every_control": 22,
+    "by_chance": 1.0,
+    "q05": 22,
+    "named": 20,
+    "named_by_halves": 13,
+    "above_ctl_p95": 0.1716,
+    "pA05_and_pB05": 22,
+    "pA05_and_pB05_by_chance": 1.3
+   },
+   "bh_thr_p": 0.001949317738791423,
+   "q05_equals_above_every_control": true,
+   "need_floor": 20,
+   "chance_above_every_control": 0.99
+  },
+  "empirical_null": {
+   "ctl_pass_mass_at_thr": 0,
+   "ctl_named_at_thr": 0,
+   "false_q05_if_all_null": 0.0,
+   "false_named_if_all_null": 0.0,
+   "share_of_named": 0.0,
+   "false_named_poisson_upper95": 3.7
+  },
+  "boot": {
+   "mass_c": {
+    "auc": 0.5995,
+    "se": 0.0177,
+    "ci": [
+     0.565,
+     0.635
+    ]
+   },
+   "mass_c_res": {
+    "auc": 0.5608,
+    "se": 0.0186,
+    "ci": [
+     0.524,
+     0.598
+    ]
+   },
+   "rep_res": {
+    "auc": 0.502,
+    "se": 0.0192,
+    "ci": [
+     0.464,
+     0.539
+    ]
+   },
+   "rep_AB_res": {
+    "auc": 0.5093,
+    "se": 0.0194,
+    "ci": [
+     0.473,
+     0.548
+    ]
+   },
+   "rep_BA_res": {
+    "auc": 0.4978,
+    "se": 0.019,
+    "ci": [
+     0.461,
+     0.535
+    ]
+   },
+   "mass_c_res_refit": {
+    "se": 0.0244,
+    "ci": [
+     0.516,
+     0.61
+    ]
+   },
+   "rep_res_refit": {
+    "se": 0.023,
+    "ci": [
+     0.457,
+     0.546
+    ]
+   },
+   "mass_c_res_hanley_se": 0.0179
+  },
+  "rho_AB": {
+   "neurons": 0.405,
+   "neurons_ci": [
+    0.325,
+    0.482
+   ],
+   "controls": 0.186,
+   "controls_ci": [
+    0.102,
+    0.268
+   ],
+   "diff": 0.219,
+   "diff_ci": [
+    0.101,
+    0.333
+   ],
+   "verdict": [
+    0.405,
+    0.186
+   ]
+  },
+  "rho_AB_res_per_half": {
+   "neurons": 0.556,
+   "neurons_ci": [
+    0.481,
+    0.627
+   ],
+   "controls": 0.124,
+   "controls_ci": [
+    0.034,
+    0.209
+   ]
+  },
+  "tail_bulk": {
+   "p95A": 8.878,
+   "tail_n": 54,
+   "tail_rho": 0.302,
+   "tail_ci": [
+    0.031,
+    0.547
+   ],
+   "bulk_n": 453,
+   "bulk_rho": 0.345,
+   "bulk_ci": [
+    0.256,
+    0.43
+   ],
+   "bulk_ctl_n": 486,
+   "bulk_ctl_rho": 0.171,
+   "bulk_ctl_ci": [
+    0.084,
+    0.253
+   ],
+   "bulk_minus_ctl_ci": [
+    0.05,
+    0.304
+   ],
+   "tail_ctl_n": 26,
+   "bulk_massB_auc_vs_bulk_ctl": 0.5695,
+   "bulk_massA_auc_vs_bulk_ctl": 0.575
+  },
+  "select": {
+   "mass A->B": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 0
+   },
+   "mass B->A": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 0
+   },
+   "res A->B": {
+    "discovered": 62,
+    "thr": 0.005847953216374269,
+    "replicate": 57,
+    "share": 0.919,
+    "ctl_at_thr": 2,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 0
+   },
+   "res B->A": {
+    "discovered": 87,
+    "thr": 0.007797270955165692,
+    "replicate": 67,
+    "share": 0.77,
+    "ctl_at_thr": 3,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 0
+   },
+   "words A->B (rep_AB)": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 3
+   },
+   "words B->A (rep_BA)": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 10
+   }
+  },
+  "calib_sized_halves": {
+   "splits": [
+    [
+     "who",
+     0.058,
+     0.045
+    ],
+    [
+     "orange",
+     0.086,
+     0.056
+    ],
+    [
+     "free",
+     0.047,
+     0.033
+    ]
+   ],
+   "mean_neurons": 0.063,
+   "mean_controls": 0.045
+  },
+  "cov_range": {
+   "named_out": 16,
+   "named": 20,
+   "fresh_share_out": 0.3018,
+   "by_cov_named": {
+    "lnw": 2,
+    "d4": 14,
+    "cut": 0,
+    "lp": 6,
+    "dep": 2,
+    "lost": 14
+   }
+  },
+  "vocab": {
+   "same": {
+    "named_lists": 3,
+    "top5_neuron_share": 0.369,
+    "top5_ctl_share": 0.24
+   },
+   "own": {
+    "named_lists": 0,
+    "top5_neuron_share": 0.097,
+    "top5_ctl_share": 0.051
+   },
+   "thought": {
+    "named_lists": 1,
+    "top5_neuron_share": 0.164,
+    "top5_ctl_share": 0.311
+   },
+   "thoughtthought": {
+    "named_lists": 0,
+    "top5_neuron_share": 0.126,
+    "top5_ctl_share": 0.244
+   }
+  },
+  "vocab_top10": [
+   [
+    "same",
+    187,
+    0.369,
+    0.24
+   ],
+   [
+    "vibe",
+    87,
+    0.172,
+    0.102
+   ],
+   [
+    "three",
+    86,
+    0.17,
+    0.188
+   ],
+   [
+    "thought",
+    83,
+    0.164,
+    0.311
+   ],
+   [
+    "story",
+    81,
+    0.16,
+    0.18
+   ],
+   [
+    "for",
+    66,
+    0.13,
+    0.111
+   ],
+   [
+    "thoughtthought",
+    64,
+    0.126,
+    0.244
+   ],
+   [
+    "feels",
+    60,
+    0.118,
+    0.082
+   ],
+   [
+    "and",
+    60,
+    0.118,
+    0.141
+   ],
+   [
+    "looking",
+    58,
+    0.114,
+    0.09
+   ]
+  ],
+  "n_drop": 47,
+  "floor_vs_controls": {
+   "32": {
+    "share_above_all": 0.1307,
+    "floor_share": 0.6061
+   },
+   "64": {
+    "share_above_all": 0.1061,
+    "floor_share": 0.3077
+   },
+   "128": {
+    "share_above_all": 0.0806,
+    "floor_share": 0.155
+   },
+   "256": {
+    "share_above_all": 0.0592,
+    "floor_share": 0.0778
+   },
+   "512": {
+    "share_above_all": 0.0434,
+    "floor_share": 0.039
+   }
+  },
+  "seconds": 11.2
+ }
+}

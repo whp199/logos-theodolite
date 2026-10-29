@@ -1,0 +1,221 @@
+{
+ "L57:48": {
+  "neurons": 507,
+  "in_range": 354,
+  "in_range_both_halves": 345,
+  "auc_in": {
+   "mass_c": 0.5512,
+   "mass_c_res": 0.4877,
+   "rep_AB": 0.522,
+   "rep_BA": 0.5371,
+   "rep": 0.5306,
+   "rep_res": 0.4231,
+   "rep_AB_res": 0.4301,
+   "rep_BA_res": 0.4197,
+   "mass_B": 0.5477
+  },
+  "auc_out": {
+   "mass_c": 0.7113,
+   "mass_c_res": 0.73,
+   "rep_AB": 0.7001,
+   "rep_BA": 0.6945,
+   "rep": 0.6993,
+   "rep_res": 0.6844,
+   "rep_AB_res": 0.6926,
+   "rep_BA_res": 0.6786,
+   "mass_B": 0.6732
+  },
+  "rho_res_all": {
+   "n": 507,
+   "rho": 0.556
+  },
+  "rho_res_in_both": {
+   "n": 345,
+   "rho": 0.291
+  },
+  "rho_res_out_any": {
+   "n": 162,
+   "rho": 0.817
+  },
+  "rho_res_controls": 0.124,
+  "select_res_A->B_in_both": {
+   "discovered": 0,
+   "thr": null,
+   "replicate": 0,
+   "share": null,
+   "ctl_at_thr": 0,
+   "ctl_replicate": 0,
+   "ctl_top5pct": 25,
+   "ctl_top5pct_replicate": 0
+  },
+  "select_res_A->B_all": {
+   "discovered": 62,
+   "thr": 0.005847953216374269,
+   "replicate": 57,
+   "share": 0.919,
+   "ctl_at_thr": 2,
+   "ctl_replicate": 0,
+   "ctl_top5pct": 25,
+   "ctl_top5pct_replicate": 0
+  },
+  "named": 20,
+  "named_in_range": 4,
+  "q05_rep_both": 20,
+  "mean_mass_c_res": {
+   "in": 0.372,
+   "out": 9.901,
+   "controls": -0.0
+  },
+  "mean_rep_res": {
+   "in": -0.279,
+   "out": 9.931,
+   "controls": -0.0
+  }
+ },
+ "L57:32": {
+  "neurons": 507,
+  "in_range": 335,
+  "in_range_both_halves": 344,
+  "auc_in": {
+   "mass_c": 0.5447,
+   "mass_c_res": 0.4587,
+   "rep_AB": 0.527,
+   "rep_BA": 0.5538,
+   "rep": 0.5418,
+   "rep_res": 0.4208,
+   "rep_AB_res": 0.4156,
+   "rep_BA_res": 0.4291,
+   "mass_B": 0.5379
+  },
+  "auc_out": {
+   "mass_c": 0.6824,
+   "mass_c_res": 0.5983,
+   "rep_AB": 0.6747,
+   "rep_BA": 0.6986,
+   "rep": 0.6872,
+   "rep_res": 0.5869,
+   "rep_AB_res": 0.5947,
+   "rep_BA_res": 0.5819,
+   "mass_B": 0.669
+  },
+  "rho_res_all": {
+   "n": 507,
+   "rho": 0.59
+  },
+  "rho_res_in_both": {
+   "n": 344,
+   "rho": 0.375
+  },
+  "rho_res_out_any": {
+   "n": 163,
+   "rho": 0.827
+  },
+  "rho_res_controls": 0.175,
+  "select_res_A->B_in_both": {
+   "discovered": 0,
+   "thr": null,
+   "replicate": 0,
+   "share": null,
+   "ctl_at_thr": 0,
+   "ctl_replicate": 0,
+   "ctl_top5pct": 25,
+   "ctl_top5pct_replicate": 2
+  },
+  "select_res_A->B_all": {
+   "discovered": 51,
+   "thr": 0.003898635477582846,
+   "replicate": 47,
+   "share": 0.922,
+   "ctl_at_thr": 1,
+   "ctl_replicate": 0,
+   "ctl_top5pct": 25,
+   "ctl_top5pct_replicate": 2
+  },
+  "named": 0,
+  "named_in_range": 0,
+  "q05_rep_both": 0,
+  "mean_mass_c_res": {
+   "in": -0.064,
+   "out": 6.408,
+   "controls": -0.0
+  },
+  "mean_rep_res": {
+   "in": -0.475,
+   "out": 6.137,
+   "controls": -0.0
+  }
+ },
+ "L45:48": {
+  "neurons": 1022,
+  "in_range": 893,
+  "in_range_both_halves": 880,
+  "auc_in": {
+   "mass_c": 0.6921,
+   "mass_c_res": 0.6913,
+   "rep_AB": 0.6573,
+   "rep_BA": 0.643,
+   "rep": 0.6575,
+   "rep_res": 0.6582,
+   "rep_AB_res": 0.6591,
+   "rep_BA_res": 0.6418,
+   "mass_B": 0.6505
+  },
+  "auc_out": {
+   "mass_c": 0.8684,
+   "mass_c_res": 0.9534,
+   "rep_AB": 0.8997,
+   "rep_BA": 0.888,
+   "rep": 0.8992,
+   "rep_res": 0.9383,
+   "rep_AB_res": 0.9386,
+   "rep_BA_res": 0.9359,
+   "mass_B": 0.7998
+  },
+  "rho_res_all": {
+   "n": 1022,
+   "rho": 0.528
+  },
+  "rho_res_in_both": {
+   "n": 880,
+   "rho": 0.404
+  },
+  "rho_res_out_any": {
+   "n": 142,
+   "rho": 0.658
+  },
+  "rho_res_controls": 0.128,
+  "select_res_A->B_in_both": {
+   "discovered": 91,
+   "thr": 0.003902439024390244,
+   "replicate": 73,
+   "share": 0.802,
+   "ctl_at_thr": 3,
+   "ctl_replicate": 0,
+   "ctl_top5pct": 51,
+   "ctl_top5pct_replicate": 1
+  },
+  "select_res_A->B_all": {
+   "discovered": 194,
+   "thr": 0.00878048780487805,
+   "replicate": 166,
+   "share": 0.856,
+   "ctl_at_thr": 8,
+   "ctl_replicate": 1,
+   "ctl_top5pct": 51,
+   "ctl_top5pct_replicate": 1
+  },
+  "named": 262,
+  "named_in_range": 180,
+  "q05_rep_both": 262,
+  "mean_mass_c_res": {
+   "in": 3.287,
+   "out": 13.113,
+   "controls": -0.0
+  },
+  "mean_rep_res": {
+   "in": 3.347,
+   "out": 16.15,
+   "controls": -0.0
+  }
+ }
+}

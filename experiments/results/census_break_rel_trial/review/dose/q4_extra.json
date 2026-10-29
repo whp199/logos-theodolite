@@ -1,0 +1,683 @@
+{
+ "L45": {
+  "pm1_answers_d4>=0.9": {
+   "mass_c": 0.6418,
+   "rep_AB": 0.6232,
+   "rep_BA": 0.6329,
+   "mass_B": 0.5861,
+   "mass_c_res": 0.643,
+   "mass_c_res_plus": 0.6684,
+   "units": {
+    "neurons": 1022,
+    "controls": 1024
+   }
+  },
+  "pm1_units_all12_d4>=0.9": {
+   "mass_c": 0.641,
+   "rep_AB": 0.5899,
+   "rep_BA": 0.5928,
+   "mass_B": 0.5927,
+   "mass_c_res": 0.642,
+   "units": {
+    "neurons": 705,
+    "controls": 942
+   },
+   "covariate AUCs": {
+    "lnw": 0.5324,
+    "d4": 0.4844,
+    "cut": 0.5051,
+    "lp": 0.4983,
+    "dep": 0.4912,
+    "lost": 0.5628
+   }
+  },
+  "pm1 intact answers per unit (mean of 12)": {
+   "fresh neurons": 11.26,
+   "named": 10.32,
+   "controls": 11.92,
+   "units kept by the unit filter (neurons, controls)": [
+    705,
+    942
+   ],
+   "named kept by the unit filter": 91
+  },
+  "collapse_vocabulary": [
+   "and",
+   "idea",
+   "own",
+   "owns",
+   "rest",
+   "same",
+   "sss",
+   "+ 782 words containing \"thought\""
+  ],
+  "collapse_removed": {
+   "all": {
+    "mass_c": 0.7106,
+    "rep_AB": 0.6767,
+    "rep_BA": 0.6711,
+    "mass_B": 0.6522,
+    "mass_c_res": 0.7152,
+    "units": {
+     "neurons": 1022,
+     "controls": 1024
+    }
+   },
+   "pm1": {
+    "mass_c": 0.6948,
+    "rep_AB": 0.6696,
+    "rep_BA": 0.6642,
+    "mass_B": 0.6256,
+    "mass_c_res": 0.7041,
+    "units": {
+     "neurons": 1022,
+     "controls": 1024
+    }
+   },
+   "pm2": {
+    "mass_c": 0.5674,
+    "rep_AB": 0.5309,
+    "rep_BA": 0.5278,
+    "mass_B": 0.5492,
+    "mass_c_res": 0.5483,
+    "units": {
+     "neurons": 1022,
+     "controls": 1024
+    }
+   }
+  },
+  "top5_z_by_dose_and_text": {
+   "named": {
+    "|d|=1 intact": 0.59,
+    "|d|=1 broken": 0.187,
+    "|d|=2 intact": -0.0,
+    "|d|=2 broken": 0.223,
+    "answers in each class": {
+     "|d|=1 intact": 0.43,
+     "|d|=1 broken": 0.07,
+     "|d|=2 intact": 0.0,
+     "|d|=2 broken": 0.5
+    }
+   },
+   "fresh": {
+    "|d|=1 intact": 0.667,
+    "|d|=1 broken": 0.1,
+    "|d|=2 intact": 0.0,
+    "|d|=2 broken": 0.232,
+    "answers in each class": {
+     "|d|=1 intact": 0.469,
+     "|d|=1 broken": 0.031,
+     "|d|=2 intact": 0.001,
+     "|d|=2 broken": 0.499
+    }
+   },
+   "controls": {
+    "|d|=1 intact": 0.749,
+    "|d|=1 broken": 0.004,
+    "|d|=2 intact": 0.0,
+    "|d|=2 broken": 0.246,
+    "answers in each class": {
+     "|d|=1 intact": 0.497,
+     "|d|=1 broken": 0.003,
+     "|d|=2 intact": 0.001,
+     "|d|=2 broken": 0.499
+    }
+   }
+  },
+  "residual_fit": {
+   "all": {
+    "beta": {
+     "const": -11.43,
+     "lnw": 14.95,
+     "d4": 5.19,
+     "cut": -1.76,
+     "lp": -0.6,
+     "dep": 4.74,
+     "lost": -14.02
+    },
+    "R2_on_controls": 0.209,
+    "neurons outside the controls range, per covariate": {
+     "lnw": 68,
+     "d4": 70,
+     "cut": 3,
+     "lp": 1,
+     "dep": 14,
+     "lost": 97
+    },
+    "mean predicted mass: neurons, controls": [
+     9.36,
+     9.92
+    ],
+    "mean mass: neurons, controls": [
+     13.89,
+     9.92
+    ],
+    "controls covariate sd": {
+     "lnw": 0.0683,
+     "d4": 0.04,
+     "cut": 0.0162,
+     "lp": 0.107,
+     "dep": 0.0112,
+     "lost": 0.0177
+    },
+    "neurons covariate sd": {
+     "lnw": 0.1166,
+     "d4": 0.0578,
+     "cut": 0.0189,
+     "lp": 0.1102,
+     "dep": 0.0113,
+     "lost": 0.0311
+    }
+   },
+   "pm1": {
+    "beta": {
+     "const": -7.01,
+     "lnw": 8.09,
+     "d4": -5.7,
+     "cut": 1.52,
+     "lp": -0.83,
+     "dep": 1.34,
+     "lost": -1.91
+    },
+    "R2_on_controls": 0.091,
+    "neurons outside the controls range, per covariate": {
+     "lnw": 70,
+     "d4": 138,
+     "cut": 1,
+     "lp": 83,
+     "dep": 16,
+     "lost": 104
+    },
+    "mean predicted mass: neurons, controls": [
+     8.68,
+     8.79
+    ],
+    "mean mass: neurons, controls": [
+     12.47,
+     8.79
+    ],
+    "controls covariate sd": {
+     "lnw": 0.07,
+     "d4": 0.0129,
+     "cut": 0.0295,
+     "lp": 0.0157,
+     "dep": 0.0224,
+     "lost": 0.0342
+    },
+    "neurons covariate sd": {
+     "lnw": 0.1266,
+     "d4": 0.0791,
+     "cut": 0.029,
+     "lp": 0.0469,
+     "dep": 0.0219,
+     "lost": 0.0598
+    }
+   },
+   "pm2": {
+    "beta": {
+     "const": -24.62,
+     "lnw": 10.08,
+     "d4": 1.13,
+     "cut": -20.25,
+     "lp": 0.86,
+     "dep": -43.96,
+     "lost": 42.03
+    },
+    "R2_on_controls": 0.576,
+    "neurons outside the controls range, per covariate": {
+     "lnw": 0,
+     "d4": 1,
+     "cut": 1,
+     "lp": 0,
+     "dep": 3,
+     "lost": 10
+    },
+    "mean predicted mass: neurons, controls": [
+     3.77,
+     3.27
+    ],
+    "mean mass: neurons, controls": [
+     4.23,
+     3.27
+    ],
+    "controls covariate sd": {
+     "lnw": 0.2553,
+     "d4": 0.0793,
+     "cut": 0.0127,
+     "lp": 0.2138,
+     "dep": 0.0028,
+     "lost": 0.0072
+    },
+    "neurons covariate sd": {
+     "lnw": 0.2645,
+     "d4": 0.0783,
+     "cut": 0.0232,
+     "lp": 0.2099,
+     "dep": 0.0037,
+     "lost": 0.0093
+    }
+   }
+  },
+  "pm2_loops": {
+   "no_word": {
+    "mean share, neurons": 0.307,
+    "mean share, controls": 0.345,
+    "mean share, named": 0.274,
+    "AUC neurons over controls": 0.4516
+   },
+   "collapse": {
+    "mean share, neurons": 0.528,
+    "mean share, controls": 0.524,
+    "mean share, named": 0.535,
+    "AUC neurons over controls": 0.5059
+   },
+   "specific": {
+    "mean share, neurons": 0.031,
+    "mean share, controls": 0.01,
+    "mean share, named": 0.08,
+    "AUC neurons over controls": 0.5494
+   },
+   "other": {
+    "mean share, neurons": 0.134,
+    "mean share, controls": 0.121,
+    "mean share, named": 0.111,
+    "AUC neurons over controls": 0.5338
+   },
+   "pm2 reading with the two loop shares added as covariates": {
+    "mass_c": 0.5708,
+    "rep_AB": 0.5477,
+    "rep_BA": 0.5472,
+    "mass_B": 0.5559,
+    "mass_c_res": 0.5438,
+    "mass_c_res_plus": 0.5309,
+    "units": {
+     "neurons": 1022,
+     "controls": 1024
+    }
+   },
+   "all reading with the two +-2 loop shares added as covariates": {
+    "mass_c": 0.7144,
+    "rep_AB": 0.6879,
+    "rep_BA": 0.6739,
+    "mass_B": 0.6693,
+    "mass_c_res": 0.7244,
+    "mass_c_res_plus": 0.717,
+    "units": {
+     "neurons": 1022,
+     "controls": 1024
+    }
+   }
+  },
+  "pm1_loop_share_by_question": {
+   "named": {
+    "who": 0.244,
+    "orange": 0.078,
+    "free": 0.078,
+    "bicycle": 0.065,
+    "walk": 0.071,
+    "chair": 0.042,
+    "all": 0.096,
+    "units with >=1 looping +-1 answer": 140
+   },
+   "fresh": {
+    "who": 0.104,
+    "orange": 0.034,
+    "free": 0.034,
+    "bicycle": 0.025,
+    "walk": 0.031,
+    "chair": 0.02,
+    "all": 0.041,
+    "units with >=1 looping +-1 answer": 241
+   },
+   "controls": {
+    "who": 0.021,
+    "orange": 0.0,
+    "free": 0.001,
+    "bicycle": 0.0,
+    "walk": 0.0,
+    "chair": 0.0,
+    "all": 0.004,
+    "units with >=1 looping +-1 answer": 49
+   }
+  }
+ },
+ "L57": {
+  "pm1_answers_d4>=0.9": {
+   "mass_c": 0.4525,
+   "rep_AB": 0.5088,
+   "rep_BA": 0.6098,
+   "mass_B": 0.4401,
+   "mass_c_res": 0.5149,
+   "mass_c_res_plus": 0.5887,
+   "units": {
+    "neurons": 506,
+    "controls": 512
+   }
+  },
+  "pm1_units_all12_d4>=0.9": {
+   "mass_c": 0.492,
+   "rep_AB": 0.5024,
+   "rep_BA": 0.5673,
+   "mass_B": 0.4841,
+   "mass_c_res": 0.586,
+   "units": {
+    "neurons": 384,
+    "controls": 473
+   },
+   "covariate AUCs": {
+    "lnw": 0.4001,
+    "d4": 0.5197,
+    "cut": 0.5,
+    "lp": 0.7984,
+    "dep": 0.601,
+    "lost": 0.3959
+   }
+  },
+  "pm1 intact answers per unit (mean of 12)": {
+   "fresh neurons": 11.09,
+   "named": 7.9,
+   "controls": 11.92,
+   "units kept by the unit filter (neurons, controls)": [
+    384,
+    473
+   ],
+   "named kept by the unit filter": 3
+  },
+  "collapse_vocabulary": [
+   "idea",
+   "own",
+   "same",
+   "uma",
+   "+ 1042 words containing \"thought\""
+  ],
+  "collapse_removed": {
+   "all": {
+    "mass_c": 0.6488,
+    "rep_AB": 0.5942,
+    "rep_BA": 0.678,
+    "mass_B": 0.6055,
+    "mass_c_res": 0.6983,
+    "units": {
+     "neurons": 507,
+     "controls": 512
+    }
+   },
+   "pm1": {
+    "mass_c": 0.5205,
+    "rep_AB": 0.5276,
+    "rep_BA": 0.6271,
+    "mass_B": 0.4867,
+    "mass_c_res": 0.6292,
+    "units": {
+     "neurons": 507,
+     "controls": 512
+    }
+   },
+   "pm2": {
+    "mass_c": 0.6267,
+    "rep_AB": 0.5921,
+    "rep_BA": 0.6017,
+    "mass_B": 0.6055,
+    "mass_c_res": 0.5117,
+    "units": {
+     "neurons": 507,
+     "controls": 512
+    }
+   }
+  },
+  "top5_z_by_dose_and_text": {
+   "named": {
+    "|d|=1 intact": 0.176,
+    "|d|=1 broken": 0.21,
+    "|d|=2 intact": -0.0,
+    "|d|=2 broken": 0.615,
+    "answers in each class": {
+     "|d|=1 intact": 0.329,
+     "|d|=1 broken": 0.171,
+     "|d|=2 intact": 0.0,
+     "|d|=2 broken": 0.5
+    }
+   },
+   "fresh": {
+    "|d|=1 intact": 0.39,
+    "|d|=1 broken": 0.076,
+    "|d|=2 intact": 0.01,
+    "|d|=2 broken": 0.524,
+    "answers in each class": {
+     "|d|=1 intact": 0.462,
+     "|d|=1 broken": 0.038,
+     "|d|=2 intact": 0.004,
+     "|d|=2 broken": 0.496
+    }
+   },
+   "controls": {
+    "|d|=1 intact": 0.51,
+    "|d|=1 broken": 0.004,
+    "|d|=2 intact": 0.0,
+    "|d|=2 broken": 0.487,
+    "answers in each class": {
+     "|d|=1 intact": 0.497,
+     "|d|=1 broken": 0.003,
+     "|d|=2 intact": 0.001,
+     "|d|=2 broken": 0.499
+    }
+   }
+  },
+  "residual_fit": {
+   "all": {
+    "beta": {
+     "const": 38.53,
+     "lnw": 21.57,
+     "d4": 0.16,
+     "cut": -18.07,
+     "lp": -0.27,
+     "dep": -5.59,
+     "lost": -69.69
+    },
+    "R2_on_controls": 0.349,
+    "neurons outside the controls range, per covariate": {
+     "lnw": 20,
+     "d4": 86,
+     "cut": 0,
+     "lp": 41,
+     "dep": 26,
+     "lost": 110
+    },
+    "mean predicted mass: neurons, controls": [
+     5.65,
+     7.06
+    ],
+    "mean mass: neurons, controls": [
+     8.9,
+     7.06
+    ],
+    "controls covariate sd": {
+     "lnw": 0.1198,
+     "d4": 0.0375,
+     "cut": 0.0082,
+     "lp": 0.1153,
+     "dep": 0.0317,
+     "lost": 0.0197
+    },
+    "neurons covariate sd": {
+     "lnw": 0.1503,
+     "d4": 0.0816,
+     "cut": 0.0061,
+     "lp": 0.1287,
+     "dep": 0.0439,
+     "lost": 0.0589
+    }
+   },
+   "pm1": {
+    "beta": {
+     "const": -14.46,
+     "lnw": 4.55,
+     "d4": 17.91,
+     "cut": -14.46,
+     "lp": -35.29,
+     "dep": 0.54,
+     "lost": 8.83
+    },
+    "R2_on_controls": 0.2,
+    "neurons outside the controls range, per covariate": {
+     "lnw": 15,
+     "d4": 90,
+     "cut": 2,
+     "lp": 38,
+     "dep": 23,
+     "lost": 73
+    },
+    "mean predicted mass: neurons, controls": [
+     3.5,
+     4.46
+    ],
+    "mean mass: neurons, controls": [
+     4.82,
+     4.46
+    ],
+    "controls covariate sd": {
+     "lnw": 0.1284,
+     "d4": 0.01,
+     "cut": 0.0,
+     "lp": 0.0085,
+     "dep": 0.0633,
+     "lost": 0.0394
+    },
+    "neurons covariate sd": {
+     "lnw": 0.1749,
+     "d4": 0.1175,
+     "cut": 0.0052,
+     "lp": 0.0463,
+     "dep": 0.084,
+     "lost": 0.1062
+    }
+   },
+   "pm2": {
+    "beta": {
+     "const": 18.53,
+     "lnw": 11.45,
+     "d4": -8.99,
+     "cut": -9.56,
+     "lp": 0.43,
+     "dep": -29.99,
+     "lost": -11.0
+    },
+    "R2_on_controls": 0.577,
+    "neurons outside the controls range, per covariate": {
+     "lnw": 8,
+     "d4": 9,
+     "cut": 0,
+     "lp": 36,
+     "dep": 83,
+     "lost": 171
+    },
+    "mean predicted mass: neurons, controls": [
+     4.39,
+     3.71
+    ],
+    "mean mass: neurons, controls": [
+     4.76,
+     3.71
+    ],
+    "controls covariate sd": {
+     "lnw": 0.2954,
+     "d4": 0.074,
+     "cut": 0.0164,
+     "lp": 0.2294,
+     "dep": 0.0029,
+     "lost": 0.0045
+    },
+    "neurons covariate sd": {
+     "lnw": 0.2852,
+     "d4": 0.0863,
+     "cut": 0.011,
+     "lp": 0.2377,
+     "dep": 0.0143,
+     "lost": 0.0344
+    }
+   }
+  },
+  "pm2_loops": {
+   "no_word": {
+    "mean share, neurons": 0.295,
+    "mean share, controls": 0.375,
+    "mean share, named": 0.113,
+    "AUC neurons over controls": 0.411
+   },
+   "collapse": {
+    "mean share, neurons": 0.448,
+    "mean share, controls": 0.558,
+    "mean share, named": 0.167,
+    "AUC neurons over controls": 0.3768
+   },
+   "specific": {
+    "mean share, neurons": 0.118,
+    "mean share, controls": 0.013,
+    "mean share, named": 0.617,
+    "AUC neurons over controls": 0.6188
+   },
+   "other": {
+    "mean share, neurons": 0.139,
+    "mean share, controls": 0.054,
+    "mean share, named": 0.104,
+    "AUC neurons over controls": 0.6919
+   },
+   "pm2 reading with the two loop shares added as covariates": {
+    "mass_c": 0.5737,
+    "rep_AB": 0.5691,
+    "rep_BA": 0.5768,
+    "mass_B": 0.5687,
+    "mass_c_res": 0.5192,
+    "mass_c_res_plus": 0.374,
+    "units": {
+     "neurons": 507,
+     "controls": 512
+    }
+   },
+   "all reading with the two +-2 loop shares added as covariates": {
+    "mass_c": 0.5995,
+    "rep_AB": 0.5757,
+    "rep_BA": 0.5846,
+    "mass_B": 0.5856,
+    "mass_c_res": 0.5608,
+    "mass_c_res_plus": 0.4996,
+    "units": {
+     "neurons": 507,
+     "controls": 512
+    }
+   }
+  },
+  "pm1_loop_share_by_question": {
+   "named": {
+    "who": 0.15,
+    "orange": 0.25,
+    "free": 0.2,
+    "bicycle": 0.15,
+    "walk": 0.45,
+    "chair": 0.325,
+    "all": 0.254,
+    "units with >=1 looping +-1 answer": 16
+   },
+   "fresh": {
+    "who": 0.047,
+    "orange": 0.06,
+    "free": 0.054,
+    "bicycle": 0.049,
+    "walk": 0.079,
+    "chair": 0.078,
+    "all": 0.061,
+    "units with >=1 looping +-1 answer": 110
+   },
+   "controls": {
+    "who": 0.001,
+    "orange": 0.001,
+    "free": 0.0,
+    "bicycle": 0.003,
+    "walk": 0.0,
+    "chair": 0.005,
+    "all": 0.002,
+    "units with >=1 looping +-1 answer": 10
+   }
+  }
+ }
+}

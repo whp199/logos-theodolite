@@ -1,0 +1,1 @@
+{"answers": 768, "expected_identical": 660, "identical_where_expected": 660, "identical_elsewhere": 77, "plan_trial": [64, "12 x batch"], "plan_calib": [64, "10 x batch"]}

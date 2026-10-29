@@ -1,0 +1,981 @@
+{
+ "run": "L57-break_rel-probe.jsonl",
+ "layer": 57,
+ "design": "break_rel",
+ "batch": 64,
+ "max_new": 48,
+ "seed": 3,
+ "half_a": [
+  "who",
+  "orange",
+  "free"
+ ],
+ "half_b": [
+  "bicycle",
+  "walk",
+  "chair"
+ ],
+ "doses": [
+  -2.0,
+  -1.0,
+  1.0,
+  2.0
+ ],
+ "read_gain": {
+  "neurons": 0.4406,
+  "controls": 0.5194,
+  "ratio": 1.179,
+  "read_by": "the next layer's input norm (the final norm after the last layer)"
+ },
+ "readings": {
+  "48": {
+   "figures": {
+    "mass_c": {
+     "auc": 0.5995,
+     "p": 1.9e-08
+    },
+    "mass_u": {
+     "auc": 0.5828,
+     "p": 2.37e-06
+    },
+    "shift": {
+     "auc": 0.6058,
+     "p": 2.51e-09
+    },
+    "shift_up": {
+     "auc": 0.6092,
+     "p": 8.1e-10
+    },
+    "shift_down": {
+     "auc": 0.5778,
+     "p": 8.61e-06
+    },
+    "mass_A": {
+     "auc": 0.5921,
+     "p": 1.77e-07
+    },
+    "mass_B": {
+     "auc": 0.5856,
+     "p": 1.13e-06
+    },
+    "rep_AB": {
+     "auc": 0.5757,
+     "p": 1.3e-05
+    },
+    "rep_BA": {
+     "auc": 0.5846,
+     "p": 1.46e-06
+    },
+    "rep": {
+     "auc": 0.5815,
+     "p": 3.36e-06
+    },
+    "xq": {
+     "auc": 0.5721,
+     "p": 3.41e-05
+    },
+    "cov_lnw": {
+     "auc": 0.3937,
+     "p": 1.0
+    },
+    "cov_d4": {
+     "auc": 0.4001,
+     "p": 1.0
+    },
+    "cov_cut": {
+     "auc": 0.4951,
+     "p": 0.89
+    },
+    "cov_lp": {
+     "auc": 0.8182,
+     "p": 1.61e-69
+    },
+    "cov_dep": {
+     "auc": 0.5704,
+     "p": 4.96e-05
+    },
+    "cov_lost": {
+     "auc": 0.4083,
+     "p": 1.0
+    },
+    "mass_c_res": {
+     "auc": 0.5608,
+     "p": 0.000389
+    },
+    "shift_res": {
+     "auc": 0.5604,
+     "p": 0.000422
+    },
+    "shift_up_res": {
+     "auc": 0.5257,
+     "p": 0.0779
+    },
+    "rep_res": {
+     "auc": 0.502,
+     "p": 0.456
+    },
+    "rho_AB_neurons": 0.4050304251547612,
+    "rho_AB_controls": 0.18622959965248564,
+    "counts": {
+     "neurons": 507,
+     "controls": 512,
+     "above_every_control": 22,
+     "by_chance": 1.0,
+     "q05": 22,
+     "named": 20,
+     "named_by_halves": 13,
+     "above_ctl_p95": 0.1716,
+     "pA05_and_pB05": 22,
+     "pA05_and_pB05_by_chance": 1.3
+    },
+    "null_split_auc": {
+     "mean": 0.5006,
+     "min": 0.4047,
+     "max": 0.5786,
+     "n": 50
+    }
+   },
+   "sign_halves_mass_auc": {
+    "+": 0.5538,
+    "-": 0.5637
+   },
+   "text": {
+    "-2 neuron": {
+     "d4_minus_unpushed": -0.828,
+     "cut_off": 0.999
+    },
+    "-2 random": {
+     "d4_minus_unpushed": -0.817,
+     "cut_off": 1.0
+    },
+    "-1 neuron": {
+     "d4_minus_unpushed": -0.053,
+     "cut_off": 1.0
+    },
+    "-1 random": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 1.0
+    },
+    "+1 neuron": {
+     "d4_minus_unpushed": -0.052,
+     "cut_off": 1.0
+    },
+    "+1 random": {
+     "d4_minus_unpushed": -0.003,
+     "cut_off": 1.0
+    },
+    "+2 neuron": {
+     "d4_minus_unpushed": -0.829,
+     "cut_off": 0.998
+    },
+    "+2 random": {
+     "d4_minus_unpushed": -0.815,
+     "cut_off": 0.997
+    }
+   },
+   "complete": true,
+   "units": {
+    "neurons_read": 507,
+    "controls": 512,
+    "units_in_run": 1019,
+    "units_planned": 1019,
+    "answers": 24462,
+    "answers_planned": 24462
+   },
+   "gates": {
+    "S1 lead": {
+     "values": [
+      [
+       "mass_c",
+       0.5995,
+       0.58
+      ]
+     ],
+     "pass": true
+    },
+    "S2 beyond text survival": {
+     "values": [
+      [
+       "mass_c_res",
+       0.5608,
+       0.56
+      ]
+     ],
+     "pass": true
+    },
+    "S3 replication both ways": {
+     "values": [
+      [
+       "rep_AB",
+       0.5757,
+       0.55
+      ],
+      [
+       "rep_BA",
+       0.5846,
+       0.55
+      ]
+     ],
+     "pass": true
+    },
+    "G5 sanity (null split, read gain, every answer present)": {
+     "values": [
+      [
+       "null_split_mean",
+       0.5006,
+       [
+        0.47,
+        0.53
+       ]
+      ],
+      [
+       "read_gain_ratio",
+       1.179,
+       [
+        0.8,
+        1.25
+       ]
+      ],
+      [
+       "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+       true,
+       true
+      ]
+     ],
+     "pass": true
+    },
+    "G5b the code ranks as read here (units.jsonl mass = mass_c)": {
+     "values": [
+      [
+       "max_abs_diff",
+       0.0005,
+       0.002
+      ]
+     ],
+     "pass": true
+    }
+   },
+   "pass": true,
+   "named": [
+    20127,
+    18775,
+    18530,
+    18057,
+    17727,
+    16955,
+    14528,
+    11786,
+    10938,
+    10171,
+    9971,
+    9858,
+    9558,
+    8733,
+    8601,
+    6884,
+    4996,
+    3104,
+    1235,
+    427
+   ],
+   "named_words": {
+    "20127": {
+     "A_on_B": [
+      [
+       "społecz",
+       4.24
+      ],
+      [
+       "dostęp",
+       4.24
+      ]
+     ],
+     "B_on_A": [
+      [
+       "społecz",
+       4.24
+      ],
+      [
+       "dostęp",
+       4.24
+      ]
+     ]
+    },
+    "18775": {
+     "A_on_B": [
+      [
+       "pemb",
+       7.07
+      ],
+      [
+       "pod",
+       2.83
+      ]
+     ],
+     "B_on_A": [
+      [
+       "pemb",
+       5.66
+      ],
+      [
+       "部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分部分",
+       1.41
+      ],
+      [
+       "pod",
+       2.83
+      ]
+     ]
+    },
+    "18530": {
+     "A_on_B": [
+      [
+       "well",
+       6.36
+      ],
+      [
+       "part",
+       1.4
+      ]
+     ],
+     "B_on_A": [
+      [
+       "well",
+       8.49
+      ],
+      [
+       "and",
+       0.1
+      ]
+     ]
+    },
+    "18057": {
+     "A_on_B": [
+      [
+       "密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密密",
+       1.41
+      ],
+      [
+       "ker",
+       2.83
+      ]
+     ],
+     "B_on_A": [
+      [
+       "ker",
+       4.24
+      ]
+     ]
+    },
+    "17727": {
+     "A_on_B": [
+      [
+       "beg",
+       8.49
+      ],
+      [
+       "不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足",
+       4.24
+      ]
+     ],
+     "B_on_A": [
+      [
+       "beg",
+       8.49
+      ],
+      [
+       "不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足不足",
+       2.83
+      ]
+     ]
+    },
+    "16955": {
+     "A_on_B": [
+      [
+       "fuera",
+       8.49
+      ]
+     ],
+     "B_on_A": [
+      [
+       "fuera",
+       8.49
+      ]
+     ]
+    },
+    "14528": {
+     "A_on_B": [
+      [
+       "personal",
+       8.49
+      ],
+      [
+       "วนส",
+       7.07
+      ]
+     ],
+     "B_on_A": [
+      [
+       "personal",
+       8.14
+      ],
+      [
+       "วนส",
+       5.66
+      ]
+     ]
+    },
+    "11786": {
+     "A_on_B": [
+      [
+       "ngày",
+       7.07
+      ],
+      [
+       "increasingly",
+       1.41
+      ]
+     ],
+     "B_on_A": [
+      [
+       "ngày",
+       7.07
+      ],
+      [
+       "increasing",
+       1.41
+      ]
+     ]
+    },
+    "10938": {
+     "A_on_B": [
+      [
+       "support",
+       7.07
+      ]
+     ],
+     "B_on_A": [
+      [
+       "support",
+       7.07
+      ]
+     ]
+    },
+    "10171": {
+     "A_on_B": [
+      [
+       "sin",
+       4.24
+      ],
+      [
+       "بلا",
+       4.24
+      ],
+      [
+       "sem",
+       5.66
+      ],
+      [
+       "sinuous",
+       2.83
+      ]
+     ],
+     "B_on_A": [
+      [
+       "sem",
+       4.24
+      ],
+      [
+       "بلا",
+       4.24
+      ],
+      [
+       "sin",
+       5.66
+      ],
+      [
+       "sinuous",
+       2.83
+      ]
+     ]
+    },
+    "9971": {
+     "A_on_B": [
+      [
+       "充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充",
+       4.24
+      ],
+      [
+       "menj",
+       2.83
+      ],
+      [
+       "menjเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอ",
+       2.83
+      ]
+     ],
+     "B_on_A": [
+      [
+       "充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充充",
+       5.66
+      ],
+      [
+       "menjเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอเอ",
+       2.83
+      ],
+      [
+       "menj",
+       4.24
+      ]
+     ]
+    },
+    "9858": {
+     "A_on_B": [
+      [
+       "pem",
+       4.24
+      ],
+      [
+       "peng",
+       1.41
+      ]
+     ],
+     "B_on_A": [
+      [
+       "pem",
+       7.07
+      ]
+     ]
+    },
+    "9558": {
+     "A_on_B": [
+      [
+       "deck",
+       8.49
+      ]
+     ],
+     "B_on_A": [
+      [
+       "deck",
+       8.49
+      ]
+     ]
+    },
+    "8733": {
+     "A_on_B": [
+      [
+       "mang",
+       8.49
+      ]
+     ],
+     "B_on_A": [
+      [
+       "mang",
+       8.49
+      ]
+     ]
+    },
+    "8601": {
+     "A_on_B": [
+      [
+       "lasting",
+       5.66
+      ],
+      [
+       "一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一",
+       2.83
+      ],
+      [
+       "про",
+       1.41
+      ]
+     ],
+     "B_on_A": [
+      [
+       "lasting",
+       7.07
+      ],
+      [
+       "一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一一",
+       2.83
+      ]
+     ]
+    },
+    "6884": {
+     "A_on_B": [
+      [
+       "volt",
+       8.49
+      ]
+     ],
+     "B_on_A": [
+      [
+       "volt",
+       8.49
+      ]
+     ]
+    },
+    "4996": {
+     "A_on_B": [
+      [
+       "samerere",
+       2.83
+      ],
+      [
+       "samere",
+       4.24
+      ],
+      [
+       "same",
+       0.8
+      ]
+     ],
+     "B_on_A": [
+      [
+       "samere",
+       2.83
+      ],
+      [
+       "samererere",
+       1.41
+      ],
+      [
+       "samerere",
+       2.83
+      ]
+     ]
+    },
+    "3104": {
+     "A_on_B": [
+      [
+       "same",
+       4.86
+      ],
+      [
+       "idea",
+       3.81
+      ],
+      [
+       "samethought",
+       1.06
+      ],
+      [
+       "thought",
+       0.51
+      ]
+     ],
+     "B_on_A": [
+      [
+       "same",
+       5.76
+      ],
+      [
+       "idea",
+       3.79
+      ],
+      [
+       "thought",
+       1.58
+      ]
+     ]
+    },
+    "1235": {
+     "A_on_B": [
+      [
+       "vendors",
+       1.41
+      ],
+      [
+       "vendor",
+       7.07
+      ],
+      [
+       "same",
+       1.61
+      ]
+     ],
+     "B_on_A": [
+      [
+       "vendor",
+       4.24
+      ],
+      [
+       "same",
+       1.65
+      ]
+     ]
+    },
+    "427": {
+     "A_on_B": [
+      [
+       "patriotic",
+       7.07
+      ]
+     ],
+     "B_on_A": [
+      [
+       "patriotic",
+       5.66
+      ]
+     ]
+    }
+   },
+   "named_by_halves": [
+    20127,
+    18775,
+    18057,
+    17727,
+    14528,
+    11786,
+    10938,
+    10171,
+    9971,
+    9558,
+    8601,
+    3104,
+    1235
+   ]
+  },
+  "32": {
+   "figures": {
+    "mass_c": {
+     "auc": 0.5914,
+     "p": 2.17e-07
+    },
+    "mass_u": {
+     "auc": 0.5752,
+     "p": 1.64e-05
+    },
+    "shift": {
+     "auc": 0.6075,
+     "p": 1.42e-09
+    },
+    "shift_up": {
+     "auc": 0.6077,
+     "p": 1.33e-09
+    },
+    "shift_down": {
+     "auc": 0.5817,
+     "p": 3.15e-06
+    },
+    "mass_A": {
+     "auc": 0.5961,
+     "p": 5.37e-08
+    },
+    "mass_B": {
+     "auc": 0.5824,
+     "p": 2.65e-06
+    },
+    "rep_AB": {
+     "auc": 0.5771,
+     "p": 9.19e-06
+    },
+    "rep_BA": {
+     "auc": 0.6029,
+     "p": 6.34e-09
+    },
+    "rep": {
+     "auc": 0.5911,
+     "p": 2.38e-07
+    },
+    "xq": {
+     "auc": 0.5678,
+     "p": 8.92e-05
+    },
+    "cov_lnw": {
+     "auc": 0.4355,
+     "p": 1.0
+    },
+    "cov_d4": {
+     "auc": 0.4034,
+     "p": 1.0
+    },
+    "cov_cut": {
+     "auc": 0.499,
+     "p": 0.613
+    },
+    "cov_lp": {
+     "auc": 0.8205,
+     "p": 1.68e-70
+    },
+    "cov_dep": {
+     "auc": 0.5821,
+     "p": 2.82e-06
+    },
+    "cov_lost": {
+     "auc": 0.3973,
+     "p": 1.0
+    },
+    "mass_c_res": {
+     "auc": 0.5061,
+     "p": 0.369
+    },
+    "shift_res": {
+     "auc": 0.5204,
+     "p": 0.13
+    },
+    "shift_up_res": {
+     "auc": 0.4878,
+     "p": 0.75
+    },
+    "rep_res": {
+     "auc": 0.4772,
+     "p": 0.896
+    },
+    "rho_AB_neurons": 0.5203201287638064,
+    "rho_AB_controls": 0.30432080349250096,
+    "counts": {
+     "neurons": 507,
+     "controls": 512,
+     "above_every_control": 18,
+     "by_chance": 1.0,
+     "q05": 0,
+     "named": 0,
+     "named_by_halves": 0,
+     "above_ctl_p95": 0.1657,
+     "pA05_and_pB05": 25,
+     "pA05_and_pB05_by_chance": 1.3
+    },
+    "null_split_auc": {
+     "mean": 0.5019,
+     "min": 0.4199,
+     "max": 0.55,
+     "n": 50
+    }
+   },
+   "sign_halves_mass_auc": {
+    "+": 0.553,
+    "-": 0.5523
+   },
+   "text": {
+    "-2 neuron": {
+     "d4_minus_unpushed": -0.761,
+     "cut_off": 0.999
+    },
+    "-2 random": {
+     "d4_minus_unpushed": -0.744,
+     "cut_off": 1.0
+    },
+    "-1 neuron": {
+     "d4_minus_unpushed": -0.043,
+     "cut_off": 1.0
+    },
+    "-1 random": {
+     "d4_minus_unpushed": -0.001,
+     "cut_off": 1.0
+    },
+    "+1 neuron": {
+     "d4_minus_unpushed": -0.04,
+     "cut_off": 1.0
+    },
+    "+1 random": {
+     "d4_minus_unpushed": -0.001,
+     "cut_off": 1.0
+    },
+    "+2 neuron": {
+     "d4_minus_unpushed": -0.763,
+     "cut_off": 0.999
+    },
+    "+2 random": {
+     "d4_minus_unpushed": -0.742,
+     "cut_off": 0.997
+    }
+   },
+   "complete": true,
+   "units": {
+    "neurons_read": 507,
+    "controls": 512,
+    "units_in_run": 1019,
+    "units_planned": 1019,
+    "answers": 24462,
+    "answers_planned": 24462
+   },
+   "gates": {
+    "S1 lead": {
+     "values": [
+      [
+       "mass_c",
+       0.5914,
+       0.58
+      ]
+     ],
+     "pass": true
+    },
+    "S2 beyond text survival": {
+     "values": [
+      [
+       "mass_c_res",
+       0.5061,
+       0.56
+      ]
+     ],
+     "pass": false
+    },
+    "S3 replication both ways": {
+     "values": [
+      [
+       "rep_AB",
+       0.5771,
+       0.55
+      ],
+      [
+       "rep_BA",
+       0.6029,
+       0.55
+      ]
+     ],
+     "pass": true
+    },
+    "G5 sanity (null split, read gain, every answer present)": {
+     "values": [
+      [
+       "null_split_mean",
+       0.5019,
+       [
+        0.47,
+        0.53
+       ]
+      ],
+      [
+       "read_gain_ratio",
+       1.179,
+       [
+        0.8,
+        1.25
+       ]
+      ],
+      [
+       "complete (every unit planned, each with all 24 cells; every answer of the job list)",
+       true,
+       true
+      ]
+     ],
+     "pass": true
+    }
+   },
+   "pass": false,
+   "named": [],
+   "named_words": {},
+   "named_by_halves": []
+  }
+ },
+ "pass": true,
+ "throughput": {
+  "answers": 24462,
+  "seconds": 2003.0,
+  "answers_per_s": 12.21,
+  "sessions": 1
+ },
+ "writing": {
+  "answers_written": 24462,
+  "seconds": 1987.2,
+  "answers_per_s": 12.31,
+  "sessions": 1
+ },
+ "max_new_rule": {
+  "shorter_passes": false,
+  "mass_c_drop": 0.0081,
+  "rep_min_drop": -0.0014,
+  "take_shorter": false
+ }
+}

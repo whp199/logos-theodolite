@@ -1,0 +1,390 @@
+{
+ "L57:32": {
+  "tag": "L57",
+  "cut": 32,
+  "A": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "B": [
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "N": 507,
+  "C": 512,
+  "gates_auc": {
+   "mass_c": 0.5914,
+   "mass_c_res": 0.5061,
+   "rep_AB": 0.5771,
+   "rep_BA": 0.6029,
+   "mass_B": 0.5824,
+   "mass_A": 0.5961,
+   "rep_res": 0.4772,
+   "rep_AB_res": 0.4764,
+   "rep_BA_res": 0.4809
+  },
+  "verdict_auc": {
+   "mass_c": 0.5914,
+   "mass_c_res": 0.5061,
+   "rep_AB": 0.5771,
+   "rep_BA": 0.6029,
+   "mass_B": 0.5824,
+   "mass_A": 0.5961,
+   "rep_res": 0.4772
+  },
+  "counts": {
+   "q05": 0,
+   "named": 0,
+   "above_every_control": 18,
+   "named_matches_verdict": true,
+   "verdict_counts": {
+    "neurons": 507,
+    "controls": 512,
+    "above_every_control": 18,
+    "by_chance": 1.0,
+    "q05": 0,
+    "named": 0,
+    "named_by_halves": 0,
+    "above_ctl_p95": 0.1657,
+    "pA05_and_pB05": 25,
+    "pA05_and_pB05_by_chance": 1.3
+   },
+   "bh_thr_p": null,
+   "q05_equals_above_every_control": false,
+   "need_floor": 20,
+   "chance_above_every_control": 0.99
+  },
+  "empirical_null": {
+   "ctl_pass_mass_at_thr": 0,
+   "ctl_named_at_thr": 0,
+   "false_q05_if_all_null": 0.0,
+   "false_named_if_all_null": 0.0,
+   "share_of_named": 0.0,
+   "false_named_poisson_upper95": 3.7
+  },
+  "boot": {
+   "mass_c": {
+    "auc": 0.5914,
+    "se": 0.0178,
+    "ci": [
+     0.557,
+     0.624
+    ]
+   },
+   "mass_c_res": {
+    "auc": 0.5061,
+    "se": 0.0186,
+    "ci": [
+     0.47,
+     0.544
+    ]
+   },
+   "rep_res": {
+    "auc": 0.4772,
+    "se": 0.0193,
+    "ci": [
+     0.439,
+     0.514
+    ]
+   },
+   "rep_AB_res": {
+    "auc": 0.4764,
+    "se": 0.0195,
+    "ci": [
+     0.44,
+     0.517
+    ]
+   },
+   "rep_BA_res": {
+    "auc": 0.4809,
+    "se": 0.0189,
+    "ci": [
+     0.444,
+     0.518
+    ]
+   },
+   "mass_c_res_refit": {
+    "se": 0.0233,
+    "ci": [
+     0.462,
+     0.553
+    ]
+   },
+   "rep_res_refit": {
+    "se": 0.024,
+    "ci": [
+     0.431,
+     0.524
+    ]
+   },
+   "mass_c_res_hanley_se": 0.0181
+  },
+  "rho_AB": {
+   "neurons": 0.52,
+   "neurons_ci": [
+    0.446,
+    0.588
+   ],
+   "controls": 0.304,
+   "controls_ci": [
+    0.223,
+    0.386
+   ],
+   "diff": 0.216,
+   "diff_ci": [
+    0.106,
+    0.318
+   ],
+   "verdict": [
+    0.52,
+    0.304
+   ]
+  },
+  "rho_AB_res_per_half": {
+   "neurons": 0.59,
+   "neurons_ci": [
+    0.522,
+    0.657
+   ],
+   "controls": 0.175,
+   "controls_ci": [
+    0.085,
+    0.257
+   ]
+  },
+  "tail_bulk": {
+   "p95A": 8.019,
+   "tail_n": 55,
+   "tail_rho": 0.122,
+   "tail_ci": [
+    -0.134,
+    0.36
+   ],
+   "bulk_n": 452,
+   "bulk_rho": 0.423,
+   "bulk_ci": [
+    0.342,
+    0.505
+   ],
+   "bulk_ctl_n": 486,
+   "bulk_ctl_rho": 0.293,
+   "bulk_ctl_ci": [
+    0.209,
+    0.375
+   ],
+   "bulk_minus_ctl_ci": [
+    0.013,
+    0.248
+   ],
+   "tail_ctl_n": 26,
+   "bulk_massB_auc_vs_bulk_ctl": 0.5535,
+   "bulk_massA_auc_vs_bulk_ctl": 0.5789
+  },
+  "select": {
+   "mass A->B": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 3
+   },
+   "mass B->A": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 3
+   },
+   "res A->B": {
+    "discovered": 51,
+    "thr": 0.003898635477582846,
+    "replicate": 47,
+    "share": 0.922,
+    "ctl_at_thr": 1,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 2
+   },
+   "res B->A": {
+    "discovered": 71,
+    "thr": 0.005847953216374269,
+    "replicate": 59,
+    "share": 0.831,
+    "ctl_at_thr": 2,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 2
+   },
+   "words A->B (rep_AB)": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 8
+   },
+   "words B->A (rep_BA)": {
+    "discovered": 0,
+    "thr": null,
+    "replicate": 0,
+    "share": null,
+    "ctl_at_thr": 0,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 25,
+    "ctl_top5pct_replicate": 9
+   }
+  },
+  "calib_sized_halves": {
+   "splits": [
+    [
+     "who",
+     0.102,
+     0.074
+    ],
+    [
+     "orange",
+     0.134,
+     0.053
+    ],
+    [
+     "free",
+     0.073,
+     0.039
+    ]
+   ],
+   "mean_neurons": 0.103,
+   "mean_controls": 0.055
+  },
+  "cov_range": {
+   "named_out": 0,
+   "named": 0,
+   "fresh_share_out": 0.3393,
+   "by_cov_named": {
+    "lnw": 0,
+    "d4": 0,
+    "cut": 0,
+    "lp": 0,
+    "dep": 0,
+    "lost": 0
+   }
+  },
+  "vocab": {
+   "same": {
+    "named_lists": 0,
+    "top5_neuron_share": 0.462,
+    "top5_ctl_share": 0.312
+   },
+   "own": {
+    "named_lists": 0,
+    "top5_neuron_share": 0.083,
+    "top5_ctl_share": 0.047
+   },
+   "thought": {
+    "named_lists": 0,
+    "top5_neuron_share": 0.185,
+    "top5_ctl_share": 0.379
+   },
+   "thoughtthought": {
+    "named_lists": 0,
+    "top5_neuron_share": 0.152,
+    "top5_ctl_share": 0.293
+   }
+  },
+  "vocab_top10": [
+   [
+    "same",
+    234,
+    0.462,
+    0.312
+   ],
+   [
+    "three",
+    153,
+    0.302,
+    0.354
+   ],
+   [
+    "different",
+    136,
+    0.268,
+    0.281
+   ],
+   [
+    "and",
+    123,
+    0.243,
+    0.311
+   ],
+   [
+    "place",
+    104,
+    0.205,
+    0.223
+   ],
+   [
+    "about",
+    98,
+    0.193,
+    0.199
+   ],
+   [
+    "story",
+    96,
+    0.189,
+    0.195
+   ],
+   [
+    "thought",
+    94,
+    0.185,
+    0.379
+   ],
+   [
+    "trek",
+    87,
+    0.172,
+    0.18
+   ],
+   [
+    "thoughtthought",
+    77,
+    0.152,
+    0.293
+   ]
+  ],
+  "n_drop": 31,
+  "floor_vs_controls": {
+   "32": {
+    "share_above_all": 0.1216,
+    "floor_share": 0.6061
+   },
+   "64": {
+    "share_above_all": 0.0954,
+    "floor_share": 0.3077
+   },
+   "128": {
+    "share_above_all": 0.0743,
+    "floor_share": 0.155
+   },
+   "256": {
+    "share_above_all": 0.0561,
+    "floor_share": 0.0778
+   },
+   "512": {
+    "share_above_all": 0.0355,
+    "floor_share": 0.039
+   }
+  },
+  "seconds": 10.9
+ }
+}

@@ -1,0 +1,146 @@
+{
+ "L45": {
+  "top5_mismatch_with_readlib": 0,
+  "named": {
+   "units": 262,
+   "z_share": {
+    "1 intact": 0.5897,
+    "1 broken": 0.187,
+    "2 intact": -0.0,
+    "2 broken": 0.2234,
+    "pm1": 0.7767,
+    "pm2": 0.2234
+   },
+   "answer_share": {
+    "1 intact": 0.4299,
+    "1 broken": 0.0701,
+    "2 intact": 0.0002,
+    "2 broken": 0.4998
+   },
+   "pm1 share of all their pm1 answers broken": 0.1403,
+   "per-unit median share from pm1": 0.7981,
+   "units >50% from pm1": 243,
+   "units >50% from pm2": 19,
+   "units >80% from pm2": 2,
+   "mean top-5 z": 22.194
+  },
+  "neurons_read": {
+   "units": 1022,
+   "z_share": {
+    "1 intact": 0.6671,
+    "1 broken": 0.0999,
+    "2 intact": 0.0005,
+    "2 broken": 0.2325,
+    "pm1": 0.767,
+    "pm2": 0.233
+   },
+   "answer_share": {
+    "1 intact": 0.4691,
+    "1 broken": 0.0309,
+    "2 intact": 0.0011,
+    "2 broken": 0.4989
+   },
+   "pm1 share of all their pm1 answers broken": 0.0617,
+   "per-unit median share from pm1": 0.8014,
+   "units >50% from pm1": 898,
+   "units >50% from pm2": 123,
+   "units >80% from pm2": 13,
+   "mean top-5 z": 13.892
+  },
+  "controls": {
+   "units": 1024,
+   "z_share": {
+    "1 intact": 0.7493,
+    "1 broken": 0.0041,
+    "2 intact": 0.0002,
+    "2 broken": 0.2464,
+    "pm1": 0.7534,
+    "pm2": 0.2466
+   },
+   "answer_share": {
+    "1 intact": 0.4966,
+    "1 broken": 0.0034,
+    "2 intact": 0.0006,
+    "2 broken": 0.4994
+   },
+   "pm1 share of all their pm1 answers broken": 0.0068,
+   "per-unit median share from pm1": 0.8165,
+   "units >50% from pm1": 888,
+   "units >50% from pm2": 136,
+   "units >80% from pm2": 13,
+   "mean top-5 z": 9.921
+  }
+ },
+ "L57": {
+  "top5_mismatch_with_readlib": 0,
+  "named": {
+   "units": 20,
+   "z_share": {
+    "1 intact": 0.1757,
+    "1 broken": 0.2097,
+    "2 intact": -0.0,
+    "2 broken": 0.6147,
+    "pm1": 0.3854,
+    "pm2": 0.6147
+   },
+   "answer_share": {
+    "1 intact": 0.3292,
+    "1 broken": 0.1708,
+    "2 intact": 0.0,
+    "2 broken": 0.5
+   },
+   "pm1 share of all their pm1 answers broken": 0.3417,
+   "per-unit median share from pm1": 0.3799,
+   "units >50% from pm1": 6,
+   "units >50% from pm2": 14,
+   "units >80% from pm2": 3,
+   "mean top-5 z": 23.434
+  },
+  "neurons_read": {
+   "units": 507,
+   "z_share": {
+    "1 intact": 0.3902,
+    "1 broken": 0.0757,
+    "2 intact": 0.0102,
+    "2 broken": 0.5239,
+    "pm1": 0.4659,
+    "pm2": 0.5341
+   },
+   "answer_share": {
+    "1 intact": 0.4619,
+    "1 broken": 0.0381,
+    "2 intact": 0.0044,
+    "2 broken": 0.4956
+   },
+   "pm1 share of all their pm1 answers broken": 0.0761,
+   "per-unit median share from pm1": 0.503,
+   "units >50% from pm1": 254,
+   "units >50% from pm2": 251,
+   "units >80% from pm2": 59,
+   "mean top-5 z": 8.898
+  },
+  "controls": {
+   "units": 512,
+   "z_share": {
+    "1 intact": 0.5096,
+    "1 broken": 0.0036,
+    "2 intact": 0.0002,
+    "2 broken": 0.4866,
+    "pm1": 0.5132,
+    "pm2": 0.4868
+   },
+   "answer_share": {
+    "1 intact": 0.4967,
+    "1 broken": 0.0033,
+    "2 intact": 0.0007,
+    "2 broken": 0.4993
+   },
+   "pm1 share of all their pm1 answers broken": 0.0067,
+   "per-unit median share from pm1": 0.608,
+   "units >50% from pm1": 308,
+   "units >50% from pm2": 204,
+   "units >80% from pm2": 64,
+   "mean top-5 z": 7.055
+  }
+ }
+}

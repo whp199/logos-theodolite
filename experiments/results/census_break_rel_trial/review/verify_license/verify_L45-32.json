@@ -1,0 +1,380 @@
+{
+ "L45:32": {
+  "tag": "L45",
+  "cut": 32,
+  "A": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "B": [
+   "bicycle",
+   "walk",
+   "chair"
+  ],
+  "N": 1022,
+  "C": 1024,
+  "gates_auc": {
+   "mass_c": 0.7077,
+   "mass_c_res": 0.7029,
+   "rep_AB": 0.6767,
+   "rep_BA": 0.6583,
+   "mass_B": 0.6518,
+   "mass_A": 0.6455,
+   "rep_res": 0.6675,
+   "rep_AB_res": 0.6697,
+   "rep_BA_res": 0.6513
+  },
+  "verdict_auc": {
+   "mass_c": 0.7077,
+   "mass_c_res": 0.7029,
+   "rep_AB": 0.6767,
+   "rep_BA": 0.6583,
+   "mass_B": 0.6518,
+   "mass_A": 0.6455,
+   "rep_res": 0.6675
+  },
+  "counts": {
+   "q05": 231,
+   "named": 191,
+   "above_every_control": 126,
+   "named_matches_verdict": true,
+   "verdict_counts": {
+    "neurons": 1022,
+    "controls": 1024,
+    "above_every_control": 126,
+    "by_chance": 1.0,
+    "q05": 231,
+    "named": 191,
+    "named_by_halves": 134,
+    "above_ctl_p95": 0.3395,
+    "pA05_and_pB05": 143,
+    "pA05_and_pB05_by_chance": 2.6
+   },
+   "bh_thr_p": 0.010731707317073172,
+   "q05_equals_above_every_control": false,
+   "need_floor": 20,
+   "chance_above_every_control": 1.0
+  },
+  "empirical_null": {
+   "ctl_pass_mass_at_thr": 10,
+   "ctl_named_at_thr": 7,
+   "false_q05_if_all_null": 9.98,
+   "false_named_if_all_null": 6.99,
+   "share_of_named": 0.0366,
+   "false_named_poisson_upper95": 14.4
+  },
+  "boot": {
+   "mass_c": {
+    "auc": 0.7077,
+    "se": 0.0112,
+    "ci": [
+     0.686,
+     0.729
+    ]
+   },
+   "mass_c_res": {
+    "auc": 0.7029,
+    "se": 0.0116,
+    "ci": [
+     0.678,
+     0.725
+    ]
+   },
+   "rep_res": {
+    "auc": 0.6675,
+    "se": 0.0121,
+    "ci": [
+     0.644,
+     0.691
+    ]
+   },
+   "rep_AB_res": {
+    "auc": 0.6697,
+    "se": 0.0117,
+    "ci": [
+     0.647,
+     0.693
+    ]
+   },
+   "rep_BA_res": {
+    "auc": 0.6513,
+    "se": 0.0121,
+    "ci": [
+     0.628,
+     0.675
+    ]
+   },
+   "mass_c_res_refit": {
+    "se": 0.012,
+    "ci": [
+     0.679,
+     0.725
+    ]
+   },
+   "rep_res_refit": {
+    "se": 0.0124,
+    "ci": [
+     0.643,
+     0.692
+    ]
+   },
+   "mass_c_res_hanley_se": 0.0115
+  },
+  "rho_AB": {
+   "neurons": 0.422,
+   "neurons_ci": [
+    0.367,
+    0.475
+   ],
+   "controls": 0.183,
+   "controls_ci": [
+    0.123,
+    0.239
+   ],
+   "diff": 0.239,
+   "diff_ci": [
+    0.156,
+    0.318
+   ],
+   "verdict": [
+    0.422,
+    0.183
+   ]
+  },
+  "rho_AB_res_per_half": {
+   "neurons": 0.502,
+   "neurons_ci": [
+    0.446,
+    0.552
+   ],
+   "controls": 0.111,
+   "controls_ci": [
+    0.053,
+    0.17
+   ]
+  },
+  "tail_bulk": {
+   "p95A": 9.588,
+   "tail_n": 219,
+   "tail_rho": 0.424,
+   "tail_ci": [
+    0.294,
+    0.538
+   ],
+   "bulk_n": 803,
+   "bulk_rho": 0.165,
+   "bulk_ci": [
+    0.1,
+    0.232
+   ],
+   "bulk_ctl_n": 972,
+   "bulk_ctl_rho": 0.167,
+   "bulk_ctl_ci": [
+    0.105,
+    0.23
+   ],
+   "bulk_minus_ctl_ci": [
+    -0.094,
+    0.09
+   ],
+   "tail_ctl_n": 52,
+   "bulk_massB_auc_vs_bulk_ctl": 0.598,
+   "bulk_massA_auc_vs_bulk_ctl": 0.5812
+  },
+  "select": {
+   "mass A->B": {
+    "discovered": 126,
+    "thr": 0.005853658536585366,
+    "replicate": 95,
+    "share": 0.754,
+    "ctl_at_thr": 5,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 51,
+    "ctl_top5pct_replicate": 3
+   },
+   "mass B->A": {
+    "discovered": 115,
+    "thr": 0.004878048780487805,
+    "replicate": 80,
+    "share": 0.696,
+    "ctl_at_thr": 4,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 51,
+    "ctl_top5pct_replicate": 3
+   },
+   "res A->B": {
+    "discovered": 183,
+    "thr": 0.00878048780487805,
+    "replicate": 150,
+    "share": 0.82,
+    "ctl_at_thr": 8,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 51,
+    "ctl_top5pct_replicate": 1
+   },
+   "res B->A": {
+    "discovered": 205,
+    "thr": 0.00975609756097561,
+    "replicate": 156,
+    "share": 0.761,
+    "ctl_at_thr": 9,
+    "ctl_replicate": 0,
+    "ctl_top5pct": 51,
+    "ctl_top5pct_replicate": 1
+   },
+   "words A->B (rep_AB)": {
+    "discovered": 126,
+    "thr": 0.005853658536585366,
+    "replicate": 113,
+    "share": 0.897,
+    "ctl_at_thr": 5,
+    "ctl_replicate": 1,
+    "ctl_top5pct": 51,
+    "ctl_top5pct_replicate": 10
+   },
+   "words B->A (rep_BA)": {
+    "discovered": 115,
+    "thr": 0.004878048780487805,
+    "replicate": 102,
+    "share": 0.887,
+    "ctl_at_thr": 4,
+    "ctl_replicate": 3,
+    "ctl_top5pct": 51,
+    "ctl_top5pct_replicate": 11
+   }
+  },
+  "rho_reasked64": {
+   "n": 64,
+   "rho": 0.37,
+   "ci": [
+    0.102,
+    0.579
+   ]
+  },
+  "calib_sized_halves": {
+   "splits": [
+    [
+     "who",
+     0.142,
+     0.042,
+     0.101
+    ],
+    [
+     "orange",
+     0.089,
+     0.045,
+     0.11
+    ],
+    [
+     "free",
+     0.159,
+     0.102,
+     0.245
+    ]
+   ],
+   "mean_neurons": 0.13,
+   "mean_controls": 0.063,
+   "mean_reasked": 0.152
+  },
+  "cov_range": {
+   "named_out": 72,
+   "named": 191,
+   "fresh_share_out": 0.1272,
+   "by_cov_named": {
+    "lnw": 10,
+    "d4": 17,
+    "cut": 0,
+    "lp": 2,
+    "dep": 4,
+    "lost": 62
+   }
+  },
+  "vocab": {
+   "same": {
+    "named_lists": 98,
+    "top5_neuron_share": 0.292,
+    "top5_ctl_share": 0.199
+   },
+   "own": {
+    "named_lists": 89,
+    "top5_neuron_share": 0.218,
+    "top5_ctl_share": 0.181
+   },
+   "thought": {
+    "named_lists": 25,
+    "top5_neuron_share": 0.147,
+    "top5_ctl_share": 0.171
+   },
+   "thoughtthought": {
+    "named_lists": 3,
+    "top5_neuron_share": 0.071,
+    "top5_ctl_share": 0.089
+   }
+  },
+  "vocab_top10": [
+   [
+    "same",
+    298,
+    0.292,
+    0.199
+   ],
+   [
+    "own",
+    223,
+    0.218,
+    0.181
+   ],
+   [
+    "thought",
+    150,
+    0.147,
+    0.171
+   ],
+   [
+    "and",
+    92,
+    0.09,
+    0.107
+   ],
+   [
+    "thoughtthought",
+    73,
+    0.071,
+    0.089
+   ],
+   [
+    "you",
+    62,
+    0.061,
+    0.077
+   ],
+   [
+    "through",
+    59,
+    0.058,
+    0.083
+   ],
+   [
+    "ownthought",
+    58,
+    0.057,
+    0.051
+   ],
+   [
+    "distance",
+    54,
+    0.053,
+    0.072
+   ],
+   [
+    "from",
+    54,
+    0.053,
+    0.065
+   ]
+  ],
+  "n_drop": 65,
+  "seconds": 21.6
+ }
+}

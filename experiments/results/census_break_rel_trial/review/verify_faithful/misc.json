@@ -1,0 +1,167 @@
+{
+ "calib_expect": {
+  "calib_rel cut 32": {
+   "45": {
+    "mass_c": 0.6721,
+    "mass_c_res": 0.6958,
+    "rep_AB": 0.6246,
+    "rep_BA": 0.6047
+   },
+   "57": {
+    "mass_c": 0.6346,
+    "mass_c_res": 0.6345,
+    "rep_AB": 0.5676,
+    "rep_BA": 0.4951
+   }
+  },
+  "calib_rel cut 48": {
+   "45": {
+    "mass_c": 0.644,
+    "mass_c_res": 0.6863,
+    "rep_AB": 0.6581,
+    "rep_BA": 0.5909
+   },
+   "57": {
+    "mass_c": 0.616,
+    "mass_c_res": 0.6675,
+    "rep_AB": 0.5549,
+    "rep_BA": 0.4895
+   }
+  },
+  "calib_rel cut 64": {
+   "45": {
+    "mass_c": 0.6467,
+    "mass_c_res": 0.6506,
+    "rep_AB": 0.676,
+    "rep_BA": 0.6403
+   },
+   "57": {
+    "mass_c": 0.5924,
+    "mass_c_res": 0.6533,
+    "rep_AB": 0.534,
+    "rep_BA": 0.479
+   }
+  }
+ },
+ "S_vs_prereg": {
+  "tonight.sh": [
+   true,
+   true
+  ],
+  "step0_pick.py": [
+   true,
+   true
+  ],
+  "trial_read.py": [
+   true,
+   true
+  ],
+  "readlib.py": [
+   true,
+   true
+  ],
+  "calib_expect.json": [
+   true,
+   true
+  ],
+  "trial_L45_neurons.txt": [
+   true,
+   true
+  ],
+  "trial_L45_fresh.txt": [
+   true,
+   true
+  ],
+  "trial_L45_reasked.txt": [
+   true,
+   true
+  ],
+  "probe_L57_neurons.txt": [
+   true,
+   true
+  ]
+ },
+ "decoder": {
+  "L45-break_rel-trial": {
+   "rows": 50646,
+   "mismatch": 0,
+   "rows_cut_at_32": 50545
+  },
+  "L57-break_rel-probe": {
+   "rows": 24462,
+   "mismatch": 0,
+   "rows_cut_at_32": 24445
+  }
+ },
+ "verdict_text_L45_48": {
+  "-2 neuron": {
+   "d4_minus_unpushed": -0.793,
+   "cut_off": 0.998
+  },
+  "-2 random": {
+   "d4_minus_unpushed": -0.791,
+   "cut_off": 1.0
+  },
+  "-1 neuron": {
+   "d4_minus_unpushed": -0.042,
+   "cut_off": 0.988
+  },
+  "-1 random": {
+   "d4_minus_unpushed": -0.004,
+   "cut_off": 0.989
+  },
+  "+1 neuron": {
+   "d4_minus_unpushed": -0.033,
+   "cut_off": 0.992
+  },
+  "+1 random": {
+   "d4_minus_unpushed": -0.004,
+   "cut_off": 0.987
+  },
+  "+2 neuron": {
+   "d4_minus_unpushed": -0.787,
+   "cut_off": 0.998
+  },
+  "+2 random": {
+   "d4_minus_unpushed": -0.794,
+   "cut_off": 0.998
+  }
+ },
+ "verdict_max_new": {
+  "L45": {
+   "shorter_passes": true,
+   "mass_c_drop": 0.0067,
+   "rep_min_drop": 0.0156,
+   "take_shorter": true
+  },
+  "L57": {
+   "shorter_passes": false,
+   "mass_c_drop": 0.0081,
+   "rep_min_drop": -0.0014,
+   "take_shorter": false
+  }
+ },
+ "verdict_retest_L45_48": {
+  "neurons": 64,
+  "cells": [
+   "who",
+   "orange",
+   "free"
+  ],
+  "spearman_mass": 0.9381410256410255,
+  "answers": 768,
+  "bit_identical": 737,
+  "expected_identical": 660,
+  "bit_identical_where_expected": 660,
+  "batch_here": 64,
+  "batch_ref": 64
+ },
+ "retest": {
+  "answers": 768,
+  "bit_identical": 737,
+  "missing_in_ref": 0,
+  "spearman_mass": 0.9381410256410255,
+  "ref_controls": 64,
+  "ref_neurons": 64
+ }
+}

@@ -1,0 +1,537 @@
+{
+ "L45": {
+  "fit": {
+   "all": {
+    "R2": 0.209,
+    "pred_mean_neurons": 9.36,
+    "pred_mean_controls": 9.92,
+    "mass_mean_neurons": 13.89,
+    "mass_mean_controls": 9.92,
+    "beta": {
+     "const": -11.43,
+     "lnw": 14.95,
+     "d4": 5.19,
+     "cut": -1.76,
+     "lp": -0.6,
+     "dep": 4.74,
+     "lost": -14.02
+    },
+    "sd_controls": {
+     "lnw": 0.0683,
+     "d4": 0.04,
+     "cut": 0.0162,
+     "lp": 0.107,
+     "dep": 0.0112,
+     "lost": 0.0177
+    },
+    "sd_neurons": {
+     "lnw": 0.1166,
+     "d4": 0.0578,
+     "cut": 0.0189,
+     "lp": 0.1102,
+     "dep": 0.0113,
+     "lost": 0.0311
+    },
+    "neurons_below_ctl_min": {
+     "lnw": 58,
+     "d4": 69,
+     "cut": 3,
+     "lp": 1,
+     "dep": 14,
+     "lost": 2
+    },
+    "neurons_above_ctl_max": {
+     "lnw": 10,
+     "d4": 1,
+     "cut": 0,
+     "lp": 0,
+     "dep": 0,
+     "lost": 95
+    },
+    "drop_one": {
+     "without_lnw": 0.717,
+     "only_lnw": 0.7216,
+     "without_d4": 0.7263,
+     "only_d4": 0.7194,
+     "without_cut": 0.7243,
+     "only_cut": 0.7144,
+     "without_lp": 0.7228,
+     "only_lp": 0.7226,
+     "without_dep": 0.7247,
+     "only_dep": 0.7144,
+     "without_lost": 0.7236,
+     "only_lost": 0.7107,
+     "all_six": 0.7244,
+     "raw": 0.7144
+    }
+   },
+   "pm1": {
+    "R2": 0.091,
+    "pred_mean_neurons": 8.68,
+    "pred_mean_controls": 8.79,
+    "mass_mean_neurons": 12.47,
+    "mass_mean_controls": 8.79,
+    "beta": {
+     "const": -7.01,
+     "lnw": 8.09,
+     "d4": -5.7,
+     "cut": 1.52,
+     "lp": -0.83,
+     "dep": 1.34,
+     "lost": -1.91
+    },
+    "sd_controls": {
+     "lnw": 0.07,
+     "d4": 0.0129,
+     "cut": 0.0295,
+     "lp": 0.0157,
+     "dep": 0.0224,
+     "lost": 0.0342
+    },
+    "sd_neurons": {
+     "lnw": 0.1266,
+     "d4": 0.0791,
+     "cut": 0.029,
+     "lp": 0.0469,
+     "dep": 0.0219,
+     "lost": 0.0598
+    },
+    "neurons_below_ctl_min": {
+     "lnw": 68,
+     "d4": 138,
+     "cut": 1,
+     "lp": 80,
+     "dep": 16,
+     "lost": 1
+    },
+    "neurons_above_ctl_max": {
+     "lnw": 2,
+     "d4": 0,
+     "cut": 0,
+     "lp": 3,
+     "dep": 0,
+     "lost": 103
+    },
+    "drop_one": {
+     "without_lnw": 0.708,
+     "only_lnw": 0.7151,
+     "without_d4": 0.7155,
+     "only_d4": 0.7094,
+     "without_cut": 0.7127,
+     "only_cut": 0.7061,
+     "without_lp": 0.7122,
+     "only_lp": 0.7062,
+     "without_dep": 0.7123,
+     "only_dep": 0.7062,
+     "without_lost": 0.7117,
+     "only_lost": 0.7008,
+     "all_six": 0.7123,
+     "raw": 0.7064
+    }
+   },
+   "pm2": {
+    "R2": 0.576,
+    "pred_mean_neurons": 3.77,
+    "pred_mean_controls": 3.27,
+    "mass_mean_neurons": 4.23,
+    "mass_mean_controls": 3.27,
+    "beta": {
+     "const": -24.62,
+     "lnw": 10.08,
+     "d4": 1.13,
+     "cut": -20.25,
+     "lp": 0.86,
+     "dep": -43.96,
+     "lost": 42.03
+    },
+    "sd_controls": {
+     "lnw": 0.2553,
+     "d4": 0.0793,
+     "cut": 0.0127,
+     "lp": 0.2138,
+     "dep": 0.0028,
+     "lost": 0.0072
+    },
+    "sd_neurons": {
+     "lnw": 0.2645,
+     "d4": 0.0783,
+     "cut": 0.0232,
+     "lp": 0.2099,
+     "dep": 0.0037,
+     "lost": 0.0093
+    },
+    "neurons_below_ctl_min": {
+     "lnw": 0,
+     "d4": 1,
+     "cut": 1,
+     "lp": 0,
+     "dep": 0,
+     "lost": 10
+    },
+    "neurons_above_ctl_max": {
+     "lnw": 0,
+     "d4": 0,
+     "cut": 0,
+     "lp": 0,
+     "dep": 3,
+     "lost": 0
+    },
+    "drop_one": {
+     "without_lnw": 0.5774,
+     "only_lnw": 0.5268,
+     "without_d4": 0.5438,
+     "only_d4": 0.5741,
+     "without_cut": 0.5447,
+     "only_cut": 0.5686,
+     "without_lp": 0.5494,
+     "only_lp": 0.5928,
+     "without_dep": 0.5413,
+     "only_dep": 0.5683,
+     "without_lost": 0.5379,
+     "only_lost": 0.5629,
+     "all_six": 0.5438,
+     "raw": 0.5708
+    }
+   }
+  },
+  "collapse_vocab_non_thought": [
+   "and",
+   "idea",
+   "own",
+   "owns",
+   "rest",
+   "same",
+   "sss"
+  ],
+  "collapse_vocab_size": 789,
+  "pm2_loop_composition": {
+   "no_word": {
+    "neurons": 0.307,
+    "controls": 0.345,
+    "named": 0.274,
+    "auc": 0.452,
+    "controls_max": 1.0,
+    "controls_p99": 0.917,
+    "neurons_above_ctl_max": 0
+   },
+   "collapse": {
+    "neurons": 0.528,
+    "controls": 0.524,
+    "named": 0.535,
+    "auc": 0.506,
+    "controls_max": 1.0,
+    "controls_p99": 1.0,
+    "neurons_above_ctl_max": 0
+   },
+   "specific": {
+    "neurons": 0.031,
+    "controls": 0.01,
+    "named": 0.08,
+    "auc": 0.549,
+    "controls_max": 0.583,
+    "controls_p99": 0.25,
+    "neurons_above_ctl_max": 0
+   },
+   "other": {
+    "neurons": 0.134,
+    "controls": 0.121,
+    "named": 0.111,
+    "auc": 0.534,
+    "controls_max": 0.75,
+    "controls_p99": 0.481,
+    "neurons_above_ctl_max": 0
+   }
+  },
+  "pm1_looping_answers_loop_on": {
+   "named": {
+    "noncollapse": 176,
+    "collapse": 127
+   },
+   "neurons": {
+    "noncollapse": 293,
+    "collapse": 207,
+    "no_word": 7
+   },
+   "controls": {
+    "noncollapse": 29,
+    "collapse": 20
+   }
+  },
+  "all_with_loop_covariates": {
+   "mass_c": 0.7144,
+   "mass_c_res": 0.7244,
+   "mass_c_res_plus": 0.717
+  },
+  "pm2_with_loop_covariates": {
+   "mass_c": 0.5708,
+   "mass_c_res": 0.5438,
+   "mass_c_res_plus": 0.5309
+  }
+ },
+ "L57": {
+  "fit": {
+   "all": {
+    "R2": 0.349,
+    "pred_mean_neurons": 5.65,
+    "pred_mean_controls": 7.06,
+    "mass_mean_neurons": 8.9,
+    "mass_mean_controls": 7.06,
+    "beta": {
+     "const": 38.53,
+     "lnw": 21.57,
+     "d4": 0.16,
+     "cut": -18.07,
+     "lp": -0.27,
+     "dep": -5.59,
+     "lost": -69.69
+    },
+    "sd_controls": {
+     "lnw": 0.1198,
+     "d4": 0.0375,
+     "cut": 0.0082,
+     "lp": 0.1153,
+     "dep": 0.0317,
+     "lost": 0.0197
+    },
+    "sd_neurons": {
+     "lnw": 0.1503,
+     "d4": 0.0816,
+     "cut": 0.0061,
+     "lp": 0.1287,
+     "dep": 0.0439,
+     "lost": 0.0589
+    },
+    "neurons_below_ctl_min": {
+     "lnw": 19,
+     "d4": 80,
+     "cut": 0,
+     "lp": 1,
+     "dep": 17,
+     "lost": 44
+    },
+    "neurons_above_ctl_max": {
+     "lnw": 1,
+     "d4": 6,
+     "cut": 0,
+     "lp": 40,
+     "dep": 9,
+     "lost": 66
+    },
+    "drop_one": {
+     "without_lnw": 0.6597,
+     "only_lnw": 0.6377,
+     "without_d4": 0.5607,
+     "only_d4": 0.6154,
+     "without_cut": 0.5628,
+     "only_cut": 0.5995,
+     "without_lp": 0.5581,
+     "only_lp": 0.6614,
+     "without_dep": 0.5621,
+     "only_dep": 0.6132,
+     "without_lost": 0.6346,
+     "only_lost": 0.6221,
+     "all_six": 0.5608,
+     "raw": 0.5995
+    }
+   },
+   "pm1": {
+    "R2": 0.2,
+    "pred_mean_neurons": 3.5,
+    "pred_mean_controls": 4.46,
+    "mass_mean_neurons": 4.82,
+    "mass_mean_controls": 4.46,
+    "beta": {
+     "const": -14.46,
+     "lnw": 4.55,
+     "d4": 17.91,
+     "cut": -14.46,
+     "lp": -35.29,
+     "dep": 0.54,
+     "lost": 8.83
+    },
+    "sd_controls": {
+     "lnw": 0.1284,
+     "d4": 0.01,
+     "cut": 0.0,
+     "lp": 0.0085,
+     "dep": 0.0633,
+     "lost": 0.0394
+    },
+    "sd_neurons": {
+     "lnw": 0.1749,
+     "d4": 0.1175,
+     "cut": 0.0052,
+     "lp": 0.0463,
+     "dep": 0.084,
+     "lost": 0.1062
+    },
+    "neurons_below_ctl_min": {
+     "lnw": 15,
+     "d4": 90,
+     "cut": 2,
+     "lp": 32,
+     "dep": 18,
+     "lost": 1
+    },
+    "neurons_above_ctl_max": {
+     "lnw": 0,
+     "d4": 0,
+     "cut": 0,
+     "lp": 6,
+     "dep": 5,
+     "lost": 72
+    },
+    "drop_one": {
+     "without_lnw": 0.6218,
+     "only_lnw": 0.5884,
+     "without_d4": 0.5827,
+     "only_d4": 0.5757,
+     "without_cut": 0.6285,
+     "only_cut": 0.5225,
+     "without_lp": 0.5994,
+     "only_lp": 0.5315,
+     "without_dep": 0.6291,
+     "only_dep": 0.5313,
+     "without_lost": 0.6308,
+     "only_lost": 0.4968,
+     "all_six": 0.6279,
+     "raw": 0.5225
+    }
+   },
+   "pm2": {
+    "R2": 0.577,
+    "pred_mean_neurons": 4.39,
+    "pred_mean_controls": 3.71,
+    "mass_mean_neurons": 4.76,
+    "mass_mean_controls": 3.71,
+    "beta": {
+     "const": 18.53,
+     "lnw": 11.45,
+     "d4": -8.99,
+     "cut": -9.56,
+     "lp": 0.43,
+     "dep": -29.99,
+     "lost": -11.0
+    },
+    "sd_controls": {
+     "lnw": 0.2954,
+     "d4": 0.074,
+     "cut": 0.0164,
+     "lp": 0.2294,
+     "dep": 0.0029,
+     "lost": 0.0045
+    },
+    "sd_neurons": {
+     "lnw": 0.2852,
+     "d4": 0.0863,
+     "cut": 0.011,
+     "lp": 0.2377,
+     "dep": 0.0143,
+     "lost": 0.0344
+    },
+    "neurons_below_ctl_min": {
+     "lnw": 0,
+     "d4": 3,
+     "cut": 0,
+     "lp": 1,
+     "dep": 0,
+     "lost": 171
+    },
+    "neurons_above_ctl_max": {
+     "lnw": 8,
+     "d4": 6,
+     "cut": 0,
+     "lp": 35,
+     "dep": 83,
+     "lost": 0
+    },
+    "drop_one": {
+     "without_lnw": 0.5352,
+     "only_lnw": 0.5343,
+     "without_d4": 0.5294,
+     "only_d4": 0.5711,
+     "without_cut": 0.5242,
+     "only_cut": 0.5732,
+     "without_lp": 0.5287,
+     "only_lp": 0.6627,
+     "without_dep": 0.5223,
+     "only_dep": 0.4582,
+     "without_lost": 0.5296,
+     "only_lost": 0.4158,
+     "all_six": 0.5192,
+     "raw": 0.5737
+    }
+   }
+  },
+  "collapse_vocab_non_thought": [
+   "idea",
+   "own",
+   "same",
+   "uma"
+  ],
+  "collapse_vocab_size": 1046,
+  "pm2_loop_composition": {
+   "no_word": {
+    "neurons": 0.295,
+    "controls": 0.375,
+    "named": 0.113,
+    "auc": 0.411,
+    "controls_max": 1.0,
+    "controls_p99": 0.917,
+    "neurons_above_ctl_max": 0
+   },
+   "collapse": {
+    "neurons": 0.448,
+    "controls": 0.558,
+    "named": 0.167,
+    "auc": 0.377,
+    "controls_max": 1.0,
+    "controls_p99": 1.0,
+    "neurons_above_ctl_max": 0
+   },
+   "specific": {
+    "neurons": 0.118,
+    "controls": 0.013,
+    "named": 0.617,
+    "auc": 0.619,
+    "controls_max": 0.5,
+    "controls_p99": 0.25,
+    "neurons_above_ctl_max": 16
+   },
+   "other": {
+    "neurons": 0.139,
+    "controls": 0.054,
+    "named": 0.104,
+    "auc": 0.692,
+    "controls_max": 0.5,
+    "controls_p99": 0.407,
+    "neurons_above_ctl_max": 4
+   }
+  },
+  "pm1_looping_answers_loop_on": {
+   "named": {
+    "noncollapse": 57,
+    "collapse": 4
+   },
+   "neurons": {
+    "noncollapse": 329,
+    "no_word": 11,
+    "collapse": 33
+   },
+   "controls": {
+    "noncollapse": 9,
+    "collapse": 1
+   }
+  },
+  "all_with_loop_covariates": {
+   "mass_c": 0.5995,
+   "mass_c_res": 0.5608,
+   "mass_c_res_plus": 0.4996
+  },
+  "pm2_with_loop_covariates": {
+   "mass_c": 0.5737,
+   "mass_c_res": 0.5192,
+   "mass_c_res_plus": 0.374
+  }
+ }
+}

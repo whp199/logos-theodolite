@@ -1,0 +1,233 @@
+{
+ "run": "L45-break_rel-trial.jsonl",
+ "halves": [
+  [
+   "who",
+   "orange",
+   "free"
+  ],
+  [
+   "bicycle",
+   "walk",
+   "chair"
+  ]
+ ],
+ "verdict_halves": [
+  [
+   "who",
+   "orange",
+   "free"
+  ],
+  [
+   "bicycle",
+   "walk",
+   "chair"
+  ]
+ ],
+ "rows": 50646,
+ "rows_shorter_than_48_marked_length": 0,
+ "rerun_vs_verdict": {
+  "max_abs_auc_diff": 0.0,
+  "null": {
+   "mean": 0.5015,
+   "min": 0.4582,
+   "max": 0.5362,
+   "n": 50
+  },
+  "verdict_null": {
+   "mean": 0.5015,
+   "min": 0.4582,
+   "max": 0.5362,
+   "n": 50
+  },
+  "counts_same": true
+ },
+ "gated_unrounded": {
+  "mass_c": {
+   "auc": 0.7143526021281801,
+   "se_hanley_mcneil": 0.0113,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "mass_c_res": {
+   "auc": 0.7243618899828768,
+   "se_hanley_mcneil": 0.0111,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "rep_AB": {
+   "auc": 0.6878568944165852,
+   "se_hanley_mcneil": 0.0116,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "rep_BA": {
+   "auc": 0.6738940573018591,
+   "se_hanley_mcneil": 0.0118,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "mass_B": {
+   "auc": 0.6693485506360078,
+   "se_hanley_mcneil": 0.0119,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "rep_res": {
+   "auc": 0.6935313723091977,
+   "se_hanley_mcneil": 0.0116,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "shift_up_res": {
+   "auc": 0.722749892979452,
+   "se_hanley_mcneil": 0.0112,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "cov_lp": {
+   "auc": 0.5341892429060665,
+   "se_hanley_mcneil": 0.0127,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "cov_lost": {
+   "auc": 0.6289134165545499,
+   "se_hanley_mcneil": 0.0122,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  },
+  "cov_d4": {
+   "auc": 0.43714644997553814,
+   "se_hanley_mcneil": 0.0126,
+   "n_neurons": 1022,
+   "n_controls": 1024
+  }
+ },
+ "independent": {
+  "mass_c": {
+   "auc": 0.7144,
+   "reader_auc": 0.7144,
+   "max_abs_unit_diff_vs_readlib": 0.0
+  },
+  "mass_B": {
+   "auc": 0.6693,
+   "reader_auc": 0.6693,
+   "max_abs_unit_diff_vs_readlib": 0.0
+  },
+  "rep_AB": {
+   "auc": 0.6879,
+   "reader_auc": 0.6879,
+   "max_abs_unit_diff_vs_readlib": 3.552713678800501e-15
+  },
+  "rep_BA": {
+   "auc": 0.6739,
+   "reader_auc": 0.6739,
+   "max_abs_unit_diff_vs_readlib": 3.552713678800501e-15
+  },
+  "mass_c_res": {
+   "auc": 0.7244,
+   "reader_auc": 0.7244,
+   "max_abs_unit_diff_vs_readlib": 0.0
+  }
+ },
+ "G5b": {
+  "units_in_file": 2110,
+  "units_compared": 2110,
+  "missing_from_file": 0,
+  "max_abs_diff_raw": 0.0005,
+  "max_abs_diff_vs_rounded_3dp": 0.0,
+  "units_diff_over_0.0005": 0,
+  "top5_words_same_order": 2110,
+  "file_mass_auc_fresh_vs_controls": 0.7143,
+  "would_it_tell_readings_apart": {
+   "max_abs_diff_vs_old_reading(units ref, every question excluded)": 14.142,
+   "max_abs_diff_vs_units_ref_own_excl": 1.264,
+   "max_abs_diff_vs_controls_ref_every_question_excl": 14.142
+  }
+ },
+ "null_split": {
+  "reader": {
+   "mean": 0.5015,
+   "sd": 0.018
+  },
+  "no_loo": {
+   "mean": 0.5068,
+   "sd": 0.0179
+  },
+  "units_ref": {
+   "mean": 0.5014,
+   "sd": 0.0181
+  },
+  "real_mass_auc_under_each": {
+   "reader": 0.7144,
+   "no_loo": 0.7162,
+   "units_ref": 0.7113
+  }
+ },
+ "wide_null": {
+  "mass_c": {
+   "mean": 0.4902,
+   "min": 0.4653,
+   "max": 0.5329,
+   "n": 10
+  },
+  "mass_c_res": {
+   "mean": 0.4895,
+   "min": 0.4604,
+   "max": 0.5359,
+   "n": 10
+  },
+  "rep_AB": {
+   "mean": 0.4977,
+   "min": 0.47,
+   "max": 0.5244,
+   "n": 10
+  },
+  "rep_BA": {
+   "mean": 0.4897,
+   "min": 0.4678,
+   "max": 0.5051,
+   "n": 10
+  },
+  "mass_B": {
+   "mean": 0.4923,
+   "min": 0.4643,
+   "max": 0.5156,
+   "n": 10
+  },
+  "rep_res": {
+   "mean": 0.4917,
+   "min": 0.4794,
+   "max": 0.5088,
+   "n": 10
+  },
+  "shift_up": {
+   "mean": 0.4905,
+   "min": 0.4654,
+   "max": 0.5298,
+   "n": 10
+  },
+  "xq": {
+   "mean": 0.4862,
+   "min": 0.4517,
+   "max": 0.5203,
+   "n": 10
+  }
+ },
+ "every_neuron": {
+  "mass_c": 0.716,
+  "mass_c_res": 0.728,
+  "rep_AB": 0.6905,
+  "rep_BA": 0.6767,
+  "mass_B": 0.6692,
+  "n": 1086
+ },
+ "decoder": {
+  "rows": 50646,
+  "tokenizers_decode_ne_stored_text": 0,
+  "rows_32_or_fewer_pieces": 101,
+  "of_which_mismatch": 0
+ },
+ "seconds": 80.4
+}

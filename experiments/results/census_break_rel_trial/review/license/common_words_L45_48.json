@@ -1,0 +1,402 @@
+{
+ "layer": "L45",
+ "cut": 48,
+ "neurons": 1022,
+ "controls": 1024,
+ "top_words_share": [
+  {
+   "word": "same",
+   "neurons": 245,
+   "neuron_share": 0.24,
+   "controls": 154,
+   "control_share": 0.15
+  },
+  {
+   "word": "own",
+   "neurons": 169,
+   "neuron_share": 0.165,
+   "controls": 115,
+   "control_share": 0.112
+  },
+  {
+   "word": "thought",
+   "neurons": 108,
+   "neuron_share": 0.106,
+   "controls": 142,
+   "control_share": 0.139
+  },
+  {
+   "word": "thoughtthought",
+   "neurons": 64,
+   "neuron_share": 0.063,
+   "controls": 78,
+   "control_share": 0.076
+  },
+  {
+   "word": "ownthought",
+   "neurons": 57,
+   "neuron_share": 0.056,
+   "controls": 60,
+   "control_share": 0.059
+  },
+  {
+   "word": "owns",
+   "neurons": 39,
+   "neuron_share": 0.038,
+   "controls": 42,
+   "control_share": 0.041
+  },
+  {
+   "word": "but",
+   "neurons": 37,
+   "neuron_share": 0.036,
+   "controls": 48,
+   "control_share": 0.047
+  },
+  {
+   "word": "for",
+   "neurons": 37,
+   "neuron_share": 0.036,
+   "controls": 49,
+   "control_share": 0.048
+  },
+  {
+   "word": "with",
+   "neurons": 34,
+   "neuron_share": 0.033,
+   "controls": 27,
+   "control_share": 0.026
+  },
+  {
+   "word": "feeling",
+   "neurons": 33,
+   "neuron_share": 0.032,
+   "controls": 39,
+   "control_share": 0.038
+  },
+  {
+   "word": "like",
+   "neurons": 32,
+   "neuron_share": 0.031,
+   "controls": 53,
+   "control_share": 0.052
+  },
+  {
+   "word": "have",
+   "neurons": 32,
+   "neuron_share": 0.031,
+   "controls": 40,
+   "control_share": 0.039
+  },
+  {
+   "word": "from",
+   "neurons": 31,
+   "neuron_share": 0.03,
+   "controls": 42,
+   "control_share": 0.041
+  },
+  {
+   "word": "digital",
+   "neurons": 30,
+   "neuron_share": 0.029,
+   "controls": 42,
+   "control_share": 0.041
+  },
+  {
+   "word": "distance",
+   "neurons": 29,
+   "neuron_share": 0.028,
+   "controls": 40,
+   "control_share": 0.039
+  },
+  {
+   "word": "idea",
+   "neurons": 29,
+   "neuron_share": 0.028,
+   "controls": 26,
+   "control_share": 0.025
+  },
+  {
+   "word": "whether",
+   "neurons": 29,
+   "neuron_share": 0.028,
+   "controls": 25,
+   "control_share": 0.024
+  },
+  {
+   "word": "thoughtthoughtthought",
+   "neurons": 28,
+   "neuron_share": 0.027,
+   "controls": 45,
+   "control_share": 0.044
+  },
+  {
+   "word": "few",
+   "neurons": 28,
+   "neuron_share": 0.027,
+   "controls": 47,
+   "control_share": 0.046
+  },
+  {
+   "word": "rest",
+   "neurons": 28,
+   "neuron_share": 0.027,
+   "controls": 28,
+   "control_share": 0.027
+  }
+ ],
+ "dropped_words": [
+  "are",
+  "based",
+  "but",
+  "digital",
+  "distance",
+  "experience",
+  "feeling",
+  "few",
+  "for",
+  "forward",
+  "from",
+  "has",
+  "have",
+  "human",
+  "idea",
+  "imagine",
+  "information",
+  "like",
+  "looking",
+  "movement",
+  "out",
+  "own",
+  "owns",
+  "ownthought",
+  "person",
+  "physical",
+  "place",
+  "rest",
+  "same",
+  "several",
+  "single",
+  "small",
+  "system",
+  "there",
+  "thought",
+  "thoughtthought",
+  "thoughtthoughtthought",
+  "type",
+  "vibe",
+  "want",
+  "whether",
+  "with",
+  "write",
+  "your"
+ ],
+ "dropped_rule": "in the z>0 top-5 of >= 2% of the neurons read",
+ "neuron_answers_holding_dropped_word_by_push_sign": {
+  "are": {
+   "+": 2693,
+   "-": 2691
+  },
+  "based": {
+   "+": 222,
+   "-": 208
+  },
+  "but": {
+   "+": 270,
+   "-": 283
+  },
+  "digital": {
+   "-": 265,
+   "+": 267
+  },
+  "distance": {
+   "-": 333,
+   "+": 348
+  },
+  "experience": {
+   "+": 462,
+   "-": 456
+  },
+  "feeling": {
+   "+": 197,
+   "-": 211
+  },
+  "few": {
+   "-": 247,
+   "+": 276
+  },
+  "for": {
+   "-": 1375,
+   "+": 1381
+  },
+  "forward": {
+   "+": 312,
+   "-": 293
+  },
+  "from": {
+   "+": 1168,
+   "-": 1156
+  },
+  "has": {
+   "-": 253,
+   "+": 263
+  },
+  "have": {
+   "-": 179,
+   "+": 193
+  },
+  "human": {
+   "-": 353,
+   "+": 338
+  },
+  "idea": {
+   "+": 81,
+   "-": 112
+  },
+  "imagine": {
+   "-": 300,
+   "+": 278
+  },
+  "information": {
+   "-": 212,
+   "+": 215
+  },
+  "like": {
+   "+": 327,
+   "-": 283
+  },
+  "looking": {
+   "+": 200,
+   "-": 202
+  },
+  "movement": {
+   "+": 381,
+   "-": 329
+  },
+  "out": {
+   "-": 178,
+   "+": 171
+  },
+  "own": {
+   "-": 2822,
+   "+": 2375
+  },
+  "owns": {
+   "-": 140,
+   "+": 116
+  },
+  "ownthought": {
+   "-": 198,
+   "+": 204
+  },
+  "person": {
+   "-": 202,
+   "+": 195
+  },
+  "physical": {
+   "-": 261,
+   "+": 267
+  },
+  "place": {
+   "-": 323,
+   "+": 332
+  },
+  "rest": {
+   "+": 109,
+   "-": 91
+  },
+  "same": {
+   "-": 2188,
+   "+": 1783
+  },
+  "several": {
+   "-": 901,
+   "+": 903
+  },
+  "single": {
+   "+": 91,
+   "-": 107
+  },
+  "small": {
+   "+": 369,
+   "-": 347
+  },
+  "system": {
+   "-": 249,
+   "+": 279
+  },
+  "there": {
+   "-": 182,
+   "+": 162
+  },
+  "thought": {
+   "-": 1083,
+   "+": 1260
+  },
+  "thoughtthought": {
+   "+": 292,
+   "-": 283
+  },
+  "thoughtthoughtthought": {
+   "+": 141,
+   "-": 126
+  },
+  "type": {
+   "-": 205,
+   "+": 227
+  },
+  "vibe": {
+   "+": 315,
+   "-": 263
+  },
+  "want": {
+   "-": 1090,
+   "+": 1010
+  },
+  "whether": {
+   "-": 1519,
+   "+": 1496
+  },
+  "with": {
+   "+": 885,
+   "-": 905
+  },
+  "write": {
+   "+": 227,
+   "-": 231
+  },
+  "your": {
+   "+": 1286,
+   "-": 1262
+  }
+ },
+ "before": {
+  "aucs": {
+   "mass_c": 0.7144,
+   "mass_c_res": 0.7244,
+   "rep_AB": 0.6879,
+   "rep_BA": 0.6739,
+   "mass_B": 0.6693,
+   "mass_A": 0.6322
+  },
+  "named": 262,
+  "q05": 310,
+  "above_every_control": 169,
+  "emp_null_named": 6.99
+ },
+ "after_drop": {
+  "aucs": {
+   "mass_c": 0.6874,
+   "mass_c_res": 0.7102,
+   "rep_AB": 0.6662,
+   "rep_BA": 0.6424,
+   "mass_B": 0.6383,
+   "mass_A": 0.5974
+  },
+  "named": 270,
+  "q05": 307,
+  "above_every_control": 166,
+  "emp_null_named": 7.98,
+  "named_in_both": 231
+ }
+}
