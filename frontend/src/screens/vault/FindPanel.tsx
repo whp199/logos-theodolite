@@ -14,6 +14,7 @@ import {
   vaultCheck,
 } from "../../lib/labels";
 import { useApparatus } from "../../reading";
+import { isShippedLens, useInstrumentLens } from "../../lib/lens";
 import { href } from "../../router";
 import { useTheodoliteStore } from "../../store/useTheodoliteStore";
 import { CHANCE, CONTRAST, OVERLAP, STUDY_LAYERS, STUDY_WORDS, VAULT_ANSWERS } from "./recorded";
@@ -53,6 +54,8 @@ export const FindPanel: React.FC = () => {
   const larqlLog = useTheodoliteStore((s) => s.larqlLog);
   const larqlPending = useTheodoliteStore((s) => s.larqlPending);
   const ap = useApparatus();
+  // the lens the vault reads through: the server's current one
+  const { lens: vaultLens } = useInstrumentLens();
 
   // ---------- the question being written
   const fWord = ui.fWord.trim();
@@ -566,7 +569,8 @@ export const FindPanel: React.FC = () => {
                 Neuron words are held back below layer 41, and wherever the lens and the naked eye share none of their first ten; the
                 cut at none is the instrument’s, since the study set none. Inside layers 41 to 58, in the study’s sample of random
                 neurons, the more words shared of the first ten, the likelier a sound label (the count, used as a score: AUC{" "}
-                {GATE_FIGURES.auc}, for labels read through the base-fitted J++ lens); sharing just one was a weak sign, sound{" "}
+                {GATE_FIGURES.auc}, for labels read through the {isShippedLens(vaultLens) ? "" : "base-fitted "}J++ lens); sharing just one
+                was a weak sign, sound{" "}
                 {OVERLAP_RECORD[1][1]} times in {OVERLAP_RECORD[1][0]} against {GATE_FIGURES.bandSound} in {GATE_FIGURES.band} for the band.
                 Of the 102 neurons the study tested, 35 told Mary from John.
               </Rubric>

@@ -49,7 +49,7 @@ export const FIRST_QUESTIONS: FirstQuestion[] = [
     recordedLength: 6,
     begins: "“Hi! I”",
     follows: "“I”",
-    note: "Follow the word “I”. Through the lens, fitted on the base model, it shows “Iman” at layer 11 and “HUAWEI” at layer 21, where no lens of this kind proved reliable, then the Chinese for “is a” at layers 41–46, before “am”. With no control beside it, this is a lead, not a finding.",
+    note: "Follow the word “I”. Through the lens it shows “Iman” at layer 11 and “HUAWEI” at layer 21, where no lens of this kind proved reliable, then the Chinese for “is a” at layers 41–46, before “am”. With no control beside it, this is a lead, not a finding.",
     wentLabel: "it went on",
     went: "“… am a large language model,”",
     plain: "",

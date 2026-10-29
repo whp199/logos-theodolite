@@ -276,7 +276,9 @@ export function heldLine(g: Gate): string {
   return "Its words are held back here.";
 }
 
-/** The rubric beside a held-back label: why, in plain words (empty when the label is shown). */
+/** The rubric beside a held-back label: why, in plain words (empty when the label is shown). It names the J++ lens but
+ * not what it was fitted on: the opening page says that once (the owner's choice of 28 October 2026); the apparatus
+ * keeps it. */
 export function heldRubric(g: Gate): string {
   if (!g.heldBack) return "";
   if (g.reasons.includes("writes_nothing")) {
@@ -309,7 +311,7 @@ export function heldRubric(g: Gate): string {
     return (
       "Within layers 41 to 58, the more words the lens and the naked eye shared, the likelier a sound label: in the " +
       `study’s sample of random neurons, the count, used as a score, ranked a sound label above an unsound one ${F.aucIn100} ` +
-      `times in 100 (AUC ${F.auc}, for labels read through the base-fitted J++ lens). Counted again from the study’s data, ` +
+      `times in 100 (AUC ${F.auc}, for labels read through the J++ lens). Counted again from the study’s data, ` +
       `${F.shareNothingSound} of the ${F.shareNothing} labels whose readings shared none of their first ten were sound, ` +
       `against ${F.shareSomeSound} of the ${F.shareSome} that shared at least one. A label whose two readings share none ` +
       `is held back here; the cut is the instrument’s, since the study set none. It is kept in the apparatus.${beyond}`

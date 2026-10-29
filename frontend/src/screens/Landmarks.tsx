@@ -4,7 +4,7 @@ import { AnswerPositionCaution, SightingFarCaution, TemplateEndCaution } from ".
 import type { FrameInfo } from "../store/sighting";
 import { ControlSighting } from "../components/ControlSighting";
 import { describeFrame, shownFrameOptions, type ShownFrame } from "../lib/frame";
-import { isBaseFitted, lensLabel, lensPhrase, useReadingLens } from "../lib/lens";
+import { isBaseFitted, isShippedLens, lensLabel, lensPhrase, useReadingLens } from "../lib/lens";
 import { href, type Route } from "../router";
 import {
   FNW_DEFAULT,
@@ -388,7 +388,8 @@ const SpaceRule: React.FC<{ s: Sighting | null; L: LayerReading | null; li: numb
  * lensBand) were measured on the lens's word readings (E1, E2, E5; R1; erratum E49). No experiment set a bearing against
  * what the model does, at any layer; the study's only tests of bearings found them swinging 58-99° with the landmarks'
  * order and catching 2.4-3.9% of the reading (V7; E6). So this line does not follow the chosen layer, and it stands at
- * layer 60 too, where a bearing is still a projection on three words.
+ * layer 60 too, where a bearing is still a projection on three words. Only a lens other than the shipped one is said here
+ * to be fitted on the base model; for the shipped lens the opening page says it once.
  */
 const BearingCaution: React.FC<{ sighting: Sighting | null; chart?: boolean; style?: React.CSSProperties }> = ({
   sighting,
@@ -398,7 +399,9 @@ const BearingCaution: React.FC<{ sighting: Sighting | null; chart?: boolean; sty
   const { lens } = useReadingLens(sighting);
   return (
     <Rubric style={style}>
-      {isBaseFitted(lens) ? "This lens was fitted on the base model, not on the chat model you are reading. " : null}
+      {isBaseFitted(lens) && !isShippedLens(lens)
+        ? "This lens was fitted on the base model, not on the chat model you are reading. "
+        : null}
       Elsewhere a note in red beside the lens’s words says how far to trust them at each layer. Those bands of layers come from
       the words, not from bearings,{" "}
       {chart
@@ -2246,8 +2249,8 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         {sf?.kind === "words" ? (
           <>
             <p style={{ margin: "0", fontSize: "15px", color: "#6B5D4D" }}>
-              Gilt lozenge: the nearest each word came. Hollow ring: where it stood at the last layer. Read through {lensPhrase(lens)},
-              at the word{" "}
+              Gilt lozenge: the nearest each word came. Hollow ring: where it stood at the last layer. Read through {lensPhrase(lens)}
+              {isShippedLens(lens) ? "" : ","} at the word{" "}
               {sighting?.readAt != null ? wp(sighting.readAt) : <Missing what={NOT_HERE} />}
               {k >= 1 ? `, the ${ordinal(k)} word-piece of its own answer,` : ""} in the sighting shown.
             </p>
@@ -2325,10 +2328,10 @@ export const Landmarks: React.FC<{ route: Route }> = ({ route }) => {
         ) : null}
         <Rubric style={{ maxWidth: "860px" }}>
           Compare the landmarks with one another, not with certainty. The study found that at layers 51 to 59 the J++ lens
-          leans toward “she” for most of the AIs it tried (six or seven of nine), far more than the other lenses it tried: mostly a quirk of the J++ recipe,
-          for the Jacobian lens, also fitted on the base model, removes it almost as well as a lens fitted on the instruct
-          model (R1). Do not read it as how the model sees itself. Compare a landmark across versions of a question at the same
-          word-piece, not across the word-pieces of one answer. Section vii weighs two words against each other directly.
+          leans toward “she” for most of the AIs it tried (six or seven of nine), far more than the other lenses it tried:
+          mostly a quirk of the J++ recipe (R1). Do not read it as how the model sees itself. Compare a landmark across
+          versions of a question at the same word-piece, not across the word-pieces of one answer. Section vii weighs two
+          words against each other directly.
         </Rubric>
         {readsInsideAnswer(sighting) ? <AnswerPositionCaution sighting={sighting} /> : null}
         {sighting && readWhere(sighting).role === "template_end" ? <TemplateEndCaution /> : null}

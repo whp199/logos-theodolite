@@ -314,7 +314,7 @@ export const Wp: React.FC<{ token: string | null | undefined; style?: React.CSSP
 
 /* ------------------------------------------------------------- the lens */
 
-/** "Reading google/gemma-4-31b-it (4-bit) through the J++ lens, fitted on the base model google/gemma-4-31B" */
+/** "Reading google/gemma-4-31b-it (4-bit) through the J++ lens" (another lens with what it was fitted on: lensPhrase) */
 export const ReadingThrough: React.FC = () => {
   const sighting = useTheodoliteStore((s) => s.sighting);
   const { lens } = useReadingLens(sighting);
@@ -385,10 +385,11 @@ export function bandParts(lens: LensInfo, band: CautionBand): { lead: string | n
 
 /**
  * The red line beside every readout of words, for the layer `no` (counted 1-60): what the study found a reading through
- * the shipped J++ lens, fitted on the base model, can bear there. For any other lens (or a card that does not identify
- * its lens) it gives the server's own caution and reports the bands as measured with the shipped lens, not with this
- * one. Every lens gets the line, since even one fitted on the instruct model was poor on single words and unstable below
- * layer 31 (R1; erratum E39). Nothing at layer 60, where the lens is the identity and the words are the model's own
+ * the shipped J++ lens can bear there. That it was fitted on the base model is said once, on the opening page, not here
+ * (the owner's choice of 28 October 2026). For any other lens (or a card that does not identify its lens) it gives the
+ * server's own caution and reports the bands as measured with the shipped lens, not with this one. Every lens gets the
+ * line, since even one fitted on the instruct model was poor on single words and unstable below layer 31 (R1; erratum
+ * E39). Nothing at layer 60, where the lens is the identity and the words are the model's own
  * odds; without `no`, all the bands at once. It ends by pointing to how a control is taken, since keeping one is done in
  * the apparatus. For a sighting read inside the model's answer (readsInsideAnswer: a word-piece it wrote, k ≥ 1, or at
  * k = 0 the end of an answer begun for it inside a chat turn), the line that says what the study measured there follows
@@ -411,9 +412,7 @@ export const LensCaution: React.FC<{ sighting?: Sighting | null; no?: number; st
   return (
     <>
       <Rubric style={style}>
-        {shipped ? (
-          `${BASE_SENTENCE} `
-        ) : (
+        {shipped ? null : (
           <>
             {isBaseFitted(lens) && !lens.caution ? `${BASE_SENTENCE} ` : null}
             {lens.caution ? `The server says of this lens: ${lens.caution} ` : `${OTHER_NO_CAUTION} `}

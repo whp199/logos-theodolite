@@ -4,6 +4,7 @@ import { useReading } from "../reading";
 import { href, navigate, type Route } from "../router";
 import {
   FNW_DEFAULT,
+  type LensInfo,
   type Sighting,
   type SweepProgress,
   endMarkWords,
@@ -16,7 +17,7 @@ import {
 } from "../store/useTheodoliteStore";
 import { comma, ms, numberWord, pieceWord, wp } from "../lib/words";
 import { describeFrame } from "../lib/frame";
-import { isBaseFitted, useInstrumentLens } from "../lib/lens";
+import { isBaseFitted, isShippedLens, lensPhrase, useInstrumentLens } from "../lib/lens";
 import {
   FIRST_QUESTIONS,
   HOW_PUT,
@@ -493,9 +494,7 @@ const WORDS: { term: React.ReactNode; def: React.ReactNode }[] = [
       <>
         Turns a layer’s inner state into the words the model might say there <span style={{ fontStyle: "italic" }}>(the J++ lens)</span>.
         The plainer reading, without that correction, is the naked eye <span style={{ fontStyle: "italic" }}>(the logit lens)</span>.
-        The lens was fitted on this model as it was before its training to chat{" "}
-        <span style={{ fontStyle: "italic" }}>(the base model)</span>: a fair guide when you compare two sightings, a rough one for
-        any single word, and unproven below layer 21.
+        The lens is a fair guide when you compare two sightings, a rough one for any single word, and unproven below layer 21.
       </>
     ),
   },
@@ -935,9 +934,14 @@ const NowRow: React.FC<{ term: string; children: React.ReactNode }> = ({ term, c
 );
 
 const CAUTIONS: React.ReactNode[] = [
+  // the one place the pages say what the lens was fitted on (the owner's choice of 28 October 2026): every other page names
+  // it plainly, since no lens refitted on the chat model passed the tests to replace it (R2-R4). Under another lens the
+  // first is said in that lens's words instead (OtherLensCaution)
   <>
-    Words read in the middle layers are glimpses. Up to layer 50, on ordinary prose, the lens, fitted on the base model, matched the
-    model’s own final choice at most about five times in a hundred, and from about layer 34 to 55 less often than the naked eye.
+    The lens was fitted on the base model, the model as it was before its training to chat, and every page reads the chat model
+    through it; no lens refitted on the chat model has passed the tests to replace it. Words read in the middle layers are
+    glimpses: up to layer 50, on ordinary prose, the lens matched the model’s own final choice at most about five times in a
+    hundred, and from about layer 34 to 55 less often than the naked eye.
   </>,
   <>
     Labels on single neurons, read through the lens or the naked eye, held up at the layers tested from 41 to 58, and not at 11 to
@@ -961,6 +965,17 @@ const CAUTIONS: React.ReactNode[] = [
     repeated. The instrument wraps your words as a chat unless you turn it off.
   </>,
 ];
+
+/** The first caution when the server reads through a lens other than the shipped one: the study's figures stay the
+ * shipped lens's, and the lens read through now is named with what it was fitted on. */
+const OtherLensCaution: React.FC<{ lens: LensInfo }> = ({ lens }) => (
+  <>
+    The study’s figures were measured with the shipped J++ lens, fitted on the base model; the instrument now reads through{" "}
+    {lensPhrase(lens)}. Words read in the middle layers are glimpses: up to layer 50, on ordinary prose, the shipped lens
+    matched the model’s own final choice at most about five times in a hundred, and from about layer 34 to 55 less often than
+    the naked eye.
+  </>
+);
 
 const BeforeYouSetOut: React.FC = () => {
   const conn = useTheodoliteStore((s) => s.conn);
@@ -1023,12 +1038,16 @@ const BeforeYouSetOut: React.FC = () => {
             </NowRow>
             <NowRow term="the lens">
               <dd style={{ margin: 0, fontSize: 18 }}>
-                {lens.name}{" "}
-                <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>
-                  {isBaseFitted(lens)
-                    ? "fitted on the base model, here used on its chat-trained sibling (the instruct model)"
-                    : `fitted on ${lens.fittedOn}`}
-                </span>
+                {lens.name}
+                {/* the shipped lens's fit is said once, in the cautions below; any other lens is named with its own */}
+                {isShippedLens(lens) ? null : (
+                  <>
+                    {" "}
+                    <span style={{ fontSize: 16, fontStyle: "italic", color: MUTED }}>
+                      {isBaseFitted(lens) ? "fitted on the base model" : `fitted on ${lens.fittedOn}`}
+                    </span>
+                  </>
+                )}
               </dd>
             </NowRow>
             <NowRow term="its depth">
@@ -1054,7 +1073,7 @@ const BeforeYouSetOut: React.FC = () => {
                 <span aria-hidden="true" style={{ color: "#A07A2E", fontSize: 11 }}>
                   ◆
                 </span>
-                <span>{c}</span>
+                <span>{i === 0 && !isShippedLens(lens) ? <OtherLensCaution lens={lens} /> : c}</span>
               </li>
             ))}
           </ul>

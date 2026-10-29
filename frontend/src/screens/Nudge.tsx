@@ -28,7 +28,7 @@ import { faceWord, firstWords, pieceWord, wp } from "../lib/words";
 import { gateTrustLine, heldRubric, labelGate, layerIdxOfPage } from "../lib/labels";
 import { HeldBackWords } from "../components/HeldBack";
 import { endsTurn } from "./instrument/moment";
-import { isBaseFitted, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
+import { isBaseFitted, isShippedLens, lensPhrase, useInstrumentLens, useReadingLens } from "../lib/lens";
 import {
   DIAL,
   EDGE,
@@ -1227,8 +1227,11 @@ export const Nudge: React.FC<{ route: Route }> = ({ route }) => {
                       <>What its {faceWord(poleHere.face)} face writes is held back here.</>
                     ) : lensWords ? (
                       <>
-                        Through the {readLens.name} lens (
-                        {isBaseFitted(readLens) ? "fitted on the base model" : `fitted on ${readLens.fittedOn}`}), its{" "}
+                        Through the {readLens.name} lens
+                        {isShippedLens(readLens)
+                          ? ""
+                          : ` (fitted on ${isBaseFitted(readLens) ? "the base model" : readLens.fittedOn})`}
+                        , its{" "}
                         {faceWord(poleHere.face)} face writes {lensWords}
                         {pn === 15491 && pl === 54 ? (
                           <>

@@ -19,9 +19,11 @@ unpacking, and began the CPU and GGUF (section vii, new); what each hard job cos
 The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is read here on the instruct model (4-bit
 QAT), where it agrees with the model’s own average gradients for the pronoun direction at only cos 0.15–0.33 (layers
 31–59; [README §iv](README.md#iv--how-far-to-trust-it), fault 9). Everything that reads through the lens inherits it: the
-words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. The pages now say
-so, at the head and foot of every page and in a red line beside each layer’s words, and `/api/health` and every sweep
-carry a `lens` object; the reading itself is unchanged.
+words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. The head and foot
+of every page name the lens plainly, and a red line beside each layer’s words says what the reading can bear there; the
+opening page says once, among its cautions, that the lens was fitted on the base model. That was the owner’s choice of
+28 October 2026, after no refit passed R2, R3 or R4. `/api/health`, every sweep and the replies of the scientist’s tools
+still carry the full `lens` object, its caution included; the reading itself is unchanged.
 
 - **An instruct lens exists, and is not loaded.** R1 refitted a lens on this checkpoint
   ([`R1_IT_LENS_REPORT.md`](experiments/results/R1_IT_LENS_REPORT.md)). Its directional form is stable from layer 31; its

@@ -28,9 +28,12 @@ Runs inside a single process/network namespace to verify:
 6. The lens is named: /api/health, every sweep, every scientist tool reply (called as MCP tools, over HTTP and over
    the WebSocket) and every vault statement that reads words or writes an edit through the lens (NEAREST, DESCRIBE
    POLE, UPDATE; over MCP, HTTP and the WebSocket) carry "lens", fitted on the base model google/gemma-4-31B as the
-   file's own provenance says, with a caution, while DESCRIBE and ROLLBACK reply as before; the instrument names the
-   lens the server sent (page head, status line, footer, red line) and shows the server's own record of it in its
-   apparatus.
+   file's own provenance says, with a caution, while DESCRIBE and ROLLBACK reply as before. On the pages, what the
+   lens was fitted on is said once, in the first of the opening page's cautions: with the rubrics on and the apparatus
+   closed, nothing else on that page says it, nor does any other page but the study and the lineage (the owner's
+   choice of 28 October 2026). The instrument names the lens the server sent (page head, status line, footer)
+   without saying what it was fitted on, its red line gives what a reading at its layer can bear, and its apparatus
+   shows the server's own record of the lens, caution and all.
 7. A sighting of every word-piece (the CPU checks scripts/check_sampler_mirror.py, check_saved_prompts.py,
    check_sweep_protocol.py and check_capture_rows.py run first, beside the lens card): over the WebSocket, a stream
    with a request_id gives progress, the answer once, one pair per word-piece (read at P - 1 + k, reading
@@ -901,7 +904,11 @@ def assert_base_lens(lens: Any, model_id: str | None = None) -> None:
 
 
 def lens_phrase(lens: Dict[str, Any], named: bool = False) -> str:
-    """What the pages print for a lens card (frontend/src/lib/lens.ts, lensPhrase), computed from the server's card."""
+    """What the pages print for a lens card (frontend/src/lib/lens.ts, lensPhrase), computed from the server's card: the
+    shipped lens by its name alone (the opening page says once what it was fitted on), any other with what it was
+    fitted on."""
+    if lens["id"] == "jpp-base" and lens["name"] != "unnamed" and lens["fitted_on"]:
+        return f"the {lens['name']} lens"
     if lens["id"] == "jpp-base" or "(base" in lens["fitted_on"]:
         model = f" {lens['fitted_on'].split(' (')[0]}" if named else ""
         return f"the {lens['name']} lens, fitted on the base model{model}"
@@ -1807,27 +1814,41 @@ async def main() -> int:
                 "the first live sighting",
             )
             # the head of the page, the sighting's status line and the footer print what the server's card says
-            # (computed here from the card), and a base-fitted lens gets its red line; that the page parsed the card,
-            # rather than falling back to the lens it loads by default, is checked on its apparatus record below
+            # (computed here from the card): the shipped lens by its name, not what it was fitted on, which the opening
+            # page says once (checked below, before the reading switches). With the rubrics on and the apparatus closed
+            # nothing on the instrument says it either, and the red line beside the leaf (layer 36) gives what a reading
+            # there can bear. That the page parsed the card, rather than falling back to the lens it loads by default,
+            # is checked on its apparatus record below
+            await cdp.eval_js(f"{SET_READING_JS}('rubrics', true)")
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            await asyncio.sleep(0.3)
             lens_ui = await cdp.eval_js(
                 """(() => {
                     const spans = Array.from(document.querySelectorAll("span")).filter((e) => e.textContent.includes("60 layers surveyed"));
                     spans.sort((a, b) => a.textContent.length - b.textContent.length);
                     const foot = document.querySelector("footer");
                     const head = document.querySelector('.site-header [role="status"]');
+                    const t = document.body.innerText.replace(/\\s+/g, " ").toLowerCase();
                     return { header: head ? head.textContent.replace(/\\s+/g, " ") : null,
                              status: spans.length ? spans[0].textContent.replace(/\\s+/g, " ") : null,
                              footer: foot ? foot.textContent.replace(/\\s+/g, " ") : null,
-                             caution: document.body.innerText.includes("fitted on the base model, not on the") };
+                             base: /base model|base-fitted/.test(t), chat: t.includes("not on the chat model"),
+                             red: Array.from(document.querySelectorAll(".rubric")).some((e) =>
+                                 e.textContent.includes("one of them a matched control, rather than read a single word")) };
                 })()"""
             )
             want_status = lens_phrase(lens)[len("the "):]
             want_footer = f"through {lens_phrase(lens, named=True)}"
-            assert lens_ui["header"] and want_status in lens_ui["header"], f"page head {lens_ui['header']!r} lacks {want_status!r}"
-            assert lens_ui["status"] and want_status in lens_ui["status"], f"status line {lens_ui['status']!r} lacks {want_status!r}"
-            assert lens_ui["footer"] and want_footer in lens_ui["footer"], f"footer {lens_ui['footer']!r} lacks {want_footer!r}"
-            assert lens_ui["caution"], "the instrument shows no red line that its lens was fitted on the base model"
-            print(f"  • Instrument: page head, status line and footer name {lens_phrase(lens)!r}, with its red line")
+            for where, said, want in (("page head", lens_ui["header"], want_status),
+                                      ("status line", lens_ui["status"], want_status),
+                                      ("footer", lens_ui["footer"], want_footer)):
+                assert said and want in said, f"{where} {said!r} lacks {want!r}"
+                assert "fitted on the base model" not in said.lower(), f"{where} {said!r} says what the lens was fitted on"
+            assert not lens_ui["base"] and not lens_ui["chat"], (
+                f"the instrument says what its lens was fitted on, rubrics on and apparatus closed: {lens_ui}")
+            assert lens_ui["red"], "the instrument's red line does not say what a reading at layer 36 can bear"
+            print(f"  • Instrument: page head, status line and footer name {lens_phrase(lens)!r}, not what it was fitted on, "
+                  "and the rest of the page does not say it either; the red line gives what layer 36 can bear")
             figure = await cdp.eval_js(
                 """(() => {
                     const svg = document.querySelector('svg[role="img"][aria-label^="Sixty stacked rings"]');
@@ -1965,6 +1986,31 @@ async def main() -> int:
             print(f"  • Layer 55's leaf, live: {n_rows} labelled rows, each with inspect_pole's count, or held back as it says")
             await go("#/instrument")
 
+            # The opening page says what the lens was fitted on once, in the first of its cautions ("where it can
+            # mislead"), and, with the rubrics on and the apparatus closed, nowhere else (the owner's choice of 28
+            # October 2026; every other page names the lens alone)
+            await go("#/")
+            await cdp.eval_js(f"{SET_READING_JS}('rubrics', true)")
+            await cdp.eval_js(f"{SET_READING_JS}('apparatus', false)")
+            opening = await wait_for(
+                """(() => {
+                    const h = Array.from(document.querySelectorAll("h3")).find((e) => e.textContent.trim() === "where it can mislead");
+                    const list = h ? h.parentElement.querySelector("ul") : null;
+                    if (!list) return null;
+                    const times = (t, w) => t.replace(/\\s+/g, " ").toLowerCase().split(w).length - 1;
+                    const t = document.body.innerText;
+                    const base = (s) => times(s, "base model") + times(s, "base-fitted");
+                    return { page: base(t), chat: times(t, "not on the chat model"),
+                             cautions: Array.from(list.children).map((li) => base(li.innerText)) };
+                })()""",
+                "the opening page's cautions",
+            )
+            assert opening["cautions"] and opening["cautions"][0] == 1 and sum(opening["cautions"]) == 1, (
+                f"the opening page's cautions do not say once, in the first, what the lens was fitted on: {opening}")
+            assert opening["page"] == 1 and opening["chat"] == 0, (
+                f"the opening page says what the lens was fitted on outside its first caution: {opening}")
+            print("  • Opening page: what the lens was fitted on is said once, in the first of its cautions, and nowhere else")
+
             # How to read these pages: rubrics (red italic guidance) and apparatus (double-gilt-ruled blocks)
             count_js = """(() => {
                 const all = Array.from(document.querySelectorAll("main *"));
@@ -1977,7 +2023,8 @@ async def main() -> int:
                 const ruled = all.filter((e) => getComputedStyle(e).borderTopStyle === "double" && e.offsetParent !== null);
                 const app = ruled.length;
                 const notes = ruled.filter((e) => e.getAttribute("role") === "note").length;
-                return { red, app, notes };
+                const said = document.body.innerText.replace(/\\s+/g, " ").toLowerCase();
+                return { red, app, notes, fit: /base model|base-fitted|not on the chat model|before its training to chat/.test(said) };
             })()"""
             click_js = """((name) => {
                 const b = Array.from(document.querySelectorAll('[aria-label="How to read these pages"] button'))
@@ -1990,6 +2037,10 @@ async def main() -> int:
             for route in routes:
                 await go(route)
                 reader = await cdp.eval_js(count_js)  # rubrics on, apparatus off (fresh profile)
+                # what the lens was fitted on is said once, on the opening page (checked above); the study and the
+                # lineage are reference text and keep it
+                if route not in ("#/", "#/lexicon", "#/lineage"):
+                    assert not reader["fit"], f"{route}: rubrics on and apparatus closed, the page says what the lens was fitted on"
                 await cdp.eval_js(f"{click_js}('apparatus')")
                 await cdp.eval_js(f"{click_js}('rubrics')")
                 await asyncio.sleep(0.3)
@@ -2012,7 +2063,7 @@ async def main() -> int:
             print(f"  • Saved Screenshot #1 (the instrument, apparatus open): {shot1}")
             # The apparatus prints the lens record the page parsed. Its fallback (the lens the instrument loads, when
             # no record arrived) prints the same names, so require the line that says the record came with this
-            # sighting, and every field of the server's card.
+            # sighting, and every field of the server's card, its caution too (which says what the lens was fitted on).
             record = await cdp.eval_js(
                 """(() => {
                     const dt = Array.from(document.querySelectorAll("dt")).find((e) => e.textContent.trim() === "lens record");
@@ -2024,7 +2075,8 @@ async def main() -> int:
             missing = [k for k in ("name", "fitted_on", "applied_to", "source", "file") if lens[k] not in record]
             assert not missing, f"the lens record lacks the server's {missing}: {record!r}"
             assert "As the server reported it with this sighting" in record, f"the lens record is not the server's: {record!r}"
-            print("  • Instrument apparatus: the lens record is the server's own, as sent with the sighting")
+            assert " ".join(lens["caution"].split()) in record, f"the lens record lacks the server's caution: {record!r}"
+            print("  • Instrument apparatus: the lens record is the server's own, as sent with the sighting, caution and all")
             await cdp.eval_js(f"{click_js}('apparatus')")
 
             # Screenshot #2: arm a gentle nudge (×0.01 of the stream) and wait for the nudged sighting

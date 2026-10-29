@@ -84,7 +84,7 @@ function neuronBody(layer: number, n: number) {
         <div className="muted">…</div>
       )}
       {h && (h.faces["+"].lens?.length || h.faces["-"].lens?.length) ? (
-        <div className="atlas-tl muted atlas-small">lens: J++, fitted on the base model and read here on the chat model</div>
+        <div className="atlas-tl muted atlas-small">lens: J++</div>
       ) : null}
       {into.length ? <div className="atlas-tl muted">← {into.map((k) => `L${k.layer + 1} h${k.head}`).join("  ")}</div> : null}
       {from.length ? <div className="atlas-tl muted">→ {from.map((k) => `${k.role} L${k.layer + 1} h${k.head}`).join("  ")}</div> : null}

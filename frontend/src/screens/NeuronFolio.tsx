@@ -50,7 +50,7 @@ import {
   trustLine,
 } from "../lib/labels";
 import { AnswerMarks, useAnswerPieces } from "./layerLeaf/AnswerMarks";
-import { lensLabel, useReadingLens } from "../lib/lens";
+import { isShippedLens, lensLabel, useInstrumentLens, useReadingLens } from "../lib/lens";
 import { OneDrawLine, PenaltyLine } from "../lib/cautions";
 import {
   ACTS,
@@ -1890,8 +1890,10 @@ const Says: React.FC<{ m: Model }> = ({ m }) => {
             Why it matters: in the study, how many word-pieces the two readings shared was a free sign that a neuron’s label is real. Take one
             sound label and one unsound, from its sample of random neurons, and the count of their first ten shared ranked the sound one higher
             84 times in 100{" "}
-            <span style={{ fontStyle: "italic" }}>(AUC 0.84, layers 41–58, for labels read through the base-fitted J++ lens)</span>; sharing just
-            one was a weak sign, sound less often than the average label.{" "}
+            <span style={{ fontStyle: "italic" }}>
+              (AUC 0.84, layers 41–58, for labels read through the {isShippedLens(lens) ? "" : "base-fitted "}J++ lens)
+            </span>
+            ; sharing just one was a weak sign, sound less often than the average label.{" "}
             {ten != null
               ? "The instrument counted the first ten a side, as the study did, and shows three."
               : "The study compared ten words a side; the instrument shows three, so treat this seal as a hint, not a verdict."}{" "}
@@ -2262,6 +2264,8 @@ const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: FollowedPiece |
   const faces = (opened > 0 ? [[1, r.pos], [-1, r.neg]] : [[-1, r.neg], [1, r.pos]]) as [1 | -1, CausalFace | null][];
   const first = faces[0][1];
   const gate = labelGate(layerIdx(m.idx), first?.check ?? null);
+  // the lens the server ran the test through: its current one
+  const { lens } = useInstrumentLens();
   const silenced = gate.reasons.includes("writes_nothing") || (first?.lens != null && first.lens.p10 === null);
   const inTop = (l: CausalLabel | null) => (l ? l.inTop100.filter(Boolean).length : null);
   const nLens = inTop(first?.lens ?? null);
@@ -2285,7 +2289,9 @@ const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: FollowedPiece |
     .filter(Boolean)
     .join(", ");
   // the bar was measured for base-fitted J++ labels of unedited neurons: under another lens, or with an edit on this
-  // neuron in force, the count is not set beside it (as A2's overlapLine and gateTrustLine hold the study's record back)
+  // neuron in force, the count is not set beside it (as A2's overlapLine and gateTrustLine hold the study's record back).
+  // Where the edit is the only reason (the shipped lens), the line names the lens plainly: what it was fitted on is said
+  // once, on the opening page.
   const lensValidated = first?.check ? first.check.lensValidated : true;
   const asDefault = r.k === CAUSAL_DEFAULTS.k && r.write === CAUSAL_DEFAULTS.write && r.scaleRef === CAUSAL_DEFAULTS.scaleRef;
   const late = STUDY_K10_LATE_P10.map((v) => v.toFixed(2)).join("–");
@@ -2307,7 +2313,7 @@ const CausalResult: React.FC<{ m: Model; r: CausalCheck; chosen: FollowedPiece |
       ? `The two halves of the texts agree at ρ = ${sig(rho, 2)} (the apparatus sets out the split).`
       : "";
   const barLine = !lensValidated
-    ? `The study’s bar for this count (three of ten words among the hundred, over its 36 texts) was measured for base-fitted J++ labels of unedited neurons; this label was read ${gate.edited ? "with an edit in force on this very neuron" : "through a lens other than the base-fitted J++ one"}, so the count is not compared with it.`
+    ? `The study’s bar for this count (three of ten words among the hundred, over its 36 texts) was measured for ${gate.edited && isShippedLens(lens) ? "" : "base-fitted "}J++ labels of unedited neurons; this label was read ${gate.edited ? "with an edit in force on this very neuron" : "through a lens other than the base-fitted J++ one"}, so the count is not compared with it.`
     : `In the study, over 36 texts, a label with three of its ten words among the hundred counted as sound; that bar was set on tests ${
         studySized && r.k === 10
           ? "six times this size"

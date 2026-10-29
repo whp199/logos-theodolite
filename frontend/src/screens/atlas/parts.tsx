@@ -50,7 +50,7 @@ export const FaceLine: React.FC<{
         gate.heldBack ? (
           <HeldBackWords gate={gate} words={lens} eye={w.eye} compact={compact} size={15} line={!compact} />
         ) : (
-          <span className="atlas-lens" title="through the J++ lens, fitted on the base model and read here on the instruct model">
+          <span className="atlas-lens" title="through the J++ lens">
             <span className="atlas-src">lens</span>
             {words(lens, k)}
           </span>

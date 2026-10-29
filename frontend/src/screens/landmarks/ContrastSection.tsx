@@ -617,9 +617,9 @@ export const ContrastSection: React.FC<{
 
       <Rubric style={{ maxWidth: "860px" }}>
         Alone, both lines carry a lean that comes from the model’s average state, not from your question, and the lens and the
-        naked eye read it differently. Through the J++ lens fitted on the base model, on E3’s neutral prose at layers 41–50, the
-        average state’s share of the six pronoun pairs’ score was +1.4 toward the female words, and the score itself +0.8; how
-        large it is depends partly on how the lens was fitted (E3 (c); erratum E34). On E3’s noun pairs, woman–man and the
+        naked eye read it differently. Through the J++ lens, on E3’s neutral prose at layers 41–50, the average state’s share
+        of the six pronoun pairs’ score was +1.4 toward the female words, and the score itself +0.8; how large it is depends
+        partly on how the lens was fitted (E3 (c); erratum E34). On E3’s noun pairs, woman–man and the
         like, the same share was −3.1, toward the male words, and the score −2.1; for one pair, or for other words, it was
         not measured. Read them against the matched control, or failing that against the study’s average state.
       </Rubric>

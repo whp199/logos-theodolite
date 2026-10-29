@@ -44,7 +44,7 @@ import {
   sharedShown,
 } from "../lib/labels";
 import { describeFrame } from "../lib/frame";
-import { lensLabel, useReadingLens } from "../lib/lens";
+import { isShippedLens, lensLabel, useReadingLens } from "../lib/lens";
 import { NotAMatchedPair, OneDrawLine, PenaltyLine, TemplateEndCaution } from "../lib/cautions";
 import { endedWords } from "./instrument/moment";
 import { KINSHIP_GROWS } from "./instrument/Kinship";
@@ -1609,6 +1609,7 @@ function poleView(c: Ctx, p: PoleReading): PoleView {
 
 const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
   const { L, idx, no } = c;
+  const { lens } = useReadingLens(c.s);
   const [more, setMore] = useState(false);
   const poleRanking = useTheodoliteStore((s) => s.poleRanking);
   const setPoleRanking = useTheodoliteStore((s) => s.setPoleRanking);
@@ -1691,7 +1692,11 @@ const Poles: React.FC<{ c: Ctx }> = ({ c }) => {
             11 to 31; layers 32 to 40 were not sampled (REPORT §3.2; N1). One free sign of trust is how many word-pieces the lens and the
             naked eye share: within layers 41 to 58, in the study’s sample of random neurons, the more they shared of their first ten, the
             likelier a sound label{" "}
-            <span style={{ fontStyle: "normal" }}>(the count, used as a score: AUC {GATE_FIGURES.auc}, for labels read through the base-fitted J++ lens)</span>.
+            <span style={{ fontStyle: "normal" }}>
+              (the count, used as a score: AUC {GATE_FIGURES.auc}, for labels read through the{" "}
+              {isShippedLens(lens) ? "" : "base-fitted "}J++ lens)
+            </span>
+            .
             Sharing just one was a weak sign: such labels were sound {OVERLAP_RECORD[1][1]} times in {OVERLAP_RECORD[1][0]}, against{" "}
             {GATE_FIGURES.bandSound} in {GATE_FIGURES.band} for the band as a whole, so the gilt mark goes only to counts that did better than
             that.{" "}

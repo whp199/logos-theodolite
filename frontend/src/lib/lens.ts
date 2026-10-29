@@ -47,15 +47,19 @@ function unidentifiedPhrase(lens: LensInfo): string {
   return "a lens the server does not identify";
 }
 
-/** "the J++ lens, fitted on the base model" (with `named`, the model's name follows) */
+/** "the J++ lens" for the shipped lens: the opening page says once, in its cautions, what it was fitted on (the owner's
+ * choice of 28 October 2026, once R2-R4 had passed no lens refitted on the chat model to replace it). Any other lens is
+ * named with what it was fitted on: "the X lens, fitted on the base model" (with `named`, the model's name follows). */
 export function lensPhrase(lens: LensInfo, named = false): string {
   if (!lens.identified) return unidentifiedPhrase(lens);
+  if (isShippedLens(lens)) return `the ${lens.name} lens`;
   return isBaseFitted(lens)
     ? `the ${lens.name} lens, fitted on the base model${named ? ` ${fittedModel(lens)}` : ""}`
     : `the ${lens.name} lens, fitted on ${lens.fittedOn}`;
 }
 
-/** The short label for status lines: "J++ lens, fitted on the base model"; "lens not identified" for an incomplete card. */
+/** The short label for status lines: "J++ lens" (another lens: "X lens, fitted on ..."); "lens not identified" for an
+ * incomplete card. */
 export const lensLabel = (lens: LensInfo): string =>
   lens.identified ? lensPhrase(lens).replace(/^the /, "") : "lens not identified";
 
@@ -66,9 +70,10 @@ export function lensKind(lens: LensInfo): "base" | "instruct" | null {
   return /-it\b|instruct/i.test(lens.fittedOn) ? "instruct" : null;
 }
 
-/** The narrowest label, for the head of the page on a phone: "J++ lens (base model)". */
+/** The narrowest label, for the head of the page on a phone: "J++ lens" (another lens: "X lens (base model)"). */
 export function lensShort(lens: LensInfo): string {
   if (!lens.identified) return "lens not identified";
+  if (isShippedLens(lens)) return `${lens.name} lens`;
   const kind = lensKind(lens);
   return kind ? `${lens.name} lens (${kind === "base" ? "base model" : "chat model"})` : `${lens.name} lens`;
 }

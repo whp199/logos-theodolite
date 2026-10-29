@@ -236,6 +236,9 @@ const SERIF = "EB Garamond, Garamond, serif";
 export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Frontispiece }> = ({ sighting, geo }) => {
   const s = sighting;
   const { lens } = useReadingLens(sighting);
+  // a comma closes the phrase only where it says what the lens was fitted on ("the X lens, fitted on ...,"); the
+  // shipped lens and a card that does not identify its lens take none before the verb
+  const phrase = lensPhrase(lens);
   const said = s ? s.continuation.trim() : "";
   // what this position chose, by id (“where it chose “am””); nothing for the recorded sighting, which keeps no ids
   const chose = chosenPhrase(s);
@@ -359,7 +362,8 @@ export const FrontispieceFigure: React.FC<{ sighting: Sighting | null; geo: Fron
           </span>
         )}
         <Rubric as="span" style={{ fontSize: 16 }}>
-          Read the middle words as glimpses, not the model’s own speech: {lensPhrase(lens)}, is far less faithful there than
+          Read the middle words as glimpses, not the model’s own speech: {phrase}
+          {phrase.includes(", fitted on ") ? "," : ""} is far less faithful there than
           near the top, and below layer 21 nothing it reads was validated.
         </Rubric>
         {s && readsInsideAnswer(s) ? <AnswerPositionCaution sighting={s} /> : null}
