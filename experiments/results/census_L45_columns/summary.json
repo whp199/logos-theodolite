@@ -1,0 +1,38 @@
+{
+ "what": "Layer 45 (page 46) read on 30 October 2026 against a second null: 2,048 controls mixed from the layer's own write directions (census.CONTROL_KINDS 'columns', seed 11), each unit(sum_n g_n u_n) with g isotropic over the 21,504 neurons and u_n = unit(w_post * W_down[:, n]). The controls were taken alone on the home 5090 (census_run.py --neurons none --control-kind columns, the layer run's settings otherwise: --batch 64 --max-new 48 --unpacker compiled) and joined to the layer run's 21,504 neurons (census_tools.py join), whose answers were not written again. The joined run was ranked by the census's own code and read on the CPU with the trial's reader, unchanged, its hashes checked (read.sh).",
+ "runs": {
+  "controls": "atlas_data/census/nulls/L45-break_rel-columns-controls.* (gitignored): 49,158 answers (2,048 controls x 24 + 6 unpushed), begun 09:32 CDT. A GPU watchdog stopped it at 10:34 with 41,664 written (kernel: 'RC watchdog: GPU is probably locked', Xid 8, against this process, as a kernel build took the load from 5 to 22); the same command, rerun at 10:39, wrote the other 7,494 by 10:50. About 73 minutes of writing at 11.1-11.2 answers a second (the logs' own lines), in two sittings of 62 and 12 minutes with the model's load",
+  "joined": "atlas_data/census/nulls/L45-break_rel-columns.* (gitignored): 565,254 answers, the six unpushed the same in both runs bit for bit (checked by the join). Its meta records three runtime classes (mixed_runtime): the layer run at 5fa58c6, the controls at 4edc4af with a clean tree, then 4edc4af with this folder and ARCHITECTURE.md uncommitted after the resume. Nothing the answers run differs between the last two; between 5fa58c6 and 4edc4af backend/census.py (its reading, the control draw and the join), atlas.py and the scientist's prompt and tools changed, and the six unpushed answers agree bit for bit across them",
+  "mixes_as_neurons": "atlas_data/census/nulls/L45-mixes-as-neurons.* (gitignored): the 2,048 columns controls standing where neurons stand, against the layer run's 2,048 isotropic controls (mixes_as_neurons.py)"
+ },
+ "the_null_built": "On the weights, before the run (check_census.py, and the prototype): the mixes take the neurons' spread. Their share on the layer's top 100 write directions is 5.18% (the neurons' 5.31%, an isotropic direction's 2.22%), their read gain 1.004 of the neurons' (isotropic 1.02), their largest unembedding z 4.62 (neurons 4.75, isotropic 4.60). They match the neurons' second moment on average, not each neuron's",
+ "verdict": {
+  "48": "every gate passes against the columns controls: lead 0.7115 (against isotropic 0.7126; bar 0.60); beyond text survival 0.7344 (0.7237; 0.58); words picked on one half and scored on the other 0.6682 and 0.6649 (0.6795 and 0.6714; 0.57); the new questions alone 0.6509 (0.6619; 0.56); null split 0.4925, read gain 1.006, every answer present, the units file ranks as read (0.0005)",
+  "pm1_alone": "the +-1 answers alone clear every bar: 0.7227, 0.7311, 0.6779 and 0.6715, 0.6524 (against isotropic 0.7144, 0.7285, 0.6731 and 0.6651, 0.6494); G5b fails by construction, as before",
+  "counts_48": "2,358 of 21,504 neurons above every control (11.0%; 2,357 by the census's rank, one sitting within the reader's 0.0005 of the largest control), about 10.5 by chance; 6,746 with q <= 0.05; 5,237 named, 3,217 by halves; the halves' ranks agree at 0.479 among neurons, 0.097 among controls"
+ },
+ "the_mixes_as_neurons": "Against the isotropic controls the mixes read as controls: lead 0.5023, beyond text survival 0.4812, replication 0.5168 and 0.5150, the new questions alone 0.5126, read gain 1.016. None beats every isotropic control (1.0 by chance), none reaches q <= 0.05, none is named; 7 have p <= 0.05 on both halves (5.1 by chance). As far as the trial's reader can tell, the two kinds of control are one null",
+ "the_two_nulls": {
+  "masses": "every dose: p50 / p95 / p99 / fifth largest / largest 9.83 / 13.74 / 16.60 / 19.22 / 24.04 isotropic, 9.77 / 13.40 / 15.77 / 17.52 / 22.07 columns; at +-1, 8.88 / 11.49 / 12.42 / 13.50 / 24.04 and 8.78 / 11.34 / 12.39 / 13.37 / 14.42; at +-2, 2.49 / 10.14 / 14.67 / 16.76 / 19.57 and 2.39 / 9.52 / 13.34 / 16.10 / 22.07 (control_tails.json)",
+  "the_largest": "the isotropic null's largest is one control, 609, whose +-1 answers turn to Indonesian (yang, adalah, berikut, berbagai, dan): words no other control writes, so its mass, 24.04, stands 10.5 above that null's next at +-1. The columns null's largest is a loop of s's at +-2 (438, 22.07); at +-1 its largest is 14.42 (30: little, bridge, very, map). One draw in 2,048 does not say whether a mix can turn the language too",
+  "what_moves": "the counts that rest on the largest control move with it: neurons above every control 1,580 against isotropic, 2,357 against columns (every one of the 1,580 among them); at +-1 alone 1,032 and 6,522. The counts that rest on the bulk move little: q <= 0.05 6,308 and 6,746 (6,305 in both), named 5,123 and 5,237 (5,052 in both). The neurons' masses agree at a Spearman of 0.9985 and their p at 0.9971; of the top 20 by mass all 20 are the same, of the top 100, 97, of the top 1,000, 980"
+ },
+ "collapse_rule": "with these controls the rule again needs 20 to hold a word, and holds 14 as the isotropic controls do: idea, own, owns, rest, same, thought and their joins in both; single and dependingthought here, sss and the fivefold thought there. With their joins it hides 297 words (isotropic 409); of the 2,357 above every control 1,682 keep a description on the map",
+ "text": "the mixes' text survives as the isotropic controls' does: at +-1 they lose 0.003 of their distinct-4 to the unpushed answer (isotropic 0.004, neurons 0.04); at +-2 0.79-0.80, as every kind does",
+ "what_it_shows": "The neurons' lead is not the layer's write subspace. A random mix of the layer's own write directions, spread as they are, reads like a random direction, and the neurons stand above it by the same margin (lead 0.71 either way). What stands out is a single neuron's own direction, not the space the layer writes in, nor that space's spread",
+ "what_it_does_not_show": [
+  "The mixes are dense: each weighs all 21,504 directions, so by the central limit each is near-Gaussian in the layer's covariance. They share the neurons' second moment, not anything beyond it, such as a neuron's sparsity or a heavy tail toward a few words. A mix of a few neurons would ask how many it takes to lose the lead. Not built",
+  "The neurons were not asked again: their 21,504 answers are the layer run's. The only test of the neurons themselves is still inside the run, the halves (which agree at 0.48, controls 0.10)",
+  "The counts above every control rest on one control each, as the Indonesian one shows: read the gates and the q's, not those counts, when two nulls are set side by side",
+  "A retest of the strongest still needs a design whose questions no screen asked"
+ ],
+ "files": {
+  "read.sh": "the whole reading, from the join to the tails",
+  "rank.txt": "the census's ranking of the joined run (census_tools.py rank, top 60)",
+  "L45_columns_verdict.{json,txt}": "the trial's reader on the joined run at 48 (named_words left out of the copy)",
+  "L45_columns_pm1_verdict.{json,txt}": "the same at +-1 alone",
+  "mixes_as_neurons.py, mixes_verdict.{json,txt}": "the mixes standing as neurons against the isotropic controls",
+  "compare.py, compare.json": "the two nulls side by side: the neurons' masses, p, counts, collapse and text",
+  "control_tails.py, control_tails.json": "each null's controls dose by dose, and its strongest"
+ }
+}

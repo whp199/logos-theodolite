@@ -1,0 +1,226 @@
+{
+ "cut": 48,
+ "columns": [
+  "p50",
+  "p95",
+  "p99",
+  "fifth_largest",
+  "largest"
+ ],
+ "nulls": {
+  "isotropic_seed7": {
+   "all": {
+    "mass": [
+     9.83,
+     13.74,
+     16.6,
+     19.22,
+     24.04
+    ],
+    "strongest": {
+     "control": 609,
+     "mass": 24.04,
+     "words": [
+      [
+       "yang",
+       5.66
+      ],
+      [
+       "adalah",
+       5.66
+      ],
+      [
+       "berikut",
+       4.24
+      ],
+      [
+       "berbagai",
+       4.24
+      ],
+      [
+       "dan",
+       4.24
+      ]
+     ]
+    }
+   },
+   "pm1": {
+    "mass": [
+     8.88,
+     11.49,
+     12.42,
+     13.5,
+     24.04
+    ],
+    "strongest": {
+     "control": 609,
+     "mass": 24.04,
+     "words": [
+      [
+       "yang",
+       5.66
+      ],
+      [
+       "adalah",
+       5.66
+      ],
+      [
+       "dan",
+       4.24
+      ],
+      [
+       "berikut",
+       4.24
+      ],
+      [
+       "berbagai",
+       4.24
+      ]
+     ]
+    }
+   },
+   "pm2": {
+    "mass": [
+     2.49,
+     10.14,
+     14.67,
+     16.76,
+     19.57
+    ],
+    "strongest": {
+     "control": 371,
+     "mass": 19.57,
+     "words": [
+      [
+       "owns",
+       5.72
+      ],
+      [
+       "thoughtthought",
+       4.32
+      ],
+      [
+       "thoughtthoughtthoughtthought",
+       3.54
+      ],
+      [
+       "thoughtthoughtthought",
+       3.18
+      ],
+      [
+       "dependingthoughtthoughtthoughtthought",
+       2.81
+      ]
+     ]
+    }
+   }
+  },
+  "columns_seed11": {
+   "all": {
+    "mass": [
+     9.77,
+     13.4,
+     15.77,
+     17.52,
+     22.07
+    ],
+    "strongest": {
+     "control": 438,
+     "mass": 22.07,
+     "words": [
+      [
+       "sssss",
+       5.53
+      ],
+      [
+       "sss",
+       5.39
+      ],
+      [
+       "sssssss",
+       4.21
+      ],
+      [
+       "ssss",
+       4.12
+      ],
+      [
+       "ssssss",
+       2.81
+      ]
+     ]
+    }
+   },
+   "pm1": {
+    "mass": [
+     8.78,
+     11.34,
+     12.39,
+     13.37,
+     14.42
+    ],
+    "strongest": {
+     "control": 30,
+     "mass": 14.42,
+     "words": [
+      [
+       "little",
+       3.75
+      ],
+      [
+       "bridge",
+       2.94
+      ],
+      [
+       "very",
+       2.62
+      ],
+      [
+       "map",
+       2.6
+      ],
+      [
+       "terms",
+       2.51
+      ]
+     ]
+    }
+   },
+   "pm2": {
+    "mass": [
+     2.39,
+     9.52,
+     13.34,
+     16.1,
+     22.07
+    ],
+    "strongest": {
+     "control": 438,
+     "mass": 22.07,
+     "words": [
+      [
+       "sssss",
+       5.53
+      ],
+      [
+       "sss",
+       5.39
+      ],
+      [
+       "sssssss",
+       4.21
+      ],
+      [
+       "ssss",
+       4.12
+      ],
+      [
+       "ssssss",
+       2.81
+      ]
+     ]
+    }
+   }
+  }
+ }
+}

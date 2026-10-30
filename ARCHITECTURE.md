@@ -814,9 +814,19 @@ ladders come first: `calib_rel` (±0.1 to 4 of the stream) and `calib_ceil` (±0
 unit(w_post ⊙ r), r isotropic from a seed: the reference's random down column carried through the post-feed-forward
 norm every neuron's write passes, so the next layer reads controls about as loudly as neurons (on the 31B's own
 weights, 1.02× at page 46 and 1.18× at page 58, where a plain isotropic direction is read 103× and 236× as loudly;
-`check_census.py` measures it when the checkpoint is cached). The run's meta records that ratio (`read_gain`) and
-where the doses come from (`doses_from`, from `DOSES_FROM`: `main_rel`'s are neuron-explorer's, chosen on
-Qwen3.5-4B, not calibrated here; `break_rel`'s, ±1 and ±2 of the stream, were chosen for layers 40–57 on the two
+`check_census.py` measures it when the checkpoint is cached). A second kind of control (`--control-kind columns`,
+`CONTROL_KINDS`, the meta's `control_kind`) is a random mix of the layer's own write directions, unit(g · W) with g
+isotropic over the neurons and W their unit write directions, so it spreads over directions as the neurons do on
+average: on the 31B it is read 1.01–1.02× as loudly as a neuron and puts 0.98–1.04× a neuron's share of its length on
+the layer's 100 strongest write directions, where an isotropic control through w_post puts 0.38–0.47×. A lead against
+it says that a neuron stands out within what its layer writes. Such controls are taken alone (`--neurons none`) and
+set beside a layer's run by `census_tools.py join` (`join_controls`: the same settings, the same unpushed answers bit
+for bit, the runtime classes recorded), so the layer's neurons are read against them without being written again; the
+atlas reads neither a run of controls alone nor a joined run as a layer's census. On layer 45 the neurons lead against
+them as against isotropic controls, and the mixes, read as neurons, lead isotropic controls at 0.50
+(`experiments/results/census_L45_columns/`). The run's meta records how loudly the next layer reads neurons and controls
+(`read_gain`) and where the doses come from (`doses_from`, from `DOSES_FROM`: `main_rel`'s are neuron-explorer's, chosen
+on Qwen3.5-4B, not calibrated here; `break_rel`'s, ±1 and ±2 of the stream, were chosen for layers 40–57 on the two
 ladders of 28 October 2026, 64 neurons and 64 controls at each of layers 20, 30, 40, 45, 50 and 57, on which text
 breaks first at ±2 of the stream at layers 40 and 45, at ±1 for the neurons at 50 and at +2 and −1 for them at 57 (the
 controls at ±2 at both), at ±0.5 at 20 and ±1 at 30, and calibrated at layers 40–50 by its trial of 29 October 2026,

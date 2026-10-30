@@ -502,9 +502,30 @@ layers, the determinism run and the sampled push on 29 October). In this section
     test of the neurons themselves is still inside the run, the halves. And a lead says that a neuron’s push differs
     from one along an isotropic random direction. A down column is a learned direction, and a learned direction may
     beat an isotropic one for reasons that belong to the layer, such as its write subspace or its alignment with the
-    unembedding, not to the neuron. Controls drawn from the layer’s own columns (a random mix of them, matched to
-    their covariance) would ask whether a single neuron stands out within what its layer writes. The 21,504 neurons’
-    answers would stand; 2,048 such controls are 49,152 answers, about 70 minutes. Not built.
+    unembedding, not to the neuron. So controls drawn from the layer’s own columns were built and taken (below).
+
+  The same day the layer was read against a second null: 2,048 controls mixed from its own write directions
+  (`--control-kind columns`, seed 11), each a random mix of all 21,504 neurons’ unit write directions, matched to their
+  spread (share on the layer’s top 100 write directions 5.18%, the neurons’ 5.31%, an isotropic direction’s 2.22%).
+  They were taken alone (`--neurons none`, 49,158 answers, about 73 minutes in two sittings: a GPU watchdog stopped the
+  first during a kernel build, and the same command finished it) and joined to the layer run’s neurons, which were
+  not asked again (`census_tools.py join`; the six unpushed answers the same bit for bit). Read with the trial’s reader,
+  unchanged ([`census_L45_columns/`](experiments/results/census_L45_columns/), `summary.json`, `read.sh`):
+  - **Every gate passes against the mixes, as against isotropic controls.** Lead 0.712 (0.713), beyond text survival
+    0.734 (0.724), replication 0.668 and 0.665 (0.680 and 0.671), the new questions alone 0.651 (0.662). The ±1
+    answers alone clear every bar (0.723).
+  - **The mixes read as random directions.** Set where neurons stand against the isotropic controls, they lead at
+    0.502 (beyond text survival 0.481, replication 0.517 and 0.515); none beats every control and none reaches
+    q ≤ 0.05. So the neurons’ lead is not the layer’s write subspace or its spread: it is the single neuron’s own
+    direction that stands out.
+  - **What the count above every control rests on.** It moved from 1,580 to 2,357, at ±1 alone from 1,032 to 6,522,
+    while q ≤ 0.05 moved from 6,308 to 6,746 and the named from 5,123 to 5,237 (5,052 in both). Below their largest
+    the two nulls agree within 0.15 (at ±1, p50 8.88 and 8.78, p99 12.42 and 12.39). The isotropic null’s largest is
+    one control whose ±1 answers turn to Indonesian, words no other control writes, standing 10.5 above that null’s
+    next. Set two nulls side by side by the gates and the q’s, not by that count.
+  - **What it does not show.** The mixes are dense (each weighs every neuron), so they share the neurons’ second
+    moment and nothing beyond it, such as a neuron’s sparsity. A mix of a few neurons would ask how many it takes to
+    lose the lead. Not built. The neurons’ answers are the layer run’s, so the halves are still their only test.
 - **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8 of
   the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
   neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
@@ -524,7 +545,9 @@ layers, the determinism run and the sampled push on 29 October). In this section
   pilot’s step). The owner chose 2,048 controls for the first whole `break_rel` layer (above). Its strongest cannot be
   retested with `break_rel` itself: on a shared cell a neuron writes its picked answer again (99.6% bit for bit,
   measured on that layer), and `census_run.py` refuses that. A retest needs a design whose questions no screen asked.
-  Whether to build one, or the layer’s-own-columns controls (above), is still to choose.
+  Whether to build one is still to choose. A second kind of control exists beside the isotropic one: `--control-kind
+  columns`, a random mix of the layer’s own write directions, which can be taken alone (`--neurons none`) and joined
+  to a layer’s run (`census_tools.py join`); on layer 45 it reads as the isotropic one does (above).
 - **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card
