@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Take a layer of the census</title>
+<!-- The volunteer guide as one image (scripts/census_board.py render writes volunteers/post/guide.png from it). The
+     full guide is VOLUNTEERS.md; keep the two saying the same. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=block" rel="stylesheet">
+<style>
+:root { --vellum:#F6F0E3; --ink:#2B2117; --muted:#6B5D4D; --rubric:#8F2B1E; --gilt:#A07A2E; --gilt-text:#7A5C28; --lapis:#2E4A7D; }
+html, body { margin:0; background:var(--vellum); color:var(--ink); }
+body { font-family:'EB Garamond', Georgia, serif; font-size:21px; line-height:1.36; padding:38px 44px 30px; width:912px; }
+h1 { font-weight:600; font-size:40px; margin:0; letter-spacing:.01em; }
+.sub { color:var(--rubric); font-style:italic; margin:4px 0 0; font-size:21px; }
+h2 { font-variant:small-caps; letter-spacing:.07em; font-weight:600; font-size:22px; color:var(--gilt-text); margin:22px 0 6px;
+     border-bottom:1px solid var(--gilt); padding-bottom:2px; }
+p { margin:6px 0; }
+ul { margin:4px 0; padding-left:22px; }
+li { margin:2px 0; }
+.rub { color:var(--rubric); font-style:italic; }
+code, pre { font-family:'IBM Plex Mono', monospace; }
+code { font-size:16.5px; background:rgba(160,122,46,.10); padding:0 4px; }
+.steps { counter-reset:s; margin:6px 0 0; padding:0; list-style:none; }
+.steps li { counter-increment:s; display:grid; grid-template-columns:30px 1fr; column-gap:8px; margin:9px 0; }
+.steps li::before { content:counter(s); font-weight:600; color:var(--rubric); font-size:24px; line-height:1.1; text-align:right; }
+.steps pre { margin:0; font-size:16.5px; background:rgba(160,122,46,.10); border-left:2px solid var(--gilt); padding:5px 10px; white-space:pre-wrap; }
+.steps .say { margin:3px 0 0; }
+.two { display:grid; grid-template-columns:1fr 1fr; column-gap:30px; }
+.foot { margin-top:20px; padding-top:8px; border-top:1px solid var(--gilt); color:var(--muted); font-size:18px; }
+.foot b { color:var(--ink); font-weight:600; }
+</style></head><body>
+
+<h1>Take a layer of the census</h1>
+<p class="sub">Gemma-4-31B. Every MLP neuron of a layer pushed along its own direction and read against 2,048 random
+ones. Layer 45 is done; layers 40–44 and 46–50 are open.</p>
+
+<h2>what you need</h2>
+<div class="two">
+<ul>
+<li><b>one</b> NVIDIA card, <b>32 GB or more</b> (5090, PRO 6000, A6000, 6000 Ada, A100, H100…); 24 GB cannot fit it</li>
+<li>a <b>CUDA 13</b> driver (580+), Linux</li>
+</ul>
+<ul>
+<li>about <b>60 GB</b> of disk, 32 GB of memory</li>
+<li>about <b>13 hours</b> a layer on a 5090, plus an hour of setup; it stops and resumes</li>
+</ul>
+</div>
+<p class="rub">No account, token or payment. Leave the machine otherwise quiet while it runs.</p>
+
+<h2>do this</h2>
+<ol class="steps">
+<li><div><pre>git clone https://github.com/whp199/logos-theodolite
+cd logos-theodolite &amp;&amp; git checkout census-kit-1
+scripts/volunteer/census.sh check</pre></div></li>
+<li><div><pre>scripts/volunteer/census.sh reserve 47 --name you</pre>
+<p class="say">Pick an <b>open</b> layer on the board. <span class="rub">Post the <code>CENSUS RESERVE</code> line it prints, in the
+thread or on the board issue, and wait to see it on the board.</span></p></div></li>
+<li><div><pre>scripts/volunteer/census.sh setup</pre>
+<p class="say">The pinned venv, Google's checkpoint, the lens files and the stats index, all under <code>~/theodolite-census</code>.</p></div></li>
+<li><div><pre>scripts/volunteer/census.sh canary 47</pre>
+<p class="say">One batch set against our card's: the same bits, or a card class of its own. Both are fine.</p></div></li>
+<li><div><pre>scripts/volunteer/census.sh run 47</pre>
+<p class="say"><span class="rub">Post the <code>START</code> line.</span> It runs detached. If it stops, the same command
+continues it answer for answer.</p></div></li>
+<li><div><pre>scripts/volunteer/census.sh status 47</pre>
+<p class="say"><span class="rub">Post a <code>PROGRESS</code> line now and then;</span> it keeps your claim.</p></div></li>
+<li><div><pre>scripts/volunteer/census.sh pack 47</pre>
+<p class="say">About 500 MB in <code>outbox/</code>. Upload it anywhere that keeps it a week. <span class="rub">Post the
+<code>DONE</code> line with the link.</span></p></div></li>
+</ol>
+
+<div class="two">
+<div>
+<h2>the rules</h2>
+<ul>
+<li>one layer at a time; claim it first</li>
+<li>change nothing: code, settings, batch (it refuses to run off the kit's tag)</li>
+<li>one card from start to finish</li>
+<li>a claim holds 36 h to <code>START</code>, then until your <code>PROGRESS</code> end time plus 24 h; 10 days at most</li>
+<li>can't finish? <code>census.sh release 47</code>, post the line</li>
+</ul>
+</div>
+<div>
+<h2>how it is checked</h2>
+<ul>
+<li>every setting and all 565,254 answers, the claim's secret, the commit</li>
+<li>5 of the run's 737 chunks, drawn after it arrives, written again on our 5090</li>
+<li>same bits as ours: must match exactly; another card: rules fixed beforehand (first word-piece, log-probabilities)</li>
+<li>you send the answers, your card's name and versions, a claim code; no logs or paths</li>
+</ul>
+</div>
+</div>
+
+<p class="foot"><b>Full guide:</b> github.com/whp199/logos-theodolite, <code>VOLUNTEERS.md</code>. <b>Board:</b> the pinned
+<i>Census layer board</i> issue. Layers count from 0 (the app's page = layer + 1).</p>
+</body></html>

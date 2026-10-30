@@ -1,0 +1,306 @@
+{
+ "what": "plan batch 0 of L42-break_rel.jsonl, written alone (census_run.py --canary-only), to compare with the same batch written on another card (census_tools.py canary)",
+ "written_at": "2026-10-30T20:32:25Z",
+ "answers": 64,
+ "meta": {
+  "model": "google/gemma-4-31B-it-qat-w4a16-ct",
+  "layer": 42,
+  "prompts": {
+   "who": "Who are you?",
+   "orange": "Describe the color orange.",
+   "free": "Write whatever you like.",
+   "bicycle": "Explain how a bicycle works.",
+   "walk": "Give me three tips for a long walk.",
+   "chair": "Describe a wooden chair."
+  },
+  "prompt_ids": {
+   "who": [
+    2,
+    105,
+    2364,
+    107,
+    15938,
+    659,
+    611,
+    236881,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "orange": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    506,
+    2258,
+    11167,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "free": [
+    2,
+    105,
+    2364,
+    107,
+    6974,
+    9002,
+    611,
+    1133,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "bicycle": [
+    2,
+    105,
+    2364,
+    107,
+    155122,
+    1217,
+    496,
+    30979,
+    4146,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "walk": [
+    2,
+    105,
+    2364,
+    107,
+    46762,
+    786,
+    1806,
+    11221,
+    573,
+    496,
+    1440,
+    3727,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ],
+   "chair": [
+    2,
+    105,
+    2364,
+    107,
+    82858,
+    496,
+    7116,
+    9048,
+    236761,
+    106,
+    107,
+    105,
+    4368,
+    107,
+    100,
+    45518,
+    107,
+    101
+   ]
+  },
+  "design_name": "break_rel",
+  "design": [
+   [
+    "who",
+    -1.0
+   ],
+   [
+    "who",
+    1.0
+   ],
+   [
+    "who",
+    -2.0
+   ],
+   [
+    "who",
+    2.0
+   ],
+   [
+    "orange",
+    -1.0
+   ],
+   [
+    "orange",
+    1.0
+   ],
+   [
+    "orange",
+    -2.0
+   ],
+   [
+    "orange",
+    2.0
+   ],
+   [
+    "free",
+    -1.0
+   ],
+   [
+    "free",
+    1.0
+   ],
+   [
+    "free",
+    -2.0
+   ],
+   [
+    "free",
+    2.0
+   ],
+   [
+    "bicycle",
+    -1.0
+   ],
+   [
+    "bicycle",
+    1.0
+   ],
+   [
+    "bicycle",
+    -2.0
+   ],
+   [
+    "bicycle",
+    2.0
+   ],
+   [
+    "walk",
+    -1.0
+   ],
+   [
+    "walk",
+    1.0
+   ],
+   [
+    "walk",
+    -2.0
+   ],
+   [
+    "walk",
+    2.0
+   ],
+   [
+    "chair",
+    -1.0
+   ],
+   [
+    "chair",
+    1.0
+   ],
+   [
+    "chair",
+    -2.0
+   ],
+   [
+    "chair",
+    2.0
+   ]
+  ],
+  "max_new": 48,
+  "top_k": 5,
+  "seed": 7,
+  "random_controls": 2048,
+  "neurons": "all",
+  "push": "add: dose x p50 along unit(w_post * W_down[:, n]) (a control: along unit(w_post * r), r isotropic), at the stream leaving the layer, every word-piece but the start mark",
+  "controls": "unit(w_post * r), r isotropic: the reference's random down column through the post-feed-forward norm",
+  "dose_unit": "stream",
+  "ceilings": "each pushed answer records its unit's write ceiling (`ceiling`; a control's is that of the neuron it is paired with, `ref_neuron`), for the dose window alone",
+  "control_kind": "isotropic",
+  "version": 2,
+  "read_gain": {
+   "neurons": 0.7094,
+   "controls": 0.7199,
+   "ratio": 1.015,
+   "read_by": "the next layer's input norm (the final norm after the last layer)"
+  },
+  "doses_from": "+-1 and +-2 of the stream, chosen for layers 41-58 (counted from 1, as the pages count them) on this model's two calibration ladders of 28 October 2026 (64 neurons and 64 controls at each of layers 21, 31, 41, 46, 51 and 58), on which text breaks first at +-2 of the stream at layers 41 and 46, at +-1 for the neurons at 51 and at +2 and -1 for them at 58 (the controls at +-2 at both), at +-0.5 at layer 21 and at +-1 at 31; calibrated at layers 41-51 by a trial fixed before it was taken (29 October 2026, layer 46, 1,022 fresh neurons against 1,024 controls), which passed every gate, its lead carried by the +-1 answers (at +-2 the text of neurons and controls alike breaks into loops); not at layers 52-58, where its probe at layer 58 passed by 0.0008 and its lead could not be told from how the text survives, nor below layer 41",
+  "p50": 179.77880859375,
+  "p50_source": "the stats index (HuggingFaceFW/fineweb-edu:sample-10BT + HuggingFaceH4/ultrachat_200k::train_sft, 2000054 word-pieces)",
+  "stop_ids": [
+   1,
+   106,
+   50
+  ],
+  "greedy": true,
+  "chat": "thinking off",
+  "lens": "jpp-base",
+  "stand_in": false,
+  "unpacker": {
+   "mode": "compiled",
+   "linears": 410,
+   "shapes": 8,
+   "devices": [
+    "cuda:0"
+   ],
+   "self_test": {
+    "linears": 410,
+    "same_bits": true,
+    "table": "16 pieces x 65,536 bf16 scales on cuda:0",
+    "table_nan_payloads": 0,
+    "seconds": 3.89
+   },
+   "install_s": 3.89
+  },
+  "d_ff": 21504,
+  "neuron_ids": "0-21503",
+  "batch": 64,
+  "runtime": {
+   "device": "NVIDIA GeForce RTX 5090",
+   "torch": "2.14.1+cu130",
+   "cuda": "13.0",
+   "transformers": "5.20.0",
+   "interp_engine": "1.14.0",
+   "compressed_tensors": "0.19.0",
+   "git": "c1834081e576113fe32da626b1ecc22ebd27d13c",
+   "git_clean": false,
+   "act_scale_sha256": "23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa"
+  },
+  "plan": "12 x batch",
+  "jobs": {
+   "n": 565254,
+   "sha256": "12df337b5de22d8f"
+  }
+ }
+}

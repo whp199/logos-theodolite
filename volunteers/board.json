@@ -1,0 +1,46 @@
+{
+ "kit": 1,
+ "repo": "whp199/logos-theodolite",
+ "issue": null,
+ "seen_comments": [],
+ "claims": [],
+ "layers": {
+  "40": {
+   "state": "open"
+  },
+  "41": {
+   "state": "open"
+  },
+  "42": {
+   "state": "open"
+  },
+  "43": {
+   "state": "open"
+  },
+  "44": {
+   "state": "open"
+  },
+  "46": {
+   "state": "open"
+  },
+  "47": {
+   "state": "open"
+  },
+  "48": {
+   "state": "open"
+  },
+  "49": {
+   "state": "open"
+  },
+  "50": {
+   "state": "open"
+  },
+  "45": {
+   "state": "done",
+   "by": "home card",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "29-30 Oct 2026, passed every gate"
+  }
+ },
+ "updated_at": "2026-10-30T20:38Z"
+}

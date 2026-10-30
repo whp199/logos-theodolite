@@ -8,7 +8,7 @@
 #     HF_TOKEN=$RUNPOD_SECRET_hf scripts/pod/setup.sh ...   # a token only if the download without one is refused
 #     scripts/pod/setup.sh --dry-run                        # the whole flow on the CPU stand-in, in a temporary root
 #
-# In order: <root>/env.sh, sourced by every pod script (and from ~/.bashrc), putting HF_HOME, uv's caches and Python,
+# In order: <root>/env.sh, sourced by every pod script (and from ~/.bashrc, unless --no-bashrc), putting HF_HOME, uv's caches and Python,
 # THEODOLITE_ATLAS_DIR (indexes, census runs, the scientist's folder) and XDG_DATA_HOME (field notes, saved prompts)
 # on the volume, with HF_HUB_OFFLINE=1; rsync, tmux and zstd, and uv, where missing; the checkpoint and the two lenses
 # downloaded in the background while the venv is made, pinned to the snapshots the study used (README §v), each tried
@@ -54,12 +54,13 @@ Options:
   --unpacker MODE         the unpacker the self-test installs and tests (default lut; reference, lut, compiled, resident)
   --no-download           leave the checkpoint and lenses as they are
   --no-selftest           stop before loading the model
+  --no-bashrc             leave ~/.bashrc as it is (a machine of one's own: source <root>/env.sh by hand)
   --dry-run, --stand-in   the whole flow on the CPU stand-in in a temporary root (see above)
   -h, --help              this
 EOF
 }
 
-ROOT="" DRY=0 CONSTR="" TB="" PYV=3.12 ACT_SHA="" UNP=lut DOWNLOAD=1 SELFTEST=1
+ROOT="" DRY=0 CONSTR="" TB="" PYV=3.12 ACT_SHA="" UNP=lut DOWNLOAD=1 SELFTEST=1 BASHRC=1
 while [ $# -gt 0 ]; do
     case "$1" in
         --root) [ $# -ge 2 ] || die "--root needs a folder"; ROOT=$2; shift 2 ;;
@@ -70,6 +71,7 @@ while [ $# -gt 0 ]; do
         --unpacker) [ $# -ge 2 ] || die "--unpacker needs a mode"; UNP=$2; shift 2 ;;
         --no-download) DOWNLOAD=0; shift ;;
         --no-selftest) SELFTEST=0; shift ;;
+        --no-bashrc) BASHRC=0; shift ;;
         --dry-run|--stand-in) DRY=1; shift ;;
         -h|--help) usage; exit 0 ;;
         *) die "unknown option $1 (see --help)" ;;
@@ -100,7 +102,7 @@ write_env
 make_folders
 # shellcheck disable=SC1091
 . "$ROOT/env.sh"
-if [ "$DRY" = 0 ]; then
+if [ "$DRY" = 0 ] && [ "$BASHRC" = 1 ]; then
     grep -qsF "$ROOT/env.sh" "$HOME/.bashrc" || printf '. %q\n' "$ROOT/env.sh" >>"$HOME/.bashrc"
 fi
 say "1. $ROOT/env.sh: HF_HOME, uv's caches, THEODOLITE_ATLAS_DIR and XDG_DATA_HOME under the root; HF_HUB_OFFLINE=1"

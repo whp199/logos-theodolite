@@ -1,0 +1,23 @@
+>mapping what every MLP neuron of Gemma-4-31B writes
+>each of a layer's 21,504 neurons pushed along its own write direction (+-1, +-2 of the stream) on 6 questions, read against 2,048 random directions pushed the same way
+>layer 45 done on one 5090 in 13 h, passed every check fixed before it ran
+>10 layers left: 40-44, 46-50. got a 32GB+ card and a free night? take one
+
+needs: one NVIDIA card with 32 GB+ (5090, PRO 6000, A6000, 6000 Ada, A100, H100...), a CUDA 13 driver, Linux, ~60 GB disk. 24 GB cards can't fit it, and it isn't split across cards
+time: ~13 h a layer on a 5090 + ~1 h setup (35 GB of downloads). stop and resume any time
+
+git clone https://github.com/whp199/logos-theodolite && cd logos-theodolite && git checkout census-kit-1
+scripts/volunteer/census.sh check
+scripts/volunteer/census.sh reserve 47      <- post the CENSUS RESERVE line it prints, here or on the board
+scripts/volunteer/census.sh setup
+scripts/volunteer/census.sh canary 47       <- one batch, set against our card's
+scripts/volunteer/census.sh run 47          <- post the START line
+scripts/volunteer/census.sh status 47       <- post a PROGRESS line now and then
+scripts/volunteer/census.sh pack 47         <- upload the ~500 MB .tar anywhere, post the DONE line + link
+
+no account, no token. one layer at a time. don't change the code or settings (it refuses to run off the kit's tag)
+every run is spot-checked: 5 random chunks of it re-run on our card. same bits as ours must match exactly; other cards are checked by rules fixed in advance
+what you send: the answers, your card name + library versions, a claim code. no logs, paths or hostnames
+
+full guide: https://github.com/whp199/logos-theodolite/blob/main/VOLUNTEERS.md
+board: pinned "Census layer board" issue at https://github.com/whp199/logos-theodolite/issues (pic rel)
