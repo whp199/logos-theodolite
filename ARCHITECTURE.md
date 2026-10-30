@@ -75,6 +75,7 @@ theodolite2/
 │   ├── export_E3_background_mu.py   # writes experiments/results/E3_background_mu.npy (+ .json) from E3's caches (CPU)
 │   ├── verify_atlas_writer.py       # the writer's floor: unpushed answers in each batch shape against one written alone (GPU)
 │   ├── verify_causal_check.py       # the causal spot-check against N1A's and N1V's figures on the real model (GPU)
+│   ├── verify_control_vector.py     # a neuron's push through the instrument and through llama.cpp with its exported file (GPU, §6)
 │   ├── verify_e2e_ui_and_mcp.py     # server, MCP tools and headless-Chrome pages end to end (GPU)
 │   └── verify_optics.py             # Standalone deterministic CLI verification suite
 └── frontend/
@@ -1295,8 +1296,8 @@ neuron does when the model runs on its own. Not measured: other doses, sums of n
 sampling, thinking on, a pushed start mark, and any GGUF. Whether a label carries over to llama.cpp at all is what the
 comparison below asks.
 
-**On the 31B: fixed before it is run, not yet run** (it needs the owner's leave for a GPU job; the GGUF and the
-llama-server build are already on the owner's machine). Layer 45's two top-ranked neurons in its census (13641, whose
+**On the 31B: fixed before it is run** (`scripts/verify_control_vector.py`, steps `instrument` and `llama` on the card
+with the :8765 server stopped, then `read`; `--stand-in` runs all three on the CPU). Layer 45's two top-ranked neurons in its census (13641, whose
 pushed answers say "staff", "all", "company", "meeting"; 21200, "man", "young", "sir"), at ±1 and ±2, on break_rel's
 six questions, greedy, 48 word-pieces, thinking off. Both engines are given the census's own prompt ids (first checked:
 llama.cpp's `/detokenize` of them is the instrument's prompt). The instrument: the census's answers as written (the
@@ -1310,3 +1311,15 @@ the card, the exported file at SCALE = the dose. Read:
    than 0.5. The push carries over if the correlation is at least 0.8 and that median ratio between 0.67 and 1.5.
 3. **The start mark**: 1 and 2 again against the instrument with the start mark pushed, so the part of any gap that is
    the start mark's is named apart from the weights'.
+4. **Described, not judged** (added before the run): how often each neuron's five top census words come out in
+   llama.cpp's pushed answers, beside the census's and the unpushed answers'.
+
+How each side is read. The instrument's answers again with the start mark pushed are written in batches of nine per
+question (the unpushed answer and the eight pushes), and once more so with it spared, so the instrument's own floor
+across batch shapes (batch nine against the census's 64) is measured beside the rest. Its log-probabilities come from
+one forward of three rows per census answer (unpushed; pushed, the start mark spared; pushed, the start mark pushed).
+llama.cpp runs one server per push and one unpushed, its settings left at their defaults (every layer on the card).
+It is read back by making each next piece of the census answer its choice with a logit bias: the log-probability it
+reports for the piece chosen is the raw logits' softmax, before any sampler (`populate_token_probs`), so the bias does
+not touch it. A piece the server holds back (bytes not yet a whole character) comes with none and is counted apart; an
+answer its output parser refuses is kept up to the refusal and named.
