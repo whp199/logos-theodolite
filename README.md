@@ -21,6 +21,10 @@
   <a href="#vii--the-makers-marks">the makers’ marks</a>
 </p>
 
+<p align="center">
+  <sub>Have a card of 32 GB or more? <a href="VOLUNTEERS.md">Take a layer of the census</a>.</sub>
+</p>
+
 <br>
 
 ## i · what it is

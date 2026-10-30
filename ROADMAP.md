@@ -548,6 +548,24 @@ layers, the determinism run and the sampled push on 29 October). In this section
   Whether to build one is still to choose. A second kind of control exists beside the isotropic one: `--control-kind
   columns`, a random mix of the layer’s own write directions, which can be taken alone (`--neurons none`) and joined
   to a layer’s run (`census_tools.py join`); on layer 45 it reads as the isotropic one does (above).
+- **The other ten layers, by volunteers** (built 30 October 2026; `VOLUNTEERS.md`). The calibrated layers left, 40–44
+  and 46–50, can be taken by anyone with one card of 32 GB or more. Each volunteer runs layer 45's command at another
+  layer, from the kit's tag, with the kit's pinned versions and stats index (`volunteers/kit.env`,
+  `scripts/volunteer/census.sh`).
+  - **Claims.** A layer is claimed by a one-line `CENSUS` message carrying a code whose secret the volunteer keeps,
+    and the board keeps one claim a layer, with holds that lapse (`scripts/census_board.py`; the pinned issue, the
+    thread, `volunteers/board.png`).
+  - **The canary.** Each layer's first batch, taken on the home card (`volunteers/home_canaries/`), says before a run
+    begins whether the volunteer's card writes the home card's bits or is a class of its own.
+  - **The intake** (`scripts/census_intake.py`) checks a bundle's claim, settings and every answer. It then writes 5
+    chunks, drawn after the bundle arrives, again on the home card: they must match bit for bit when the canary did,
+    and must otherwise meet rules fixed before any run was seen (`census_volunteer.ACCEPT_OTHER_CLASS`).
+  - **Another card class.** A layer from another card class is recorded so in its provenance file, and is read as its
+    own instrument.
+
+  `scripts/check_volunteer_kit.py` runs it all on the stand-in, with a tampered run, a made-up one, a wrong secret
+  and a stray file refused, and another card class taken. No volunteer's run has come home yet. The tolerance rules
+  for another card class have not met real cross-card data.
 - **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card

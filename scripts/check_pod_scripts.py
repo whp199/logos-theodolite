@@ -278,10 +278,13 @@ def run_checks(tmp: Path) -> int:
           f"export_constraints.sh: the venv's exact versions ({r.stdout[-300:]}{r.stderr[-300:]})")
     check(any(ln.startswith("# written: ") and "at " in ln for ln in head) and any(ln.startswith("# python: ") for ln in head)
           and f"# torch-backend: {want_tb}" in head, f"its header: the date, the commit, the Python, the torch backend ({head})")
+    held = ROOT_DIR / "scripts" / "pod" / "constraints"  # the checkout's own (the volunteer kit's pins), left as they are
+    before_dry = sorted((p.name, p.stat().st_mtime_ns) for p in held.glob("*")) if held.exists() else None
     r = run([ROOT_DIR / "scripts" / "export_constraints.sh", "--python", py, "--dry-run"], env)
     m = re.search(r"-> (\S+home-\d{4}-\d\d-\d\d\.txt)", r.stdout)
+    after_dry = sorted((p.name, p.stat().st_mtime_ns) for p in held.glob("*")) if held.exists() else None
     check(r.returncode == 0 and m is not None and Path(m.group(1)).exists() and str(tmp / "tmp") in m.group(1)
-          and not (ROOT_DIR / "scripts" / "pod" / "constraints").exists(), f"--dry-run writes a dated file in a temporary folder ({r.stdout[-200:]})")
+          and before_dry == after_dry, f"--dry-run writes a dated file in a temporary folder, the checkout untouched ({r.stdout[-200:]})")
     section("export_constraints.sh: the home venv's exact versions, dated, with the torch backend", before)
 
     # ---------------------------------------------------------------------------------------------- 3. setup.sh
