@@ -12,6 +12,27 @@ counts them (the app's page = layer + 1).
 
 **The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/logos-theodolite/issues/1>.
 
+## What you get
+
+When the census is done, the atlas and its data are published, and the whole instrument runs on the same card you took
+your layer on:
+
+- **Chat with Gemma with any neuron turned up or down.** The atlas's push tab writes three answers side by side, over
+  several turns: the neuron pushed up, left alone, and pushed down. You find neurons by the words they write, or by
+  their rank in the census.
+- **Watch a reply take shape** through all 60 layers, read through a lens at each one. The lens was fitted on the base
+  model, and the pages say where it can be trusted.
+- **Point your own local model at the map.** The scientist works with any OpenAI-compatible endpoint (LM Studio,
+  Ollama, llama.cpp's server). It runs pushes and texts, names what it finds, and points at it on the map.
+- **Your name on the first public map of a 31B's neurons.** We found none published, only sparse autoencoders
+  (`REFERENCES.md` §J). Your layer is credited to the name you gave, and you name the strongest neurons of your layer
+  in the published atlas.
+- **Open data**: every answer of every layer, 565,254 a layer, published with the project.
+- **In the works, not ready yet**: exporting a neuron as a llama.cpp control vector, to use it in your own frontend.
+
+A census rank says what a neuron's push does to six fixed questions at four strengths. What it does in your own
+chats, you try for yourself.
+
 ## What you need
 
 - **One NVIDIA card with at least 32 GB**, for example an RTX 5090, RTX PRO 6000, A6000, 6000 Ada, L40S, A100, H100 or

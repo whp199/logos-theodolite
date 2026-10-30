@@ -56,7 +56,6 @@ HOLD_GRACE = 24
 HOLD_MAX_DAYS = 10
 LIVE = ("reserved", "running", "submitted", "checking")
 ENDED = ("accepted", "rejected", "released", "lapsed")
-GUIDE_HEIGHT = 1440  # volunteers/post/guide.html's height at 1000 px wide (re-measure after editing it)
 CHROME = ("google-chrome-stable", "google-chrome", "chromium", "chromium-browser")
 
 
@@ -302,17 +301,33 @@ def chrome() -> Optional[str]:
     return next((which(c) for c in CHROME if which(c)), None)
 
 
-def html_to_png(html_text: str, out: Path, width: int, height: int) -> bool:
+# appended to a page whose height is measured: once its fonts are in, the page's height on a body attribute
+_MEASURE = ("<script>document.fonts.ready.then(() => document.body.setAttribute('data-h', "
+            "Math.ceil(document.documentElement.scrollHeight)))</script>")
+
+
+def html_to_png(html_text: str, out: Path, width: int, height: Optional[int] = None) -> bool:
+    """The page as a PNG `width` wide and, unless `height` is given, as tall as the page is at that width with its
+    fonts loaded (measured first in a window shorter than any page, so the page sets the height)."""
     exe = chrome()
     if not exe:
         print("no Chrome or Chromium here: the PNG is not made (BOARD.md and board.txt are)")
         return False
     with tempfile.TemporaryDirectory() as d:
         page = Path(d) / "page.html"
+        base = [exe, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
+                f"--user-data-dir={d}/profile", "--virtual-time-budget=8000", "--force-device-scale-factor=1"]
+        if height is None:
+            page.write_text(html_text.replace("</body>", _MEASURE + "</body>"), encoding="utf-8")
+            got = subprocess.run(base + [f"--window-size={width},300", "--dump-dom", page.as_uri()], capture_output=True,
+                                 text=True, timeout=120)
+            m = re.search(r'data-h="(\d+)"', got.stdout)
+            if not m:
+                print(f"Chrome did not measure the page: {got.stderr.strip()[-300:]}")
+                return False
+            height = int(m.group(1))
         page.write_text(html_text, encoding="utf-8")
-        cmd = [exe, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check",
-               f"--user-data-dir={d}/profile", "--virtual-time-budget=8000", "--force-device-scale-factor=1",
-               f"--window-size={width},{height}", f"--screenshot={out}", page.as_uri()]
+        cmd = base + [f"--window-size={width},{height}", f"--screenshot={out}", page.as_uri()]
         got = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         if got.returncode != 0 or not out.exists():
             print(f"Chrome did not make the PNG: {got.stderr.strip()[-300:]}")
@@ -327,11 +342,10 @@ def cmd_render(board: Dict[str, Any], a: argparse.Namespace) -> None:
     (out / "board.txt").write_text(render_txt(board) + "\n", encoding="utf-8")
     print(f"-> {out / 'BOARD.md'}, {out / 'board.txt'} ({len(render_txt(board))} characters)")
     if not a.no_png:
-        h = 230 + 40 * len(board["layers"])
-        if html_to_png(render_html(board), out / "board.png", 1000, h):
+        if html_to_png(render_html(board), out / "board.png", 1000):
             print(f"-> {out / 'board.png'}")
         guide = out / "post" / "guide.html"  # the guide as one image, to post beside the board
-        if guide.exists() and html_to_png(guide.read_text(encoding="utf-8"), out / "post" / "guide.png", 1000, GUIDE_HEIGHT):
+        if guide.exists() and html_to_png(guide.read_text(encoding="utf-8"), out / "post" / "guide.png", 1000):
             print(f"-> {out / 'post' / 'guide.png'}")
 
 
