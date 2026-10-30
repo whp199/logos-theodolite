@@ -540,7 +540,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"  weights: {record['weights']}")
     print(f"  stats index: {record['stats_index_sha256']}")
     print(f"load it with: llama-server -m <Gemma-4-31B-it GGUF> --control-vector-scaled {path}:1   (SCALE multiplies "
-          "every dose; the start mark is pushed too, which the instrument does not do)")
+          "every dose; stay near 1: llama.cpp also pushes the start mark, which the census did not, and at 2 that "
+          "breaks the text: ARCHITECTURE.md §6)")
     return 0
 
 

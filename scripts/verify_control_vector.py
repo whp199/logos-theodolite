@@ -34,7 +34,7 @@ The reading (`read`), as fixed before the run:
 3. The start mark: 1 and 2 again against the instrument with the start mark pushed, and the instrument's change with
    the start mark pushed against its change with it spared, so the start mark's part of any gap is named apart.
 4. Described, not judged: how often a neuron's five top census words come out in llama.cpp's pushed answers, beside
-   the census's and the unpushed answers'.
+   the census's and the unpushed answers' (and, added after the run, the instrument's with the start mark pushed).
 
 `--stand-in` runs every step on the CPU stand-in (scripts/atlas_stand_in.py, written as a float32 GGUF, with a stats
 index of its own stream lengths; its layer 3, neurons 5 and 77, the instrument's own answers standing for a census's),
@@ -517,6 +517,7 @@ def read(out: Path) -> Dict[str, Any]:
                                    "unpushed (llama.cpp)": sum(has(L["unpushed"][q]["ids"], ws) for q in qs)}
             for d in st["doses"]:
                 row[f"{d:+g}"] = {"census": sum(has(census[key(n, d, q)], ws) for q in qs),
+                                  "instrument, start mark pushed": sum(has(A["bos"][key(n, d, q)], ws) for q in qs),
                                   "llama.cpp": sum(has(L["pushed"][key(n, d, q)]["ids"], ws) for q in qs), "of": len(qs)}
             words[str(n)] = row
     cut = [k for k, r in L["pushed"].items() if r.get("cut")] + [q for q, r in L["unpushed"].items() if r.get("cut")]
@@ -562,7 +563,8 @@ def show(res: Dict[str, Any]) -> None:
     for n, row in res["words"].items():
         print(f"  neuron {n} words {row['words']}: unpushed census {row['unpushed (census)']}, llama.cpp "
               f"{row['unpushed (llama.cpp)']}; " + "; ".join(
-                  f"{d} census {row[d]['census']} llama.cpp {row[d]['llama.cpp']} of {row[d]['of']}"
+                  f"{d} census {row[d]['census']} start mark pushed {row[d]['instrument, start mark pushed']} "
+                  f"llama.cpp {row[d]['llama.cpp']} of {row[d]['of']}"
                   for d in row if d[0] in "+-"))
     if res["answers_cut_by_the_server"]:
         print(f"  answers the server's parser cut: {res['answers_cut_by_the_server']}")

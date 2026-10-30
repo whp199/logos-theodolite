@@ -1282,7 +1282,7 @@ word-piece's log-probability at the first one written to a census question:
 | pushed against unpushed | 0.63 |
 
 So llama.cpp adds `direction.<l>` after layer l, at SCALE × the dose, summed, and it pushes the start mark, which the
-instrument does not. On the stand-in that alone moves a log-probability by 0.04; on the 31B it is not yet measured.
+instrument does not. On the stand-in that alone moves a log-probability by 0.04; on the 31B, see the run below.
 
 **What a census label can bear.** A label (its words, its lead, its p and q) was read from six questions (break_rel),
 at ±1 and ±2 of the stream's median length, one neuron at a time, from greedy answers of 48 word-pieces, thinking
@@ -1293,8 +1293,9 @@ ceiling, `atlas_ops.Weights.write_ceiling`; every neuron's ceiling is below p50)
 (at layers 40 and 45; at ±1 for the neurons at layer 50). So
 the file pushes the direction a neuron writes, much harder than the neuron ever can: what it does is not what the
 neuron does when the model runs on its own. Not measured: other doses, sums of neurons, other prompts, longer answers,
-sampling, thinking on, a pushed start mark, and any GGUF. Whether a label carries over to llama.cpp at all is what the
-comparison below asks.
+sampling, thinking on, a pushed start mark, and any GGUF. How far a label carries over to llama.cpp, the comparison
+below measured for two neurons: at SCALE ±1 it does, words and all; at ±2 it does not, because llama.cpp also pushes
+the start mark.
 
 **On the 31B: fixed before it is run** (`scripts/verify_control_vector.py`, steps `instrument` and `llama` on the card
 with the :8765 server stopped, then `read`; `--stand-in` runs all three on the CPU). Layer 45's two top-ranked neurons in its census (13641, whose
@@ -1323,3 +1324,47 @@ It is read back by making each next piece of the census answer its choice with a
 reports for the piece chosen is the raw logits' softmax, before any sampler (`populate_token_probs`), so the bias does
 not touch it. A piece the server holds back (bytes not yet a whole character) comes with none and is counted apart; an
 answer its output parser refuses is kept up to the refusal and named.
+
+**Run on 30 October 2026** (`experiments/results/control_vector_L45/`: `summary.json`, both sides' answers and
+read-backs, and the two exported files; llama.cpp b1-cd26896 on `gemma-4-31B-it-QAT-Q4_0.gguf`, every layer on the
+5090, its other settings at their defaults; 81 s for the instrument's side, 279 s for llama.cpp's). **The push
+carries over, by the bar fixed beforehand.** Over the 2,304 word-pieces of the census's pushed answers, llama.cpp's
+change in each piece's log-probability correlates with the census's at r = 0.986, and its median ratio to the
+census's is 1.11 where the census's moved by more than 0.5 (1,335 pieces). By dose (−2, −1, +1, +2): r 0.980, 0.995,
+0.994, 0.986; ratio 1.41, 0.98, 0.97, 1.12. llama.cpp gave a log-probability for every piece, and its parser cut no
+answer.
+
+| greedy answers set side by side | median shared prefix (of 48) | whole answers alike |
+|---|---|---|
+| llama.cpp unpushed / the census's unpushed (the floor the weights alone set) | 17 | 1 of 6 |
+| the instrument in batches of 9 / the census's in batches of 64, pushed (the instrument's own floor) | 48 | 32 of 48 |
+| llama.cpp pushed / the census (−2, −1, +1, +2: 1, 7.5, 6, 1) | 3.5 | 4 of 48 |
+| llama.cpp pushed / the instrument with the start mark pushed (19.5, 7.5, 9, 1.5) | 9 | 5 of 48 |
+| the instrument, the start mark pushed / spared | 8.5 | 10 of 48 |
+
+Answers (of six) holding one of the neuron's five top census words (13641: staff, all, company, meeting, hands;
+21200: man, young, sir, same, person). Described, not judged; at the other doses 0 or 1 in every column, and 0 unpushed:
+
+| | the census | the instrument, the start mark pushed | llama.cpp |
+|---|---|---|---|
+| 13641 at −1 | 6 | 6 | 6 |
+| 13641 at −2 | 6 | 0 | 0 |
+| 21200 at +1 | 6 | 6 | 6 |
+| 21200 at +2 | 6 | 4 | 3 |
+
+What it says:
+- **At ±1 the push carries over, odds and words.** The change in each piece's log-probability agrees at r 0.995 and
+  0.994, ratio 0.97–0.98, and each neuron's words are in all six answers in both engines: 13641 at −1, "I am a
+  whole-company staff meeting. All hands…" in the census and "I am a own-company-wide staff meeting all-hands…" in
+  llama.cpp; 21200 at +1, "…young man, sir" in both. The greedy texts part after a few pieces, as unpushed answers part
+  after 17 on these weights.
+- **At ±2 it does not.** The change in each piece still correlates (r 0.98, 0.99), but llama.cpp's is larger (ratio 1.41
+  at −2), and its text collapses into "//" or blank space: 13641's words are gone at −2, half of 21200's at +2. The
+  instrument does the same when it too pushes the start mark (13641 at −2: "//" and nothing more), so it is the start
+  mark, not the weights. On the instrument alone, pushing the start mark barely changes the push's effect on each piece
+  (r 0.9965, ratio 1.04), but it tips over text that a push of 2 has already brought to the edge of breaking.
+- So in llama.cpp a census label holds at SCALE ±1. At ±2 the census's words cannot be expected: its ±2 answers
+  spared the start mark, which llama.cpp cannot do.
+
+Not covered: two neurons (the top two of one layer), one GGUF, greedy answers of 48 pieces, the census's own six
+questions, one run each.

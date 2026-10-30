@@ -191,8 +191,9 @@ llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-
 - **The layer** counts from 0. The atlas's page, the first number in its address (`#/atlas/46/13641`), is layer + 1,
   and `--page 46` takes it as it is.
 - **The scale is the dose.** At 1 the push is as long as the stream's typical length at that layer: the census's +1.
-  `:-1` pushes the other way, and `:2` is the census's +2, where text starts to break. Other values work, but the
-  census measured only ±1 and ±2. For several neurons: `--set 45:13641,44:801:-0.5 -o mix.gguf`.
+  `:-1` pushes the other way. **Stay near ±1**: at ±2 llama.cpp's text collapses, because it also pushes the first
+  token, which the census left alone. Other values work, but the census measured only ±1 and ±2. For several
+  neurons: `--set 45:13641,44:801:-0.5 -o mix.gguf`.
 - **What it reads**: two tensors of the layer and the 31 MB stats index, on the CPU, in seconds. Nothing is downloaded.
   - With the kit set up, run `. ~/theodolite-census/env.sh` first: it finds the checkpoint and the stats index you
     already have. The script is not in the kit's tag, and `census.sh` runs only from a clean checkout at it, so use
@@ -215,8 +216,11 @@ differ when you load the file:
 - llama.cpp also pushes the first token (`<bos>`), which the census left alone;
 - your GGUF is not the W4A16 checkpoint.
 
-Sums of neurons, other scales, sampling, long chats and thinking were never measured. Whether a neuron's words still
-come out in llama.cpp is still to be checked on the 31B: the plan, fixed in advance, is in `ARCHITECTURE.md` §6.
+We checked it on the 31B for layer 45's two top neurons, against a bar fixed before the run (30 October 2026,
+`ARCHITECTURE.md` §6). At ±1 their words came out in llama.cpp in all six answers, as in the census: 13641 at −1 wrote
+"I am a own-company-wide staff meeting all-hands…", and 21200 at +1 "…young man, sir". At ±2 llama.cpp's answers
+collapsed into "//" or blank space and lost the words, as the instrument's own do when it pushes the first token too.
+Two neurons are not a layer. Sums of neurons, other scales, sampling, long chats and thinking were never measured.
 
 ## For the owner
 
