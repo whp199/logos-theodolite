@@ -1,0 +1,145 @@
+{
+ "same_answers": {
+  "fresh": {
+   "identical": 24438,
+   "of": 24528
+  },
+  "reasked": {
+   "identical": 1536,
+   "of": 1536
+  },
+  "unpushed": {
+   "identical": 6,
+   "of": 6
+  },
+  "where_they_differ": {
+   "first_differing_piece_median": 13,
+   "min": 0,
+   "share_before_piece_8": 0.322
+  }
+ },
+ "trial_vs_fresh_controls": {
+  "neurons": 1022,
+  "mass_spearman": 0.9994,
+  "mass_mean_change": 0.041,
+  "controls_mass_p50_p95_max": {
+   "trial_1024_seed3": [
+    9.81,
+    13.62,
+    20.14
+   ],
+   "whole_2048_seed7": [
+    9.83,
+    13.74,
+    24.04
+   ]
+  },
+  "above_every_control": {
+   "trial": 169,
+   "fresh_controls": 76
+  },
+  "p_at_most": {
+   "0.05": {
+    "trial": 389,
+    "fresh_controls": 385,
+    "both": 385
+   },
+   "0.01": {
+    "trial": 259,
+    "fresh_controls": 268,
+    "both": 259
+   },
+   "0.002": {
+    "trial": 209,
+    "fresh_controls": 183,
+    "both": 183
+   }
+  },
+  "named": {
+   "trial": 262,
+   "fresh_controls": 257,
+   "both": 256,
+   "named_by_halves_both": 149
+  },
+  "named_lost": [
+   {
+    "neuron": 901,
+    "mass": 15.744,
+    "q_trial": 0.04509,
+    "q_whole_layer": 0.0585,
+    "collapse_mass": 0.245
+   },
+   {
+    "neuron": 1991,
+    "mass": 16.331,
+    "q_trial": 0.04156,
+    "q_whole_layer": 0.04011,
+    "collapse_mass": 0.521
+   },
+   {
+    "neuron": 3663,
+    "mass": 15.557,
+    "q_trial": 0.048,
+    "q_whole_layer": 0.06519,
+    "collapse_mass": 0.442
+   },
+   {
+    "neuron": 9513,
+    "mass": 15.873,
+    "q_trial": 0.04509,
+    "q_whole_layer": 0.05116,
+    "collapse_mass": 0.149
+   },
+   {
+    "neuron": 17310,
+    "mass": 15.847,
+    "q_trial": 0.04509,
+    "q_whole_layer": 0.05116,
+    "collapse_mass": 0.375
+   },
+   {
+    "neuron": 20271,
+    "mass": 15.704,
+    "q_trial": 0.04509,
+    "q_whole_layer": 0.06265,
+    "collapse_mass": 0.462
+   }
+  ]
+ },
+ "collapse": {
+  "rule_words_held": [
+   "idea",
+   "own",
+   "owns",
+   "ownthought",
+   "ownthoughtthought",
+   "rest",
+   "same",
+   "samethought",
+   "sss",
+   "thought",
+   "thoughtthought",
+   "thoughtthoughtthought",
+   "thoughtthoughtthoughtthought",
+   "thoughtthoughtthoughtthoughtthought"
+  ],
+  "joined": 395,
+  "controls_needed": 20,
+  "above_every_control": 1580,
+  "q05": 6308,
+  "collapse_share_above_every_control": {
+   "median": 0.083,
+   "some": 879,
+   "half_or_more": 5
+  },
+  "collapse_share_q05": {
+   "median": 0.103,
+   "some": 3636,
+   "half_or_more": 186
+  },
+  "described_on_map": 1023,
+  "controls_max_mass_shown": 24.04,
+  "auc_mass": 0.7126,
+  "auc_mass_shown": 0.699
+ }
+}

@@ -1,0 +1,11 @@
+--- read at 48 word-pieces: FAIL
+  pass  G1 lead (mass, every answer): mass_c 0.7144 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7285 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6731 (bar 0.57), rep_BA 0.6651 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6494 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4998 (bar (0.47, 0.53)), read_gain_ratio 1.023 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  FAIL  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 21.8777 (bar 0.002)
+  reported: shift 0.726, shift_up 0.722, shift_down 0.617, xq 0.716, rep 0.678, mass_A 0.633, mass_u 0.704, shift_res 0.727, rep_res 0.684
+  counts {'neurons': 21504, 'controls': 2048, 'above_every_control': 1032, 'by_chance': 10.5, 'q05': 8271, 'named': 6469, 'named_by_halves': 3167, 'above_ctl_p95': 0.4249, 'pA05_and_pB05': 3196, 'pA05_and_pB05_by_chance': 53.8}; rho_AB neurons 0.426 controls 0.014; signs {'+': 0.6095, '-': 0.5999}
+throughput (writing, census_run's own lines): {'answers_written': 565254, 'seconds': 47580.3, 'answers_per_s': 11.88, 'sessions': 1}
+-> /tmp/claude-1000/-home-eric-bin-ai-theodolite2/55e2a1fc-688e-4ae1-82e6-1ef32bab9bd9/scratchpad/L45_whole_pm1.json: FAIL

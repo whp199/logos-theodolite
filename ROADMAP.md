@@ -433,7 +433,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
 
   A whole layer is taken at batch 64 (the step-0 rule: chair parts at 20 pieces at batch 96), at the trial’s measured
   12.4 answers a second while writing: about 12.1 hours at 48 pieces (12.7 with 2,048 controls), about 8.0–8.4 at 32
-  (estimated, not timed). The owner chose, on 29 October, to count `break_rel`’s doses calibrated at layers 40–50 alone
+  (estimated, not timed); the first whole layer, with 2,048 controls, took 13.2 hours at 11.88. The owner chose, on 29 October, to count `break_rel`’s doses calibrated at layers 40–50 alone
   (pages 41–51): `DOSES_CALIBRATED` gives each design its span of layers and the card tests the run’s own, so 51–57
   and every layer below 40 stay uncalibrated. Every page and tool that shows a census says its doses are uncalibrated
   (in red), or not calibrated at that layer for `break_rel` outside 40–50, save a `break_rel` census at 40–50.
@@ -476,10 +476,35 @@ layers, the determinism run and the sampled push on 29 October). In this section
 
   The first whole layer was started that afternoon: layer 45 (page 46), `break_rel`, all 21,504 neurons against 2,048
   controls drawn with seed 7 (the trial’s were 3, the ladders’ 0), `--batch 64 --max-new 48 --unpacker compiled`,
-  565,254 answers, about 13–14 hours on the home 5090 (`atlas_data/census/runs/L45-break_rel.*`; begun 15:35 CDT). It
-  started before the collapse rule was written, so it ranks itself without it; the atlas marks that ranking when the
-  layer is opened, or `census_tools.py rank` ranks it again with the rule. Still open once it is in: read it the
-  trial’s way and say how the trial’s 1,022 neurons rank against fresh controls.
+  565,254 answers (`atlas_data/census/runs/L45-break_rel.*`). It finished at 04:49 CDT on 30 October, 13.2 hours of
+  writing at 11.88 answers a second. It began before the collapse rule was written, so it was ranked again with the
+  rule (`census_tools.py rank 45`), then read on the CPU with the trial’s own reader, unchanged, its hashes checked
+  ([`census_L45_whole/`](experiments/results/census_L45_whole/), `summary.json`, `read.sh`, `compare.py`):
+  - **Every gate passes, within 0.01 of the trial.** At 48 word-pieces: lead 0.713, beyond text survival 0.724, words
+    picked on one half and scored on the other 0.680 and 0.671, the new questions alone 0.662. The ±1 answers alone
+    clear every bar too (0.714). At 32 every gate passes but the lead falls 0.023 and replication 0.022, past the
+    0.02 the length rule allows: on the whole layer that rule would keep 48, as the owner did.
+  - **What the layer names.** 1,580 of 21,504 neurons (7.3%) beat every control, about 10.5 of them by chance alone;
+    6,308 have q ≤ 0.05, and 5,123 of those are named (their words replicate across the halves both ways). The halves’
+    ranks agree at 0.49 among neurons, 0.12 among controls. At ±1 the neurons’ text loses 0.04 of its distinct-4, the
+    controls’ 0.004; at ±2 both lose 0.80, loops for both kinds as in the trial.
+  - **The trial’s neurons against fresh controls.** They wrote the same answers again: 99.6% of the 1,022 fresh
+    neurons’ answers bit for bit (24,438 of 24,528), all of the 64 re-asked and all six unpushed. So the comparison
+    re-draws the null alone, and the null held: the controls’ mass p50 and p95 moved from 9.81 and 13.62 (1,024, seed 3)
+    to 9.83 and 13.74 (2,048, seed 7). Of the trial’s 262 named, 256 are named again. The six lost sat at the edge,
+    q 0.042–0.048, four of them taking 37–52% of their mass from collapse words. Against twice as many controls, 76 of
+    the 1,022 beat every one (7.4%), the layer’s own share, so the trial was a fair sample.
+  - **The collapse rule here.** With 2,048 controls it needs 20 of them to hold a word: idea, own, owns, rest, same,
+    sss, thought and their 395 joins. “And” is held by 17 here (the trial’s 11 of 1,024 cleared its 10), so a join
+    such as andthought is shown. Of the 1,580 above every control, 879 take some mass from hidden words (median 8%),
+    5 half or more, and 1,023 keep a description on the map. With the hidden words left out the lead is 0.699.
+  - **What it does not show.** The agreement with the trial is mostly built in: same answers, new controls. The only
+    test of the neurons themselves is still inside the run, the halves. And a lead says that a neuron’s push differs
+    from one along an isotropic random direction. A down column is a learned direction, and a learned direction may
+    beat an isotropic one for reasons that belong to the layer, such as its write subspace or its alignment with the
+    unembedding, not to the neuron. Controls drawn from the layer’s own columns (a random mix of them, matched to
+    their covariance) would ask whether a single neuron stands out within what its layer writes. The 21,504 neurons’
+    answers would stand; 2,048 such controls are 49,152 answers, about 70 minutes. Not built.
 - **The push’s size.** On the 31B the norm after each block caps what a single neuron can write, and the census’s 0.8 of
   the stream is 1 to 10 times that cap at most layers (review of 27 October 2026). A census can now be taken in each
   neuron’s own ceiling (`--dose-unit ceiling`): a neuron is pushed by a multiple of the most it can write by itself, and
@@ -496,8 +521,10 @@ layers, the determinism run and the sampled push on 29 October). In this section
   --top M --seed <another>` retests a screen’s M strongest neurons against fresh controls, its p and q taken over those
   M alone (`stage` in the meta and on the card; the layer’s census stays the screen). Its cost is mostly the controls:
   about (200 + 4,096) × 10 answers, some 17 hours on the 5090 at `--batch 32 --max-new 64` (worked out from the
-  pilot’s step). The owner chose 2,048 controls for the first whole `break_rel` layer (above); whether its strongest are
-  then retested is still to choose.
+  pilot’s step). The owner chose 2,048 controls for the first whole `break_rel` layer (above). Its strongest cannot be
+  retested with `break_rel` itself: on a shared cell a neuron writes its picked answer again (99.6% bit for bit,
+  measured on that layer), and `census_run.py` refuses that. A retest needs a design whose questions no screen asked.
+  Whether to build one, or the layer’s-own-columns controls (above), is still to choose.
 - **The census on larger and rented cards.** A run’s batches are planned from its job list and the batch size, written
   whole, so a stopped run, a torn write and a run in shards each write the rows an unbroken run does (checked row for
   row on the stand-in). The batch and the plan are resume keys and fix a run’s determinism class: measure what a card
