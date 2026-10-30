@@ -10,8 +10,7 @@ Ten layers are left: **40, 41, 42, 43, 44, 46, 47, 48, 49 and 50**. These are th
 been calibrated. If you have a big enough card and a free night, you can take one. Layers count from 0, as every script
 counts them (the app's page = layer + 1).
 
-**The board** shows which layer is whose: the pinned *Census layer board* issue at
-<https://github.com/whp199/logos-theodolite/issues>.
+**The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/logos-theodolite/issues/1>.
 
 ## What you need
 

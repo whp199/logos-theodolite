@@ -20,4 +20,4 @@ every run is spot-checked: 5 random chunks of it re-run on our card. same bits a
 what you send: the answers, your card name + library versions, a claim code. no logs, paths or hostnames
 
 full guide: https://github.com/whp199/logos-theodolite/blob/main/VOLUNTEERS.md
-board: pinned "Census layer board" issue at https://github.com/whp199/logos-theodolite/issues (pic rel)
+board: https://github.com/whp199/logos-theodolite/issues/1 (pic rel)
