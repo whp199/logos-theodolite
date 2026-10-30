@@ -46,6 +46,7 @@ theodolite2/
 │   ├── atlas_stand_in.py            # a tiny random Gemma 4 for the atlas's checks, and the server on it (--serve)
 │   ├── census_run.py                # takes a layer's census (GPU), resumable, in planned batches or shards
 │   ├── census_tools.py              # rank, merge, depth, spread, the dose window and canaries over census runs (CPU)
+│   ├── export_control_vector.py     # a neuron's push (or a set's) as a llama.cpp control-vector GGUF (CPU, §6)
 │   ├── pod/                         # a rented card's jobs, each with --dry-run on the stand-in (README §v):
 │   │   ├── setup.sh                 #   everything on the volume, the pinned downloads, the venv from constraints, a self-test
 │   │   ├── pilot.sh                 #   the one-hour pilot: steps per unpacker and batch, the writer's floor, projections
@@ -60,6 +61,7 @@ theodolite2/
 │   ├── check_atlas_index.py         # every index built on the stand-in against the same quantity read live (CPU only)
 │   ├── check_atlas_api.py           # every atlas route against the operation it serves, the GPU lock, refusals (CPU only)
 │   ├── check_census.py              # the census's statistics, dose window, units, resume, shards, merge and spread (CPU only)
+│   ├── check_control_vector.py      # the exported vector against the census's push, bit for bit, and llama.cpp itself (CPU only)
 │   ├── check_scientist.py           # the scientist's tools, MCP server and three backends against fakes (CPU only)
 │   ├── check_local_only.py          # who may ask: every route, the socket and the lab daemon, refused or let in (CPU only)
 │   ├── check_hypothesis_test.py     # test_motif_hypothesis's test against chance, its route and the folio's words (CPU only)
@@ -1196,3 +1198,115 @@ int4mm for Q4_1, Q4_K and the other K types (they stay packed); split GGUF files
 registered scripts, which build the pinned runtime on the checkpoint and the GPU they were registered on. interp-engine
 takes the model as built (its own dtype argument is not used for a model handed to it); it ran the stand-in on this
 CPU-only machine without complaint, which cannot show what it asks of a GPU that is there but not used.
+
+---
+
+## 6. A neuron's push in llama.cpp (`scripts/export_control_vector.py`)
+
+Since 30 October 2026 a neuron found in the atlas or the census can be taken out of the instrument. The census's push
+of one MLP neuron, or of a set of them, is written as a llama.cpp control vector: a GGUF that `llama-server` loads
+beside any Gemma-4-31B-it GGUF, so every frontend that talks to it (SillyTavern and the rest) gets the push.
+
+```bash
+.venv/bin/python -I scripts/export_control_vector.py --layer 45 --neuron 13641            # dose +1: theodolite-L45-n13641.gguf
+.venv/bin/python -I scripts/export_control_vector.py --page 46 --neuron 13641 --dose -2   # the atlas's #/atlas/46/13641
+.venv/bin/python -I scripts/export_control_vector.py --set 45:13641,44:801:-0.5 -o mix.gguf
+.venv/bin/python -I scripts/export_control_vector.py --show theodolite-L45-n13641.gguf
+llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-L45-n13641.gguf:1
+```
+
+It reads, on the CPU in a few seconds, two tensors of each layer named: the down projection's codes and scales and the
+post-feed-forward norm, from the W4A16 checkpoint in the local Hugging Face cache (`--checkpoint` names other files),
+or with `--gguf FILE` from a GGUF of Gemma 4. p50 comes from the stats index (`atlas_data/index/act_scale.npz`, or
+`--stats`, such as the census kit's release copy), refused when it was built for another model. Nothing is downloaded
+and the GPU is not used. A set (`--set L:N[:DOSE],...`) sums its pushes at each layer, as the atlas's push tab sums
+several pushes at one layer (`atlas_ops.resolve`).
+
+**The mapping.** Read in llama.cpp's source at cd26896 (20 August 2026: `common_control_vector_load_one` in
+common/common.cpp, `llama_adapter_cvec` in src/llama-adapter.cpp, `build_cvec` in src/models/gemma4.cpp), and then
+seen through llama.cpp itself on the stand-in (the check, below):
+
+| | the instrument | llama.cpp |
+|---|---|---|
+| what is added | `dose × p50_l × unit(w_post ⊙ W_down[:, n])` (`census.take_census`, `atlas_ops.resolve`) | the file's `direction.<k>` × SCALE, summed over the files given |
+| where | the stream leaving layer l: the decoder layer's output, after `post_feedforward_layernorm`, the residual sum and `layer_scalar` | `build_cvec(cur, il)` right after `layer_output_scale` (the layer scalar), for il = k |
+| which layer | l counted from 0 (the atlas's page l + 1) | k = l, no shift. `direction.0` is refused: nothing is ever added after layer 0, so layer 0 cannot be exported |
+| which positions | every word-piece but the start mark | every position, the start mark included |
+| how big | the dose is a share of p50 | SCALE multiplies the file. A file written at dose 1 (the default) takes the census's dose as its SCALE |
+| arithmetic | the push cast to bfloat16, added to a bfloat16 stream | float32 added to float32 |
+| metadata | — | none is read. `general.architecture` = controlvector, `controlvector.model_hint`, `controlvector.layer_count` are written as llama.cpp's cvector-generator writes them |
+
+The flag in this version is `--control-vector-scaled FILE:SCALE`, comma-separated for several files (older builds
+took FILE and SCALE as two arguments). `--control-vector-layer-range START END` limits the layers (default 1 to the
+layer count).
+
+**What each file records**, under `theodolite.*` (`--show` prints it): the model; the weights read (the checkpoint's
+revision and its file's sha256 as the Hub stores it, or a GGUF's fingerprint as `gguf_model.provenance` takes it); each
+entry's layer, page, neuron, dose and p50; the stats index, its build and its sha256; the push, the start mark, the
+scale, what of llama.cpp was read, the caveat below, the code's commit and the time it was written.
+
+**Where the direction comes from.** From the checkpoint, the down column is unpacked by the instrument's own unpacker
+(`engine_runtime.dequantize_w4a16_cols`) and the direction is computed in `atlas_ops.Weights.write_dirs`'s order, so
+the file is the census's push element for element. The vault's edits are not in it. From a GGUF, the column is that
+file's own quantisation, unpacked to float32 (gguf-py's numbers). How far that is from the checkpoint's direction
+(cosine, the least and the median of 192 neurons at layers 40, 45 and 50; 30 October 2026, on the CPU):
+
+| file | least | median |
+|---|---|---|
+| `gemma-4-31B-it-QAT-Q4_0.gguf` (lmstudio-community) | 0.9965 | 0.9969 |
+| `google_gemma-4-31B-it-Q6_K_L.gguf` | 0.9885 | 0.9924 |
+| `gemma-4-31B-it-Q4_K_M.gguf` (lmstudio-community) | 0.9784 | 0.9904 |
+| `gemma-4-31B-it-UD-Q4_K_XL.gguf` | 0.9768 | 0.9904 |
+
+The QAT Q4_0 file holds the checkpoint's norms exactly, but its down columns were quantised again (11% of the values
+equal at layer 45), so it is near the checkpoint and not the same weights. The default stays the checkpoint's
+direction: it is the one the census measured.
+
+**The check** (`scripts/check_control_vector.py`, CPU only, 48 checks in about 15 s). The stand-in's down projections
+are packed as W4A16 and written as a checkpoint, with a stats index of its own stream lengths. Every push a census of
+two neurons adds (48 rows: break_rel's six questions at ±1 and ±2) is an exported vector, bit for bit, and so are the
+atlas push tab's (one neuron, and a set across two layers). The file is what the loader asks for; the loader's scale
+and sum give the census's push at dose × SCALE, bit for bit. The command line writes the same vector and refuses what
+it should. `--gguf` on the same weights written as a float32 GGUF gives the same vector. Given a llama-server
+(`--llama-server`, `$LLAMA_SERVER` or the PATH), it also serves the stand-in's float32 GGUF on the CPU and reads every
+word-piece's log-probability at the first one written to a census question:
+
+| llama.cpp against the instrument | largest difference in a log-probability |
+|---|---|
+| both unpushed (ggml's sums and GELU are not torch's) | 4.4e-4 |
+| the file at SCALE 2 / the push at dose 2, the same layer, the start mark pushed | 2.0e-4 |
+| a set across two layers / its pushes, the start mark pushed | 1.3e-4 |
+| the same, the start mark spared (the instrument's way) | 3.9e-2 |
+| the push one layer below / one layer above | 0.18 / 0.13 |
+| pushed against unpushed | 0.63 |
+
+So llama.cpp adds `direction.<l>` after layer l, at SCALE × the dose, summed, and it pushes the start mark, which the
+instrument does not. On the stand-in that alone moves a log-probability by 0.04; on the 31B it is not yet measured.
+
+**What a census label can bear.** A label (its words, its lead, its p and q) was read from six questions (break_rel),
+at ±1 and ±2 of the stream's median length, one neuron at a time, from greedy answers of 48 word-pieces, thinking
+off, on the W4A16 checkpoint in bfloat16, the start mark unpushed, and set against 2,048 random directions pushed the
+same way. At layer 45, 1,580 neurons beat every control where 10.5 would by chance: a label is a lead, not a finding.
+A push of dose 1 is 1.8 to 2.5 times the most any single neuron at layers 40–50 can write by itself (its write
+ceiling, `atlas_ops.Weights.write_ceiling`; every neuron's ceiling is below p50), and text begins to break at ±2
+(at layers 40 and 45; at ±1 for the neurons at layer 50). So
+the file pushes the direction a neuron writes, much harder than the neuron ever can: what it does is not what the
+neuron does when the model runs on its own. Not measured: other doses, sums of neurons, other prompts, longer answers,
+sampling, thinking on, a pushed start mark, and any GGUF. Whether a label carries over to llama.cpp at all is what the
+comparison below asks.
+
+**On the 31B: fixed before it is run, not yet run** (it needs the owner's leave for a GPU job; the GGUF and the
+llama-server build are already on the owner's machine). Layer 45's two top-ranked neurons in its census (13641, whose
+pushed answers say "staff", "all", "company", "meeting"; 21200, "man", "young", "sir"), at ±1 and ±2, on break_rel's
+six questions, greedy, 48 word-pieces, thinking off. Both engines are given the census's own prompt ids (first checked:
+llama.cpp's `/detokenize` of them is the instrument's prompt). The instrument: the census's answers as written (the
+start mark spared), and again with the start mark pushed. llama.cpp: `gemma-4-31B-it-QAT-Q4_0.gguf`, every layer on
+the card, the exported file at SCALE = the dose. Read:
+1. **Shared prefix**: the word-pieces llama.cpp's pushed answer shares with the instrument's from the start (of 48),
+   per (neuron, dose, question), against the floor the weights alone set: the six unpushed answers' shared prefix.
+2. **The change in the pushed words' odds**: on the instrument's pushed answers, both engines given the same ids, the
+   push's change in each word-piece's log-probability (pushed minus unpushed) in each engine; their correlation over
+   every word-piece, and the median of llama.cpp's change over the instrument's where the instrument's moved by more
+   than 0.5. The push carries over if the correlation is at least 0.8 and that median ratio between 0.67 and 1.5.
+3. **The start mark**: 1 and 2 again against the instrument with the start mark pushed, so the part of any gap that is
+   the start mark's is named apart from the weights'.
