@@ -55,12 +55,20 @@ Gemma 4 of scripts/atlas_stand_in.py:
    card's parts and what differs;
 13. when the 31B's checkpoint is in the Hugging Face cache (found through huggingface_hub): on its own norms and down
    columns (CPU, a few tensors), the next layer reads the census's controls about as loudly as the layer's neurons, and
-   an isotropic control far louder;
+   an isotropic control far louder; a columns control is read as loudly as a neuron and leans along what the layer
+   writes as far as a neuron does, where a shaped isotropic one leans less;
 14. break_rel: its six questions, halves and doses; the older designs' questions, job lists and batch plans pinned as
    before it; each design's reading, the own-question exclusion and the controls' mean by hand; a stand-in run of it
    ranked its way (the reading recorded in its ranking file and on its card, a re-rank at another cap said as such),
    stopped, torn and sharded, each equal to the unbroken run; refused in the ceiling unit; the depth report, rank's
-   printout, verify_atlas_writer.py --design, and the writer's floor over the run's own questions.
+   printout, verify_atlas_writer.py --design, and the writer's floor over the run's own questions;
+15. controls mixed from the layer's own columns (census.CONTROL_KINDS, "columns"): unit length, the seed's, drawn in
+   blocks as one draw; leaning along a few directions as far as the neurons do on average, an isotropic control less;
+   a run of them alone (--neurons none) and its meta; not continued as another kind; join_controls writes a run's
+   unpushed answers and neurons as written beside the other run's controls, with a meta naming both, ranks, and is
+   not read by the atlas as a layer's census (nor is the run of controls alone); the join refuses a part as its
+   output, the controls first, a joined run, other settings, unpushed answers that differ and a run not finished, and
+   a joined run is not continued.
 
 Run: .venv/bin/python -I scripts/check_census.py   (exits 0 when every check holds)
 """
@@ -171,9 +179,11 @@ def write_rows_per_row(lm: Any, W_U: torch.Tensor, rows_ids: Any, iv: Any, *, ma
 
 
 def real_read_gain(layers: tuple = (45, 57), sample: int = 256) -> Any:
-    """{layer: (shaped ratio, isotropic ratio)}: how loudly the next layer's input norm reads the census's controls
-    against the layer's neurons, on the 31B's own norms and dequantised down columns read from the local checkpoint
-    (CPU, a few tensors); None when the checkpoint is not cached here (the cache found through huggingface_hub:
+    """{layer: (shaped ratio, isotropic ratio, columns ratio, columns lean, shaped lean)}: how loudly the next layer's
+    input norm reads the census's controls against the layer's neurons, and how far each kind of control leans along
+    what the layer writes against its neurons (the share of its length on the 100 directions the layer's unit write
+    directions span most, their top right singular vectors), on the 31B's own norms and dequantised down columns read from the local checkpoint (CPU, a
+    few tensors); None when the checkpoint is not cached here (the cache found through huggingface_hub:
     $HF_HUB_CACHE, $HF_HOME, else ~/.cache/huggingface)."""
     import contextlib
 
@@ -202,8 +212,18 @@ def real_read_gain(layers: tuple = (45, 57), sample: int = 256) -> Any:
             U /= np.linalg.norm(U, axis=1, keepdims=True)
             iso = np.random.default_rng(0).standard_normal((sample, U.shape[1]))
             iso /= np.linalg.norm(iso, axis=1, keepdims=True)
-            fair = cz.read_gain(U, cz.control_dirs(0, sample, w_post.numpy()), w_in)["ratio"]
-            out[l] = (fair, cz.read_gain(U, iso, w_in)["ratio"])
+            shaped = cz.control_dirs(0, sample, w_post.numpy())
+            fair = cz.read_gain(U, shaped, w_in)["ratio"]
+            packed, scale = get(P + f"{l}.mlp.down_proj.weight_packed"), get(P + f"{l}.mlp.down_proj.weight_scale")
+            W = torch.cat([dequantize_w4a16_cols(packed, scale, torch.arange(a, min(a + 4096, 21504))).float() for a in range(0, 21504, 4096)])
+            W = W * w_post
+            W = (W / W.norm(dim=1, keepdim=True).clamp(min=1e-30)).numpy()
+            cols = cz.control_dirs(0, sample, w_post.numpy(), "columns", W)
+            torch.manual_seed(0)
+            top = torch.svd_lowrank(torch.from_numpy(W), q=110, niter=4)[2][:, :100].numpy()
+            share = lambda X: float(np.mean(np.sum((np.asarray(X, np.float64) @ top) ** 2, axis=1)))  # noqa: E731
+            sn = share(U)
+            out[l] = (fair, cz.read_gain(U, iso, w_in)["ratio"], cz.read_gain(U, cols, w_in)["ratio"], share(cols) / sn, share(shaped) / sn)
     return out
 
 
@@ -1526,17 +1546,128 @@ def run_checks(tmp: Path) -> int:
     section("break_rel: its design, questions and reading; older designs' job lists and plans unchanged; a stand-in run ranked its way, "
             "resumed, torn and sharded; the card; the floor on its questions", before)
 
+    # ----------------------------------------------- 12b. controls mixed from the layer's own columns, and the join
+    before = len(failures)
+    w_post3 = w.norm(3, "post_feedforward").numpy()
+    check(np.array_equal(cz.control_dirs(3, 2, w_post3), cz.control_dirs(3, 2, w_post3, "isotropic")),
+          "the isotropic controls are the default kind, drawn as before")
+    for bad_, kw_ in (("bogus", {}), ("columns", {})):
+        try:
+            cz.control_dirs(3, 2, w_post3, bad_, **kw_)
+            check(False, f"control_dirs refuses kind {bad_!r} without what it needs")
+        except ValueError:
+            check(True, f"control_dirs refuses kind {bad_!r} without what it needs")
+    W3 = w.write_dirs(3, list(range(w.d_ff))).numpy()
+    cc = cz.control_dirs(5, 300, w_post3, "columns", W3)
+    g_ = np.random.default_rng(5).standard_normal((300, w.d_ff)) @ W3.astype(np.float64)
+    check(cc.shape == (300, D) and np.allclose(np.linalg.norm(cc, axis=1), 1, atol=1e-5)
+          and np.array_equal(cc, cz.control_dirs(5, 300, w_post3, "columns", W3))
+          and np.allclose(cc, (g_ / np.linalg.norm(g_, axis=1, keepdims=True)).astype(np.float32), atol=1e-6),
+          "columns controls: unit length, the seed's, drawn in blocks as one draw would be")
+    # their square spread is the neurons' own: on a layer whose writes lean along a few directions (here the first
+    # four), a columns control puts as much of its length there as a neuron does on average, an isotropic one less
+    rng_ = np.random.default_rng(0)
+    lean = rng_.standard_normal((400, 64)) * np.r_[np.full(4, 6.0), np.ones(60)]
+    lean /= np.linalg.norm(lean, axis=1, keepdims=True)
+    q_ = lambda X: float(np.mean(np.sum(np.asarray(X, np.float64)[:, :4] ** 2, axis=1)))  # noqa: E731
+    q_n, q_c = q_(lean), q_(cz.control_dirs(1, 2000, np.ones(64), "columns", lean))
+    q_i = q_(cz.control_dirs(1, 2000, np.ones(64)))
+    check(0.9 < q_c / q_n < 1.1 and q_i / q_n < 0.5,
+          f"columns controls lean along the layer's writes as its neurons do ({q_c / q_n:.2f}x), isotropic ones do not ({q_i / q_n:.2f}x)")
+    check(cz.unit_order([], 3) == [("random", 0), ("random", 1), ("random", 2)] and cz.parse_neurons("none", 9) == [],
+          "a run of controls alone: --neurons none, its controls in order")
+    # a run of columns controls alone, beside the break_rel run above (bu: neurons 0-4, 3 isotropic controls, seed 3)
+    cdir = tmp / "columns"
+    cdir.mkdir()
+    cr = cdir / "L3-columns-controls.jsonl"
+    kc_ = {**kb, "controls": 2, "seed": 5}
+    res = cz.take_census(rt, 3, [], cr, **kc_, control_kind="columns", neurons_spec="none")
+    crows = list(cz.read_rows(cr))
+    cmeta = json.loads(cz.meta_path_of(cr).read_text())
+    check(res["written"] == len(crows) == 6 + 2 * 24 and {r["kind"] for r in crows} == {"baseline", "random"}
+          and cmeta["control_kind"] == "columns" and cmeta["controls"] == cz.CONTROL_KINDS["columns"] and cmeta["neuron_ids"] == ""
+          and "mix of the layer's own write directions" in cmeta["push"] and 0.5 <= cmeta["read_gain"]["ratio"] <= 2.0,
+          f"a run of columns controls alone: {len(crows)} answers, its meta says its controls ({cmeta['read_gain']})")
+    try:
+        cz.take_census(rt, 3, [], cr, **kc_, neurons_spec="none")
+        check(False, "a columns run is not continued with isotropic controls")
+    except ValueError as exc:
+        check("controls" in str(exc), "a columns run is not continued with isotropic controls")
+    joined = cdir / "L3-break_rel-columns.jsonl"
+    got = cz.join_controls(bu, cr, joined)
+    jrows = list(cz.read_rows(joined))
+    jmeta = json.loads(cz.meta_path_of(joined).read_text())
+    check(got == {"neurons": 5, "controls": 2, "rows": len(jrows)} and len(jrows) == 6 + 5 * 24 + 2 * 24
+          and [r for r in jrows if r["kind"] != "random"] == [r for r in BU if r["kind"] != "random"]
+          and [r for r in jrows if r["kind"] == "random"] == [r for r in crows if r["kind"] == "random"],
+          "the join: the run's unpushed answers and neurons as written, beside the other run's controls")
+    check(jmeta["control_kind"] == "columns" and jmeta["seed"] == 5 and jmeta["random_controls"] == 2
+          and jmeta["controls"] == cmeta["controls"] and jmeta["read_gain"] == cmeta["read_gain"]
+          and jmeta["jobs"] == cz.jobs_digest(cz.census_jobs(list(range(5)), 2, cz.DESIGNS["break_rel"], cz.meta_questions(jmeta)))
+          and jmeta["joined"]["neurons_from"]["run"] == bu.name and jmeta["joined"]["controls_from"]["run"] == cr.name
+          and jmeta["plan_kept"] is False and jmeta["design_name"] == "break_rel",
+          "the joined meta: the controls' seed, kind, count and read gain, a job list of both, its parts named")
+    ju = [u for u in cz.read_rows(cz.write_units(joined))]
+    check(sum(u["kind"] == "neuron" for u in ju) == 5 and sum(u["kind"] == "random" for u in ju) == 2,
+          "the joined run ranks its neurons against the other run's controls")
+    check(set(cz.layer_runs(cdir)) == set() and set(cz.layer_runs(bdir)) == {3},
+          "the atlas reads neither a run of controls alone nor a joined run as a layer's census")
+    refusals = []
+    for what_, call_ in (
+            ("onto one of its parts", lambda: cz.join_controls(bu, cr, bu)),
+            ("controls first", lambda: cz.join_controls(cr, bu, cdir / "x.jsonl")),
+            ("joined again", lambda: cz.join_controls(joined, cr, cdir / "x.jsonl")),
+            ("continued", lambda: cz.take_census(rt, 3, list(range(5)), joined, **kb))):
+        try:
+            call_()
+            refusals.append(f"{what_}: not refused")
+        except ValueError:
+            pass
+    other = cdir / "L3-other.jsonl"  # other settings: another word-piece count
+    cz.take_census(rt, 3, [], other, **{**kc_, "max_new": 4}, control_kind="columns", neurons_spec="none")
+    for what_, src_ in (("other settings", other),):
+        try:
+            cz.join_controls(bu, src_, cdir / "x.jsonl")
+            refusals.append(f"{what_}: not refused")
+        except ValueError as exc:
+            if "max_new" not in str(exc):
+                refusals.append(f"{what_}: {exc}")
+    tampered = cdir / "L3-tampered.jsonl"  # unpushed answers that differ: written another way
+    t_rows = [dict(r) for r in crows]
+    t_rows[0]["token_ids"] = list(t_rows[0]["token_ids"]) + [1]
+    tampered.write_text("".join(json.dumps(r) + "\n" for r in t_rows))
+    shutil.copy(cz.meta_path_of(cr), cz.meta_path_of(tampered))
+    short = cdir / "L3-short.jsonl"  # a run not finished
+    short.write_text("".join(json.dumps(r) + "\n" for r in crows[:-1]))
+    shutil.copy(cz.meta_path_of(cr), cz.meta_path_of(short))
+    for what_, src_, says_ in (("unpushed answers that differ", tampered, "unpushed"), ("a run not finished", short, "finish")):
+        try:
+            cz.join_controls(bu, src_, cdir / "x.jsonl")
+            refusals.append(f"{what_}: not refused")
+        except ValueError as exc:
+            if says_ not in str(exc):
+                refusals.append(f"{what_}: {exc}")
+    check(not refusals and not (cdir / "x.jsonl").exists(),
+          "the join refuses: onto a part, controls first, a joined run, other settings, unpushed answers that differ, a run "
+          "not finished; a joined run is not continued" + (f" ({'; '.join(refusals)})" if refusals else ""))
+    section("controls mixed from the layer's own columns: drawn, spread as the neurons are, run alone; the join and its refusals", before)
+
     # ------------------------------------------------------------ 13. the null on the real checkpoint's own weights
     before = len(failures)
     real = real_read_gain()
     if real is None:
         print("  --    the null on the 31B's weights: the checkpoint is not in the Hugging Face cache, skipped")
     else:
-        for l, (fair, iso) in real.items():
+        for l, (fair, iso, colr, lean_c, lean_s) in real.items():
             check(0.5 <= fair <= 2.0, f"page {l + 1}: the next layer reads the census's controls {fair:.2f}x as loudly as the neurons")
             check(iso > 20.0, f"page {l + 1}: an isotropic control is read {iso:.0f}x as loudly (the fault the shaped controls mend)")
-        section("the null on the 31B's own weights: shaped controls as loud as neurons, isotropic ones ~100x louder ("
-                + ", ".join(f"page {l + 1}: {f:.2f}x vs {i:.0f}x" for l, (f, i) in real.items()) + ")", before)
+            check(0.8 <= colr <= 1.25, f"page {l + 1}: a columns control is read {colr:.2f}x as loudly as a neuron")
+            check(0.8 <= lean_c <= 1.25 and lean_s < 0.7,
+                  f"page {l + 1}: a columns control leans along the layer's writes {lean_c:.2f}x as far as a neuron, a shaped one {lean_s:.2f}x")
+        section("the null on the 31B's own weights: shaped controls as loud as neurons, isotropic ones ~100x louder, columns "
+                "controls as loud and leaning as the neurons do (" + "; ".join(
+                    f"page {l + 1}: {f:.2f}x vs {i:.0f}x, columns {c:.2f}x leaning {lc:.2f}x (shaped {ls:.2f}x)"
+                    for l, (f, i, c, lc, ls) in real.items()) + ")", before)
 
     print(f"\n{passed} checks passed, {len(failures)} failed")
     return 1 if failures else 0

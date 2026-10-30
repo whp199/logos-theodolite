@@ -1,0 +1,9 @@
+--- read at 48 word-pieces: FAIL
+  FAIL  G1 lead (mass, every answer): mass_c 0.5023 (bar 0.6)
+  FAIL  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.4812 (bar 0.58)
+  FAIL  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.5168 (bar 0.57), rep_BA 0.515 (bar 0.57)
+  FAIL  G4 the new questions alone carry a lead (mass on half B): mass_B 0.5126 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4998 (bar (0.47, 0.53)), read_gain_ratio 1.016 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  reported: shift 0.484, shift_up 0.502, shift_down 0.450, xq 0.504, rep 0.517, mass_A 0.498, mass_u 0.496, shift_res 0.468, rep_res 0.502
+  counts {'neurons': 2048, 'controls': 2048, 'above_every_control': 0, 'by_chance': 1.0, 'q05': 0, 'named': 0, 'named_by_halves': 0, 'above_ctl_p95': 0.041, 'pA05_and_pB05': 7, 'pA05_and_pB05_by_chance': 5.1}; rho_AB neurons 0.110 controls 0.116; signs {'+': 0.5278, '-': 0.5}
+-> experiments/results/census_L45_columns/mixes_verdict.json: FAIL

@@ -27,7 +27,11 @@ column passes w_post before it joins the stream, and w_post is near zero on the 
 read with up to ~1700 times the gain of the rest. A plain isotropic direction of the same length puts ~3% of itself
 there and reaches the next layer about 100 times louder than any neuron's write (pages 36-59 of the 31B), so a control
 is drawn as unit(w_post (.) r), r isotropic, which matches the neurons' read size to within ~1.25x at every layer
-(`control_dirs`; each run records the two read sizes, `read_gain`).
+(`control_dirs`; each run records the two read sizes, `read_gain`). A second kind of control (`CONTROL_KINDS`,
+"columns") is a random mix of the layer's own write directions, as spread as they are: a lead against it says that a
+neuron stands out within what its layer writes, not only that a learned direction beats a random one. A run of such
+controls alone (no neurons) is joined to a layer's run of the same settings (`join_controls`), so the layer's neurons'
+answers are read against them without being written again.
 
 The doses are neuron-explorer's, chosen on Qwen3.5-4B (`DOSES_FROM`); on Gemma-4-31B they are not yet calibrated, and a
 dose of 0.8 there is already longer than the most a single neuron can write at most layers
@@ -837,8 +841,9 @@ def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
     a run of the default design (DEFAULT_DESIGN), then the largest; calibration runs left out (as the reference's `layer_runs`), or, with `calibration`, only they are read
     (for the dose window, census_tools.py curves); given the model read here, runs taken on another model left out. A
     shard of a run (its meta names its `shard`) is never read as a layer's census: only the run `merge_runs` joins from
-    its shards is. Runs taken before the controls were drawn through w_post (CENSUS_VERSION) are not read: given
-    `refused`, each such layer's reason goes there."""
+    its shards is, and neither is a run of controls alone nor one joined from two (`join_controls`: a reading of a
+    layer's run against other controls, not its census). Runs taken before the controls were drawn through w_post
+    (CENSUS_VERSION) are not read: given `refused`, each such layer's reason goes there."""
     runs_dir = Path(runs_dir) if runs_dir is not None else census_dir()
     best: Dict[int, Tuple[Path, Tuple[bool, bool, int]]] = {}
     for meta_path in glob.glob(str(runs_dir / "*.meta.json")):
@@ -847,6 +852,8 @@ def layer_runs(runs_dir: Optional[Path] = None, model: Optional[str] = None,
         except (OSError, ValueError):
             continue
         if not isinstance(meta, dict) or meta.get("shard") or (meta.get("design_name") in CALIBRATION_DESIGNS) != bool(calibration):
+            continue
+        if meta.get("joined") or meta.get("neuron_ids") == "":
             continue
         if model is not None and meta.get("model") is not None and meta.get("model") != model:
             continue
@@ -1086,10 +1093,13 @@ def writer_floor(meta: Dict[str, Any], files: Optional[Sequence[Path]] = None) -
 
 
 def parse_neurons(spec: str, n: int, seed: int = 0) -> List[int]:
-    """"all", "random:K" (K neurons drawn without replacement, from the seed), "2742", "0-99" or "1,5,9-12"."""
+    """"all", "none" (a run of controls alone), "random:K" (K neurons drawn without replacement, from the seed), "2742",
+    "0-99" or "1,5,9-12"."""
     spec = str(spec).strip()
     if spec == "all":
         return list(range(n))
+    if spec == "none":
+        return []
     if spec.startswith("random:"):
         k = int(spec.split(":", 1)[1])
         if not 0 < k <= n:
@@ -1108,15 +1118,46 @@ def parse_neurons(spec: str, n: int, seed: int = 0) -> List[int]:
     return sorted(set(out))
 
 
-def control_dirs(seed: int, count: int, w_post: np.ndarray) -> np.ndarray:
-    """The random controls' directions ([count, D] float32): unit(w_post (.) r), r isotropic and drawn from the seed,
-    w_post the layer's post-feed-forward norm weight. That is the reference's random down column (it rotates a neuron's
-    down column to a random direction) carried through the norm every neuron's write passes on Gemma 4, so a control
-    reaches the next layer as loudly as a neuron does; a plain isotropic direction reaches it about a hundred times
-    louder on the 31B (module docstring). A control is pushed exactly as a neuron is, `dose * p50 * u`, so it asks how
-    often a theme turns up when the direction pushed means nothing."""
-    shape = np.asarray(w_post, np.float64).reshape(-1)
-    v = np.random.default_rng(int(seed)).standard_normal((int(count), shape.shape[0])) * shape
+# The kinds of control a run can draw (`control_dirs`), as its meta says them (`controls`, a resume key).
+CONTROL_KINDS = {
+    "isotropic": "unit(w_post * r), r isotropic: the reference's random down column through the post-feed-forward norm",
+    "columns": "unit(sum_n g_n u_n), g isotropic over the layer's neurons, u_n = unit(w_post * W_down[:, n]) the "
+               "neuron's own write direction: a random mix of the layer's own write directions, spread as they are",
+}
+CONTROL_KIND = "isotropic"
+CONTROL_PUSH = {"isotropic": "along unit(w_post * r), r isotropic",
+                "columns": "along a random mix of the layer's own write directions, unit(sum_n g_n u_n)"}
+
+
+def control_kind_of(meta: Dict[str, Any]) -> str:
+    """The kind of control a run drew (`CONTROL_KINDS`); a run taken before there were kinds drew "isotropic"."""
+    return str(meta.get("control_kind") or CONTROL_KIND)
+
+
+def control_dirs(seed: int, count: int, w_post: np.ndarray, kind: str = CONTROL_KIND, writes: Optional[np.ndarray] = None) -> np.ndarray:
+    """The random controls' directions ([count, D] float32), drawn from the seed. "isotropic": unit(w_post (.) r), r
+    isotropic, w_post the layer's post-feed-forward norm weight. That is the reference's random down column (it rotates
+    a neuron's down column to a random direction) carried through the norm every neuron's write passes on Gemma 4, so a
+    control reaches the next layer as loudly as a neuron does; a plain isotropic direction reaches it about a hundred
+    times louder on the 31B (module docstring). "columns": unit(g @ writes), g isotropic over the layer's neurons and
+    `writes` [N, D] every neuron's unit write direction (`atlas_ops.Weights.write_dirs`), so a control's square spread
+    over directions is, on average, the neurons' own (their second moment, writes.T @ writes / N): on the 31B's layer 45
+    a neuron puts 5.3% of its length on the 100 directions its layer writes most, a columns control 5.2%, an isotropic
+    one 2.2% (30 October 2026). A control is pushed exactly as a neuron is, `dose * p50 * u`, so it asks how often a
+    theme turns up when the direction pushed is no single neuron's."""
+    if kind not in CONTROL_KINDS:
+        raise ValueError(f"The census's controls are {', '.join(CONTROL_KINDS)}, not {kind!r}.")
+    rng = np.random.default_rng(int(seed))
+    if kind == "isotropic":
+        shape = np.asarray(w_post, np.float64).reshape(-1)
+        v = rng.standard_normal((int(count), shape.shape[0])) * shape
+    else:
+        if writes is None:
+            raise ValueError("Columns controls are mixed from the layer's write directions: give every neuron's (`writes`).")
+        u = np.asarray(writes, np.float64)
+        # drawn a block of controls at a time (the generator's stream is the same as one draw), to bound the memory
+        v = np.concatenate([rng.standard_normal((min(256, int(count) - k), u.shape[0])) @ u for k in range(0, int(count), 256)]
+                           or [np.zeros((0, u.shape[1]))])
     return (v / np.linalg.norm(v, axis=1, keepdims=True).clip(min=1e-30)).astype(np.float32)
 
 
@@ -1178,7 +1219,10 @@ def shared_cells(design: Sequence[Tuple[str, float]], stage: Dict[str, Any]) -> 
 
 
 def unit_order(neurons: Sequence[int], controls: int) -> List[Tuple[str, int]]:
-    """The neurons with the controls spread evenly among them, so any prefix of a run has its share of controls."""
+    """The neurons with the controls spread evenly among them, so any prefix of a run has its share of controls (a run of
+    controls alone, in their order)."""
+    if not len(neurons):
+        return [("random", k) for k in range(int(controls))]
     units: List[Tuple[str, int]] = [("neuron", int(n)) for n in neurons]
     for k in range(int(controls)):
         units.insert(round((k + 1) * len(units) / (int(controls) + 1)), ("random", k))
@@ -1497,6 +1541,7 @@ def take_census(
     lens_id: Optional[str] = None,
     stage: Optional[Dict[str, Any]] = None,
     canary_only: bool = False,
+    control_kind: str = CONTROL_KIND,
     log: Any = print,
     cancel: Any = None,
 ) -> Dict[str, Any]:
@@ -1506,7 +1551,9 @@ def take_census(
     push; the rows of a batch share their question, so none is padded). A dose is in `dose_unit` (DOSE_UNITS; "" for
     the design's own, "stream" but for calib_ceil). `p50_file` is the stats index p50 was read from, if any (its sha256
     goes in the runtime record); `lens_id` the lens the runtime was loaded with, for a caller that has freed it from the
-    card (census_run.py), else it is read from the runtime; `stage` a retest's stage (`retest_of`), kept in the meta.
+    card (census_run.py), else it is read from the runtime; `stage` a retest's stage (`retest_of`), kept in the meta;
+    `control_kind` the kind of control drawn (`CONTROL_KINDS`; with no neurons, a run of controls alone, which
+    `join_controls` sets beside a layer's run).
 
     The batches are planned from the whole job list and the batch size (`plan_batches`), and written whole, in plan
     order, or not at all (`cancel()` stops between steps). Continuing, a planned batch whose answers are all in the file
@@ -1562,7 +1609,12 @@ def take_census(
     stop = rt.end_of_turn_ids()
     out_path = Path(out_path)
     w_post = w.norm(layer, "post_feedforward").cpu().numpy()
-    ctrl_np = control_dirs(seed, controls, w_post)
+    if control_kind not in CONTROL_KINDS:
+        raise ValueError(f"The census's controls are {', '.join(CONTROL_KINDS)}, not {control_kind!r}.")
+    writes = (np.concatenate([w.write_dirs(layer, list(range(a, min(a + 4096, N)))).cpu().numpy() for a in range(0, N, 4096)])
+              if control_kind == "columns" and controls else None)
+    ctrl_np = control_dirs(seed, controls, w_post, control_kind, writes)
+    del writes
     sample = gain_sample(seed, N)
     w_next = (w.norm(layer + 1, "input") if layer + 1 < L else rt.final_norm_weight.detach().float()).cpu().numpy()
     gain = read_gain(w.write_dirs(layer, sample.tolist()).cpu().numpy(), ctrl_np, w_next)
@@ -1621,14 +1673,15 @@ def take_census(
         "seed": int(seed), "random_controls": int(controls), "neurons": neurons_spec or f"{len(neurons)} neurons",
         "push": ("add: dose x the neuron's write ceiling (s_l sqrt(D) ||w_post * unit(W_down[:, n])||, the most it can "
                  "write by itself) along unit(w_post * W_down[:, n]) (a control: dose x the ceiling of the neuron it is "
-                 "paired with, along unit(w_post * r), r isotropic), at the stream leaving the layer, every word-piece but "
+                 f"paired with, {CONTROL_PUSH[control_kind]}), at the stream leaving the layer, every word-piece but "
                  "the start mark") if by_ceiling else
-                ("add: dose x p50 along unit(w_post * W_down[:, n]) (a control: along unit(w_post * r), r isotropic), at "
+                (f"add: dose x p50 along unit(w_post * W_down[:, n]) (a control: {CONTROL_PUSH[control_kind]}), at "
                  "the stream leaving the layer, every word-piece but the start mark"),
-        "controls": "unit(w_post * r), r isotropic: the reference's random down column through the post-feed-forward norm",
+        "controls": CONTROL_KINDS[control_kind],
         "dose_unit": unit,
         "ceilings": "each pushed answer records its unit's write ceiling (`ceiling`; a control's is that of the neuron it is "
                     "paired with, `ref_neuron`)" + (", the push's own unit" if by_ceiling else ", for the dose window alone"),
+        "control_kind": control_kind,
         "version": CENSUS_VERSION, "read_gain": gain, "doses_from": DOSES_FROM.get(design_name),
         "p50": float(p50), "p50_source": p50_source, "stop_ids": stop, "greedy": True, "chat": "thinking off",
         "lens": lens_id if lens_id is not None else (rt.lens_card() or {}).get("id") if hasattr(rt, "lens_card") else None,
@@ -1714,6 +1767,9 @@ def take_census(
     if shard:
         meta["shard"] = {"i": int(shard[0]), "n": int(shard[1]), "chunks": [plan[b0][0], plan[b1 - 1][0] + 1], "batches": [b0, b1]}
     if old is not None:
+        if old.get("joined"):
+            raise ValueError(f"{out_path.name} joins one run's neurons with another's controls (census_tools.py join): it is "
+                             "not continued, its parts are; join them again.")
         differ = settings_differ(old, meta)
         if differ:
             raise ValueError(f"{out_path.name} was taken with other settings ({', '.join(differ)}); name another run "
@@ -1892,6 +1948,95 @@ def merge_runs(inputs: Sequence[Path], out: Path, partial: bool = False) -> Tupl
         meta["mixed_runtime"] = classes
     write_json_atomic(meta_path_of(Path(out)), meta)
     return n_in, n_out
+
+
+JOIN_FREE = ("seed", "random_controls", "controls", "push")  # what a joined run takes from its controls' run
+
+
+def join_controls(neurons_run: Path, controls_run: Path, out: Path) -> Dict[str, Any]:
+    """A layer's neurons read against another run's controls, without writing them again: the unpushed answers and every
+    neuron's answers of `neurons_run`, beside every control's of `controls_run` (a run of controls alone, take_census
+    with no neurons: another seed, or another kind, `CONTROL_KINDS`), into `out` with a meta of its own (`joined` names
+    both parts). Both must be whole runs (every answer of their job lists, no shard, no retest, nothing joined before)
+    taken with the same settings but the controls (settings_differ, the keys in JOIN_FREE aside), and their unpushed
+    answers must be the same, bit for bit (else they were written another way and their answers do not compare); a
+    change of runtime is recorded (`mixed_runtime`), as a merge records one. The joined run is ranked and read as any
+    run is, but never continued (take_census refuses). Returns {"neurons", "controls", "rows"}."""
+    neurons_run, controls_run, out = Path(neurons_run), Path(controls_run), Path(out)
+    if out.resolve() in (neurons_run.resolve(), controls_run.resolve()):
+        raise ValueError("A joined run is written to a file of its own, not over one of its parts.")
+    metas = []
+    for p in (neurons_run, controls_run):
+        if not meta_path_of(p).exists():
+            raise ValueError(f"{p.name} has no meta beside it (<run>.meta.json): only runs census_run.py wrote are joined.")
+        m = json.loads(meta_path_of(p).read_text(encoding="utf-8"))
+        for key, why in (("shard", "a shard (join its shards first: census_tools.py merge)"), ("stage", "a retest"),
+                         ("joined", "joined already")):
+            if m.get(key):
+                raise ValueError(f"{p.name} is {why}: only whole runs are joined.")
+        if not (m.get("jobs") and m.get("d_ff") is not None and isinstance(m.get("neuron_ids"), str)):
+            raise ValueError(f"{p.name}'s meta does not record its neurons and job list (a run begun before they were kept).")
+        metas.append(m)
+    mn, mc = metas
+    held = parse_neurons(mn["neuron_ids"], int(mn["d_ff"])) if mn["neuron_ids"] else []
+    if not held:
+        raise ValueError(f"{neurons_run.name} holds no neurons: the first run of a join gives the neurons.")
+    if mc["neuron_ids"]:
+        raise ValueError(f"{controls_run.name} holds neurons ({mc['neuron_ids'][:40]}): the second run of a join is a run of "
+                         "controls alone (census_run.py --neurons none).")
+    if not int(mc.get("random_controls") or 0):
+        raise ValueError(f"{controls_run.name} holds no controls.")
+    differ = [k for k in settings_differ(mn, mc) if k not in JOIN_FREE]
+    if differ:
+        raise ValueError(f"{controls_run.name} was taken with other settings than {neurons_run.name} ({', '.join(differ)}).")
+    unpushed: List[Dict[Tuple[str, int, str, float], Any]] = []
+    for p, m in ((neurons_run, mn), (controls_run, mc)):
+        keys = set()
+        base = {}
+        for r in read_rows(p):
+            keys.add(row_key(r))
+            if r["kind"] == "baseline":
+                base[row_key(r)] = r["token_ids"]
+        if len(keys) != int(m["jobs"]["n"]):
+            raise ValueError(f"{p.name} holds {len(keys):,} answers of the {int(m['jobs']['n']):,} its job list plans: finish it first.")
+        unpushed.append(base)
+    base_n, base_c = unpushed
+    if set(base_n) != set(base_c) or any(base_n[k] != base_c[k] for k in base_n):
+        bad = sorted(k[2] for k in base_n if base_c.get(k) != base_n[k])
+        raise ValueError(f"The two runs' unpushed answers differ ({', '.join(bad) or 'their questions'}): they were written another "
+                         "way (another runtime, batch or checkpoint), so their pushed answers do not compare.")
+    tmp = out.with_name(out.name + ".tmp")
+    n_rows = 0
+    with open(tmp, "w", encoding="utf-8") as f:
+        for p, kinds in ((neurons_run, ("baseline", "neuron")), (controls_run, ("random",))):
+            for r in read_rows(p):
+                if r["kind"] in kinds:
+                    f.write(json.dumps(r, ensure_ascii=False) + "\n")
+                    n_rows += 1
+    os.replace(tmp, out)
+    meta = dict(mn)
+    for k in JOIN_FREE + ("control_kind", "read_gain"):
+        meta.pop(k, None)
+        if k in mc:
+            meta[k] = mc[k]
+    meta["control_kind"] = control_kind_of(mc)
+    meta["jobs"] = jobs_digest(census_jobs(held, int(mc["random_controls"]), [tuple(x) for x in mn["design"]], meta_questions(mn)))
+    meta["plan_kept"] = False
+    meta["plan_left"] = "joined: its neurons' answers written by one run's plan, its controls' by another's"
+    meta["joined"] = {
+        "neurons_from": {"run": neurons_run.name, "jobs": mn["jobs"], "seed": mn.get("seed"), "controls": mn.get("random_controls"),
+                         "control_kind": control_kind_of(mn)},
+        "controls_from": {"run": controls_run.name, "jobs": mc["jobs"], "seed": mc.get("seed"), "controls": mc.get("random_controls"),
+                          "control_kind": control_kind_of(mc)},
+        "unpushed": f"the same {len(base_n)} answers in both runs, bit for bit; the neurons' run's kept",
+    }
+    meta["unpacker_sessions"] = _unpacker_sessions(metas)
+    classes = runtime_classes(r for m in metas for r in runtime_parts(m))
+    meta.pop("mixed_runtime", None)
+    if len(classes) > 1:
+        meta["mixed_runtime"] = classes
+    write_json_atomic(meta_path_of(out), meta)
+    return {"neurons": len(held), "controls": int(mc["random_controls"]), "rows": n_rows}
 
 
 def _unpacker_sessions(metas: Sequence[Dict[str, Any]]) -> List[Any]:

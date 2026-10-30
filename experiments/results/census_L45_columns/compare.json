@@ -1,0 +1,136 @@
+{
+ "nulls": {
+  "isotropic_seed7": {
+   "controls": 2048,
+   "mass_p50_p95_max": [
+    9.83,
+    13.74,
+    24.04
+   ]
+  },
+  "columns_seed11": {
+   "controls": 2048,
+   "mass_p50_p95_max": [
+    9.77,
+    13.4,
+    22.07
+   ]
+  }
+ },
+ "neurons": 21504,
+ "mass_spearman": 0.9985,
+ "p_spearman": 0.9971,
+ "above_every_control": {
+  "isotropic": 1580,
+  "columns": 2357,
+  "both": 1580,
+  "by_chance": 10.5
+ },
+ "q05": {
+  "isotropic": 6308,
+  "columns": 6746,
+  "both": 6305
+ },
+ "named": {
+  "isotropic": 5123,
+  "columns": 5237,
+  "both": 5052
+ },
+ "top_by_mass_shared": {
+  "20": 20,
+  "100": 97,
+  "1000": 980
+ },
+ "collapse": {
+  "isotropic_held": [
+   "idea",
+   "own",
+   "owns",
+   "ownthought",
+   "ownthoughtthought",
+   "rest",
+   "same",
+   "samethought",
+   "sss",
+   "thought",
+   "thoughtthought",
+   "thoughtthoughtthought",
+   "thoughtthoughtthoughtthought",
+   "thoughtthoughtthoughtthoughtthought"
+  ],
+  "columns_held": [
+   "dependingthought",
+   "idea",
+   "own",
+   "owns",
+   "ownthought",
+   "ownthoughtthought",
+   "rest",
+   "same",
+   "samethought",
+   "single",
+   "thought",
+   "thoughtthought",
+   "thoughtthoughtthought",
+   "thoughtthoughtthoughtthought"
+  ],
+  "columns_controls_needed": 20,
+  "described_on_map_columns": 1682
+ },
+ "text": {
+  "isotropic": {
+   "-2 random": {
+    "d4_minus_unpushed": -0.796,
+    "cut_off": 0.999
+   },
+   "-1 random": {
+    "d4_minus_unpushed": -0.004,
+    "cut_off": 0.989
+   },
+   "+1 random": {
+    "d4_minus_unpushed": -0.004,
+    "cut_off": 0.99
+   },
+   "+2 random": {
+    "d4_minus_unpushed": -0.802,
+    "cut_off": 0.999
+   }
+  },
+  "columns": {
+   "-2 random": {
+    "d4_minus_unpushed": -0.792,
+    "cut_off": 0.998
+   },
+   "-1 random": {
+    "d4_minus_unpushed": -0.003,
+    "cut_off": 0.989
+   },
+   "+1 random": {
+    "d4_minus_unpushed": -0.003,
+    "cut_off": 0.988
+   },
+   "+2 random": {
+    "d4_minus_unpushed": -0.796,
+    "cut_off": 0.998
+   }
+  },
+  "neurons": {
+   "-2 neuron": {
+    "d4_minus_unpushed": -0.8,
+    "cut_off": 0.998
+   },
+   "-1 neuron": {
+    "d4_minus_unpushed": -0.04,
+    "cut_off": 0.99
+   },
+   "+1 neuron": {
+    "d4_minus_unpushed": -0.04,
+    "cut_off": 0.99
+   },
+   "+2 neuron": {
+    "d4_minus_unpushed": -0.792,
+    "cut_off": 0.998
+   }
+  }
+ }
+}

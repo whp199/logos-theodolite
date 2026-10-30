@@ -103,7 +103,7 @@ class Lines:
 def writers(run: Path, layer: int) -> List[int]:
     """The pids of census_run.py processes writing this run (Linux; [] where /proc cannot be read): a process whose
     layers hold the run's and whose run name (its --run, else census_run.py's own L<layer>-<design>, -top<M> for a
-    retest) is the run's."""
+    retest, -columns for columns controls, -controls for controls alone) is the run's."""
     out = []
     for d in Path("/proc").glob("[0-9]*"):
         try:
@@ -118,7 +118,8 @@ def writers(run: Path, layer: int) -> List[int]:
         if layer not in layers:
             continue
         name = (opt.get("--run") or "").replace("{layer}", str(layer)) or (
-            f"L{layer}-{opt.get('--design') or cz.DEFAULT_DESIGN}" + (f"-top{opt['--top']}" if opt.get("--neurons-from") and opt.get("--top") else ""))
+            f"L{layer}-{opt.get('--design') or cz.DEFAULT_DESIGN}" + (f"-top{opt['--top']}" if opt.get("--neurons-from") and opt.get("--top") else "")
+            + ("-columns" if opt.get("--control-kind") == "columns" else "") + ("-controls" if opt.get("--neurons") == "none" else ""))
         if run.stem == name or run.stem.startswith(name + ".s"):  # the run, or one of its shards
             out.append(int(d.name))
     return sorted(out)
