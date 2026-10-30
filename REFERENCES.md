@@ -1,6 +1,6 @@
 # References
 
-This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18; section H's were not opened (see there), and section I's are as it says.
+This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18; section H's were not opened (see there), and those of sections I and J are as each says.
 
 ## A. Model, lenses and lens methods
 
@@ -175,3 +175,24 @@ These entries were written on 2026-10-27. The repository of [47] was read from a
 
 48. **McInnes, L., Healy, J., Melville, J. *UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction.* arXiv:1802.03426, 2018.** https://arxiv.org/abs/1802.03426
     - *Use:* the atlas's sheet layout (`backend/atlas_build.build_layout`) and the census spread (`backend/census.layout_2d`) are laid out by UMAP through `umap-learn` where it is installed (an optional dependency), else by their first two principal directions.
+
+## J. Prior work on Gemma-4-31B's neurons (searched; none relied on)
+
+On 2026-10-30 Neuronpedia's model pages, Hugging Face's model and dataset search, GitHub's repository search and the web were searched for anything published that describes Gemma-4-31B's MLP neurons. Nothing was found. The census (`backend/census.py`) pushes each neuron and reads what it writes against random-direction controls, and it has no published counterpart for this model to check it against. What exists is below. Most of it is sparse autoencoders (SAEs), whose units are directions a learned dictionary picks out in the residual stream rather than the model's own neurons. Where those units are labelled at all, the labels say what makes them fire, not what they write. None names the W4A16 checkpoint the instrument serves [1]. Of the neuron work already cited, [9] audits Qwen3-32B and [47] works on Qwen3.5-4B. The cards and pages named were read that day, and the 31B configuration of [49] was fetched as well. No repository was cloned, and none of these entries is used.
+
+49. **Chanin, D., Lin, J. (Decode Research). *Gemma-4 Sparse Autoencoders.* Hugging Face, 2026; listed on Neuronpedia as "Gemma 4 SAEs".** https://huggingface.co/decoderesearch/gemma-4-saes (Neuronpedia: https://www.neuronpedia.org/gemma-4-saes)
+    - Matryoshka BatchTopK SAEs trained with SAELens on the Pile Uncopyrighted. The only one for Gemma-4-31B is `gemma-4-31b/btk-mat-layer-30-k-100`: 131,072 latents (inner widths 4,096 and 32,768), k = 100, on the **base** model (`google/gemma-4-31B`) at the output of layer 30 (`model.language_model.layers.30`), trained on 1.5 billion tokens. The others are on Gemma 4 E2B and E4B. Neuronpedia shows its features (source `30-res-matryoshka-131k`) with explanations written from activations, and lists no source for `gemma-4-31b-it`.
+
+50. **Adam1010. *Gemma-4-31B Sparse Autoencoder Features (60 Layers).* Hugging Face dataset, 3 May 2026; apache-2.0.** https://huggingface.co/datasets/Adam1010/gemma-4-31b-sae-features
+    - One TopK SAE per layer on all 60 layers of Gemma-4-31B-IT (43,008 features each, k = 64). Only 50 features a layer, 3,000 in all, are labelled, by Claude Sonnet and GPT-4o from top-activating examples. By its own card, 35.8% of the labels were confirmed by its held-out cross-check.
+
+51. **ddasd. *Gemma 4 31B FP8 Block Final-Token SAE.* Hugging Face, 23 May 2026.** https://huggingface.co/ddasd/gemma4-31b-fp8block-finaltoken-sae-200m
+    - A TopK SAE (65,536 latents, k = 128, 200 million tokens) on vLLM's final-token embeddings of `RedHatAI/gemma-4-31B-it-FP8-block`. Its card says it is not an SAE on an internal residual-stream layer.
+
+52. **Google DeepMind. *Gemma Scope 2.* December 2025.** https://deepmind.google/blog/gemma-scope-2-helping-the-ai-safety-community-deepen-understanding-of-complex-language-model-behavior/ (Neuronpedia: https://www.neuronpedia.org/gemma-scope-2)
+    - SAEs and transcoders on every layer of every Gemma 3 model (270M to 27B, base and chat). No Gemma Scope release for Gemma 4 was found.
+
+53. **Steering-first neuron maps of smaller Gemma 4 models, after [47] (GitHub, begun 25–29 October 2026).** Known from their descriptions and search results; only the third's README was read.
+    - NapoleonPK, *neuron-explorer-gemma*: a fork of [47] ported to Gemma 4 E4B and Gemma 3 4B. https://github.com/NapoleonPK/neuron-explorer-gemma
+    - salixkoreensis94-spec, *gemma4-e2b-neuron-map*: a quantised Gemma 4 E2B (Q4_K_M), on Korean speech register. https://github.com/salixkoreensis94-spec/gemma4-e2b-neuron-map
+    - PigeonLabs, *Gemma4_neuron_LAB*: MLP neurons of what it calls Gemma 4 12B, with activation statistics, steering and random controls. https://github.com/PigeonLabs/Gemma4_neuron_LAB
