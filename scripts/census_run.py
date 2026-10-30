@@ -13,6 +13,7 @@ ranked (scripts/census_tools.py rank).
     .venv/bin/python scripts/census_run.py --layer 45 --neurons-from L45-r384.units.jsonl --top 32 --seed 1 --random-controls 1024 --design break_rel
     .venv/bin/python scripts/census_run.py --layer 45 --design break_rel --neurons all --random-controls 2048 --seed 7 --batch 64 --max-new 48 --unpacker compiled
     .venv/bin/python scripts/census_run.py --stand-in --layer 3 --neurons 0-15 --random-controls 4 --max-new 24
+    .venv/bin/python scripts/census_run.py --layer 45 --neurons none --control-kind columns --seed 11 --run L45-columns --unpacker compiled
 
 Watch a run from another terminal with scripts/census_watch.py (a progress bar, its rate and when it should finish).
 
@@ -71,7 +72,11 @@ strongest neurons against fresh controls (another --seed), the census's second s
 M alone, and its neurons are fixed when it is begun (a screen ranked again since is a new retest, under another --run).
 A retest's --design must share no (question, dose) cell with its screen's: on a shared cell a neuron writes again the
 answer it was picked for, bit for bit at one batch size, so such a retest is refused (a main_rel screen is retested
-with break_rel; a break_rel run needs none: its halves are the held-out test).
+with break_rel; a break_rel run needs none: its halves are the held-out test). --control-kind columns draws each
+control as a random mix of the layer's own write directions, spread as they are (census.CONTROL_KINDS), not as an
+isotropic direction through the post-feed-forward norm; with --neurons none a run is controls alone, and
+census_tools.py join sets a layer's run's neurons beside them (same settings, the unpushed answers bit for bit), so the
+neurons are read against the new controls without being written again: 2,048 controls of break_rel are 49,158 answers.
 
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
@@ -156,7 +161,8 @@ def main(argv=None) -> int:
     where = ap.add_mutually_exclusive_group(required=True)
     where.add_argument("--layer", type=int, help="the layer to take, counting from 0")
     where.add_argument("--layers", default="", help='several layers in one process, each its own run: "21,31,41-46" (the depth curve)')
-    ap.add_argument("--neurons", default=None, help='"all" (the default), "random:384", "2742", "0-99" or "1,5,9-12"')
+    ap.add_argument("--neurons", default=None, help='"all" (the default), "none" (controls alone, for census_tools.py join), '
+                                                    '"random:384", "2742", "0-99" or "1,5,9-12"')
     ap.add_argument("--neurons-from", default="", help="a screen's ranking (<run>.units.jsonl): retest its --top strongest neurons "
                                                        "against fresh controls (another --seed), the census's second stage")
     ap.add_argument("--top", type=int, default=0, help="with --neurons-from: how many of the screen's strongest to retest")
@@ -170,6 +176,9 @@ def main(argv=None) -> int:
     ap.add_argument("--random-controls", type=int, default=None, help="random-direction controls spread through the run "
                     "(default: the design's, census.run_defaults: 2,048 for break_rel, else 256)")
     ap.add_argument("--seed", type=int, default=0, help="draws the controls' directions and random:K's neurons")
+    ap.add_argument("--control-kind", default=cz_designs.CONTROL_KIND, choices=list(cz_designs.CONTROL_KINDS),
+                    help="isotropic: unit(w_post * r), r isotropic (the default); columns: a random mix of the layer's own "
+                         "write directions (census.CONTROL_KINDS)")
     ap.add_argument("--max-new", type=int, default=None, help="word-pieces per answer at most (pushed answers often loop; "
                     "default: the design's, 48 for break_rel, as its doses were calibrated, else 256)")
     ap.add_argument("--top-k", type=int, default=5, help="the likeliest pieces kept at each step")
@@ -295,14 +304,16 @@ def main(argv=None) -> int:
 
     signal.signal(signal.SIGINT, on_signal)
     for layer in layers:
-        name = f"L{layer}-{a.design}" + (f"-top{a.top}" if stage else "")
+        name = (f"L{layer}-{a.design}" + (f"-top{a.top}" if stage else "") + ("-columns" if a.control_kind == "columns" else "")
+                + ("-controls" if not neurons else ""))
         run_path = out_dir / f"{a.run.replace('{layer}', str(layer)) if a.run else name}.jsonl"
         out = cz.shard_path(run_path, *shard) if shard else run_path
         try:
             res = cz.take_census(rt, layer, neurons, out, p50=float(p50s[layer]), p50_source=source, design_name=a.design,
                                  controls=a.random_controls, seed=a.seed, max_new=a.max_new, top_k=a.top_k, batch=a.batch,
                                  neurons_spec=spec, dose_unit=a.dose_unit or "", shard=shard, p50_file=p50_file, lens_id=lens_id,
-                                 stage=stage, canary_only=a.canary_only, cancel=stop.is_set, log=lambda s: print(s, flush=True))
+                                 stage=stage, canary_only=a.canary_only, control_kind=a.control_kind, cancel=stop.is_set,
+                                 log=lambda s: print(s, flush=True))
         except ValueError as exc:
             raise SystemExit(str(exc))
         except RuntimeError as exc:
@@ -321,6 +332,9 @@ def main(argv=None) -> int:
         if shard:
             print(f"a shard is ranked only once its run is joined: census_tools.py merge {run_path.stem}.s*of{shard[1]}.jsonl --out "
                   f"{run_path.name} (in {out_dir}; a canary named among them is left out of the join), then rank")
+        elif not neurons and not a.canary_only:
+            print(f"a run of controls alone is not ranked: census_tools.py join <a layer {layer} run> {out.name} --out <name>, "
+                  "then rank the joined run")
         elif not a.no_rank and not a.canary_only and out.exists():
             units = cz.write_units(out)
             rd = cz.run_reading(out)

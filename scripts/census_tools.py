@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Work over finished census runs (backend/census.py), on the CPU: rank one, join shards, the depth report across
-layers, the spread of a run's answers, and a calibration run's dose window.
+"""Work over finished census runs (backend/census.py), on the CPU: rank one, join shards, set a layer's neurons beside
+another run's controls, the depth report across layers, the spread of a run's answers, and a calibration run's dose
+window.
 
     .venv/bin/python -I scripts/census_tools.py rank 45 --show 40 --find 2742     # a layer's main run, or a run's path
     .venv/bin/python -I scripts/census_tools.py merge L45-s0.jsonl L45-s1.jsonl --out L45-main_rel.jsonl
+    .venv/bin/python -I scripts/census_tools.py join 45 atlas_data/census/nulls/L45-columns.jsonl --out atlas_data/census/nulls/L45-break_rel-columns.jsonl
     .venv/bin/python -I scripts/census_tools.py depth --out depth_report.json
     .venv/bin/python -I scripts/census_tools.py spread 45                          # writes <run>.spread.json
     .venv/bin/python -I scripts/census_tools.py curves 45 --weights --json L45-curves.json   # a layer's calibration run
@@ -15,7 +17,10 @@ taken with other settings (sweep/merge_runs.py); shards of one run (census_run.p
 every shard once, every answer of the run's job list (else refused, unless --partial, which the merged meta records),
 each shard's canary compared with shard 0's answers (a canary named among the inputs, as <run>.s*of*.jsonl names
 them, is left out of the join), and the runtime classes they were written on recorded (a warning, never a refusal).
-A shard is not ranked: rank the joined run. depth reads every layer's main run, subsampled to the
+A shard is not ranked: rank the joined run. join writes a run of a layer's run's unpushed answers and neurons beside
+the controls of a run of controls alone (census_run.py --neurons none, another --seed or --control-kind), taken with
+the same settings and the same unpushed answers bit for bit (census.join_controls), so the neurons are read against
+other controls without being written again; the atlas never reads a joined run as a layer's census. depth reads every layer's main run, subsampled to the
 same pool (--neurons, --controls) so the word-cluster mass compares across layers (sweep/depth_report.py). spread
 embeds each answer (sentence-transformers' BAAI/bge-small-en-v1.5 where installed, as the reference's
 build_embeddings.py, else a download-free word embedding) and lays the answers out in two dimensions (UMAP where
@@ -160,6 +165,10 @@ def main(argv=None) -> int:
     m.add_argument("--out", required=True)
     m.add_argument("--partial", action="store_true", help="join shards though some, or some of their answers, are missing "
                    "(the merged meta says so)")
+    j = sub.add_parser("join", help="a layer's run's neurons beside another run's controls")
+    j.add_argument("neurons", help="the run whose neurons (and unpushed answers) are kept: a path, or a layer number for its main run")
+    j.add_argument("controls", help="a run of controls alone (census_run.py --neurons none)")
+    j.add_argument("--out", required=True)
     d = sub.add_parser("depth", help="the depth report across layers")
     d.add_argument("--neurons", type=int, default=384)
     d.add_argument("--controls", type=int, default=64)
@@ -240,6 +249,16 @@ def main(argv=None) -> int:
                 print(f"neuron {n}: rank {rank}/{len(neurons)} among neurons, mass {rec['mass']:.1f}, null_pct {rec['null_pct']}, "
                       f"p {rec.get('p')}, q {rec.get('q')}, {ws}")
             print(f"-> {out}")
+        elif a.what == "join":
+            src, ctl, out = resolve_run(a.neurons), resolve_run(a.controls), Path(a.out)
+            got = cz.join_controls(src, ctl, out)
+            meta = json.loads(cz.meta_path_of(out).read_text(encoding="utf-8"))
+            print(f"-> {out} ({got['rows']:,} answers): the {got['neurons']:,} neurons and unpushed answers of {src.name} beside the "
+                  f"{got['controls']:,} {meta['control_kind']} controls of {ctl.name} (seed {meta.get('seed')}); "
+                  f"{meta['joined']['unpushed']}")
+            if meta.get("mixed_runtime"):
+                print(f"warning: written on {len(meta['mixed_runtime'])} runtime classes (recorded as mixed_runtime)")
+            print(f"rank it: census_tools.py rank {out}")
         elif a.what == "merge":
             inputs = [Path(x) for x in a.inputs]
             canaries = [p for p in inputs if p.name.endswith(".canary.jsonl")]  # what <run>.s*of*.jsonl also matches
