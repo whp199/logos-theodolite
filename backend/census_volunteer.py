@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import shlex
 from pathlib import Path
@@ -47,10 +48,14 @@ VERBS = ("RESERVE", "START", "PROGRESS", "DONE", "RELEASE")
 #                experiments/results/census_other_card_bars/): arithmetic alone (batch 16/32/48, full-precision
 #                sums) moves the median up to 0.013 and the 99th percentile up to 0.169; a push 5% off moves the
 #                median to 0.059, one 10% off the 99th percentile to 0.81; each bar is the geometric mean of the two;
-#   baseline_shared: each unpushed answer shares at least this many word-pieces with the home card's (the whole
-#                answer, where the home card's is shorter).
+#   baseline_tie: each unpushed answer is the home card's, or parts from it only at a word-piece the home card wrote
+#                with probability below this (a near-tie, which any card's arithmetic may tip the other way; another
+#                model or push parts where the home card was sure). Amended 31 October 2026, after layer 47's unpushed
+#                answers (RTX PRO 6000 Blackwell) were seen: the first rule asked 16 shared word-pieces, and three of
+#                its six parted sooner (at 5, 21 and 27), each at a piece the home card wrote at 0.50, 0.41 or 0.50.
+#                Checked on the home card before use (scripts/census_ties.py, experiments/results/census_unpushed_ties/).
 # A run of the home card's class must match every spot answer bit for bit.
-ACCEPT_OTHER_CLASS = {"first_piece": 0.90, "lp_median": 0.028, "lp_p99": 0.37, "baseline_shared": 16}
+ACCEPT_OTHER_CLASS = {"first_piece": 0.90, "lp_median": 0.028, "lp_p99": 0.37, "baseline_tie": 0.6}
 LP_SURE = -0.01
 
 
@@ -250,10 +255,17 @@ def compare_rows(theirs: Dict[Tuple[str, int, str, float], Dict[str, Any]], ours
             "lp_max": max(lp_diffs) if lp_diffs else None}
 
 
-def judge(cmp: Dict[str, Any], home_bits: bool, baselines_shared: Optional[Dict[str, Sequence[int]]] = None) -> Tuple[bool, List[str]]:
+def baseline_part(home_ids: Sequence[int], home_lp: Sequence[float], ids: Sequence[int]) -> List[Any]:
+    """Where an unpushed answer parts from the home card's: [shared word-pieces, the home card's length, the
+    probability the home card gave its piece where the two part (None where they do not)]."""
+    k, n = shared_prefix(home_ids, ids), len(home_ids)
+    return [k, n, round(math.exp(home_lp[k]), 4) if k < n else None]
+
+
+def judge(cmp: Dict[str, Any], home_bits: bool, baselines_shared: Optional[Dict[str, Sequence[Any]]] = None) -> Tuple[bool, List[str]]:
     """Whether a spot comparison (`compare_rows`) passes: bit for bit for the home card's class, ACCEPT_OTHER_CLASS for
-    another, with each unpushed answer's [shared word-pieces, the home card's length] in `baselines_shared`. Returns
-    (passes, the reasons it does not)."""
+    another, with each unpushed answer's `baseline_part` in `baselines_shared`. Returns (passes, the reasons it does
+    not)."""
     why = []
     if cmp["present"] < cmp["answers"]:
         why.append(f"{cmp['answers'] - cmp['present']} of the {cmp['answers']} spot answers are not in the run")
@@ -270,7 +282,9 @@ def judge(cmp: Dict[str, Any], home_bits: bool, baselines_shared: Optional[Dict[
         why.append(f"its log-probabilities differ from the home card's by a median {cmp['lp_median']:.4f} (at most {a['lp_median']})")
     if cmp["lp_p99"] is not None and cmp["lp_p99"] > a["lp_p99"]:
         why.append(f"its log-probabilities' 99th-percentile difference is {cmp['lp_p99']:.4f} (at most {a['lp_p99']})")
-    for q, (k, n) in sorted((baselines_shared or {}).items()):
-        if k < min(a["baseline_shared"], n):
-            why.append(f"its unpushed {q} answer shares {k} word-pieces with the home card's (at least {min(a['baseline_shared'], n)})")
+    for q, part in sorted((baselines_shared or {}).items()):
+        k, n, p = (list(part) + [None])[:3]
+        if k < n and (p is None or p >= a["baseline_tie"]):
+            why.append(f"its unpushed {q} answer parts from the home card's at word-piece {k}, which the home card wrote with "
+                       f"probability {'unknown' if p is None else f'{p:.2f}'} (parting is taken only below {a['baseline_tie']})")
     return not why, why

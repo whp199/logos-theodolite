@@ -22,6 +22,7 @@ Run: .venv/bin/python -I scripts/check_volunteer_kit.py   (exits 0 when every ch
 from __future__ import annotations
 
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -260,6 +261,14 @@ def run_checks(tmp: Path) -> int:
     chk2 = json.loads((tmp / "work-othercard" / "check.json").read_text()) if (tmp / "work-othercard" / "check.json").exists() else {}
     check(chk2.get("bits") == "own" and t.get("verdict", {}).get("accepted") is True,
           f"another card class within the kit's rules is accepted ({chk2.get('bits')}, {t.get('verdict', {}).get('why_not')})")
+    # the unpushed answers: parting from ours is taken only at a near-tie (a piece ours wrote with probability under 0.6)
+    ok_cmp = {"answers": 10, "present": 10, "identical": 0, "first_piece": 1.0, "lp_median": 0.0, "lp_p99": 0.0}
+    hid, unsure, sure = [5, 6, 7, 8], [-0.0, math.log(0.5), -0.01, -0.0], [-0.0, -0.05, -0.01, -0.0]
+    tie = cv.baseline_part(hid, unsure, [5, 9, 9])
+    check(tie == [1, 4, 0.5] and cv.judge(ok_cmp, False, {"orange": tie})[0]
+          and not cv.judge(ok_cmp, False, {"orange": cv.baseline_part(hid, sure, [5, 9, 9])})[0]
+          and cv.judge(ok_cmp, False, {"orange": cv.baseline_part(hid, sure, hid)})[0],
+          "an unpushed answer parting at a near-tie is taken, at a sure piece refused, the same answer taken")
     # a bundle whose secret does not give its claim
     bad = tmp / "badsecret"
     bad.mkdir()

@@ -255,7 +255,7 @@ def check_bundle(a: argparse.Namespace, kit: Dict[str, Any]) -> Dict[str, Any]:
         t = scan["baselines"].get(q)
         if t is None:
             continue
-        shared[q] = [cv.shared_prefix(b["token_ids"], t["token_ids"]), len(b["token_ids"])]
+        shared[q] = cv.baseline_part(b["token_ids"], b["logprob"], t["token_ids"])
         if bits == "home" and (t["token_ids"] != b["token_ids"] or t["logprob"] != b["logprob"]):
             fails.append(f"its canary is the home card's bits, but its unpushed {q} answer is not the home card's")
     out["baselines_shared"] = shared

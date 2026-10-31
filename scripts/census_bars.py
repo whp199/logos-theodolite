@@ -237,7 +237,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     result: Dict[str, Any] = {
         "taken_at": stamp, "layers": layers, "kit": kit["KIT"], "stand_in": a.stand_in,
         "rule": {"scales": SCALES, "batches": batches, "gap": GAP, "min_pieces": MIN_PIECES, "floor_min": FLOOR_MIN,
-                 "lp_sure": cv.LP_SURE, "kept": {k: cv.ACCEPT_OTHER_CLASS[k] for k in ("first_piece", "baseline_shared")}},
+                 "lp_sure": cv.LP_SURE, "kept": {k: cv.ACCEPT_OTHER_CLASS[k] for k in ("first_piece", "baseline_tie")}},
         "runtime": cz.runtime_record(next(lm.parameters()).device, act_scale=index.path("act_scale") if stats is not None else None),
         "variants": [{**v, **pooled[v["name"]], "by_layer": {str(l): {k: x for k, x in summarize([per[v["name"]][l]]).items()}
                                                              for l in layers}} for v in vs],
