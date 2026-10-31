@@ -94,7 +94,7 @@ def parse_line(text: str) -> Optional[Dict[str, Any]]:
             parts = m.group(3).split()
         for p in parts:
             k, eq, v = p.partition("=")
-            if eq and re.fullmatch(r"[a-z_]+", k):
+            if eq and re.fullmatch(r"[a-z][a-z0-9_]*", k):  # sha256= too
                 out[k] = v
             else:
                 out["words"].append(p)

@@ -191,7 +191,7 @@ def apply(board: Dict[str, Any], line: Dict[str, Any], via: str, who: Optional[s
         c["bundle_sha256"] = clean(line.get("sha256"), 64)
         c["size"] = clean(line.get("size"), 10)
         link = str(line.get("link") or "")
-        c["link"] = link if re.fullmatch(r"https?://[^\s<>\"']{4,300}", link) else None
+        c["link"] = link if re.fullmatch(r"https?://[^\s<>\"']{4,2000}", link) else None  # a signed link runs to 300-odd
         return f"L{layer} {code} submitted ({c['size'] or '?'}, link {'given' if c['link'] else 'missing: ask for it'})"
     return f"refused: {verb}"
 

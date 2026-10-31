@@ -164,8 +164,11 @@ def run_checks(tmp: Path) -> int:
     r = run(b + ["expire"], {**env, "THEODOLITE_BOARD_NOW": str(1793390400 + 37 * 3600)})
     check("L%d 0badc0de lapsed" % other in r.stdout and f"L{LAYER} {code} lapsed" not in r.stdout,
           f"a claim past its hold lapses, a running one holds ({r.stdout[:300]})")
-    r = run(b + ["add", done.replace("PASTE_LINK_HERE", "https://example.org/b.tar")], benv)
-    check(r.returncode == 0 and "submitted" in r.stdout and "link given" in r.stdout, f"DONE with a link ({r.stdout[:200]})")
+    signed = "https://objects.example.org/bucket/b.tar?X-Amz-Credential=" + "A%2F" * 60 + "&X-Amz-Signature=" + "e4" * 32
+    r = run(b + ["add", done.replace("PASTE_LINK_HERE", signed)], benv)
+    check(r.returncode == 0 and "submitted" in r.stdout and "link given" in r.stdout, f"DONE with a signed link of {len(signed)} characters ({r.stdout[:200]})")
+    held = next(c for c in json.loads(board.read_text())["claims"] if c["code"] == code)
+    check(held.get("bundle_sha256") and held["bundle_sha256"] in done and held.get("link") == signed, "the DONE line's sha256 and link kept")
     r = run(b + ["render", "--out", tmp / "render", "--no-png"], benv)
     txt = (tmp / "render" / "board.txt").read_text() if (tmp / "render" / "board.txt").exists() else ""
     check(r.returncode == 0 and 0 < len(txt) <= 2000 and (tmp / "render" / "BOARD.md").exists(), "the renders, the post under 2,000 characters")
