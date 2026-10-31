@@ -6,7 +6,9 @@
   6536088908,
   6536955238,
   6536965001,
-  6536991876
+  6536991876,
+  6538587414,
+  6538632063
  ],
  "claims": [
   {
@@ -42,17 +44,26 @@
      "via": "github",
      "what": "claim=2f018a18 done=1% eta=2026-10-31T15:40Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-10-31T03:55Z",
+     "via": "github",
+     "what": "claim=2f018a18 done=20% eta=2026-10-31T14:42Z",
+     "verb": "PROGRESS"
     }
    ],
    "started_at": "2026-10-31T03:41Z",
    "bits": "own",
-   "done": "1%",
-   "eta": "2026-10-31T15:40Z"
+   "done": "20%",
+   "eta": "2026-10-31T14:42Z"
   }
  ],
  "layers": {
   "40": {
-   "state": "open"
+   "state": "closed",
+   "by": "home card",
+   "card": "NVIDIA GeForce RTX 5090 32 GB",
+   "note": "running on the home card (RTX 5090) since 31 Oct 03:51Z, ends ~17:05Z"
   },
   "41": {
    "state": "open"
@@ -88,5 +99,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-10-31T03:42Z"
+ "updated_at": "2026-10-31T03:55Z"
 }

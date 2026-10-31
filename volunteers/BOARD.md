@@ -4,16 +4,16 @@ Kit 1 (census-kit-1). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
-| 40 | 41 | OPEN |  |  |  |  |
+| 40 | 41 | closed |  |  |  | running on the home card (RTX 5090) since 31 Oct 03:51Z, ends ~17:05Z |
 | 41 | 42 | OPEN |  |  |  |  |
 | 42 | 43 | OPEN |  |  |  |  |
 | 43 | 44 | OPEN |  |  |  |  |
 | 44 | 45 | OPEN |  |  |  |  |
 | 45 | 46 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 29-30 Oct 2026, passed every gate |
 | 46 | 47 | OPEN |  |  |  |  |
-| 47 | 48 | running | ReimusArmpit 2f018a18 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 1%, ends ~2026-10-31T15:40Z |  |
+| 47 | 48 | running | ReimusArmpit 2f018a18 | NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB | 20%, ends ~2026-10-31T14:42Z |  |
 | 48 | 49 | OPEN |  |  |  |  |
 | 49 | 50 | OPEN |  |  |  |  |
 | 50 | 51 | OPEN |  |  |  |  |
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-10-31T03:42Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-10-31T03:55Z.
