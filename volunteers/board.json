@@ -8,7 +8,11 @@
   6536965001,
   6536991876,
   6538587414,
-  6538632063
+  6538632063,
+  6540884854,
+  6540898287,
+  6543682525,
+  6545828592
  ],
  "claims": [
   {
@@ -19,7 +23,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-10-31T03:41Z",
-   "state": "running",
+   "state": "checking",
    "events": [
     {
      "at": "2026-10-31T03:41Z",
@@ -50,20 +54,47 @@
      "via": "github",
      "what": "claim=2f018a18 done=20% eta=2026-10-31T14:42Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-10-31T15:01Z",
+     "via": "github",
+     "what": "claim=2f018a18 done=51% eta=2026-10-31T14:38Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-10-31T16:35Z",
+     "via": "github",
+     "what": "claim=2f018a18 size=495MB link=https://objects.fin-03.verda.storage/gemma-bucket/L47-break_rel-2f018a18.tar?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Z1MWQU3N5RH24I6D77XA%2F20261031%2Feu-north-3%2Fs3%2Faws4_request&X-Amz-Date=20261031T155802Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=e4653c334136a38f0df63097fb4a94ca9fa8bddbdf82a35fc2b7df240640094a",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-10-31T16:36Z",
+     "via": "github",
+     "what": "claim=2f018a18 sha256=07614e375b7063e9a4159f554b32190d7b586bd06ac84892d35773a94f05e023 size=495MB link=https://objects.fin-03.verda.storage/gemma-bucket/L47-break_rel-2f018a18.tar?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Z1MWQU3N5RH24I6D77XA%2F20261031%2Feu-north-3%2Fs3%2Faws4_request&X-Amz-Date=20261031T155802Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=e4653c334136a38f0df63097fb4a94ca9fa8bddbdf82a35fc2b7df240640094a",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-10-31T16:37Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
     }
    ],
    "started_at": "2026-10-31T03:41Z",
    "bits": "own",
-   "done": "20%",
-   "eta": "2026-10-31T14:42Z"
+   "done": "51%",
+   "eta": "2026-10-31T14:38Z",
+   "submitted_at": "2026-10-31T16:36Z",
+   "bundle_sha256": "07614e375b7063e9a4159f554b32190d7b586bd06ac84892d35773a94f05e023",
+   "size": "495MB",
+   "link": "https://objects.fin-03.verda.storage/gemma-bucket/L47-break_rel-2f018a18.tar?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Z1MWQU3N5RH24I6D77XA%2F20261031%2Feu-north-3%2Fs3%2Faws4_request&X-Amz-Date=20261031T155802Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=e4653c334136a38f0df63097fb4a94ca9fa8bddbdf82a35fc2b7df240640094a",
+   "note": "on paper whole; own bits; spot-check next"
   }
  ],
  "layers": {
   "40": {
-   "state": "closed",
+   "state": "done",
    "by": "home card",
    "card": "NVIDIA GeForce RTX 5090 32 GB",
-   "note": "running on the home card (RTX 5090) since 31 Oct 03:51Z, ends ~17:05Z"
+   "note": "30-31 Oct 2026, passed layer 45's gates"
   },
   "41": {
    "state": "open"
@@ -99,5 +130,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-10-31T03:55Z"
+ "updated_at": "2026-10-31T17:48Z"
 }
