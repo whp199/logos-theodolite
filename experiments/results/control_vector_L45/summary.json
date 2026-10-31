@@ -1,0 +1,356 @@
+{
+ "what": "the comparison fixed in ARCHITECTURE.md \u00a76: a neuron's push through the instrument and through llama.cpp with the exported control vector",
+ "stand_in": false,
+ "layer": 45,
+ "neurons": [
+  13641,
+  21200
+ ],
+ "doses": [
+  -2.0,
+  -1.0,
+  1.0,
+  2.0
+ ],
+ "gguf": "gemma-4-31B-it-QAT-Q4_0.gguf",
+ "server": {
+  "cmd": [
+   "llama-server",
+   "-m",
+   "/home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-QAT-GGUF/gemma-4-31B-it-QAT-Q4_0.gguf",
+   "--host",
+   "127.0.0.1",
+   "--port",
+   "39949",
+   "-c",
+   "4096",
+   "-np",
+   "1",
+   "-ngl",
+   "99",
+   "--no-warmup"
+  ],
+  "props": {
+   "build_info": "b1-cd26896",
+   "model_path": "/home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-QAT-GGUF/gemma-4-31B-it-QAT-Q4_0.gguf",
+   "total_slots": 1
+  }
+ },
+ "shared_prefix": {
+  "floor: llama.cpp unpushed / census unpushed": {
+   "n": 6,
+   "median": 17.0,
+   "mean": 22.0,
+   "min": 5,
+   "max": 48,
+   "whole": 1
+  },
+  "floor: instrument unpushed, batch 9 / census unpushed, batch 64": {
+   "n": 6,
+   "median": 48.0,
+   "mean": 43.33,
+   "min": 20,
+   "max": 48,
+   "whole": 5
+  },
+  "floor: instrument pushed, batch 9 / census, batch 64": {
+   "n": 48,
+   "median": 48.0,
+   "mean": 39.17,
+   "min": 2,
+   "max": 48,
+   "whole": 32
+  },
+  "llama.cpp pushed / census (start mark spared)": {
+   "n": 48,
+   "median": 3.5,
+   "mean": 8.88,
+   "min": 0,
+   "max": 48,
+   "whole": 4
+  },
+  "llama.cpp pushed / census (start mark spared), by dose": {
+   "-2": {
+    "n": 12,
+    "median": 1.0,
+    "mean": 4.08,
+    "min": 0,
+    "max": 28,
+    "whole": 0
+   },
+   "-1": {
+    "n": 12,
+    "median": 7.5,
+    "mean": 11.83,
+    "min": 3,
+    "max": 48,
+    "whole": 1
+   },
+   "+1": {
+    "n": 12,
+    "median": 6.0,
+    "mean": 6.75,
+    "min": 1,
+    "max": 20,
+    "whole": 0
+   },
+   "+2": {
+    "n": 12,
+    "median": 1.0,
+    "mean": 12.83,
+    "min": 0,
+    "max": 48,
+    "whole": 3
+   }
+  },
+  "llama.cpp pushed / instrument, start mark spared, batch 9": {
+   "n": 48,
+   "median": 3.5,
+   "mean": 8.88,
+   "min": 0,
+   "max": 48,
+   "whole": 4
+  },
+  "llama.cpp pushed / instrument, start mark spared, batch 9, by dose": {
+   "-2": {
+    "n": 12,
+    "median": 1.0,
+    "mean": 4.08,
+    "min": 0,
+    "max": 28,
+    "whole": 0
+   },
+   "-1": {
+    "n": 12,
+    "median": 7.5,
+    "mean": 11.83,
+    "min": 3,
+    "max": 48,
+    "whole": 1
+   },
+   "+1": {
+    "n": 12,
+    "median": 6.0,
+    "mean": 6.75,
+    "min": 1,
+    "max": 20,
+    "whole": 0
+   },
+   "+2": {
+    "n": 12,
+    "median": 1.0,
+    "mean": 12.83,
+    "min": 0,
+    "max": 48,
+    "whole": 3
+   }
+  },
+  "llama.cpp pushed / instrument, start mark pushed, batch 9": {
+   "n": 48,
+   "median": 9.0,
+   "mean": 14.21,
+   "min": 0,
+   "max": 48,
+   "whole": 5
+  },
+  "llama.cpp pushed / instrument, start mark pushed, batch 9, by dose": {
+   "-2": {
+    "n": 12,
+    "median": 19.5,
+    "mean": 23.17,
+    "min": 5,
+    "max": 48,
+    "whole": 1
+   },
+   "-1": {
+    "n": 12,
+    "median": 7.5,
+    "mean": 11.83,
+    "min": 3,
+    "max": 48,
+    "whole": 1
+   },
+   "+1": {
+    "n": 12,
+    "median": 9.0,
+    "mean": 8.83,
+    "min": 1,
+    "max": 22,
+    "whole": 0
+   },
+   "+2": {
+    "n": 12,
+    "median": 1.5,
+    "mean": 13.0,
+    "min": 0,
+    "max": 48,
+    "whole": 3
+   }
+  },
+  "instrument: start mark pushed / spared, batch 9": {
+   "n": 48,
+   "median": 8.5,
+   "mean": 16.98,
+   "min": 0,
+   "max": 48,
+   "whole": 10
+  },
+  "llama.cpp pushed / llama.cpp unpushed": {
+   "n": 48,
+   "median": 0.0,
+   "mean": 1.5,
+   "min": 0,
+   "max": 9,
+   "whole": 0
+  },
+  "census pushed / census unpushed": {
+   "n": 48,
+   "median": 0.5,
+   "mean": 1.6,
+   "min": 0,
+   "max": 9,
+   "whole": 0
+  }
+ },
+ "change_in_odds": {
+  "llama / census": {
+   "n": 2304,
+   "r": 0.9862,
+   "moved": 1335,
+   "median_ratio": 1.1116,
+   "carries_over": true
+  },
+  "llama / start mark pushed": {
+   "n": 2304,
+   "r": 0.989,
+   "moved": 1451,
+   "median_ratio": 0.9848,
+   "carries_over": true
+  },
+  "start mark pushed / census": {
+   "n": 2304,
+   "r": 0.9965,
+   "moved": 1335,
+   "median_ratio": 1.0376,
+   "carries_over": true
+  },
+  "llama / census, by dose": {
+   "-2": {
+    "n": 576,
+    "r": 0.9803,
+    "moved": 518,
+    "median_ratio": 1.4102,
+    "carries_over": true
+   },
+   "-1": {
+    "n": 576,
+    "r": 0.9952,
+    "moved": 171,
+    "median_ratio": 0.9752,
+    "carries_over": true
+   },
+   "+1": {
+    "n": 576,
+    "r": 0.9936,
+    "moved": 184,
+    "median_ratio": 0.9703,
+    "carries_over": true
+   },
+   "+2": {
+    "n": 576,
+    "r": 0.9861,
+    "moved": 462,
+    "median_ratio": 1.1238,
+    "carries_over": true
+   }
+  },
+  "pieces read back": 2304,
+  "pieces llama.cpp gave no log-probability for": 0
+ },
+ "words": {
+  "13641": {
+   "words": [
+    "staff",
+    "all",
+    "company",
+    "meeting",
+    "hands"
+   ],
+   "unpushed (census)": 0,
+   "unpushed (llama.cpp)": 0,
+   "-2": {
+    "census": 6,
+    "instrument, start mark pushed": 0,
+    "llama.cpp": 0,
+    "of": 6
+   },
+   "-1": {
+    "census": 6,
+    "instrument, start mark pushed": 6,
+    "llama.cpp": 6,
+    "of": 6
+   },
+   "+1": {
+    "census": 0,
+    "instrument, start mark pushed": 0,
+    "llama.cpp": 0,
+    "of": 6
+   },
+   "+2": {
+    "census": 0,
+    "instrument, start mark pushed": 0,
+    "llama.cpp": 0,
+    "of": 6
+   }
+  },
+  "21200": {
+   "words": [
+    "man",
+    "young",
+    "sir",
+    "same",
+    "person"
+   ],
+   "unpushed (census)": 0,
+   "unpushed (llama.cpp)": 0,
+   "-2": {
+    "census": 0,
+    "instrument, start mark pushed": 0,
+    "llama.cpp": 0,
+    "of": 6
+   },
+   "-1": {
+    "census": 1,
+    "instrument, start mark pushed": 1,
+    "llama.cpp": 1,
+    "of": 6
+   },
+   "+1": {
+    "census": 6,
+    "instrument, start mark pushed": 6,
+    "llama.cpp": 6,
+    "of": 6
+   },
+   "+2": {
+    "census": 6,
+    "instrument, start mark pushed": 4,
+    "llama.cpp": 3,
+    "of": 6
+   }
+  }
+ },
+ "answers_cut_by_the_server": [],
+ "bar": {
+  "r_at_least": 0.8,
+  "median_ratio_between": [
+   0.67,
+   1.5
+  ],
+  "where_moved_more_than": 0.5
+ },
+ "carries_over": true,
+ "seconds": {
+  "instrument": 81.4,
+  "llama": 279.0
+ }
+}

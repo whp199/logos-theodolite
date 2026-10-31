@@ -28,7 +28,8 @@ your layer on:
   (`REFERENCES.md` §J). Your layer is credited to the name you gave, and you name the strongest neurons of your layer
   in the published atlas.
 - **Open data**: every answer of every layer, 565,254 a layer, published with the project.
-- **In the works, not ready yet**: exporting a neuron as a llama.cpp control vector, to use it in your own frontend.
+- **Ready now: a neuron in your own frontend.** Any neuron exports as a llama.cpp control vector, for `llama-server`
+  and SillyTavern or anything else on it. Keep the scale near ±1 (*Use a neuron in your own setup*, below).
 
 A census rank says what a neuron's push does to six fixed questions at four strengths. What it does in your own
 chats, you try for yourself.
@@ -198,6 +199,50 @@ with each other, the card is named.
 - **Out of memory**: close everything else on the card. The batch is fixed at 64, so a card that can't hold it
   can't take part.
 - **Anything else**: ask in the thread or on the board issue.
+
+## Use a neuron in your own setup
+
+Any neuron the census ranks, or that you find in the atlas, can be loaded into llama.cpp as a control vector. Then
+`llama-server`, and SillyTavern or any other frontend on it, writes with that neuron's push.
+
+```bash
+.venv/bin/python -I scripts/export_control_vector.py --layer 45 --neuron 13641     # writes theodolite-L45-n13641.gguf
+llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-L45-n13641.gguf:1
+```
+
+- **The layer** counts from 0. The atlas's page, the first number in its address (`#/atlas/46/13641`), is layer + 1,
+  and `--page 46` takes it as it is.
+- **The scale is the dose.** At 1 the push is as long as the stream's typical length at that layer: the census's +1.
+  `:-1` pushes the other way. **Stay near ±1**: at ±2 llama.cpp's text collapses, because it also pushes the first
+  token, which the census left alone. Other values work, but the census measured only ±1 and ±2. For several
+  neurons: `--set 45:13641,44:801:-0.5 -o mix.gguf`.
+- **What it reads**: two tensors of the layer and the 31 MB stats index, on the CPU, in seconds. Nothing is downloaded.
+  - With the kit set up, run `. ~/theodolite-census/env.sh` first: it finds the checkpoint and the stats index you
+    already have. The script is not in the kit's tag, and `census.sh` runs only from a clean checkout at it, so use
+    a second checkout: `git fetch origin && git worktree add --detach ~/theodolite-census/export origin/main`, and
+    run the kit's Python (`~/theodolite-census/logos-theodolite/.venv/bin/python`) from there.
+  - Without the kit: add `--gguf` with your own GGUF of Gemma-4-31B-it and `--stats` with the kit's stats index
+    (`https://github.com/whp199/logos-theodolite/releases/download/census-kit-1/act_scale.npz`, sha256
+    `23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa`). It needs Python 3.12 with numpy, torch (the
+    CPU build is enough) and gguf. The direction is then your file's own, a little off the census's: cosine 0.997 for
+    the QAT Q4_0 file, 0.977 at worst for the Q4_K files we tried.
+- **`--show FILE`** prints what a file was made from: the model, the weights, each neuron, dose and p50, the stats
+  index's sha256 and the commit.
+
+**What a census label can and can't tell you.** The census read each neuron from six questions, at ±1 and ±2, one
+neuron at a time, from greedy answers of 48 word-pieces with thinking off, on the 4-bit W4A16 checkpoint. A neuron's
+words are those its pushed answers used more often than 2,048 random pushes did: a lead, not a proof. Three things
+differ when you load the file:
+- the push is along the neuron's write direction, and about 1.8 to 2.5 times longer than anything the neuron can
+  write by itself, so it is not "the neuron turned up";
+- llama.cpp also pushes the first token (`<bos>`), which the census left alone;
+- your GGUF is not the W4A16 checkpoint.
+
+We checked it on the 31B for layer 45's two top neurons, against a bar fixed before the run (30 October 2026,
+`ARCHITECTURE.md` §6). At ±1 their words came out in llama.cpp in all six answers, as in the census: 13641 at −1 wrote
+"I am a own-company-wide staff meeting all-hands…", and 21200 at +1 "…young man, sir". At ±2 llama.cpp's answers
+collapsed into "//" or blank space and lost the words, as the instrument's own do when it pushes the first token too.
+Two neurons are not a layer. Sums of neurons, other scales, sampling, long chats and thinking were never measured.
 
 ## For the owner
 

@@ -8,7 +8,7 @@ what you get when it's done:
 - watch a reply form through all 60 layers
 - point your own local model (LM Studio, Ollama, llama.cpp) at the map and let it hunt
 - your name on the first public neuron map of a 31B, and you name your layer's strongest neurons
-- in the works: a neuron as a llama.cpp control vector
+- ready now: any neuron as a llama.cpp control vector for your own frontend (keep the scale near 1)
 
 needs: one NVIDIA card 32GB+ (5090, PRO 6000, A6000, A100, H100...), CUDA 13 driver, Linux, ~60 GB disk. 24 GB won't fit
 time: ~13 h a layer on a 5090 + ~1 h setup. stop and resume any time
