@@ -40,11 +40,17 @@ VERBS = ("RESERVE", "START", "PROGRESS", "DONE", "RELEASE")
 #                up, parts at once);
 #   lp_median, lp_p99: on the word-pieces both wrote alike before the two part, where the home card is not sure of
 #                its piece (log-probability below -0.01), the median and 99th percentile of |difference| stay under
-#                these (another card's sums move a log-probability by about 1e-3; another model or push, far more);
+#                these. Amended 31 October 2026, before any spot chunk of another card's run was drawn: the first
+#                bars (0.01, 0.10) were an estimate (another card's sums taken to move a log-probability by about
+#                1e-3), and the first other-card canary (an RTX PRO 6000 Blackwell: 0.0132, 0.138) missed them. These
+#                are measured on the home card by a rule committed before the measurement (scripts/census_bars.py,
+#                experiments/results/census_other_card_bars/): arithmetic alone (batch 16/32/48, full-precision
+#                sums) moves the median up to 0.013 and the 99th percentile up to 0.169; a push 5% off moves the
+#                median to 0.059, one 10% off the 99th percentile to 0.81; each bar is the geometric mean of the two;
 #   baseline_shared: each unpushed answer shares at least this many word-pieces with the home card's (the whole
 #                answer, where the home card's is shorter).
 # A run of the home card's class must match every spot answer bit for bit.
-ACCEPT_OTHER_CLASS = {"first_piece": 0.90, "lp_median": 0.01, "lp_p99": 0.10, "baseline_shared": 16}
+ACCEPT_OTHER_CLASS = {"first_piece": 0.90, "lp_median": 0.028, "lp_p99": 0.37, "baseline_shared": 16}
 LP_SURE = -0.01
 
 

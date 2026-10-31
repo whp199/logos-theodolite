@@ -144,7 +144,7 @@ for someone else.
 ## How a run is checked
 
 These rules were fixed on 30 October 2026, before any volunteer's run had been seen
-(`backend/census_volunteer.py`, `scripts/census_intake.py`).
+(`backend/census_volunteer.py`, `scripts/census_intake.py`). One has been amended since, as said below.
 
 1. **The bundle**: each file's sha256 against the manifest, and the claim's secret against the code you posted.
 2. **The run**:
@@ -161,11 +161,20 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
    - **A card class of its own**: the run must meet all of these:
      - at least 90% of answers start with the same word-piece as ours;
      - on the word-pieces both cards wrote alike, where ours was not sure of its choice, the log-probabilities differ
-       by a median of at most 0.01, and by at most 0.1 at the 99th percentile;
+       by a median of at most 0.028, and by at most 0.37 at the 99th percentile;
      - each unpushed answer shares at least 16 word-pieces with ours.
 
-   Another card's sums move a log-probability by about a thousandth, while a run at another dose, at another layer or
-   made up moves it far more.
+   **Amended 31 October 2026: the log-probability bars.** The first bars, 0.01 and 0.1, were an estimate: we took
+   another card's sums to move a log-probability by about a thousandth. The first volunteer's canary, from an RTX PRO
+   6000 Blackwell, missed them (0.0132 and 0.138). So, before any spot chunk of that run was drawn, we measured them
+   on our own 5090 by a rule committed before the measurement (`scripts/census_bars.py`):
+   - changing only the arithmetic (batches of 16, 32 and 48, full-precision sums) moves the median up to 0.013 and the
+     99th percentile up to 0.169;
+   - a push 5% too strong or weak moves the median to 0.059, and one 10% off moves the 99th percentile to 0.81;
+   - each bar sits halfway between the two, on a log scale.
+
+   The volunteer's canary was not used to set them; it falls inside the range our own arithmetic gives
+   ([`census_other_card_bars/`](experiments/results/census_other_card_bars/)).
 
 A layer from another card class is recorded as such beside the run (`L<layer>-break_rel.provenance.json`). Its
 neurons and its controls were pushed on the same card, so the layer's own reading stands. Wherever layers are compared
