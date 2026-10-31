@@ -23,7 +23,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-10-31T03:41Z",
-   "state": "checking",
+   "state": "accepted",
    "events": [
     {
      "at": "2026-10-31T03:41Z",
@@ -76,6 +76,22 @@
     {
      "at": "2026-10-31T16:37Z",
      "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-10-31T18:22Z",
+     "what": "set checking: on paper whole; own bits; spot-check next"
+    },
+    {
+     "at": "2026-10-31T18:31Z",
+     "what": "set checking: spot-checked: its own card class (NVIDIA RTX PRO 6000 Blackwell Server Edition), within the kit's rules; accept next"
+    },
+    {
+     "at": "2026-10-31T18:35Z",
+     "what": "set accepted: own bits (NVIDIA RTX PRO 6000 Blackwell Server Edition), spot-checked"
+    },
+    {
+     "at": "2026-10-31T18:53Z",
+     "what": "set accepted: 30-31 Oct 2026, its own card class, spot-checked; passed layer 45's gates"
     }
    ],
    "started_at": "2026-10-31T03:41Z",
@@ -86,7 +102,7 @@
    "bundle_sha256": "07614e375b7063e9a4159f554b32190d7b586bd06ac84892d35773a94f05e023",
    "size": "495MB",
    "link": "https://objects.fin-03.verda.storage/gemma-bucket/L47-break_rel-2f018a18.tar?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=Z1MWQU3N5RH24I6D77XA%2F20261031%2Feu-north-3%2Fs3%2Faws4_request&X-Amz-Date=20261031T155802Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=e4653c334136a38f0df63097fb4a94ca9fa8bddbdf82a35fc2b7df240640094a",
-   "note": "on paper whole; own bits; spot-check next"
+   "note": "30-31 Oct 2026, its own card class, spot-checked; passed layer 45's gates"
   }
  ],
  "layers": {
@@ -112,7 +128,10 @@
    "state": "open"
   },
   "47": {
-   "state": "open"
+   "state": "done",
+   "by": "ReimusArmpit 2f018a18",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "note": "30-31 Oct 2026, its own card class, spot-checked; passed layer 45's gates"
   },
   "48": {
    "state": "open"
@@ -130,5 +149,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-10-31T17:48Z"
+ "updated_at": "2026-10-31T18:53Z"
 }

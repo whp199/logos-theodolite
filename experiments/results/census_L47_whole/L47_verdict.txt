@@ -1,0 +1,19 @@
+--- read at 48 word-pieces: PASS
+  pass  G1 lead (mass, every answer): mass_c 0.7333 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.7539 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.7132 (bar 0.57), rep_BA 0.6952 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6555 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4996 (bar (0.47, 0.53)), read_gain_ratio 1.007 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  pass  G5b the code ranks as read here (units.jsonl mass = mass_c): max_abs_diff 0.0005 (bar 0.002)
+  reported: shift 0.741, shift_up 0.740, shift_down 0.561, xq 0.737, rep 0.713, mass_A 0.629, mass_u 0.719, shift_res 0.749, rep_res 0.726
+  counts {'neurons': 21504, 'controls': 2048, 'above_every_control': 2873, 'by_chance': 10.5, 'q05': 7354, 'named': 5727, 'named_by_halves': 2940, 'above_ctl_p95': 0.424, 'pA05_and_pB05': 2992, 'pA05_and_pB05_by_chance': 53.8}; rho_AB neurons 0.446 controls 0.111; signs {'+': 0.6312, '-': 0.6421}
+--- read at 32 word-pieces: PASS
+  pass  G1 lead (mass, every answer): mass_c 0.7079 (bar 0.6)
+  pass  G2 beyond how the text survives (mass residual on six covariates, fitted on the controls): mass_c_res 0.723 (bar 0.58)
+  pass  G3 replication on disjoint questions (words picked on one half, scored on the other, both ways): rep_AB 0.6837 (bar 0.57), rep_BA 0.6628 (bar 0.57)
+  pass  G4 the new questions alone carry a lead (mass on half B): mass_B 0.6405 (bar 0.56)
+  pass  G5 sanity (null split, read gain, every answer present): null_split_mean 0.4987 (bar (0.47, 0.53)), read_gain_ratio 1.007 (bar (0.8, 1.25)), complete (every unit planned, each with all 24 cells; every answer of the job list) True
+  reported: shift 0.719, shift_up 0.722, shift_down 0.550, xq 0.716, rep 0.683, mass_A 0.638, mass_u 0.696, shift_res 0.722, rep_res 0.697
+  counts {'neurons': 21504, 'controls': 2048, 'above_every_control': 2118, 'by_chance': 10.5, 'q05': 5841, 'named': 4393, 'named_by_halves': 2441, 'above_ctl_p95': 0.3707, 'pA05_and_pB05': 2513, 'pA05_and_pB05_by_chance': 53.8}; rho_AB neurons 0.435 controls 0.146; signs {'+': 0.6195, '-': 0.6357}
+max_new rule: {'shorter_passes': True, 'mass_c_drop': 0.0254, 'rep_min_drop': 0.0324, 'take_shorter': False}
+-> experiments/results/census_L47_whole/L47_verdict.json: PASS
