@@ -153,7 +153,7 @@ def apply(board: Dict[str, Any], line: Dict[str, Any], via: str, who: Optional[s
         if mine:
             return f"refused: claim {code} holds layer {mine[0]['layer']} already: one layer a claim"
         board["claims"].append({"code": code, "layer": layer, "name": clean(line.get("name") or who or "anon", 24),
-                                "card": clean(line.get("card"), 48), "kit": line.get("kit"), "via": via, "at": t,
+                                "card": clean(line.get("card"), 64), "kit": line.get("kit"), "via": via, "at": t,
                                 "state": "reserved", "events": [{**ev, "verb": verb}]})
         return f"L{layer} reserved by {code} ({clean(line.get('name') or who or 'anon', 24)}, {clean(line.get('card'), 48)})"
     if c is None or c["layer"] != layer:
@@ -175,7 +175,7 @@ def apply(board: Dict[str, Any], line: Dict[str, Any], via: str, who: Optional[s
             c["started_at"] = t
         c["bits"] = clean(line.get("bits"), 8)
         if line.get("card"):
-            c["card"] = clean(line["card"], 48)
+            c["card"] = clean(line["card"], 64)
         return f"L{layer} {code} running ({c['bits'] or '?'} bits) until at least {iso(holds_until(c))}"
     if verb == "PROGRESS":
         if c["state"] == "reserved":

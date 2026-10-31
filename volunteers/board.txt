@@ -6,11 +6,11 @@ L43 OPEN
 L44 OPEN
 L45 done (home card)
 L46 OPEN
-L47 OPEN
+L47 running ReimusArmpit 2f018a18 NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB 1%, ends ~2026-10-31T15:40Z
 L48 OPEN
 L49 OPEN
 L50 OPEN
 
-10 open. To take one: https://github.com/whp199/logos-theodolite/issues/1
+9 open. To take one: https://github.com/whp199/logos-theodolite/issues/1
 guide: https://github.com/whp199/logos-theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

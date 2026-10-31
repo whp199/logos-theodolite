@@ -2,8 +2,54 @@
  "kit": 1,
  "repo": "whp199/logos-theodolite",
  "issue": 1,
- "seen_comments": [],
- "claims": [],
+ "seen_comments": [
+  6536088908,
+  6536955238,
+  6536965001,
+  6536991876
+ ],
+ "claims": [
+  {
+   "code": "2f018a18",
+   "layer": 47,
+   "name": "ReimusArmpit",
+   "card": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+   "kit": "1",
+   "via": "github",
+   "at": "2026-10-31T03:41Z",
+   "state": "running",
+   "events": [
+    {
+     "at": "2026-10-31T03:41Z",
+     "via": "github",
+     "what": "claim=2f018a18 card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB kit=1",
+     "verb": "RESERVE"
+    },
+    {
+     "at": "2026-10-31T03:41Z",
+     "via": "github",
+     "what": "claim=2f018a18 bits=own card=NVIDIA RTX PRO 6000 Blackwell Server Edition 96 GB",
+     "verb": "START"
+    },
+    {
+     "at": "2026-10-31T03:41Z",
+     "via": "github",
+     "what": "claim=2f018a18 done=0% eta=2026-10-31T16:25Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-10-31T03:41Z",
+     "via": "github",
+     "what": "claim=2f018a18 done=1% eta=2026-10-31T15:40Z",
+     "verb": "PROGRESS"
+    }
+   ],
+   "started_at": "2026-10-31T03:41Z",
+   "bits": "own",
+   "done": "1%",
+   "eta": "2026-10-31T15:40Z"
+  }
+ ],
  "layers": {
   "40": {
    "state": "open"
@@ -42,5 +88,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-10-30T21:07Z"
+ "updated_at": "2026-10-31T03:42Z"
 }
