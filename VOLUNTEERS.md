@@ -144,7 +144,7 @@ for someone else.
 ## How a run is checked
 
 These rules were fixed on 30 October 2026, before any volunteer's run had been seen
-(`backend/census_volunteer.py`, `scripts/census_intake.py`). One has been amended since, as said below.
+(`backend/census_volunteer.py`, `scripts/census_intake.py`). Two have been amended since, as said below.
 
 1. **The bundle**: each file's sha256 against the manifest, and the claim's secret against the code you posted.
 2. **The run**:
@@ -162,7 +162,8 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
      - at least 90% of answers start with the same word-piece as ours;
      - on the word-pieces both cards wrote alike, where ours was not sure of its choice, the log-probabilities differ
        by a median of at most 0.028, and by at most 0.37 at the 99th percentile;
-     - each unpushed answer shares at least 16 word-pieces with ours.
+     - each unpushed answer is ours, or parts from ours only at a word-piece we wrote with probability below 0.6 (a
+       near-tie).
 
    **Amended 31 October 2026: the log-probability bars.** The first bars, 0.01 and 0.1, were an estimate: we took
    another card's sums to move a log-probability by about a thousandth. The first volunteer's canary, from an RTX PRO
@@ -175,6 +176,17 @@ These rules were fixed on 30 October 2026, before any volunteer's run had been s
 
    The volunteer's canary was not used to set them; it falls inside the range our own arithmetic gives
    ([`census_other_card_bars/`](experiments/results/census_other_card_bars/)).
+
+   **Amended 31 October 2026: the unpushed answers.** The first rule asked each to share at least 16 word-pieces with
+   ours. That first volunteer's whole run kept three of the six word for word. The other three parted sooner, at
+   pieces 5, 21 and 27, each a near-tie: we had written that piece with probability 0.50, 0.41 or 0.50, and their card
+   wrote the runner-up. Unlike the bars above, this rule was replaced *after* those answers were seen. The new rule,
+   and how to check it, were committed before the check ran (`scripts/census_ties.py`). On our own 5090, with only the
+   arithmetic changed (batches of 1 to 56, full-precision sums):
+   - 21 of 66 unpushed answers parted from our own, at the same near-ties: at batch 16, our card fails the old rule;
+   - the surest piece where any parted, we had written at 0.52, under the new bar of 0.6, which stands.
+
+   Results: [`census_unpushed_ties/`](experiments/results/census_unpushed_ties/).
 
 A layer from another card class is recorded as such beside the run (`L<layer>-break_rel.provenance.json`). Its
 neurons and its controls were pushed on the same card, so the layer's own reading stands. Wherever layers are compared

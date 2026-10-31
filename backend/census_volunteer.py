@@ -53,7 +53,9 @@ VERBS = ("RESERVE", "START", "PROGRESS", "DONE", "RELEASE")
 #                model or push parts where the home card was sure). Amended 31 October 2026, after layer 47's unpushed
 #                answers (RTX PRO 6000 Blackwell) were seen: the first rule asked 16 shared word-pieces, and three of
 #                its six parted sooner (at 5, 21 and 27), each at a piece the home card wrote at 0.50, 0.41 or 0.50.
-#                Checked on the home card before use (scripts/census_ties.py, experiments/results/census_unpushed_ties/).
+#                Checked on the home card before use (scripts/census_ties.py, experiments/results/census_unpushed_ties/):
+#                its own arithmetic alone (batch 1-56, full-precision sums) parted 21 of 66 times, at the same
+#                ties, the surest at 0.52.
 # A run of the home card's class must match every spot answer bit for bit.
 ACCEPT_OTHER_CLASS = {"first_piece": 0.90, "lp_median": 0.028, "lp_p99": 0.37, "baseline_tie": 0.6}
 LP_SURE = -0.01
