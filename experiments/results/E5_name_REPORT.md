@@ -302,7 +302,7 @@ independent units).
 - Overall there is **no meaningful behavioural leak**. The mid-layer "Gemma" self-identity (job E) is overridden at the output.
   The pre-stated prediction of a small leak relative to the human personas is not supported, except weakly for "My name is".
 
-## 6. Instrument evaluation (Logos Theodolite)
+## 6. Instrument evaluation (Theodolite)
 
 1. **Early readout of the eventual decision.** Pearson r across the 56 name × context means between the lens pronoun log-odds at the
    final token and the real behaviour:

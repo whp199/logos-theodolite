@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""End-to-End Verification Suite (`scripts/verify_e2e_ui_and_mcp.py`) for Logos Theodolite.
+"""End-to-End Verification Suite (`scripts/verify_e2e_ui_and_mcp.py`) for Theodolite.
 
 Runs inside a single process/network namespace to verify:
 0. The lens card on the CPU, before anything loads (scripts/check_lens_card.py, in its own process): the shipped file,
@@ -1144,7 +1144,7 @@ class CDPClient:
 
 async def main() -> int:
     print("=" * 92)
-    print("LOGOS THEODOLITE — PHASE 2 END-TO-END SERVER, FASTMCP & 3D FRONTEND VERIFICATION")
+    print("THEODOLITE — PHASE 2 END-TO-END SERVER, FASTMCP & 3D FRONTEND VERIFICATION")
     print("=" * 92)
 
     # The lens card's branches for other files never run below (the server loads the shipped file), so they are

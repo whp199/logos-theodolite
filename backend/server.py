@@ -1,4 +1,4 @@
-"""FastAPI + Binary Float32 WebSocket Server (`backend/server.py`) for Logos Theodolite.
+"""FastAPI + Binary Float32 WebSocket Server (`backend/server.py`) for Theodolite.
 
 Streams packed Binary Float32 frames (`ArrayBuffer`) containing:
 - 60-layer 3D Projective Theodolite trajectory `(x_l, y_l, z_l)` + Azimuth `theta`, Elevation `phi`, `||h_l||_2`
@@ -127,7 +127,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="Logos Theodolite — Gemma-4-31B 3D Projective Geometry & Circuit Ecology Instrument",
+    title="Theodolite — Gemma-4-31B 3D Projective Geometry & Circuit Ecology Instrument",
     version="1.0.0",
     lifespan=lifespan,
 )

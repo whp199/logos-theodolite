@@ -442,7 +442,7 @@ def export(entries: Sequence[Entry], out: Path, source: Any, stats: Path, model:
             else f"theodolite set of {len(entries)} neurons at layers {', '.join(str(l) for l in sorted(directions))}")
     record: Dict[str, Any] = {
         "name": name,
-        "description": f"The census's add push of {describe(entries)}, from Logos Theodolite: llama-server "
+        "description": f"The census's add push of {describe(entries)}, from Theodolite: llama-server "
                        "--control-vector-scaled FILE:1 pushes it at the doses written here.",
         "model": model,
         "weights": source.record(),

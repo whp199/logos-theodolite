@@ -1,6 +1,6 @@
 # E1_self_readout: does Gemma-4-31B-it represent itself as female?
 
-Model: Gemma-4-31B-it, 4-bit QAT W4A16. Instrument: Logos Theodolite lenses (J++ = `jpp`, the primary lens; Jacobian lens = `jlens`; logit lens = `naive`). All GPU work went through labd. Layers are 0-based.
+Model: Gemma-4-31B-it, 4-bit QAT W4A16. Instrument: Theodolite lenses (J++ = `jpp`, the primary lens; Jacobian lens = `jlens`; logit lens = `naive`). All GPU work went through labd. Layers are 0-based.
 
 ## Bottom line
 

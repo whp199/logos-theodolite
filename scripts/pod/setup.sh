@@ -3,7 +3,7 @@
 # volume root (default /workspace, a RunPod network volume's mount), so that a stopped pod restarts ready and a pod
 # deleted loses nothing but its container. Run it from the checkout, itself on the volume:
 #
-#     git clone <repo> /workspace/logos-theodolite && cd /workspace/logos-theodolite && git checkout <commit>
+#     git clone <repo> /workspace/theodolite && cd /workspace/theodolite && git checkout <commit>
 #     scripts/pod/setup.sh --constraints scripts/pod/constraints/home-2026-10-28.txt
 #     HF_TOKEN=$RUNPOD_SECRET_hf scripts/pod/setup.sh ...   # a token only if the download without one is refused
 #     scripts/pod/setup.sh --dry-run                        # the whole flow on the CPU stand-in, in a temporary root

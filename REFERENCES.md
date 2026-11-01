@@ -1,6 +1,6 @@
 # References
 
-This file lists the external sources, prior ideas and software that Logos Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18; section H's were not opened (see there), and those of sections I and J are as each says.
+This file lists the external sources, prior ideas and software that Theodolite and the `experiments/` study rely on. Bracketed numbers such as [2] are the markers used in the reports and docs. Each entry has a short note on how this repository uses the source. Dates are publication or posting dates. All links were checked on 2026-10-16, those of section G on 2026-10-18; section H's were not opened (see there), and those of sections I and J are as each says.
 
 ## A. Model, lenses and lens methods
 

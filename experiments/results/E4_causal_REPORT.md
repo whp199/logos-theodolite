@@ -1,6 +1,6 @@
 # E4_causal: the internal gender direction in Gemma-4-31B-it, tested with ablation, steering and a corrected attention/FFN split
 
-Model: Gemma-4-31B-it, 4-bit QAT W4A16. Instrument: Logos Theodolite, with the J++ lens, the Jacobian lens (JLens) and the logit lens. All GPU work went through labd.
+Model: Gemma-4-31B-it, 4-bit QAT W4A16. Instrument: Theodolite, with the J++ lens, the Jacobian lens (JLens) and the logit lens. All GPU work went through labd.
 Unit of analysis: the passage or prompt. Tokens are averaged within a passage before anything else. 95% CIs are percentile bootstraps over passages or pairs (1000 to 2000 resamples).
 Position scale: 0 = the man pole of the axis, 1 = the woman pole, 0.5 = the midpoint.
 

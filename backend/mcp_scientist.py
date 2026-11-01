@@ -74,7 +74,7 @@ from backend.theodolite_math import (
     unembed_gemma4,
 )
 
-mcp = FastMCP("Logos Theodolite Circuit Scientist")
+mcp = FastMCP("Theodolite Circuit Scientist")
 
 _SHARED_RUNTIME: Optional[TheodoliteRuntime] = None
 _SHARED_VAULT: Optional[LarqlVaultEngine] = None

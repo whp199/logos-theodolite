@@ -1,6 +1,6 @@
 # Roadmap
 
-*What is still open in Logos Theodolite, gathered from the places that already name it: the README’s fault table, the
+*What is still open in Theodolite, gathered from the places that already name it: the README’s fault table, the
 study’s report and its errata, the pages’ own “not yet” marks, and the records of R1’s instruct refit, R2’s test of
 what to serve, R3’s test of J++’s recipe and R4’s test of R1’s lens. Nothing here has a date or an owner. Layers are
 counted 1–60, as on the pages; the study’s reports count from 0, so their L50 is layer 51 here.*

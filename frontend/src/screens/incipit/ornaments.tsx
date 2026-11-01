@@ -17,9 +17,16 @@ const INITIAL_TICKS = (() => {
   return d;
 })();
 
-/** The engraved initial "L" of the title, set in a theodolite's limb. */
+const INITIAL_SIZE = "clamp(96px, 14vw, 200px)";
+
+/** The engraved initial "T" of the title, set in a theodolite's limb: a raised initial, set inline and lowered by the
+ * 39 of its 200 below its baseline (161 down), so the rest of the word stands on the T's own baseline. */
 export const TitleInitial: React.FC = () => (
-  <svg viewBox="0 0 200 200" aria-hidden="true" style={{ width: "clamp(96px, 14vw, 200px)", height: "auto", display: "block", flex: "none" }}>
+  <svg
+    viewBox="0 0 200 200"
+    aria-hidden="true"
+    style={{ width: INITIAL_SIZE, height: INITIAL_SIZE, display: "inline-block", verticalAlign: `calc(${INITIAL_SIZE} * -0.195)`, marginRight: "0.04em" }}
+  >
     <rect x="0.5" y="0.5" width="199" height="199" fill="none" stroke="#8F2B1E" strokeWidth="1" />
     <rect x="7" y="7" width="186" height="186" fill="none" stroke="#A07A2E" strokeWidth="1.4" />
     <rect x="11" y="11" width="178" height="178" fill="none" stroke="#A07A2E" strokeWidth="0.6" />
@@ -30,11 +37,11 @@ export const TitleInitial: React.FC = () => (
     <ellipse cx="100" cy="100" rx="70" ry="20" fill="none" stroke="#A07A2E" strokeWidth="0.6" strokeOpacity="0.55" />
     <line x1="100" y1="22" x2="100" y2="178" stroke="#2B2117" strokeWidth="0.6" strokeOpacity="0.3" />
     <line x1="22" y1="100" x2="178" y2="100" stroke="#2B2117" strokeWidth="0.6" strokeOpacity="0.3" />
-    <text x="92" y="161" textAnchor="middle" fontFamily={SERIF} fontSize="164" fontWeight="500" fill="#8A6A2C" stroke="#F6F0E3" strokeWidth="5" paintOrder="stroke">
-      L
+    <text x="100" y="161" textAnchor="middle" fontFamily={SERIF} fontSize="164" fontWeight="500" fill="#8A6A2C" stroke="#F6F0E3" strokeWidth="5" paintOrder="stroke">
+      T
     </text>
-    <circle cx="104" cy="100" r="6" fill="none" stroke="#8F2B1E" strokeWidth="0.9" />
-    <circle cx="104" cy="100" r="2" fill="#8F2B1E" />
+    <circle cx="100" cy="100" r="6" fill="#F6F0E3" stroke="#8F2B1E" strokeWidth="0.9" />
+    <circle cx="100" cy="100" r="2" fill="#8F2B1E" />
   </svg>
 );
 

@@ -1,5 +1,5 @@
 [project]
-name = "logos-theodolite"
+name = "theodolite"
 version = "0.1.0"
 description = "3D Projective Geometry & Circuit Ecology Instrument for Gemma-4-31B"
 readme = "README.md"

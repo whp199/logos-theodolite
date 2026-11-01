@@ -119,13 +119,11 @@ const TitleColumn: React.FC = () => {
       <p style={{ margin: 0, fontWeight: 500, ...sc("0.24em", 14, "#8F2B1E") }}>incipit · here begins a survey of the interior</p>
 
       <h1 id="title-head" style={{ margin: 0, position: "relative", fontWeight: 500 }}>
-        <span className="visually-hidden">Logos Theodolite</span>
-        <span aria-hidden="true" style={{ display: "flex", flexWrap: "nowrap", alignItems: "center", gap: "14px clamp(12px, 2vw, 26px)", minWidth: 0 }}>
+        <span className="visually-hidden">Theodolite</span>
+        {/* a raised initial: the rest of the word stands on the T's own baseline (ornaments.tsx, TitleInitial) */}
+        <span aria-hidden="true" style={{ display: "block", whiteSpace: "nowrap", fontSize: "clamp(40px, 7vw, 96px)", lineHeight: 1.04, letterSpacing: "0.005em", color: INK }}>
           <TitleInitial />
-          <span style={{ display: "flex", flexDirection: "column", minWidth: 0, fontSize: "clamp(36px, 6vw, 84px)", lineHeight: 1.04, letterSpacing: "0.005em", color: INK }}>
-            <span>ogos</span>
-            <span>Theodolite</span>
-          </span>
+          heodolite
         </span>
       </h1>
 

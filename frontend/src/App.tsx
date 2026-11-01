@@ -16,16 +16,16 @@ const Lexicon = lazy(() => import("./screens/Lexicon").then((m) => ({ default: m
 const Lineage = lazy(() => import("./screens/Lineage").then((m) => ({ default: m.Lineage })));
 
 const TITLES: Record<Route["name"], string> = {
-  incipit: "Logos Theodolite",
-  instrument: "The Instrument — Logos Theodolite",
-  layer: "A layer’s leaf — Logos Theodolite",
-  neuron: "A neuron’s folio — Logos Theodolite",
-  atlas: "The atlas — Logos Theodolite",
-  landmarks: "Landmarks — Logos Theodolite",
-  nudge: "Nudge — Logos Theodolite",
-  vault: "The Vault — Logos Theodolite",
-  lexicon: "Lexicon — Logos Theodolite",
-  lineage: "Lineage — Logos Theodolite",
+  incipit: "Theodolite",
+  instrument: "The Instrument — Theodolite",
+  layer: "A layer’s leaf — Theodolite",
+  neuron: "A neuron’s folio — Theodolite",
+  atlas: "The atlas — Theodolite",
+  landmarks: "Landmarks — Theodolite",
+  nudge: "Nudge — Theodolite",
+  vault: "The Vault — Theodolite",
+  lexicon: "Lexicon — Theodolite",
+  lineage: "Lineage — Theodolite",
 };
 
 const Opening: React.FC<{ route: Route }> = ({ route }) => (

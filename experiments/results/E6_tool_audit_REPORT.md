@@ -1,4 +1,4 @@
-# E6_tool_audit — End-to-end audit of the Logos Theodolite tool on the "Gemma-4-31B is female-coded" question
+# E6_tool_audit — End-to-end audit of the Theodolite tool on the "Gemma-4-31B is female-coded" question
 
 Model: Gemma-4-31B-it, 4-bit QAT W4A16 (lab daemon). Lenses: J++ (`jpp`), Jacobian lens (`jlens`), and the naive logit lens.
 Everything below was produced by calling the tool's own code paths (`rt.run_theodolite_sweep`, `LarqlVaultEngine.execute_lql`,

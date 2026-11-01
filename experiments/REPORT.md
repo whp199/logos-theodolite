@@ -1,6 +1,6 @@
 # Is Gemma-4-31B "female-coded"? And what the Theodolite can and can't see
 
-*Gemma-4-31B-it (QAT W4A16) [1] on one RTX 5090. Instrument: Logos Theodolite (J++ [4] / JLens [2,6] lenses, GeGLU "poles" [9], LARQL-style vault [10]).
+*Gemma-4-31B-it (QAT W4A16) [1] on one RTX 5090. Instrument: Theodolite (J++ [4] / JLens [2,6] lenses, GeGLU "poles" [9], LARQL-style vault [10]).
 Process: 7 parallel experiments (E1–E7) → 8 adversarial verifiers (V1–V8) re-tested every headline with new controls; a separate
 neuron-label study (N1) with 2 verifiers. 314 GPU jobs (each batching many forward passes) through a shared lab daemon. Date: 2026-10-16. Bracketed numbers refer to [`REFERENCES.md`](../REFERENCES.md); statistics use bootstrap CIs [30] and Wilson intervals [29].*
 

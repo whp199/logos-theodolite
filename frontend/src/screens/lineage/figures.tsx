@@ -18,7 +18,7 @@ export const Cartouche: React.FC = () => (
     <svg
       viewBox="0 0 560 420"
       role="img"
-      aria-label="An engraved maker’s cartouche: Logos Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hayuk; with the logit lens, linear CKA and activation steering; for Gemma-4-31B-it, 2026."
+      aria-label="An engraved maker’s cartouche: Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hayuk; with the logit lens, linear CKA and activation steering; for Gemma-4-31B-it, 2026."
       style={{ width: "100%", maxWidth: 520, height: "auto", display: "block" }}
     >
       <path
@@ -59,7 +59,7 @@ export const Cartouche: React.FC = () => (
       <circle cx="280" cy="62" r="3.2" fill="#A07A2E" />
       <g fontFamily="EB Garamond, Garamond, serif" textAnchor="middle">
         <text x="280" y="190" fontSize="30" letterSpacing="5" fontWeight="500" fill="#2B2117">
-          LOGOS THEODOLITE
+          THEODOLITE
         </text>
         <line x1="196" y1="208" x2="272" y2="208" stroke="#A07A2E" strokeWidth="0.9" />
         <path d="M280 203 L284 208 L280 213 L276 208 Z" fill="#A07A2E" />
@@ -295,7 +295,7 @@ export const Stemma: React.FC = () => (
         {/* the instrument and the study */}
         <Node kind="instrument" left={440} top={616} width={400} height={96}>
           <span style={{ fontSize: 24, fontVariantCaps: "all-small-caps", letterSpacing: "0.16em", color: "var(--ink)" }}>
-            Logos Theodolite
+            Theodolite
           </span>
           <Cite>the instrument these pages describe, joined from all of the above</Cite>
         </Node>

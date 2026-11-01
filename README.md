@@ -1,6 +1,6 @@
 <p align="center">
   <img src="docs/readme/frontispiece.png" width="100%"
-       alt="The opening page of Logos Theodolite: an engraved initial L beside the title, and sixty stacked rings with the path of one word winding up through them, labelled with what a lens makes of it at a few of its layers.">
+       alt="The opening page of Theodolite: the title begun with an engraved initial T, and sixty stacked rings with the path of one word winding up through them, labelled with what a lens makes of it at a few of its layers.">
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@
 ## i · what it is
 
 Between a question and its answer, a language model carries each word up through all of its layers, and little of that
-country has been mapped. **Logos Theodolite** lets you follow a single word as it rises through the sixty layers of
+country has been mapped. **Theodolite** lets you follow a single word as it rises through the sixty layers of
 **Gemma-4-31B-it**, and read, at every layer, what a lens makes of it: sometimes words you never wrote, in languages you
 never used.
 
@@ -681,7 +681,7 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 
 <p align="center">
   <img src="docs/readme/cartouche.png" width="420"
-       alt="An engraved maker's cartouche: Logos Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hayuk, with the logit lens, linear CKA and activation steering, for Gemma-4-31B-it, MMXXVI.">
+       alt="An engraved maker's cartouche: Theodolite, made after Gurnee et al., Ayonrinde and Lindsey, Cammarata, and Hayuk, with the logit lens, linear CKA and activation steering, for Gemma-4-31B-it, MMXXVI.">
 </p>
 
 This instrument is its maker’s synthesis of four recent pieces of research, joined on one mount:

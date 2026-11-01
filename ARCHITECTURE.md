@@ -1,4 +1,4 @@
-# Logos Theodolite — Architecture & Tensor Contracts
+# Theodolite — Architecture & Tensor Contracts
 
 **Target Model:** `google/gemma-4-31b-it` (`google/gemma-4-31B-it-qat-w4a16-ct` / 4-bit W4A16 within a single-GPU 32GB RTX 5090 VRAM envelope)  
 **Coordinate Lenses:** `neuronpedia/jacobian-lens` (`gemma-4-31B_jpp_lens.pt` & `gemma-4-31B_jacobian_lens.pt`)  

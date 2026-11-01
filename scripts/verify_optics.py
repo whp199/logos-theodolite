@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic CLI Verification Suite (`scripts/verify_optics.py`) for Logos Theodolite.
+"""Deterministic CLI Verification Suite (`scripts/verify_optics.py`) for Theodolite.
 
 Runs the multi-hop prompt `"The number of legs on the animal that spins webs is"` (the two-hop example from
 Gurnee et al. 2026, REFERENCES.md [2])
@@ -69,7 +69,7 @@ def _format_layer_label(layer_0based: int) -> str:
 
 async def main() -> int:
     print("=" * 92)
-    print(" LOGOS THEODOLITE — DETERMINISTIC OPTICS & CIRCUIT VERIFICATION SUITE (GEMMA-4-31B) ")
+    print(" THEODOLITE — DETERMINISTIC OPTICS & CIRCUIT VERIFICATION SUITE (GEMMA-4-31B) ")
     print("=" * 92)
 
     if not torch.cuda.is_available():

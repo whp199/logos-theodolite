@@ -168,9 +168,9 @@ export const ServerStatus: React.FC = () => {
 export const SiteHeader: React.FC<{ route: Route }> = ({ route }) => (
   <>
     <header className="site-header">
-      <a href={href.incipit()} className="brand" aria-label="Logos Theodolite, the welcome page">
+      <a href={href.incipit()} className="brand" aria-label="Theodolite, the welcome page">
         <BrandMark />
-        <span>Logos Theodolite</span>
+        <span>Theodolite</span>
       </a>
       <nav aria-label="Main" className="site-nav">
         {NAV.map((n) => (

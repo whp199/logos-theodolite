@@ -1,6 +1,6 @@
 # Take a layer of the census
 
-Logos Theodolite is mapping what each MLP neuron of Gemma-4-31B writes. The census takes one layer at a time. Each of
+Theodolite is mapping what each MLP neuron of Gemma-4-31B writes. The census takes one layer at a time. Each of
 the layer's 21,504 neurons is pushed along its own write direction, at four strengths (±1 and ±2 of the stream), on six
 plain questions. Its 24 greedy answers are then read against those of 2,048 random directions pushed the same way.
 Layer 45 is done: 13.2 hours on one RTX 5090, and it passed every check set for it before it was run

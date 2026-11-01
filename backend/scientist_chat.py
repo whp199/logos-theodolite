@@ -271,7 +271,7 @@ PROFILES: Dict[str, Dict[str, Any]] = {
     "lmstudio": {"label": "LM Studio (this machine)", "base_url": "http://127.0.0.1:1234/v1", "url_env": "THEODOLITE_LMSTUDIO_URL"},
     "ollama": {"label": "Ollama (this machine)", "base_url": "http://127.0.0.1:11434/v1", "url_env": "THEODOLITE_OLLAMA_URL"},
     "openrouter": {"label": "OpenRouter", "base_url": "https://openrouter.ai/api/v1", "key_env": "OPENROUTER_API_KEY",
-                   "headers": {"X-Title": "Logos Theodolite", "HTTP-Referer": "https://github.com/whp199/logos-theodolite"}},
+                   "headers": {"X-Title": "Theodolite", "HTTP-Referer": "https://github.com/whp199/logos-theodolite"}},
 }
 ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _profile_warning: Optional[str] = None
@@ -819,7 +819,7 @@ async def _ensure_codex(c: Dict[str, Any], self_url: str) -> Any:
     _started(c, files)
     c["rpc"], c["turn_id"], c["msg_item"] = {"next": 0, "pending": {}}, None, None  # a new process: no turn of the last runs on
     c["pump"] = asyncio.create_task(_pump_codex(c, proc))
-    await _rpc(c, "initialize", {"clientInfo": {"name": "logos-theodolite", "version": "1"}})
+    await _rpc(c, "initialize", {"clientInfo": {"name": "theodolite", "version": "1"}})
     # in its sandbox Codex asks before every MCP tool call, and this chat never asks (approvalPolicy "never"): the
     # atlas's own tools are approved, as full access approved them
     mcp = {"atlas": {"command": sys.executable, "args": ["-I", str(MCP_SCRIPT)], "env": {"THEODOLITE_URL": self_url, "THEODOLITE_CHAT": c["session"]},

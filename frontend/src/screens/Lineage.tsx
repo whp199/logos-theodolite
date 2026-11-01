@@ -84,7 +84,7 @@ const Title: React.FC = () => (
         The instruments this one is made from
       </h1>
       <p style={{ margin: 0, fontSize: 23, lineHeight: 1.5, maxWidth: 680 }}>
-        Logos Theodolite is a synthesis. Its maker took four recent pieces of research, a lens, a sharper grinding of
+        Theodolite is a synthesis. Its maker took four recent pieces of research, a lens, a sharper grinding of
         that lens, a way of reading neurons, and a catalogue of neurons you can question, and joined them on one mount,
         over older foundations reaching back to 2015.
       </p>
