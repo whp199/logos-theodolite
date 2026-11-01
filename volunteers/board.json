@@ -124,7 +124,7 @@
   {
    "code": "d4bcee00",
    "layer": 41,
-   "name": "anon",
+   "name": "ReimusArmpit",
    "card": "NVIDIA GeForce RTX 5090 32 GB",
    "kit": "1",
    "via": "github",
@@ -184,6 +184,12 @@
      "via": "github",
      "what": "claim=d4bcee00 done=36% eta=2026-11-01T22:17Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T13:48Z",
+     "via": "owner",
+     "verb": "NAME",
+     "what": "name=ReimusArmpit: the RESERVE was posted from ReimusArmpit's GitHub account with the kit's default name (anon)"
     }
    ],
    "started_at": "2026-11-01T13:44Z",
@@ -239,5 +245,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-01T13:45Z"
+ "updated_at": "2026-11-01T13:48Z"
 }
