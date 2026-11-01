@@ -1,6 +1,6 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
 L40 done (home card)
-L41 running ReimusArmpit d4bcee00 NVIDIA GeForce RTX 5090 32 GB 36%, ends ~2026-11-01T22:17Z
+L41 running ReimusArmpit d4bcee00 NVIDIA GeForce RTX 5090 32 GB 62%, ends ~2026-11-01T22:15Z
 L42 OPEN
 L43 OPEN
 L44 OPEN

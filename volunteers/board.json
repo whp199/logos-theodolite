@@ -29,7 +29,9 @@
   6556141274,
   6556141866,
   6556831236,
-  6558054626
+  6558054626,
+  6559410360,
+  6560799455
  ],
  "claims": [
   {
@@ -190,12 +192,24 @@
      "via": "owner",
      "verb": "NAME",
      "what": "name=ReimusArmpit: the RESERVE was posted from ReimusArmpit's GitHub account with the kit's default name (anon)"
+    },
+    {
+     "at": "2026-11-01T18:15Z",
+     "via": "github",
+     "what": "claim=d4bcee00 done=49% eta=2026-11-01T22:16Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T18:15Z",
+     "via": "github",
+     "what": "claim=d4bcee00 done=62% eta=2026-11-01T22:15Z",
+     "verb": "PROGRESS"
     }
    ],
    "started_at": "2026-11-01T13:44Z",
    "bits": "home",
-   "done": "36%",
-   "eta": "2026-11-01T22:17Z"
+   "done": "62%",
+   "eta": "2026-11-01T22:15Z"
   }
  ],
  "layers": {
@@ -219,9 +233,7 @@
   },
   "46": {
    "state": "closed",
-   "by": "home card",
-   "card": "NVIDIA GeForce RTX 5090 32 GB",
-   "note": "running on the home card (RTX 5090) since 1 Nov 13:45Z, ends ~03:05Z"
+   "note": "running on the home card (RTX 5090) since 1 Nov 13:45Z, ends ~02:35Z"
   },
   "47": {
    "state": "done",
@@ -245,5 +257,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-01T18:10Z"
+ "updated_at": "2026-11-01T18:15Z"
 }
