@@ -31,7 +31,15 @@
   6556831236,
   6558054626,
   6559410360,
-  6560799455
+  6560799455,
+  6562305867,
+  6562568692,
+  6562569705,
+  6563938295,
+  6564921228,
+  6564957474,
+  6565304963,
+  6565621381
  ],
  "claims": [
   {
@@ -131,7 +139,7 @@
    "kit": "1",
    "via": "github",
    "at": "2026-11-01T13:44Z",
-   "state": "running",
+   "state": "checking",
    "events": [
     {
      "at": "2026-11-01T13:44Z",
@@ -204,12 +212,63 @@
      "via": "github",
      "what": "claim=d4bcee00 done=62% eta=2026-11-01T22:15Z",
      "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T23:52Z",
+     "via": "github",
+     "what": "claim=d4bcee00 done=77% eta=2026-11-01T22:16Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T23:52Z",
+     "via": "github",
+     "what": "claim=d4bcee00 done=79% eta=2026-11-01T22:15Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T23:52Z",
+     "via": "github",
+     "what": "claim=d4bcee00 done=79% eta=2026-11-01T22:15Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T23:52Z",
+     "via": "github",
+     "what": "claim=d4bcee00 done=93% eta=2026-11-01T22:15Z",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T23:52Z",
+     "via": "github",
+     "what": "claim=d4bcee00 sha256=8a8d269a6a160e9b size=532MB link=https://github.com/ReimusArmpit/census-L41/releases/download/L41-break_rel-d4bcee00/L41-break_rel-d4bcee00.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-01T23:52Z",
+     "via": "github",
+     "what": "claim=d4bcee00 sha256=8a8d269a6a160e9b size=532MB link=https://github.com/ReimusArmpit/census-L41/releases/download/L41-break_rel-d4bcee00/L41-break_rel-d4bcee00.tar",
+     "verb": "DONE"
+    },
+    {
+     "at": "2026-11-01T23:52Z",
+     "via": "github",
+     "what": "claim=d4bcee00 done=100%",
+     "verb": "PROGRESS"
+    },
+    {
+     "at": "2026-11-01T23:53Z",
+     "what": "set checking: on paper whole; home bits; spot-check next"
     }
    ],
    "started_at": "2026-11-01T13:44Z",
    "bits": "home",
-   "done": "62%",
-   "eta": "2026-11-01T22:15Z"
+   "done": "100%",
+   "eta": "2026-11-01T22:15Z",
+   "submitted_at": "2026-11-01T23:52Z",
+   "bundle_sha256": "8a8d269a6a160e9b",
+   "size": "532MB",
+   "link": "https://github.com/ReimusArmpit/census-L41/releases/download/L41-break_rel-d4bcee00/L41-break_rel-d4bcee00.tar",
+   "note": "on paper whole; home bits; spot-check next"
   }
  ],
  "layers": {
@@ -257,5 +316,5 @@
    "note": "29-30 Oct 2026, passed every gate"
   }
  },
- "updated_at": "2026-11-01T18:15Z"
+ "updated_at": "2026-11-01T23:54Z"
 }

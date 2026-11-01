@@ -5,7 +5,7 @@ Kit 1 (census-kit-1). How to take a layer: [VOLUNTEERS.md](https://github.com/wh
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
 | 40 | 41 | done | home card | NVIDIA GeForce RTX 5090 32 GB |  | 30-31 Oct 2026, passed layer 45's gates |
-| 41 | 42 | running | ReimusArmpit d4bcee00 | NVIDIA GeForce RTX 5090 32 GB | 62%, ends ~2026-11-01T22:15Z |  |
+| 41 | 42 | checking | ReimusArmpit d4bcee00 | NVIDIA GeForce RTX 5090 32 GB | 2026-11-01T23:52Z |  |
 | 42 | 43 | OPEN |  |  |  |  |
 | 43 | 44 | OPEN |  |  |  |  |
 | 44 | 45 | OPEN |  |  |  |  |
@@ -20,4 +20,4 @@ Judged:
 
 - L47 ReimusArmpit 2f018a18: accepted (30-31 Oct 2026, its own card class, spot-checked passed layer 45s gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-01T18:15Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-01T23:54Z.
