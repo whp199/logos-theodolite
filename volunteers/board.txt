@@ -1,16 +1,16 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
 L40 done (home card)
-L41 OPEN
+L41 running anon d4bcee00 NVIDIA GeForce RTX 5090 32 GB 36%, ends ~2026-11-01T22:17Z
 L42 OPEN
 L43 OPEN
 L44 OPEN
 L45 done (home card)
-L46 OPEN
+L46 closed
 L47 done (ReimusArmpit 2f018a18)
 L48 OPEN
 L49 OPEN
 L50 OPEN
 
-8 open. To take one: https://github.com/whp199/logos-theodolite/issues/1
+6 open. To take one: https://github.com/whp199/logos-theodolite/issues/1
 guide: https://github.com/whp199/logos-theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints
