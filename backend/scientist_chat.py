@@ -271,7 +271,7 @@ PROFILES: Dict[str, Dict[str, Any]] = {
     "lmstudio": {"label": "LM Studio (this machine)", "base_url": "http://127.0.0.1:1234/v1", "url_env": "THEODOLITE_LMSTUDIO_URL"},
     "ollama": {"label": "Ollama (this machine)", "base_url": "http://127.0.0.1:11434/v1", "url_env": "THEODOLITE_OLLAMA_URL"},
     "openrouter": {"label": "OpenRouter", "base_url": "https://openrouter.ai/api/v1", "key_env": "OPENROUTER_API_KEY",
-                   "headers": {"X-Title": "Theodolite", "HTTP-Referer": "https://github.com/whp199/logos-theodolite"}},
+                   "headers": {"X-Title": "Theodolite", "HTTP-Referer": "https://github.com/whp199/theodolite"}},
 }
 ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _profile_warning: Optional[str] = None

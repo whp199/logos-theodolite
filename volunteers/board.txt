@@ -11,6 +11,6 @@ L48 OPEN
 L49 OPEN
 L50 OPEN
 
-6 open. To take one: https://github.com/whp199/logos-theodolite/issues/1
-guide: https://github.com/whp199/logos-theodolite/blob/main/VOLUNTEERS.md
+6 open. To take one: https://github.com/whp199/theodolite/issues/1
+guide: https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md
 reply with the CENSUS line census.sh prints

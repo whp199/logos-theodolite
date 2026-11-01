@@ -82,7 +82,7 @@ def load(path: Path) -> Dict[str, Any]:
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))
     kit = cv.read_kit()
-    return {"kit": kit["KIT"], "repo": "whp199/logos-theodolite", "issue": None, "seen_comments": [], "claims": [],
+    return {"kit": kit["KIT"], "repo": "whp199/theodolite", "issue": None, "seen_comments": [], "claims": [],
             "layers": {str(l): {"state": "open"} for l in kit["layers"]}}
 
 
@@ -250,7 +250,9 @@ def render_txt(board: Dict[str, Any]) -> str:
         bits = [f"L{r['layer']}", s] + [x for x in (r["who"], r["card"], r["when"]) if x]
         out.append(" ".join(bits) if r["state"] != "done" else f"L{r['layer']} done ({r['who']})")
     n_open = sum(1 for r in rows if r["state"] == "open")
-    out += ["", f"{n_open} open. To take one: {kit['KIT_BOARD_URL'].rstrip('/')}",
+    # the board's own address, not kit.env's: the kit's tag keeps the address it was cut with (GitHub redirects it)
+    url = f"https://github.com/{board['repo']}/issues/{board['issue']}" if board.get("issue") else kit["KIT_BOARD_URL"].rstrip("/")
+    out += ["", f"{n_open} open. To take one: {url}",
             f"guide: https://github.com/{board['repo']}/blob/main/VOLUNTEERS.md",
             "reply with the CENSUS line census.sh prints"]
     text = "\n".join(out)

@@ -146,7 +146,7 @@ def run_checks(tmp: Path) -> int:
     # 3. the board
     before = len(failures)
     board = tmp / "board.json"
-    board.write_text(json.dumps({"kit": kit["KIT"], "repo": "whp199/logos-theodolite", "issue": None, "seen_comments": [], "claims": [],
+    board.write_text(json.dumps({"kit": kit["KIT"], "repo": "whp199/theodolite", "issue": None, "seen_comments": [], "claims": [],
                                  "layers": {str(l): {"state": "open"} for l in kit["layers"]}}))
     b = [PY, "-I", BOARD_PY, "--board", board]
     benv = {**env, "THEODOLITE_BOARD_NOW": "1793390400"}  # 2026-10-30T20:00Z

@@ -10,7 +10,7 @@ Ten layers are left: **40, 41, 42, 43, 44, 46, 47, 48, 49 and 50**. These are th
 been calibrated. If you have a big enough card and a free night, you can take one. Layers count from 0, as every script
 counts them (the app's page = layer + 1).
 
-**The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/logos-theodolite/issues/1>.
+**The board** shows which layer is whose: the pinned *Census layer board* issue, <https://github.com/whp199/theodolite/issues/1>.
 
 ## What you get
 
@@ -54,7 +54,7 @@ No account, token or payment is needed anywhere.
 
 ```bash
 mkdir -p ~/theodolite-census && cd ~/theodolite-census
-git clone https://github.com/whp199/logos-theodolite.git && cd logos-theodolite
+git clone https://github.com/whp199/theodolite.git && cd theodolite
 git checkout census-kit-1
 scripts/volunteer/census.sh check                      # can this machine take a layer?
 ```
@@ -241,9 +241,10 @@ llama-server -m gemma-4-31B-it-QAT-Q4_0.gguf --control-vector-scaled theodolite-
   - With the kit set up, run `. ~/theodolite-census/env.sh` first: it finds the checkpoint and the stats index you
     already have. The script is not in the kit's tag, and `census.sh` runs only from a clean checkout at it, so use
     a second checkout: `git fetch origin && git worktree add --detach ~/theodolite-census/export origin/main`, and
-    run the kit's Python (`~/theodolite-census/logos-theodolite/.venv/bin/python`) from there.
+    run the kit's Python (`~/theodolite-census/theodolite/.venv/bin/python`, or `logos-theodolite/` in a checkout
+    cloned before the repository was renamed) from there.
   - Without the kit: add `--gguf` with your own GGUF of Gemma-4-31B-it and `--stats` with the kit's stats index
-    (`https://github.com/whp199/logos-theodolite/releases/download/census-kit-1/act_scale.npz`, sha256
+    (`https://github.com/whp199/theodolite/releases/download/census-kit-1/act_scale.npz`, sha256
     `23a6dcefaf4eae99222c334a8294f773e37e4f20cbf36b63344a73fd5c2911fa`). It needs Python 3.12 with numpy, torch (the
     CPU build is enough) and gguf. The direction is then your file's own, a little off the census's: cosine 0.997 for
     the QAT Q4_0 file, 0.977 at worst for the Q4_K files we tried.

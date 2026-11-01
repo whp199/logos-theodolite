@@ -1,6 +1,6 @@
 # The census: which layer is whose
 
-Kit 1 (census-kit-1). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/logos-theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1).
+Kit 1 (census-kit-1). How to take a layer: [VOLUNTEERS.md](https://github.com/whp199/theodolite/blob/main/VOLUNTEERS.md). Post `CENSUS ...` lines as comments here or in the thread; the board is updated by hand, so give it a little while. Layers count from 0 (page = layer + 1).
 
 | Layer | Page | State | Who | Card | When | Note |
 |---:|---:|---|---|---|---|---|
@@ -20,4 +20,4 @@ Judged:
 
 - L47 ReimusArmpit 2f018a18: accepted (30-31 Oct 2026, its own card class, spot-checked passed layer 45s gates)
 
-Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-01T13:48Z.
+Holds: 36 h after RESERVE to START; then the run's end time (from PROGRESS) plus 24 h; at most 10 days in all. Updated 2026-11-01T18:10Z.
