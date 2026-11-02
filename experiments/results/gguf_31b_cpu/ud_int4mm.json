@@ -1,0 +1,91 @@
+{
+ "mode": "int4mm",
+ "gguf": "/home/eric/bin/ai-models/gemma-4-31B-it-UD-Q4_K_XL.gguf",
+ "threads": 12,
+ "loadavg_at_start": [
+  8.27001953125,
+  11.5869140625,
+  13.78857421875
+ ],
+ "load_s": 67.9,
+ "model_id": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08@cpu/bfloat16+int4mm",
+ "layers_as": {
+  "IQ4_XS resident": 24,
+  "Q4_K int4mm": 280,
+  "Q5_K packed": 3,
+  "Q5_K resident": 33,
+  "Q6_K packed": 1,
+  "Q6_K resident": 69
+ },
+ "resident_gb": 16.0,
+ "resident_bytes": 15997599744,
+ "at_load_bytes": null,
+ "tensor_types": {
+  "F32": 422,
+  "IQ4_XS": 24,
+  "Q4_K": 280,
+  "Q5_K": 37,
+  "Q6_K": 70
+ },
+ "rss_gib_after_load": 40.5,
+ "paris_forward_s": 9.8,
+ "paris_top5": [
+  [
+   " Paris",
+   -0.0184
+  ],
+  [
+   " **",
+   -4.0184
+  ],
+  [
+   "...",
+   -10.0184
+  ],
+  [
+   "\u2019",
+   -10.1434
+  ],
+  [
+   " the",
+   -10.6434
+  ]
+ ],
+ "chat_prefill_pieces": 23,
+ "chat_prefill_s": 2.6,
+ "written_16": "Danube\nRhine\nVolga<turn|>",
+ "s_per_piece_incl_prefill": 1.01,
+ "kernel_off_paris_forward_s": 50.6,
+ "kernel_off_paris_top5": [
+  [
+   " Paris",
+   -0.0184
+  ],
+  [
+   " **",
+   -4.0184
+  ],
+  [
+   "...",
+   -10.0184
+  ],
+  [
+   "\u2019",
+   -10.1434
+  ],
+  [
+   " the",
+   -10.7684
+  ]
+ ],
+ "kernel_off_model_id": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08@cpu/bfloat16",
+ "KL(reference || int4mm) at the last position": 0.0,
+ "largest |dlogprob| among the reference's five": 0.125,
+ "rss_gib_end": 48.6,
+ "max_rss_gib": 49.2,
+ "loadavg_at_end": [
+  12.5576171875,
+  11.62744140625,
+  13.4482421875
+ ]
+}

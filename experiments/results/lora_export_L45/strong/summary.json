@@ -1,0 +1,83 @@
+{
+ "model_id": "gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4@cpu/bfloat16+int4mm",
+ "pushes": {
+  "n13641-mul30": {
+   "same first piece as the instrument (start mark pushed)": "6 of 6",
+   "start mark pushed": {
+    "n": 1200,
+    "r": 0.1193,
+    "largest |instrument change|": 0.375,
+    "moved > 0.5": 0,
+    "median llama/instrument where moved": null,
+    "largest |llama - instrument change|": 0.742
+   },
+   "start mark spared": {
+    "n": 1200,
+    "r": 0.1366,
+    "largest |instrument change|": 0.312,
+    "moved > 0.5": 0,
+    "median llama/instrument where moved": null,
+    "largest |llama - instrument change|": 0.742
+   }
+  },
+  "n21200-mul-20": {
+   "same first piece as the instrument (start mark pushed)": "6 of 6",
+   "start mark pushed": {
+    "n": 1200,
+    "r": 0.2308,
+    "largest |instrument change|": 0.374,
+    "moved > 0.5": 0,
+    "median llama/instrument where moved": null,
+    "largest |llama - instrument change|": 0.785
+   },
+   "start mark spared": {
+    "n": 1200,
+    "r": 0.203,
+    "largest |instrument change|": 0.376,
+    "moved > 0.5": 0,
+    "median llama/instrument where moved": null,
+    "largest |llama - instrument change|": 0.91
+   }
+  },
+  "h0to7-x0": {
+   "same first piece as the instrument (start mark pushed)": "6 of 6",
+   "start mark pushed": {
+    "n": 1201,
+    "r": 0.9408,
+    "largest |instrument change|": 3.863,
+    "moved > 0.5": 144,
+    "median llama/instrument where moved": 0.959,
+    "largest |llama - instrument change|": 1.024
+   },
+   "start mark spared": {
+    "n": 1201,
+    "r": 0.939,
+    "largest |instrument change|": 3.738,
+    "moved > 0.5": 139,
+    "median llama/instrument where moved": 0.96,
+    "largest |llama - instrument change|": 0.92
+   }
+  },
+  "h0-x5": {
+   "same first piece as the instrument (start mark pushed)": "6 of 6",
+   "start mark pushed": {
+    "n": 1200,
+    "r": 0.9397,
+    "largest |instrument change|": 3.809,
+    "moved > 0.5": 131,
+    "median llama/instrument where moved": 1.146,
+    "largest |llama - instrument change|": 1.14
+   },
+   "start mark spared": {
+    "n": 1200,
+    "r": 0.9373,
+    "largest |instrument change|": 3.591,
+    "moved > 0.5": 133,
+    "median llama/instrument where moved": 1.094,
+    "largest |llama - instrument change|": 1.14
+   }
+  }
+ },
+ "unpushed: largest |log-prob difference| between the engines over the instrument's 50 likeliest": 0.7039857330322263,
+ "llama.cpp's floor: the first adapter at scale 0.001 against none, largest |change| over the 200 likeliest": 0.547
+}

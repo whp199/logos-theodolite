@@ -1,0 +1,24 @@
+{
+ "cmd": [
+  "/home/eric/bin/ai/llama.cpp/build/bin/llama-server",
+  "-m",
+  "/home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-QAT-GGUF/gemma-4-31B-it-QAT-Q4_0.gguf",
+  "--host",
+  "127.0.0.1",
+  "--port",
+  "39462",
+  "-c",
+  "1024",
+  "-np",
+  "1",
+  "-ngl",
+  "0",
+  "-t",
+  "10",
+  "--no-warmup",
+  "--lora",
+  "n13641-mul30.gguf,n21200-mul-20.gguf,h0to7-x0.gguf,h0-x5.gguf",
+  "--lora-init-without-apply"
+ ],
+ "build_info": "b1-cd26896"
+}

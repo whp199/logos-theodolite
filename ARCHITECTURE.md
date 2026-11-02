@@ -1077,7 +1077,12 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
   `GGUFRuntime` packed in bf16 without the lens in 26 and 45 s (the tokenizer the cached checkpoint's, whose 262,144
   pieces are the file's); each of the 24 IQ4_XS tensors, unpacked here, equals gguf-py's numbers bit for bit, and so
   does the layer holding it (in bf16); one packed forward of six pieces took 185 s (reading the file from disk) and
-  116 s, finite, and put " Paris" first after "The capital of France is" (log-probability −0.018 and −0.024). The two
+  116 s beside other sessions' work, and 38.8 s later that day with the file in the page cache and no other 31B
+  beside it (experiments/results/gguf_31b_cpu), finite, and put " Paris" first after "The capital of France is"
+  (log-probability −0.018 and −0.024). The same file through int4mm with `THEODOLITE_GGUF_RESIDENT_GB=16` (its 280
+  Q4_K through the kernel, its 24 IQ4_XS, 69 Q6_K and 33 Q5_K resident) loads in 68 s, holds 40.5 GiB, writes a
+  word-piece in about 1 s, and with the kernel turned off in place gives the same five likeliest in the same order.
+  The two
   copies share a name, not their bytes (their headers, 4,416 bytes apart in length, and their last MiB differ), so
   their fingerprints differ (`adfe6f42c3758a08` in `ai-models/`, `f542658966346851` in `ai-models/txt/`), and with them
   the model ids of readings taken on each. No sighting, census or build has run on them.
@@ -1225,8 +1230,9 @@ and 21,504 × 5,376):
 | int4mm, Q4_0 / Q4_1 / Q4_K | 0.41–0.75 / 0.69–0.74 / 0.39–0.43 ms | 1.6–2.5 / 2.1–2.5 / 1.4–1.6 ms | 12–18 / 11–12 / 11–15 ms |
 
 The reference unpacks at 0.7 to 1.5 ns a weight there (Q8_0 the cheapest, Q5_K the dearest), so a packed forward of the
-31B would be some 30 s by these timings, which the L3 flatters (below; whole packed forwards of the UD-Q4_K_XL, above,
-took 116 and 185 s, beside other sessions' work); through the kernel a Q4_K layer at one row is some 300 times faster than its reference, and at 64
+31B would be some 30 s by these timings, which the L3 flatters (below); a whole packed forward of the UD-Q4_K_XL,
+above, took 38.8 s with the file in the page cache and nothing else heavy running (116 and 185 s beside other
+sessions' work); through the kernel a Q4_K layer at one row is some 300 times faster than its reference, and at 64
 rows about 10 times. One layer timed over and over keeps much of its 72 MB of packed weight in the 7900X's 64 MB of L3,
 so the one-row kernel figures are faster than a whole forward allows, which reads every weight from memory: the 31B's
 written word-piece below comes to some 45 GB/s.
@@ -1276,7 +1282,7 @@ same prefill), the last position's five likeliest pieces are the same and in the
 within 0.0078 of its group's bound of the file's numbers (tolerance 0.016), as on the stand-in. The reference's prefill
 took six to seven minutes in those runs, but each time beside another session's 31B, its blocks read again from disk
 through the memory map (over a million major page faults): not its own speed, which the layer timings put near 30 s
-(an estimate the L3 flatters; the UD-Q4_K_XL's packed forwards, above, took 116 and 185 s). The
+(an estimate the L3 flatters; the UD-Q4_K_XL's packed forward, above, took 38.8 s unhindered). The
 canary of `scripts/compare_int4mm.py` on the real file has not been run.
 
 A machine with more cores and memory bandwidth should be some times faster (inferred, not measured). Either way the CPU
@@ -1549,7 +1555,7 @@ start mark, what of llama.cpp was read, the caveat, the code's commit and the ti
   f1 and mul f2 give the factor f1 + f2 − 1, not f1 × f2; a mul-0 file beside a vault edit of that neuron leaves v − W
   where the instrument leaves 0): export pushes of one neuron or head in one file.
 
-**The check** (`scripts/check_lora_export.py`, CPU only, 72 checks in about 50 s). The control-vector check's stand-in,
+**The check** (`scripts/check_lora_export.py`, CPU only, 77 checks in about 50 s). The control-vector check's stand-in,
 its o_proj packed as W4A16 too and its config.json beside the checkpoint. The exporter reads PushIn bodies as
 `Atlas.parse_pushes` does. Each adapter's W + B A is the instrument's change on random inputs within float32 rounding
 (5.0e-7 of the largest element): mul 0, 2 and −1.5, SCALE −1, 0.5 and 0, heads on a sliding and on the full layer,
@@ -1576,6 +1582,20 @@ nothing. On the stand-in a single neuron's or head's start mark moves a log-prob
 chosen among the stand-in's pushes for the largest start-mark effect); a silenced block's by 0.016, every head's by
 0.043.
 
-Not measured: the 31B (no adapter has been run through llama.cpp on it), a GPU backend's arithmetic for B (A x),
-quantised GGUFs, `--vault` on the real runtime, and what any of these pushes does to the text: the census's labels
-were read from add pushes.
+**On the 31B** (2 November 2026, experiments/results/lora_export_L45: `gemma-4-31B-it-QAT-Q4_0.gguf`, both engines on
+the CPU, the instrument as `GGUFRuntime` through int4mm on that file, the adapters exported from its own columns,
+pushes at layer 45). Compared: each engine's change in log-probability at the first word-piece written to break_rel's
+six questions, over 1,200 pieces, against the control vector's bar (r at least 0.8, llama.cpp's change over the
+instrument's between 0.67 and 1.5 where the instrument's moved by more than 0.5). llama.cpp's own floor is high there:
+the same request twice is identical, but any adapter switched on, even at SCALE 0.001, moves the 200 likeliest pieces
+by 0.25 to 0.65 (on the CPU it quantises the activations to 8 bits before each product, so any change shifts their
+rounding in every layer after). Every push that moves the first piece by 2 or more passes the bar, the start mark
+pushed or spared: the neuron most active on those prompts at × 0 (r 0.88, ratio 0.91) and × 3 (0.96, 0.99), the eight
+most active at × 0 (0.90, 0.92) and × −1 (0.98, 0.94), heads 0 to 7 at × 0 (0.94, 0.96) and head 0 at × 5 (0.94,
+1.15). Head 0 at × 0, at most 1.06, does not (r 0.62). Layer 45's two census leads, at × 0 to × 30, do not move the
+first piece in the instrument itself (under 0.5, in steps of the bfloat16 logits' rounding): there is nothing there
+to carry over, and their effect in the answers is not read by this comparison.
+
+Not measured: a GPU backend's arithmetic for B (A x), quantised GGUFs other than that Q4_0, `--vault` on the real
+runtime, a silenced copy of the 31B, and what any of these pushes does to the text: the census's labels were read
+from add pushes.

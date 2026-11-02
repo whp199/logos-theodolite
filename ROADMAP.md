@@ -719,8 +719,10 @@ reads ran first (29 October 2026: eight prefills of the packed checkpoint on the
 home machine’s 12-core CPU; §vi, ARCHITECTURE §4.7). Gemma-4-31B then ran from a GGUF on that CPU, on 2 November 2026,
 two ways. Packed: both copies of Unsloth’s UD-Q4_K_XL file here, refused before over their 24 IQ4_XS tensors, load in
 bf16 (26–45 s, no lens), their IQ4_XS tensors unpacked as gguf-py unpacks them bit for bit, and a forward of six pieces
-(two to three minutes) puts “ Paris” first after “The capital of France is”. Through int4mm: a Q4_K_M (its 55 Q6_K
-layers resident in 8 GB) at 0.56 s a written word-piece and the QAT Q4_0 at 0.45 s, a 59-piece prefill in 3.5 s each,
+(two to three minutes beside other sessions’ work, 38.8 s with the file in the page cache and nothing else heavy
+running) puts “ Paris” first after “The capital of France is”. Through int4mm: the same UD-Q4_K_XL with its IQ4_XS,
+Q6_K and Q5_K layers resident in 16 GB at about 1 s a written word-piece (experiments/results/gguf_31b_cpu), a Q4_K_M
+(its 55 Q6_K layers resident in 8 GB) at 0.56 s a written word-piece and the QAT Q4_0 at 0.45 s, a 59-piece prefill in 3.5 s each,
 the Q4_K_M’s last-position top five the reference’s in order (ARCHITECTURE §5, “What works now” and “The 31B from a
 GGUF”). What is left, in order:
 

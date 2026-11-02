@@ -1,0 +1,59 @@
+{
+ "mode": "packed",
+ "gguf": "/home/eric/bin/ai-models/gemma-4-31B-it-UD-Q4_K_XL.gguf",
+ "threads": 12,
+ "loadavg_at_start": [
+  7.6083984375,
+  10.48388671875,
+  12.9970703125
+ ],
+ "load_s": 14.9,
+ "model_id": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08@cpu/bfloat16",
+ "layers_as": {
+  "IQ4_XS packed": 24,
+  "Q4_K packed": 280,
+  "Q5_K packed": 36,
+  "Q6_K packed": 70
+ },
+ "resident_gb": null,
+ "resident_bytes": null,
+ "at_load_bytes": null,
+ "tensor_types": {
+  "F32": 422,
+  "IQ4_XS": 24,
+  "Q4_K": 280,
+  "Q5_K": 37,
+  "Q6_K": 70
+ },
+ "rss_gib_after_load": 5.0,
+ "paris_forward_s": 38.8,
+ "paris_top5": [
+  [
+   " Paris",
+   -0.0184
+  ],
+  [
+   " **",
+   -4.0184
+  ],
+  [
+   "...",
+   -10.0184
+  ],
+  [
+   "\u2019",
+   -10.1434
+  ],
+  [
+   " the",
+   -10.7684
+  ]
+ ],
+ "rss_gib_end": 21.6,
+ "max_rss_gib": 21.9,
+ "loadavg_at_end": [
+  9.37109375,
+  10.4208984375,
+  12.837890625
+ ]
+}
