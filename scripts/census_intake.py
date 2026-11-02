@@ -384,10 +384,19 @@ def cmd_accept(a: argparse.Namespace, kit: Dict[str, Any]) -> int:
     dest.mkdir(parents=True, exist_ok=True)
     shutil.copy2(work / f"{stem}.jsonl", target)
     shutil.copy2(work / "bundle" / f"{stem}.meta.json", cz.meta_path_of(target))
+    # the volunteer as the board names them (an owner's NAME line there corrects a kit's default name); the bundle's own kept
+    name, board = chk["name"], load_board(a)
+    if board is not None:
+        from census_board import find
+
+        c = find(board, chk["claim"])
+        name = c["name"] if c is not None and c.get("name") else name
     prov = {"what": f"layer {chk['layer']} taken by a volunteer with kit {kit['KIT']} (VOLUNTEERS.md), checked and spot-checked "
-                    "at home (scripts/census_intake.py)", "name": chk["name"], "claim": chk["claim"], "card": ver.get("card"),
+                    "at home (scripts/census_intake.py)", "name": name, "claim": chk["claim"], "card": ver.get("card"),
             "bits": chk["bits"], "bundle": chk["bundle"], "bundle_sha256": chk["bundle_sha256"], "check": chk, "verdict": ver,
             "accepted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    if name != chk["name"]:
+        prov["bundle_name"] = chk["name"]
     cz.write_json_atomic(dest / f"{stem}.provenance.json", prov)
     print(f"-> {target} (and its meta and provenance); ranking it", flush=True)
     units = cz.write_units(target)

@@ -187,11 +187,19 @@ def run_checks(tmp: Path) -> int:
     r = run(i + ["judge", work], env)
     ver = json.loads((work / "verdict.json").read_text()) if (work / "verdict.json").exists() else {}
     check(r.returncode == 0 and ver.get("accepted") and ver["spot"]["identical"] == ver["spot"]["answers"] > 0, f"judge: bit for bit ({r.stdout[-300:]})")
+    # an owner's NAME line on the board (a claim posted with the kit's default name): the provenance names them so
+    bj = json.loads(board.read_text())
+    claim = next(c for c in bj["claims"] if c["code"] == chk.get("claim"))
+    claim["name"] = "Named-by-owner"
+    board.write_text(json.dumps(bj, indent=1))
     into = tmp / "census-runs"
     r = run(i + ["accept", work, "--into", into], env)
     stem = f"L{LAYER}-{kit['KIT_DESIGN']}"
     check(r.returncode == 0 and all((into / f"{stem}{s}").exists() for s in (".jsonl", ".meta.json", ".provenance.json", ".units.jsonl")),
           f"accept: the run, its meta, provenance and ranking ({r.stdout[-300:]}{r.stderr[-300:]})")
+    prov = json.loads((into / f"{stem}.provenance.json").read_text()) if (into / f"{stem}.provenance.json").exists() else {}
+    check(prov.get("name") == "Named-by-owner" and prov.get("bundle_name") == chk.get("name"),
+          f"the provenance names the volunteer as the board does, the bundle's name kept ({prov.get('name')}, {prov.get('bundle_name')})")
     bj = json.loads(board.read_text())
     check(bj["layers"][str(LAYER)]["state"] == "done", "the layer done on the board")
     r = run(i + ["accept", work, "--into", into], env)
