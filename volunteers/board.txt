@@ -1,11 +1,11 @@
 CENSUS BOARD (layers count from 0; page = layer + 1)
 L40 done (home card)
-L41 checking ReimusArmpit d4bcee00 NVIDIA GeForce RTX 5090 32 GB 2026-11-01T23:52Z
+L41 done (ReimusArmpit d4bcee00)
 L42 OPEN
 L43 OPEN
 L44 OPEN
 L45 done (home card)
-L46 closed
+L46 done (home card)
 L47 done (ReimusArmpit 2f018a18)
 L48 OPEN
 L49 OPEN
