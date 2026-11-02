@@ -1177,6 +1177,40 @@ async def tool_checks(api: Any, hc: httpx.Client) -> None:
     desc = next(t_["description"] for t_ in st.TOOLS if t_["name"] == "steer")
     check("Greedy by default" in desc and "Never sample, or add a presence penalty, to make an answer read better" in desc,
           "steer's description: greedy is the reading, and sampling is never to make an answer read better")
+    check("a sign flip and not 1/dose" in desc and "not both" in desc, "steer's description: the down row of a mul, and one neuron or several")
+
+    class Recorded:  # the bodies the tools send, to see what they pass on
+        def __init__(self) -> None:
+            self.bodies: List[Any] = []
+
+        async def get(self, path: str, **q: Any) -> Any:
+            return await api.get(path, **q)
+
+        async def post(self, path: str, body: Any) -> Any:
+            self.bodies.append(body)
+            return await api.post(path, body)
+
+    rec = Recorded()
+    mix = [{"layer": 2, "n": 3, "mode": "mul"}, {"layer": 4, "n": 7, "dose": -1.5}, {"layer": 5, "n": 9, "mode": "act", "dose": 1.0}]
+    mv = await st.call("steer", {"neurons": mix, "prompt": "Who are you?", "max_new": 6, "spare_bos": False}, rec)
+    raw = hc.post("/api/atlas/steer", json={"neurons": [{**p, "layer": p["layer"] - 1} for p in mix], "prompt": "Who are you?",
+                                            "max_new": 6, "spare_bos": False}).json()
+    check(mv["pushed"] == [{"neuron": "L2 N3", "mode": "mul", "dose": 2.0}, {"neuron": "L4 N7", "mode": "add", "dose": -1.5},
+                           {"neuron": "L5 N9", "mode": "act", "dose": 1.0}] and all(mv[k] == raw[k] for k in ("up", "baseline", "down"))
+          and rec.bodies[-1].get("spare_bos") is False,
+          f"steer: three neurons over three layers in one call, a mul with no dose at x2, spare_bos passed on ({mv['pushed']})")
+    await st.call("activations", {"layer": 4, "n": 9, "text": "Alice called Bob", "spare_bos": False}, rec)
+    await st.call("logprobs", {"text": "Who are you?", "k": 3, "neurons": [{"layer": 5, "n": 9}], "spare_bos": False}, rec)
+    check([b.get("spare_bos") for b in rec.bodies[-2:]] == [False, False], "activations and logprobs pass spare_bos on")
+    offered = {t_["name"]: t_["inputSchema"]["properties"] for t_ in st.TOOLS}
+    oai = {f["function"]["name"]: f["function"]["parameters"]["properties"] for f in st.openai_tools()}
+    check(all("spare_bos" in offered[n_] and "spare_bos" in oai[n_] for n_ in ("steer", "activations", "logprobs")),
+          "steer, activations and logprobs offer spare_bos, over MCP and as functions")
+    try:
+        await st.call("steer", {"layer": 3, "n": 5, "neurons": mix, "prompt": "Who are you?"}, api)
+        check(False, "steer: one neuron and `neurons` together were not refused")
+    except st.ToolError as exc:
+        check("not both" in str(exc), f"steer: one neuron and `neurons` together refused in plain words ({exc})")
     lp = await st.call("logprobs", {"text": "Who are you?", "k": 3, "neurons": [{"layer": 5, "n": 9, "dose": 2.0}]}, api)
     check(lp["kl"] >= 0 and lp["pushed"] == [{"neuron": "L5 N9", "mode": "add", "dose": 2.0}], "logprobs with a push")
     cmp_ = await st.call("compare", {"neurons": [{"layer": 1, "n": 1}, {"layer": 6, "n": 127}], "texts": ["hello there", "def merge(a, b):"]}, api)

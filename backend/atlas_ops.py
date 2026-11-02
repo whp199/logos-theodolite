@@ -236,7 +236,7 @@ def check_pushes(lm: nn.Module, pushes: Sequence[Push], heads: Sequence[HeadScal
         raise ValueError(f"At most {MAX_HEAD_SCALES} heads can be scaled in one reading, not {len(heads)}.")
     for p in pushes:
         if not 0 <= int(p.layer) < L:
-            raise ValueError(f"Layer {p.layer} does not exist: layers count from 0 to {L - 1}.")
+            raise ValueError(f"Layer {p.layer} does not exist: layers count from 0 to {L - 1} here (page layers 1 to {L}).")
         if p.mode not in PUSH_MODES:
             raise ValueError(f'A push\'s mode is "add", "mul" or "act", not "{p.mode}".')
         if not math.isfinite(float(p.dose)):
@@ -248,13 +248,14 @@ def check_pushes(lm: nn.Module, pushes: Sequence[Push], heads: Sequence[HeadScal
                 raise ValueError("A whole feed-forward block can only be silenced (dose 0): the norm after the block undoes any "
                                  f"other uniform scale, so x{p.dose:g} would change nothing but, below 0, its sign.")
         elif not 0 <= int(p.neuron) < ffn_width(lm, p.layer):
-            raise ValueError(f"Neuron {p.neuron} does not exist: layer {p.layer} has {ffn_width(lm, p.layer)} (0 to {ffn_width(lm, p.layer) - 1}).")
+            raise ValueError(f"Neuron {p.neuron} does not exist: layer {p.layer} (page layer {int(p.layer) + 1}) has "
+                             f"{ffn_width(lm, p.layer)} (0 to {ffn_width(lm, p.layer) - 1}).")
     for h in heads:
         if not 0 <= int(h.layer) < L:
-            raise ValueError(f"Layer {h.layer} does not exist: layers count from 0 to {L - 1}.")
+            raise ValueError(f"Layer {h.layer} does not exist: layers count from 0 to {L - 1} here (page layers 1 to {L}).")
         n = attn_shape(lm, h.layer).n_heads
         if h.head is not None and not 0 <= int(h.head) < n:
-            raise ValueError(f"Layer {h.layer} has {n} attention heads (0 to {n - 1}), not head {h.head}.")
+            raise ValueError(f"Layer {h.layer} (page layer {int(h.layer) + 1}) has {n} attention heads (0 to {n - 1}), not head {h.head}.")
         if not math.isfinite(float(h.scale)):
             raise ValueError("A head's scale must be a finite number.")
         if h.head is None and float(h.scale) != 0.0:

@@ -116,16 +116,23 @@ def face_words(w: Optional[Dict[str, Any]], k: int = 6) -> Dict[str, Any]:
 
 LN = {"layer": {"type": "integer", "description": "page layer, from 1"}, "n": {"type": "integer", "description": "neuron, from 0"}}
 HEAD = {"layer": {"type": "integer", "description": "page layer, from 1"}, "head": {"type": "integer", "description": "head, from 0 (`overview` gives each kind of layer's count)"}}
-PUSHES = {"type": "array", "description": "neurons pushed (or layers' whole blocks scaled) during the same pass",
+PUSHES = {"type": "array", "description": "neurons pushed (or layers' whole blocks scaled) during the same pass, at most 32, on any "
+          "layers: adds at one layer sum exactly; muls and acts at one layer pass the norm after the block together, so they "
+          "do not add up",
           "items": {"type": "object", "properties": {
               **LN, "all": {"type": "boolean", "description": "the layer's whole feed-forward block, silenced (mode mul, dose 0 "
                                                      "only: the norm after the block undoes any other uniform scale)"},
-              "dose": {"type": "number"}, "mode": {"type": "string", "enum": ["add", "mul", "act"]}}, "required": ["layer"]}}
-HEADS = {"type": "array", "description": "attention heads scaled during the same pass (dose 0 silences one; head 'all' silences every head "
+              "dose": {"type": "number", "description": "in the mode's units, any sign; left out: 0.8 for add and act, 2 for mul, "
+                                                        "0 for a whole block"},
+              "mode": {"type": "string", "enum": ["add", "mul", "act"]}}, "required": ["layer"]}}
+HEADS = {"type": "array", "description": "attention heads scaled during the same pass, at most 64 (dose 0 silences one; head 'all' silences every head "
          "of the layer, dose 0 only: the norm after attention undoes any other uniform scale of them all)",
          "items": {"type": "object", "properties": {"layer": {"type": "integer"}, "head": {"type": ["integer", "string"]},
                                                      "dose": {"type": "number", "default": 0}}, "required": ["layer", "head"]}}
 AT = {"type": "integer", "description": "a display unit by its index in the returned tokens (negative from the end); overrides token"}
+SPARE_BOS = {"type": "boolean", "default": True, "description": "true (the default, as the census reads): the start mark, the "
+             "attention sink, is left unpushed; false pushes it too, as a llama.cpp control vector does, to see whether a push "
+             "found here holds under llama.cpp (at ±2 there the text can break where it held here)"}
 
 TOOLS: List[Dict[str, Any]] = [
     {"name": "overview", "description": "The model's shape (layers, neurons, attention kinds and head counts), which of the atlas's indexes are "
@@ -201,18 +208,24 @@ TOOLS: List[Dict[str, Any]] = [
      "without their text).",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "steer", "description": "Live: the model answers a chat prompt three ways in one batch, pushed up, as it is, and pushed down. "
-     "One neuron (layer, n) or several (neurons: [{layer, n, dose?, mode?}], all at once, each the other way in the down "
-     "row). mode add: dose is a share of the stream's median length leaving the layer, along the neuron's write direction (0.8 is "
+     "One neuron (layer, n) or several (neurons: [{layer, n, dose?, mode?}], all at once), not both: a call naming both is "
+     "refused. mode add: dose is a share of the stream's median length leaving the layer, along the neuron's write direction (0.8 is "
      "the steer lens's push, already more than most neurons can write by themselves on this model: `neuron`'s ceiling.rel is "
      "that most; 2 to 3 is strong); mul: a factor on its activation (0 silences it); act: a multiple of its largest "
-     "|activation|, added to it. Greedy by default, the reading the census and the method use; a loop is part of what a push "
+     "|activation|, added to it. The down row pushes the other way: add and act by -dose; mul by x -dose, a sign flip and not "
+     "1/dose (so x 0 is silence in both rows, and x 1 leaves the up row as it is but flips the down row's sign); a whole block "
+     "silenced (all) is the same in both rows. A dose of any sign is taken: a negative one swaps up and down. "
+     "Greedy by default, the reading the census and the method use; a loop is part of what a push "
      "shows. Sample (temperature, a seed, samples up to 8: the three voices share each draw, so they differ only where the push "
      "moves the odds, and on Gemma-4-31B eight samples cost about the time of one) to see whether a theme survives the draw; say "
      "which seeds (`sampling` gives them). Never sample, or add a presence penalty, to make an answer read better.",
      "inputSchema": {"type": "object", "properties": {**LN, "prompt": {"type": "string"}, "neurons": PUSHES,
-                                                       "dose": {"type": "number", "default": 0.8},
+                                                       "dose": {"type": "number", "description": "in the mode's units; left out: 0.8 for "
+                                                                "add and act, 2 for mul. With `neurons`, it fills only those "
+                                                                "pushed in `mode` that name no dose"},
                                                        "mode": {"type": "string", "enum": ["add", "mul", "act"], "default": "add"},
                                                        "max_new": {"type": "integer", "default": 150},
+                                                       "spare_bos": SPARE_BOS,
                                                        "temperature": {"type": "number", "default": 0, "description": "0 is greedy; up to 2"},
                                                        "top_k": {"type": "integer", "default": 0, "description": "0 is off"},
                                                        "top_p": {"type": "number", "default": 1, "description": "1 is off"},
@@ -231,7 +244,8 @@ TOOLS: List[Dict[str, Any]] = [
      "beside its range from `neuron`. `neurons` and `heads` are pushed or scaled in the same pass, to test what drives it: compare "
      "with the same call without them. Only what comes before its own feed-forward block can move it.",
      "inputSchema": {"type": "object", "properties": {**LN, "text": {"type": "string"}, "chat": {"type": "boolean", "default": False},
-                                                       "neurons": PUSHES, "heads": HEADS}, "required": ["layer", "n", "text"]}},
+                                                       "neurons": PUSHES, "heads": HEADS, "spare_bos": SPARE_BOS},
+                     "required": ["layer", "n", "text"]}},
     {"name": "compare", "description": "Live: many neurons across several texts, one forward per text. Per neuron and text: its strongest "
      "positive and negative activation with the unit, and its peak score (activation over its usual extreme on that side; 1 = as "
      "strong as it usually gets). For screening candidates against targets and controls. Up to 300 neurons and 24 texts.",
@@ -247,7 +261,7 @@ TOOLS: List[Dict[str, Any]] = [
      "inputSchema": {"type": "object", "properties": {"text": {"type": "string"}, "chat": {"type": "boolean", "default": True},
                                                        "prefix": {"type": "string"}, "k": {"type": "integer", "default": 15},
                                                        "targets": {"type": "array", "items": {"type": "string"}},
-                                                       "neurons": PUSHES, "heads": HEADS}, "required": ["text"]}},
+                                                       "neurons": PUSHES, "heads": HEADS, "spare_bos": SPARE_BOS}, "required": ["text"]}},
     {"name": "top_firing", "description": "Live: the neurons that fire hardest on a text against their usual range: each with its face, "
      "score (activation over its usual extreme there; 1 = as strong as it usually gets), raw activation, the unit where it fires "
      "and its words. Over the whole text, or at one unit (`token`: the first holding it; `at`). `layers` [lo, hi] keeps a range. "
@@ -509,7 +523,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
         _need(a, "prompt")
         if not a.get("neurons"):
             _need(a, "layer", "n")
-        body = {k: a[k] for k in ("layer", "n", "neurons", "prompt", "dose", "mode", "max_new", "samples") if a.get(k) is not None}
+        body = {k: a[k] for k in ("layer", "n", "neurons", "prompt", "dose", "mode", "max_new", "samples", "spare_bos") if a.get(k) is not None}
         sampler = {k: a[k] for k in ("temperature", "top_k", "top_p", "presence_penalty", "seed") if a.get(k) is not None}
         if sampler:
             body["sampler"] = sampler
@@ -518,7 +532,7 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
                 "sampling": r.get("sampling")}
     if name == "activations":
         _need(a, "layer", "n", "text")
-        body = {k: a[k] for k in ("layer", "n", "text", "chat", "neurons", "heads") if a.get(k) is not None}
+        body = {k: a[k] for k in ("layer", "n", "text", "chat", "neurons", "heads", "spare_bos") if a.get(k) is not None}
         r = await api.post("/api/atlas/reads", body)
         units = [[u["text"], round(u["act"], 3)] for u in r["units"]]
         return {"tokens": units, "strongest": sorted(units, key=lambda u: -abs(u[1]))[:10], "act_range": r.get("act_range"),
@@ -530,7 +544,8 @@ async def call(name: str, args: Optional[Dict[str, Any]], api: Any, chat: str = 
                 "neurons": [{"neuron": cite(x["layer"], x["n"]), "act_range": x["act_range"], "by_text": x["by_text"]} for x in r["neurons"]]}
     if name == "logprobs":
         _need(a, "text")
-        r = await api.post("/api/atlas/logprobs", {k: a[k] for k in ("text", "chat", "prefix", "k", "targets", "neurons", "heads") if a.get(k) is not None})
+        r = await api.post("/api/atlas/logprobs", {k: a[k] for k in ("text", "chat", "prefix", "k", "targets", "neurons", "heads", "spare_bos")
+                                                   if a.get(k) is not None})
         if "pushed" in r:
             r["pushed"] = [_cite_push(p) for p in r["pushed"]]
         return r

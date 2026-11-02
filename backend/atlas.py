@@ -64,6 +64,8 @@ MAX_STEER_SAMPLES = 8
 MAX_STEER_ROW_PIECES = 3 * MAX_TEXT_POSITIONS
 MAX_COMPARE_NEURONS = 300
 MAX_COMPARE_TEXTS = 24
+# a neuron's push where it names no dose, in its mode's units (the push tab's defaults); a head or a whole block, 0
+DEFAULT_DOSE = {"add": 0.8, "mul": 2.0, "act": 0.8}
 CACHE_SIZE = 256
 
 
@@ -333,7 +335,7 @@ class Atlas:
                 if p.n is None:
                     raise ValueError("A push names its neuron (n), the whole layer's block (all: true), or a head (head).")
                 mode = p.mode or "add"
-                dose = p.dose if p.dose is not None else (2.0 if mode == "mul" else 0.8)
+                dose = p.dose if p.dose is not None else DEFAULT_DOSE.get(mode, 0.8)
                 ps.append(ao.Push(int(p.layer), int(p.n), mode, float(dose)))
         for h in heads:
             hs.append(ao.HeadScale(int(h.layer), None if h.head in ("all", None) else _head_index(h.head), float(h.dose)))
@@ -399,7 +401,7 @@ class PushChatRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=32000)
     history: List[Turn] = Field(default_factory=list, max_length=32)
     system: Optional[str] = Field(None, max_length=32000)
-    dose: float = 0.8
+    dose: Optional[float] = None  # in `mode`'s units; left out, DEFAULT_DOSE's (`_push_items`)
     mode: str = Field("add", max_length=8)
     max_new: int = Field(160, ge=1, le=MAX_PUSH_NEW)
     spare_bos: bool = True
@@ -480,9 +482,10 @@ class SteerRequest(BaseModel):
     layer: Optional[StrictInt] = None
     n: Optional[StrictInt] = None
     neurons: List[PushIn] = Field(default_factory=list, max_length=ao.MAX_PUSHES)
-    dose: float = 0.8
+    dose: Optional[float] = None  # as the push chat's
     mode: str = Field("add", max_length=8)
     max_new: int = Field(150, ge=1, le=MAX_PUSH_NEW)
+    spare_bos: bool = True  # False pushes the start mark too, as a llama.cpp control vector does
     sampler: Any = None  # as the push chat's
     samples: StrictInt = 1  # 1 to MAX_STEER_SAMPLES, sampled only: sample s drawn with seed + s, 3 rows each in one batch
 
@@ -594,6 +597,11 @@ async def arch() -> Dict[str, Any]:
             "add": "a share of the stream's median length leaving the layer, along the neuron's write direction",
             "mul": "a factor on the neuron's own activation (0 silences it)",
             "act": "a multiple of the neuron's largest |activation|, added to it"},
+            "defaults": {**DEFAULT_DOSE, "head": 0.0, "all": 0.0},
+            "down_row": {"add": "-dose", "act": "-dose", "mul": "x -dose: a sign flip, not 1/dose (x 0 silences both rows)",
+                         "head": "the same scale as the up row", "all": "silenced in both rows"},
+            # /push and /steer take heads only inside `neurons`, so there they share its items
+            "most": {"pushes": ao.MAX_PUSHES, "head_scales": ao.MAX_HEAD_SCALES, "neurons_items": ao.MAX_PUSHES},
             "scale_source": sc["source"] if sc else None,
             "sampler": {"fields": sr.FIELDS, "default": "greedy", "draw": f"{sr.SHARED_DRAW}: each step one exponential "
                         "race over the vocabulary, its noise from a CPU generator seeded seed + s for sample s, so the voices "
@@ -1475,18 +1483,26 @@ async def push_chat(req: PushChatRequest, request: Request) -> StreamingResponse
 
 
 def _push_items(req: Union[PushChatRequest, "SteerRequest"]) -> List[PushIn]:
-    """The neurons a push chat (or a whole-text steer) pushes: its `neurons`, else the one neuron (layer, n), each with
-    the request's mode and dose where it names none."""
+    """The neurons a push chat (or a whole-text steer) pushes: its `neurons`, else the one neuron (layer, n); refused when
+    it names both, rather than one of them dropped. A neuron that names no mode takes the request's, and one that names
+    no dose takes the request's only when pushed in the request's mode, a dose being in its mode's units (an add's share
+    of the stream is no factor for a mul); the rest take their mode's default in `parse_pushes`, as do a head's scale
+    and a whole block's factor, which the request's dose never fills."""
     if req.neurons:
+        if req.layer is not None or req.n is not None:
+            raise HTTPException(status_code=400, detail="Name the neuron to push (layer and n) or give `neurons`, not both: "
+                                "put that neuron in `neurons`, with its own dose and mode.")
         items = [p.model_copy() for p in req.neurons]
     elif req.layer is None or req.n is None:
         raise HTTPException(status_code=400, detail="Name the neuron to push (layer and n), or give `neurons`.")
     else:
         items = [PushIn(layer=req.layer, n=req.n)]
     for p in items:
+        if p.head is not None or p.all:
+            continue
         if p.mode is None:
             p.mode = req.mode
-        if p.dose is None:
+        if p.dose is None and p.mode == req.mode:
             p.dose = req.dose
     return items
 
@@ -1516,7 +1532,8 @@ def _steer_whole(a: Atlas, req: SteerRequest, ps: List[ao.Push], hs: List[ao.Hea
     td = ao.TextDeltas(a.rt.tokenizer, 3 * k)
     texts = [""] * (3 * k)
     for st in ao.write_rows(a.lm, a.W_U, rows, iv, max_new=req.max_new, stop_ids=a.rt.end_of_turn_ids(),
-                            bos_id=a.rt.tokenizer.bos_token_id, softcap=ao.softcap_of(a.rt.hf_model), sampler=smp,
+                            bos_id=a.rt.tokenizer.bos_token_id, spare_bos=req.spare_bos,
+                            softcap=ao.softcap_of(a.rt.hf_model), sampler=smp,
                             samples_of=[r // 3 for r in range(3 * k)] if smp is not None else None):
         texts[st.row] += td.add(st.row, st.token_id, st.end)
     voices: Dict[str, Any] = {"up": texts[0::3], "baseline": texts[1::3], "down": texts[2::3]}

@@ -167,13 +167,13 @@ def main() -> int:
     vocab = [tok.decode([i]) for i in range(int(W_U.shape[0]))]
 
     def write_direct(rows: List[List[int]], pushes: List[ao.Push], max_new: int, scales: Any = None, sampler: Any = None,
-                     k: int = 1) -> List[str]:
+                     k: int = 1, spare_bos: bool = True) -> List[str]:
         pp, sc = (p50, act_scale) if scales is None else scales
         iv = ao.resolve(w, pushes, [], ao.THREE_VOICES * k, p50=lambda l: pp[l], act_scale=sc)
         td = ao.TextDeltas(tok, 3 * k)
         out = [""] * (3 * k)
         for st in ao.write_rows(lm, W_U, rows * k, iv, max_new=max_new, stop_ids=rt.end_of_turn_ids(), bos_id=bos,
-                                spare_bos=True, softcap=cap, sampler=sampler,
+                                spare_bos=spare_bos, softcap=cap, sampler=sampler,
                                 samples_of=[r // 3 for r in range(3 * k)] if sampler is not None else None):
             out[st.row] += td.add(st.row, st.token_id, st.end)
         return out
@@ -338,12 +338,44 @@ def main() -> int:
     rows = [chat_ids([{"role": "system", "content": "Be brief."}, {"role": "user", "content": prompt}])] * 3
     check(voices(events(r.text)) == write_direct(rows, [ao.Push(1, 3, "mul", 0.0), ao.Push(3, 7, "act", 2.0)], 10),
           "/push: several neurons at once, with a system turn")
+    # a dose left out is its mode's (x2 for a mul, as /reads and /logprobs take it); the request's dose fills only the
+    # neurons pushed in the request's mode, never a head or a whole block (silenced by default)
+    asked = [chat_ids([{"role": "user", "content": prompt}])] * 3
+    r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "mode": "mul", "prompt": prompt, "max_new": 6}).json()
+    check(r["pushed"] == [{"layer": 2, "n": 5, "mode": "mul", "dose": 2.0}], f"/steer: a mul with no dose is x2 ({r['pushed']})")
+    x2 = write_direct(asked, [ao.Push(2, 5, "mul", 2.0)], 6)
+    r = c.post("/api/atlas/push", json={"layer": 2, "n": 5, "mode": "mul", "prompt": prompt, "max_new": 6})
+    check(voices(events(r.text)) == x2 != write_direct(asked, [ao.Push(2, 5, "mul", 0.8)], 6), "/push: a mul with no dose is x2 too, not x0.8")
+    r = c.post("/api/atlas/steer", json={"neurons": [{"layer": 1, "n": 3, "mode": "mul"}, {"layer": 3, "n": 7}, {"layer": 2, "n": 5, "mode": "add"},
+                                                     {"layer": 4, "all": True}, {"layer": 0, "head": 1}], "dose": 1.5, "prompt": prompt,
+                                         "max_new": 6}).json()
+    check(r["pushed"] == [{"layer": 1, "n": 3, "mode": "mul", "dose": 2.0}, {"layer": 3, "n": 7, "mode": "add", "dose": 1.5},
+                          {"layer": 2, "n": 5, "mode": "add", "dose": 1.5}, {"layer": 4, "n": None, "mode": "mul", "dose": 0.0},
+                          {"layer": 0, "head": 1, "scale": 0.0}],
+          f"/steer: the request's add dose fills the adds, named or not; the mul at x2, the block and the head silenced ({r['pushed']})")
+    sil = c.post("/api/atlas/steer", json={"neurons": [{"layer": 4, "all": True}], "prompt": prompt, "max_new": 6}).json()
+    check([sil["up"], sil["baseline"], sil["down"]] == write_direct(asked, [ao.Push(4, None, "mul", 0.0)], 6)
+          and sil["up"] == sil["down"] != sil["baseline"], "/steer: a whole block silenced, the same in both rows")
+    r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14, "dose": 2.0, "spare_bos": False}).json()
+    bare = write_direct(asked, [ao.Push(2, 5, "add", 2.0)], 14, spare_bos=False)
+    check([r["up"], r["baseline"], r["down"]] == bare, "/steer spare_bos false: the start mark pushed too, as write_rows writes it")
+    spared = write_direct(asked, [ao.Push(2, 5, "add", 2.0)], 14)
+    r = c.post("/api/atlas/steer", json={"layer": 2, "n": 5, "prompt": prompt, "max_new": 14, "dose": 2.0}).json()
+    check([r["up"], r["baseline"], r["down"]] == spared and bare != spared,
+          "/steer: the start mark spared by default, and pushing it too writes otherwise here")
     for bad, says in [({"prompt": "x"}, "Name the neuron"), ({"layer": 6, "n": 0, "prompt": "x"}, "Layer 6 does not exist"),
+                      ({"layer": 6, "n": 0, "prompt": "x"}, "page layers 1 to 6"),
+                      ({"layer": 2, "n": 5, "neurons": [{"layer": 1, "n": 3}], "prompt": "x"}, "not both"),
+                      ({"layer": 2, "neurons": [{"layer": 1, "n": 3}], "prompt": "x"}, "not both"),
+                      ({"n": 5, "neurons": [{"layer": 1, "n": 3}], "prompt": "x"}, "not both"),
                       ({"layer": 0, "n": 0, "prompt": "x", "mode": "zap"}, 'mode is "add", "mul" or "act"'),
-                      ({"neurons": [{"layer": 0, "n": 128}], "prompt": "x"}, "Neuron 128 does not exist"),
-                      ({"neurons": [{"layer": 0, "head": 9}], "prompt": "x"}, "has 4 attention heads")]:
+                      ({"neurons": [{"layer": 0, "n": 128}], "prompt": "x"}, "Neuron 128 does not exist: layer 0 (page layer 1) has 128"),
+                      ({"neurons": [{"layer": 0, "head": 9}], "prompt": "x"}, "Layer 0 (page layer 1) has 4 attention heads"),
+                      ({"neurons": [{"layer": 6, "head": 0}], "prompt": "x"}, "page layers 1 to 6")]:
         r = c.post("/api/atlas/push", json=bad)
         check(r.status_code == 400 and says in r.json()["detail"], f"/push refused before streaming: {bad} -> {r.status_code} {r.text[:120]}")
+    r = c.post("/api/atlas/steer", json={"layer": 2, "neurons": [{"layer": 1, "n": 3}], "prompt": "x"})
+    check(r.status_code == 400 and "not both" in r.json()["detail"], "/steer: a layer beside `neurons` refused, not dropped")
 
     # written with the instrument's sampler (backend/sampler_request.py): one draw a step shared by the three voices
     from backend.engine_runtime import SamplerSettings
@@ -396,6 +428,10 @@ def main() -> int:
     evs = events(c.post("/api/atlas/push", json={"layer": 2, "n": 5, "prompt": "x", "max_new": 6, "sampler": {"temperature": 1e-39, "seed": 1}}).text)
     check(not voices(evs)[0] and "no chances to draw from" in (evs[-1].get("error") or ""),
           f"/push at temperature 1e-39: nothing written, the error in plain words ({evs[-1:]})")
+    pc = c.get("/api/atlas/arch").json()["push"]
+    check(pc["defaults"] == {"add": 0.8, "mul": 2.0, "act": 0.8, "head": 0.0, "all": 0.0}
+          and pc["most"] == {"pushes": 32, "head_scales": 64, "neurons_items": 32}
+          and "sign flip" in pc["down_row"]["mul"], f"/arch: the push card gives the defaults, the down row and the caps ({pc.get('defaults')})")
     card = c.get("/api/atlas/arch").json()["push"]["sampler"]
     check(card["default"] == "greedy" and set(card["fields"]) == {"temperature", "top_k", "top_p", "presence_penalty", "seed"}
           and card["not_offered"] == ["min_p", "repetition_penalty"] and shared in card["draw"] and "1 to 8" in card["samples"]

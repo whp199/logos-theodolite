@@ -144,8 +144,11 @@ questions, so a lead) found text first breaking at ±0.5 of the stream at layer 
 single neuron can write, and `ceiling.rel` (in `neuron`) is that cap as a share of the stream: a push above it is
 larger than the neuron itself can ever write, so read its effect as the direction's, not the neuron's. `mul`
 multiplies the activation (0 silences the neuron; a whole block or every head of a layer can only be silenced, since
-the norm after them undoes any other uniform scale). `act` adds a multiple of its largest |activation| to it. The
-start mark is never pushed: it is the attention sink every later word-piece reads.
+the norm after them undoes any other uniform scale); in `steer`'s down row it is × −dose, a sign flip, not 1/dose.
+`act` adds a multiple of its largest |activation| to it. A dose left out is 0.8 for `add` and `act` and × 2 for `mul`.
+The start mark is left unpushed (as the census reads): it is the attention sink every later word-piece reads. A
+llama.cpp control vector pushes it too, and there the text broke at ±2 where it held here, so before you call a push a
+recipe for llama.cpp, steer it again with `spare_bos: false`.
 
 ## Attention heads
 
@@ -243,10 +246,10 @@ one neuron's trace or a causal test is `activations`: the person sees tool calls
 scripts that call the same routes.
 
 The instrument's HTTP API is at `{API}`; scripts can call it (JSON in, JSON out), with layers counted from 0 there.
-The useful routes, POST unless noted: `/api/atlas/reads` {layer, n, text, chat?, neurons?, heads?}; `/api/atlas/fires`
-{text, token?, at?, limit?, layers?}; `/api/atlas/steer` {prompt, layer, n, dose?, mode?, max_new?, sampler?
-{temperature, top_k, top_p, presence_penalty, seed}, samples?}; `/api/atlas/compare` {neurons, texts, chat?};
-`/api/atlas/logprobs` {text, chat?, prefix?, k?, targets?, neurons?, heads?}; GET `/api/atlas/neuron?layer=&n=`,
+The useful routes, POST unless noted: `/api/atlas/reads` {layer, n, text, chat?, neurons?, heads?, spare_bos?}; `/api/atlas/fires`
+{text, token?, at?, limit?, layers?}; `/api/atlas/steer` {prompt, layer and n or neurons, dose?, mode?, max_new?,
+spare_bos?, sampler? {temperature, top_k, top_p, presence_penalty, seed}, samples?}; `/api/atlas/compare` {neurons, texts, chat?};
+`/api/atlas/logprobs` {text, chat?, prefix?, k?, targets?, neurons?, heads?, spare_bos?}; GET `/api/atlas/neuron?layer=&n=`,
 `/api/atlas/web/summary?layer=&n=`, `/api/atlas/cone?layer=&n=`, `/api/atlas/arch`.
 Every route that runs the model waits for the GPU: one reading at a time on this machine.
 
