@@ -27,7 +27,8 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    data's first and last MiB, the tensor types, a fingerprint that moves when a byte at either end of the data does);
    the stand-in split into shards by gguf-py's writer (one with a first shard of keys alone), read from any shard: the
    whole file's tensors, forward and tokenizer, each shard hashed in the provenance, the model id naming the first,
-   and a missing, misnamed or foreign shard refused in plain words; the tokenizer from the file's own metadata encodes
+   a missing or misnamed shard, or one of a split laid out otherwise, refused in plain words, and a shard of another
+   file split the same way read, under a model id of its own; the tokenizer from the file's own metadata encodes
    as the stand-in's does; the 31B's metadata, as llama.cpp writes it, built on the meta device into its 410 linear
    layers and 29.287 billion quantised weights;
 4. GGUFRuntime on the Q4_0 file, packed, against the stand-in's runtime carrying the same numbers: every accessor that
@@ -715,7 +716,7 @@ def run_checks(tmp: Path) -> int:
           and len(rt_sp.weights_card["shards"]) == 4 and torch.equal(rt_sp.hf_model(ids).logits, logits_whole),
           f"GGUFRuntime given the last shard: {rt_sp.model_id}, the shards on its card, the whole file's forward")
     del rt_sp
-    # refused in plain words: a shard missing, a shard renamed, a shard of another split of the same model
+    # refused in plain words: a shard missing, a shard renamed, a shard of the same model split otherwise
     lone = tmp / "split-missing"
     lone.mkdir()
     for p_ in shards[:1] + shards[2:]:
@@ -736,7 +737,21 @@ def run_checks(tmp: Path) -> int:
             check(False, f"{path_.name} refused")
         except ValueError as exc:
             check(word in str(exc), f"{path_.parent.name}/{path_.name}: refused in plain words ({exc})")
-    section("a split file: read from any shard as the whole file, each shard hashed; a missing, misnamed or foreign shard refused", before)
+    # not refused, as nothing in the format can refuse it: a shard of the model written as Q8_0 and split the same way,
+    # in the third one's place; the fingerprint, which hashes every shard, keeps its readings apart
+    same = tmp / "split-same-layout"
+    same.mkdir()
+    gm.write_gemma4_gguf(hf, same / "stand-in.gguf", tokenizer=tok, qtype="Q8_0", split_max_tensors=30, small_first_shard=True)
+    for p_ in shards:
+        if not p_.name.startswith("stand-in-00003"):
+            shutil.copy(p_, same / p_.name)
+    _m_same, rec_same = gm.build_gemma4(same / shards[0].name, dtype=torch.float32)
+    pv_same = gm.provenance(same / shards[0].name)
+    check(any(k.startswith("Q8_0") for k in rec_same["layers_as"]) and pv_same["id"] != pv_s["id"]
+          and gm.gguf_stem_id(same / shards[0].name, pv_same) != gm.gguf_stem_id(shards[0], pv_s),
+          f"a shard of another file split the same way is read ({rec_same['layers_as']}), under a model id of its own "
+          f"({pv_same['id']}, not {pv_s['id']})")
+    section("a split file: read from any shard as the whole file, each shard hashed; a missing, misnamed or otherwise split shard refused", before)
 
     before = len(failures)
     t2, trec = gm.load_tokenizer(path, ("google/not-cached-here",))

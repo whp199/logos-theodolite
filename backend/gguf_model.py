@@ -111,7 +111,10 @@ def split_keys(reader: Any) -> Optional[Tuple[int, int, int]]:
 def open_gguf(path: Union[str, Path]) -> Any:
     """A `gguf.GGUFReader` over the file (copy-on-write memory map: torch can read its blocks in place, and nothing is
     ever written back); for a shard of a split file, a `SplitGGUF` over all its shards, which must lie beside it under
-    the names gguf-split gives them (a ValueError in plain words when one is missing, misnamed or of another split)."""
+    the names gguf-split gives them (a ValueError in plain words when one is missing or misnamed, or when its split keys,
+    or the tensors the shards hold together, are not the split's). A shard of another file split the same way, under
+    the same name, cannot be told apart (the format carries no mark of which set a shard is of): only the fingerprint
+    shows it (`provenance`: the mixed set's model id is neither whole set's)."""
     from gguf import GGUFReader
 
     p = Path(path)
@@ -123,8 +126,8 @@ def open_gguf(path: Union[str, Path]) -> Any:
     m = SHARD_NAME.match(p.name)
     if m is None or (int(m["no"]), int(m["count"])) != (no + 1, count):
         raise ValueError(f"{p.name} is shard {no + 1} of {count} of a split GGUF, and its name does not name the others "
-                         f"(llama.cpp names them <name>-00001-of-{count:05d}.gguf and on): give the shards those names, or "
-                         "merge them into one file with llama.cpp's llama-gguf-split --merge.")
+                         f"(llama.cpp names them <name>-00001-of-{count:05d}.gguf and on): give the shards those names "
+                         "(llama.cpp's llama-gguf-split --merge needs them too, for one file).")
     shards: List[Tuple[Path, Any]] = []
     for i in range(count):
         sp = p.with_name(f"{m['stem']}-{i + 1:05d}-of-{count:05d}.gguf")

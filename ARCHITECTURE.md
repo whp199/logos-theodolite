@@ -1059,7 +1059,10 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
   `SplitGGUF`: the first shard's keys, where the splitter puts them all, and every shard's tensors, each read through
   its own shard's memory map); a shard missing, misnamed (a name that no longer says the others') or of another split
   (its split keys, or the tensors the shards hold together, not the split's) is refused in plain words, and a renamed
-  set can be merged with `llama-gguf-split --merge`. `GGUFRuntime` (`backend/gguf_runtime.py`) subclasses
+  set must be given its shard names back (`llama-gguf-split --merge` needs them too). A shard of another file split
+  the same way, under the same name (a partial download of a re-uploaded quant, say), cannot be told apart, as llama.cpp
+  cannot: the format carries no mark of which set a shard is of. It is read, and only the fingerprint shows it (the
+  provenance hashes every shard, so the mixed set's model id is neither whole set's). `GGUFRuntime` (`backend/gguf_runtime.py`) subclasses
   the pinned runtime: its `load()` does what the pinned one does once its model is built, and the seven accessors that
   read `weight_packed` read through the accessors above; everything else is the pinned code. On the stand-in its
   accessors, a push in three voices, a neuron read, a sighting's row capture and naked-eye readout, a vault DELETE on a
