@@ -32,9 +32,15 @@ tiny GGUF files, as scripts/check_gguf.py writes them:
    answers made by hand; the canary census of scripts/compare_int4mm.py (after neuron-explorer's check_equivalence):
    the reference's floor between two batches, the kernel's departure from it, and the rule's verdict; a census or an
    index of the reference refused for it; on a 4-bit stand-in the W4A16 linears through the kernel, an edit on one
-   laid on the kernel's product, w4a16_fast's resident refused beside it; THEODOLITE_CHECKPOINT_LINEARS=int4mm's
-   model id and card; int4mm off the CPU, on a file of which it takes no layer, and THEODOLITE_CHECKPOINT_LINEARS
-   beside a GGUF refused;
+   laid on the kernel's product, w4a16_fast's resident refused beside it; Q4_1 and Q4_K (a scale and a zero per group
+   of 32): on random blocks of each kernel type, and in every layer of a Q4_1 stand-in and a Q4_K one (four times as
+   wide, its Q5_0 fallbacks left packed), the kernel's weight within rounding of the reference's unpacking, in
+   float32 and bf16 (`int4_cpu.kernel_departure`), and as for Q4_0 the model id, card, accessors, a layer's product,
+   an edit that changes no weight, the kernel turned off and the canary; the layers the kernel cannot take resident
+   within a budget (THEODOLITE_GGUF_RESIDENT_GB), in the model's order, the logits and model id unchanged, bit for bit,
+   and with packed too; a layer of each type timed (printed, not checked); THEODOLITE_CHECKPOINT_LINEARS=int4mm's
+   model id and card, the budget given to the GGUF runtime; int4mm off the CPU, on a file of which it takes no layer,
+   THEODOLITE_CHECKPOINT_LINEARS beside a GGUF and a budget it cannot use refused;
 5. the files R4 pins (backend/engine_runtime.py among them) are unchanged (experiments/scripts/R4_common.pinned_differ).
 
 Run: .venv/bin/python -I scripts/check_gguf_cpu.py   (exits 0 when every check holds)
@@ -80,7 +86,7 @@ failures: List[str] = []
 passed = 0
 BASE = "http://127.0.0.1:8765"  # the guards refuse TestClient's own "testserver" Host
 ENV_KEYS = (rf.GGUF_ENV, rf.DEVICE_ENV, rf.LINEARS_ENV, rf.CONFIG_ENV, rf.DTYPE_ENV, rf.LENS_ENV, rf.CHECKPOINT_LINEARS_ENV,
-            CPU_MEMORY_ENV, "CUDA_VISIBLE_DEVICES")
+            rf.RESIDENT_ENV, CPU_MEMORY_ENV, "CUDA_VISIBLE_DEVICES")
 
 
 def check(ok: bool, what: str) -> None:
@@ -715,6 +721,129 @@ def run_checks(tmp: Path) -> int:
     said = raises(wf.install, rt_w, "resident")
     check("int4mm" in said and wf.describe(rt_w)["mode"] == "reference",
           f"w4a16_fast's resident unpacker, which would replace the kernel's forward, refused ({said[:80]})")
+    section("int4mm on Q4_0 and W4A16: its own model id, the file's numbers in the accessors, edits laid on its product, "
+            "and its departure from the reference measured by the canary", before)
+
+    # Q4_1 and Q4_K through the kernel: (q - 8) x scale + zero, a zero per group of 32 beside the scale
+    before = len(failures)
+    rng_k = np.random.default_rng(11)
+    for qt in ic.KERNEL_TYPES:  # random blocks, their fp16 fields of either sign, every 6-bit scale and minimum of Q4_K
+        bs_, _ts = gw.block_shape(qt)
+        raw = torch.from_numpy(cg.random_blocks(qt, 48 * 512 // bs_, rng_k).reshape(48, -1))
+        deps = {str(dt).replace("torch.", ""): ic.kernel_departure(ic.Int4GGUFLinear(raw, 512, 48, qtype=qt, dtype=dt))
+                for dt in (torch.float32, torch.bfloat16)}
+        print(f"  --    {qt} on random blocks, the kernel's weight against the reference's: largest difference "
+              + ", ".join(f"{d['max_share']:.2g} of its group's bound in {k} (tolerance {d['tolerance']:.2g})"
+                          for k, d in deps.items()))
+        check(all(d["max_share"] <= d["tolerance"] for d in deps.values()),
+              f"{qt} on random blocks: the kernel's weight within rounding of the reference's unpacking, its largest "
+              "difference a share of its group's bound 8|scale| + |zero| of "
+              + ", ".join(f"{d['max_share']:.2g} in {k} (tolerance {d['tolerance']:.2g}, {d['identical_share']:.0%} "
+                          "identical)" for k, d in deps.items()))
+    files_k = {"Q4_1": gm.write_gemma4_gguf(hf, tmp / "stand-in-Q4_1.gguf", tokenizer=tok, qtype="Q4_1"),
+               "Q4_K": gm.write_gemma4_gguf(cg.wide_stand_in(tok, 256, 512), tmp / "stand-in-wide-Q4_K.gguf", tokenizer=tok,
+                                            qtype="Q4_K")}
+    want_kinds = {"Q4_1": {"Q4_1 int4mm": 41}, "Q4_K": {"Q4_K int4mm": 35, "Q5_0 packed": 6}}
+    rts_k: Dict[str, Any] = {}
+    for qt, path in files_k.items():
+        rt_kr = GGUFRuntime(path, device="cpu", dtype=torch.bfloat16, tokenizer=tok, load_jpp=False).load()
+        rt_k = GGUFRuntime(path, device="cpu", dtype=torch.bfloat16, tokenizer=tok, linears="int4mm", load_jpp=False).load()
+        rts_k[qt] = (rt_kr, rt_k)
+        check(rt_k.model_id == rt_kr.model_id + "+int4mm" and rt_k.weights_card["layers_as"] == want_kinds[qt]
+              and "resident_gb" not in rt_k.weights_card,
+              f"{qt} int4mm: its model id ends +int4mm, its card {rt_k.weights_card['layers_as']}"
+              + (" (the stand-in four times as wide, for rows of 256; its o_proj rows of 64 and 128 fall back to Q5_0, "
+                 "which the kernel cannot take, and stay packed)" if qt == "Q4_K" else ""))
+        deps = [ic.kernel_departure(m) for m in ic.int4_layers(rt_k.hf_model)]
+        worst = max(deps, key=lambda d: d["max_share"])
+        print(f"  --    {qt} stand-in in bf16, every int4mm layer: largest difference {worst['max_share']:.2g} of its group's "
+              f"bound, {worst['max_rel']:.2g} of the largest weight")
+        check(len(deps) == sum(n for k, n in want_kinds[qt].items() if k.endswith("int4mm"))
+              and worst["max_share"] <= worst["tolerance"],
+              f"{qt} int4mm in bf16: every layer's weight as the kernel forms it within rounding of the file's numbers "
+              f"(largest difference {worst['max_share']:.2g} of its group's bound, tolerance {worst['tolerance']:.2g}; "
+              f"at least {min(d['identical_share'] for d in deps):.0%} of each layer's weights identical)")
+        hdim, fdim = (256, 512) if qt == "Q4_K" else (asi.HIDDEN, asi.FFN)
+        check(all(torch.equal(getattr(rt_k, f)(l, nidx), getattr(rt_kr, f)(l, nidx))
+                  for f in ("slice_w_down", "slice_w_gate", "slice_w_up") for l in (0, 5))
+              and all(torch.equal(getattr(rt_k, f)(3), getattr(rt_kr, f)(3)) for f in ("get_full_w_down", "get_full_w_gate"))
+              and torch.equal(rt_k.write_col_norms(2), rt_kr.write_col_norms(2)),
+              f"{qt} int4mm: the accessors read the file's numbers from the blocks kept, bit for bit")
+        dk, dr = language_model(rt_k.hf_model).layers[2].mlp.down_proj, language_model(rt_kr.hf_model).layers[2].mlp.down_proj
+        xk = torch.randn(5, fdim, generator=torch.Generator().manual_seed(6)).to(torch.bfloat16)
+        exact_k = xk.double() @ dr.unpacked().double().T
+        yk = dk(xk)
+        err_k = float((yk.double() - exact_k).abs().max() / exact_k.abs().max())
+        check(not torch.equal(yk, dr(xk)) and err_k < 2 ** -6 and torch.equal(dk(xk[:1]), yk[:1]),
+              f"{qt} int4mm: one layer's product within bf16 of the exact one ({err_k:.1e}), not the reference's bits, a "
+              "row's the same alone or in a batch")
+        dk._memit_col_overlays[9] = dk.unpacked_cols(torch.tensor([9]))[0].clone()
+        dk._memit_row_overlays[4] = dk.unpacked_rows(torch.tensor([4]))[0].clone()
+        check(torch.equal(dk(xk), yk), f"{qt} int4mm: an edit that changes no weight adds exactly nought")
+        dk._memit_col_overlays.clear(), dk._memit_row_overlays.clear()
+        pk = torch.tensor([rt_kr.tokenize_prompt(rt_kr.compose_prompt("Who are you?", chat=True))])
+        ic.enable(rt_k, False)
+        check(torch.equal(rt_k.hf_model(pk).logits, rt_kr.hf_model(pk).logits) and rt_k.model_id == rt_kr.model_id,
+              f"{qt} int4mm turned off: the reference forward bit for bit, the model id without +int4mm")
+        ic.enable(rt_k, True)
+    # the layers the kernel cannot take, resident within a budget (THEODOLITE_GGUF_RESIDENT_GB): the packed one's bits
+    rt_kr, rt_k = rts_k["Q4_K"]
+    pk = torch.tensor([rt_kr.tokenize_prompt(rt_kr.compose_prompt("Who are you?", chat=True))])
+    rt_kb = GGUFRuntime(files_k["Q4_K"], device="cpu", dtype=torch.bfloat16, tokenizer=tok, linears="int4mm", load_jpp=False,
+                        resident_gb=1.0).load()
+    card_kb = rf.weights_card(rt_kb)
+    o_bytes = 5 * 256 * 64 * 2 + 256 * 128 * 2  # the six Q5_0 o_proj layers in bf16: five sliding, one full
+    check(card_kb["layers_as"] == {"Q4_K int4mm": 35, "Q5_0 resident": 6} and card_kb["resident_gb"] == 1.0
+          and card_kb["resident_bytes"] == o_bytes and rt_kb.model_id == rt_k.model_id
+          and torch.equal(rt_kb.hf_model(pk).logits, rt_k.hf_model(pk).logits)
+          and cm.unpack_bytes(rt_kb) == 0 < cm.unpack_bytes(rt_k),
+          f"int4mm with a resident budget of 1 GB: the layers the kernel cannot take resident ({card_kb['layers_as']}, "
+          f"{card_kb['resident_bytes']:,} bytes), the logits and the model id those of int4mm alone, and nothing unpacked "
+          "at a forward")
+    rt_kp = GGUFRuntime(files_k["Q4_K"], device="cpu", dtype=torch.bfloat16, tokenizer=tok, linears="int4mm", load_jpp=False,
+                        resident_gb=1e-4).load()
+    held = [type(language_model(rt_kp.hf_model).layers[l].self_attn.o_proj).__name__ + ("+" if language_model(
+        rt_kp.hf_model).layers[l].self_attn.o_proj.resident else "") for l in range(6)]
+    check(rt_kp.weights_card["layers_as"] == {"Q4_K int4mm": 35, "Q5_0 packed": 3, "Q5_0 resident": 3}
+          and held == ["GGUFLinear+"] * 3 + ["GGUFLinear"] * 3 and rt_kp.weights_card["resident_bytes"] == 3 * 256 * 64 * 2
+          and torch.equal(rt_kp.hf_model(pk).logits, rt_k.hf_model(pk).logits),
+          f"a budget of 100,000 bytes: the first three o_proj resident, in the model's order, and the full layer's, "
+          f"which no longer fits, packed ({rt_kp.weights_card['layers_as']}); the logits bit for bit")
+    rt_pp = GGUFRuntime(q4_0, device="cpu", dtype=torch.bfloat16, tokenizer=tok, load_jpp=False, resident_gb=0.0003).load()
+    lay = rt_pp.weights_card["layers_as"]
+    check(lay.get("Q4_0 resident", 0) > 0 and lay.get("Q4_0 packed", 0) > 0 and rt_pp.model_id == rt_ref.model_id
+          and torch.equal(rt_pp.hf_model(prompt_i).logits, rt_ref.hf_model(prompt_i).logits)
+          and rf.weights_card(rt_pp)["resident_bytes"] <= 300000,
+          f"packed with a budget (partly resident, {lay}): the packed model's logits and model id, bit for bit")
+    for kw, word in (({"linears": "resident", "resident_gb": 1.0}, "with resident every quantised layer is unpacked already"),
+                     ({"linears": "dense", "resident_gb": 1.0}, "with dense every quantised layer"),
+                     ({"linears": "packed", "resident_gb": -1.0}, "0 or more")):
+        said = raises(gm.build_gemma4, q4_0, device="cpu", **kw)
+        check(word in said, f"build_gemma4 with {kw}: refused in plain words ({said[:90]})")
+    # how far Q4_1 and Q4_K depart from the reference by the canary, as Q4_0 above; Q4_0 on the wide stand-in beside
+    # them, since the wide stand-in's answers split more easily than the narrow one's whatever the type
+    rts_k["Q4_0 (wide)"] = (None, GGUFRuntime(gm.write_gemma4_gguf(cg.wide_stand_in(tok, 256, 512), tmp / "stand-in-wide-Q4_0.gguf",
+                                                                   tokenizer=tok, qtype="Q4_0"),
+                                              device="cpu", dtype=torch.bfloat16, tokenizer=tok, linears="int4mm",
+                                              load_jpp=False).load())
+    for qt, (rt_kr, rt_k) in rts_k.items():
+        rep_k = c4.compare(rt_k, tmp / f"int4mm-canary-{qt}", layer=2, neurons=[0, 1, 2, 3], controls=2, max_new=16, batch=8,
+                           floor_batch=3)
+        fl_k, kn_k = rep_k["floor"], rep_k["kernel"]
+        print(f"  --    {qt}: {c4.say('int4mm against the reference, batch 8', kn_k)}")
+        check(fl_k["answers"] == kn_k["answers"] == 64 and fl_k["identical"] == 64 and fl_k["max_abs_dlogprob"] < 2 ** -7
+              and rep_k["verdict"]["stands_for_reference"] is False and kn_k["topk_overlap"] > 0.8,
+              f"{qt}: the canary (64 answers), the reference's floor within {fl_k['max_abs_dlogprob']:.2g}, the kernel's "
+              f"{kn_k['identical']} identical, top-5 overlap {kn_k['topk_overlap']}; the rule does not let it stand for the "
+              "reference")
+    tl = ic.timed_layer(1024, 4096, rows=(1, 64), reps=5, qtypes=ic.KERNEL_TYPES + ("Q6_K",))
+    for r in tl:
+        print(f"  --    a 1,024 x 4,096 layer, {r['rows']} rows: " + "; ".join(
+            f"{qt} {t['reference_s'] * 1e3:.1f} ms" + (f", int4mm {t['int4mm_s'] * 1e3:.2f}" if t["int4mm_s"] else "")
+            for qt, t in r["types"].items()) + f"; resident bf16 {r['resident_bf16_s'] * 1e3:.2f} ms")
+    section("int4mm on Q4_1 and Q4_K: the kernel's weight within rounding of the file's numbers, the same model id, card, "
+            "accessors, edits and canary as Q4_0; the layers it cannot take resident within a budget, bit for bit", before)
+    before = len(failures)
     # the factory: int4mm only on the CPU; the checkpoint's model id and card
     with environment(**{rf.DEVICE_ENV: "cpu", rf.CHECKPOINT_LINEARS_ENV: "int4mm"}):
         rt_cc = rf.make_runtime(load_jlens=False)
@@ -734,11 +863,20 @@ def run_checks(tmp: Path) -> int:
     check(type(rt_cc) is rf.CheckpointRuntime and rt_cc.model_id == er.DEFAULT_W4A16_MODEL_ID + "@cpu/bfloat16+int4mm"
           and card_cc["linears"] == "int4mm" and card_cc["layers_as"] == {"w4a16 int4mm": n_w},
           f"THEODOLITE_CHECKPOINT_LINEARS=int4mm on the CPU: {rt_cc.model_id}, {card_cc['layers_as']}")
+    with environment(**{rf.GGUF_ENV: q4_0, rf.DEVICE_ENV: "cpu", rf.LINEARS_ENV: "int4mm", rf.RESIDENT_ENV: "8.5"}):
+        rt_env = rf.make_runtime(load_jlens=False)
+    check(type(rt_env) is GGUFRuntime and rt_env.resident_gb == 8.5 and rt_env.linears == "int4mm",
+          "THEODOLITE_GGUF_RESIDENT_GB=8.5 beside int4mm: the GGUF runtime is given the budget")
     for env_, word in (({rf.GGUF_ENV: q4_0, rf.LINEARS_ENV: "int4mm"}, "set THEODOLITE_DEVICE=cpu"),
                        ({rf.CHECKPOINT_LINEARS_ENV: "int4mm"}, "set THEODOLITE_DEVICE=cpu"),
                        ({rf.CHECKPOINT_LINEARS_ENV: "resident"}, "packed (the default) or int4mm"),
                        ({rf.GGUF_ENV: q4_0, rf.DEVICE_ENV: "cpu", rf.CHECKPOINT_LINEARS_ENV: "int4mm"},
-                        "is the W4A16 checkpoint's, and THEODOLITE_GGUF is set")):
+                        "is the W4A16 checkpoint's, and THEODOLITE_GGUF is set"),
+                       ({rf.DEVICE_ENV: "cpu", rf.RESIDENT_ENV: "8"}, "and THEODOLITE_GGUF is not set"),
+                       ({rf.GGUF_ENV: q4_0, rf.DEVICE_ENV: "cpu", rf.RESIDENT_ENV: "lots"}, "a number of GB"),
+                       ({rf.GGUF_ENV: q4_0, rf.DEVICE_ENV: "cpu", rf.RESIDENT_ENV: "-2"}, "0 or more"),
+                       ({rf.GGUF_ENV: q4_0, rf.DEVICE_ENV: "cpu", rf.LINEARS_ENV: "dense", rf.RESIDENT_ENV: "8"},
+                        "with THEODOLITE_GGUF_LINEARS=dense every quantised layer is unpacked already")):
         with environment(**env_):
             said = raises(rf.make_runtime)
         check(word in said, f"{env_}: refused in plain words ({said[:90]})")
@@ -746,11 +884,11 @@ def run_checks(tmp: Path) -> int:
     check(said.startswith("The int4mm linears cannot be used: int4mm is torch's CPU kernel, and this model is built on meta"),
           f"int4mm on another device than the CPU refused by the builder too ({said[:90]})")
     said = raises(gm.build_gemma4, files["Q8_0"], device="cpu", linears="int4mm")
-    check(said.startswith("The int4mm linears cannot be used: torch's int4 kernel takes Q4_0 layers, and this file has none "
-                          "it can take ({'Q8_0 packed': 41})"),
+    check(said.startswith("The int4mm linears cannot be used: torch's int4 kernel takes Q4_0, Q4_1, Q4_K layers, and this "
+                          "file has none it can take ({'Q8_0 packed': 41})"),
           f"a file of which the kernel takes no layer refused, not run on the reference under +int4mm ({said[:110]})")
-    section("int4mm: torch's int4 CPU kernel on Q4_0 and W4A16 layers, within bf16 of the exact product but not the "
-            "reference's bits, measured against it by the canary, and kept apart by its model id", before)
+    section("int4mm and the resident budget from the environment: the checkpoint's model id and card, the runtime given "
+            "its budget, and int4mm off the CPU, on a file it takes no layer of, and a budget it cannot use, refused", before)
 
     # ---------------------------------------------------------------- the files R4 pins
     before = len(failures)

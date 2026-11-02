@@ -1,7 +1,7 @@
-"""torch's own int4 kernel on the CPU (`backend/int4_cpu.py`): the 4-bit linears of a Q4_0 GGUF, or of the W4A16
-checkpoint, held as torch's packed int4 weights and multiplied by `torch.ops.aten._weight_int4pack_mm_for_cpu`, never
-unpacked. Opt in with THEODOLITE_GGUF_LINEARS=int4mm (a GGUF) or THEODOLITE_CHECKPOINT_LINEARS=int4mm (the checkpoint),
-on the CPU only (backend/runtime_factory.py).
+"""torch's own int4 kernel on the CPU (`backend/int4_cpu.py`): the 4-bit linears of a GGUF (Q4_0, Q4_1 and Q4_K
+layers), or of the W4A16 checkpoint, held as torch's packed int4 weights and multiplied by
+`torch.ops.aten._weight_int4pack_mm_for_cpu`, never unpacked. Opt in with THEODOLITE_GGUF_LINEARS=int4mm (a GGUF) or
+THEODOLITE_CHECKPOINT_LINEARS=int4mm (the checkpoint), on the CPU only (backend/runtime_factory.py).
 
 Why. Every packed forward of the reference path unpacks every weight (the GGUF unpackers, or the pinned W4A16 one),
 some 3 to 16 ns a weight on the 4 vCPUs this was written on, so minutes a forward for the 31B's 29.3 billion. torch
@@ -12,15 +12,24 @@ for the reference and 7 to 17 ms for the resident bf16 product; at 8 rows about 
 the 31B's linears), where resident bf16 needs 2 (59 GB).
 
 What it computes. The kernel's weight is (q - 8) x scale + zero, a scale and zero per group of 32 in the activations'
-dtype, its sums its own. A Q4_0 block is d x (q - 8) with d in fp16: here scale = d rounded to the model's dtype (bf16
-holds 8 of fp16's 11 significant bits), zero 0. A W4A16 group is (q - 8) x scale with scale already bf16: exact. So
-the weight is the file's to within the scale's rounding (Q4_0) or exactly (W4A16), but the products are summed in the
-kernel's order, not F.linear's: the readings are NOT the reference's bits. Every reading taken so says so: the model id
+dtype, its sums its own (`kernel_codes` maps each type onto it, the scale and zero worked out in float32 from the
+block's fp16 fields, then rounded to the model's dtype once):
+- Q4_0, d x (q - 8): scale = d, zero 0. bf16 holds 8 of fp16's 11 significant bits, so the scale is rounded.
+- Q4_1, d x q + m: scale = d, zero = 8d + m.
+- Q4_K, a super-block of 256 whose eight sub-blocks of 32 are (d x sc) x q - dmin x m, sc and m 6-bit: per sub-block
+  scale = d x sc, zero = 8 x d x sc - dmin x m (the sub-block is the kernel's group).
+- A W4A16 group, (q - 8) x scale with scale already bf16: exact.
+So the weight is the file's to within the rounding of a scale and a zero (Q4_0, Q4_1, Q4_K) or exactly (W4A16), and
+the products are summed in the kernel's order, not F.linear's: the readings are NOT the reference's bits. The 5-, 6-
+and 8-bit types (Q5_0, Q5_1, Q5_K, Q6_K, Q8_0) and Q2_K, Q3_K (sub-blocks of 16) have no place in a 4-bit code and a
+group of 32; they stay on the reference path, packed, or resident within THEODOLITE_GGUF_RESIDENT_GB
+(backend/gguf_model.py). Every reading taken through the kernel says so: the model id
 ends `+int4mm` (after `runtime_factory.reading_class`'s `@cpu/bfloat16`), so a census run, an index or a lens card
 taken on it is never mixed with the reference's, and the weights card names the mode (`linears`, and `layers_as`:
-"Q4_0 int4mm"). How far it departs from the reference is measured by `compare_rows` (the shared prefix of greedy
-answers, the largest |delta log-prob| over it, the overlap of the five likeliest): on the stand-in by
-scripts/check_gguf_cpu.py §4, on the real model by scripts/compare_int4mm.py.
+"Q4_0 int4mm", "Q4_K int4mm", ...). How far it departs from the reference is measured by `compare_rows` (the shared
+prefix of greedy answers, the largest |delta log-prob| over it, the overlap of the five likeliest): on the stand-in by
+scripts/check_gguf_cpu.py §4, on the real model by scripts/compare_int4mm.py; the weight itself against the reference's
+unpacking by `kernel_weight`.
 
 What it leaves alone. The accessors (`slice_w_*`, `get_full_w_*`, `write_col_norms`, the atlas's weights, the vault's
 reads) read the layer's own blocks or `weight_packed` as before, so they give the file's numbers, not the kernel's. A
@@ -29,9 +38,9 @@ numbers (`with_overlay_terms`), so an edit that changes no weight adds exactly n
 an edit (the voice before and after it, a sweep or causal check with it in force) is the edit's alone, not a change of
 numeric path as well. The lab's gradient passes (labkit.Lab.grad_linears) run the reference forward and backward (the
 kernel has no backward). A layer the kernel cannot take (out features not a multiple of 16, in features
-not of 32, a GGUF type other than Q4_0) stays packed on the reference path, as `layers_as` counts; a model of which it
-can take none (a Q4_K file) is refused, not run on the reference under a `+int4mm` id. On a GPU it is refused: the
-kernel is the CPU's.
+not of 32, a GGUF type other than Q4_0, Q4_1 and Q4_K) stays on the reference path, as `layers_as` counts; a model of
+which it can take none (a Q6_K file) is refused, not run on the reference under a `+int4mm` id. On a GPU it is
+refused: the kernel is the CPU's.
 """
 
 from __future__ import annotations
@@ -46,11 +55,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from backend.gguf_weights import GGUFLinear, dense_cols, dense_rows
+from backend.gguf_weights import GGUFLinear, _k_scale_min, block_shape, dense_cols, dense_rows
 
 KERNEL = "int4mm"
 SUFFIX = "+int4mm"  # after the model id's reading class: gguf:<file>#<fp>@cpu/bfloat16+int4mm
 GROUP = 32
+KERNEL_TYPES = ("Q4_0", "Q4_1", "Q4_K")  # the GGUF types whose weight is (q - 8) x scale + zero per group of 32
 
 
 def kernel_missing() -> Optional[str]:
@@ -69,12 +79,14 @@ def fits(out_features: int, in_features: int) -> bool:
     return int(out_features) % 16 == 0 and int(in_features) % GROUP == 0
 
 
-def pack(codes: torch.Tensor, scale: torch.Tensor, dtype: torch.dtype) -> Tuple[torch.Tensor, torch.Tensor]:
+def pack(codes: torch.Tensor, scale: torch.Tensor, dtype: torch.dtype,
+         zero: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
     """(torch's packed int4 weight uint8 [out, in / 2], scales and zeros [in / 32, out, 2] in `dtype`) for the weight
-    (codes - 8) x scale: codes [out, in] in 0..15, scale [out, in / 32] (zeros 0)."""
+    (codes - 8) x scale + zero: codes [out, in] in 0..15, scale and zero [out, in / 32] (zero None: zeros 0)."""
     packed = torch.ops.aten._convert_weight_to_int4pack_for_cpu(codes.to(torch.int32).contiguous(), 1)
     s = scale.to(torch.float32).to(dtype).T
-    return packed, torch.stack([s, torch.zeros_like(s)], -1).contiguous()
+    z = torch.zeros_like(s) if zero is None else zero.to(torch.float32).to(dtype).T
+    return packed, torch.stack([s, z], -1).contiguous()
 
 
 def mm(x: torch.Tensor, packed: torch.Tensor, scales_zeros: torch.Tensor, out_features: int,
@@ -85,6 +97,41 @@ def mm(x: torch.Tensor, packed: torch.Tensor, scales_zeros: torch.Tensor, out_fe
     x2 = x.reshape(-1, x.shape[-1]).to(scales_zeros.dtype).contiguous()
     y = torch.ops.aten._weight_int4pack_mm_for_cpu(x2, packed, GROUP, scales_zeros).reshape(*lead, int(out_features))
     return y if bias is None else y + bias.to(y.dtype)
+
+
+@torch.no_grad()
+def kernel_weight(packed: torch.Tensor, scales_zeros: torch.Tensor, in_features: int, out_features: int,
+                  chunk: int = 2048) -> torch.Tensor:
+    """The weight [out, in] as the kernel forms it, in its scales' dtype: the identity's rows multiplied through it,
+    `chunk` at a time, so each entry is one weight, (q - 8) x scale + zero, alone in its sum."""
+    n = int(in_features)
+    out = torch.empty(int(out_features), n, dtype=scales_zeros.dtype)
+    for r0 in range(0, n, int(chunk)):
+        r1 = min(r0 + int(chunk), n)
+        eye = torch.zeros(r1 - r0, n, dtype=scales_zeros.dtype)
+        eye[:, r0:r1] = torch.eye(r1 - r0, dtype=scales_zeros.dtype)
+        out[:, r0:r1] = mm(eye, packed, scales_zeros, out_features).T
+    return out
+
+
+@torch.no_grad()
+def kernel_departure(mod: "Int4GGUFLinear") -> Dict[str, Any]:
+    """How far an int4mm layer's weight, as the kernel forms it (`kernel_weight`), departs from the reference's (the
+    file's numbers unpacked in float32, as gguf-py's, then rounded to the model's dtype: `mod.unpacked()`). `max_share`
+    is the largest |difference| as a share of its group's bound 8|scale| + |zero| (scale and zero in float32, before
+    the kernel's rounding); `tolerance` what rounding allows, 2 x the dtype's eps: a scale and a zero each rounded to
+    the dtype (8 x |scale| and |zero| times half an eps), the kernel's weight rounded and the reference's rounded
+    (half an eps of |weight| each, which is at most the bound) make 3 x half an eps of the bound, under 4. `max_rel` is
+    the largest |difference| over the largest |weight|."""
+    w_k = kernel_weight(mod.int4_packed, mod.int4_scales_zeros, mod.in_features, mod.out_features).to(torch.float64)
+    w_r = mod.unpacked().to(torch.float64)
+    _codes, scale, zero = kernel_codes(mod.weight_blocks, mod.qtype, mod.in_features)
+    bound = 8.0 * scale.abs().to(torch.float64) + (0.0 if zero is None else zero.abs().to(torch.float64))
+    diff = (w_k - w_r).abs()
+    share = diff / bound.repeat_interleave(GROUP, dim=1).clamp_min(torch.finfo(torch.float64).tiny)
+    return {"qtype": mod.qtype, "dtype": str(mod.compute_dtype).replace("torch.", ""), "max_share": float(share.max()),
+            "tolerance": 2.0 * torch.finfo(mod.compute_dtype).eps, "max_rel": float(diff.max() / w_r.abs().max().clamp_min(1e-300)),
+            "identical_share": float((diff == 0).double().mean())}
 
 
 def with_overlay_terms(mod: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -127,6 +174,49 @@ def q4_0_codes(blocks: torch.Tensor, in_features: int) -> Tuple[torch.Tensor, to
     return codes, d
 
 
+def q4_1_codes(blocks: torch.Tensor, in_features: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """A Q4_1 tensor's bytes uint8 [out, in / 32 x 20] -> (codes uint8 [out, in], scale, zero float32 [out, in / 32]):
+    each block d and m (fp16) then 16 bytes laid out as Q4_0's, the weight d x q + m (gguf_weights._q4_1), so
+    scale = d and zero = 8d + m."""
+    out = blocks.shape[0]
+    b = blocks.reshape(out, int(in_features) // GROUP, 20)
+    d = b[..., :2].contiguous().view(torch.float16).to(torch.float32).reshape(out, -1)
+    m = b[..., 2:4].contiguous().view(torch.float16).to(torch.float32).reshape(out, -1)
+    qs = b[..., 4:]
+    codes = torch.cat([qs & 0x0F, qs >> 4], dim=-1).reshape(out, int(in_features))
+    return codes, d, 8.0 * d + m
+
+
+def q4_k_codes(blocks: torch.Tensor, in_features: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """A Q4_K tensor's bytes uint8 [out, in / 256 x 144] -> (codes uint8 [out, in], scale, zero float32 [out, in / 32]):
+    each super-block d and dmin (fp16), twelve bytes of eight 6-bit scales sc and minimums m, then 128 bytes whose 32
+    bytes g hold sub-block 2g's codes low and 2g + 1's high, a sub-block's weight (d x sc) x q - dmin x m
+    (gguf_weights._q4_k), so per sub-block scale = d x sc and zero = 8 x d x sc - dmin x m."""
+    out = blocks.shape[0]
+    b = blocks.reshape(-1, 144)
+    d = b[:, :2].contiguous().view(torch.float16).to(torch.float32)
+    dmin = b[:, 2:4].contiguous().view(torch.float16).to(torch.float32)
+    sc, m = _k_scale_min(b[:, 4:16])
+    scale = d * sc.to(torch.float32)
+    zero = 8.0 * scale - dmin * m.to(torch.float32)
+    qs = b[:, 16:].reshape(-1, 4, 1, 32)
+    codes = torch.cat([qs & 0x0F, qs >> 4], dim=-2).reshape(out, int(in_features))
+    return codes, scale.reshape(out, -1), zero.reshape(out, -1)
+
+
+def kernel_codes(blocks: torch.Tensor, qtype: str, in_features: int) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
+    """A GGUF tensor of one of KERNEL_TYPES as the kernel's (codes [out, in], scale [out, in / 32], zero or None), its
+    weight (codes - 8) x scale + zero; a ValueError for another type."""
+    if qtype == "Q4_0":
+        codes, d = q4_0_codes(blocks, in_features)
+        return codes, d, None
+    if qtype == "Q4_1":
+        return q4_1_codes(blocks, in_features)
+    if qtype == "Q4_K":
+        return q4_k_codes(blocks, in_features)
+    raise ValueError(f"torch's int4 kernel takes {', '.join(KERNEL_TYPES)} layers, not {qtype}.")
+
+
 def w4a16_codes(weight_packed: torch.Tensor) -> torch.Tensor:
     """compressed-tensors' pack-quantized words int32 [out, in / 8] -> codes uint8 [out, in] in 0..15 (nibble j of word
     k is column 8k + j, the weight (code - 8) x scale, as engine_runtime.dequantize_w4a16_full reads it)."""
@@ -136,24 +226,25 @@ def w4a16_codes(weight_packed: torch.Tensor) -> torch.Tensor:
 
 
 class Int4GGUFLinear(GGUFLinear):
-    """A Q4_0 `GGUFLinear` whose forward is torch's int4 CPU kernel. It keeps its blocks (on the CPU the file's memory
-    map) for every accessor, which read the file's numbers as a packed layer's do, and torch's packing of the same codes
-    with d in the model's dtype for the forward; a vault overlay in force is added to the kernel's product
-    (`with_overlay_terms`); with `int4_enabled` false its forward is the packed layer's own (the reference)."""
+    """A Q4_0, Q4_1 or Q4_K `GGUFLinear` whose forward is torch's int4 CPU kernel. It keeps its blocks (on the CPU the
+    file's memory map) for every accessor, which read the file's numbers as a packed layer's do, and torch's packing of
+    the same codes with each group's scale and zero in the model's dtype (`kernel_codes`) for the forward; a vault
+    overlay in force is added to the kernel's product (`with_overlay_terms`); with `int4_enabled` false its forward is
+    the packed layer's own (the reference)."""
 
     int4mm = True
 
-    def __init__(self, blocks: torch.Tensor, in_features: int, out_features: int, *, dtype: torch.dtype = torch.bfloat16,
-                 gguf_name: str = "") -> None:
-        super().__init__(blocks, "Q4_0", in_features, out_features, dtype=dtype, gguf_name=gguf_name)
-        codes, d = q4_0_codes(blocks, in_features)
-        packed, sz = pack(codes, d, dtype)
+    def __init__(self, blocks: torch.Tensor, in_features: int, out_features: int, *, qtype: str = "Q4_0",
+                 dtype: torch.dtype = torch.bfloat16, gguf_name: str = "") -> None:
+        super().__init__(blocks, qtype, in_features, out_features, dtype=dtype, gguf_name=gguf_name)
+        codes, scale, zero = kernel_codes(blocks, self.qtype, in_features)
+        packed, sz = pack(codes, scale, dtype, zero)
         self.register_buffer("int4_packed", packed, persistent=False)
         self.register_buffer("int4_scales_zeros", sz, persistent=False)
         self.int4_enabled = True
 
     def extra_repr(self) -> str:
-        return f"in_features={self.in_features}, out_features={self.out_features}, Q4_0 int4mm, {self.compute_dtype}"
+        return f"in_features={self.in_features}, out_features={self.out_features}, {self.qtype} int4mm, {self.compute_dtype}"
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if not self.int4_enabled:
@@ -271,30 +362,51 @@ def compare_rows(ref: Sequence[Dict[str, Any]], new: Sequence[Dict[str, Any]], k
     }
 
 
+# the byte offsets of each type's fp16 fields (d, and m or dmin where it has one), for random blocks to time
+_F16_AT = {"Q4_0": (0,), "Q4_1": (0, 2), "Q4_K": (0, 2), "Q5_0": (0,), "Q5_1": (0, 2), "Q5_K": (0, 2), "Q6_K": (208,),
+           "Q8_0": (0,)}
+TIMED_TYPES = ("Q4_0", "Q4_1", "Q4_K", "Q5_K", "Q6_K", "Q8_0")
+
+
+def random_blocks(qtype: str, out_features: int, in_features: int, g: torch.Generator) -> torch.Tensor:
+    """Random `qtype` blocks uint8 [out, row bytes]: random bytes, each fp16 field a small positive number (so every
+    weight is finite and of a layer's size)."""
+    bs, ts = block_shape(qtype)
+    n = out_features * (in_features // bs)
+    b = torch.randint(0, 256, (n, ts), generator=g, dtype=torch.int64).to(torch.uint8)
+    for off in _F16_AT[qtype]:
+        f = (torch.rand(n, 1, generator=g) * 0.018 + 0.002).to(torch.float16)
+        b[:, off : off + 2] = f.view(torch.uint8)
+    return b.reshape(out_features, -1).contiguous()
+
+
 def timed_layer(out_features: int, in_features: int, rows: Sequence[int] = (1, 8, 64), reps: int = 3,
-                seed: int = 0) -> List[Dict[str, Any]]:
-    """The kernel against the reference on one random layer of this shape, held as Q4_0 blocks and in the W4A16
-    layout (the same codes, the scales as bf16), at each batch of `rows`: the best of `reps` wall times (seconds) of
-    the packed GGUF layer's forward (unpack, then F.linear), the pinned W4A16 forward (its unpacker, then F.linear),
-    the resident bf16 product, and the kernel on each, all in bf16 on this machine's threads
-    (scripts/compare_int4mm.py --time)."""
+                seed: int = 0, qtypes: Sequence[str] = TIMED_TYPES) -> List[Dict[str, Any]]:
+    """The kernel against the reference on one random layer of this shape, at each batch of `rows`: the best of `reps`
+    wall times (seconds), all in bf16 on this machine's threads (scripts/compare_int4mm.py --time). Per row count:
+    `types`, for each of `qtypes` held as random blocks of that type, the packed layer's forward (the reference: unpack,
+    then F.linear) and, for KERNEL_TYPES, the kernel's (`int4mm_s`, else None: those stay on the reference path, or
+    resident); the resident bf16 product (`resident_bf16_s`, what THEODOLITE_GGUF_RESIDENT_GB buys a layer the kernel
+    cannot take); and the W4A16 layout of the Q4_0 layer's codes, its scales as bf16, through the pinned forward
+    (`w4a16_reference_s`) and the kernel (`w4a16_int4mm_s`)."""
     from backend import engine_runtime as er
 
     g = torch.Generator().manual_seed(seed)
-    n_blocks = in_features // GROUP
-    d = (torch.rand(out_features, n_blocks, 1, generator=g) * 0.018 + 0.002).to(torch.float16)
-    qs = torch.randint(0, 256, (out_features, n_blocks, 16), generator=g, dtype=torch.int64).to(torch.uint8)
-    blocks = torch.cat([d.view(torch.uint8).reshape(out_features, n_blocks, 2), qs], -1).reshape(out_features, -1)
-    packed_layer = GGUFLinear(blocks.contiguous(), "Q4_0", in_features, out_features, dtype=torch.bfloat16)
-    int4_layer = Int4GGUFLinear(blocks.contiguous(), in_features, out_features, dtype=torch.bfloat16)
-    w = packed_layer.unpacked()
-    # the same codes in compressed-tensors' layout: nibble j of word k is column 8k + j
-    codes, _d = q4_0_codes(blocks, in_features)
+    layers: Dict[str, Tuple[GGUFLinear, Optional[Int4GGUFLinear]]] = {}
+    for qt in qtypes:
+        blocks = random_blocks(qt, out_features, in_features, g)
+        layers[qt] = (GGUFLinear(blocks, qt, in_features, out_features, dtype=torch.bfloat16),
+                      Int4GGUFLinear(blocks, in_features, out_features, qtype=qt, dtype=torch.bfloat16)
+                      if qt in KERNEL_TYPES else None)
+    w = next(iter(layers.values()))[0].unpacked()
+    # the Q4_0 layer's codes in compressed-tensors' layout: nibble j of word k is column 8k + j
+    q40 = random_blocks("Q4_0", out_features, in_features, g)
+    codes, d = q4_0_codes(q40, in_features)
     c = codes.to(torch.int64).reshape(out_features, -1, 8) << torch.arange(0, 32, 4, dtype=torch.int64)
     words = c.sum(-1)
     ct = nn.Module()
     ct.weight_packed = torch.where(words >= 2**31, words - 2**32, words).to(torch.int32)
-    ct.weight_scale = d.reshape(out_features, n_blocks).to(torch.bfloat16)
+    ct.weight_scale = d.to(torch.bfloat16)
     ct.bias, ct._memit_col_overlays, ct._memit_row_overlays = None, {}, {}
     ct_forward = er._make_w4a16_linear_forward(ct)
     ct_packed, ct_sz = pack(w4a16_codes(ct.weight_packed), ct.weight_scale, torch.bfloat16)
@@ -312,7 +424,9 @@ def timed_layer(out_features: int, in_features: int, rows: Sequence[int] = (1, 8
     with torch.no_grad():
         for b in rows:
             x = torch.randn(int(b), in_features, generator=g).to(torch.bfloat16)
-            out.append({"rows": int(b), "reference_s": best(packed_layer, x), "w4a16_reference_s": best(ct_forward, x),
-                        "resident_bf16_s": best(lambda v: F.linear(v, w), x), "int4mm_s": best(int4_layer, x),
+            types = {qt: {"reference_s": best(ref, x), "int4mm_s": best(k, x) if k is not None else None}
+                     for qt, (ref, k) in layers.items()}
+            out.append({"rows": int(b), "types": types, "resident_bf16_s": best(lambda v: F.linear(v, w), x),
+                        "w4a16_reference_s": best(ct_forward, x),
                         "w4a16_int4mm_s": best(lambda v: mm(v, ct_packed, ct_sz, out_features), x)})
     return out

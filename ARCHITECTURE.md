@@ -1003,9 +1003,10 @@ hook runs (it records the CLI's version; 2.1.312 here).
 The instrument was built for the W4A16 checkpoint on one GPU. Since 28 October 2026 it can also read a GGUF of Gemma 4
 (llama.cpp's format), and run on the CPU; the first two layers of that work, checked on the CPU only
 (`scripts/check_gguf.py` and `scripts/check_gguf_cpu.py`, on the stand-in of `scripts/atlas_stand_in.py` written to tiny
-GGUF files). Nothing here has run on Gemma-4-31B from a GGUF, and the checkpoint has run on the CPU only for the wiring
-check's offline reads (§4.7: eight prefills of the packed checkpoint, 31 to 51 s each on a 12-core desktop, 29 October
-2026).
+GGUF files). The checkpoint has run on the CPU for the wiring check's offline reads (§4.7: eight prefills of the packed
+checkpoint, 31 to 51 s each on a 12-core desktop, 29 October 2026), and on 2 November 2026 Gemma-4-31B ran from a GGUF
+on that desktop's CPU through int4mm, from the QAT Q4_0 and from a Q4_K_M with its Q6_K layers resident (below: "The
+31B from a GGUF").
 
 **Choosing the runtime** (`backend/runtime_factory.py`, `make_runtime()`; the server, `scripts/census_run.py`,
 `scripts/atlas_build.py`, the scientist's MCP server run alone, the lab daemon `experiments/lab/labd.py` and the GPU
@@ -1017,7 +1018,8 @@ and `scripts/check_sweep_refactor.py` (two checkouts, one older than the factory
 |---|---|---|
 | `THEODOLITE_GGUF` | a `.gguf` file | `GGUFRuntime` on it; unset: the pinned `TheodoliteRuntime` on the W4A16 checkpoint, as before |
 | `THEODOLITE_DEVICE` | `cpu`, `cuda:N` | where the model runs (default `cuda:0`); `cpu` hides the GPUs from the process (`CUDA_VISIBLE_DEVICES=""`) |
-| `THEODOLITE_GGUF_LINEARS` | `packed`, `resident`, `dense`, `int4mm` | how a GGUF's quantised layers are held (default `packed`); `int4mm`, the CPU only, multiplies Q4_0 layers by torch's int4 kernel (below) |
+| `THEODOLITE_GGUF_LINEARS` | `packed`, `resident`, `dense`, `int4mm` | how a GGUF's quantised layers are held (default `packed`); `int4mm`, the CPU only, multiplies Q4_0, Q4_1 and Q4_K layers by torch's int4 kernel (below) |
+| `THEODOLITE_GGUF_RESIDENT_GB` | a number of GB (10^9 bytes) | with `packed` or `int4mm`: the layers that would be packed (a K-quant file's Q5_K, Q6_K and Q8_0, which the kernel cannot take) held resident in the model's dtype, in the model's order, each that still fits; the rest packed (below) |
 | `THEODOLITE_CHECKPOINT_LINEARS` | `packed`, `int4mm` | the same for the W4A16 checkpoint on the CPU (default `packed`) |
 | `THEODOLITE_GGUF_CONFIG` | a `config.json` | build from this config: it stands in for what the file's metadata leaves out, and is refused where it disagrees with what the file states |
 | `THEODOLITE_DTYPE` | `bfloat16`, `float32` | a GGUF model's dtype (default `bfloat16`, as the instrument runs) |
@@ -1084,7 +1086,15 @@ at load and drops the blocks; `dense` builds plain `nn.Linear` layers, as transf
 stored as F32, F16 or BF16 is a plain layer in every mode. All three hear the vault's overlays as `_w4a16_forward` lays
 them (column overlays, then row overlays, on a clone), and the forward is the same numbers in every mode. The embedding
 (which is also the tied lm_head), the norms and the layer scalars are unpacked to the model's dtype.
-`int4mm`, the int4 kernel below, is none of the three.
+`int4mm`, the int4 kernel below, is none of the three. **Partly resident** (`THEODOLITE_GGUF_RESIDENT_GB`, since
+2 November 2026): beside `packed` or `int4mm`, the layers that would be packed are made resident in the model's order
+(layer 0's seven first), each that still fits in the budget's bytes of unpacked weight (2 a weight in bf16), and the
+rest stay packed. It is for a file the machine cannot hold dense (the 31B's 62 GB) whose layers the kernel cannot all
+take: a Q4_K_M's Q6_K layers (55 of 410, 8.04 GB in bf16), or a Q5_K or Q6_K file's bulk as far as memory goes. A
+resident layer's forward is the packed one's bit for bit, so the budget is not in the model id; the weights card names
+it (`resident_gb`, `resident_bytes`, and `layers_as`: `"Q6_K resident"`). In the model's order rather than by type: the
+reference unpacks the 31B's types at 0.7 to 1.5 ns a weight on the 12-core home machine (Q8_0 the cheapest, Q5_K the
+dearest: the table under "The int4 kernel"), so which layers fill the budget matters less than how much of it there is.
 
 **The norm convention.** `Gemma4RMSNorm` multiplies by its stored weight, which already holds what Gemma 2 and 3 write as
 1 + w; a Gemma 4 GGUF stores that same number. Read in llama.cpp's converter (`conversion/gemma.py`, master of
@@ -1119,7 +1129,8 @@ inferred):
 |---|---|---|
 | packed 4-bit (a Q4_0 GGUF, or the W4A16 checkpoint) | about 20 GB (the 4-bit weights and the bf16 embedding) | every weight unpacked: 7.8 ns a weight for Q4_0, 11.4 for Q4_K, 10.0 for the pinned W4A16 unpacker (measured on a 5,376 × 21,504 layer), so about 4 to 6 minutes a forward on that machine for 29.3 billion weights |
 | resident bf16 | about 62 GB | a plain product: bf16 at 12 GB/s of weights for one row, 306 GFLOP/s at 32 rows there, so about 5 s a written word-piece for one row and 6–7 s for 32 |
-| int4mm (a Q4_0 GGUF, or the checkpoint with `THEODOLITE_CHECKPOINT_LINEARS=int4mm`) | about 21 GB (the kernel's 0.625 bytes a weight and the bf16 embedding; the checkpoint keeps its 15 GB of `weight_packed` beside them, a GGUF its file's pages) | torch's int4 kernel, no unpacking (below): about 2 s a written word-piece at one row, 21 s a step of 64 rows (one layer timed, the rest inferred) |
+| int4mm (a Q4_0 GGUF, or the checkpoint with `THEODOLITE_CHECKPOINT_LINEARS=int4mm`) | about 21 GB (the kernel's 0.625 bytes a weight and the bf16 embedding; the checkpoint keeps its 15 GB of `weight_packed` beside them, a GGUF its file's pages) | torch's int4 kernel, no unpacking (below): about 2 s a written word-piece at one row, 21 s a step of 64 rows (one layer timed, the rest inferred); measured on the 12-core desktop from the QAT Q4_0, 0.45 s a written word-piece |
+| int4mm on a K-quant file, partly resident (a Q4_K_M: its Q4_K layers through the kernel, its Q6_K resident with `THEODOLITE_GGUF_RESIDENT_GB=8.5`) | 26.5 GiB of the process's own (the kernel's weights, 8.0 GB of resident Q6_K, the bf16 embedding) beside 17.6 GiB of the file's mapped pages | measured on the 12-core desktop: 0.56 s a written word-piece, a 59-piece prefill in 3.5 s (below) |
 | the J++ lens | 3.4 GB more (bf16, in RAM) | — |
 
 **The int4 kernel** (`backend/int4_cpu.py`, `THEODOLITE_GGUF_LINEARS=int4mm` or `THEODOLITE_CHECKPOINT_LINEARS=int4mm`).
@@ -1140,17 +1151,52 @@ So, within a run, int4mm was 70 to 150 times as fast as the reference at one row
 quieter run), 20 to 55 times at eight and 4 to 14 times at 64; as fast as resident bf16 at one or eight rows, and 3 to 5
 times slower at 64. torch's other int4 route, `_dyn_quant_matmul_4bit` (fast through Arm's KleidiAI, here a fallback),
 took 0.19 s at one row and 10 s at 64, and quantises the activations to int8; the int4 kernel in float32 was slower than
-the reference at 8 rows and more. The kernel's weight is (q − 8) × scale + zero: a W4A16 scale is held exactly, a Q4_0
-d (fp16) is rounded to bf16, and the sums are the kernel's own, so its readings are not the reference's bits: their
-model id ends `+int4mm` (no census run, index or lens card mixes them with the reference's) and the weights card says
-`int4mm`. Its accessors read the file's blocks (or `weight_packed`) as before. A vault edit keeps the kernel's
-product and adds the edit as its difference from the file's numbers (`int4_cpu.with_overlay_terms`: the edited
-columns' new values less the file's, times their activations, in float32), so an edit that changes no weight changes no
-reading, and what the voice, a sweep or a causal check credits to an edit is the edit's alone, not a change of numeric
-path as well (before this the edited layer ran the reference, and on the stand-in an edit setting a column to its own
-value changed 13 of 30 greedy answers). The lab's gradient passes run the reference; a layer the kernel cannot take (out
-features not in sixteens, a GGUF type other than Q4_0) stays packed, and a file of which it takes none is refused. A
-row's product through the kernel is the same alone or in a batch.
+the reference at 8 rows and more. The kernel's weight is (q − 8) × scale + zero, a scale and a zero per group of 32 in
+the activations' dtype: a W4A16 scale is held exactly, a Q4_0 d (fp16) is rounded to bf16 (zero 0), a Q4_1 block's
+d × q + m is scale d and zero 8d + m, and a Q4_K sub-block's (d × sc) × q − dmin × m (its 6-bit scale and minimum under
+the super-block's fp16 d and dmin) is scale d × sc and zero 8 × d × sc − dmin × m, both worked out in float32 and
+rounded to bf16 once (`int4_cpu.kernel_codes`). The sums are the kernel's own, so its readings are not the reference's
+bits: their model id ends `+int4mm` (no census run, index or lens card mixes them with the reference's) and the weights
+card says `int4mm`. Its accessors read the file's blocks (or `weight_packed`) as before. A vault edit keeps the kernel's
+product and adds the edit as its difference from the file's numbers (`int4_cpu.with_overlay_terms`: the edited columns'
+new values less the file's, times their activations, in float32), so an edit that changes no weight changes no reading,
+and what the voice, a sweep or a causal check credits to an edit is the edit's alone, not a change of numeric path as
+well (before this the edited layer ran the reference, and on the stand-in an edit setting a column to its own value
+changed 13 of 30 greedy answers). The lab's gradient passes run the reference; a layer the kernel cannot take (out
+features not in sixteens, a GGUF type other than Q4_0, Q4_1 and Q4_K: the 5-, 6- and 8-bit types have no place in a
+4-bit code, and Q2_K and Q3_K group by 16) stays packed, or resident within `THEODOLITE_GGUF_RESIDENT_GB`, and a file of
+which it takes none is refused. A row's product through the kernel is the same alone or in a batch.
+
+On the 12-core home machine (an AMD Ryzen 9 7900X, 12 threads; 2 November 2026, `scripts/compare_int4mm.py --time`,
+the best of 5, beside other sessions' work) for each type, the range over the two feed-forward shapes (5,376 × 21,504
+and 21,504 × 5,376):
+
+| one feed-forward layer (115.6 M weights) | 1 row | 8 rows | 64 rows |
+|---|---|---|---|
+| Q4_0, unpacked then multiplied (the reference) | 101–128 ms | 110–123 ms | 102–126 ms |
+| Q4_1, the reference | 128–142 ms | 124–142 ms | 131–141 ms |
+| Q4_K, the reference | 127–144 ms | 129–139 ms | 134–140 ms |
+| Q5_K / Q6_K / Q8_0, the reference (the kernel cannot take them) | 145–178 / 110–158 / 80–97 ms | 153–174 / 112–152 / 81–98 ms | 149–179 / 111–158 / 86–99 ms |
+| resident bf16 | 3.2–3.6 ms | 3.4–4.1 ms | 5.5–8.5 ms |
+| int4mm, Q4_0 / Q4_1 / Q4_K | 0.41–0.75 / 0.69–0.74 / 0.39–0.43 ms | 1.6–2.5 / 2.1–2.5 / 1.4–1.6 ms | 12–18 / 11–12 / 11–15 ms |
+
+The reference unpacks at 0.7 to 1.5 ns a weight there (Q8_0 the cheapest, Q5_K the dearest), so a packed forward of the
+31B is some 30 s; through the kernel a Q4_K layer at one row is some 300 times faster than its reference, and at 64
+rows about 10 times. One layer timed over and over keeps much of its 72 MB of packed weight in the 7900X's 64 MB of L3,
+so the one-row kernel figures are faster than a whole forward allows, which reads every weight from memory: the 31B's
+written word-piece below comes to some 45 GB/s.
+
+How close the kernel's weight is to the file's is `int4_cpu.kernel_departure`: the weight as the kernel forms it (the
+identity multiplied through it) against the reference's unpacking, the largest difference as a share of its group's
+bound 8|scale| + |zero|, against what rounding allows (twice the dtype's eps: a scale and a zero each rounded, then the
+kernel's weight and the reference's, make three half-eps of the bound). In `scripts/check_gguf_cpu.py` §4 (2 November
+2026, the 12-core home machine), on random blocks of each type with fp16 fields of either sign and every 6-bit scale and
+minimum: in float32 the largest difference is nought for Q4_0 and Q4_1 and 1e-7 of the bound for Q4_K (tolerance
+2.4e-7), in bf16 0.0068, 0.0074 and 0.0076 (tolerance 0.016); over every int4mm layer of a Q4_1 stand-in and of a Q4_K
+one (four times as wide, for rows of 256; its o_proj rows of 64 and 128 fall back to Q5_0 as llama.cpp's do, and stay
+packed) 0.0078 of the bound, 0.006 of the largest weight. The model id, card, accessors (the file's numbers, bit for
+bit), a layer's product (within bf16 of the exact one), an edit that changes no weight (nought) and the kernel turned
+off (the reference's logits) are as for Q4_0.
 
 How far it departs is `int4_cpu.compare_rows`, after neuron-explorer's `sweep/check_equivalence.py` judged on what a
 census reads: `scripts/compare_int4mm.py` takes a canary census on the reference at two batches (the floor) and through
@@ -1165,8 +1211,27 @@ on a Ryzen 9 7900X, whose AVX-512 bf16 products round by the batch, every answer
 up to 0.0039 (nought again with `ONEDNN_MAX_CPU_ISA=AVX2`), so a CPU's floor is to be measured on it, as a card's is.
 Through the kernel 30 of 64 answers are identical (29 on the 7900X's AVX-512 path), the shared prefix 65%, the largest
 |Δ log-prob| over it 0.024, the top-5 overlap 0.95 (at the script's defaults, 244 answers: 119 identical, 67%, 0.030,
-0.96): its own class by the rule (the stand-in's small, near-tied logits split greedy answers easily; the 31B is
-untested).
+0.96): its own class by the rule (the stand-in's small, near-tied logits split greedy answers easily). The same canary
+on the 7900X for the other two kernel types: Q4_1 on the same stand-in, 26 of 64 identical, 61%, 0.028, 0.96; Q4_K on
+the wide stand-in, 13 of 64, 42%, 0.10, 0.88, which is as far as Q4_0 departs on that wide stand-in (12 of 64, 41%,
+0.16, 0.88): the wide one's answers split more easily whatever the type, and Q4_K's mapping departs no further than
+Q4_0's. All three are their own class by the rule.
+
+**The 31B from a GGUF** (2 November 2026, the 12-core home machine, through int4mm, one run each beside other
+sessions' work, load average 12 to 15; the J++ lens not loaded). `gemma-4-31B-it-Q4_K_M.gguf` (lmstudio-community: 355
+Q4_K linears; 55 Q6_K, the feed-forward down projection of 30 layers and the value projection of 25; a Q6_K embedding)
+with `THEODOLITE_GGUF_RESIDENT_GB=8.5` loads in 48 s, the 355 through the kernel and the 55 resident (8.04 GB; a budget
+of 8 holds 54 of them). After loading, the process holds 26.5 GiB of its own and 17.6 GiB of the file's mapped pages,
+which the kernel does not read again and the system may reclaim. A prefill of 59 word-pieces took 3.5 s and a written
+word-piece 0.56 s. The QAT Q4_0 (`gemma-4-31B-it-QAT-Q4_0.gguf`, its 410 linears all Q4_0), run the same way just after,
+took 46 s, 3.5 s and 0.45 s. The K file's quarter more a word-piece is its 8 GB of resident bf16, read at every step (2
+bytes a weight against the kernel's 0.625). Against the reference on the Q4_K_M (the kernel turned off in place, the
+same prefill), the last position's five likeliest pieces are the same and in the same order, its KL from the reference
+0.001, the largest |Δ log-prob| among the reference's five 0.23; the weight of two Q4_K layers as the kernel forms it is
+within 0.0078 of its group's bound of the file's numbers (tolerance 0.016), as on the stand-in. The reference's prefill
+took six to seven minutes in those runs, but each time beside another session's 31B, its blocks read again from disk
+through the memory map (over a million major page faults): not its own speed, which the layer timings put near 30 s. The
+canary of `scripts/compare_int4mm.py` on the real file has not been run.
 
 A machine with more cores and memory bandwidth should be some times faster (inferred, not measured). Either way the CPU
 suits reading weights (the wiring, the lens build, `compare_gguf_ct.py`), single forwards (a sighting's capture) and
@@ -1195,7 +1260,8 @@ R3's go from `it-jpp-refit`.
 **Not supported yet:** the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4 and Q1_0 (refused in plain words); Gemma 4's
 mixture-of-experts (26B-A4B), per-layer embeddings (E2B, E4B) and shared key-value layers (refused); a bit-identical
 fast path on the CPU (every packed forward of the reference unpacks the whole weight; int4mm is fast but its own class);
-int4mm for Q4_1, Q4_K and the other K types (they stay packed); split GGUF files (`-00001-of-0000N`); the study's
+int4mm for Q5_0, Q5_1, Q5_K, Q6_K, Q8_0, Q2_K and Q3_K (no 4-bit code and group of 32 holds them: they stay packed, or
+resident within `THEODOLITE_GGUF_RESIDENT_GB`); split GGUF files (`-00001-of-0000N`); the study's
 registered scripts, which build the pinned runtime on the checkpoint and the GPU they were registered on. interp-engine
 takes the model as built (its own dtype argument is not used for a model handed to it); it ran the stand-in on this
 CPU-only machine without complaint, which cannot show what it asks of a GPU that is there but not used.
