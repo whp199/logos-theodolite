@@ -317,10 +317,12 @@ def free_port() -> int:
 
 
 class LlamaServer:
-    """A llama-server on the CPU over `model`, with `vectors` [(file, SCALE)] loaded, for the length of a with-block."""
+    """A llama-server on the CPU over `model`, with `vectors` [(file, SCALE)] loaded (and `extra` arguments, such as
+    scripts/check_lora_export.py's adapters), for the length of a with-block."""
 
-    def __init__(self, exe: Path, model: Path, vectors: Sequence[Tuple[Path, float]], log: Path) -> None:
-        self.exe, self.model, self.vectors, self.log = exe, model, list(vectors), log
+    def __init__(self, exe: Path, model: Path, vectors: Sequence[Tuple[Path, float]], log: Path,
+                 extra: Sequence[str] = ()) -> None:
+        self.exe, self.model, self.vectors, self.log, self.extra = exe, model, list(vectors), log, list(extra)
         self.port = free_port()
         self.proc: Optional[subprocess.Popen] = None
 
@@ -329,6 +331,7 @@ class LlamaServer:
                "-np", "1", "-ngl", "0", "-t", "2", "-ctk", "f32", "-ctv", "f32", "-fa", "off", "--no-warmup"]
         if self.vectors:
             cmd += ["--control-vector-scaled", ",".join(f"{p}:{s:g}" for p, s in self.vectors)]
+        cmd += self.extra
         env = {k: v for k, v in os.environ.items() if k not in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN")}
         env["CUDA_VISIBLE_DEVICES"] = ""
         self._log = open(self.log, "ab")
@@ -354,14 +357,17 @@ class LlamaServer:
                 self.proc.kill()
         self._log.close()
 
-    def first_logprobs(self, ids: Sequence[int], vocab: int, barred: Sequence[int]) -> np.ndarray:
+    def first_logprobs(self, ids: Sequence[int], vocab: int, barred: Sequence[int],
+                       body_extra: Optional[Dict[str, Any]] = None) -> np.ndarray:
         """[vocab] the log-probabilities of every word-piece at the first one written after `ids` (the prompt given as
         ids, so nothing is added to it). The server sends them only with a piece it can show, so the `barred` pieces
         (special marks, and bytes that are not whole characters, which the random stand-in writes often) are kept from
         being chosen by a logit bias; the log-probabilities it sends are the softmax of the raw logits, before any
-        sampler (`get_token_probabilities`, tools/server/server-common.cpp), so the bias does not touch them."""
+        sampler (`get_token_probabilities`, tools/server/server-common.cpp), so the bias does not touch them.
+        `body_extra` joins the request (a LoRA's per-request scales: {"lora": [{"id": 0, "scale": 1}]})."""
         body = json.dumps({"prompt": list(map(int, ids)), "n_predict": 1, "temperature": 0, "n_probs": vocab,
-                           "cache_prompt": False, "logit_bias": [[int(i), False] for i in barred]}).encode()
+                           "cache_prompt": False, "logit_bias": [[int(i), False] for i in barred],
+                           **(body_extra or {})}).encode()
         req = urllib.request.Request(f"http://127.0.0.1:{self.port}/completion", data=body,
                                      headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=60) as r:

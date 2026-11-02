@@ -389,6 +389,18 @@ def _write(w: Any, directions: Dict[int, np.ndarray], record: Dict[str, Any]) ->
         w.add_description(str(record["description"]))
     w.add_string(f"{ARCH}.model_hint", MODEL_HINT)
     w.add_int32(f"{ARCH}.layer_count", len(directions))
+    add_record(w, record)
+    for layer in sorted(directions):
+        w.add_tensor(f"direction.{int(layer)}", np.ascontiguousarray(directions[layer], dtype=np.float32))
+    w.write_header_to_file()
+    w.write_kv_data_to_file()
+    w.write_tensors_to_file()
+    w.close()
+
+
+def add_record(w: Any, record: Dict[str, Any]) -> None:
+    """`record` under `theodolite.*` through a gguf-py writer (str, bool, int, float, or lists of one of them), all but
+    its name and description, which go under `general.*`."""
     for key, value in record.items():
         if key in ("name", "description"):
             continue
@@ -406,12 +418,6 @@ def _write(w: Any, directions: Dict[int, np.ndarray], record: Dict[str, Any]) ->
                 w.add_array(k, list(value))
         else:
             w.add_string(k, str(value))
-    for layer in sorted(directions):
-        w.add_tensor(f"direction.{int(layer)}", np.ascontiguousarray(directions[layer], dtype=np.float32))
-    w.write_header_to_file()
-    w.write_kv_data_to_file()
-    w.write_tensors_to_file()
-    w.close()
 
 
 def read_control_vector(path: Path) -> Tuple[Dict[int, np.ndarray], Dict[str, Any]]:

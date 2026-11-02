@@ -47,6 +47,7 @@ theodolite2/
 │   ├── census_run.py                # takes a layer's census (GPU), resumable, in planned batches or shards
 │   ├── census_tools.py              # rank, merge, depth, spread, the dose window and canaries over census runs (CPU)
 │   ├── export_control_vector.py     # a neuron's push (or a set's) as a llama.cpp control-vector GGUF (CPU, §6)
+│   ├── export_lora.py               # mul, a head's scale, a vault edit as a llama.cpp LoRA; a block silenced in a GGUF copy (CPU, §6)
 │   ├── pod/                         # a rented card's jobs, each with --dry-run on the stand-in (README §vi):
 │   │   ├── setup.sh                 #   everything on the volume, the pinned downloads, the venv from constraints, a self-test
 │   │   ├── pilot.sh                 #   the one-hour pilot: steps per unpacker and batch, the writer's floor, projections
@@ -62,6 +63,7 @@ theodolite2/
 │   ├── check_atlas_api.py           # every atlas route against the operation it serves, the GPU lock, refusals (CPU only)
 │   ├── check_census.py              # the census's statistics, dose window, units, resume, shards, merge and spread (CPU only)
 │   ├── check_control_vector.py      # the exported vector against the census's push, bit for bit, and llama.cpp itself (CPU only)
+│   ├── check_lora_export.py         # the adapters and silenced copies against the instrument's own arithmetic, and llama.cpp (CPU only)
 │   ├── check_scientist.py           # the scientist's tools, MCP server and three backends against fakes (CPU only)
 │   ├── check_local_only.py          # who may ask: every route, the socket and the lab daemon, refused or let in (CPU only)
 │   ├── check_hypothesis_test.py     # test_motif_hypothesis's test against chance, its route and the folio's words (CPU only)
@@ -1206,7 +1208,9 @@ CPU-only machine without complaint, which cannot show what it asks of a GPU that
 
 Since 30 October 2026 a neuron found in the atlas or the census can be taken out of the instrument. The census's push
 of one MLP neuron, or of a set of them, is written as a llama.cpp control vector: a GGUF that `llama-server` loads
-beside any Gemma-4-31B-it GGUF, so every frontend that talks to it (SillyTavern and the rest) gets the push.
+beside any Gemma-4-31B-it GGUF, so every frontend that talks to it (SillyTavern and the rest) gets the push. Since
+2 November 2026 the pushes a control vector cannot carry (a neuron's mul, a head's scale, a vault edit, a whole block
+silenced) go out too, as a LoRA adapter or a copy of the model (`scripts/export_lora.py`, the end of this section).
 
 ```bash
 .venv/bin/python -I scripts/export_control_vector.py --layer 45 --neuron 13641            # dose +1: theodolite-L45-n13641.gguf
@@ -1368,3 +1372,94 @@ What it says:
 
 Not covered: two neurons (the top two of one layer), one GGUF, greedy answers of 48 pieces, the census's own six
 questions, one run each.
+
+### The pushes a control vector cannot carry (`scripts/export_lora.py`)
+
+```bash
+.venv/bin/python -I scripts/export_lora.py --gguf MODEL.gguf --layer 45 --neuron 13641 --mul 0   # theodolite-L45-n13641-mul0.gguf
+.venv/bin/python -I scripts/export_lora.py --gguf MODEL.gguf --page 46 --head 7 --scale 0.5      # theodolite-L45-h7-x0.5.gguf
+.venv/bin/python -I scripts/export_lora.py --gguf MODEL.gguf -o mix.gguf \
+    --push '[{"layer": 45, "n": 13641, "mode": "mul", "dose": 2}, {"layer": 44, "head": 3, "dose": 0}]'
+.venv/bin/python -I scripts/export_lora.py --gguf MODEL.gguf --vault "UPDATE LAYER 45 SLOT 13641 SET object = 'Paris'"
+.venv/bin/python -I scripts/export_lora.py --gguf MODEL.gguf --layer 45 --block --model-out MODEL-L45-ffn0.gguf
+.venv/bin/python -I scripts/export_lora.py --show theodolite-L45-n13641-mul0.gguf
+llama-server -m MODEL.gguf --lora theodolite-L45-n13641-mul0.gguf --lora-init-without-apply
+curl localhost:8080/completion -d '{"prompt": "...", "lora": [{"id": 0, "scale": 1}]}'
+```
+
+`--push` takes the HTTP API's PushIn objects (`atlas.py`), read as `Atlas.parse_pushes` reads them, defaults and all
+(mul's dose 2, a head's and a whole block's 0); `--neuron/--mul`, `--head/--scale` and `--block` are short forms of
+them. The columns are read on the CPU as the control-vector exporter reads them: from `--gguf FILE`, or by default
+from the W4A16 checkpoint (`engine_runtime.dequantize_w4a16_cols`; its config.json gives the head count). Name the
+GGUF you serve: B is made from the columns read, so a neuron silenced from the checkpoint's columns keeps
+`(W_gguf − W_checkpoint)[:, n]` on a GGUF of other quantisation. `--vault STATEMENT` runs the vault's own
+`execute_lql` (DELETE, UPDATE, INSERT) on the instrument's runtime, built on the CPU by `runtime_factory.make_runtime`
+(the whole model, minutes and some 20 GB on the 31B, its J++ lens for UPDATE and INSERT), reads the column each edit
+lays on, and leaves the vault as it was. A DELETE is the same column change as mul 0 without loading the model.
+
+**The mapping** (read in llama.cpp's source at cd26896: `llama_adapter_lora_init_impl` in src/llama-adapter.cpp,
+`build_lora_mm` in src/llama-graph.cpp, the generic `.scale` pass in src/llama-model.cpp lines 1407–1441, and
+src/models/gemma4.cpp, where `wo_s` goes into `build_attn` at lines 240 and 245 and `ffn_down_s` into `build_ffn` at
+327, 275 being the shared block of the mixture-of-experts model; then seen through llama.cpp itself, the check below):
+
+| the instrument (`atlas_ops.resolve`, `installed`) | llama.cpp |
+|---|---|
+| mul f on neuron n of layer l: `a_n × f` at the down projection's input | LoRA on `blk.<l>.ffn_down`: A = e_nᵀ, B = (f − 1) W_down[:, n]; rank 1 |
+| a vault edit: column n of W_down becomes v (rounded to the model's dtype, as its forward lays it on) | LoRA: A = e_nᵀ, B = f v − W_down[:, n] (f the neuron's mul, else 1); rank 1 |
+| head h of layer l times f: o_proj's inputs h·hd to (h + 1)·hd | LoRA on `blk.<l>.attn_output`: A the identity on those inputs, B = (f − 1) W_O[:, h·hd:(h+1)·hd]; rank hd (256 on the 31B's sliding layers, 512 on its full ones) |
+| a whole block silenced (`all: true`, 0) or every head (`head: "all"`, 0) | not a LoRA (full rank): a copy of the GGUF (`--model-out`) with an added one-number F32 `blk.<l>.ffn_down.scale` or `attn_output.scale` set to 0 (`--silence-by scale`, the default; the record in the file; a llama.cpp without the generic pass refuses it, "wrong number of tensors"), or the F32 `post_ffw_norm` / `post_attention_norm` zeroed in place (`--silence-by norm`: a reflink copy where the file system allows; the record beside it, FILE.theodolite.json). The norm of 0 is 0 either way |
+| act: a number added to one activation | refused: llama.cpp has no hook for it (a LoRA adds B (A x), which grows with the input; a control vector is added after the norm the activation's push goes through) |
+| add | the control vector above |
+| how big | the adapter's SCALE multiplies B (A x): per request (`"lora": [{"id": ID, "scale": S}]`), or `--lora-scaled FILE:S`. No `adapter.lora.alpha` is written, so SCALE alone. At SCALE s a factor f becomes 1 + s (f − 1): a file written at mul 0 gives the instrument's mul d at SCALE 1 − d |
+| which positions | pushes and head scales: every word-piece but the start mark; a vault edit everywhere / every position |
+| arithmetic | a bfloat16 activation multiplied / B (A x) in float32 added to llama.cpp's own product (on the CPU, its quantised weights times 8-bit activations) |
+
+The adapter's keys are llama.cpp's (`general.type` adapter, `general.architecture` gemma4, `adapter.type` lora), its
+tensors `<model tensor>.lora_a` [n_in, r] and `.lora_b` [r, n_out] in F32, one pair per model tensor (several neurons
+or heads at one layer share it, their ranks stacked). A silenced block's own pushes are moot and left out, and said.
+Every file records, under `theodolite.*`, the pushes as given, each entry, the weights read, the push, the scale, the
+start mark, what of llama.cpp was read, the caveat, the code's commit and the time (`--show` prints it).
+
+**What llama-server does with what it cannot use** (seen through cd26896 on the stand-in; the exporter prints it):
+- an adapter it cannot read (a tensor the model lacks, a file not there) stops it at start: "failed to apply lora
+  adapter: <why>", then "exiting due to model loading error". A good one logs nothing at the default verbosity
+  (`-lv 4` shows "loaded N tensors from lora file"); `GET /lora-adapters` lists the adapters held, with ids and paths.
+- a control vector it cannot use is logged ("control vector n_embd does not match model", or "failed to load control
+  vector file", "no valid control vector files passed") and the server serves the model unpushed
+  (`common_init_from_params`, common/common.cpp).
+- a request naming an adapter id it does not hold, or a scale of 0, is answered unpushed, without a word.
+- a request naming no adapter gets each at the scale `GET /lora-adapters` shows: 1, even with
+  `--lora-init-without-apply`. Name every adapter in every request, 0 for those left off.
+- `--lora` given twice draws a deprecation warning ("only last value will be used"; both were loaded here): give
+  several adapters comma-separated, `--lora A.gguf,B.gguf`, ids 0, 1, … in that order.
+
+**The check** (`scripts/check_lora_export.py`, CPU only, 72 checks in about 50 s). The control-vector check's stand-in,
+its o_proj packed as W4A16 too and its config.json beside the checkpoint. The exporter reads PushIn bodies as
+`Atlas.parse_pushes` does. Each adapter's W + B A is the instrument's change on random inputs within float32 rounding
+(5.0e-7 of the largest element): mul 0, 2 and −1.5, SCALE −1, 0.5 and 0, heads on a sliding and on the full layer,
+the vault's UPDATE and an edited neuron multiplied; the checkpoint's columns and the same weights as a float32 GGUF
+give the same adapter, bit for bit. The files are what the loader asks for; the command line writes the same tensors
+(the `--vault` path through its own code, its runtime the stand-in), and refuses what it should. The silenced copies
+keep every other tensor and key (by scale) or byte (by norm). Then the float32 GGUF served on the CPU (-ngl 0, the
+cache in float32, no flash attention), five adapters loaded at start and scaled per request, the log-probability of
+every word-piece at the first one written to a census question:
+
+| llama.cpp against the instrument (the start mark pushed in both) | largest difference in a log-probability |
+|---|---|
+| unpushed / mul 0 / mul 0 at SCALE −3 (mul 4) / at 0.5 | 4.0e-4 / 3.8e-4 / 3.9e-4 / 4.0e-4 |
+| head 1 at 0, its file at SCALE 1 / 0.5; a full layer's head at 0 | 4.9e-4 / 5.7e-4 / 4.3e-4 |
+| the vault's UPDATE / a mix (a mul, a head, the UPDATE) | 3.8e-4 / 3.9e-4 |
+| a block silenced, by scale and by norm / every head, by scale and by norm | 4.8e-4 / 6.8e-4 |
+| the mul a layer below / above; another head | 9.4e-2 / 4.6e-2; 0.36 |
+| the instrument with the start mark spared: mul 4, head 1 at 0, a block, every head | 7.3e-3, 7.2e-3, 1.6e-2, 4.3e-2 |
+| pushed against unpushed: mul 4, head 1, a full layer's head, the UPDATE, a block, every head | 3.6e-2, 0.22, 3.9e-2, 3.0e-2, 0.36, 0.29 |
+
+So llama.cpp adds B (A x) to the tensor named, at SCALE × the push, per request, and acts on the start mark, which the
+instrument's pushes and head scales spare; the silenced copies write nothing where the instrument's x 0 writes
+nothing. On the stand-in a single neuron's or head's start mark moves a log-probability by under 0.01 (the cases were
+chosen among the stand-in's pushes for the largest start-mark effect); a silenced block's by 0.016, every head's by
+0.043.
+
+Not measured: the 31B (no adapter has been run through llama.cpp on it), a GPU backend's arithmetic for B (A x),
+quantised GGUFs, `--vault` on the real runtime, and what any of these pushes does to the text: the census's labels
+were read from add pushes.
