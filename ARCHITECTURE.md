@@ -47,7 +47,7 @@ theodolite2/
 │   ├── census_run.py                # takes a layer's census (GPU), resumable, in planned batches or shards
 │   ├── census_tools.py              # rank, merge, depth, spread, the dose window and canaries over census runs (CPU)
 │   ├── export_control_vector.py     # a neuron's push (or a set's) as a llama.cpp control-vector GGUF (CPU, §6)
-│   ├── pod/                         # a rented card's jobs, each with --dry-run on the stand-in (README §v):
+│   ├── pod/                         # a rented card's jobs, each with --dry-run on the stand-in (README §vi):
 │   │   ├── setup.sh                 #   everything on the volume, the pinned downloads, the venv from constraints, a self-test
 │   │   ├── pilot.sh                 #   the one-hour pilot: steps per unpacker and batch, the writer's floor, projections
 │   │   ├── census_shard.sh          #   one shard detached, logged, under a time limit, the pod stopped only when asked
@@ -975,7 +975,7 @@ proxy while it runs, §4, or where the guard cannot tell whose a connection is, 
 | `GET /backends` | whether `claude` and `codex` are installed; every endpoint's card `{name, label, base_url, this_machine, key: "set" \| "missing: …" \| "none needed", model, stream}` |
 | `GET /models?profile` | the endpoint's `GET <base>/models`: `{id, name, context, tools}` (`tools` null when it does not say) |
 | `POST /send` | `{chat (a UUID), message, agent, profile, model, layer, n \| head, attachments}`: a message into the chat (its first fixes the backend, and for `openai` the profile and model); `layer` and `n` (or `head`) say what the page has open, which the scientist is told in the pages' count |
-| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, README §v), or a stop would wait on every page left open |
+| `GET /events?chat` | NDJSON: `{t: "state", busy, running, agent, stale}` and the turn so far, then `sent`, `text`, `thinking`, `tool`, `tool_result`, `ui`, `error`, `done`, `note` (started again on changed instructions or tools), `stale` (`{stale}`), `ping`; it never ends of itself, so the server is started with a graceful-shutdown limit (`--timeout-graceful-shutdown 3`, README §vi), or a stop would wait on every page left open |
 | `POST /interrupt` | `{chat}`: stops the reply; the chat (and Claude Code's or Codex's background commands) goes on |
 | `POST /ui` | from the tools: a screen action (`select`, `head`, `tab`, `camera`, `highlight`, `annotate`, `text`, `search`, `rename`), passed to the chat's page as a `ui` event, layers from 0 |
 | `GET /chats`, `GET /history?chat` | past chats, newest first; one chat as events |

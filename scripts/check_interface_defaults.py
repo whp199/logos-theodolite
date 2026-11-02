@@ -15,7 +15,7 @@ itself, not a copy of it. It checks:
    "mended" sends the initial request again; neither changes a centring the reader chose;
 4. the text the other checks and pages lean on: FRAME_AS_BUILT is the frame as first built, word for word; the
    recorded sighting keeps its ranking by |a| and no echoed frame; frame.tsx's studyComparable is false for a frame
-   on the weighted rows; README §iv's rows 3 and 8 say the interface sends the mend by default, on the rows decided,
+   on the weighted rows; README §v's rows 3 and 8 say the interface sends the mend by default, on the rows decided,
    and that the server's own default stays as first built;
 5. the text pages give for E3 and the order: E3's seven sampled layers give 10–41% at layers 21–59 and 70–74% at
    layers 3 and 11, and no page names the five later layers alone as those sampled; no page says a Löwdin bearing does

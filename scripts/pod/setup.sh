@@ -11,7 +11,7 @@
 # In order: <root>/env.sh, sourced by every pod script (and from ~/.bashrc, unless --no-bashrc), putting HF_HOME, uv's caches and Python,
 # THEODOLITE_ATLAS_DIR (indexes, census runs, the scientist's folder) and XDG_DATA_HOME (field notes, saved prompts)
 # on the volume, with HF_HUB_OFFLINE=1; rsync, tmux and zstd, and uv, where missing; the checkpoint and the two lenses
-# downloaded in the background while the venv is made, pinned to the snapshots the study used (README §v), each tried
+# downloaded in the background while the venv is made, pinned to the snapshots the study used (README §vi), each tried
 # without a token first; the venv (uv, Python 3.12) from the constraints file when one is given (scripts/
 # export_constraints.sh on the home machine: the pins are part of a run's runtime class), torch fetched for the backend
 # the file names, then checked to hold every pinned version; the stats index's sha256 (the census reads its push unit

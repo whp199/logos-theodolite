@@ -22,7 +22,7 @@ model; what each hard job costs is in `COMPUTE.md`.</sub>
 
 The J++ lens was fitted on the base model (`google/gemma-4-31B`, bf16) and is read here on the instruct model (4-bit
 QAT), where it agrees with the model’s own average gradients for the pronoun direction at only cos 0.15–0.33 (layers
-31–59; [README §iv](README.md#iv--how-far-to-trust-it), fault 9). Everything that reads through the lens inherits it: the
+31–59; [README §v](README.md#v--how-far-to-trust-it), fault 9). Everything that reads through the lens inherits it: the
 words, the gathered/recalled split, the landmark bearings, the neuron labels, the nudge and the vault. The head and foot
 of every page name the lens plainly, and a red line beside each layer’s words says what the reading can bear there; the
 opening page says once, among its cautions, that the lens was fitted on the base model. That was the owner’s choice of
@@ -161,7 +161,7 @@ Looking upstream at what builds a neuron is in the folio now (§iii).
   CPU stand-in; the end-to-end check compares the tool’s heard edit with the route’s, and did so on the 31B on 29
   October 2026). The pages now call the “.patch MEMIT” edit an edit, a one-neuron column edit and not MEMIT; the
   code’s names and the statements are kept for old callers and the study’s scripts. Every vault query runs in Python;
-  the `larql`/`vindex` binaries are called only for `--version` (README §iv). The edit tab now opens on an edit that
+  the `larql`/`vindex` binaries are called only for `--version` (README §v). The edit tab now opens on an edit that
   is heard, with its own question (29 October 2026; `vault/lql.ts` `EXAMPLE_EDIT`). Its earlier example, neuron 100 of
   layer 36, changed only one of seven answers, and that by a space, so a first reader heard nothing. The new one is
   neuron 7830 of layer 60, the one firing hardest where the answer to “How many legs does a spider have?” begins:
@@ -195,7 +195,7 @@ Looking upstream at what builds a neuron is in the folio now (§iii).
   lab daemon refuses web pages and any Host but this machine’s, and its `/exec` wants a token it writes at each start,
   readable by its user only (`labclient.py` sends it); its port, 8765, is still the server’s. The scientist’s CLIs are
   no longer given the Hugging Face or cloud credentials in the server’s environment, only their own logins, and a stop
-  no longer waits on a chat’s open event stream (`--timeout-graceful-shutdown 3`, README §v).
+  no longer waits on a chat’s open event stream (`--timeout-graceful-shutdown 3`, README §vi).
 - **The guess test’s statistics. Built.** A neuron’s folio, v (`test_motif_hypothesis`, `POST
   /api/scientist/test_hypothesis`) said “yes, clearly” whenever Cohen’s d over population variances reached 0.8, at any
   number of sentences, with nothing set against chance: one sentence a side gave d near 10⁴ (E6 §3, item 7). Its reply
@@ -292,7 +292,7 @@ Still open here:
   labels that share one of ten or fewer would have held back 71 instead of 31 and kept 144 sound labels of 169 (85%),
   against 160 of 209 (77%) at the cut chosen, none of ten. A cut chosen on that sample would be judged on the data it
   was chosen from.
-- **The README’s pictures.** The views in README §ii were taken before this round, with the reading options as first
+- **The README’s pictures.** The views in README §iii were taken before this round, with the reading options as first
   built and before the label gate; their captions say so. They want retaking from a live sighting.
 - **References.** Section H of `REFERENCES.md` ([45] and [46], R3’s sources) was written from local files; its links
   were not opened, and could not be from the machine of 28 October either (its network refused arxiv.org and
@@ -302,7 +302,7 @@ Still open here:
 
 ## vi · the atlas
 
-The atlas (`#/atlas`; README §ii, ARCHITECTURE §4.7–4.8) was built on 27 October 2026 without a GPU: every piece of it
+The atlas (`#/atlas`; README §i and §iii, ARCHITECTURE §4.7–4.8) was built on 27 October 2026 without a GPU: every piece of it
 was checked on a tiny random Gemma 4 on the CPU (`scripts/atlas_stand_in.py` and the atlas’s checks) and the page driven
 in a headless browser against it. The same day its indexes were built on Gemma-4-31B on one RTX 5090 (the lens in 144 s;
 the stats over 2,000,054 word-pieces, a document from each corpus in turn, in 58 minutes; the wiring in about 4 minutes;

@@ -4,21 +4,22 @@
 </p>
 
 <p align="center">
-  <em>The instrument, and the study it was first used for: is Gemma 4 “female-coded”?</em>
+  <em>An atlas of all 1,290,240 neurons in Gemma-4-31B-it, a census of what a layer’s neurons do when pushed, and the instrument to read them with.</em>
 </p>
 
 <p align="center">
-  <sub>Gemma-4-31B-it &nbsp;◆&nbsp; 60 layers &nbsp;◆&nbsp; 5,376 dimensions in each &nbsp;◆&nbsp; a vocabulary of 262,144 word-pieces</sub>
+  <sub>Gemma-4-31B-it &nbsp;◆&nbsp; 60 layers &nbsp;◆&nbsp; 21,504 neurons in each, 1,290,240 in all &nbsp;◆&nbsp; 5,376 dimensions &nbsp;◆&nbsp; a vocabulary of 262,144 word-pieces</sub>
 </p>
 
 <p align="center">
-  <a href="#i--what-it-is">what it is</a> ·
-  <a href="#ii--the-instrument-leaf-by-leaf">the instrument</a> ·
-  <a href="#iii--what-the-study-found">what the study found</a> ·
-  <a href="#iv--how-far-to-trust-it">how far to trust it</a> ·
-  <a href="#v--setting-it-up">setting it up</a> ·
-  <a href="#vi--the-shelves">the shelves</a> ·
-  <a href="#vii--the-makers-marks">the makers’ marks</a>
+  <a href="#i--the-atlas">the atlas</a> ·
+  <a href="#ii--what-it-is">what it is</a> ·
+  <a href="#iii--the-instrument-leaf-by-leaf">the instrument</a> ·
+  <a href="#iv--what-the-study-found">what the study found</a> ·
+  <a href="#v--how-far-to-trust-it">how far to trust it</a> ·
+  <a href="#vi--setting-it-up">setting it up</a> ·
+  <a href="#vii--the-shelves">the shelves</a> ·
+  <a href="#viii--the-makers-marks">the makers’ marks</a>
 </p>
 
 <p align="center">
@@ -27,7 +28,72 @@
 
 <br>
 
-## i · what it is
+## i · the atlas
+
+<p align="center">
+  <img src="docs/readme/atlas.png" width="100%"
+       alt="The atlas with neuron 17966 of layer 47 open: on the left its words through the lens, waves, waterfall and the Chinese for wave, and its web, what drives it up (thread, hurricane, earthquake, storms) and down (wave, weather, Storm); in the middle the stacked sheets of layers 35 to 51 with the neuron's links fanning out from it across the layers; on the right its census answers, where pushed up by one stream's length it answers who it is with I am a river wave of same-ocean water, a wind-driven rain of the same-sea rain, and at twice that with Rain Rain Rain.">
+</p>
+
+Every feed-forward neuron of Gemma-4-31B-it on one map (`#/atlas`): sixty sheets of 21,504, the neurons that write alike
+side by side, each layer’s attention heads before its sheet. Open one and the atlas gathers what can be read of it.
+Above is neuron 17,966 of layer 47. Through the lens it writes “waves”, “waterfall” and “波”. Its web of weight links runs
+back to what drives it (“thread”, “hurricane”, “earthquake”, “storms”) and on to what it drives. On the right are its
+**census** answers: what the model says when it is pushed along this neuron’s write direction. Asked who it is, and
+pushed up by the stream’s usual length, the model answers “I am a river wave of same-ocean water, a wind-driven rain of
+the same-sea rain”. Left alone, or pushed down, it answers “I am a large language model, trained by Google.” At twice
+that push its text breaks into “Rain Rain Rain”, as text pushed that far along a random direction breaks too.
+
+**The census** is what the atlas measures. While the model answers six fixed questions, each neuron of a layer is pushed
+both ways, by once and by twice the stream’s usual length. Its answers are set against those of 2,048 random directions
+pushed as far: 565,254 answers a layer, about thirteen hours on one RTX 5090. A neuron ranks high when the words its push
+brings stand further above the random directions’ than nearly every random direction’s own words do. So a high rank says
+its push differs from a random one. It does not say that its words share a theme, or name what the neuron does when it
+fires. The doses are calibrated at layers 41–51 alone, so the census covers those eleven layers.
+
+Five are in so far: layers 41, 42, 46, 47 and 48 (40, 41, 45, 46 and 47 on the
+[census board](https://github.com/whp199/theodolite/issues/1), which counts from 0), two of them taken by a volunteer.
+Layer 46 was read against gates fixed before it ran, and the other four against the same gates after the fact. Every
+gate passes on all five. Between 95 and 2,873 of a layer’s 21,504 neurons beat all 2,048 random directions, where
+about ten would by chance. **Have a card of 32 GB or more? [Take a layer](VOLUNTEERS.md).**
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/readme/atlas-census.png" alt="Layer 47's census in the atlas's left panel: 2,768 neurons above every control, about ten by chance alone, and the first ranks with their words: back holding hold held; table set; conditions under condition; rain wave water wind river; gradient descent steepest steep; delivery taking take possession; working overtime work hours school; plot plotting plotter; company commercial business; flux constant state change.">
+      <p><b>A layer’s census.</b> Its neurons ranked by how far their pushed answers’ words stand above the random
+      directions’, each with the words it brings and how much of its mass comes from words the page leaves out.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/readme/atlas-passages.png" alt="The passages tab for neuron 17966 of layer 47, where its up face fires hardest, the word-piece underlined: a turbine that transforms the energy of flowing water, an app that plays rain or white noise, the sound of chirping birds in a forest, remains destroyed by the sea; each with how strongly it fires there.">
+      <p><b>Its passages.</b> Where each face of the neuron fires hardest in two million word-pieces of web text and
+      chat, the strongest windows kept whole, with what the face reads and what follows. Gathered on the 31B, and not
+      yet validated as labels.</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/readme/atlas-push.png" alt="The push tab for neuron 17966 of layer 47, asked to describe your ideal breakfast in two sentences and answering three times at once: pushed up by 0.8, crashing waves in the background, a plate of crisp, salty ocean waves and a steaming cup of rain-flavored coffee; left alone, blueberry pancakes, bacon and black coffee; pushed down, pancakes with berries, avocado toast and orange juice.">
+      <p><b>The push.</b> Ask anything and read three answers at once: the neuron pushed up, left alone and pushed down.
+      Pushed up, the ideal breakfast becomes “crashing waves” and “rain-flavored coffee”. That push is 2.1× the most this
+      neuron can ever write by itself, so it shows what a push that size does, not what the neuron does when it fires.</p>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/readme/atlas-spread.png" alt="The spread of layer 47's census, coloured by question: six dense clusters, one for each question's answers, a wide scatter of answers pushed off them, a few tight knots and long looping strands of broken text, and the open neuron's answers drawn large in gilt and blue.">
+      <p><b>The spread.</b> A layer’s 565,254 census answers laid out by the words they use, here coloured by question:
+      the answers a push leaves much as they were gather by question, and those it turns aside scatter round them. The
+      open neuron’s own answers are drawn large, gilt pushed up and blue pushed down.</p>
+    </td>
+  </tr>
+</table>
+
+The atlas follows [lyramakesmusic’s neuron-explorer](https://github.com/lyramakesmusic/neuron-explorer), made for
+Qwen3.5-4B; §iii sets the two side by side. A **scientist** in the side panel reads the atlas with the same tools, runs
+pushes and texts, and points at what it finds on the map.
+
+<br>
+
+## ii · what it is
 
 Between a question and its answer, a language model carries each word up through all of its layers, and little of that
 country has been mapped. **Theodolite** lets you follow a single word as it rises through the sixty layers of
@@ -40,7 +106,7 @@ The repository holds two things.
   through the J++ lens, fitted on the base model, and the plain logit lens: the path of a word through the layers, what
   each layer gathers from the words before and recalls from memory, the neurons that fire, the threads between them, a
   survey frame of three landmark words, a nudge on the model's stream, a vault of neurons you can search and edit, and
-  an atlas of all 1,290,240 neurons at once, with a census of what each one does when pushed and a scientist to ask.
+  an atlas of all 1,290,240 neurons at once, with a census of what a layer’s neurons do when pushed (§i) and a scientist to ask.
   The tensor contracts are in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 - **The study** (`experiments/`). Is Gemma 4 "female-coded"? Seven experiments, eight adversarial verifiers, a
   neuron-label validation study and a lens refit on the instruct model: 314 GPU jobs through a shared lab daemon.
@@ -58,7 +124,7 @@ instrument has. Both are switches at the top of every page; nothing is hidden fr
 
 <br>
 
-## ii · the instrument, leaf by leaf
+## iii · the instrument, leaf by leaf
 
 <p align="center">
   <img src="docs/readme/instrument.png" width="100%"
@@ -73,7 +139,7 @@ layers that look back over the whole conversation. On the right is the leaf of t
 through the lens, and how much of its change was **gathered** from the words before (attention, lapis) or **recalled**
 from memory (the feed-forward block, gilt). The picture was taken before the label gate: the leaf now holds back the
 words of the layer-36 neuron shown at its foot, as it holds back every neuron's words below layer 41, and keeps them in
-the apparatus (§iv).
+the apparatus (§v).
 
 <table>
   <tr>
@@ -142,7 +208,7 @@ Qwen3.5-4B in the wake of Cammarata’s neuron poles [9], and has at least its f
 | neuron-explorer (Qwen3.5-4B) | the atlas (Gemma-4-31B-it) |
 |---|---|
 | a 3D map of every MLP neuron, attention and MLP per layer; hover a neuron for its lenses, open it, view a layer’s sheet face-on; a `writes` layout | the same for 60 × 21,504 neurons in one draw call, with the q / k / v / o heads on each layer’s slab, lit by role for an open neuron and by their write on a run text; the `writes` layout (UMAP where installed, else PCA) |
-| the open neuron’s connection web, upstream and downstream, with its words pooled | the same, its links weighed through Gemma 4’s pre- and post-feed-forward norms and its layer scalars and ranked by how strongly they arrive, their signs read one consistent way (from rest, through GeGLU’s gate: what drives it up or down, what it drives when it fires up or down) where the reference’s mix two, and, with the passages built, read again where each reader fires hardest on a face (its strongest stored passages, not where it sits at an ordinary word-piece), the details marking where the two disagree. Measured on the 31B (the night of 28–29 October 2026, at `main_rel`’s four census questions’ last word-piece, a mark of the chat template, where about nine readers in ten sat with the gate shut), neither sign as served held: under the push on the writer’s gate face the sign from rest agreed with the change at 0.34 of links and the sign in use as served at 0.42 (medians over layers), both below chance; scored offline where each reader sat, the sign in use agreed at 0.84. The links are real by size (§iv) |
+| the open neuron’s connection web, upstream and downstream, with its words pooled | the same, its links weighed through Gemma 4’s pre- and post-feed-forward norms and its layer scalars and ranked by how strongly they arrive, their signs read one consistent way (from rest, through GeGLU’s gate: what drives it up or down, what it drives when it fires up or down) where the reference’s mix two, and, with the passages built, read again where each reader fires hardest on a face (its strongest stored passages, not where it sits at an ordinary word-piece), the details marking where the two disagree. Measured on the 31B (the night of 28–29 October 2026, at `main_rel`’s four census questions’ last word-piece, a mark of the chat template, where about nine readers in ten sat with the gate shut), neither sign as served held: under the push on the writer’s gate face the sign from rest agreed with the change at 0.34 of links and the sign in use as served at 0.42 (medians over layers), both below chance; scored offline where each reader sat, the sign in use agreed at 0.84. The links are real by size (§v) |
 | the list: units ranked by word-cluster mass against random-direction controls | the census ranking: the reference's statistic and its `main_rel` questions and doses (not calibrated on Gemma, and said so), beside a design of its own and the default since 29 October 2026, `break_rel` (six questions at ±1 and ±2 of the stream, read as two halves of three, each word set against the controls alone and each answer’s own question’s unpushed words left out), whose doses are calibrated at layers 41–51 alone (its trial of 29 October 2026; ARCHITECTURE §4.7) and whose pages leave out the words random pushes bring as hard at ±2, its controls shaped through Gemma’s post-feed-forward norm so the next layer hears them as loudly as a neuron, each rank with a p and the layer’s false-discovery q beside how many would beat every control by chance; taken on the instrument’s own runtime, resumable, batched by question |
 | `lens` search over the steer and logit lenses | search over the lens, the naked eye and the steer lens, every lens label under the label gate |
 | `fires`: run your text, filter neurons by activation over their usual range, token paths | “run a text”: the same filters (layers, sign, score, words), the links among what fires at a word-piece, the heads lit by their write |
@@ -209,7 +275,7 @@ pages from any other host than this machine).
 
 <br>
 
-## iii · what the study found
+## iv · what the study found
 
 > [!CAUTION]
 > **Where the findings below rest on J++ or the Jacobian lens, they rest on lenses fitted on the base model.** Most of
@@ -274,7 +340,7 @@ are listed in §4 of the report.
 
 <br>
 
-## iv · how far to trust it
+## v · how far to trust it
 
 *This is research code, and its lens was fitted on the base model (fault 9 below): good for comparing, poor on its own.
 Read a single sighting as a lead, never as a finding: the study reads lens outputs against a matched control
@@ -385,7 +451,7 @@ REPORT §3.4). Where each fault stands now:
 
 <br>
 
-## v · setting it up
+## vi · setting it up
 
 **What it needs**
 
@@ -502,7 +568,7 @@ sweep, so no vault edit lands between two word-pieces of one answer. The circuit
 neuron's label tested by the study's N1A protocol at k = 10) are served over HTTP and as FastMCP tools from
 `backend/mcp_scientist.py`; the WebSocket also takes `inspect_pole`, `trace_readers`, `larql` and `causal_check`, besides
 `sweep` and `cancel_sweep` (ARCHITECTURE §4.5).
-Every neuron label they and the sweep send carries `label_check`, and the replies carry the rule as `label_gate` (§iv).
+Every neuron label they and the sweep send carries `label_check`, and the replies carry the rule as `label_gate` (§v).
 `test_motif_hypothesis` sets the gap it finds against chance (`selectivity`: Welch’s t, a permutation p, the n each side,
 no judgement below four sentences a side, `scripts/check_hypothesis_test.py`); its `verdict` as first built, a threshold
 on d at any n, is kept for old callers.
@@ -630,7 +696,7 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 
 <br>
 
-## vi · the shelves
+## vii · the shelves
 
 | Path | What is there |
 |---|---|
@@ -677,7 +743,7 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 
 <br>
 
-## vii · the makers’ marks
+## viii · the makers’ marks
 
 <p align="center">
   <img src="docs/readme/cartouche.png" width="420"
@@ -700,7 +766,7 @@ refer to [`REFERENCES.md`](REFERENCES.md), the full list, web-checked except sec
 Claude Code agents (Anthropic), directed by the repository owner: parallel experiment agents, independent adversarial
 verifiers, and a separate lens-refit session. Every headline claim in `experiments/REPORT.md` was re-tested by an independent
 verifier, though the verifiers that read a lens used the same base-fitted ones (see
-[what the study found](#iii--what-the-study-found)), and the claims that failed are listed in §4 of that report.
+[what the study found](#iv--what-the-study-found)), and the claims that failed are listed in §4 of that report.
 
 **License.** Code is licensed under the **Apache License 2.0** ([`LICENSE`](LICENSE)); third-party attributions and
 exceptions are in [`NOTICE`](NOTICE). This repository does **not** redistribute model weights, lens tensors or third-party
