@@ -2,13 +2,16 @@
 layer that keeps a GGUF tensor's blocks, and three accessors that read any of the instrument's linear layers alike.
 
 A GGUF file (llama.cpp's format, written by its `convert_hf_to_gguf.py` and `llama-quantize`) stores each weight
-[out, in] as rows of blocks along `in`: a block of 32 elements (Q4_0, Q4_1, Q5_0, Q5_1, Q8_0) or 256 (the K types
-Q2_K to Q6_K), each with its own scale (and for some types a minimum) in fp16, or plain F32, F16 or BF16 numbers. The
-unpackers here (`unpack`, one per type) are pure torch, so they run wherever the blocks are (CPU or CUDA), and each one
-mirrors gguf-py's own numpy dequantiser (`gguf.quants.dequantize`, gguf 0.19) operation for operation in float32: the
-same products in the same order, so the same numbers bit for bit (scripts/check_gguf.py compares them on random
-blocks, and exhaustively over every fp16 scale where that is cheap). The IQ types (IQ1_S to IQ4_XS), the ternary
-TQ1_0 and TQ2_0, MXFP4, NVFP4 and Q1_0 are refused in plain words: not yet.
+[out, in] as rows of blocks along `in`: a block of 32 elements (Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, IQ4_NL) or 256 (the K
+types Q2_K to Q6_K, IQ4_XS), each with its own scale (and for some types a minimum) in fp16, or plain F32, F16 or BF16
+numbers. The unpackers here (`unpack`, one per type, `GGML_TYPES`) are pure torch, so they run wherever the blocks are
+(CPU or CUDA), and each one mirrors gguf-py's own numpy dequantiser (`gguf.quants.dequantize`, gguf 0.19) operation for
+operation in float32: the same products in the same order, so the same numbers bit for bit (scripts/check_gguf.py
+compares them on random blocks, and exhaustively over every fp16 scale where that is cheap). The other IQ types (IQ1_S
+to IQ3_S), the ternary TQ1_0 and TQ2_0, MXFP4 and NVFP4 (`BY_GGUF_PY`) are not unpacked here: gguf-py's dequantiser
+reads them once, at load, into dense layers (backend/gguf_model.py), so a file holding some is read whole, at the cost
+of those layers' memory. Q1_0, Q8_K, Q8_1 and the integer types (`NOT_YET`), which gguf-py does not read either, are
+refused in plain words (`how_read`).
 
 `GGUFLinear` is a linear layer that keeps a tensor's raw blocks and unpacks them on the fly at every forward (as
 `engine_runtime._w4a16_forward` unpacks the compressed-tensors W4A16 checkpoint), or once at load ("resident", the
@@ -52,52 +55,77 @@ GGML_TYPES: Dict[int, Tuple[str, int, int]] = {
     12: ("Q4_K", QK_K, 2 + 2 + QK_K // 2 + 12),
     13: ("Q5_K", QK_K, 2 + 2 + QK_K // 2 + QK_K // 8 + 12),
     14: ("Q6_K", QK_K, 2 + QK_K // 2 + QK_K // 4 + QK_K // 16),
+    20: ("IQ4_NL", 32, 2 + 16),
+    23: ("IQ4_XS", QK_K, 2 + 2 + QK_K // 64 + QK_K // 2),
     30: ("BF16", 1, 2),
 }
-# Types a GGUF file may hold that are not unpacked here yet (named so a refusal can say which).
-NOT_YET: Dict[int, str] = {
-    9: "Q8_1", 15: "Q8_K", 16: "IQ2_XXS", 17: "IQ2_XS", 18: "IQ3_XXS", 19: "IQ1_S", 20: "IQ4_NL", 21: "IQ3_S",
-    22: "IQ2_S", 23: "IQ4_XS", 24: "I8", 25: "I16", 26: "I32", 27: "I64", 28: "F64", 29: "IQ1_M", 34: "TQ1_0",
-    35: "TQ2_0", 39: "MXFP4", 40: "NVFP4", 41: "Q1_0",
+# Types gguf-py's dequantiser reads (gguf 0.19) that are not unpacked here: a tensor of one is unpacked by it once, at
+# load, into a dense layer in the model's dtype (backend/gguf_model.py; the provenance names them); same layout.
+BY_GGUF_PY: Dict[int, Tuple[str, int, int]] = {
+    16: ("IQ2_XXS", QK_K, 66), 17: ("IQ2_XS", QK_K, 74), 18: ("IQ3_XXS", QK_K, 98), 19: ("IQ1_S", QK_K, 50),
+    21: ("IQ3_S", QK_K, 110), 22: ("IQ2_S", QK_K, 82), 29: ("IQ1_M", QK_K, 56), 34: ("TQ1_0", QK_K, 54),
+    35: ("TQ2_0", QK_K, 66), 39: ("MXFP4", 32, 17), 40: ("NVFP4", 64, 36),
 }
-_CODE_OF = {name: code for code, (name, _b, _t) in GGML_TYPES.items()}
+# Types a GGUF file may hold that neither reads (named so a refusal can say which).
+NOT_YET: Dict[int, str] = {
+    9: "Q8_1", 15: "Q8_K", 24: "I8", 25: "I16", 26: "I32", 27: "I64", 28: "F64", 41: "Q1_0",
+}
+_CODE_OF = {name: code for code, (name, _b, _t) in {**GGML_TYPES, **BY_GGUF_PY}.items()}
 # A type given by ggml's code (or gguf's GGMLQuantizationType) or by name
 QType = Union[int, str]
 
 
-def type_code(qtype: QType) -> int:
-    """ggml's code for a type given by code or name ("Q4_0", "q4_k"); a ValueError in plain words for a type that is
-    not unpacked here (an IQ type, say)."""
+def ggml_code(qtype: QType) -> int:
+    """ggml's code for a type given by code or name ("Q4_0", "q4_k", "IQ2_XXS"), whether or not it is read; a
+    ValueError for a name or code ggml does not define."""
     if isinstance(qtype, str):
         code = _CODE_OF.get(qtype.upper())
         if code is None:
-            known = {v: k for k, v in NOT_YET.items()}.get(qtype.upper())
-            if known is None:
+            code = {v: k for k, v in NOT_YET.items()}.get(qtype.upper())
+            if code is None:
                 raise ValueError(f"{qtype!r} is not a GGUF tensor type.")
-            code = known
-    else:
-        code = int(getattr(qtype, "value", qtype))
-    if code in GGML_TYPES:
         return code
-    name = NOT_YET.get(code)
-    if name is not None:
-        raise ValueError(
-            f"GGUF tensors of type {name} are not read yet (backend/gguf_weights.py unpacks "
-            f"{', '.join(n for n, _b, _t in GGML_TYPES.values())}): use a file quantised to one of those."
-        )
+    code = int(getattr(qtype, "value", qtype))
+    if code in GGML_TYPES or code in BY_GGUF_PY or code in NOT_YET:
+        return code
     raise ValueError(f"GGUF tensor type {code} is not a type ggml defines.")
+
+
+def how_read(qtype: QType) -> str:
+    """"here" for a type unpacked here (`GGML_TYPES`), "gguf-py" for one gguf-py's dequantiser reads at load
+    (`BY_GGUF_PY`); the refusal a file holding any other gets, in plain words, as a ValueError."""
+    code = ggml_code(qtype)
+    if code in GGML_TYPES:
+        return "here"
+    if code in BY_GGUF_PY:
+        return "gguf-py"
+    raise ValueError(
+        f"GGUF tensors of type {NOT_YET[code]} are not read yet (backend/gguf_weights.py unpacks "
+        f"{', '.join(n for n, _b, _t in GGML_TYPES.values())}; gguf-py's dequantiser, at load, "
+        f"{', '.join(n for n, _b, _t in BY_GGUF_PY.values())}): use a file quantised to one of those."
+    )
+
+
+def type_code(qtype: QType) -> int:
+    """ggml's code for a type unpacked here, given by code or name; a ValueError in plain words for any other (one
+    gguf-py reads at load, which a `GGUFLinear` cannot hold, or one not read at all)."""
+    code = ggml_code(qtype)
+    if how_read(code) == "here":
+        return code
+    raise ValueError(f"GGUF tensors of type {BY_GGUF_PY[code][0]} are not unpacked here: gguf-py's dequantiser reads "
+                     "them at load, into dense layers (backend/gguf_model.py).")
 
 
 def type_name(qtype: QType) -> str:
     try:
-        return GGML_TYPES[type_code(qtype)][0]
+        code = ggml_code(qtype)
     except ValueError:
-        code = int(getattr(qtype, "value", qtype)) if not isinstance(qtype, str) else -1
-        return NOT_YET.get(code, str(qtype))
+        return str(qtype)
+    return {**{c: n for c, (n, _b, _t) in {**GGML_TYPES, **BY_GGUF_PY}.items()}, **NOT_YET}[code]
 
 
 def block_shape(qtype: QType) -> Tuple[int, int]:
-    """(elements per block, bytes per block)."""
+    """(elements per block, bytes per block), for a type unpacked here."""
     _n, bs, ts = GGML_TYPES[type_code(qtype)]
     return bs, ts
 
@@ -263,7 +291,48 @@ def _q6_k(b: torch.Tensor) -> torch.Tensor:
     return (d * q).reshape(n, QK_K)
 
 
-_UNPACK_BLOCKS = {2: _q4_0, 3: _q4_1, 6: _q5_0, 7: _q5_1, 8: _q8_0, 10: _q2_k, 11: _q3_k, 12: _q4_k, 13: _q5_k, 14: _q6_k}
+# IQ4_NL's sixteen levels (gguf's IQ4_NL.kvalues, llama.cpp's kvalues_iq4nl), which IQ4_XS shares.
+_KVALUES_IQ4NL = (-127, -104, -83, -65, -49, -35, -22, -10, 1, 13, 25, 38, 53, 69, 89, 113)
+_LUT_CACHE: Dict[Tuple[Tuple[int, ...], torch.device], torch.Tensor] = {}
+
+
+def _levels(codes: torch.Tensor) -> torch.Tensor:
+    """IQ4_NL's level of each 4-bit code (uint8, any shape), as float32 (the int8 level widened exactly, as gguf's
+    `take_along_axis(...).astype(np.float32)`); the table made once per device."""
+    key = (_KVALUES_IQ4NL, codes.device)
+    lut = _LUT_CACHE.get(key)
+    if lut is None:
+        lut = torch.tensor(_KVALUES_IQ4NL, dtype=torch.float32, device=codes.device)
+        _LUT_CACHE[key] = lut
+    return lut.index_select(0, codes.reshape(-1).to(torch.int32)).reshape(codes.shape)
+
+
+def _iq4_nl(b: torch.Tensor) -> torch.Tensor:
+    n = b.shape[0]
+    d = _f16(b[:, :2])
+    qs = b[:, 2:].reshape(n, -1, 1, 16) >> _shifts((0, 4), (1, 1, 2, 1), b.device)
+    qs = (qs & 0x0F).reshape(n, -1)
+    return d * _levels(qs)
+
+
+def _iq4_xs(b: torch.Tensor) -> torch.Tensor:
+    n = b.shape[0]
+    d = _f16(b[:, :2])
+    scales_h = b[:, 2:4].to(torch.int32)
+    scales_h = (scales_h[:, 0:1] | (scales_h[:, 1:2] << 8)).reshape(n, 1)  # the uint16, little-endian
+    scales_l = b[:, 4 : 4 + QK_K // 64].reshape(n, -1, 1) >> _shifts((0, 4), (1, 1, 2), b.device)
+    scales_h = scales_h >> torch.arange(0, 16, 2, device=b.device, dtype=torch.int32).reshape(1, -1)
+    scales_l = scales_l.reshape(n, -1) & 0x0F
+    scales_h = (scales_h & 0x03).to(_U8)  # gguf's astype(np.uint8) & 3: the same two bits
+    scales = (scales_l | (scales_h << 4)).to(torch.int8) - 32
+    dl = (d * scales.to(torch.float32)).reshape(n, -1, 1)
+    qs = b[:, 4 + QK_K // 64 :].reshape(n, -1, 1, 16) >> _shifts((0, 4), (1, 1, 2, 1), b.device)
+    qs = qs.reshape(n, -1, 32) & 0x0F
+    return (dl * _levels(qs)).reshape(n, -1)
+
+
+_UNPACK_BLOCKS = {2: _q4_0, 3: _q4_1, 6: _q5_0, 7: _q5_1, 8: _q8_0, 10: _q2_k, 11: _q3_k, 12: _q4_k, 13: _q5_k, 14: _q6_k,
+                  20: _iq4_nl, 23: _iq4_xs}
 
 
 @torch.no_grad()

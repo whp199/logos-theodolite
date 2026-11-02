@@ -708,10 +708,16 @@ batch, the vault’s voice, a causal check and a steer-lens batch and refused in
 CPU kernel, holds a Q4_0 GGUF’s or the checkpoint’s linears on the CPU (1.7 to 8 ms for a 5,376 × 21,504 layer at one
 row, against 0.5 to 1.5 s for the reference, measured on one 4-vCPU container), its readings kept apart by `+int4mm` in
 their model id: on the stand-in 30 of its 64 canary answers matched the reference word for word, against 64 of 64
-between two batches of the reference. The study’s registered scripts stay on the checkpoint and the card they were
-registered on. Nothing has yet run on Gemma-4-31B from a GGUF; on the CPU only the wiring check’s offline reads have
-(29 October 2026: eight prefills of the packed checkpoint on the reference unpacker, 31–51 s each on the home machine’s
-12-core CPU; §vi, ARCHITECTURE §4.7). What is left, in order:
+between two batches of the reference. A third followed on 2 November 2026: IQ4_NL and IQ4_XS unpacked here (bit for
+bit, as the others), the other types gguf-py reads (the rest of the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4) unpacked by it
+at load into dense layers, and split GGUF files read from any of their shards, each shard hashed in the provenance. The
+study’s registered scripts stay on the checkpoint and the card they were registered on. Of Gemma-4-31B from a GGUF, only
+a load and one forward have run: both copies of Unsloth’s UD-Q4_K_XL file here, refused before over their 24 IQ4_XS
+tensors, load on the CPU packed in bf16 (26–45 s, no lens), their IQ4_XS tensors unpacked as gguf-py unpacks them bit
+for bit, and a forward of six pieces (two to three minutes) puts “ Paris” first after “The capital of France is”
+(2 November 2026, ARCHITECTURE §5). On the CPU, besides, only the wiring check’s offline reads have run (29 October
+2026: eight prefills of the packed checkpoint on the reference unpacker, 31–51 s each on the home machine’s 12-core CPU;
+§vi, ARCHITECTURE §4.7). What is left, in order:
 
 - **The real file, against the checkpoint.** Run `compare_gguf_ct.py` on a GGUF of the 31B: if Google’s QAT Q4_0 holds
   the checkpoint’s codes and scales exactly, the two are one model, and the owner can decide whether an index or census
@@ -737,6 +743,9 @@ registered on. Nothing has yet run on Gemma-4-31B from a GGUF; on the CPU only t
 - **The CPU’s memory.** The estimates are arithmetic set against the card’s two measurements and lean high by about
   half: a pilot on a CPU should measure a sweep’s and a census batch’s peak and recalibrate them.
 - **Beyond the 31B.** Refused today: Gemma 4’s mixture of experts (26B-A4B), its per-layer embeddings (E2B, E4B), its
-  shared key-value layers, the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4, Q1_0 and split GGUF files. Each is a reader and a
-  check, but the sweeps’ shapes are the 31B’s, fixed in the pinned `theodolite_math.py`, so the instrument’s own pages
-  wait on that pin too.
+  shared key-value layers, and the tensor types gguf-py does not read either (Q1_0, Q8_K, Q8_1, the integer types).
+  Each is a reader and a check, but the sweeps’ shapes are the 31B’s, fixed in the pinned `theodolite_math.py`, so the
+  instrument’s own pages wait on that pin too. Smaller, and the 31B’s own: torch unpackers for the IQ types other than
+  IQ4_NL and IQ4_XS, TQ1_0, TQ2_0, MXFP4 and NVFP4, which gguf-py unpacks at load into dense layers today (two bytes a
+  weight for those layers, where packed they would hold 1.6 to 4.5 bits a weight); each is an unpacker and a check
+  against gguf-py’s, as IQ4_XS’s was, and worth it only for a file with many such layers.

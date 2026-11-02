@@ -1,11 +1,12 @@
 """A Gemma 4 text model from a GGUF file (`backend/gguf_model.py`), on the CPU or a GPU, and its provenance.
 
-`build_gemma4(path)` reads the file with gguf-py (`gguf.GGUFReader`, a memory map), works out the model's config from
-its metadata (or takes a matching Hugging Face config.json when given: it stands in for any key the file leaves out,
-and is refused in plain words where it disagrees with one the file states), builds transformers' `Gemma4ForCausalLM`
-without allocating its random weights, and fills it from the file by gguf-py's own name map (`gguf.get_tensor_name_map`
-for the gemma4 arch: model.layers.N.mlp.down_proj -> blk.N.ffn_down, layer_scalar -> blk.N.layer_output_scale, and so
-on). The seven linear layers of every block are `linears`:
+`build_gemma4(path)` reads the file with gguf-py (`gguf.GGUFReader`, a memory map; `open_gguf` reads a split file's
+shards as one, `SplitGGUF`), works out the model's config from its metadata (or takes a matching Hugging Face
+config.json when given: it stands in for any key the file leaves out, and is refused in plain words where it disagrees
+with one the file states), builds transformers' `Gemma4ForCausalLM` without allocating its random weights, and fills it
+from the file by gguf-py's own name map (`gguf.get_tensor_name_map` for the gemma4 arch: model.layers.N.mlp.down_proj ->
+blk.N.ffn_down, layer_scalar -> blk.N.layer_output_scale, and so on). The seven linear layers of every block are
+`linears`:
 - "packed": a block-quantised tensor becomes a `gguf_weights.GGUFLinear` that keeps its blocks and unpacks them at
   every forward (memory at rest about the file's size; on the CPU the blocks are read through the file's memory map);
 - "resident": the same layer, unpacked once at load (memory the dense weight's);
@@ -14,9 +15,12 @@ on). The seven linear layers of every block are `linears`:
   its blocks kept for the accessors and the vault's edits added to its product (`int4_cpu.with_overlay_terms`); any
   other block type is packed (a file with no Q4_0 layer is refused). Not bit-identical to the other three: its model
   id says so (backend/int4_cpu.py).
-A tensor stored as F32, F16 or BF16 is a plain `nn.Linear` in every mode. Every linear layer hears the vault's
-overlays as the W4A16 forward does (`gguf_weights.with_overlays`). Embeddings, norms and layer scalars are unpacked to
-`dtype` (bfloat16 by default, as the instrument runs; float32 for exact CPU checks).
+A tensor stored as F32, F16 or BF16 is a plain `nn.Linear` in every mode, and so is one of a type gguf_weights.py does
+not unpack but gguf-py's dequantiser reads (`gguf_weights.BY_GGUF_PY`: IQ1_S to IQ3_S, TQ1_0, TQ2_0, MXFP4, NVFP4):
+gguf-py unpacks it once, at load, into `dtype` (the same numbers a packed layer would compute with; the memory of a
+dense layer; `layers_as` says "(gguf-py, at load)", the provenance `unpacked_at_load_by_gguf_py`). Every linear layer
+hears the vault's overlays as the W4A16 forward does (`gguf_weights.with_overlays`). Embeddings, norms and layer
+scalars are unpacked to `dtype` (bfloat16 by default, as the instrument runs; float32 for exact CPU checks).
 
 Gemma 4's norms: `Gemma4RMSNorm` multiplies by its weight w (the unit offset Gemma 2 and 3 add at run time is already
 in w), and a GGUF of Gemma 4 stores w as it is. Read from both converters: llama.cpp's `Gemma4Model.norm_shift` is 0.0
@@ -25,26 +29,33 @@ for gemma2 and gemma3 (`Gemma2TensorProcessor`) and has no processor for gemma4.
 scripts/check_gguf.py shows the round trip, and scripts/compare_gguf_ct.py names a file whose norms sit exactly 1
 above the checkpoint's.
 
+A split file (`<name>-00001-of-0000N.gguf` and on, as llama.cpp's gguf-split and gguf-py's writer write one) is read
+from any of its shards, all of which must lie beside it under those names: the first shard's keys, every shard's
+tensors (each through its own shard's memory map), checked against the split keys every shard carries.
+
 Not read yet, and refused in plain words: Gemma 4's mixture-of-experts blocks (26B-A4B), per-layer embeddings
-(hidden_size_per_layer_input > 0: E2B, E4B), shared key-value layers, and the tensor types gguf_weights.py lists as not
-yet (the IQ types among them). The vision and audio towers are not in a text GGUF (llama.cpp writes them to a
-separate mmproj file), and the instrument drops them anyway.
+(hidden_size_per_layer_input > 0: E2B, E4B), shared key-value layers, and the tensor types neither gguf_weights.py nor
+gguf-py reads (`gguf_weights.NOT_YET`: Q1_0, Q8_K, Q8_1, the integer types). The vision and audio towers are not in a
+text GGUF (llama.cpp writes them to a separate mmproj file), and the instrument drops them anyway.
 
 `load_tokenizer` takes the tokenizer from a Hugging Face repo when it is cached here and its vocabulary is the file's,
 else builds it from the file's own metadata through transformers. `provenance` is the record every reading taken on
 the model carries (`GGUFRuntime.weights_card`): the file's size, sha256 of its header, of the first MiB of its tensor
-data and of its last MiB, the tensor types it holds, its arch and the metadata that matter.
+data and of its last MiB (a split file's, each shard's), the tensor types it holds, its arch and the metadata that
+matter.
 
 `write_gemma4_gguf` writes a Gemma 4 text model in llama.cpp's layout (the keys and tensor names its converter writes,
 norms unshifted, `rope_freqs` for the proportional rope of the full layers): for the CPU checks, which write the
-stand-in of scripts/atlas_stand_in.py and read it back, and for scripts/compare_gguf_ct.py's self-test. It is not
-llama.cpp's converter, and its Q4_K is a plain quantiser (each sub-block's range), not llama.cpp's search for scales.
+stand-in of scripts/atlas_stand_in.py and read it back (whole or split into shards), and for
+scripts/compare_gguf_ct.py's self-test. It is not llama.cpp's converter, and its Q4_K is a plain quantiser (each
+sub-block's range), not llama.cpp's search for scales.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import Counter
 from contextlib import contextmanager
 from pathlib import Path
@@ -54,7 +65,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from backend.gguf_weights import GGML_TYPES, GGUFLinear, install_overlay_forward, type_code, type_name, unpack
+from backend.gguf_weights import (GGML_TYPES, GGUFLinear, ggml_code, how_read, install_overlay_forward, type_code,
+                                   type_name, unpack)
 
 ARCH = "gemma4"
 LINEAR_MODES = ("packed", "resident", "dense")  # the three that give the same forward bit for bit
@@ -71,12 +83,66 @@ END_PIECES = ("<turn|>", "<|tool_response>")
 # ------------------------------------------------------------------------------------------------- the file
 
 
+# A shard's name, as llama.cpp's gguf-split and gguf-py's writer give it (gguf's SHARD_NAME_FORMAT), and the keys every
+# shard of a split file carries (gguf's Keys.Split: its number from 0, the shard count, the tensors in all shards).
+SHARD_NAME = re.compile(r"^(?P<stem>.+)-(?P<no>\d{5})-of-(?P<count>\d{5})\.gguf$")
+SPLIT_KEYS = ("split.no", "split.count", "split.tensors.count")
+
+
+class SplitGGUF:
+    """The shards of a split GGUF read as one file, as `open_gguf` gives them: `fields`, the first shard's keys (the
+    only shard to hold the model's: the others hold the split keys alone); `tensors`, every shard's tensors in shard
+    order, each reading its bytes through its own shard's memory map; `shards`, [(path, its GGUFReader)] in order."""
+
+    def __init__(self, shards: List[Tuple[Path, Any]]) -> None:
+        self.shards = shards
+        self.fields = shards[0][1].fields
+        self.tensors = [t for _p, r in shards for t in r.tensors]
+
+
+def split_keys(reader: Any) -> Optional[Tuple[int, int, int]]:
+    """(shard number from 0, shard count, tensors in all shards) of a shard of a split file; None for a whole file."""
+    f = reader.fields
+    if "split.count" not in f or int(f["split.count"].contents()) <= 1:
+        return None
+    return tuple(int(f[k].contents()) if k in f else -1 for k in SPLIT_KEYS)  # type: ignore[return-value]
+
+
 def open_gguf(path: Union[str, Path]) -> Any:
     """A `gguf.GGUFReader` over the file (copy-on-write memory map: torch can read its blocks in place, and nothing is
-    ever written back)."""
+    ever written back); for a shard of a split file, a `SplitGGUF` over all its shards, which must lie beside it under
+    the names gguf-split gives them (a ValueError in plain words when one is missing, misnamed or of another split)."""
     from gguf import GGUFReader
 
-    return GGUFReader(str(path), "c")
+    p = Path(path)
+    reader = GGUFReader(str(p), "c")
+    keys = split_keys(reader)
+    if keys is None:
+        return reader
+    no, count, n_tensors = keys
+    m = SHARD_NAME.match(p.name)
+    if m is None or (int(m["no"]), int(m["count"])) != (no + 1, count):
+        raise ValueError(f"{p.name} is shard {no + 1} of {count} of a split GGUF, and its name does not name the others "
+                         f"(llama.cpp names them <name>-00001-of-{count:05d}.gguf and on): give the shards those names, or "
+                         "merge them into one file with llama.cpp's llama-gguf-split --merge.")
+    shards: List[Tuple[Path, Any]] = []
+    for i in range(count):
+        sp = p.with_name(f"{m['stem']}-{i + 1:05d}-of-{count:05d}.gguf")
+        if not sp.is_file():
+            raise ValueError(f"{p.name} is one of the {count} shards of a split GGUF, and {sp.name} is not beside it: "
+                             "every shard is needed, in one folder.")
+        r = reader if i == no else GGUFReader(str(sp), "c")
+        if split_keys(r) != (i, count, n_tensors):
+            raise ValueError(f"{sp.name} is not shard {i + 1} of {count} of the split GGUF {p.name} belongs to (its split "
+                             f"keys say {split_keys(r)}, as (shard from 0, shards, tensors)): a shard of another file?")
+        shards.append((sp, r))
+    out = SplitGGUF(shards)
+    twice = sorted(n for n, c in Counter(t.name for t in out.tensors).items() if c > 1)
+    if twice or len(out.tensors) != n_tensors:
+        raise ValueError(f"The {count} shards of {m['stem']} hold {len(out.tensors)} tensors"
+                         + (f", {', '.join(twice[:4])} more than once" if twice else "")
+                         + f"; their split keys say {n_tensors}: a shard is not whole, or not of this file.")
+    return out
 
 
 def read_metadata(reader: Any, *, long_arrays: bool = False) -> Dict[str, Any]:
@@ -344,23 +410,45 @@ def _default_dtype(dtype: torch.dtype) -> Iterator[None]:
         torch.set_default_dtype(old)
 
 
+def _rows(t: Any) -> np.ndarray:
+    """A tensor's bytes as uint8 [rows, row bytes] (the file's memory map itself)."""
+    rows = logical_shape(t)[0] if len(t.shape) > 1 else 1
+    return np.asarray(t.data).view(np.uint8).reshape(rows, -1)
+
+
 def _blocks(t: Any, device: torch.device) -> torch.Tensor:
     """A tensor's bytes as uint8 [rows, row bytes] on `device` (on the CPU, the file's memory map itself)."""
-    raw = np.asarray(t.data)
-    rows = logical_shape(t)[0] if len(t.shape) > 1 else 1
-    raw = raw.view(np.uint8).reshape(rows, -1)
-    out = torch.from_numpy(raw)
+    out = torch.from_numpy(_rows(t))
     return out if device.type == "cpu" else out.to(device)
 
 
+def by_gguf_py(raw: np.ndarray, qtype: Any) -> np.ndarray:
+    """Rows of a tensor's bytes (uint8 [..., row bytes]) unpacked by gguf-py's own dequantiser, float32: for the types
+    gguf_weights.py does not unpack (`BY_GGUF_PY`)."""
+    import gguf
+
+    code = ggml_code(qtype)
+    try:
+        return gguf.quants.dequantize(raw, gguf.GGMLQuantizationType(code))
+    except NotImplementedError as exc:  # an older gguf-py than the one pyproject.toml names
+        from importlib.metadata import version
+
+        raise ValueError(f"GGUF tensors of type {type_name(code)} are read by gguf-py's dequantiser, and the gguf "
+                         f"{version('gguf')} installed here does not read them; gguf 0.19 does.") from exc
+
+
 def _dense(t: Any, device: torch.device, dtype: torch.dtype, chunk_rows: int = 4096) -> torch.Tensor:
-    """A tensor unpacked (float32, gguf's numbers) and cast to `dtype`, in its torch shape; a few thousand rows at a
-    time, so the float32 temporaries of a 262,144-row embedding stay small."""
+    """A tensor unpacked (float32, gguf's numbers: by gguf_weights.unpack, or by gguf-py's dequantiser for a type not
+    unpacked there) and cast to `dtype`, in its torch shape; a few thousand rows at a time, so the float32 temporaries
+    of a 262,144-row embedding stay small."""
     shape = logical_shape(t)
-    raw = _blocks(t, device)
+    here = how_read(t.tensor_type) == "here"
+    raw = _blocks(t, device) if here else _rows(t)
     out = torch.empty(raw.shape[0], int(np.prod(shape)) // raw.shape[0], dtype=dtype, device=device)
     for r0 in range(0, raw.shape[0], chunk_rows):
-        out[r0 : r0 + chunk_rows] = unpack(raw[r0 : r0 + chunk_rows], t.tensor_type).to(dtype)
+        chunk = raw[r0 : r0 + chunk_rows]
+        val = unpack(chunk, t.tensor_type) if here else torch.from_numpy(by_gguf_py(chunk, t.tensor_type))
+        out[r0 : r0 + chunk_rows] = val.to(device=device, dtype=dtype)
     return out.reshape(shape)
 
 
@@ -414,7 +502,7 @@ def build_gemma4(
     meta = read_metadata(reader)
     tensors = tensor_table(reader)
     for t in tensors.values():
-        type_code(t.tensor_type)  # refuses a type not read yet, before anything is built
+        how_read(t.tensor_type)  # refuses a type not read at all, before anything is built
     # with a config.json, it stands in for whatever the file leaves out, and is checked against all the file states
     hf_kwargs = text_config_from_hf(hf_config) if hf_config is not None else None
     given = gguf_metadata_of(Gemma4TextConfig(**hf_kwargs)) if hf_kwargs is not None else None
@@ -462,11 +550,12 @@ def build_gemma4(
             if shape != (old.out_features, old.in_features):
                 raise ValueError(f"{t.name} is {list(shape)}, the model's {lname} [{old.out_features}, {old.in_features}].")
             qname = type_name(t.tensor_type)
+            here = how_read(t.tensor_type) == "here"  # else gguf-py unpacks it at load, to a plain layer
             if linears == "int4mm" and qname == "Q4_0" and int4_cpu.fits(old.out_features, old.in_features):
                 new = int4_cpu.Int4GGUFLinear(_blocks(t, device), old.in_features, old.out_features, dtype=dtype,
                                               gguf_name=t.name)
                 kinds["Q4_0 int4mm"] += 1
-            elif linears != "dense" and GGML_TYPES[type_code(t.tensor_type)][1] > 1:
+            elif here and linears != "dense" and GGML_TYPES[type_code(t.tensor_type)][1] > 1:
                 new: nn.Module = GGUFLinear(_blocks(t, device), t.tensor_type, old.in_features, old.out_features,
                                             dtype=dtype, resident=(linears == "resident"), gguf_name=t.name)
                 kinds[f"{qname} {'resident' if linears == 'resident' else 'packed'}"] += 1
@@ -474,7 +563,7 @@ def build_gemma4(
                 new = nn.Linear(old.in_features, old.out_features, bias=False, device="meta")
                 new.weight = nn.Parameter(_dense(t, device, dtype), requires_grad=False)
                 install_overlay_forward(new)
-                kinds[f"{qname} dense"] += 1
+                kinds[f"{qname} dense" + ("" if here else " (gguf-py, at load)")] += 1
             setattr(parent, attr, new)
     if linears == "int4mm" and not kinds["Q4_0 int4mm"]:
         raise ValueError(f"The int4mm linears cannot be used: torch's int4 kernel takes Q4_0 layers, and this file has none "
@@ -542,6 +631,8 @@ def load_tokenizer(path: Union[str, Path], repos: Sequence[str] = (), reader: An
     from transformers import AutoTokenizer
 
     reader = reader if reader is not None else open_gguf(path)
+    shards = getattr(reader, "shards", None)
+    keys_in = shards[0][0] if shards else path  # a split file's keys are all in its first shard
     names = reader.fields["tokenizer.ggml.tokens"].contents() if "tokenizer.ggml.tokens" in reader.fields else None
     problems: Dict[str, str] = {}
     for repo in repos:
@@ -562,7 +653,7 @@ def load_tokenizer(path: Union[str, Path], repos: Sequence[str] = (), reader: An
     from transformers import PreTrainedTokenizerFast
     from transformers.integrations.gguf import convert_gguf_tokenizer, get_gguf_tokenizer
 
-    arch, tok_dict, tok_cfg = get_gguf_tokenizer(str(path))
+    arch, tok_dict, tok_cfg = get_gguf_tokenizer(str(keys_in))
     backend, extra = convert_gguf_tokenizer(arch, tok_dict)
     tok = PreTrainedTokenizerFast(tokenizer_object=backend, **{k: v for k, v in {**tok_cfg, **extra}.items() if v is not None})
     tmpl = reader.fields.get("tokenizer.chat_template")
@@ -576,7 +667,8 @@ def load_tokenizer(path: Union[str, Path], repos: Sequence[str] = (), reader: An
 # --------------------------------------------------------------------------------------------- the provenance
 
 
-def _sha256_range(f: Any, start: int, n: int) -> str:
+def _sha256_range(f: Any, start: int, n: int, also: Any = None) -> str:
+    """sha256 of n bytes from `start` (`also`, another hash, is fed the same bytes)."""
     f.seek(start)
     h = hashlib.sha256()
     left = n
@@ -585,8 +677,23 @@ def _sha256_range(f: Any, start: int, n: int) -> str:
         if not chunk:
             break
         h.update(chunk)
+        if also is not None:
+            also.update(chunk)
         left -= len(chunk)
     return h.hexdigest()
+
+
+def _file_hashes(p: Path, reader: Any, headers: Any = None) -> Dict[str, Any]:
+    """One file's name, size, and sha256 of its header, of its data's first MiB and of its last MiB (`headers`, a hash
+    fed the header too)."""
+    size = p.stat().st_size
+    start = min(int(reader.data_offset), size)  # a shard that holds no tensor may end before its data would start
+    with open(p, "rb") as f:
+        head = _sha256_range(f, 0, start, also=headers)
+        first = _sha256_range(f, start, min(MIB, size - start))
+        last = _sha256_range(f, max(0, size - MIB), min(MIB, size))
+    return {"file": p.name, "size": size, "sha256_header": head, "header_bytes": start, "sha256_data_first_mib": first,
+            "sha256_last_mib": last}
 
 
 # The metadata a reading's record keeps (beyond the arch's own keys, which are all kept).
@@ -601,38 +708,55 @@ def provenance(path: Union[str, Path], reader: Any = None) -> Dict[str, Any]:
     """The file a model was read from, as every reading on it records it: its name and size; sha256 of its header
     (the bytes before the tensor data: every key and every tensor's name, type, shape and offset), of the first MiB of
     its tensor data (the header itself runs to some MiB on the 31B: its vocabulary is among the keys) and of its last
-    MiB; `id`, a short fingerprint of those four; the tensor types and how many of each; its arch and the metadata that
+    MiB; `id`, a short fingerprint of those four; the tensor types and how many of each, and which of them gguf-py
+    unpacks at load (`unpacked_at_load_by_gguf_py`, when any: gguf_weights.BY_GGUF_PY); its arch and the metadata that
     matter. The whole file is not hashed (an 18 GB file would take minutes); the header and the two ends of the data
-    change with any change of key, tensor table or the data in its first or last MiB, not with one in between."""
+    change with any change of key, tensor table or the data in its first or last MiB, not with one in between.
+
+    A split file (`open_gguf` gives a `SplitGGUF`): `file` names its first shard, `split` the count, `size` and
+    `header_bytes` are the shards' sums, `sha256_header` is of every shard's header one after another, `shards` holds
+    each shard's own name, size and three sha256 (and its tensors), and `id` is a fingerprint of them all; the data's
+    first and last MiB are each shard's, not the whole's."""
     p = Path(path)
     reader = reader if reader is not None else open_gguf(p)
-    size = p.stat().st_size
-    start = int(reader.data_offset)
-    with open(p, "rb") as f:
-        head = _sha256_range(f, 0, start)
-        first = _sha256_range(f, start, min(MIB, size - start))
-        last = _sha256_range(f, max(0, size - MIB), min(MIB, size))
+    shards = getattr(reader, "shards", None)
+    if shards is None:
+        one = _file_hashes(p, reader)
+        fid = hashlib.sha256(f"{one['size']}:{one['sha256_header']}:{one['sha256_data_first_mib']}:"
+                             f"{one['sha256_last_mib']}".encode()).hexdigest()[:16]
+        whole: Dict[str, Any] = {"file": p.name, "size": one["size"], "id": fid, "sha256_header": one["sha256_header"],
+                                 "header_bytes": one["header_bytes"], "sha256_data_first_mib": one["sha256_data_first_mib"],
+                                 "sha256_last_mib": one["sha256_last_mib"]}
+    else:
+        headers = hashlib.sha256()
+        each = [{**_file_hashes(sp, sr, headers), "tensors": len(sr.tensors)} for sp, sr in shards]
+        fid = hashlib.sha256("\n".join(f"{s['size']}:{s['sha256_header']}:{s['sha256_data_first_mib']}:{s['sha256_last_mib']}"
+                                       for s in each).encode()).hexdigest()[:16]
+        whole = {"file": each[0]["file"], "split": len(each), "size": sum(s["size"] for s in each), "id": fid,
+                 "sha256_header": headers.hexdigest(), "header_bytes": sum(s["header_bytes"] for s in each), "shards": each}
     meta = read_metadata(reader)
     types = Counter(type_name(t.tensor_type) for t in reader.tensors)
+    at_load = {n: c for n, c in sorted(types.items()) if _by_gguf_py_type(n)}
     kept = {k: v for k, v in meta.items() if k.startswith(f"{meta.get('general.architecture')}.") or k in _GENERAL_KEYS}
-    fid = hashlib.sha256(f"{size}:{head}:{first}:{last}".encode()).hexdigest()[:16]
     n_params = int(sum(int(np.prod(list(t.shape))) for t in reader.tensors))
     return {
         "format": "gguf",
-        "file": p.name,
-        "size": size,
-        "id": fid,
-        "sha256_header": head,
-        "header_bytes": int(reader.data_offset),
-        "sha256_data_first_mib": first,
-        "sha256_last_mib": last,
+        **whole,
         "architecture": meta.get("general.architecture"),
         "name": meta.get("general.name"),
         "tensors": len(reader.tensors),
         "parameters": n_params,
         "tensor_types": dict(sorted(types.items())),
+        **({"unpacked_at_load_by_gguf_py": at_load} if at_load else {}),
         "metadata": kept,
     }
+
+
+def _by_gguf_py_type(name: str) -> bool:
+    try:
+        return how_read(name) == "gguf-py"
+    except ValueError:  # a type not read at all: the provenance names it, `build_gemma4` refuses it
+        return False
 
 
 # ------------------------------------------------------------------------------------------------- the writer
@@ -715,6 +839,8 @@ def write_gemma4_gguf(
     blocks: Optional[Dict[str, Tuple[np.ndarray, str]]] = None,
     name: str = "gemma4 (written by backend/gguf_model.py)",
     norm_shift: float = 0.0,
+    split_max_tensors: int = 0,
+    small_first_shard: bool = False,
 ) -> Path:
     """Write a Gemma 4 text model (a `Gemma4ForCausalLM`, or a `Gemma4ForConditionalGeneration`'s text part) as llama.cpp's
     converter lays it out: the gemma4 keys, `rope_freqs`, norms and layer scalars in F32 and unshifted (`norm_shift`
@@ -722,7 +848,10 @@ def write_gemma4_gguf(
     llama.cpp's fallback where a block does not divide a row), the embedding in `embed_qtype` (default: `qtype`).
     `blocks` gives some tensors' bytes outright ({gguf name: (uint8 array, type)}), for the comparison's self-test.
     With `tokenizer` (a byte-level BPE fast tokenizer, as the stand-in's), its vocabulary, merges, special ids and chat
-    template are written as llama.cpp writes a "gpt2" tokenizer."""
+    template are written as llama.cpp writes a "gpt2" tokenizer. With `split_max_tensors` (and `small_first_shard`: a
+    first shard of keys alone) it is written split, by gguf-py's own writer, as llama.cpp's gguf-split splits a file:
+    shards <stem>-00001-of-0000N.gguf beside `path`, every key in the first, the split keys in each. Returns the file
+    written (a split file's first shard)."""
     import gguf
     from backend.causal_check import language_model
 
@@ -732,7 +861,7 @@ def write_gemma4_gguf(
     L = int(cfg.num_hidden_layers)
     swa = [t == "sliding_attention" for t in cfg.layer_types]
     plc = cfg.per_layer_config
-    w = gguf.GGUFWriter(str(path), ARCH)
+    w = gguf.GGUFWriter(str(path), ARCH, split_max_tensors=split_max_tensors, small_first_shard=small_first_shard)
     w.add_name(name)
     w.add_block_count(L)
     w.add_context_length(int(cfg.max_position_embeddings))
@@ -828,15 +957,17 @@ def write_gemma4_gguf(
         put(b + "layer_output_scale.weight", layer.layer_scalar.reshape(-1).float(), None)
     if given:
         raise ValueError(f"No tensor of the model is named {', '.join(sorted(given))}.")
+    files = w.format_shard_names(Path(path))
     w.write_header_to_file()
     w.write_kv_data_to_file()
     w.write_tensors_to_file()
     w.close()
-    return Path(path)
+    return files[0]
 
 
 def gguf_stem_id(path: Union[str, Path], prov: Dict[str, Any]) -> str:
     """The model id a GGUF runtime gives its readings, before `runtime_factory.reading_class` says where and in what
-    they were taken: the file's name and its fingerprint (`provenance()["id"]`), so an index or census taken on one file
-    is not read as another's (as far as the fingerprint tells them apart), nor as the W4A16 checkpoint's."""
-    return f"gguf:{Path(path).name}#{prov['id']}"
+    they were taken: the file's name (a split file's first shard's, whichever shard was given) and its fingerprint
+    (`provenance()["id"]`), so an index or census taken on one file is not read as another's (as far as the fingerprint
+    tells them apart), nor as the W4A16 checkpoint's."""
+    return f"gguf:{prov.get('file') or Path(path).name}#{prov['id']}"

@@ -2,9 +2,11 @@
 """A CPU check of the GGUF path (backend/gguf_weights.py, backend/gguf_model.py, backend/gguf_runtime.py,
 backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma 4 of scripts/atlas_stand_in.py:
 1. the unpackers against gguf-py's own dequantiser (gguf 0.19), bit for bit (NaNs where its NaNs are): every F16 and
-   BF16 pattern; every int8 code of Q8_0 and every nibble of Q4_0 under every fp16 scale; every fp16 scale of Q4_1,
-   Q5_0, Q5_1 and the K types (and every minimum of Q4_1) beside random bytes; random blocks of every type; the block
-   sizes against gguf's table; the IQ types refused in plain words; on the GPU too when there is one;
+   BF16 pattern; every int8 code of Q8_0 and every nibble of Q4_0 and IQ4_NL under every fp16 scale; every 6-bit
+   scale of IQ4_XS under every code; every fp16 scale of Q4_1, Q5_0, Q5_1, the K types and IQ4_XS (and every minimum
+   of Q4_1) beside random bytes; random blocks of every type; the block sizes against gguf's table, the types left to
+   gguf-py at load being those its dequantiser reads, and the rest (Q1_0, Q8_K, the integers) refused in plain words;
+   on the GPU too when there is one;
 2. the GGUF layer and the accessors: rows and columns unpacked alone equal the whole weight's; packed, resident and
    chunked unpacking give the same weight and forward; the vault's column and row overlays laid on as the pinned W4A16
    forward lays them, columns and rows together and a row alone (a Q4_0 layer holding a W4A16 module's codes and scales
@@ -16,11 +18,18 @@ backend/runtime_factory.py, scripts/compare_gguf_ct.py) on the tiny random Gemma
    in float32 on the CPU, with the layers packed, resident and dense; the norm convention by a round trip (the file
    holds w, transformers' own GGUF reader reads w for gemma4 and w - 1 under Gemma 3's rule, and a file holding w + 1
    does not give the stand-in's forward); a matching config.json taken, one that differs refused, and one standing in
-   for keys or the rope_freqs tensor a file leaves out (which alone is refused, asking for it); an IQ tensor, a
-   mixture of experts, per-layer embeddings and another arch refused; the provenance (size, the sha256 of the header
-   and of the data's first and last MiB, the tensor types, a fingerprint that moves when a byte at either end of the
-   data does); the tokenizer from the file's own metadata encodes as the stand-in's does; the 31B's metadata, as
-   llama.cpp writes it, built on the meta device into its 410 linear layers and 29.287 billion quantised weights;
+   for keys or the rope_freqs tensor a file leaves out (which alone is refused, asking for it); a Q1_0 tensor, a
+   mixture of experts, per-layer embeddings and another arch refused; a stand-in four times as wide whose embedding
+   and q, k, gate, up and down projections are each of the IQ types, TQ1_0, TQ2_0, MXFP4 and NVFP4 in turn: every
+   tensor gguf's dequantised one and the forward the stand-in's carrying those numbers, packed, resident and dense
+   (IQ4_NL and IQ4_XS packed, the rest unpacked by gguf-py at load, as the layers' record and the provenance say),
+   and in bf16 and through GGUFRuntime for two of them; the provenance (size, the sha256 of the header and of the
+   data's first and last MiB, the tensor types, a fingerprint that moves when a byte at either end of the data does);
+   the stand-in split into shards by gguf-py's writer (one with a first shard of keys alone), read from any shard: the
+   whole file's tensors, forward and tokenizer, each shard hashed in the provenance, the model id naming the first,
+   and a missing, misnamed or foreign shard refused in plain words; the tokenizer from the file's own metadata encodes
+   as the stand-in's does; the 31B's metadata, as llama.cpp writes it, built on the meta device into its 410 linear
+   layers and 29.287 billion quantised weights;
 4. GGUFRuntime on the Q4_0 file, packed, against the stand-in's runtime carrying the same numbers: every accessor that
    reads the packing, write_col_norms by hand, a push written in three voices and a neuron read, the lens-free parts
    of a sighting (the rows it captures, the naked eye's readout), a vault DELETE on a packed layer, a column written
@@ -45,6 +54,7 @@ if __name__ == "__main__":
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ.setdefault("TQDM_DISABLE", "1")  # transformers' GGUF reader shows a progress bar
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -119,8 +129,11 @@ def ours(raw: np.ndarray, qtype: str, device: str = "cpu") -> torch.Tensor:
 
 # The byte ranges of each type's fp16 fields (scale d, and minimum or dmin where it has one).
 F16_FIELDS = {"Q4_0": [0], "Q4_1": [0, 2], "Q5_0": [0], "Q5_1": [0, 2], "Q8_0": [0], "Q2_K": [80, 82],
-              "Q3_K": [108], "Q4_K": [0, 2], "Q5_K": [0, 2], "Q6_K": [208]}
+              "Q3_K": [108], "Q4_K": [0, 2], "Q5_K": [0, 2], "Q6_K": [208], "IQ4_NL": [0], "IQ4_XS": [0]}
 BLOCK_TYPES = list(F16_FIELDS)
+# The types gguf-py unpacks at load (gguf_weights.BY_GGUF_PY), which the wide stand-in is written in below (with IQ4_NL
+# and IQ4_XS, unpacked here)
+AT_LOAD_TYPES = [n for n, _b, _t in gw.BY_GGUF_PY.values()]
 
 
 def random_blocks(qtype: str, n: int, rng: np.random.Generator, finite: bool = True) -> np.ndarray:
@@ -141,11 +154,47 @@ def every_f16(qtype: str, rng: np.random.Generator, field: int = 0) -> np.ndarra
     return b
 
 
+def small_blocks(qtype: str, n: int, rng: np.random.Generator) -> np.ndarray:
+    """n blocks of `qtype` (uint8 [n, bytes]): random codes under small scales (an fp16 d within +-1/32, or the type's
+    own scale as small), so a forward on them stays finite; for tensors of a type the writer cannot quantise to."""
+    bs, ts = gguf.GGML_QUANT_SIZES[QT[qtype]]
+    b = rng.integers(0, 256, (n, ts), dtype=np.uint8)
+    d = rng.uniform(-1 / 32, 1 / 32, (n, 1)).astype(np.float16)
+    if qtype in ("TQ1_0", "TQ2_0"):
+        b[:, -2:] = d.view(np.uint8)
+    elif qtype == "IQ1_M":  # its fp16 d is spread over the top nibbles of its four 16-bit scale words
+        u = d.view(np.uint16).reshape(n)
+        sc = b[:, -8:].copy().view(np.uint16)
+        for i in range(4):
+            sc[:, i] = (sc[:, i] & 0x0FFF) | (((u >> (4 * i)) & 0xF) << 12)
+        b[:, -8:] = sc.view(np.uint8)
+    elif qtype == "MXFP4":  # an E8M0 exponent e, the scale 2^(e - 128)
+        b[:, 0] = rng.integers(118, 124, n)
+    elif qtype == "NVFP4":  # four unsigned E4M3 scales
+        b[:, :4] = ((rng.integers(1, 6, (n, 4)) << 3) | rng.integers(0, 8, (n, 4))).astype(np.uint8)
+    else:
+        b[:, :2] = d.view(np.uint8)
+    return b
+
+
+def typed_stand_in(tok: Any, wide: nn.Module, qtype: str, path: Path, rng: np.random.Generator) -> Path:
+    """The wide stand-in written as Q8_0 but for its embedding and every layer's q, k, gate, up and down projections,
+    which are `qtype` (`small_blocks`)."""
+    to_g = gm.hf_to_gguf_names(len(wide.model.layers))
+    names = ["model.embed_tokens.weight"] + [f"model.layers.{l}.{n}.weight" for l in range(len(wide.model.layers))
+                                             for n in ("self_attn.q_proj", "self_attn.k_proj", "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj")]
+    bs, _ts = gguf.GGML_QUANT_SIZES[QT[qtype]]
+    blocks = {}
+    for name in names:
+        out, inn = wide.get_parameter(name).shape
+        blocks[to_g(name)] = (small_blocks(qtype, out * inn // bs, rng).reshape(out, -1), qtype)
+    return gm.write_gemma4_gguf(wide, path, tokenizer=tok, qtype="Q8_0", blocks=blocks)
+
+
 def stand_in_with(tok: Any, path: Path, hidden: int = asi.HIDDEN, ffn: int = asi.FFN, seed: int = 0) -> nn.Module:
     """The stand-in (same seed, same shape as the file), carrying the file's dequantised numbers (float32)."""
     ref = wide_stand_in(tok, hidden, ffn, seed)
-    r = gguf.GGUFReader(str(path))
-    tt = {t.name: t for t in r.tensors}
+    tt = gm.tensor_table(gm.open_gguf(path))
     to_g = gm.hf_to_gguf_names(len(ref.model.layers))
     with torch.no_grad():
         for name, prm in ref.named_parameters():
@@ -171,8 +220,7 @@ def wide_stand_in(tok: Any, hidden: int, ffn: int, seed: int = 0) -> nn.Module:
 
 def model_tensors_equal(m: nn.Module, path: Path) -> bool:
     """Every weight the built model holds (unpacked when packed) is gguf's dequantised tensor, bit for bit."""
-    r = gguf.GGUFReader(str(path))
-    tt = {t.name: t for t in r.tensors}
+    tt = gm.tensor_table(gm.open_gguf(path))
     to_g = gm.hf_to_gguf_names(len(m.model.layers))
     ok = True
     for name, mod in m.named_modules():
@@ -222,14 +270,28 @@ def run_checks(tmp: Path) -> int:
 
     # ---------------------------------------------------------------------- 1. the unpackers against gguf-py's own
     before = len(failures)
-    for code, (name, bs, ts) in gw.GGML_TYPES.items():
+    for code, (name, bs, ts) in {**gw.GGML_TYPES, **gw.BY_GGUF_PY}.items():
         check(gguf.GGML_QUANT_SIZES[QT(code)] == (bs, ts) and QT(code).name == name, f"{name}: block size {bs}, {ts} bytes, as gguf's table")
-    for bad in ("IQ4_NL", "IQ2_XXS", "IQ4_XS", "TQ1_0", 16, 23):
+    traits = set(gguf.quants._type_traits) | {QT.F32, QT.F16}  # what gguf.quants.dequantize reads
+    check(set(QT(c) for c in gw.BY_GGUF_PY) <= traits and not (set(QT(c) for c in gw.NOT_YET) & traits)
+          and set(gw.GGML_TYPES) | set(gw.BY_GGUF_PY) | set(gw.NOT_YET) == {int(t) for t in QT},
+          "every type ggml defines is unpacked here, left to gguf-py (which reads each of those) or refused (which gguf-py does not read)")
+    for qt in AT_LOAD_TYPES:
+        with np.errstate(all="ignore"):
+            ok = np.isfinite(gg(small_blocks(qt, 64, rng), qt)).all()
+        check(gw.how_read(qt) == "gguf-py" and ok, f"{qt}: read by gguf-py at load (its dequantiser reads the check's blocks)")
         try:
-            gw.type_code(bad)
-            check(False, f"{bad} refused")
+            gw.type_code(qt)
+            check(False, f"{qt}: no GGUFLinear holds it")
         except ValueError as exc:
-            check("not read yet" in str(exc), f"{bad} refused in plain words: {exc}")
+            check("gguf-py" in str(exc), f"{qt}: no GGUFLinear holds it ({exc})")
+    for bad in ("Q1_0", "Q8_K", "I8", "F64", 41, 15):
+        for fn in (gw.how_read, gw.type_code):
+            try:
+                fn(bad)
+                check(False, f"{bad} refused")
+            except ValueError as exc:
+                check("not read yet" in str(exc), f"{bad} refused in plain words: {exc}")
     for dev in devices:
         pat = np.arange(65536, dtype=np.uint16).view(np.uint8).reshape(1, -1)
         for qt in ("F16", "BF16"):
@@ -242,11 +304,20 @@ def run_checks(tmp: Path) -> int:
         q8[:, :2] = np.repeat(np.arange(65536, dtype=np.uint16), 8).view(np.uint8).reshape(-1, 2)
         q8[:, 2:] = np.tile(np.arange(256, dtype=np.uint8).reshape(8, 32), (65536, 1))
         check(same_bits(ours(q8, "Q8_0", dev), gg(q8, "Q8_0")), f"Q8_0 on {dev}: every int8 code under every fp16 scale (16.8M)")
-        # Q4_0: every fp16 scale x every nibble, low and high
+        # Q4_0 and IQ4_NL (the same layout, a level table for IQ4_NL): every fp16 scale x every nibble, low and high
         q4 = np.zeros((65536, 18), dtype=np.uint8)
         q4[:, :2] = np.arange(65536, dtype=np.uint16).view(np.uint8).reshape(-1, 2)
         q4[:, 2:] = (np.arange(16) | ((15 - np.arange(16)) << 4)).astype(np.uint8)
-        check(same_bits(ours(q4, "Q4_0", dev), gg(q4, "Q4_0")), f"Q4_0 on {dev}: every nibble under every fp16 scale")
+        for qt in ("Q4_0", "IQ4_NL"):
+            check(same_bits(ours(q4, qt, dev), gg(q4, qt)), f"{qt} on {dev}: every nibble under every fp16 scale")
+        # IQ4_XS: every 6-bit sub-block scale (eight blocks of eight) x every nibble, under 64 random fp16 scales
+        sc = np.arange(64).reshape(8, 8)  # block k, sub-block j: scale 8k + j
+        xs = np.zeros((64 * 8, 136), dtype=np.uint8)
+        xs[:, :2] = np.repeat(rng.uniform(-2, 2, 64).astype(np.float16), 8).view(np.uint8).reshape(-1, 2)
+        xs[:, 2:4] = np.tile(sum(((sc[:, j] >> 4) << (2 * j)) for j in range(8)).astype(np.uint16), 64).view(np.uint8).reshape(-1, 2)
+        xs[:, 4:8] = np.tile((sc[:, 0::2] & 0x0F) | ((sc[:, 1::2] & 0x0F) << 4), (64, 1)).astype(np.uint8)
+        xs[:, 8:] = np.tile(q4[0, 2:], 8)
+        check(same_bits(ours(xs, "IQ4_XS", dev), gg(xs, "IQ4_XS")), f"IQ4_XS on {dev}: every sub-block scale under every nibble")
         for qt in BLOCK_TYPES:
             for field in range(len(F16_FIELDS[qt])):
                 b = every_f16(qt, rng, field)
@@ -257,8 +328,9 @@ def run_checks(tmp: Path) -> int:
             check(same_bits(ours(rows, qt, dev), gg(rows, qt)), f"{qt} on {dev}: rows of several blocks")
     if len(devices) == 1:
         print("  --    no GPU here: the unpackers ran on the CPU only")
-    section("the unpackers equal gguf-py's dequantiser bit for bit: F16/BF16/Q8_0/Q4_0 exhaustively, every fp16 field "
-            "of every block type, random blocks of all " + str(len(gw.GGML_TYPES)) + " types", before)
+    section("the unpackers equal gguf-py's dequantiser bit for bit: F16/BF16/Q8_0/Q4_0/IQ4_NL exhaustively, every fp16 "
+            "field of every block type, random blocks of all " + str(len(gw.GGML_TYPES)) + " types; " + str(len(gw.BY_GGUF_PY))
+            + " left to gguf-py at load, the rest refused", before)
 
     # --------------------------------------------------------------------- 2. the GGUF layer and the accessors
     before = len(failures)
@@ -469,13 +541,14 @@ def run_checks(tmp: Path) -> int:
     except ValueError as exc:
         check("sliding_window" in str(exc) and "rms_norm_eps" not in str(exc),
               "a file lacking a key, with a config.json that differs on one it states: refused for that one alone")
-    iq = gm.write_gemma4_gguf(hf, tmp / "stand-in-iq.gguf", qtype="Q8_0",
-                              blocks={"blk.0.ffn_down.weight": (rng.integers(0, 256, (asi.HIDDEN, asi.FFN // 32 * 18), dtype=np.uint8), "IQ4_NL")})
+    q1 = gm.write_gemma4_gguf(hf, tmp / "stand-in-q1.gguf", qtype="Q8_0",
+                              blocks={"blk.0.ffn_down.weight": (rng.integers(0, 256, (asi.HIDDEN, asi.FFN // 128 * 18), dtype=np.uint8), "Q1_0")})
     try:
-        gm.build_gemma4(iq, dtype=torch.float32)
-        check(False, "a file with an IQ4_NL tensor refused")
+        gm.build_gemma4(q1, dtype=torch.float32)
+        check(False, "a file with a Q1_0 tensor refused")
     except ValueError as exc:
-        check("IQ4_NL" in str(exc) and "not read yet" in str(exc), f"a file with an IQ4_NL tensor refused: {exc}")
+        check("Q1_0" in str(exc) and "not read yet" in str(exc), f"a file with a Q1_0 tensor refused: {exc}")
+    check(gm.provenance(q1)["tensor_types"].get("Q1_0") == 1, "its provenance still names the type")
     r = gguf.GGUFReader(str(files["Q8_0"]))
     meta, tabl = gm.read_metadata(r), gm.tensor_table(r)
     for change, word in (({"gemma4.expert_count": 128}, "mixture-of-experts"),
@@ -487,8 +560,45 @@ def run_checks(tmp: Path) -> int:
             check(False, f"{change} refused")
         except ValueError as exc:
             check(word in str(exc), f"{list(change)[0]}: refused in plain words ({exc})")
-    section("a matching config.json taken, a differing one refused, one standing in for what a file leaves out; IQ "
+    section("a matching config.json taken, a differing one refused, one standing in for what a file leaves out; Q1_0 "
             "tensors, experts, per-layer embeddings, shared key-values and other archs refused", before)
+
+    # the types gguf-py unpacks at load, and IQ4_NL and IQ4_XS, in the wide stand-in's linear layers and its embedding
+    before = len(failures)
+    for qt in AT_LOAD_TYPES + ["IQ4_NL", "IQ4_XS"]:
+        path = typed_stand_in(tok, wide, qt, tmp / f"stand-in-wide-{qt}.gguf", rng)
+        ref = stand_in_with(tok, path, 256, 512)
+        want = ref(ids).logits
+        at_load = qt in AT_LOAD_TYPES
+        check(bool(torch.isfinite(want).all()), f"{qt}: the stand-in carrying the file's numbers gives finite logits")
+        recs = {}
+        for mode in gm.LINEAR_MODES:
+            m, rec = gm.build_gemma4(path, dtype=torch.float32, linears=mode)
+            recs[mode] = rec
+            how = "dense (gguf-py, at load)" if at_load else ("dense" if mode == "dense" else mode)
+            check(rec["layers_as"].get(f"{qt} {how}") == 30 and sum(rec["layers_as"].values()) == 41,
+                  f"{qt} {mode}: its 30 layers {how} ({rec['layers_as']})")
+            check(model_tensors_equal(m, path), f"{qt} {mode}: every tensor (the embedding among them) is gguf's dequantised one")
+            check(torch.equal(m(ids).logits, want), f"{qt} {mode}: the forward equals the stand-in's carrying the same numbers, bit for bit (fp32)")
+        pv = gm.provenance(path)
+        check(pv.get("unpacked_at_load_by_gguf_py") == ({qt: 31} if at_load else None) and pv["tensor_types"][qt] == 31,
+              f"{qt}: the provenance names {'the 31 tensors gguf-py unpacks at load' if at_load else 'no tensor unpacked by gguf-py'}")
+        if qt in ("IQ2_XXS", "IQ4_XS"):
+            ref16 = stand_in_with(tok, path, 256, 512)
+            for p_ in ref16.parameters():
+                p_.data = p_.data.to(torch.bfloat16)
+            for layer in ref16.model.layers:
+                layer.layer_scalar = layer.layer_scalar.to(torch.bfloat16)
+            m16, _ = gm.build_gemma4(path, dtype=torch.bfloat16)
+            check(torch.equal(m16(ids).logits, ref16(ids).logits), f"{qt} packed in bf16: the forward equals the bf16 stand-in's, bit for bit")
+            rt_t = GGUFRuntime(path, device="cpu", dtype=torch.float32, tokenizer=tok, load_jpp=False).load()
+            card = rt_t.weights_card
+            check(rt_t.model_id == f"gguf:{path.name}#{pv['id']}@cpu/float32" and card.get("unpacked_at_load_by_gguf_py") == pv.get("unpacked_at_load_by_gguf_py")
+                  and card["layers_as"] == recs["packed"]["layers_as"] and torch.equal(rt_t.hf_model(ids).logits, want),
+                  f"{qt} through GGUFRuntime: its card says how each layer is held ({card['layers_as']}), the same forward")
+            del rt_t, m16, ref16
+    section("the stand-in with layers and embedding of " + ", ".join(AT_LOAD_TYPES) + " (unpacked by gguf-py at load) and "
+            "IQ4_NL, IQ4_XS (unpacked here): tensors and forward as the stand-in carrying the file's numbers", before)
 
     before = len(failures)
     # the 31B's shape, as llama.cpp's converter would write its metadata (ARCHITECTURE §2; the head counts as the GPU
@@ -533,7 +643,6 @@ def run_checks(tmp: Path) -> int:
     path = files["Q4_0"]
     data = path.read_bytes()
     pv = gm.provenance(path)
-    import hashlib
 
     r = gguf.GGUFReader(str(path))
     check(pv["size"] == len(data) and pv["header_bytes"] == r.data_offset
@@ -557,6 +666,77 @@ def run_checks(tmp: Path) -> int:
     check(pf["id"] != pv["id"] and pf["sha256_header"] == pv["sha256_header"] and pf["sha256_data_first_mib"] != pv["sha256_data_first_mib"],
           "provenance: one bit of the first tensor flipped moves the fingerprint and the data's first MiB, not the header's sha256")
     section("the provenance record", before)
+
+    # a split file, as llama.cpp's gguf-split and gguf-py's writer write one
+    before = len(failures)
+    whole_q4 = files["Q4_0"]
+    (tmp / "split").mkdir()
+    first = gm.write_gemma4_gguf(hf, tmp / "split" / "stand-in.gguf", tokenizer=tok, qtype="Q4_0", split_max_tensors=30,
+                                 small_first_shard=True)
+    shards = sorted((tmp / "split").glob("stand-in-*-of-*.gguf"))
+    n_t = len(gguf.GGUFReader(str(whole_q4)).tensors)
+    check(first == shards[0] and [p_.name for p_ in shards] == [f"stand-in-{i:05d}-of-00004.gguf" for i in (1, 2, 3, 4)]
+          and len(gguf.GGUFReader(str(shards[0])).tensors) == 0, f"split by gguf-py's writer: {[p_.name for p_ in shards]}, the first holding keys alone")
+    logits_whole = gm.build_gemma4(whole_q4, dtype=torch.float32)[0](ids).logits
+    pv_s = gm.provenance(shards[0])
+    for sp in shards:
+        r_s = gm.open_gguf(sp)
+        check(isinstance(r_s, gm.SplitGGUF) and [p_ for p_, _r in r_s.shards] == shards and len(r_s.tensors) == n_t
+              and gm.read_metadata(r_s)["gemma4.block_count"] == 6, f"{sp.name}: read as the four shards, {len(r_s.tensors)} tensors, the first one's keys")
+        m_s, rec_s = gm.build_gemma4(sp, dtype=torch.float32, reader=r_s)
+        check(torch.equal(m_s(ids).logits, logits_whole) and model_tensors_equal(m_s, sp) and rec_s["layers_as"] == {"Q4_0 packed": 41},
+              f"{sp.name}: every tensor gguf's, the forward the whole file's, bit for bit")
+        check(gm.provenance(sp, r_s) == pv_s, f"{sp.name}: the same provenance from any shard")
+    t_s, trec_s = gm.load_tokenizer(shards[2], ())
+    check(trec_s["source"].startswith("gguf metadata") and all(t_s.encode(t) == tok.encode(t) for t in asi.CORPUS),
+          "the tokenizer from the first shard's keys, given the third: it encodes the corpus as the stand-in's does")
+    blobs = [p_.read_bytes() for p_ in shards]
+    offs = [gguf.GGUFReader(str(p_)).data_offset for p_ in shards]
+    offs = [min(o, len(b_)) for o, b_ in zip(offs, blobs)]
+    check(pv_s["file"] == shards[0].name and pv_s["split"] == 4 and pv_s["size"] == sum(map(len, blobs)) and pv_s["tensors"] == n_t
+          and pv_s["sha256_header"] == hashlib.sha256(b"".join(b_[:o] for b_, o in zip(blobs, offs))).hexdigest()
+          and pv_s["header_bytes"] == sum(offs) and pv_s["id"] != pv["id"]
+          and all(s_["file"] == p_.name and s_["size"] == len(b_) and s_["sha256_header"] == hashlib.sha256(b_[:o]).hexdigest()
+                  and s_["sha256_data_first_mib"] == hashlib.sha256(b_[o : o + (1 << 20)]).hexdigest()
+                  and s_["sha256_last_mib"] == hashlib.sha256(b_[-(1 << 20):]).hexdigest()
+                  for s_, p_, b_, o in zip(pv_s["shards"], shards, blobs, offs)),
+          f"provenance: the first shard named, the four sizes and sha256 each, the headers' sha256 one after another ({pv_s['id']})")
+    bumped = bytearray(blobs[2])
+    bumped[-1] ^= 1
+    shards[2].write_bytes(bytes(bumped))
+    pb = gm.provenance(shards[0])
+    check(pb["id"] != pv_s["id"] and pb["sha256_header"] == pv_s["sha256_header"]
+          and pb["shards"][2]["sha256_last_mib"] != pv_s["shards"][2]["sha256_last_mib"]
+          and [s_ for i, s_ in enumerate(pb["shards"]) if i != 2] == [s_ for i, s_ in enumerate(pv_s["shards"]) if i != 2],
+          "provenance: one bit of the third shard's last tensor flipped moves the fingerprint and that shard's last MiB alone")
+    shards[2].write_bytes(blobs[2])
+    rt_sp = GGUFRuntime(shards[3], device="cpu", dtype=torch.float32, tokenizer=tok, load_jpp=False).load()
+    check(rt_sp.model_id == f"gguf:{shards[0].name}#{pv_s['id']}@cpu/float32" and rt_sp.weights_card["split"] == 4
+          and len(rt_sp.weights_card["shards"]) == 4 and torch.equal(rt_sp.hf_model(ids).logits, logits_whole),
+          f"GGUFRuntime given the last shard: {rt_sp.model_id}, the shards on its card, the whole file's forward")
+    del rt_sp
+    # refused in plain words: a shard missing, a shard renamed, a shard of another split of the same model
+    lone = tmp / "split-missing"
+    lone.mkdir()
+    for p_ in shards[:1] + shards[2:]:
+        shutil.copy(p_, lone / p_.name)
+    renamed = tmp / "split-renamed.gguf"
+    shutil.copy(shards[1], renamed)
+    other = tmp / "split-other"
+    other.mkdir()
+    gm.write_gemma4_gguf(hf, other / "stand-in.gguf", tokenizer=tok, qtype="Q4_0", split_max_tensors=25)
+    mixed = tmp / "split-mixed"
+    mixed.mkdir()
+    for p_ in shards:
+        shutil.copy(other / p_.name if p_.name.startswith("stand-in-00003") else p_, mixed / p_.name)
+    for path_, word in ((lone / shards[0].name, "not beside it"), (renamed, "does not name the others"),
+                        (mixed / shards[0].name, "more than once")):
+        try:
+            gm.build_gemma4(path_, dtype=torch.float32)
+            check(False, f"{path_.name} refused")
+        except ValueError as exc:
+            check(word in str(exc), f"{path_.parent.name}/{path_.name}: refused in plain words ({exc})")
+    section("a split file: read from any shard as the whole file, each shard hashed; a missing, misnamed or foreign shard refused", before)
 
     before = len(failures)
     t2, trec = gm.load_tokenizer(path, ("google/not-cached-here",))
