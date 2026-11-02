@@ -1003,9 +1003,9 @@ hook runs (it records the CLI's version; 2.1.312 here).
 The instrument was built for the W4A16 checkpoint on one GPU. Since 28 October 2026 it can also read a GGUF of Gemma 4
 (llama.cpp's format), and run on the CPU; the first two layers of that work, checked on the CPU only
 (`scripts/check_gguf.py` and `scripts/check_gguf_cpu.py`, on the stand-in of `scripts/atlas_stand_in.py` written to tiny
-GGUF files). Nothing here has run on Gemma-4-31B from a GGUF, and the checkpoint has run on the CPU only for the wiring
-check's offline reads (§4.7: eight prefills of the packed checkpoint, 31 to 51 s each on a 12-core desktop, 29 October
-2026).
+GGUF files). Of Gemma-4-31B from a GGUF only a load and one forward have run (the UD-Q4_K_XL files, below), and the
+checkpoint has run on the CPU only for the wiring check's offline reads (§4.7: eight prefills of the packed checkpoint,
+31 to 51 s each on a 12-core desktop, 29 October 2026).
 
 **Choosing the runtime** (`backend/runtime_factory.py`, `make_runtime()`; the server, `scripts/census_run.py`,
 `scripts/atlas_build.py`, the scientist's MCP server run alone, the lab daemon `experiments/lab/labd.py` and the GPU
@@ -1015,7 +1015,7 @@ and `scripts/check_sweep_refactor.py` (two checkouts, one older than the factory
 
 | variable | values | |
 |---|---|---|
-| `THEODOLITE_GGUF` | a `.gguf` file | `GGUFRuntime` on it; unset: the pinned `TheodoliteRuntime` on the W4A16 checkpoint, as before |
+| `THEODOLITE_GGUF` | a `.gguf` file (a split file: any of its shards) | `GGUFRuntime` on it; unset: the pinned `TheodoliteRuntime` on the W4A16 checkpoint, as before |
 | `THEODOLITE_DEVICE` | `cpu`, `cuda:N` | where the model runs (default `cuda:0`); `cpu` hides the GPUs from the process (`CUDA_VISIBLE_DEVICES=""`) |
 | `THEODOLITE_GGUF_LINEARS` | `packed`, `resident`, `dense`, `int4mm` | how a GGUF's quantised layers are held (default `packed`); `int4mm`, the CPU only, multiplies Q4_0 layers by torch's int4 kernel (below) |
 | `THEODOLITE_CHECKPOINT_LINEARS` | `packed`, `int4mm` | the same for the W4A16 checkpoint on the CPU (default `packed`) |
@@ -1030,19 +1030,43 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
 
 **What works now**
 
-- `backend/gguf_weights.py`: torch unpackers for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K and
-  Q6_K, on the CPU or a GPU, each equal to gguf-py's own dequantiser (gguf 0.19) bit for bit: exhaustively for F16,
-  BF16, Q8_0 (every code under every fp16 scale) and Q4_0, over every fp16 scale field of every other type, and on random
-  blocks. `GGUFLinear` holds a tensor's blocks; `dense`, `dense_cols` and `dense_rows` read any linear layer's own
-  weight (plain, W4A16 through the pinned unpackers, or GGUF) with the pinned unpackers' shapes. `atlas_ops.dense_weight`
-  and the vault's column read go through them.
+- `backend/gguf_weights.py`: torch unpackers for F32, F16, BF16, Q4_0, Q4_1, Q5_0, Q5_1, Q8_0, Q2_K, Q3_K, Q4_K, Q5_K,
+  Q6_K, IQ4_NL and IQ4_XS (`GGML_TYPES`), on the CPU or a GPU, each equal to gguf-py's own dequantiser (gguf 0.19) bit
+  for bit: exhaustively for F16, BF16, Q8_0 (every code under every fp16 scale), Q4_0 and IQ4_NL (every nibble under
+  every fp16 scale), over every 6-bit scale of IQ4_XS under every code, over every fp16 scale field of every other type,
+  and on random blocks. `GGUFLinear` holds a tensor's blocks; `dense`, `dense_cols` and `dense_rows` read any linear
+  layer's own weight (plain, W4A16 through the pinned unpackers, or GGUF) with the pinned unpackers' shapes.
+  `atlas_ops.dense_weight` and the vault's column read go through them.
+- The other types gguf-py's dequantiser reads (`BY_GGUF_PY`: IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S,
+  TQ1_0, TQ2_0, MXFP4, NVFP4; added 2 November 2026) have no torch unpacker: a tensor of one is unpacked by gguf-py
+  once, at load, a few thousand rows at a time, into a dense layer (or embedding) in the model's dtype. The numbers are
+  gguf-py's, the ones a torch unpacker would have to equal, so the forward is the same in every mode and the model id
+  does not change; the cost is memory, two bytes a weight in bf16 for those layers in every mode. The weights card says
+  so twice: `layers_as` counts them as `<type> dense (gguf-py, at load)`, and the provenance names the types and how
+  many tensors of each (`unpacked_at_load_by_gguf_py`). Q1_0, Q8_K, Q8_1 and the integer types, which gguf-py does not
+  read either (`NOT_YET`), are refused in plain words before anything is built (`gguf_weights.how_read`).
 - `backend/gguf_model.py`: a `Gemma4ForCausalLM` built from the file without allocating random weights, its config from
   the metadata llama.cpp's converter writes (or a matching `config.json`, which also stands in for keys a file leaves
-  out), its tensors by gguf-py's name map, and a provenance record. `GGUFRuntime` (`backend/gguf_runtime.py`) subclasses
+  out), its tensors by gguf-py's name map, and a provenance record. A split file (`<name>-00001-of-0000N.gguf` and on,
+  as llama.cpp's `llama-gguf-split` and gguf-py's writer write one) is read from any of its shards (`open_gguf`, a
+  `SplitGGUF`: the first shard's keys, where the splitter puts them all, and every shard's tensors, each read through
+  its own shard's memory map); a shard missing, misnamed (a name that no longer says the others') or of another split
+  (its split keys, or the tensors the shards hold together, not the split's) is refused in plain words, and a renamed
+  set can be merged with `llama-gguf-split --merge`. `GGUFRuntime` (`backend/gguf_runtime.py`) subclasses
   the pinned runtime: its `load()` does what the pinned one does once its model is built, and the seven accessors that
   read `weight_packed` read through the accessors above; everything else is the pinned code. On the stand-in its
   accessors, a push in three voices, a neuron read, a sighting's row capture and naked-eye readout, a vault DELETE on a
   packed layer and a census equal the stand-in runtime's, bit for bit in float32.
+- The real files (2 November 2026, on the home machine's 12-core CPU): both copies of Unsloth's
+  `gemma-4-31B-it-UD-Q4_K_XL.gguf` here (833 tensors: 280 Q4_K, 70 Q6_K, 37 Q5_K, 24 IQ4_XS, 422 F32), refused before
+  over their IQ4_XS tensors (attn_q, attn_k, ffn_gate and ffn_up of layers 4, 13, 14, 16, 18 and 21), load through
+  `GGUFRuntime` packed in bf16 without the lens in 26 and 45 s (the tokenizer the cached checkpoint's, whose 262,144
+  pieces are the file's); each of the 24 IQ4_XS tensors, unpacked here, equals gguf-py's numbers bit for bit, and so
+  does the layer holding it (in bf16); one packed forward of six pieces took 185 s (reading the file from disk) and
+  116 s, finite, and put " Paris" first after "The capital of France is" (log-probability −0.018 and −0.024). The two
+  copies share a name, not their bytes (their headers, 4,416 bytes apart in length, and their last MiB differ), so
+  their fingerprints differ (`adfe6f42c3758a08` in `ai-models/`, `f542658966346851` in `ai-models/txt/`), and with them
+  the model ids of readings taken on each. No sighting, census or build has run on them.
 - The model id of a GGUF reading is `gguf:<file>#<fingerprint>`, and any reading taken off the GPU or in float32 carries
   where and in what after it (`runtime_factory.reading_class`: `gguf:<file>#<fingerprint>@cpu/bfloat16`, and the
   checkpoint on the CPU `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`; bfloat16 on a GPU adds nothing). Every index,
@@ -1081,7 +1105,8 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
 **Packed or dense.** `packed` keeps each quantised layer's blocks (on the CPU read in place through the file's memory
 map) and unpacks the whole weight at every forward, as the W4A16 forward unpacks the checkpoint; `resident` unpacks once
 at load and drops the blocks; `dense` builds plain `nn.Linear` layers, as transformers' own GGUF loader would. A tensor
-stored as F32, F16 or BF16 is a plain layer in every mode. All three hear the vault's overlays as `_w4a16_forward` lays
+stored as F32, F16 or BF16 is a plain layer in every mode, and so is one of a type gguf-py unpacks at load (above). All
+three hear the vault's overlays as `_w4a16_forward` lays
 them (column overlays, then row overlays, on a clone), and the forward is the same numbers in every mode. The embedding
 (which is also the tied lm_head), the norms and the layer scalars are unpacked to the model's dtype.
 `int4mm`, the int4 kernel below, is none of the three.
@@ -1095,11 +1120,15 @@ reads them back unchanged, gets the stand-in's own forward, and shows a file hol
 
 **Provenance** (`gguf_model.provenance`, the `weights` card): the file's name and size, sha256 of its header (every key
 and every tensor's name, type, shape and offset), of the first MiB of its tensor data (the header alone is some MiB on
-the 31B, its 262,144-piece vocabulary among the keys: inferred, no 31B GGUF read here) and of its last MiB, a
-fingerprint of the four, the count of each tensor type, the arch and the metadata that matter, and how the model was
-built (config source, linear layers, dtype, device) and where its tokenizer came from; not the file's path, which
-stays in the log. The whole file is not hashed: the fingerprint moves with any key, tensor table or byte in the first or
-last MiB of the data, not with a change in between.
+the 31B, its 262,144-piece vocabulary among the keys: 15.8 MB on the UD-Q4_K_XL file) and of its last MiB, a
+fingerprint of the four, the count of each tensor type and which of them gguf-py unpacks at load, the arch and the
+metadata that matter, and how the model was built (config source, linear layers, dtype, device) and where its tokenizer
+came from; not the file's path, which stays in the log. The whole file is not hashed: the fingerprint moves with any
+key, tensor table or byte in the first or last MiB of the data, not with a change in between. A split file's card names
+its first shard (`file`, and so the model id, whichever shard was given) and the count (`split`); its `size` and
+`header_bytes` are the shards' sums, its `sha256_header` is of every shard's header one after another, `shards` gives
+each shard's name, size, tensors and three sha256, and the fingerprint is of all of them. A file that is not split has
+the card it had before, key for key, so its fingerprint and the model ids, indexes and runs that name it are unchanged.
 
 **The tokenizer.** From `google/gemma-4-31B-it-qat-w4a16-ct` or `google/gemma-4-31b-it` when cached here and its pieces
 are the file's; else from the file's own metadata through transformers' GGUF tokenizer converter. transformers'
@@ -1192,10 +1221,11 @@ shapes are the 31B's (`N_LAYERS`, `D_MODEL`, `D_FF` from the pinned `theodolite_
 pinned file would make `R4_common.pinned_differ()` name it, and R4 reruns would then go from R4's registered commit, as
 R3's go from `it-jpp-refit`.
 
-**Not supported yet:** the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4 and Q1_0 (refused in plain words); Gemma 4's
-mixture-of-experts (26B-A4B), per-layer embeddings (E2B, E4B) and shared key-value layers (refused); a bit-identical
-fast path on the CPU (every packed forward of the reference unpacks the whole weight; int4mm is fast but its own class);
-int4mm for Q4_1, Q4_K and the other K types (they stay packed); split GGUF files (`-00001-of-0000N`); the study's
+**Not supported yet:** Q1_0, Q8_K, Q8_1 and the integer types (refused in plain words); torch unpackers for the IQ types
+other than IQ4_NL and IQ4_XS, TQ1_0, TQ2_0, MXFP4 and NVFP4, which are therefore never packed (gguf-py unpacks them at
+load into dense layers); Gemma 4's mixture-of-experts (26B-A4B), per-layer embeddings (E2B, E4B) and shared key-value
+layers (refused); a bit-identical fast path on the CPU (every packed forward of the reference unpacks the whole weight;
+int4mm is fast but its own class); int4mm for Q4_1, Q4_K and the other K types (they stay packed); the study's
 registered scripts, which build the pinned runtime on the checkpoint and the GPU they were registered on. interp-engine
 takes the model as built (its own dtype argument is not used for a model handed to it); it ran the stand-in on this
 CPU-only machine without complaint, which cannot show what it asks of a GPU that is there but not used.
