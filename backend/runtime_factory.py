@@ -6,8 +6,16 @@ daemon (experiments/lab/labd.py) and the GPU checks scripts/verify_optics.py and
     THEODOLITE_DEVICE=cpu | cuda:N     where the model runs (default cuda:0, as today)
     THEODOLITE_GGUF_LINEARS=packed | resident | dense | int4mm
                                                         how a GGUF's quantised layers are held (default packed);
-                                                        int4mm (the CPU only) multiplies its Q4_0 layers by torch's
-                                                        int4 CPU kernel, not the reference's bits (backend/int4_cpu.py)
+                                                        int4mm (the CPU only) multiplies its Q4_0, Q4_1 and Q4_K
+                                                        layers by torch's int4 CPU kernel, not the reference's bits
+                                                        (backend/int4_cpu.py)
+    THEODOLITE_GGUF_RESIDENT_GB=<GB>                    with packed or int4mm: the layers that would be packed (a K
+                                                        file's Q5_K, Q6_K, Q8_0, or IQ4_NL, IQ4_XS, which the kernel
+                                                        cannot take) held resident in the model's dtype, in the
+                                                        model's order, each that still fits in this many GB (10^9
+                                                        bytes); the rest packed. The same bits as packed, so named in
+                                                        the weights card, not the model id. Layers gguf-py unpacks at
+                                                        load are dense, outside it (the card's `at_load_bytes`)
     THEODOLITE_CHECKPOINT_LINEARS=packed | int4mm       the W4A16 checkpoint's on the CPU: int4mm as for a GGUF
                                                         (int4mm beside THEODOLITE_GGUF is refused)
     THEODOLITE_GGUF_CONFIG=<config.json>                build a GGUF's model from this config, checked against all the
@@ -31,6 +39,8 @@ the checkpoint on the CPU is `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16` (
 the same one and the server reads an index only for it, so readings of two classes never mix in one file. bfloat16
 on a GPU, as the instrument has always run, adds nothing. The int4mm linears add `+int4mm` after it
 (`gguf:<file>#<fingerprint>@cpu/bfloat16+int4mm`): their sums are the kernel's, so their readings are their own class.
+A resident budget adds nothing: a resident layer's forward is the packed one's bit for bit (scripts/check_gguf_cpu.py
+§4), and the weights card says how much was held so (`resident_gb`, `resident_bytes`, `layers_as`).
 
 `weights_card(rt)` says what a runtime's readings are taken from, for any runtime: a GGUF's own card (its file's
 provenance and how its model was built), the checkpoint's repo id, the snapshot of it this machine's Hugging Face cache
@@ -57,6 +67,7 @@ LINEARS_ENV = "THEODOLITE_GGUF_LINEARS"
 CONFIG_ENV = "THEODOLITE_GGUF_CONFIG"
 DTYPE_ENV = "THEODOLITE_DTYPE"
 LENS_ENV = "THEODOLITE_GGUF_LENS"
+RESIDENT_ENV = "THEODOLITE_GGUF_RESIDENT_GB"
 CHECKPOINT_LINEARS_ENV = "THEODOLITE_CHECKPOINT_LINEARS"
 DEFAULT_DEVICE = "cuda:0"
 _DTYPES = ("bfloat16", "float32")
@@ -120,6 +131,24 @@ class CheckpointRuntime(TheodoliteRuntime):
         return self
 
 
+def resident_budget(value: str, linears: str) -> Optional[float]:
+    """THEODOLITE_GGUF_RESIDENT_GB as a number of GB (None when unset); a ValueError in plain words for anything but a
+    number of 0 or more, or beside linears other than packed and int4mm (resident and dense unpack every layer
+    already)."""
+    if not value:
+        return None
+    try:
+        gb = float(value)
+    except ValueError:
+        gb = float("nan")
+    if not (0 <= gb < float("inf")):
+        raise ValueError(f"{RESIDENT_ENV}={value!r}: a number of GB (10^9 bytes), 0 or more.")
+    if linears not in ("packed", "int4mm"):
+        raise ValueError(f"{RESIDENT_ENV} is a budget for the layers held packed ({LINEARS_ENV}=packed or int4mm); "
+                         f"with {LINEARS_ENV}={linears} every quantised layer is unpacked already.")
+    return gb
+
+
 def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
     """The runtime this process runs, not yet loaded (call `.load()`): a `GGUFRuntime` on THEODOLITE_GGUF when it is
     set, else the pinned `TheodoliteRuntime` on the W4A16 checkpoint (a `CheckpointRuntime` on the CPU); on
@@ -128,6 +157,9 @@ def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
     if device == "cpu":
         hide_gpus()
     path = os.environ.get(GGUF_ENV, "").strip()
+    resident = os.environ.get(RESIDENT_ENV, "").strip()
+    if resident and not path:
+        raise ValueError(f"{RESIDENT_ENV} is a GGUF's budget for its packed layers, and {GGUF_ENV} is not set.")
     if path:
         import torch
 
@@ -148,8 +180,15 @@ def make_runtime(*, load_jlens: bool = False, **kwargs: Any) -> Any:
             raise ValueError(f"{LENS_ENV}={lens!r}: jpp (load the J++ lens) or none.")
         kwargs.setdefault("load_jpp", lens == "jpp")
         linears = os.environ.get(LINEARS_ENV, "").strip().lower() or "packed"
+        from backend.gguf_model import KERNEL_MODES, LINEAR_MODES
+
+        if linears not in LINEAR_MODES + KERNEL_MODES:
+            raise ValueError(f"{LINEARS_ENV}={linears!r}: one of {', '.join(LINEAR_MODES + KERNEL_MODES)}.")
         if linears == "int4mm" and device != "cpu":
             raise ValueError(f"{LINEARS_ENV}=int4mm is torch's int4 kernel for the CPU: set {DEVICE_ENV}=cpu with it.")
+        resident_gb = resident_budget(resident, linears)
+        if resident_gb is not None:
+            kwargs.setdefault("resident_gb", resident_gb)
         return GGUFRuntime(
             os.path.expanduser(path),
             device=device,

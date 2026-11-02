@@ -485,8 +485,8 @@ uv pip install -r pyproject.toml
 The study used model snapshot `52f3f65bc7a02d555763bc923bd1d9094898219d` and lens snapshot
 `e166deb5ad540932100ef803c8c9bcc2a5453694`.
 
-**On the CPU, or from a GGUF** (ARCHITECTURE §5; checked on the CPU stand-in; the 31B has run on the CPU only for eight
-offline prefills of the checkpoint, and never from a GGUF)
+**On the CPU, or from a GGUF** (ARCHITECTURE §5; checked on the CPU stand-in; the 31B has run on the CPU for eight
+offline prefills of the checkpoint, and from a QAT Q4_0 and a Q4_K_M GGUF through `int4mm`)
 
 ```bash
 uv pip install "gguf>=0.19"                            # reads GGUF files (the optional "gguf" extra)
@@ -496,6 +496,8 @@ THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=resident TH
     .venv/bin/python scripts/census_run.py --layer 45 --neurons random:8 --random-controls 8 --max-new 32
 THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm .venv/bin/uvicorn backend.server:app \
     --host 127.0.0.1 --port 8765                       # torch's int4 kernel: fast on the CPU, not the reference's bits
+THEODOLITE_GGUF=<...Q4_K_M.gguf> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEODOLITE_GGUF_RESIDENT_GB=8.5 \
+    .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765   # the Q6_K the kernel cannot take, resident
 .venv/bin/python -I scripts/compare_gguf_ct.py <file>  # does the GGUF hold the checkpoint's weights?
 .venv/bin/python -I scripts/compare_int4mm.py --time   # how fast the int4 kernel is here, against the reference
 THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEODOLITE_GGUF_LENS=none \
@@ -505,18 +507,20 @@ THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEO
 The lab daemon (`experiments/lab/labd.py`) and the scientist's MCP server run alone (`backend/mcp_scientist.py`) take
 the same variables. On the CPU, packed 4-bit weights take about 20 GB of RAM and unpack at every forward (minutes a
 forward on a small machine; a prefill of the 31B took 31 to 37 s on a 12-core desktop); resident bf16
-(`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a word-piece in seconds; `int4mm` (a Q4_0 GGUF, or
-`THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) keeps 4-bit weights and multiplies them in place, 70 to 150
-times as fast as the packed forward at one row on one 4-core machine (about 2 s a written word-piece of the 31B by that
-arithmetic, not run), but its sums are the kernel's, not the reference's; the J++ lens adds 3.4 GB. Those speeds were
-measured on one layer of one 4-core machine, and the 31B's prefill on a 12-core one; the rest is inferred: time a pilot
-first. A reading taken on the CPU (or in float32, or through int4mm) is recorded under its own model id
-(`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's `gguf:<file>#<fingerprint>@cpu/bfloat16`, with `+int4mm`
-after either), so no census run or index taken on the GPU is continued or read there; every index also records the
-weights it was built from, and none built from other weights is read (a census run records the model id only). A sweep,
-a census batch, the vault's voice, a causal check or a steer lens batch that the CPU's memory (MemAvailable) cannot
-hold, by an estimate from the model's config, is refused in plain words before it starts (`THEODOLITE_CPU_MEMORY=off`
-skips the estimate).
+(`THEODOLITE_GGUF_LINEARS=resident`) takes about 62 GB and writes a word-piece in seconds; `int4mm` (a GGUF's Q4_0, Q4_1
+and Q4_K layers, or `THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) keeps 4-bit weights and multiplies them
+in place, 70 to 150 times as fast as the packed forward at one row on one 4-core machine, but its sums are the kernel's,
+not the reference's; the J++ lens adds 3.4 GB. A K-quant file's Q5_K, Q6_K and Q8_0 layers (and an Unsloth UD
+file's IQ4_XS), which the kernel cannot take, can be held resident up to `THEODOLITE_GGUF_RESIDENT_GB` (the same bits as packed): a Q4_K_M's 55 Q6_K layers
+need about 8 GB. On a 12-core desktop (2 November 2026, beside other work) the 31B through int4mm wrote a word-piece in
+0.45 s from the QAT Q4_0 and 0.56 s from a Q4_K_M with its Q6_K resident, and took a 59-piece prefill in 3.5 s; other
+machines are inferred: time a pilot first. A reading taken on the CPU (or in float32, or through int4mm) is recorded
+under its own model id (`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's
+`gguf:<file>#<fingerprint>@cpu/bfloat16`, with `+int4mm` after either), so no census run or index taken on the GPU is
+continued or read there; every index also records the weights it was built from, and none built from other weights is
+read (a census run records the model id only). A sweep, a census batch, the vault's voice, a causal check or a steer
+lens batch that the CPU's memory (MemAvailable) cannot hold, by an estimate from the model's config, is refused in plain
+words before it starts (`THEODOLITE_CPU_MEMORY=off` skips the estimate).
 
 **Take a first sighting**
 

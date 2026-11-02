@@ -11,16 +11,23 @@ blk.N.ffn_down, layer_scalar -> blk.N.layer_output_scale, and so on). The seven 
   every forward (memory at rest about the file's size; on the CPU the blocks are read through the file's memory map);
 - "resident": the same layer, unpacked once at load (memory the dense weight's);
 - "dense": a plain `nn.Linear` holding the unpacked weight, as transformers' own GGUF loader would build it;
-- "int4mm" (the CPU only): a Q4_0 tensor becomes an `int4_cpu.Int4GGUFLinear`, multiplied by torch's int4 CPU kernel,
-  its blocks kept for the accessors and the vault's edits added to its product (`int4_cpu.with_overlay_terms`); any
-  other block type is packed (a file with no Q4_0 layer is refused). Not bit-identical to the other three: its model
-  id says so (backend/int4_cpu.py).
+- "int4mm" (the CPU only): a Q4_0, Q4_1 or Q4_K tensor becomes an `int4_cpu.Int4GGUFLinear`, multiplied by torch's
+  int4 CPU kernel, its blocks kept for the accessors and the vault's edits added to its product
+  (`int4_cpu.with_overlay_terms`); any other block type is packed (a file with none of the three is refused). Not
+  bit-identical to the other three: its model id says so (backend/int4_cpu.py).
+`resident_gb` (THEODOLITE_GGUF_RESIDENT_GB), with packed or int4mm, makes the layers that would be packed resident, in
+the model's order (layer 0's seven first), each that still fits in that many GB (10^9 bytes) of their unpacked weights,
+the rest packed: partly resident, for a file whose Q5_K, Q6_K, Q8_0, IQ4_NL or IQ4_XS layers the kernel cannot take
+and whose whole dense weight the machine cannot hold. A resident layer gives the packed one's forward bit for bit, so
+the budget is named in the weights card (`resident_gb`, `resident_bytes`, and `layers_as`: "Q6_K resident"), not in
+the model id.
 A tensor stored as F32, F16 or BF16 is a plain `nn.Linear` in every mode, and so is one of a type gguf_weights.py does
 not unpack but gguf-py's dequantiser reads (`gguf_weights.BY_GGUF_PY`: IQ1_S to IQ3_S, TQ1_0, TQ2_0, MXFP4, NVFP4):
 gguf-py unpacks it once, at load, into `dtype` (the same numbers a packed layer would compute with; the memory of a
-dense layer; `layers_as` says "(gguf-py, at load)", the provenance `unpacked_at_load_by_gguf_py`). Every linear layer
-hears the vault's overlays as the W4A16 forward does (`gguf_weights.with_overlays`). Embeddings, norms and layer
-scalars are unpacked to `dtype` (bfloat16 by default, as the instrument runs; float32 for exact CPU checks).
+dense layer, outside any resident budget, which the weights card gives as `at_load_bytes`; `layers_as` says "(gguf-py,
+at load)", the provenance `unpacked_at_load_by_gguf_py`). Every linear layer hears the vault's overlays as the W4A16
+forward does (`gguf_weights.with_overlays`). Embeddings, norms and layer scalars are unpacked to `dtype` (bfloat16 by
+default, as the instrument runs; float32 for exact CPU checks).
 
 Gemma 4's norms: `Gemma4RMSNorm` multiplies by its weight w (the unit offset Gemma 2 and 3 add at run time is already
 in w), and a GGUF of Gemma 4 stores w as it is. Read from both converters: llama.cpp's `Gemma4Model.norm_shift` is 0.0
@@ -485,14 +492,26 @@ def build_gemma4(
     hf_config: Union[None, str, Path, Dict[str, Any]] = None,
     attn_implementation: str = "sdpa",
     reader: Any = None,
+    resident_gb: Optional[float] = None,
 ) -> Tuple[nn.Module, Dict[str, Any]]:
-    """(Gemma4ForCausalLM in eval mode on `device`, a record of how it was built). See the module's docstring."""
+    """(Gemma4ForCausalLM in eval mode on `device`, a record of how it was built). See the module's docstring;
+    `resident_gb` is the budget of THEODOLITE_GGUF_RESIDENT_GB."""
     from transformers import GenerationConfig
     from transformers.models.gemma4.configuration_gemma4 import Gemma4TextConfig
     from transformers.models.gemma4.modeling_gemma4 import Gemma4ForCausalLM
 
     if linears not in LINEAR_MODES + KERNEL_MODES:
         raise ValueError(f"linears is one of {', '.join(LINEAR_MODES + KERNEL_MODES)}, not {linears!r}.")
+    budget: Optional[int] = None
+    if resident_gb is not None:
+        if linears not in ("packed", "int4mm"):
+            raise ValueError(f"A resident budget ({resident_gb} GB) is for the layers that would be packed (linears packed "
+                             f"or int4mm); with {linears} every quantised layer is unpacked already.")
+        if not resident_gb >= 0 or resident_gb == float("inf"):
+            raise ValueError(f"A resident budget is a number of GB, 0 or more; not {resident_gb}.")
+        budget = int(resident_gb * 1e9)
+    spent = at_load = 0
+    item = torch.empty((), dtype=dtype).element_size()
     device = torch.device(device)
     if linears == "int4mm":
         from backend import int4_cpu
@@ -554,24 +573,32 @@ def build_gemma4(
                 raise ValueError(f"{t.name} is {list(shape)}, the model's {lname} [{old.out_features}, {old.in_features}].")
             qname = type_name(t.tensor_type)
             here = how_read(t.tensor_type) == "here"  # else gguf-py unpacks it at load, to a plain layer
-            if linears == "int4mm" and qname == "Q4_0" and int4_cpu.fits(old.out_features, old.in_features):
-                new = int4_cpu.Int4GGUFLinear(_blocks(t, device), old.in_features, old.out_features, dtype=dtype,
-                                              gguf_name=t.name)
-                kinds["Q4_0 int4mm"] += 1
+            if (linears == "int4mm" and qname in int4_cpu.KERNEL_TYPES
+                    and int4_cpu.fits(old.out_features, old.in_features)):
+                new = int4_cpu.Int4GGUFLinear(_blocks(t, device), old.in_features, old.out_features, qtype=qname,
+                                              dtype=dtype, gguf_name=t.name)
+                kinds[f"{qname} int4mm"] += 1
             elif here and linears != "dense" and GGML_TYPES[type_code(t.tensor_type)][1] > 1:
+                need = old.out_features * old.in_features * item
+                resident = linears == "resident" or (budget is not None and need <= budget - spent)
                 new: nn.Module = GGUFLinear(_blocks(t, device), t.tensor_type, old.in_features, old.out_features,
-                                            dtype=dtype, resident=(linears == "resident"), gguf_name=t.name)
-                kinds[f"{qname} {'resident' if linears == 'resident' else 'packed'}"] += 1
+                                            dtype=dtype, resident=resident, gguf_name=t.name)
+                if resident and budget is not None:
+                    spent += need
+                kinds[f"{qname} {'resident' if resident else 'packed'}"] += 1
             else:
                 new = nn.Linear(old.in_features, old.out_features, bias=False, device="meta")
                 new.weight = nn.Parameter(_dense(t, device, dtype), requires_grad=False)
                 install_overlay_forward(new)
                 kinds[f"{qname} dense" + ("" if here else " (gguf-py, at load)")] += 1
+                if not here:  # dense in every mode, outside any resident budget
+                    at_load += old.out_features * old.in_features * item
             setattr(parent, attr, new)
-    if linears == "int4mm" and not kinds["Q4_0 int4mm"]:
-        raise ValueError(f"The int4mm linears cannot be used: torch's int4 kernel takes Q4_0 layers, and this file has none "
-                         f"it can take ({dict(sorted(kinds.items()))}), so its readings would be the reference's under "
-                         "another model id. Use packed, resident or dense.")
+    if linears == "int4mm" and not any(k.endswith(" int4mm") for k in kinds):
+        raise ValueError(f"The int4mm linears cannot be used: torch's int4 kernel takes {', '.join(int4_cpu.KERNEL_TYPES)} "
+                         f"layers, and this file has none it can take ({dict(sorted(kinds.items()))}), so its readings "
+                         "would be the reference's under another model id. Use packed (with THEODOLITE_GGUF_RESIDENT_GB "
+                         "for a part of it resident), resident or dense.")
     # everything else: embeddings, norms, layer scalars (buffers), by name
     for name, p in list(hf.named_parameters()):
         if p.device.type != "meta":
@@ -613,6 +640,10 @@ def build_gemma4(
     record = {"config_source": source, "linears": linears, "layers_as": dict(sorted(kinds.items())),
               "dtype": str(dtype).replace("torch.", ""), "device": str(device),
               "norms": "w as stored (Gemma 4: no unit offset; llama.cpp's norm_shift 0)"}
+    if budget is not None:  # partly resident: the budget given and what the resident layers hold of it
+        record.update(resident_gb=float(resident_gb), resident_bytes=int(spent))
+    if at_load:  # the layers gguf-py unpacked at load: dense, whatever the mode or the budget
+        record.update(at_load_bytes=int(at_load))
     return hf, record
 
 

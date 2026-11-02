@@ -222,12 +222,14 @@ checkpoint on the reference unpacker): a prefill of 17 to 20 word-pieces took 31
 word-pieces 43 to 51 s (`experiments/results/atlas_wiring_check/`). torch’s own int4 kernel for the CPU
 (`THEODOLITE_GGUF_LINEARS=int4mm`, or `THEODOLITE_CHECKPOINT_LINEARS=int4mm` for the checkpoint) takes a 5,376 × 21,504
 layer at one row in 1.7 to 8 ms against 0.5 to 1.5 s for the reference, about 2 s a written word-piece of the 31B by the
-arithmetic, but its sums are the kernel’s, not the reference’s: its readings carry `+int4mm` in their model id, and on
-the stand-in 30 of 64 canary answers matched the reference’s word for word, where two batches of the reference matched
-64 of 64. So the CPU suits weight reads, single forwards, pilots and looking through int4mm now; a census or a corpus
-pass of record on it waits on a fast path with the reference’s bits (`scripts/compare_int4mm.py` holds the rule, fixed
-before any run on the 31B, by which int4mm’s readings could stand for the reference’s). What is left, phase by phase, is
-in ROADMAP §vii.
+arithmetic there; on the home machine (2 November 2026) the 31B through it wrote a word-piece in 0.45 s from the QAT
+Q4_0 GGUF and 0.56 s from a Q4_K_M (int4mm takes Q4_0, Q4_1 and Q4_K; the K file’s Q6_K layers held resident within
+`THEODOLITE_GGUF_RESIDENT_GB`, ARCHITECTURE §5). Its sums are the kernel’s, not the reference’s: its readings carry
+`+int4mm` in their model id, and on the stand-in 30 of 64 canary answers matched the reference’s word for word, where
+two batches of the reference matched 64 of 64. So the CPU suits weight reads, single forwards, pilots and looking
+through int4mm now; a census or a corpus pass of record on it waits on a fast path with the reference’s bits
+(`scripts/compare_int4mm.py` holds the rule, fixed before any run on the 31B, by which int4mm’s readings could stand for
+the reference’s). What is left, phase by phase, is in ROADMAP §vii.
 
 <br>
 

@@ -710,14 +710,19 @@ row, against 0.5 to 1.5 s for the reference, measured on one 4-vCPU container), 
 their model id: on the stand-in 30 of its 64 canary answers matched the reference word for word, against 64 of 64
 between two batches of the reference. A third followed on 2 November 2026: IQ4_NL and IQ4_XS unpacked here (bit for
 bit, as the others), the other types gguf-py reads (the rest of the IQ types, TQ1_0, TQ2_0, MXFP4, NVFP4) unpacked by it
-at load into dense layers, and split GGUF files read from any of their shards, each shard hashed in the provenance. The
-study’s registered scripts stay on the checkpoint and the card they were registered on. Of Gemma-4-31B from a GGUF, only
-a load and one forward have run: both copies of Unsloth’s UD-Q4_K_XL file here, refused before over their 24 IQ4_XS
-tensors, load on the CPU packed in bf16 (26–45 s, no lens), their IQ4_XS tensors unpacked as gguf-py unpacks them bit
-for bit, and a forward of six pieces (two to three minutes) puts “ Paris” first after “The capital of France is”
-(2 November 2026, ARCHITECTURE §5). On the CPU, besides, only the wiring check’s offline reads have run (29 October
-2026: eight prefills of the packed checkpoint on the reference unpacker, 31–51 s each on the home machine’s 12-core CPU;
-§vi, ARCHITECTURE §4.7). What is left, in order:
+at load into dense layers, and split GGUF files read from any of their shards, each shard hashed in the provenance;
+int4mm extended to Q4_1 and Q4_K (a scale and a zero per group of 32; on the stand-in the kernel’s weight is within
+rounding of the file’s, as for Q4_0); and `THEODOLITE_GGUF_RESIDENT_GB`, which holds the layers the kernel cannot take
+(Q5_K, Q6_K, Q8_0, IQ4_NL, IQ4_XS) resident within a budget, the packed bits, named in the weights card. The study’s
+registered scripts stay on the checkpoint and the card they were registered on. On the CPU the wiring check’s offline
+reads ran first (29 October 2026: eight prefills of the packed checkpoint on the reference unpacker, 31–51 s each on the
+home machine’s 12-core CPU; §vi, ARCHITECTURE §4.7). Gemma-4-31B then ran from a GGUF on that CPU, on 2 November 2026,
+two ways. Packed: both copies of Unsloth’s UD-Q4_K_XL file here, refused before over their 24 IQ4_XS tensors, load in
+bf16 (26–45 s, no lens), their IQ4_XS tensors unpacked as gguf-py unpacks them bit for bit, and a forward of six pieces
+(two to three minutes) puts “ Paris” first after “The capital of France is”. Through int4mm: a Q4_K_M (its 55 Q6_K
+layers resident in 8 GB) at 0.56 s a written word-piece and the QAT Q4_0 at 0.45 s, a 59-piece prefill in 3.5 s each,
+the Q4_K_M’s last-position top five the reference’s in order (ARCHITECTURE §5, “What works now” and “The 31B from a
+GGUF”). What is left, in order:
 
 - **The real file, against the checkpoint.** Run `compare_gguf_ct.py` on a GGUF of the 31B: if Google’s QAT Q4_0 holds
   the checkpoint’s codes and scales exactly, the two are one model, and the owner can decide whether an index or census
@@ -733,8 +738,8 @@ for bit, and a forward of six pieces (two to three minutes) puts “ Paris” fi
 - **A fast path on the CPU with the reference’s bits.** The reference unpacks every weight at every forward (3 to 16 ns
   a weight on the 4-vCPU container, minutes a forward there; a prefill of the 31B took 31 to 37 s on the home machine’s
   12 cores); a lookup-table or compiled unpacker for Q4_0, as `w4a16_fast` has for W4A16, would keep the bits but leave
-  the product dense; int4mm for Q4_1 and the K types (Q4_K_M files are common) is a reader and a check each. Blocked by
-  the choice, and a machine to time it on.
+  the product dense. Blocked by the choice. (int4mm itself now takes Q4_1 and Q4_K as well as Q4_0, and the layers it
+  cannot take can be held resident within a budget: above.)
 - **The atlas’s builds and the census on the CPU.** Both take a GGUF and the CPU. The lens build and the wiring are
   products of the weights (hours on a CPU, inferred); the stats and passages passes are a forward per window (days
   even through int4mm); the steer lens stays the GPU’s; a whole census layer is weeks to months (about 21 s a step of 64

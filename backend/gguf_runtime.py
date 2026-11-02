@@ -23,9 +23,10 @@ must share to be continued, and which the server compares before it reads an ind
 (`gguf_model.gguf_stem_id`), with `@<device>/<dtype>` after it off the GPU or in float32
 (`runtime_factory.reading_class`: `@cpu/bfloat16`, `@cpu/float32`, `@cuda/float32`), so a reading is not taken for
 another file's (as far as the fingerprint tells files apart: `gguf_model.provenance`), for the W4A16 checkpoint's, or
-for one of another numeric class. How the linear layers are held (packed, resident or dense) is not in it: the three
-hold the same weight, and give the same forward bit for bit (scripts/check_gguf.py); "int4mm", torch's int4 CPU kernel
-(backend/int4_cpu.py), does not, and its readings' model id ends `+int4mm`. `weights_card` is the file's
+for one of another numeric class. How the linear layers are held (packed, resident or dense, or partly resident within
+`resident_gb`, THEODOLITE_GGUF_RESIDENT_GB) is not in it: they hold the same weight, and give the same forward bit for
+bit (scripts/check_gguf.py, scripts/check_gguf_cpu.py §4); "int4mm", torch's int4 CPU kernel (backend/int4_cpu.py),
+does not, and its readings' model id ends `+int4mm`. `weights_card` is the file's
 provenance with how the model was built and where its tokenizer came from (the file's name, not its path, which only the
 log names); GET /api/health sends it ("weights").
 
@@ -71,6 +72,7 @@ class GGUFRuntime(er.TheodoliteRuntime):
         tokenizer: Any = None,
         tokenizer_repos: Sequence[str] = TOKENIZER_REPOS,
         load_jpp: bool = True,
+        resident_gb: Optional[float] = None,
     ) -> None:
         super().__init__(model_id=str(gguf_path), lens_repo_id=lens_repo_id, device=device, load_jlens=load_jlens)
         self.gguf_path = Path(gguf_path)
@@ -80,18 +82,20 @@ class GGUFRuntime(er.TheodoliteRuntime):
         self.tokenizer_repos = tuple(tokenizer_repos)
         self._given_tokenizer = tokenizer
         self.load_jpp = load_jpp
+        self.resident_gb = resident_gb  # THEODOLITE_GGUF_RESIDENT_GB: packed layers held resident up to this many GB
         # the file's provenance, how the model was built, where the tokenizer came from: {} until `load()`
         self.weights_card: Dict[str, Any] = {}
 
     def load(self) -> "GGUFRuntime":
         """Build the model from the GGUF, then everything the pinned `load()` does after its model is built."""
         t0 = time.perf_counter()
-        logger.info("Loading Gemma 4 from the GGUF %s on %s (%s linear layers, %s)...", self.gguf_path, self.device,
-                    self.linears, str(self.dtype).replace("torch.", ""))
+        logger.info("Loading Gemma 4 from the GGUF %s on %s (%s linear layers%s, %s)...", self.gguf_path, self.device,
+                    self.linears, "" if self.resident_gb is None else f", resident up to {self.resident_gb} GB",
+                    str(self.dtype).replace("torch.", ""))
         reader = gm.open_gguf(self.gguf_path)
         prov = gm.provenance(self.gguf_path, reader)
         hf_model, built = gm.build_gemma4(self.gguf_path, device=self.device, dtype=self.dtype, linears=self.linears,
-                                          hf_config=self.hf_config, reader=reader)
+                                          hf_config=self.hf_config, reader=reader, resident_gb=self.resident_gb)
         if self._given_tokenizer is not None:
             tokenizer, tok_rec = self._given_tokenizer, {"source": "given by the caller"}
         else:

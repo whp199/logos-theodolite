@@ -897,7 +897,8 @@ def run_checks(tmp: Path) -> int:
 
     # ------------------------------------------------------------ 5. the runtime from the environment, and the CLI
     before = len(failures)
-    keys = (rf.GGUF_ENV, rf.DEVICE_ENV, rf.LINEARS_ENV, rf.CONFIG_ENV, rf.DTYPE_ENV, rf.LENS_ENV, "CUDA_VISIBLE_DEVICES")
+    keys = (rf.GGUF_ENV, rf.DEVICE_ENV, rf.LINEARS_ENV, rf.CONFIG_ENV, rf.DTYPE_ENV, rf.LENS_ENV, rf.RESIDENT_ENV,
+            rf.CHECKPOINT_LINEARS_ENV, "CUDA_VISIBLE_DEVICES")
     env_before = {k: os.environ.get(k) for k in keys}
     try:
         for k in keys:
@@ -950,6 +951,7 @@ def run_checks(tmp: Path) -> int:
     env = {**os.environ, rf.GGUF_ENV: str(files["Q4_0"]), rf.DEVICE_ENV: "cpu", rf.DTYPE_ENV: "float32", rf.LENS_ENV: "none",
            "THEODOLITE_ATLAS_DIR": str(tmp / "atlas"), "HF_HUB_OFFLINE": "1", "CUDA_VISIBLE_DEVICES": ""}
     env.pop("THEODOLITE_CENSUS_DIR", None)
+    env.pop(rf.RESIDENT_ENV, None)
     out_dir = tmp / "cli-census"
     r = subprocess.run([sys.executable, "-I", str(ROOT_DIR / "scripts" / "census_run.py"), "--design", "main_rel", "--layer", "2", "--neurons", "0-1",
                         "--random-controls", "1", "--max-new", "6", "--batch", "5", "--top-k", "3", "--out-dir", str(out_dir), "--no-rank"],

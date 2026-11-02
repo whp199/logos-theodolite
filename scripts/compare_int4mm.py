@@ -5,11 +5,16 @@ THEODOLITE_CHECKPOINT_LINEARS=int4mm) departs from the reference path, and how m
     .venv/bin/python -I scripts/compare_int4mm.py --time                 # a 5,376 x 21,504 layer each way, 1, 8, 64 rows
     THEODOLITE_GGUF=model.gguf THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEODOLITE_GGUF_LENS=none \\
         .venv/bin/python -I scripts/compare_int4mm.py --layer 45 --max-new 16 --json int4mm.json
-    .venv/bin/python -I scripts/compare_int4mm.py --stand-in             # the same on the stand-in written as a Q4_0 GGUF
+    .venv/bin/python -I scripts/compare_int4mm.py --stand-in --qtype Q4_K   # the same on the stand-in written as a GGUF
 
---time: one random Q4_0 layer of 5,376 x 21,504 and one of 21,504 x 5,376 (the 31B's feed-forward shapes), at 1, 8 and
-64 rows in bf16 on this machine's threads: the best of --reps wall times of the reference (the packed layer's forward:
-unpack, then F.linear), the resident bf16 product and the kernel (`int4_cpu.timed_layer`); about 3 GB of memory.
+--time: one random layer of 5,376 x 21,504 and one of 21,504 x 5,376 (the 31B's feed-forward shapes) in each of
+--types (the kernel's Q4_0, Q4_1 and Q4_K, and Q5_K, Q6_K and Q8_0, which it cannot take; also Q5_0, Q5_1, Q2_K, Q3_K,
+IQ4_NL and IQ4_XS), at 1, 8 and 64 rows in bf16
+on this machine's threads: the best of --reps wall times of the reference (the packed layer's forward: unpack, then
+F.linear) and, for the kernel's types, the kernel; the resident bf16 product (what THEODOLITE_GGUF_RESIDENT_GB buys
+a layer the kernel cannot take); the W4A16 layout through the pinned unpacker and the kernel
+(`int4_cpu.timed_layer`); about 4 GB of memory. --stand-in writes the stand-in as a --qtype GGUF (Q4_K four times as
+wide, for rows of 256: its o_proj rows of 64 and 128 fall back to Q5_0 and stay packed) and compares on it.
 
 The comparison, after neuron-explorer's sweep/check_equivalence.py, judged on what a census reads
 (scripts/check_gguf_cpu.py §4 runs it on the stand-in): a canary census (backend/census.py's questions and main_rel's
@@ -107,25 +112,32 @@ def say(name: str, r: Dict[str, Any]) -> str:
             f"|delta log-prob| over the shared prefix {r['max_abs_dlogprob']:.4g}; top-{r['k']} overlap {r['topk_overlap']}")
 
 
-def stand_in_runtime(tmp: Path) -> Any:
-    """The stand-in written as a Q4_0 GGUF, loaded with int4mm linears in bf16 on the CPU."""
+def stand_in_runtime(tmp: Path, qtype: str = "Q4_0") -> Any:
+    """The stand-in written as a `qtype` GGUF (Q4_K: four times as wide, its rows 256 long), loaded with int4mm linears
+    in bf16 on the CPU."""
     import atlas_stand_in as asi
+    import check_gguf as cg
     import torch
 
     from backend import gguf_model as gm
     from backend.gguf_runtime import GGUFRuntime
 
     tok = asi.stand_in_tokenizer()
-    path = gm.write_gemma4_gguf(asi.stand_in_hf(tok), tmp / "stand-in-Q4_0.gguf", tokenizer=tok, qtype="Q4_0")
+    hf = cg.wide_stand_in(tok, 256, 512) if qtype == "Q4_K" else asi.stand_in_hf(tok)
+    path = gm.write_gemma4_gguf(hf, tmp / f"stand-in-{qtype}.gguf", tokenizer=tok, qtype=qtype)
     return GGUFRuntime(path, device="cpu", dtype=torch.bfloat16, tokenizer=tok, linears="int4mm", load_jpp=False).load()
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    from backend.int4_cpu import KERNEL_TYPES, TIMED_TYPES
+
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], formatter_class=argparse.RawDescriptionHelpFormatter,
                                  epilog=__doc__.split("\n\n", 1)[1])
     ap.add_argument("--time", action="store_true", help="time one layer of each feed-forward shape, and nothing else")
     ap.add_argument("--reps", type=int, default=5, help="--time: the best of this many")
-    ap.add_argument("--stand-in", action="store_true", help="compare on the stand-in written as a Q4_0 GGUF (a dry run)")
+    ap.add_argument("--types", default=",".join(TIMED_TYPES), help="--time: the GGUF types timed")
+    ap.add_argument("--stand-in", action="store_true", help="compare on the stand-in written as a GGUF (a dry run)")
+    ap.add_argument("--qtype", default="Q4_0", choices=KERNEL_TYPES, help="--stand-in: the type it is written in")
     ap.add_argument("--layer", type=int, default=2, help="the canary's layer, counting from 0")
     ap.add_argument("--neurons", default="0-15", help='the canary\'s neurons: "0-15" (the design\'s 16), "5,9,12"')
     ap.add_argument("--random-controls", type=int, default=8, help="the canary's random controls (the design's 8)")
@@ -144,17 +156,25 @@ def main(argv: Optional[List[str]] = None) -> int:
         why = int4_cpu.kernel_missing()
         if why:
             raise SystemExit(f"Not timed: {why}.")
-        report: Dict[str, Any] = {"threads": torch.get_num_threads(), "torch": torch.__version__, "layers": {}}
-        print(f"{torch.get_num_threads()} threads, torch {torch.__version__}, bf16, best of {a.reps}")
+        types = tuple(t.strip().upper() for t in a.types.split(",") if t.strip())
+        bad = [t for t in types if t not in int4_cpu._F16_AT]
+        if not types or bad:
+            raise SystemExit(f"Not timed: {', '.join(bad) or 'no type given'}; --types takes {', '.join(int4_cpu._F16_AT)}.")
+        report: Dict[str, Any] = {"threads": torch.get_num_threads(), "torch": torch.__version__, "types": list(types),
+                                  "layers": {}}
+        print(f"{torch.get_num_threads()} threads, torch {torch.__version__}, bf16, best of {a.reps}; reference (unpack, "
+              "then F.linear) and int4mm in ms, the reference's ns a weight in brackets")
         for out_f, in_f in ((5376, 21504), (21504, 5376)):
-            rows = int4_cpu.timed_layer(out_f, in_f, reps=a.reps)
+            rows = int4_cpu.timed_layer(out_f, in_f, reps=a.reps, qtypes=types)
             report["layers"][f"{out_f}x{in_f}"] = rows
             n = out_f * in_f
             for r in rows:
-                print(f"  [{out_f:,} x {in_f:,}] {r['rows']:3d} rows: Q4_0 reference {r['reference_s'] * 1e3:7.1f} ms "
-                      f"({r['reference_s'] / n * 1e9:5.2f} ns a weight), W4A16 reference {r['w4a16_reference_s'] * 1e3:7.1f} ms "
-                      f"({r['w4a16_reference_s'] / n * 1e9:5.2f}); resident bf16 {r['resident_bf16_s'] * 1e3:6.1f} ms; "
-                      f"int4mm {r['int4mm_s'] * 1e3:6.1f} ms (Q4_0), {r['w4a16_int4mm_s'] * 1e3:6.1f} ms (W4A16)")
+                each = "; ".join(f"{qt} {t['reference_s'] * 1e3:.1f} ({t['reference_s'] / n * 1e9:.2f})"
+                                 + (f", int4mm {t['int4mm_s'] * 1e3:.2f}" if t["int4mm_s"] is not None else "")
+                                 for qt, t in r["types"].items())
+                print(f"  [{out_f:,} x {in_f:,}] {r['rows']:3d} rows: {each}; resident bf16 {r['resident_bf16_s'] * 1e3:.2f}; "
+                      f"W4A16 {r['w4a16_reference_s'] * 1e3:.1f} ({r['w4a16_reference_s'] / n * 1e9:.2f}), int4mm "
+                      f"{r['w4a16_int4mm_s'] * 1e3:.2f}")
         if a.json:
             Path(a.json).write_text(json.dumps(report, indent=1))
         return 0
@@ -163,7 +183,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     with tempfile.TemporaryDirectory(prefix="compare-int4mm-") as d:
         if a.stand_in:
             os.environ["CUDA_VISIBLE_DEVICES"] = ""
-            rt = stand_in_runtime(Path(d))
+            rt = stand_in_runtime(Path(d), a.qtype)
         else:
             from backend.runtime_factory import make_runtime
 
