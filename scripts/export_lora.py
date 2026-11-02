@@ -37,13 +37,22 @@ The pushes, as the instrument makes them (`atlas_ops.resolve` and `installed`; t
   "norm": the file copied (a reflink where the file system allows: no space taken) and the F32 post-feed-forward or
   post-attention norm (`blk.<l>.post_ffw_norm`, `blk.<l>.post_attention_norm`) zeroed in place, which every
   llama.cpp reads; the norm after the block writes 0 whatever comes in. The record goes beside it, FILE.theodolite.json.
-  Either way the block writes nothing into the stream, as the instrument's x 0 does (the norm of 0 is 0).
+  Either way the block writes nothing into the stream, as the instrument's x 0 does (the norm of 0 is 0). But an
+  adapter on `blk.<l>.attn_output` served beside a by-scale copy of layer l's attention still writes: llama.cpp
+  multiplies the projection by `attn_output.scale` before it adds the adapter's B (A x) (`build_lora_mm`), so attention
+  writes post_attention_norm(s B A x). Silence attention by norm when an adapter touches that layer's heads.
+  `ffn_down.scale` is applied after the adapter's part (`build_ffn`), so the feed-forward copy is safe either way.
 - "add" is a control vector: scripts/export_control_vector.py writes it.
 - "act" (a number added to one neuron's activation) is refused: llama.cpp has no hook for it. A LoRA adds B (A x),
   which grows with the input, never a fixed amount; a control vector adds after the layer's norm, which the
   instrument's act goes through.
 
 What still differs from the instrument, by construction:
+0. adapters served at once add their changes, B_1 A_1 + B_2 A_2. On different neurons or heads that is the
+   instrument's combined push; on the same neuron or head it is not: mul f1 and mul f2 give 1 + (f1 - 1) + (f2 - 1),
+   not f1 x f2, and a mul-0 file beside a vault-edit file of that neuron leaves v - W where the instrument leaves 0.
+   To push one neuron or head twice as the instrument does, export both in one file (--push with a list, --vault
+   beside it).
 1. the start mark: the instrument's pushes and head scales leave `<bos>` (the attention sink) alone; a LoRA or a
    silenced copy acts at every position, the start mark included. A vault edit is a weight, everywhere, in both.
 2. the arithmetic: llama.cpp adds B (A x) in float32 to its own product (on the CPU, its quantised weights times
@@ -143,9 +152,10 @@ SILENCE = {"ffn": "every neuron of the feed-forward block silenced (PushIn all: 
                    "(atlas_ops.installed's x 0 at o_proj's input, then the norm of 0)"}
 SILENCE_BY = {"scale": ("a one-number F32 tensor blk.<l>.ffn_down.scale (or attn_output.scale) added, set to 0: llama.cpp "
                         "multiplies the projection's output by it (src/llama-model.cpp's generic pass, gemma4.cpp's "
-                        "build_ffn and build_attn); a llama.cpp without that pass refuses the file"),
+                        "build_ffn and build_attn); a llama.cpp without that pass refuses the file. An adapter on that "
+                        "layer's attn_output, served beside it, is added after the scale and still writes"),
               "norm": ("the F32 blk.<l>.post_ffw_norm (or post_attention_norm) weight zeroed in place: the norm after "
-                       "the block writes 0 whatever comes in")}
+                       "the block writes 0 whatever comes in, an adapter's part too")}
 CAVEAT = ("the census read its labels from add pushes, not from these: a neuron's mul, a head's scale and a vault edit "
           "carry the instrument's arithmetic, not a measured effect. Pushes and head scales act on the start mark too")
 
@@ -393,6 +403,16 @@ def vault_kept(vault: Any) -> Iterator[None]:
         vault._patch_counter = counter
 
 
+EDITS = ("DELETE", "UPDATE", "INSERT")
+
+
+def refuse_non_edit(statement: str) -> None:
+    """A ValueError in plain words for a --vault statement that is not an edit (before any model is loaded)."""
+    head = statement.strip().split(None, 1)[0].upper() if statement.strip() else ""
+    if head not in EDITS:
+        raise ValueError(f"--vault takes an edit (DELETE, UPDATE or INSERT), not {statement!r}.")
+
+
 def vault_columns(vault: Any, statements: Sequence[str]) -> Tuple[Dict[Tuple[int, int], np.ndarray], List[str]]:
     """({(layer, neuron): v float32 [D]}, each statement's edit in words): the vault's own edits
     (`LarqlVaultEngine.execute_lql`, in order, after any already in force; a later edit of a neuron replaces the
@@ -401,9 +421,7 @@ def vault_columns(vault: Any, statements: Sequence[str]) -> Tuple[Dict[Tuple[int
     said: List[str] = []
     with vault_kept(vault):
         for s in statements:
-            head = s.strip().split(None, 1)[0].upper() if s.strip() else ""
-            if head not in ("DELETE", "UPDATE", "INSERT"):
-                raise ValueError(f"--vault takes an edit (DELETE, UPDATE or INSERT), not {s!r}.")
+            refuse_non_edit(s)
             rep = vault.execute_lql(s)
             pr = rep["patch"]
             said.append(f"{pr['statement']} -> layer {pr['layer_idx']} neuron {pr['neuron_idx']} ({pr['op_type']}, column "
@@ -561,6 +579,14 @@ def write_silenced(src: Path, out: Path, silenced: Sequence[Tuple[int, str]], by
     if meta.get("split.count") not in (None, 0, 1):
         raise ValueError(f"{src.name} is one part of a split GGUF: join it first (llama-gguf-split --merge).")
     names = {t.name: t for t in reader.tensors}
+    # a copy made from a silenced copy would record only the second silencing: refused, so each record names them all
+    zeroed = [t.name for t in reader.tensors
+              if t.name.endswith((".ffn_down.scale", ".attn_output.scale", "post_ffw_norm.weight", "post_attention_norm.weight"))
+              and not np.asarray(t.data).any()]
+    if zeroed or any(k.startswith(KEY) for k in meta) or Path(str(src) + ".theodolite.json").exists():
+        raise ValueError(f"{src.name} is itself a silenced copy ({', '.join(zeroed) or 'its record says so'}): silence every "
+                         "block in one run, from the GGUF it was made from (--push takes a list), so the copy's record "
+                         "names them all.")
     for l, which in silenced:
         if f"blk.{l}.ffn_gate_inp.weight" in names:
             raise ValueError(f"Layer {l} of {src.name} has experts (Gemma 4 26B-A4B): this silences only the dense 31B's blocks.")
@@ -655,12 +681,13 @@ def default_name(plan: Plan) -> str:
     raise ValueError("Several pushes' adapter needs a name: -o FILE.")
 
 
-def log_hints(lora: Optional[Path], n_pairs: int, model_out: Optional[Path], by: str) -> List[str]:
+def log_hints(lora: Optional[Path], n_pairs: int, model_out: Optional[Path], by: str, attn_silenced: bool = False) -> List[str]:
     """What to run and what to look for in llama-server's log: it serves whatever it could load."""
     out = []
     if lora is not None:
         out += [f"load it with: llama-server -m <the GGUF the columns came from> --lora {lora} --lora-init-without-apply",
-                "  (several adapters: --lora A.gguf,B.gguf, ids 0, 1, ... in that order)",
+                "  (several adapters: --lora A.gguf,B.gguf, ids 0, 1, ... in that order; they add their changes, so two on "
+                "one neuron or head are not the instrument's two pushes of it: export those in one file)",
                 '  and push per request: "lora": [{"id": 0, "scale": 1}] (SCALE s: the factor 1 + s (f - 1)); name every '
                 "adapter in every request, 0 for those left off: a request that names none gets each at the scale GET "
                 "/lora-adapters shows, 1 even with --lora-init-without-apply. --lora-scaled FILE:S pushes every request",
@@ -674,6 +701,9 @@ def log_hints(lora: Optional[Path], n_pairs: int, model_out: Optional[Path], by:
         out += (["  in its log, look for \"wrong number of tensors\": a llama.cpp without the generic .scale pass refuses "
                  "the file (cd26896 reads it)"] if by == "scale" else
                 ["  the copy loads as the model itself; --show reads its zeroed norms back"])
+        if by == "scale" and attn_silenced:
+            out += ["  an adapter on a silenced layer's attn_output, served beside this copy, still writes (llama.cpp scales "
+                    "the projection before it adds the adapter): silence attention with --silence-by norm for that"]
     out += ["  a control vector beside it that the server cannot use is logged (\"control vector n_embd does not match "
             "model\", \"failed to load control vector file\", \"no valid control vector files passed\") and the server "
             "serves the model without it: read the log"]
@@ -743,11 +773,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         said: List[str] = []
         if a.vault:
             plan_of(ps, hs, {}, source)  # refuse what cannot be given before the model is loaded
+            for s in a.vault:
+                refuse_non_edit(s)
             from backend.larql_vault import LarqlVaultEngine
-            from backend.runtime_factory import GGUF_ENV, make_runtime
+            from backend.runtime_factory import DEVICE_ENV, GGUF_ENV, make_runtime
 
+            # the vault's runtime from the weights B's columns are read from, whatever the shell has set
             if a.gguf:
                 os.environ[GGUF_ENV] = str(Path(a.gguf).resolve())
+            else:
+                os.environ.pop(GGUF_ENV, None)
+            os.environ[DEVICE_ENV] = "cpu"
             print("loading the instrument's runtime on the CPU for the vault's edits ...", flush=True)
             vault, said = vault_columns(LarqlVaultEngine(make_runtime(load_jlens=False).load()), a.vault)
         plan = plan_of(ps, hs, vault, source, said)
@@ -797,7 +833,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not a.gguf:
         print("  the columns are the checkpoint's: on a GGUF of other quantisation the push is near, not exact (name the "
               "GGUF you serve with --gguf)")
-    for line in log_hints(out, len(tensors), Path(a.model_out) if a.model_out else None, a.silence_by):
+    for line in log_hints(out, len(tensors), Path(a.model_out) if a.model_out else None, a.silence_by,
+                          any(w == "attn" for _l, w in plan.silenced)):
         print(line)
     return 0
 

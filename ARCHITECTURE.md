@@ -1520,7 +1520,7 @@ src/models/gemma4.cpp, where `wo_s` goes into `build_attn` at lines 240 and 245 
 | mul f on neuron n of layer l: `a_n × f` at the down projection's input | LoRA on `blk.<l>.ffn_down`: A = e_nᵀ, B = (f − 1) W_down[:, n]; rank 1 |
 | a vault edit: column n of W_down becomes v (rounded to the model's dtype, as its forward lays it on) | LoRA: A = e_nᵀ, B = f v − W_down[:, n] (f the neuron's mul, else 1); rank 1 |
 | head h of layer l times f: o_proj's inputs h·hd to (h + 1)·hd | LoRA on `blk.<l>.attn_output`: A the identity on those inputs, B = (f − 1) W_O[:, h·hd:(h+1)·hd]; rank hd (256 on the 31B's sliding layers, 512 on its full ones) |
-| a whole block silenced (`all: true`, 0) or every head (`head: "all"`, 0) | not a LoRA (full rank): a copy of the GGUF (`--model-out`) with an added one-number F32 `blk.<l>.ffn_down.scale` or `attn_output.scale` set to 0 (`--silence-by scale`, the default; the record in the file; a llama.cpp without the generic pass refuses it, "wrong number of tensors"), or the F32 `post_ffw_norm` / `post_attention_norm` zeroed in place (`--silence-by norm`: a reflink copy where the file system allows; the record beside it, FILE.theodolite.json). The norm of 0 is 0 either way |
+| a whole block silenced (`all: true`, 0) or every head (`head: "all"`, 0) | not a LoRA (full rank): a copy of the GGUF (`--model-out`) with an added one-number F32 `blk.<l>.ffn_down.scale` or `attn_output.scale` set to 0 (`--silence-by scale`, the default; the record in the file; a llama.cpp without the generic pass refuses it, "wrong number of tensors"), or the F32 `post_ffw_norm` / `post_attention_norm` zeroed in place (`--silence-by norm`: a reflink copy where the file system allows; the record beside it, FILE.theodolite.json). The norm of 0 is 0 either way, but llama.cpp scales `attn_output` before it adds an adapter's B (A x) (`build_lora_mm`), so an adapter on that layer's heads served beside a by-scale copy of its attention still writes: silence attention by norm then (`ffn_down.scale` comes after the adapter, so the feed-forward copy is safe either way). A copy is made from the GGUF itself, not from another silenced copy (refused: silence every block in one run) |
 | act: a number added to one activation | refused: llama.cpp has no hook for it (a LoRA adds B (A x), which grows with the input; a control vector is added after the norm the activation's push goes through) |
 | add | the control vector above |
 | how big | the adapter's SCALE multiplies B (A x): per request (`"lora": [{"id": ID, "scale": S}]`), or `--lora-scaled FILE:S`. No `adapter.lora.alpha` is written, so SCALE alone. At SCALE s a factor f becomes 1 + s (f − 1): a file written at mul 0 gives the instrument's mul d at SCALE 1 − d |
@@ -1544,7 +1544,10 @@ start mark, what of llama.cpp was read, the caveat, the code's commit and the ti
 - a request naming no adapter gets each at the scale `GET /lora-adapters` shows: 1, even with
   `--lora-init-without-apply`. Name every adapter in every request, 0 for those left off.
 - `--lora` given twice draws a deprecation warning ("only last value will be used"; both were loaded here): give
-  several adapters comma-separated, `--lora A.gguf,B.gguf`, ids 0, 1, … in that order.
+  several adapters comma-separated, `--lora A.gguf,B.gguf`, ids 0, 1, … in that order. Adapters served at once add
+  their changes: on different neurons or heads that is the instrument's combined push, on the same one it is not (mul
+  f1 and mul f2 give the factor f1 + f2 − 1, not f1 × f2; a mul-0 file beside a vault edit of that neuron leaves v − W
+  where the instrument leaves 0): export pushes of one neuron or head in one file.
 
 **The check** (`scripts/check_lora_export.py`, CPU only, 72 checks in about 50 s). The control-vector check's stand-in,
 its o_proj packed as W4A16 too and its config.json beside the checkpoint. The exporter reads PushIn bodies as

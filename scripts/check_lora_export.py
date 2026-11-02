@@ -322,6 +322,41 @@ def check_file(rt: Any, folder: Path, gguf_model: Path, tmp: Path) -> None:
     check(not LarqlVaultEngine(rt).edits_in_force() and not any(
         getattr(layer.mlp.down_proj, "_memit_col_overlays", None) for layer in language_model(rt.hf_model).layers),
         "and leaves the runtime's vault as it was")
+    # a statement that is no edit refused before any model is loaded; without --gguf the vault's runtime is the
+    # checkpoint's (B's columns are), whatever THEODOLITE_GGUF the shell holds, and on the CPU
+    seen: Dict[str, Any] = {}
+
+    def no_load(**_kw: Any) -> Any:
+        raise AssertionError("a model was loaded")
+
+    def watched(**_kw: Any) -> Any:
+        seen.update(gguf=os.environ.get(rf.GGUF_ENV), device=os.environ.get(rf.DEVICE_ENV))
+        return SimpleNamespace(load=lambda: rt)
+
+    files_of, dev = el.ecv.checkpoint_files, os.environ.get(rf.DEVICE_ENV)
+    try:
+        rf.make_runtime = no_load
+        try:
+            el.main(["--gguf", str(gguf_model), "--vault", "ROLLBACK", "-o", str(tmp / "cli-rollback.gguf")])
+            check(False, "--vault ROLLBACK refused")
+        except SystemExit as exc:
+            check("--vault takes an edit" in str(exc) and not (tmp / "cli-rollback.gguf").exists(),
+                  f"--vault with a statement that is no edit: refused before any model is loaded ({exc})")
+        rf.make_runtime = watched
+        os.environ[rf.GGUF_ENV], os.environ[rf.DEVICE_ENV] = str(gguf_model), "cuda:0"
+        el.ecv.checkpoint_files = lambda _c=None: files_of(str(folder))
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = el.main(["--vault", UPDATE, "-o", str(tmp / "cli-vault-ct.gguf")])
+        check(code == 0 and seen == {"gguf": None, "device": "cpu"},
+              f"--vault without --gguf, THEODOLITE_GGUF set in the shell: the vault's runtime is the checkpoint's, on the "
+              f"CPU, as B's columns are ({seen})")
+    finally:
+        rf.make_runtime, el.ecv.checkpoint_files = made, files_of
+        for k_, v_ in ((rf.GGUF_ENV, env), (rf.DEVICE_ENV, dev)):
+            if v_ is None:
+                os.environ.pop(k_, None)
+            else:
+                os.environ[k_] = v_
     section("the file as llama.cpp's loader reads it, the command line and its refusals", before)
 
 
@@ -359,7 +394,13 @@ def check_silenced(gguf_model: Path, tmp: Path) -> Dict[str, Path]:
                 check(len(a) == len(b) and a[:lo] == b[:lo] and a[lo + n:] == b[lo + n:], "every other byte as it was")
                 side = Path(str(p) + ".theodolite.json")
                 check(side.exists() and json.loads(side.read_text()).get("silence_by"), "the record beside it")
-    section("the silenced copies: an added .scale tensor, a zeroed norm", before)
+    for key in ("ffn-scale", "ffn-norm"):  # a copy of a silenced copy would record only the second silencing
+        if key in out:
+            p = tmp / f"chain-{key}.gguf"
+            got = run_cli(["--gguf", out[key], "--layer", HEADS, "--head", "all", "--scale", 0, "--model-out", p])
+            check(got.returncode != 0 and "is itself a silenced copy" in got.stderr and not p.exists(),
+                  f"a copy made from the {key} copy: refused, nothing written ({got.stderr.strip()[-160:]})")
+    section("the silenced copies: an added .scale tensor, a zeroed norm; none made from another", before)
     return out
 
 
@@ -462,8 +503,22 @@ def check_llama(exe: Optional[Path], rt: Any, gguf_model: Path, tmp: Path, silen
         d[key] = gap(got[key], pushed(**kw))
         apart[f"{key} against unpushed"] = gap(got[key], got["plain"])
         marks[key] = (gap(got[key], spared(**kw)), d[key])
+    # an adapter on a head of the silenced attention's layer, served beside each copy: the zeroed norm silences its part
+    # too; the added attn_output.scale, which llama.cpp applies before an adapter's part, does not
+    beside = tmp / "a-silenced-layer-head.gguf"
+    export(el.Columns(ccv.ecv.GGUFColumns(gguf_model)), beside, [{"layer": HEADS, "head": 0, "dose": 3}])
+    leak: Dict[str, float] = {}
+    for key in ("attn-norm", "attn-scale"):
+        if key in silenced:
+            with ccv.LlamaServer(exe, silenced[key], [], log, ["--lora", str(beside), "--lora-init-without-apply"]) as srv:
+                leak[key] = gap(srv.first_logprobs(ids, V, barred, {"lora": [{"id": 0, "scale": 1.0}]}),
+                                srv.first_logprobs(ids, V, barred, {"lora": [{"id": 0, "scale": 0.0}]}))
     floor = max(d.values())
     check(floor < 1e-3, f"llama.cpp and the instrument alike where they should be (worst {floor:.1e} in a log-probability)")
+    check(leak.get("attn-norm", 1.0) < 1e-6 and leak.get("attn-scale", 0.0) > 20 * floor,
+          f"an adapter on a head of layer {HEADS} beside its silenced attention: nothing through the by-norm copy "
+          f"({leak.get('attn-norm', float('nan')):.1e}), something through the by-scale one "
+          f"({leak.get('attn-scale', float('nan')):.1e}), as the docs warn")
     least = min(apart.values())
     check(least > 20 * floor, f"and far apart where they should be (least {least:.2e}, at least 20x the {floor:.1e} floor)")
     for k, (far, near) in marks.items():
