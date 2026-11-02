@@ -1,4 +1,9 @@
-"""llama.cpp's own floor: the same request twice, and each adapter at a vanishing scale (0.001), on the 31B (CPU)."""
+"""llama.cpp's own floor on the 31B (CPU): the same request twice, and each of census/'s adapters at SCALE 0.001 and
+0.1, against none; the largest change in a log-probability over the instrument's 200 likeliest pieces, per question.
+
+    floor.py DIR GGUF [LLAMA_SERVER]   # DIR: run.py's census folder (its instrument.npz and five adapters); writes
+                                       # DIR/floor.json
+"""
 import json, os, subprocess, sys, time, urllib.request
 from pathlib import Path
 import numpy as np
@@ -36,5 +41,7 @@ try:
             for s in (1e-3, 1e-1):
                 rows.setdefault(f"{n} at scale {s:g}", []).append(d(ask(q["ids"], [s if j == i else 0 for j in range(5)]), a))
     for k, v in rows.items(): print(f"{k:28s} largest |change| over the 200 likeliest, per question: " + " ".join(f"{x:.3f}" for x in v))
+    (out / "floor.json").write_text(json.dumps({"what": __doc__.split("\n\n")[0], "questions": list(meta["questions"]),
+                                                "largest_change_per_question": rows}, indent=1) + "\n")
 finally:
     proc.terminate(); proc.wait(timeout=20)

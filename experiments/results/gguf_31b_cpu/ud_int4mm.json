@@ -3,11 +3,11 @@
  "gguf": "/home/eric/bin/ai-models/gemma-4-31B-it-UD-Q4_K_XL.gguf",
  "threads": 12,
  "loadavg_at_start": [
-  8.27001953125,
-  11.5869140625,
-  13.78857421875
+  8.01513671875,
+  5.05322265625,
+  5.521484375
  ],
- "load_s": 67.9,
+ "load_s": 57.1,
  "model_id": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08@cpu/bfloat16+int4mm",
  "layers_as": {
   "IQ4_XS resident": 24,
@@ -27,8 +27,8 @@
   "Q5_K": 37,
   "Q6_K": 70
  },
- "rss_gib_after_load": 40.5,
- "paris_forward_s": 9.8,
+ "rss_gib_after_load": 43.0,
+ "paris_forward_s": 1.8,
  "paris_top5": [
   [
    " Paris",
@@ -52,10 +52,13 @@
   ]
  ],
  "chat_prefill_pieces": 23,
- "chat_prefill_s": 2.6,
- "written_16": "Danube\nRhine\nVolga<turn|>",
- "s_per_piece_incl_prefill": 1.01,
- "kernel_off_paris_forward_s": 50.6,
+ "chat_prefill_s": 2.2,
+ "written": "Danube\nRhine\nVolga<turn|>",
+ "pieces_written": 9,
+ "generate_s": 14.0,
+ "s_per_piece_incl_prefill": 1.56,
+ "s_per_step_after_prefill": 1.48,
+ "kernel_off_paris_forward_s": 40.6,
  "kernel_off_paris_top5": [
   [
    " Paris",
@@ -81,11 +84,11 @@
  "kernel_off_model_id": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08@cpu/bfloat16",
  "KL(reference || int4mm) at the last position": 0.0,
  "largest |dlogprob| among the reference's five": 0.125,
- "rss_gib_end": 48.6,
- "max_rss_gib": 49.2,
+ "rss_gib_end": 45.2,
+ "max_rss_gib": 46.0,
  "loadavg_at_end": [
-  12.5576171875,
-  11.62744140625,
-  13.4482421875
+  10.9912109375,
+  6.94091796875,
+  6.14453125
  ]
 }

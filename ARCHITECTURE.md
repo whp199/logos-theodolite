@@ -1080,8 +1080,9 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
   116 s beside other sessions' work, and 38.8 s later that day with the file in the page cache and no other 31B
   beside it (experiments/results/gguf_31b_cpu), finite, and put " Paris" first after "The capital of France is"
   (log-probability −0.018 and −0.024). The same file through int4mm with `THEODOLITE_GGUF_RESIDENT_GB=16` (its 280
-  Q4_K through the kernel, its 24 IQ4_XS, 69 Q6_K and 33 Q5_K resident) loads in 68 s, holds 40.5 GiB, writes a
-  word-piece in about 1 s, and with the kernel turned off in place gives the same five likeliest in the same order.
+  Q4_K through the kernel, its 24 IQ4_XS, 69 Q6_K and 33 Q5_K resident) loads in 57 to 68 s, holds 40.5 to 43 GiB,
+  writes a word-piece in 1.5 s (its 16 GB of resident bf16 and four packed layers read at every step), and with the
+  kernel turned off in place gives the same five likeliest in the same order.
   The two
   copies share a name, not their bytes (their headers, 4,416 bytes apart in length, and their last MiB differ), so
   their fingerprints differ (`adfe6f42c3758a08` in `ai-models/`, `f542658966346851` in `ai-models/txt/`), and with them
@@ -1588,13 +1589,14 @@ pushes at layer 45). Compared: each engine's change in log-probability at the fi
 six questions, over 1,200 pieces, against the control vector's bar (r at least 0.8, llama.cpp's change over the
 instrument's between 0.67 and 1.5 where the instrument's moved by more than 0.5). llama.cpp's own floor is high there:
 the same request twice is identical, but any adapter switched on, even at SCALE 0.001, moves the 200 likeliest pieces
-by 0.25 to 0.65 (on the CPU it quantises the activations to 8 bits before each product, so any change shifts their
+by 0.21 to 0.65 per question (`census/floor.json`; on the CPU it quantises the activations to 8 bits before each product, so any change shifts their
 rounding in every layer after). Every push that moves the first piece by 2 or more passes the bar, the start mark
 pushed or spared: the neuron most active on those prompts at × 0 (r 0.88, ratio 0.91) and × 3 (0.96, 0.99), the eight
 most active at × 0 (0.90, 0.92) and × −1 (0.98, 0.94), heads 0 to 7 at × 0 (0.94, 0.96) and head 0 at × 5 (0.94,
-1.15). Head 0 at × 0, at most 1.06, does not (r 0.62). Layer 45's two census leads, at × 0 to × 30, do not move the
-first piece in the instrument itself (under 0.5, in steps of the bfloat16 logits' rounding): there is nothing there
-to carry over, and their effect in the answers is not read by this comparison.
+1.15). Head 0 at × 0, at most 1.06, does not (r 0.62). Layer 45's two census leads, at × −20 to × 30, hardly move
+the first piece in the instrument itself (0.31 to 0.50 at the most, in steps of the bfloat16 logits' rounding; one
+piece of 1,200 just past 0.5, at × 0): there is nothing there to carry over, and their effect in the answers is not
+read by this comparison.
 
 Not measured: a GPU backend's arithmetic for B (A x), quantised GGUFs other than that Q4_0, `--vault` on the real
 runtime, a silenced copy of the 31B, and what any of these pushes does to the text: the census's labels were read

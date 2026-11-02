@@ -10,9 +10,9 @@ unpushed and 50 likeliest pushed, per question). The bar is the control vector's
 0.8, and the median of llama.cpp's change over the instrument's between 0.67 and 1.5 where the instrument's moved by
 more than 0.5.
 
-**llama.cpp's own floor** (`floor.py`). The same request twice gives the same log-probabilities to the last digit. But
-any adapter switched on, at any scale (0.001 as at 0.1), moves the 200 likeliest pieces by 0.25 to 0.65 in a
-log-probability, per question: on the CPU llama.cpp quantises the activations to 8 bits before each product, so
+**llama.cpp's own floor** (`floor.py`, `census/floor.json`). The same request twice gives the same log-probabilities
+(the largest difference 0). But any adapter switched on, at any scale (0.001 as at 0.1), moves the 200 likeliest
+pieces by 0.21 to 0.65 in a log-probability, per question: on the CPU llama.cpp quantises the activations to 8 bits before each product, so
 any change, however small, shifts their rounding in every layer after it. A push that moves the first piece by less
 than that cannot be told from it here. The unpushed engines differ by up to 0.70 over the 50 likeliest.
 
@@ -32,11 +32,12 @@ So a neuron's mul and a head's scale carry over through the LoRA where the push 
 llama.cpp's floor: every push that moves it by 2 or more passes the bar, with the start mark pushed (as llama.cpp
 pushes it) or spared. Head 0 × 0, which moves it by 1.06 at the most, just past the floor, does not (r 0.62, though
 its median ratio is 0.94).
-Layer 45's two census leads do not move the first piece at all here: the instrument's own change stays under 0.5 at
+Layer 45's two census leads hardly move the first piece here: the instrument's own change stays under 0.5 at
 × 5 and at × 30 alike, in steps of 1/16 (the bfloat16 logits' rounding), so they are hardly active on these prompts,
 and there is nothing to carry over. Their census effect is in the answers, which this first-piece comparison does not
 read. The most active neurons were picked by the instrument from these same prompts (`active/pushes.json`). Every
-answer's first piece was the same in both engines, pushed and not (6 of 6 for every push).
+answer's first piece was the same in both engines, pushed and not (6 of 6 unpushed and for every push: each
+`summary.json`).
 
 Not measured: a GPU backend, the text written under a push (the census's labels were read from add pushes, not
 these), a vault edit, a silenced copy of the 31B, and a quantised file other than this Q4_0. The head adapters'

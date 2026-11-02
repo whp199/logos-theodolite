@@ -201,6 +201,8 @@ def read(a):
         ok = ~np.isnan(lp[top])
         floor.append(float(np.max(np.abs(ip[top][ok] - lp[top][ok]))))
     report["unpushed: largest |log-prob difference| between the engines over the instrument's 50 likeliest"] = max(floor)
+    same = [int(np.nanargmax(L[f"{qk}|plain"])) == int(np.nanargmax(I[f"{qk}|plain"])) for qk in meta["questions"]]
+    report["unpushed: same first piece in both engines"] = f"{sum(same)} of {len(same)}"
     if f"{qk}|floor" in L:
         fl = []
         for qk in meta["questions"]:

@@ -85,7 +85,10 @@ Every adapter records what it was made from under `theodolite.*` (the pushes as 
 the push, the scale, the start mark, what of llama.cpp was read, the code's commit), beside llama.cpp's keys. `--show`
 prints them. Nothing here uses the GPU or downloads anything; `--vault` loads the instrument's runtime on the CPU
 (`runtime_factory.make_runtime`: the whole model, minutes and some 20 GB on the 31B, its J++ lens for UPDATE and
-INSERT), the rest reads a few tensors.
+INSERT), the reference on the weights the columns are read from (the GGUF of `--gguf`, else the checkpoint: packed,
+bfloat16), whatever runtime the shell is set up for; the rest reads a few tensors. Whatever can be refused without
+the vault's edits (the pushes, the statements, a silenced copy's source, a file already there) is refused before
+that load and before any file is written.
 """
 
 from __future__ import annotations
@@ -561,10 +564,9 @@ def _clone_or_copy(src: Path, dst: Path) -> str:
     return "copy"
 
 
-def write_silenced(src: Path, out: Path, silenced: Sequence[Tuple[int, str]], by: str,
-                   record: Dict[str, Any]) -> Tuple[Path, str]:
-    """A copy of the GGUF `src` with each (layer, "ffn" | "attn") silenced, `by` "scale" or "norm" (module docstring);
-    returns (the file, how). Atomically, as the adapter is written."""
+def refuse_silencing(src: Path, out: Path, silenced: Sequence[Tuple[int, str]], by: str) -> Tuple[Any, Dict[str, Any]]:
+    """(the reader, its tensors by name) of the GGUF `src` a silenced copy is made from; a ValueError in plain words for
+    a source the copy cannot be made from (`main` asks before it loads or writes anything)."""
     import gguf
 
     from backend import gguf_model as gm
@@ -599,6 +601,17 @@ def write_silenced(src: Path, out: Path, silenced: Sequence[Tuple[int, str]], by
         if by == "norm" and t.tensor_type not in (gguf.GGMLQuantizationType.F32, gguf.GGMLQuantizationType.F16,
                                                   gguf.GGMLQuantizationType.BF16):
             raise ValueError(f"{norm} is {t.tensor_type.name}, not a float type whose zero bytes are 0.")
+    return reader, names
+
+
+def write_silenced(src: Path, out: Path, silenced: Sequence[Tuple[int, str]], by: str,
+                   record: Dict[str, Any]) -> Tuple[Path, str]:
+    """A copy of the GGUF `src` with each (layer, "ffn" | "attn") silenced, `by` "scale" or "norm" (module docstring);
+    returns (the file, how). Atomically, as the adapter is written."""
+    import gguf
+
+    src, out = Path(src), Path(out)
+    reader, names = refuse_silencing(src, out, silenced, by)
     tmp = out.with_name(out.name + ".tmp")
     try:
         if by == "norm":
@@ -769,31 +782,50 @@ def main(argv: Optional[List[str]] = None) -> int:
                              "--checkpoint's files.")
         source = Columns(ecv.GGUFColumns(Path(a.gguf)) if a.gguf else ecv.CheckpointColumns(ecv.checkpoint_files(a.checkpoint)))
         ps, hs = pushes_of(bodies)
+        # everything that can be refused without the vault's edits, refused before its model is loaded or a file written
+        pre = plan_of(ps, hs, {}, source)
+        for s in a.vault:
+            refuse_non_edit(s)
+        if pre.silenced and not a.model_out:
+            raise ValueError("A whole block or every head silenced is written as a copy of the model: name the GGUF you serve "
+                             "with --gguf and the copy with --model-out FILE.")
+        if pre.silenced and not a.gguf:
+            raise ValueError("A silenced copy is made from the GGUF you serve: name it with --gguf.")
+        if a.model_out and not pre.silenced:
+            raise ValueError("--model-out is for a whole block or every head silenced (--block, all: true, head: \"all\").")
+        if pre.silenced:
+            refuse_silencing(Path(a.gguf), Path(a.model_out), pre.silenced, a.silence_by)
+        for p in (Path(a.out) if a.out else None, Path(a.model_out) if a.model_out else None):
+            if p is not None and p.exists() and not a.force:
+                raise ValueError(f"{p} is already there (--force writes over it).")
         vault: Dict[Tuple[int, int], np.ndarray] = {}
         said: List[str] = []
         if a.vault:
-            plan_of(ps, hs, {}, source)  # refuse what cannot be given before the model is loaded
-            for s in a.vault:
-                refuse_non_edit(s)
+            from backend import runtime_factory as rf
             from backend.larql_vault import LarqlVaultEngine
-            from backend.runtime_factory import DEVICE_ENV, GGUF_ENV, make_runtime
 
-            # the vault's runtime from the weights B's columns are read from, whatever the shell has set
-            if a.gguf:
-                os.environ[GGUF_ENV] = str(Path(a.gguf).resolve())
-            else:
-                os.environ.pop(GGUF_ENV, None)
-            os.environ[DEVICE_ENV] = "cpu"
-            print("loading the instrument's runtime on the CPU for the vault's edits ...", flush=True)
-            vault, said = vault_columns(LarqlVaultEngine(make_runtime(load_jlens=False).load()), a.vault)
+            # the vault's runtime: the reference (packed, bfloat16, its J++ lens for UPDATE and INSERT) on the CPU, from
+            # the weights B's columns are read from, whatever runtime the shell is set up for; the shell's settings are
+            # put back once it is loaded
+            keys = (rf.GGUF_ENV, rf.DEVICE_ENV, rf.LINEARS_ENV, rf.RESIDENT_ENV, rf.CHECKPOINT_LINEARS_ENV, rf.DTYPE_ENV,
+                    rf.LENS_ENV)
+            kept = {k: os.environ.get(k) for k in keys}
+            try:
+                for k in keys:
+                    os.environ.pop(k, None)
+                if a.gguf:
+                    os.environ[rf.GGUF_ENV] = str(Path(a.gguf).resolve())
+                os.environ[rf.DEVICE_ENV] = "cpu"
+                print("loading the instrument's runtime on the CPU for the vault's edits ...", flush=True)
+                rt = rf.make_runtime(load_jlens=False).load()
+            finally:
+                for k, v in kept.items():
+                    if v is None:
+                        os.environ.pop(k, None)
+                    else:
+                        os.environ[k] = v
+            vault, said = vault_columns(LarqlVaultEngine(rt), a.vault)
         plan = plan_of(ps, hs, vault, source, said)
-        if plan.silenced and not a.model_out:
-            raise ValueError("A whole block or every head silenced is written as a copy of the model: name the GGUF you serve "
-                             "with --gguf and the copy with --model-out FILE.")
-        if plan.silenced and not a.gguf:
-            raise ValueError("A silenced copy is made from the GGUF you serve: name it with --gguf.")
-        if a.model_out and not plan.silenced:
-            raise ValueError("--model-out is for a whole block or every head silenced (--block, all: true, head: \"all\").")
         kinds = [k for k, used in ((MUL, bool(plan.muls)), (VAULT, bool(plan.columns)), (HEAD, bool(plan.heads))) if used]
         out = None
         if not plan.lora_empty():

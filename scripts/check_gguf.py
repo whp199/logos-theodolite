@@ -951,7 +951,8 @@ def run_checks(tmp: Path) -> int:
     env = {**os.environ, rf.GGUF_ENV: str(files["Q4_0"]), rf.DEVICE_ENV: "cpu", rf.DTYPE_ENV: "float32", rf.LENS_ENV: "none",
            "THEODOLITE_ATLAS_DIR": str(tmp / "atlas"), "HF_HUB_OFFLINE": "1", "CUDA_VISIBLE_DEVICES": ""}
     env.pop("THEODOLITE_CENSUS_DIR", None)
-    env.pop(rf.RESIDENT_ENV, None)
+    for k in (rf.LINEARS_ENV, rf.CONFIG_ENV, rf.RESIDENT_ENV, rf.CHECKPOINT_LINEARS_ENV):  # the shell's, not this check's
+        env.pop(k, None)
     out_dir = tmp / "cli-census"
     r = subprocess.run([sys.executable, "-I", str(ROOT_DIR / "scripts" / "census_run.py"), "--design", "main_rel", "--layer", "2", "--neurons", "0-1",
                         "--random-controls", "1", "--max-new", "6", "--batch", "5", "--top-k", "3", "--out-dir", str(out_dir), "--no-rank"],

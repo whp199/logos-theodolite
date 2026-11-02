@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """The merged GGUF code on a real 31B file, on the CPU.
 
-    run.py int4mm GGUF OUT.json [--resident-gb 12]   # int4mm + budget: load, layers_as, prefill, 16 written,
-                                                                # then the kernel off in place, the same prefill
-    run.py packed GGUF OUT.json                        # every quantised layer packed: one forward, timed
+    run.py int4mm GGUF OUT.json [--resident-gb 16]   # int4mm + budget: load, layers_as, prefill, up to 16 written
+                                                     # (it stops at an end mark), then the kernel off in place, the
+                                                     # same forward
+    run.py packed GGUF OUT.json                      # every quantised layer packed: one forward, timed
 """
 
 import json
@@ -65,9 +66,11 @@ if mode == "int4mm":
     t0 = time.perf_counter()
     g = rt.hf_model.generate(chat, attention_mask=torch.ones_like(chat), max_new_tokens=16, do_sample=False)
     dt = time.perf_counter() - t0
-    rec["written_16"] = rt.tokenizer.decode(g[0, chat.shape[1]:])
-    rec["s_per_piece_incl_prefill"] = round(dt / 16, 2)
-    print("written:", rec["s_per_piece_incl_prefill"], repr(rec["written_16"]), flush=True)
+    n = int(g.shape[1] - chat.shape[1])  # it stops at an end mark, so up to 16
+    rec["written"], rec["pieces_written"], rec["generate_s"] = rt.tokenizer.decode(g[0, chat.shape[1]:]), n, round(dt, 1)
+    rec["s_per_piece_incl_prefill"] = round(dt / n, 2)
+    rec["s_per_step_after_prefill"] = round((dt - rec["chat_prefill_s"]) / (n - 1), 2) if n > 1 else None
+    print("written:", n, rec["s_per_piece_incl_prefill"], rec["s_per_step_after_prefill"], repr(rec["written"]), flush=True)
     from backend import int4_cpu as ic
 
     ic.enable(rt, False)

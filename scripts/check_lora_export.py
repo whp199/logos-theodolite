@@ -329,11 +329,15 @@ def check_file(rt: Any, folder: Path, gguf_model: Path, tmp: Path) -> None:
     def no_load(**_kw: Any) -> Any:
         raise AssertionError("a model was loaded")
 
+    shell = {rf.RESIDENT_ENV: "4", rf.LINEARS_ENV: "int4mm", rf.CHECKPOINT_LINEARS_ENV: "int4mm", rf.LENS_ENV: "none"}
+
     def watched(**_kw: Any) -> Any:
-        seen.update(gguf=os.environ.get(rf.GGUF_ENV), device=os.environ.get(rf.DEVICE_ENV))
+        seen.update(gguf=os.environ.get(rf.GGUF_ENV), device=os.environ.get(rf.DEVICE_ENV),
+                    **{k: os.environ.get(k) for k in shell})
         return SimpleNamespace(load=lambda: rt)
 
     files_of, dev = el.ecv.checkpoint_files, os.environ.get(rf.DEVICE_ENV)
+    kept_shell = {k: os.environ.get(k) for k in shell}
     try:
         rf.make_runtime = no_load
         try:
@@ -344,15 +348,17 @@ def check_file(rt: Any, folder: Path, gguf_model: Path, tmp: Path) -> None:
                   f"--vault with a statement that is no edit: refused before any model is loaded ({exc})")
         rf.make_runtime = watched
         os.environ[rf.GGUF_ENV], os.environ[rf.DEVICE_ENV] = str(gguf_model), "cuda:0"
+        os.environ.update(shell)
         el.ecv.checkpoint_files = lambda _c=None: files_of(str(folder))
         with contextlib.redirect_stdout(io.StringIO()):
             code = el.main(["--vault", UPDATE, "-o", str(tmp / "cli-vault-ct.gguf")])
-        check(code == 0 and seen == {"gguf": None, "device": "cpu"},
-              f"--vault without --gguf, THEODOLITE_GGUF set in the shell: the vault's runtime is the checkpoint's, on the "
-              f"CPU, as B's columns are ({seen})")
+        check(code == 0 and seen == {"gguf": None, "device": "cpu", **{k: None for k in shell}}
+              and all(os.environ.get(k) == v for k, v in shell.items()) and os.environ.get(rf.GGUF_ENV) == str(gguf_model),
+              f"--vault without --gguf in a shell set up for a GGUF through int4mm with a budget and no lens: the vault's "
+              f"runtime is the checkpoint's reference on the CPU, as B's columns are ({seen}); the shell's settings back after")
     finally:
         rf.make_runtime, el.ecv.checkpoint_files = made, files_of
-        for k_, v_ in ((rf.GGUF_ENV, env), (rf.DEVICE_ENV, dev)):
+        for k_, v_ in ((rf.GGUF_ENV, env), (rf.DEVICE_ENV, dev), *kept_shell.items()):
             if v_ is None:
                 os.environ.pop(k_, None)
             else:
@@ -400,6 +406,12 @@ def check_silenced(gguf_model: Path, tmp: Path) -> Dict[str, Path]:
             got = run_cli(["--gguf", out[key], "--layer", HEADS, "--head", "all", "--scale", 0, "--model-out", p])
             check(got.returncode != 0 and "is itself a silenced copy" in got.stderr and not p.exists(),
                   f"a copy made from the {key} copy: refused, nothing written ({got.stderr.strip()[-160:]})")
+    if "ffn-scale" in out:  # with an adapter in the same run: refused before the adapter is written
+        lo, p = tmp / "chain-lora.gguf", tmp / "chain-with-lora.gguf"
+        both = json.dumps([{"layer": LAYER, "n": NEURON, "mode": "mul", "dose": 0}, {"layer": HEADS, "head": "all", "dose": 0}])
+        got = run_cli(["--gguf", out["ffn-scale"], "--push", both, "-o", lo, "--model-out", p])
+        check(got.returncode != 0 and "is itself a silenced copy" in got.stderr and not lo.exists() and not p.exists(),
+              "an adapter and a copy asked of a silenced copy in one run: refused before either is written")
     section("the silenced copies: an added .scale tensor, a zeroed norm; none made from another", before)
     return out
 
