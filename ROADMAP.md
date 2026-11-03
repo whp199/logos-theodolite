@@ -343,7 +343,8 @@ layers, the determinism run and the sampled push on 29 October). In this section
   passed that test on all 410 linears and took 0.28 s and 0.103 s a step at a batch of 32, against the reference’s
   0.71 s; `compiled` held 0.126 s at 96 rows (COMPUTE §ii). By that step a whole `main_rel` layer is about 5 hours at
   `--batch 96 --max-new 64`, not 3.6 days (arithmetic, not a run); the calibration below, taken with `compiled` at a
-  batch of 64, took 65 and 49 minutes for its six layers.
+  batch of 64, took 65 and 49 minutes for its six layers. A GGUF’s packed layers have a `compiled` of their own since
+  2 November 2026 (§vii).
 - **`main_rel`’s doses come from Qwen3.5-4B; `break_rel`’s from this model’s ladders.** `main_rel` (−0.7, +0.5, +0.8
   and +3 of the stream’s median length) is
   neuron-explorer’s design, where its log found answers readable near 0.5–0.8 and wrecked by 3. Take `calib_rel` (±0.1
@@ -696,7 +697,7 @@ layers, the determinism run and the sampled push on 29 October). In this section
 ## vii · the CPU and GGUF
 
 The owner’s aim (28 October 2026): every part of the instrument on the CPU and from a GGUF, not only the W4A16
-checkpoint on one GPU. Two layers were built that day without a GPU and checked on the CPU stand-in only
+checkpoint on one GPU. Two layers were built that day without a GPU and checked then on the CPU stand-in only
 (`scripts/check_gguf.py`, `scripts/check_gguf_cpu.py`, ARCHITECTURE §5). The first: torch unpackers for thirteen GGUF
 types, equal to gguf-py’s bit for bit; a packed GGUF layer that hears the vault; a Gemma 4 built from a GGUF with its
 provenance; `GGUFRuntime` beside the pinned runtime; `make_runtime()` choosing between them from the environment; and
@@ -724,24 +725,59 @@ running) puts “ Paris” first after “The capital of France is”. Through i
 Q6_K and Q5_K layers resident in 16 GB at 1.5 s a written word-piece (experiments/results/gguf_31b_cpu), a Q4_K_M
 (its 55 Q6_K layers resident in 8 GB) at 0.56 s a written word-piece and the QAT Q4_0 at 0.45 s, a 59-piece prefill in 3.5 s each,
 the Q4_K_M’s last-position top five the reference’s in order (ARCHITECTURE §5, “What works now” and “The 31B from a
-GGUF”). What is left, in order:
+GGUF”). A fourth layer followed that evening: `--unpacker compiled` (and `$THEODOLITE_UNPACKER=compiled`, which the lab
+daemon and the scientist’s MCP server run alone now read too) serves a GGUF’s packed layers with the reference’s bits,
+on the card and the CPU (`backend/gguf_fast.py`, `scripts/check_gguf_fast.py`), and the 31B ran from the QAT Q4_0, the
+Q4_K_M and the UD-Q4_K_XL on the home 5090, packed: 0.54 to 0.82 s a written word-piece on the reference unpacker and
+0.12 to 0.13 s compiled, the logits of two forwards through it the reference’s bits and the pieces written alone and
+at a batch of 32 the reference’s pieces, on the Q4_0 one sighting too, and the optics check passed on the Q4_0
+(experiments/results/gguf_31b_gpu; ARCHITECTURE §5, “The compiled unpacker” and “The 31B on the GPU”). What is left,
+in order:
 
 - **The real file, against the checkpoint.** Run `compare_gguf_ct.py` on a GGUF of the 31B: if Google’s QAT Q4_0 holds
   the checkpoint’s codes and scales exactly, the two are one model, and the owner can decide whether an index or census
-  taken on one stands for the other (today the model ids and the indexes’ weights keep them apart). Then load it, take
-  the same tiny census both ways on the card, and run `scripts/compare_int4mm.py` on the CPU, whose rule, fixed before
-  any run, says whether int4mm’s readings may stand for the reference’s. Blocked by the file (which repository Google
-  publishes it in is unverified, and huggingface.co was not reachable from the machine it was built on) and, for the
-  tokenizer, by a cached Gemma 4 tokenizer to compare the GGUF-built one with.
-- **The instrument’s sweeps.** A sighting on `GGUFRuntime` is the pinned code with the GGUF accessors underneath, and has
-  never run: it reads 60 layers and the J++ lens, so the stand-in cannot hold it. The pinned runtime’s two CUDA memory
-  calls are sidestepped by hiding the GPUs on the CPU; mending them in the file itself waits until R4’s record no longer
-  needs `engine_runtime.py` pinned (a rerun of R4 would then go from its registered commit). Blocked by the file.
-- **A fast path on the CPU with the reference’s bits.** The reference unpacks every weight at every forward (3 to 16 ns
-  a weight on the 4-vCPU container, minutes a forward there; a prefill of the 31B took 31 to 37 s on the home machine’s
-  12 cores); a lookup-table or compiled unpacker for Q4_0, as `w4a16_fast` has for W4A16, would keep the bits but leave
-  the product dense. Blocked by the choice. (int4mm itself now takes Q4_1 and Q4_K as well as Q4_0, and the layers it
-  cannot take can be held resident within a budget: above.)
+  taken on one stands for the other (today the model ids and the indexes’ weights keep them apart). Answered for
+  lmstudio-community’s QAT Q4_0 (2 November 2026, experiments/results/gguf_31b_gpu): its 421 F32 norms and layer scalars
+  are the checkpoint’s, but none of its 410 Q4_0 linears is (68–71% of codes equal, in none the scales all equal), so it
+  is a quantisation of its own and its readings do not stand for the checkpoint’s; whether Google publishes a Q4_0 GGUF
+  that is the checkpoint stays open. Then load Google’s file and take the same tiny census both ways on the card (the
+  GGUF and the checkpoint). Blocked by the file (which repository Google publishes it in is unverified, and
+  huggingface.co was not reachable from the machine it was built on) and, for the tokenizer, by a cached Gemma 4
+  tokenizer to compare the GGUF-built one with.
+- **int4mm’s canary on a real file.** `scripts/compare_int4mm.py` on the CPU, whose rule, fixed before any run, says
+  whether int4mm’s readings may stand for the reference’s on a given file; it needs no checkpoint, and can run now on
+  lmstudio-community’s QAT Q4_0 or Q4_K_M on the machine (its verdict that file’s, the readings still under their own
+  model id). Not yet run; waits on nothing but the CPU’s time.
+- **The instrument’s sweeps.** A sighting on `GGUFRuntime` is the pinned code with the GGUF accessors underneath. It
+  reads 60 layers and the J++ lens, so the stand-in cannot hold it, but it has run on the card from the QAT Q4_0
+  (2 November 2026): `scripts/verify_optics.py` passed in full on the reference unpacker (the 60-layer sweep, the
+  lens’s mid-layer bridge, the neuron poles, the steer and the vault run on that file and their answers have the shape
+  the checks expect; peak 24.15 GiB, which the script prints as GB), and the optics check’s first sighting gave every
+  number but its clock and memory gauge the same twice on the reference and once with `compiled`. Not yet run: a
+  sighting on the CPU, one from a K-quant file, the Q4_0’s sighting against the checkpoint’s on the same prompt (how
+  far a quantisation of its own moves the readings), and the server’s pages on a GGUF.
+  The pinned runtime’s two CUDA memory calls are sidestepped by hiding the GPUs on the CPU; mending them in the file
+  itself waits until R4’s record no longer needs `engine_runtime.py` pinned (a rerun of R4 would then go from its
+  registered commit). Those runs wait on nothing; the mending waits on R4’s pin.
+- **A fast path with the reference’s bits. Built, and timed once on each device** (2 November 2026). The reference
+  unpacks every weight at every forward (3 to 16 ns a weight on the 4-vCPU container, minutes a forward there; a prefill
+  of the 31B took 31 to 37 s on the home machine’s 12 cores). `--unpacker compiled` now serves a GGUF’s packed layers on
+  the card and the CPU (`backend/gguf_fast.py`: the reference’s arithmetic compiled whole, one graph per type and layer
+  shape, tested on every layer and every fp16 pattern at load); a lookup table was no faster on the card, and is
+  refused. On the home 5090 it took a written word-piece from 0.54–0.82 s to 0.12–0.13 s (three Q4 files); on the
+  12-core CPU one forward of the QAT Q4_0’s six-piece prompt from 37.2 to 11.9 s, after a 64 s install (a written
+  word-piece through it not timed, but each unpacks every weight again), still far from int4mm’s 0.45 s a written
+  word-piece, since the product stays dense and the weight is unpacked whole each time. Even compiled, a layer’s
+  unpacking (0.24–0.46 ms on the card, a probe on random blocks, not kept) costs more than its one-row product
+  (0.147 ms); the rest would need a fused unpack-and-multiply kernel, which would not give the reference’s product bits.
+  A small further gain may be left: a probe that read the fp16 fields as int16 and viewed them as fp16, which Inductor
+  fuses, gave the same bits and took Q6_K from 0.46 to 0.28 ms a layer, but made Q4_K and Q5_K slightly slower; not
+  built. Census runs, atlas builds and the server’s pages through it on a GGUF are not yet timed. (int4mm itself now
+  takes Q4_1 and Q4_K as well as Q4_0, and the layers it cannot take can be held resident within a budget: above.)
+- **Splitting a model between the card and the CPU** (llama.cpp’s `-ngl`). Not built, and not needed for the files
+  here: the QAT Q4_0 fits the 32 GB card whole with the lens and the optics check’s short sweep (peak 24.15 GiB); the
+  K files, run without the lens and about 1 to 1.2 GiB larger on the card after loading, should fit too (inferred, not
+  measured); a long sweep was not tried. A file larger than the card would need it, or a larger card.
 - **The atlas’s builds and the census on the CPU.** Both take a GGUF and the CPU. The lens build and the wiring are
   products of the weights (hours on a CPU, inferred); the stats and passages passes are a forward per window (days
   even through int4mm); the steer lens stays the GPU’s; a whole census layer is weeks to months (about 21 s a step of 64

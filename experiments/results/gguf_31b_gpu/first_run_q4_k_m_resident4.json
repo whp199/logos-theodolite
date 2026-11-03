@@ -1,0 +1,50 @@
+{
+ "gguf": "/home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-GGUF/gemma-4-31B-it-Q4_K_M.gguf",
+ "device": "cuda:0",
+ "linears": "packed",
+ "resident_gb": 4.0,
+ "load_s": 14.8,
+ "model_id": "gguf:gemma-4-31B-it-Q4_K_M.gguf#9d70e76bba193a99",
+ "layers_as": {
+  "Q4_K packed": 332,
+  "Q4_K resident": 23,
+  "Q6_K packed": 47,
+  "Q6_K resident": 8
+ },
+ "resident_bytes": 3985637376,
+ "vram_after_load_gib": 21.47,
+ "paris_forward_s": [
+  0.827,
+  0.648,
+  0.648
+ ],
+ "paris_top5": [
+  [
+   " Paris",
+   -0.0142
+  ],
+  [
+   " **",
+   -4.3892
+  ],
+  [
+   "...",
+   -6.5142
+  ],
+  [
+   "\u2019",
+   -10.1392
+  ],
+  [
+   " Parisian",
+   -10.8892
+  ]
+ ],
+ "chat_prefill_pieces": 23,
+ "chat_prefill_s": 0.645,
+ "written": "Danube\nRhine\nVolga<turn|>",
+ "pieces_written": 9,
+ "generate_s": 5.79,
+ "s_per_step_after_prefill": 0.643,
+ "vram_peak_gib": 22.84
+}

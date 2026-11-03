@@ -16,7 +16,9 @@ the card, the versions, the unpacker's test and the runtime class (census.FLOOR_
 beside its batch, with a short digest to compare pods by). steps writes census-shaped batches (one question, row 0
 unpushed, the rest pushed by controls at +0.8 of the stream; no end mark, so every row runs to --max-new, as a pushed
 answer that loops does) and times each decode step from the first row's pieces, with torch's peak memory above the
-model on a GPU; a batch that does not fit is recorded as such and the larger ones skipped. listing sets a pulled copy
+model on a GPU; a batch that does not fit is recorded as such and the larger ones skipped. Each row names the unpacker
+asked and the one that ran (`installed`: the reference where it has nothing to unpack, as lut and compiled on a dense
+model), and the fastest that fit is chosen among the rows that ran as asked. listing sets a pulled copy
 against the pod's own listing (`rsync --list-only`): every file the pod has, here at its size, and every census meta's
 files (its run, a shard's canary, a joined run's shards), and which jobs have not ended (logs/<job>.started without its
 .done, .failed or .timeout). summary gathers a pilot's parts (scripts/pod/pilot.sh) into pilot.json, with each job's
@@ -103,10 +105,14 @@ def cmd_selftest(a: argparse.Namespace) -> int:
         unp = w4a16_fast.install(rt, a.unpacker, self_test=True, log=lambda s: None)
         st = unp.get("self_test") or {}
         asked = f"{unp['asked']} asked, " if unp.get("asked") else ""  # a model with no W4A16 linears: the reference
+        # the table each self-test ran: the checkpoint's piece-by-scale one, or a GGUF's every fp16 pattern of each
+        # type's fields through each layer shape's graph (backend/gguf_fast.py)
+        table = ("" if not st.get("table") else
+                 " and on every fp16 pattern of each type's fields, through each layer shape's graph"
+                 if unp.get("weights") == "gguf" else " and on the piece-by-scale table")
         tested = (f"{asked}{unp['mode']} on {unp['linears']} linears: " +
                   ("the reference unpacker itself" if unp["mode"] == "reference" else
-                   "the same bits as the reference" + (" and on the piece-by-scale table" if st.get("table") else "")
-                   if st.get("same_bits") else "not tested"))
+                   "the same bits as the reference" + table if st.get("same_bits") else "not tested"))
         refused = None
     except w4a16_fast.Refused as exc:
         unp, tested, refused = {"mode": "reference"}, f"{a.unpacker} REFUSED: {exc}", str(exc)
@@ -171,9 +177,10 @@ def cmd_steps(a: argparse.Namespace) -> int:
         try:
             rec = w4a16_fast.install(rt, u, log=lambda s: print(s, flush=True))
         except w4a16_fast.Refused as exc:
-            rows.append({"unpacker": u, "refused": str(exc)})
+            rows.append({"unpacker": u, "installed": w4a16_fast.describe(rt)["mode"], "refused": str(exc)})
             print(f"{u}: refused ({exc})", flush=True)
             continue
+        ran = rec["mode"]  # what runs: the reference where an unpacker has nothing to unpack (no W4A16 linears)
         for B in batches:
             delta = torch.zeros(B, D, dtype=torch.float32, device=w.device)
             delta[1:] = ctrl[: B - 1] * (CONTROL_DOSE * p50)
@@ -194,11 +201,11 @@ def cmd_steps(a: argparse.Namespace) -> int:
                 del exc
                 if on_cuda:
                     torch.cuda.empty_cache()
-                rows.append({"unpacker": u, "batch": B, "fits": False, "max_new": a.max_new})
+                rows.append({"unpacker": u, "installed": ran, "batch": B, "fits": False, "max_new": a.max_new})
                 print(f"{u} batch {B}: does not fit at --max-new {a.max_new}; larger batches skipped", flush=True)
                 break
             diffs = [y - x for x, y in zip(stamps, stamps[1:])]
-            r = {"unpacker": u, "batch": B, "fits": True, "max_new": a.max_new, "steps": len(stamps),
+            r = {"unpacker": u, "installed": ran, "batch": B, "fits": True, "max_new": a.max_new, "steps": len(stamps),
                  "prefill_s": round(stamps[0] - t0, 4) if stamps else None,
                  "step_s": round(statistics.median(diffs), 5) if diffs else None,
                  "step_s_mean": round(statistics.fmean(diffs), 5) if diffs else None,
@@ -206,10 +213,13 @@ def cmd_steps(a: argparse.Namespace) -> int:
                  "install_s": rec.get("install_s")}
             r["rows_per_s"] = round(B / r["step_s"], 2) if r["step_s"] else None
             rows.append(r)
-            print(f"{u} batch {B}: {r['step_s']} s a step (median of {len(diffs)}), prefill {r['prefill_s']} s"
+            print(f"{u}{'' if ran == u else f' (the {ran} ran)'} batch {B}: {r['step_s']} s a step (median of {len(diffs)}), "
+                  f"prefill {r['prefill_s']} s"
                   + (f", {r['peak_gib']} GiB above the model at its peak" if on_cuda else ""), flush=True)
     w4a16_fast.install(rt, "reference", log=lambda s: None)
-    fit = [r for r in rows if r.get("fits") and r.get("rows_per_s")]
+    # the fastest by what ran: a row an unpacker asked for that ran as another (lut or compiled on a model with nothing
+    # for them to unpack, run as the reference) is not that unpacker's
+    fit = [r for r in rows if r.get("fits") and r.get("rows_per_s") and r.get("installed") == r["unpacker"]]
     best = max(fit, key=lambda r: (r["rows_per_s"], -r["batch"])) if fit else None
     out = {"what": "decode steps of census-shaped batches, per unpacker and batch (scripts/pod/pod_tool.py steps)",
            "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "model": getattr(rt, "model_id", None),

@@ -158,6 +158,8 @@ def instrument(out: Path, stand_in: bool, unpacker: str) -> None:
     from backend import atlas_ops as ao
     from backend.causal_check import language_model, model_device
 
+    unp: Any = None  # what install recorded (the stand-in installs none)
+
     torch.set_grad_enabled(False)
     t0 = time.time()
     if stand_in:
@@ -173,7 +175,10 @@ def instrument(out: Path, stand_in: bool, unpacker: str) -> None:
         rt = make_runtime(load_jlens=False).load()
         if getattr(rt, "jpp_lenses", None):
             free_lens(rt)
-        w4a16_fast.install(rt, unpacker, log=lambda s: print(s, flush=True))
+        try:
+            unp = w4a16_fast.install(rt, unpacker, log=lambda s: print(s, flush=True))
+        except w4a16_fast.Refused as exc:  # a self-test failed, or lut on a GGUF: said in plain words, as census_run.py says it
+            raise SystemExit(str(exc))
     st = census_setting(stand_in, rt)
     if not stand_in:
         p50 = float(st["p50"])
@@ -240,7 +245,7 @@ def instrument(out: Path, stand_in: bool, unpacker: str) -> None:
     write_json(out / "instrument.json", {
         "setting": st, "p50": p50, "answers": answers, "forced": tf, "seconds": round(time.time() - t0, 1),
         "runtime": cz.runtime_record(w.device),
-        "model_id": rt.model_id, "unpacker": None if stand_in else unpacker})
+        "model_id": rt.model_id, "unpacker": unp})
     print(f"wrote {out / 'instrument.json'}", flush=True)
 
 
@@ -578,7 +583,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--stand-in", action="store_true", help="on the CPU stand-in, for trying the script")
     ap.add_argument("--gguf", help="the GGUF llama.cpp runs (the 31B; the stand-in writes its own)")
     ap.add_argument("--llama-server", help="the llama-server binary")
-    ap.add_argument("--unpacker", default="compiled", help="the W4A16 unpacker (the census's: compiled)")
+    ap.add_argument("--unpacker", default="compiled", choices=["reference", "lut", "compiled", "resident"],
+                    help="the W4A16 unpacker (the census's: compiled; on a GGUF's packed layers compiled or reference)")
     a = ap.parse_args(argv)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)

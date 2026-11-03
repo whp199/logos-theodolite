@@ -21,6 +21,10 @@ The model is the W4A16 checkpoint on cuda:0 unless THEODOLITE_GGUF names a GGUF 
 puts it on the CPU (backend/runtime_factory.py; THEODOLITE_GGUF_LENS=none leaves out the J++ lens, which a census does
 not read); the run's meta records the model id, a GGUF's carrying its file and fingerprint and one off the GPU or in
 float32 its device and dtype (`@cpu/bfloat16`), so a run is continued only where and as it began (ARCHITECTURE §5).
+--unpacker compiled unpacks a GGUF's packed layers faster too, with the reference's bits (backend/gguf_fast.py: tested
+on every layer at load, and recorded in the meta as `{"mode": "compiled", "weights": "gguf", ...}`; the model id does
+not change); lut and resident are the W4A16 checkpoint's, refused on a GGUF's packed layers (a GGUF held resident or
+dense has nothing for them to unpack, and records the reference, with what was asked).
 
 Layers count from 0 (page layer = layer + 1), as every script and field of the atlas; --layers takes several in one
 process (the model loaded once), each its own run. The runs go to the census folder (`$THEODOLITE_CENSUS_DIR`, else
@@ -81,8 +85,10 @@ neurons are read against the new controls without being written again: 2,048 con
 What it costs, measured in a pilot on one RTX 5090 (27 October 2026): every decode step of the 31B takes about 0.71 s
 whatever the batch (1 to 64 rows: the runtime's 4-bit weights cost the same each forward), so a run's time is
 answers / batch x (max_new + 1) x 0.71 s and the batch should be as large as the card holds. That 0.71 s is the
-reference unpacker's (--unpacker reference, the default). lut and compiled give the same bits (tested on every linear
-at load), and on the same card beside a desktop (28 October 2026, layer 45, --max-new 64, the lens freed;
+W4A16 checkpoint's, through the reference unpacker (--unpacker reference, the default). lut and compiled give the same
+bits (tested on every linear at load; compiled on a GGUF's packed layers too: a written word-piece of the 31B in
+0.12-0.13 s on this card, experiments/results/gguf_31b_gpu; a census step with it not yet timed), and on the same
+card beside a desktop (28 October 2026, layer 45, --max-new 64, the lens freed;
 experiments/results/atlas_unpacker_steps_rtx5090.json) a step took 0.27-0.30 s with lut and 0.09-0.13 s with compiled
 from 1 to 96 rows, against the reference's 0.71-0.74 s: at --batch 32, 0.28 s and 0.103 s, so compiled is about seven
 times shorter, and its first run compiles for a few seconds. Memory: the model and lens took 21.2 GiB; each row costs
@@ -197,7 +203,10 @@ def main(argv=None) -> int:
     ap.add_argument("--stand-in", action="store_true", help="run on the CPU stand-in (scripts/atlas_stand_in.py), for a dry run")
     ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
-                    "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
+                    "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more. "
+                    "compiled serves a GGUF's packed layers too (backend/gguf_fast.py, tested at load on every layer); "
+                    "lut and resident are the W4A16 checkpoint's, and refused on a GGUF's packed layers (a GGUF held "
+                    "resident or dense records the reference, with what was asked)")
     a = ap.parse_args(argv)
     for k_, v_ in cz_designs.run_defaults(a.design).items():  # the design's own settings where none are given
         if getattr(a, k_) is None:

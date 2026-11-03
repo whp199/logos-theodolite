@@ -113,7 +113,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     lens_id = free_lens(rt) if getattr(rt, "jpp_lenses", None) else None
     from backend import w4a16_fast
 
-    w4a16_fast.install(rt, kit["KIT_UNPACKER"] if not a.stand_in else "reference", log=lambda s: print(s, flush=True))
+    try:
+        w4a16_fast.install(rt, kit["KIT_UNPACKER"] if not a.stand_in else "reference", log=lambda s: print(s, flush=True))
+    except w4a16_fast.Refused as exc:  # a self-test failed: said in plain words, as census_run.py says it
+        raise SystemExit(str(exc))
     from backend import atlas_ops as ao
 
     lm = language_model(rt.hf_model)

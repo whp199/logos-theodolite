@@ -19,6 +19,7 @@ theodolite2/
 │   ├── theodolite_math.py           # Four core vectorized mathematical modules + contrasts + CKA + unembed
 │   ├── engine_runtime.py            # interp-engine + J++ / JLens loader + 4-bit weight dequantizer
 │   ├── w4a16_fast.py                # faster unpackers of those weights, the same bits (lut, compiled, resident; §2)
+│   ├── gguf_fast.py                 # the faster unpacker of a GGUF's packed layers, the same bits (compiled; §5)
 │   ├── gguf_weights.py              # GGUF block unpackers (CPU/GPU), GGUFLinear, dense/dense_cols/dense_rows (§5)
 │   ├── gguf_model.py                # a Gemma 4 from a GGUF: config, tensors, tokenizer, provenance; a writer (§5)
 │   ├── gguf_runtime.py              # GGUFRuntime: the pinned runtime on a GGUF, its packing accessors replaced (§5)
@@ -73,6 +74,7 @@ theodolite2/
 │   ├── check_vault_voice.py         # an edit's voice: order, failures, reply keys, over HTTP, the WebSocket and MCP (CPU only)
 │   ├── check_dequant.py             # the faster unpackers against the runtime's, bit for bit, on a 4-bit stand-in (CPU only)
 │   ├── check_gguf.py                # the GGUF path against gguf-py and the stand-in, bit for bit (CPU only)
+│   ├── check_gguf_fast.py           # compiled on a GGUF's layers against the reference, bit for bit (CPU; --cuda too)
 │   ├── compare_gguf_ct.py           # does a GGUF hold the W4A16 checkpoint's weights? tensor by tensor (CPU)
 │   ├── export_E3_background_mu.py   # writes experiments/results/E3_background_mu.npy (+ .json) from E3's caches (CPU)
 │   ├── verify_atlas_writer.py       # the writer's floor: unpushed answers in each batch shape against one written alone (GPU)
@@ -128,16 +130,20 @@ theodolite2/
 weights: compressed-tensors' pack-quantized layout) and are unpacked to bf16 on every forward by
 `engine_runtime.dequantize_w4a16_full`, whose file R4 pins by sha256. `backend/w4a16_fast.py` installs a faster unpacker
 from outside it, chosen by `--unpacker` (`scripts/census_run.py`, `scripts/atlas_build.py`) or `$THEODOLITE_UNPACKER`
-(the server): `lut`, a 256-entry table over the packed bytes and then the same multiply by the scale; `compiled`, the
-same arithmetic through `torch.compile`, the unpacker alone, the model left eager with its hooks; `resident`, each weight
-unpacked once and kept beside the packed one, overlays applied to a clone as the pinned forward applies them. Each gives
-the reference's bits: the pieces minus 8 are exact in bf16, so on every route the one rounding is the multiply by the
-scale, an exact float32 product rounded once to nearest even. `scripts/check_dequant.py` shows it on the CPU for every
-(piece, bf16 scale) pair (`compiled`: every number; only the NaNs' own bits differ, which no finite checkpoint holds)
-and on a 4-bit stand-in's readings. At install `compiled` (and `lut` on CUDA only) is compared with the reference on
-every linear, by bits and strides, and on that table; `resident` by each kept weight against a fresh unpacking and each
-linear's forward against the pinned one on a fixed two-row probe, by bits; any difference is refused in plain words. A
-reading records which ran (`unpacker` in a census run's or an index's meta, and in `/api/health`).
+(the server, the lab daemon and the scientist's MCP server run alone): `lut`, a 256-entry table over the packed bytes
+and then the same multiply by the scale; `compiled`, the same arithmetic through `torch.compile`, the unpacker alone,
+the model left eager with its hooks; `resident`, each weight unpacked once and kept beside the packed one, overlays
+applied to a clone as the pinned forward applies them. Each gives the reference's bits: the pieces minus 8 are exact in
+bf16, so on every route the one rounding is the multiply by the scale, an exact float32 product rounded once to nearest
+even. `scripts/check_dequant.py` shows it on the CPU for every (piece, bf16 scale) pair (`compiled`: every number; only
+the NaNs' own bits differ, which no finite checkpoint holds) and on a 4-bit stand-in's readings. At install `compiled`
+(and `lut` on CUDA only) is compared with the reference on every linear, by bits and strides, and on that table;
+`resident` by each kept weight against a fresh unpacking and each linear's forward against the pinned one on a fixed
+two-row probe, by bits; any difference is refused in plain words. A reading records which ran (`unpacker` in a census
+run's or an index's meta, and in `/api/health`). A GGUF's packed layers are not W4A16: `install` hands a model holding
+them, and no W4A16 linears, to `backend/gguf_fast.py`, whose `compiled` gives the reference's bits by an argument of its
+own and is tested and recorded the same way (§5, "The compiled unpacker"); `lut` and `resident` are refused there in
+plain words.
 
 ---
 
@@ -1010,12 +1016,16 @@ hook runs (it records the CLI's version; 2.1.312 here).
 ## 5. CPU and GGUF
 
 The instrument was built for the W4A16 checkpoint on one GPU. Since 28 October 2026 it can also read a GGUF of Gemma 4
-(llama.cpp's format), and run on the CPU; the first two layers of that work, checked on the CPU only
+(llama.cpp's format), and run on the CPU; the first two layers of that work, checked at first on the CPU only
 (`scripts/check_gguf.py` and `scripts/check_gguf_cpu.py`, on the stand-in of `scripts/atlas_stand_in.py` written to tiny
 GGUF files). The checkpoint has run on the CPU for the wiring check's offline reads (§4.7: eight prefills of the packed
 checkpoint, 31 to 51 s each on a 12-core desktop, 29 October 2026), and on 2 November 2026 Gemma-4-31B ran from a GGUF
 on that desktop's CPU two ways: packed, a load and one forward of both UD-Q4_K_XL files (below, "What works now"),
 and through int4mm, from the QAT Q4_0 and from a Q4_K_M with its Q6_K layers resident (below: "The 31B from a GGUF").
+That evening it ran from three GGUFs on the home RTX 5090, packed, on the reference unpacker and with `compiled`
+(`backend/gguf_fast.py`, the reference's bits on the card and the CPU; `scripts/check_gguf_fast.py`, on the CPU and
+with `--cuda` on cuda:0 too), and on the CPU the QAT Q4_0 packed for one forward each way: below, "The compiled
+unpacker" and "The 31B on the GPU".
 
 **Choosing the runtime** (`backend/runtime_factory.py`, `make_runtime()`; the server, `scripts/census_run.py`,
 `scripts/atlas_build.py`, the scientist's MCP server run alone, the lab daemon `experiments/lab/labd.py` and the GPU
@@ -1037,7 +1047,7 @@ and `scripts/check_sweep_refactor.py` (two checkouts, one older than the factory
 
 `GET /api/health` now also sends `device` and `weights`, the weights card (`runtime_factory.weights_card`: a GGUF's
 provenance; for the checkpoint its repo id, the snapshot of it the Hugging Face cache holds and its weight files); the
-lab daemon's `/health` and every `/exec` reply send the model id and the card too.
+lab daemon's `/health` and every `/exec` reply send the model id and the card too, and its `/health` its unpacker.
 
 **What works now**
 
@@ -1086,7 +1096,8 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
   The two
   copies share a name, not their bytes (their headers, 4,416 bytes apart in length, and their last MiB differ), so
   their fingerprints differ (`adfe6f42c3758a08` in `ai-models/`, `f542658966346851` in `ai-models/txt/`), and with them
-  the model ids of readings taken on each. No sighting, census or build has run on them.
+  the model ids of readings taken on each. No sighting, census or build has run on them (sightings have run from the
+  QAT Q4_0, on the card: below, "The 31B on the GPU").
 - The model id of a GGUF reading is `gguf:<file>#<fingerprint>`, and any reading taken off the GPU or in float32 carries
   where and in what after it (`runtime_factory.reading_class`: `gguf:<file>#<fingerprint>@cpu/bfloat16`, and the
   checkpoint on the CPU `google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`; bfloat16 on a GPU adds nothing). Every index,
@@ -1094,11 +1105,16 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
   index only for it: so a file's readings are not read as another file's (as far as the fingerprint tells them apart)
   or the checkpoint's, and readings of two numeric classes are not mixed in one run. How a GGUF's layers are held
   (packed, resident, dense) is not in the id: the three give the same forward bit for bit (in float32 and bf16 on the
-  CPU stand-in), and the `weights` card says which; int4mm, which does not, is (`+int4mm`, below).
+  CPU stand-in), and the `weights` card says which; int4mm, which does not, is (`+int4mm`, below). Nor is the unpacker
+  of the packed ones: `compiled` gives the reference's bits (below), and a reading records it under `unpacker`.
 - `scripts/compare_gguf_ct.py` says whether a GGUF holds the checkpoint's weights, tensor by tensor and value for value;
   for Q4_0 against W4A16 (both group-32 symmetric 4-bit) also the codes and the scales, a Q4_0 block read either way
   round (llama.cpp's quantiser writes d = max / -8, so a block may hold -scale and the codes 16 - q). Its self-test runs
-  on the CPU.
+  on the CPU. Run on lmstudio-community's `gemma-4-31B-it-QAT-Q4_0.gguf` (2 November 2026,
+  experiments/results/gguf_31b_gpu): its 421 F32 norms and layer scalars are the checkpoint's, but every one of its 410
+  Q4_0 linears differs (11–15% of values equal, 68–71% of codes, in none the scales all equal, no block sign-flipped),
+  though either format could hold the other's scales exactly; so that copy is a quantisation of its own, and its
+  readings do not stand for the checkpoint's.
 - Every index's meta names the weights it was built from (`weights`, the weights card), beside the model id; the
   server, `census_run.py`'s stats lookup and `atlas_build.py` read an index only when `atlas_index.weights_differ`
   finds no difference (a GGUF by its fingerprint and header; the checkpoint by its repo and the weight files its
@@ -1123,12 +1139,13 @@ lab daemon's `/health` and every `/exec` reply send the model id and the card to
   census batch, a 2048-piece sweep): arithmetic, not measured on a CPU.
 
 **Packed or dense.** `packed` keeps each quantised layer's blocks (on the CPU read in place through the file's memory
-map) and unpacks the whole weight at every forward, as the W4A16 forward unpacks the checkpoint; `resident` unpacks once
-at load and drops the blocks; `dense` builds plain `nn.Linear` layers, as transformers' own GGUF loader would. A tensor
-stored as F32, F16 or BF16 is a plain layer in every mode, and so is one of a type gguf-py unpacks at load (above). All
-three hear the vault's overlays as `_w4a16_forward` lays
-them (column overlays, then row overlays, on a clone), and the forward is the same numbers in every mode. The embedding
-(which is also the tied lm_head), the norms and the layer scalars are unpacked to the model's dtype.
+map) and unpacks the whole weight at every forward, as the W4A16 forward unpacks the checkpoint (through the reference,
+`gguf_weights.unpack`, or with `--unpacker compiled` through compiled graphs giving its bits: below); `resident`
+unpacks once at load and drops the blocks; `dense` builds plain `nn.Linear` layers, as transformers' own GGUF loader
+would. A tensor stored as F32, F16 or BF16 is a plain layer in every mode, and so is one of a type gguf-py unpacks
+at load (above). All three hear the vault's overlays as `_w4a16_forward` lays them (column overlays, then row
+overlays, on a clone), and the forward is the same numbers in every mode. The embedding (which is also the tied
+lm_head), the norms and the layer scalars are unpacked to the model's dtype.
 `int4mm`, the int4 kernel below, is none of the three. **Partly resident** (`THEODOLITE_GGUF_RESIDENT_GB`, since
 2 November 2026): beside `packed` or `int4mm`, the layers that would be packed are made resident in the model's order
 (layer 0's seven first), each that still fits in the budget's bytes of unpacked weight (2 a weight in bf16), and the
@@ -1140,6 +1157,34 @@ IQ types other than IQ4_NL and IQ4_XS, TQ1_0, TQ2_0, MXFP4, NVFP4) are dense in 
 card gives their bytes as `at_load_bytes`. In the model's order rather than by type: the
 reference unpacks the 31B's types at 0.7 to 1.5 ns a weight on the 12-core home machine (Q8_0 the cheapest, Q5_K the
 dearest: the table under "The int4 kernel"), so which layers fill the budget matters less than how much of it there is.
+
+**The compiled unpacker** (`backend/gguf_fast.py`, `--unpacker compiled` or `$THEODOLITE_UNPACKER=compiled`, since
+2 November 2026; `w4a16_fast.install` hands it a model with packed GGUF layers and no W4A16 linears). It runs the
+reference's own arithmetic, `unpack(blocks, qtype).to(dtype)`, through `torch.compile` (Inductor: a C++ loop on the
+CPU, Triton kernels on CUDA), one graph per (type, blocks shape, device, dtype), the whole weight in one call, the
+model left eager with every hook. Why the bits are the same: in every unpacker each product (the fp16 scale, widened
+exactly to float32, times integer codes and a sub-block scale) needs at most 23 significant bits, so it is exact in
+float32, and the only roundings are one add or subtract of the minimum (Q4_1, Q5_1, Q2_K, Q4_K, Q5_K) and the cast to
+the layer's dtype, each done once on either route, so another order of the products or a multiply fused with an add
+changes no bit. That is an argument, so it is tested: on CUDA the graphs are compiled with contraction off all the same
+(`emulate_precision_casts`; Inductor's C++ on the CPU has `-ffp-contract=off` already), and at install every packed
+layer's whole weight is compared with the reference's, by bits and strides, and then, through each graph that serves a
+layer, a table of every one of the 65,536 patterns of each of the type's fp16 fields (`gguf_weights.F16_FIELDS`), NaNs
+by where they are (on CUDA both write the same NaN; on the CPU some graphs write other NaN bits, counted in the record);
+any difference is refused in plain words before anything is read. The forward, `dense()` (so `get_full_w_*` and
+`atlas_ops.dense_weight`), labkit's gradient twin and an int4mm layer with its kernel off go through the graphs; the row
+and column slicers (the vault's edits among them), `make_resident`, the load, resident layers and the layers dense at
+load stay on the reference, and so does a call no graph was tested for at install, counted (`fell_back`). The model id
+and the weights card do not change; the record (`{"mode": "compiled", "weights": "gguf", ...}`) is kept under
+`unpacker` in a census run's and an index's meta and in `/api/health`. `lut` and `resident` are refused on a GGUF's
+packed layers (a lookup table, compiled, was no faster on the card; a GGUF is held resident by
+`THEODOLITE_GGUF_LINEARS`), and a GGUF held resident or dense records the reference, with what was asked. On the RTX
+5090 a 21,504 × 5,376 layer of the 31B's types (random blocks; a probe, not kept) unpacked in 0.24–0.46 ms compiled,
+against 1.3–3.6 ms on the reference, where its one-row bf16 product takes 0.147 ms: unpacking still costs more than the
+product, and the rest of the gain would need a fused unpack-and-multiply kernel, which would not give the reference's
+product bits. `scripts/check_gguf_fast.py` checks every type on random blocks and on every fp16 pattern through each
+graph, where the hook reaches, and readings and a census byte for byte on a stand-in, on the CPU and with `--cuda` on
+cuda:0 (with `--gguf`, a real file's forward too; no such run is recorded).
 
 **The norm convention.** `Gemma4RMSNorm` multiplies by its stored weight, which already holds what Gemma 2 and 3 write as
 1 + w; a Gemma 4 GGUF stores that same number. Read in llama.cpp's converter (`conversion/gemma.py`, master of
@@ -1177,6 +1222,7 @@ inferred):
 | | memory | a forward |
 |---|---|---|
 | packed 4-bit (a Q4_0 GGUF, or the W4A16 checkpoint) | about 20 GB (the 4-bit weights and the bf16 embedding) | every weight unpacked: 7.8 ns a weight for Q4_0, 11.4 for Q4_K, 10.0 for the pinned W4A16 unpacker (measured on a 5,376 × 21,504 layer), so about 4 to 6 minutes a forward on that machine for 29.3 billion weights |
+| packed, `--unpacker compiled` (a GGUF's packed layers, `backend/gguf_fast.py`) | as packed, beside the graphs (about 1 GB more while the install tests a layer, estimated) | the reference's bits, the whole weight still unpacked at every forward: measured on the 12-core desktop, one forward of the QAT Q4_0 in 11.9 s against the reference's 37.2 s, after a 64 s install (one run each) |
 | resident bf16 | about 62 GB | a plain product: bf16 at 12 GB/s of weights for one row, 306 GFLOP/s at 32 rows there, so about 5 s a written word-piece for one row and 6–7 s for 32 |
 | int4mm (a Q4_0 GGUF, or the checkpoint with `THEODOLITE_CHECKPOINT_LINEARS=int4mm`) | about 21 GB (the kernel's 0.625 bytes a weight and the bf16 embedding; the checkpoint keeps its 15 GB of `weight_packed` beside them, a GGUF its file's pages) | torch's int4 kernel, no unpacking (below): about 2 s a written word-piece at one row, 21 s a step of 64 rows (one layer timed, the rest inferred); measured on the 12-core desktop from the QAT Q4_0, 0.45 s a written word-piece |
 | int4mm on a K-quant file, partly resident (a Q4_K_M: its Q4_K layers through the kernel, its Q6_K resident with `THEODOLITE_GGUF_RESIDENT_GB=8.5`) | 26.5 GiB of the process's own (the kernel's weights, 8.0 GB of resident Q6_K, the bf16 embedding) beside 17.6 GiB of the file's mapped pages | measured on the 12-core desktop: 0.56 s a written word-piece, a 59-piece prefill in 3.5 s (below) |
@@ -1294,6 +1340,44 @@ bf16 on the CPU runs through oneDNN, fast with AMX or
 AVX512-BF16 and emulated without; its sums are not the GPU's, so a reading taken on the CPU is its own determinism class,
 and its model id says so (`@cpu/bfloat16`).
 
+**The 31B on the GPU** (2 November 2026, the home RTX 5090 beside a desktop holding about 5 GB of it, torch
+2.14.1+cu130, triton 3.8.0; `experiments/results/gguf_31b_gpu`). Three files, each loaded whole onto cuda:0, packed, in
+bf16, in 20 to 22 s: lmstudio-community's QAT Q4_0 and Q4_K_M, above, and Unsloth's UD-Q4_K_XL (`ai-models/`). Each
+was measured on the reference unpacker, then with `compiled` installed in place (a written word-piece after a 23-piece
+chat prefill; a step of 8 written at a batch of 32 copies; torch's peak):
+
+| | QAT Q4_0 (with the J++ lens) | Q4_K_M | UD-Q4_K_XL |
+|---|---|---|---|
+| on the card after loading | 21.2 GiB | 18.93 GiB | 19.18 GiB |
+| a written word-piece, the reference / `compiled` | 0.542 / 0.121 s | 0.819 / 0.126 s | 0.758 / 0.121 s |
+| a step at a batch of 32, the reference / `compiled` | 0.553 / 0.131 s | 0.736 / 0.136 s | 0.737 / 0.132 s |
+| `compiled`'s install, its tests included (graphs) | 2.8 s (8) | 8.7 s (10) | 10.4 s (19) |
+| peak, the reference / `compiled` | 22.71 / 23.05 GiB | 20.57 / 20.33 GiB | 20.89 / 20.57 GiB |
+
+The reference's step moves between runs: the day's first runs (`first_run.py`, on the code before `compiled`;
+`first_run_*.json` there) wrote a word-piece in 0.512, 0.689 and 0.695 s (peak 19.34, 20.31 and 20.46 GiB, no
+lens), so a file's step moved by 6 to 19% between two runs (the Q4_0's first run without the lens; the cause not
+established). Beside the reference of the same run `compiled` is about 4.5 to 6.5 times shorter at one row and 4.2 to
+5.6 at a batch of 32, a band, not a value. Each way every file answered "Name three rivers in Europe, one line each."
+with "Danube / Rhine / Volga", and through `compiled` the logits of a forward and of the prefill were the reference's
+bits and the pieces written alone and the 8 written at 32 the reference's pieces. No call the graphs serve was sent
+back to the reference (`fell_back` 0); the row and column slicers a sighting reads (`slice_w_*`, `write_col_norms`)
+stay on the reference by design. What guarantees the bits is the install's test, every packed layer's whole weight by
+bits and strides on that file and device, with the fp16 table for the graphs beyond the file's own values; these
+readings confirm it end to end. On the Q4_0 the optics check's first sighting (60 layers through the lens, 6 written)
+took 5.22 s on the reference and 1.92 s compiled, and every number of it but its clock and memory gauge was the same
+twice on the reference and once compiled (so `compiled` is tested there through the forward only);
+`scripts/verify_optics.py` on that file, on the reference unpacker, passed in full: the 60-layer sweep, the lens's
+mid-layer bridge, the neuron poles, the steer and the vault run on it and their answers have the shape the checks
+expect, peak 24.15 GiB (the script prints GB for 2^30 bytes). Against the CPU's forward of the same file (both packed,
+the reference) the five likeliest pieces were the same in the same order, the largest |Δ log-prob| among them 0.25 (a
+KL of 0.0015 in the day's first pair of runs, worked out afterwards from their saved log-probabilities): the two
+devices' sums differ, as their model ids say. The Q4_K_M with a 4 GB resident budget (`first_run.py --resident-gb 4`,
+as `THEODOLITE_GGUF_RESIDENT_GB=4` would set it; 31 layers resident, 3.99 GB) wrote a word-piece in 0.643 s on the
+reference, peak 22.84 GiB. Not measured: a census, an atlas build or the server's pages on a GGUF with `compiled` on
+the card; a sighting from the K files; the Q4_0's sighting against the checkpoint's on the same prompt (how far a
+quantisation of its own moves the readings); another card; the CPU beyond one forward of the Q4_0 each way.
+
 **CUDA assumptions, audited.** In the unpinned code: GET /api/health asked the card's memory whenever CUDA was available
 (now only for a runtime on a GPU); the server, the atlas, the vault, the causal check and the scientist's tools catch
 `torch.cuda.OutOfMemoryError`, which the CPU never raises (an allocation the CPU cannot make is a `RuntimeError` or the
@@ -1313,8 +1397,13 @@ R3's go from `it-jpp-refit`.
 **Not supported yet:** Q1_0, Q8_K, Q8_1 and the integer types (refused in plain words); torch unpackers for the IQ types
 other than IQ4_NL and IQ4_XS, TQ1_0, TQ2_0, MXFP4 and NVFP4, which are therefore never packed (gguf-py unpacks them at
 load into dense layers, outside any resident budget); Gemma 4's mixture-of-experts (26B-A4B), per-layer embeddings
-(E2B, E4B) and shared key-value layers (refused); a bit-identical fast path on the CPU (every packed forward of the
-reference unpacks the whole weight; int4mm is fast but its own class); int4mm for Q5_0, Q5_1, Q5_K, Q6_K, Q8_0, Q2_K
+(E2B, E4B) and shared key-value layers (refused); a bit-identical path on the CPU as fast as int4mm (`compiled` gives
+the reference's bits there and took one forward of the QAT Q4_0's six-piece prompt from 37.2 to 11.9 s, but still
+unpacks the whole weight at every forward and multiplies it dense; a written word-piece through it was not timed, but
+unpacks every weight again, where int4mm, its own class, writes a word-piece of that file in 0.45 s); splitting a model
+between the GPU and the CPU (llama.cpp's `-ngl`: the QAT Q4_0 fits the 32 GB card with the lens and the optics check's
+short sweep, peak 24.15 GiB; the K files, run without the lens, should fit too, by inference; a long sweep was not
+tried); int4mm for Q5_0, Q5_1, Q5_K, Q6_K, Q8_0, Q2_K
 and Q3_K (no 4-bit code and group of 32 holds them) and for IQ4_NL and IQ4_XS (4-bit in groups of 32, but on a table
 of sixteen uneven levels, which no scale and zero give): they stay packed, or resident within
 `THEODOLITE_GGUF_RESIDENT_GB`; the study's

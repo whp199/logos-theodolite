@@ -1,0 +1,50 @@
+{
+ "gguf": "/home/eric/bin/ai-models/gemma-4-31B-it-UD-Q4_K_XL.gguf",
+ "device": "cuda:0",
+ "linears": "packed",
+ "resident_gb": null,
+ "load_s": 19.1,
+ "model_id": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08",
+ "layers_as": {
+  "IQ4_XS packed": 24,
+  "Q4_K packed": 280,
+  "Q5_K packed": 36,
+  "Q6_K packed": 70
+ },
+ "resident_bytes": null,
+ "vram_after_load_gib": 19.18,
+ "paris_forward_s": [
+  0.995,
+  0.697,
+  0.699
+ ],
+ "paris_top5": [
+  [
+   " Paris",
+   -0.0184
+  ],
+  [
+   " **",
+   -4.0184
+  ],
+  [
+   "...",
+   -9.8934
+  ],
+  [
+   "\u2019",
+   -10.0184
+  ],
+  [
+   " the",
+   -10.6434
+  ]
+ ],
+ "chat_prefill_pieces": 23,
+ "chat_prefill_s": 0.697,
+ "written": "Danube\nRhine\nVolga<turn|>",
+ "pieces_written": 9,
+ "generate_s": 6.25,
+ "s_per_step_after_prefill": 0.695,
+ "vram_peak_gib": 20.46
+}

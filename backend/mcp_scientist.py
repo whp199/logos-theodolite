@@ -47,6 +47,7 @@ import asyncio
 import functools
 import itertools
 import math
+import os
 import time
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, AsyncIterator, Awaitable, Callable, Dict, List, Optional, Tuple
@@ -99,13 +100,33 @@ def bind_runtime(
     _CALLER_HOLDS_LOCK = bool(caller_holds_lock)
 
 
+def _unpacker_named() -> str:
+    """$THEODOLITE_UNPACKER, the reference unless set; a name that is not an unpacker raises `w4a16_fast.Refused`."""
+    from backend import w4a16_fast
+
+    unpacker = os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference"
+    if unpacker not in w4a16_fast.MODES:
+        raise w4a16_fast.Refused(f"${w4a16_fast.UNPACKER_ENV} names the unpackers {', '.join(w4a16_fast.MODES)}, not "
+                                 f"{unpacker!r}; nothing was loaded.")
+    return unpacker
+
+
 def get_runtime_and_vault() -> tuple[TheodoliteRuntime, LarqlVaultEngine]:
     """Lazily obtain or initialize the singleton runtime and `LarqlVaultEngine`. Run alone (no server bound one), the
     runtime is `runtime_factory.make_runtime()`'s, as the server's: the W4A16 checkpoint on cuda:0 unless
-    THEODOLITE_GGUF or THEODOLITE_DEVICE say otherwise (ARCHITECTURE §5)."""
+    THEODOLITE_GGUF or THEODOLITE_DEVICE say otherwise (ARCHITECTURE §5), its weights unpacked as $THEODOLITE_UNPACKER
+    says (backend/w4a16_fast.py, as the server reads it: the name checked before the model loads). A name that is not
+    an unpacker, or one refused (a self-test that fails, lut on a GGUF), raises `w4a16_fast.Refused` in plain words,
+    which FastMCP sends back as the call's error, nothing kept (a SystemExit inside a tool would end the stdio server
+    with the call unanswered); run alone, the name is checked before the server starts."""
     global _SHARED_RUNTIME, _SHARED_VAULT
     if _SHARED_RUNTIME is None:
-        _SHARED_RUNTIME = make_runtime(load_jlens=False).load()
+        from backend import w4a16_fast
+
+        unpacker = _unpacker_named()
+        rt = make_runtime(load_jlens=False).load()
+        w4a16_fast.install(rt, unpacker)  # refused: raised as it is, an Exception, the runtime not kept
+        _SHARED_RUNTIME = rt
     if _SHARED_VAULT is None:
         _SHARED_VAULT = LarqlVaultEngine(_SHARED_RUNTIME)
     return _SHARED_RUNTIME, _SHARED_VAULT
@@ -1129,4 +1150,10 @@ async def query_larql_vault(lql_query: str, voice: _Voice = None) -> Dict[str, A
 
 
 if __name__ == "__main__":
+    from backend import w4a16_fast
+
+    try:
+        _unpacker_named()  # a name that is not an unpacker stops here, in plain words, before any client connects
+    except w4a16_fast.Refused as exc:
+        raise SystemExit(str(exc))
     mcp.run()

@@ -15,7 +15,10 @@ POST /exec  {"code": "...", "label": "..."}  -> {"ok", "stdout", "result", "erro
   file and fingerprint, and where and in what off the GPU: runtime_factory.reading_class) and `weights` its weights
   card (runtime_factory.weights_card), so a result written to `out` names the weights it was read from.
 POST /reload  -> reload labkit (after editing labkit.py)
-GET  /health  -> also the model id, device and weights card once the model is loaded
+GET  /health  -> also the model id, device, weights card and unpacker once the model is loaded
+$THEODOLITE_UNPACKER picks how the weights are unpacked, as for the server (backend/w4a16_fast.py; the reference unless
+set): its name is checked before the model loads, and an unpacker that fails its self-test stops the daemon in plain
+words.
 Binds 127.0.0.1 only, on port 8765 unless $LABD_PORT says otherwise: the same port as the instrument's server
 (README §vi), so run one or the other (one GPU process at a time), and through an SSH tunnel to a pod either one would
 sit at the browser's own 127.0.0.1:8765.
@@ -62,6 +65,7 @@ import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
+from backend import w4a16_fast
 from backend.runtime_factory import make_runtime, weights_card
 import labkit
 
@@ -148,7 +152,17 @@ def _jsonable(x):
 @app.on_event("startup")
 async def _startup():
     t0 = time.time()
+    # how the weights are unpacked ($THEODOLITE_UNPACKER, as the server reads it: backend/w4a16_fast.py, and
+    # backend/gguf_fast.py for a GGUF's packed layers), its name checked before the model loads; the reference unless set
+    unpacker = os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference"
+    if unpacker not in w4a16_fast.MODES:
+        raise SystemExit(f"[labd] ${w4a16_fast.UNPACKER_ENV} names the unpackers {', '.join(w4a16_fast.MODES)}, not "
+                         f"{unpacker!r}; nothing was loaded.")
     rt = make_runtime(load_jlens=True).load()  # nothing set: TheodoliteRuntime(load_jlens=True), as before
+    try:
+        w4a16_fast.install(rt, unpacker, log=lambda s: print(f"[labd] {s}", flush=True))
+    except w4a16_fast.Refused as exc:  # a self-test failed: said in plain words, as the server says it
+        raise SystemExit(f"[labd] {exc}") from exc
     STATE["rt"] = rt
     STATE["weights"] = weights_card(rt)
     STATE["lab"] = labkit.Lab(rt)
@@ -168,7 +182,9 @@ async def health():
             "vram_alloc_gb": torch.cuda.memory_allocated() / 2**30,
             # what the experiments read: None until the model is loaded
             "model": getattr(rt, "model_id", None), "device": str(rt.device) if rt is not None else None,
-            "weights": STATE.get("weights")}
+            "weights": STATE.get("weights"),
+            # how its weights are unpacked ($THEODOLITE_UNPACKER): every unpacker the same bits
+            "unpacker": w4a16_fast.describe(rt) if rt is not None else None}
 
 
 @app.post("/reload", dependencies=[Depends(launch_token)])

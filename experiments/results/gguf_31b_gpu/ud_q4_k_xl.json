@@ -1,0 +1,251 @@
+{
+ "mode": "gpu",
+ "gguf": "/home/eric/bin/ai-models/gemma-4-31B-it-UD-Q4_K_XL.gguf",
+ "device": "cuda:0",
+ "lens": false,
+ "threads": 12,
+ "load_s": 20.5,
+ "model_id": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08",
+ "layers_as": {
+  "IQ4_XS packed": 24,
+  "Q4_K packed": 280,
+  "Q5_K packed": 36,
+  "Q6_K packed": 70
+ },
+ "vram_after_load_gib": 19.18,
+ "reference": {
+  "paris_forward_s": [
+   1.052,
+   0.755,
+   0.765
+  ],
+  "paris_top5": [
+   [
+    " Paris",
+    -0.0184
+   ],
+   [
+    " **",
+    -4.0184
+   ],
+   [
+    "...",
+    -9.8934
+   ],
+   [
+    "\u2019",
+    -10.0184
+   ],
+   [
+    " the",
+    -10.6434
+   ]
+  ],
+  "chat_prefill_pieces": 23,
+  "chat_prefill_s": 0.788,
+  "written": "Danube\nRhine\nVolga<turn|>",
+  "pieces_written": 9,
+  "generate_s": 6.854,
+  "s_per_step_after_prefill": 0.7582,
+  "batch32_prefill_s": 1.029,
+  "batch32_generate_s": 6.184,
+  "batch32_s_per_step_after_prefill": 0.7365,
+  "vram_peak_gib": 20.89
+ },
+ "install": {
+  "mode": "compiled",
+  "weights": "gguf",
+  "linears": 410,
+  "types": {
+   "IQ4_XS": 24,
+   "Q4_K": 280,
+   "Q5_K": 36,
+   "Q6_K": 70
+  },
+  "shapes": 19,
+  "devices": [
+   "cuda:0"
+  ],
+  "int4mm": 0,
+  "skipped": {
+   "resident": 0,
+   "dense": 0
+  },
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": {
+    "IQ4_XS": {
+     "fields": [
+      0
+     ],
+     "patterns": 65536,
+     "graphs": 3,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q4_K": {
+     "fields": [
+      0,
+      2
+     ],
+     "patterns": 131072,
+     "graphs": 8,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q5_K": {
+     "fields": [
+      0,
+      2
+     ],
+     "patterns": 131072,
+     "graphs": 6,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q6_K": {
+     "fields": [
+      208
+     ],
+     "patterns": 65536,
+     "graphs": 2,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    }
+   },
+   "seconds": 10.35
+  },
+  "install_s": 10.36
+ },
+ "install_wall_s": 10.4,
+ "compiled": {
+  "paris_forward_s": [
+   0.144,
+   0.143,
+   0.143
+  ],
+  "paris_top5": [
+   [
+    " Paris",
+    -0.0184
+   ],
+   [
+    " **",
+    -4.0184
+   ],
+   [
+    "...",
+    -9.8934
+   ],
+   [
+    "\u2019",
+    -10.0184
+   ],
+   [
+    " the",
+    -10.6434
+   ]
+  ],
+  "chat_prefill_pieces": 23,
+  "chat_prefill_s": 0.139,
+  "written": "Danube\nRhine\nVolga<turn|>",
+  "pieces_written": 9,
+  "generate_s": 1.107,
+  "s_per_step_after_prefill": 0.1211,
+  "batch32_prefill_s": 0.402,
+  "batch32_generate_s": 1.327,
+  "batch32_s_per_step_after_prefill": 0.132,
+  "vram_peak_gib": 20.57
+ },
+ "compiled_fell_back": 0,
+ "describe": {
+  "mode": "compiled",
+  "weights": "gguf",
+  "linears": 410,
+  "types": {
+   "IQ4_XS": 24,
+   "Q4_K": 280,
+   "Q5_K": 36,
+   "Q6_K": 70
+  },
+  "shapes": 19,
+  "devices": [
+   "cuda:0"
+  ],
+  "int4mm": 0,
+  "skipped": {
+   "resident": 0,
+   "dense": 0
+  },
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": {
+    "IQ4_XS": {
+     "fields": [
+      0
+     ],
+     "patterns": 65536,
+     "graphs": 3,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q4_K": {
+     "fields": [
+      0,
+      2
+     ],
+     "patterns": 131072,
+     "graphs": 8,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q5_K": {
+     "fields": [
+      0,
+      2
+     ],
+     "patterns": 131072,
+     "graphs": 6,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q6_K": {
+     "fields": [
+      208
+     ],
+     "patterns": 65536,
+     "graphs": 2,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    }
+   },
+   "seconds": 10.35
+  },
+  "install_s": 10.36
+ },
+ "model_id_after_install": "gguf:gemma-4-31B-it-UD-Q4_K_XL.gguf#adfe6f42c3758a08",
+ "same_bits": {
+  "paris": true,
+  "chat": true,
+  "written": true,
+  "batch32": true
+ }
+}

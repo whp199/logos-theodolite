@@ -15,10 +15,13 @@ refused in plain words (`how_read`).
 
 `GGUFLinear` is a linear layer that keeps a tensor's raw blocks and unpacks them on the fly at every forward (as
 `engine_runtime._w4a16_forward` unpacks the compressed-tensors W4A16 checkpoint), or once at load ("resident", the
-blocks then dropped). Its forward applies the vault's column and row overlays (`_memit_col_overlays`,
-`_memit_row_overlays`: the one-neuron edits, named after MEMIT in the code, not MEMIT) exactly as `_w4a16_forward`
-does: on a clone of the unpacked weight, column by column, then row by row. `install_overlay_forward` gives a plain
-`nn.Linear` the same forward, so a model dequantised to dense layers hears the vault too.
+blocks then dropped). A faster unpacker of the whole weight with the same bits (`--unpacker compiled`,
+backend/gguf_fast.py) is installed from outside, as `_FAST_UNPACK`, which `unpacked()` looks up at each call; the row
+and column slicers and `make_resident` stay on `unpack`. Its forward applies the vault's column and row overlays
+(`_memit_col_overlays`, `_memit_row_overlays`: the one-neuron edits, named after MEMIT in the code, not MEMIT) exactly
+as `_w4a16_forward` does: on a clone of the unpacked weight, column by column, then row by row.
+`install_overlay_forward` gives a plain `nn.Linear` the same forward, so a model dequantised to dense layers hears the
+vault too.
 
 `dense(mod)`, `dense_cols(mod, idx)` and `dense_rows(mod, idx)` read a linear layer's own weight (no overlays: the
 runtime's `slice_w_*` and `get_full_w_*` lay those on) whatever holds it: a plain `nn.Linear`, a compressed-tensors
@@ -32,7 +35,7 @@ Nothing here imports gguf-py; `backend/gguf_model.py` reads the files with it.
 from __future__ import annotations
 
 import types
-from typing import Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -71,6 +74,14 @@ NOT_YET: Dict[int, str] = {
     9: "Q8_1", 15: "Q8_K", 24: "I8", 25: "I16", 26: "I32", 27: "I64", 28: "F64", 41: "Q1_0",
 }
 _CODE_OF = {name: code for code, (name, _b, _t) in {**GGML_TYPES, **BY_GGUF_PY}.items()}
+# The byte offsets in a block of each block type's fp16 fields (its scale d, and its minimum m or dmin where it has
+# one), as the unpackers below read them (`_f16(b[:, a : a + 2])`), in their order: the fields a table of every fp16
+# pattern runs through (backend/gguf_fast.py; scripts/check_gguf.py's F16_FIELDS and int4_cpu._F16_AT are the same,
+# scripts/check_gguf_fast.py checks both, and that these are the fields that make every weight NaN).
+F16_FIELDS: Dict[str, Tuple[int, ...]] = {
+    "Q4_0": (0,), "Q4_1": (0, 2), "Q5_0": (0,), "Q5_1": (0, 2), "Q8_0": (0,), "Q2_K": (80, 82), "Q3_K": (108,),
+    "Q4_K": (0, 2), "Q5_K": (0, 2), "Q6_K": (208,), "IQ4_NL": (0,), "IQ4_XS": (0,),
+}
 # A type given by ggml's code (or gguf's GGMLQuantizationType) or by name
 QType = Union[int, str]
 
@@ -396,6 +407,11 @@ def install_overlay_forward(linear: nn.Linear) -> nn.Linear:
 
 # ------------------------------------------------------------------------------------------------- the layer
 
+# A faster unpacker of a packed layer's whole weight, installed from outside (backend/gguf_fast.py, through
+# w4a16_fast.install) and looked up at each call of `GGUFLinear.unpacked()`: given the layer, its weight [out, in] in
+# its dtype with the reference's bits, or None for the reference's own (`unpacked_reference`). None: the reference.
+_FAST_UNPACK: Optional[Callable[["GGUFLinear"], Optional[torch.Tensor]]] = None
+
 
 class GGUFLinear(nn.Module):
     """A linear layer y = x W^T (+ b) whose weight W [out, in] is a GGUF tensor's blocks.
@@ -468,9 +484,21 @@ class GGUFLinear(nn.Module):
 
     @torch.no_grad()
     def unpacked(self) -> torch.Tensor:
-        """W [out, in] in `dtype`, no overlays (the resident weight itself when resident: do not write into it)."""
+        """W [out, in] in `dtype`, no overlays (the resident weight itself when resident: do not write into it); packed,
+        through the faster unpacker installed (`_FAST_UNPACK`), else, or where it gives None, `unpacked_reference()`."""
         if self.weight_dense is not None:
             return self.weight_dense
+        fast = _FAST_UNPACK
+        if fast is not None:
+            w = fast(self)
+            if w is not None:
+                return w
+        return self.unpacked_reference()
+
+    @torch.no_grad()
+    def unpacked_reference(self) -> torch.Tensor:
+        """A packed layer's W [out, in] in `dtype` by `unpack` alone, whatever is installed: the reference, in one call
+        up to `chunk_rows` rows, else `chunk_rows` at a time (elementwise, so the same numbers)."""
         if self.out_features <= self.chunk_rows:
             return unpack(self.weight_blocks, self.qtype).to(self.compute_dtype)
         return self._unpack_rows_all()

@@ -190,7 +190,10 @@ def main() -> int:
                     "only with the same settings, and a folder measured before the readers' g0 and u0 were recorded is refused")
     ap.add_argument("--unpacker", default="reference", choices=["reference", "lut", "compiled", "resident"],
                     help="how the 4-bit weights are unpacked (backend/w4a16_fast.py): each gives the reference's bits "
-                    "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more")
+                    "(tested at load on a GPU); lut, compiled and resident are faster, resident needing ~60 GB more. "
+                    "compiled serves a GGUF's packed layers too (backend/gguf_fast.py, tested at load on every layer); "
+                    "lut and resident are the W4A16 checkpoint's, and refused on a GGUF's packed layers (a GGUF held "
+                    "resident or dense records the reference, with what was asked)")
     a = ap.parse_args()
     sys.stdout.reconfigure(line_buffering=True)  # each step's progress as it comes, into a log file too
 

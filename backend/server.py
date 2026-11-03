@@ -108,8 +108,9 @@ def get_app_state() -> Tuple[TheodoliteRuntime, LarqlVaultEngine]:
 async def lifespan(_app: FastAPI):
     global _RUNTIME, _VAULT
     # how the 4-bit weights are unpacked ($THEODOLITE_UNPACKER, backend/w4a16_fast.py: each gives the same bits, tested
-    # before anything is read where install tests it: compiled, resident, and lut on CUDA; the reference unless set),
-    # its name checked before the model loads, which takes minutes on the 31B
+    # before anything is read where install tests it: compiled, resident, and lut on CUDA; the reference unless set;
+    # compiled serves a GGUF's packed layers too, backend/gguf_fast.py, where lut and resident are refused), its name
+    # checked before the model loads, which takes minutes on the 31B
     unpacker = os.environ.get(w4a16_fast.UNPACKER_ENV) or "reference"
     if unpacker not in w4a16_fast.MODES:
         raise w4a16_fast.Refused(f"${w4a16_fast.UNPACKER_ENV} names the unpackers {', '.join(w4a16_fast.MODES)}, not "

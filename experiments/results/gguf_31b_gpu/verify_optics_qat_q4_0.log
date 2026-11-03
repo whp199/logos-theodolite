@@ -1,0 +1,95 @@
+19:58:32 | INFO    | Loading Gemma 4 from the GGUF /home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-QAT-GGUF/gemma-4-31B-it-QAT-Q4_0.gguf on cuda:0 (packed linear layers, bfloat16)...
+19:58:58 | INFO    | Loading J++ Lens from /home/eric/.cache/huggingface/hub/models--neuronpedia--jacobian-lens/snapshots/e166deb5ad540932100ef803c8c9bcc2a5453694/gemma-4-31b/jpp/Salesforce-wikitext/gemma-4-31B_jpp_lens.pt...
+19:59:04 | INFO    | J++ lens: {'id': 'jpp-base', 'name': 'J++', 'fitted_on': 'google/gemma-4-31B (base, bf16)', 'applied_to': 'gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4', 'method': 'J++, R-lens LRP backward pass', 'fit_data': '64 WikiText passages of 128 word-pieces', 'source': 'koayon/jpp-lenses@6c96867a91c43c14cec17cf0f6d157b933c5fee5:gemma-4-31b/lens.pt', 'file': 'neuronpedia/jacobian-lens:gemma-4-31b/jpp/Salesforce-wikitext/gemma-4-31B_jpp_lens.pt', 'caution': "Fitted on the base model, not on the model it reads: compare its readings between matched sightings; do not take its words as this model's own. Layers count from 0 here (the pages count from 1). The order of conditions it gives was checked against the model's behaviour from layer 20; at layers 20-29 trust only that order; below layer 20 the study's two checks disagreed, so treat even comparisons there as unconfirmed. Use layers 30-49 for condition contrasts. At layers 50-58 this lens reads 'she' at or above a woman persona for 6-7 of the 9 AI personas the study tried: flag pronoun readouts there unless a lens fitted on the instruct model agrees. Neuron-pole word labels predicted causal effects only at the sampled layers 40-57; they were at chance at 10-30, and 31-39 were not sampled. It was fitted on positions 16-127 (counting from 0) of 128-piece passages and the study checked it only on short texts (at most 141 word-pieces in its fidelity check), so how well it reads further in is unmeasured; from position 1024 on, 50 of the model's 60 layers no longer look back to the start of the text.", 'provenance': {'source': 'koayon/jpp-lenses@6c96867a91c43c14cec17cf0f6d157b933c5fee5:gemma-4-31b/lens.pt', 'method': 'jpp', 'lrp_mode': 'rlens', 'hf_model_name': 'google/gemma-4-31B', 'n_prompts': 64, 'max_seq_len': 128}}
+19:59:05 | INFO    | Loading Jacobian Lens (JLens) from /home/eric/.cache/huggingface/hub/models--neuronpedia--jacobian-lens/snapshots/e166deb5ad540932100ef803c8c9bcc2a5453694/gemma-4-31b/jlens/Salesforce-wikitext/gemma-4-31B_jacobian_lens.pt...
+19:59:11 | INFO    | GGUFRuntime ready in 39.00s | Peak VRAM: 21.20 GB | model gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4 | {'Q4_0 packed': 410} | allocator: expandable_segments:True | sliding window: 1024
+============================================================================================
+ THEODOLITE — DETERMINISTIC OPTICS & CIRCUIT VERIFICATION SUITE (GEMMA-4-31B) 
+============================================================================================
+  Weights           : gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4 (gguf, id 2ac81237f76238b4)
+  Lens              : J++, fitted on google/gemma-4-31B (base, bf16), read on gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4
+                      J++, R-lens LRP backward pass; 64 WikiText passages of 128 word-pieces; source koayon/jpp-lenses@6c96867a91c43c14cec17cf0f6d157b933c5fee5:gemma-4-31b/lens.pt
+                      caution: Fitted on the base model, not on the model it reads: compare its readings between matched sightings; do not take its words as this model's own. Layers count from 0 here (the pages count from 1). The order of conditions it gives was checked against the model's behaviour from layer 20; at layers 20-29 trust only that order; below layer 20 the study's two checks disagreed, so treat even comparisons there as unconfirmed. Use layers 30-49 for condition contrasts. At layers 50-58 this lens reads 'she' at or above a woman persona for 6-7 of the 9 AI personas the study tried: flag pronoun readouts there unless a lens fitted on the instruct model agrees. Neuron-pole word labels predicted causal effects only at the sampled layers 40-57; they were at chance at 10-30, and 31-39 were not sampled. It was fitted on positions 16-127 (counting from 0) of 128-piece passages and the study checked it only on short texts (at most 141 word-pieces in its fidelity check), so how well it reads further in is unmeasured; from position 1024 on, 50 of the model's 60 layers no longer look back to the start of the text.
+
+[1/5] Running 60-Layer Theodolite Sweep (`<|think|>` DISABLED)...
+  Prompt            : 'The number of legs on the animal that spins webs is'
+  Prompt Tokens (12) : ['<bos>', 'The', ' number', ' of', ' legs', ' on', ' the', ' animal', ' that', ' spins', ' webs', ' is']
+  Generated Continuation: ' 8.\n\nThe number'
+  Sweep Latency     : 6591.8 ms
+  Survey Monuments  : ('spider', 'eight', 'insect')
+
+[2/5] Verification (a): J++ Bridge Emergence (global-attention layers) vs. Final Transition
+--------------------------------------------------------------------------------------------
+Layer           | Top-3 J++ Plume Tokens (prob)            | spider rank(logit) | eight/8 rank(logit)
+--------------------------------------------------------------------------------------------
+L06*(idx=05)    | ' ,'(12.8%), '\uf002'(10.8%), ' \\\\'(4.4%) | spider#7555  ( 14.0) | #972   ( 14.3)
+L12*(idx=11)    | '.;'(16.0%), ' Zhang'(6.4%), ' 물론'(5.0%) | spider#45715 (  2.4) | #15139 (  4.4)
+L18*(idx=17)    | ' zoo'(13.4%), ' Wolverine'(11.1%), ' swimwear'(9.7%) | spider#8691  (  7.6) | #15671 (  5.7)
+L24*(idx=23)    | ' zoo'(18.7%), ' own'(12.8%), ' swimwear'(5.4%) | spider#4889  (  9.6) | #3106  ( 11.0)
+L27 (idx=26)    | ' animals'(19.4%), ' animal'(15.2%), ' Pokémon'(10.4%) | spider#407   ( 18.8) | #2480  ( 13.3)
+L30*(idx=29)    | ' genus'(7.1%), ' mascot'(4.9%), ' animals'(4.7%) | spider#629   ( 19.3) | #1024  ( 18.1)
+L33 (idx=32)    | ' animal'(11.0%), ' animals'(9.4%), ' mammals'(2.4%) | spider#9     ( 27.6) | #5887  ( 16.2)
+L36*(idx=35)    | ' animal'(9.3%), ' insect'(6.4%), ' larva'(3.9%) | spider#32    ( 26.0) | #2298  ( 18.7)
+L39 (idx=38)    | ' animal'(6.4%), ' insect'(3.7%), ' zo'(2.0%) | spider#19    ( 27.3) | #688   ( 22.5)
+L42*(idx=41)    | '_____'(4.0%), ' ____'(3.7%), ' ________'(3.5%) | spider#1     ( 28.7) | #346   ( 22.1)
+L45 (idx=44)    | ' ________'(6.4%), '_____'(5.0%), ' spider'(4.3%) | spider#1     ( 29.3) | #197   ( 23.6)
+L48*(idx=47)    | '<strong>'(3.7%), '................'(3.6%), ' �'(3.4%) | spider#3     ( 27.6) | #209   ( 20.9)
+L51 (idx=50)    | ' Spider'(9.7%), ' spider'(9.3%), 'Spider'(5.4%) | spider#2     ( 28.7) | #4     ( 28.6)
+L54*(idx=53)    | ' Spider'(6.8%), 'Spider'(6.7%), ' spider'(6.6%) | spider#1     ( 29.5) | #13    ( 28.8)
+L57 (idx=56)    | ' spider'(22.7%), ' spiders'(15.2%), 'spider'(8.0%) | spider#1     ( 29.1) | #2     ( 26.3)
+L60*(idx=59)    | ' '(68.3%), ' own'(8.3%), ' **'(6.9%)    | spider#58    ( 20.3) | #1     ( 27.4)
+--------------------------------------------------------------------------------------------
+  Bridge Emergence Check : Peak mid-layer ('spider'/'arachnid') logit = 29.27 (vs early mean 4.87), best rank = #1
+  Final Transition Check : L54-L60 ('eight'/'8') best rank = #1
+
+  Running `<|think|>` ENABLED Comparison Sweep...
+  `<|think|>` Continuation: '<|channel>thought\n*   Target: "The animal that spins'
+  3D Trajectory L2 Divergence (`<|think|>` vs. Silent): 0.4428
+
+[3/5] Verification (b): Bipolar GeGLU Neuron Poles (J-VINDEX vs. Naive Logit Lens)
+--------------------------------------------------------------------------------------------
+  L24*(idx=23) Top Pole N21111 [+North, act=   2.08]
+      J-VINDEX (J++ Corrected) : ' Krypt'(24.4), '電視劇'(24.2), ' Godzilla'(24.0)
+      Naive Logit Lens (Raw W_U): '也非常'(29.7), '民宿'(29.6), '也是'(29.6)
+  L30*(idx=29) Top Pole N18940 [-South, act=  -2.14]
+      J-VINDEX (J++ Corrected) : ' Sperm'(26.0), ' sexu'(25.4), ' leukaemia'(24.8)
+      Naive Logit Lens (Raw W_U): ' each'(29.8), 'Each'(29.7), ' nhưng'(29.7)
+  L36*(idx=35) Top Pole N09482 [+North, act=   3.12]
+      J-VINDEX (J++ Corrected) : ' who'(24.3), '：“'(24.2), 'Airbnb'(23.6)
+      Naive Logit Lens (Raw W_U): ' such'(28.2), 'hip'(27.9), ' నిర్మాణ'(27.7)
+  L42*(idx=41) Top Pole N04722 [-South, act=  -3.22]
+      J-VINDEX (J++ Corrected) : ' THEN'(23.6), " '';"(23.2), ' عباره'(22.3)
+      Naive Logit Lens (Raw W_U): ' blevet'(24.9), ' either'(24.9), '요'(23.4)
+  L54*(idx=53) Top Pole N13089 [-South, act= -13.31]
+      J-VINDEX (J++ Corrected) : '�'(26.3), '≫'(25.7), '≪'(25.5)
+      Naive Logit Lens (Raw W_U): ' ﺍﻟ'(22.5), ' Với'(21.4), ' alcoved'(21.1)
+
+  Verified Downstream Reader Circuit Filaments Retained: 354
+    Edge L01:N15561(-) --> L05:N09360(-) | coupling=+55.5695 (dot=+1.4624, |act|=38.00)
+    Edge L01:N20841(-) --> L07:N16373(+) | coupling=-51.2757 (dot=-0.8765, |act|=58.50)
+    Edge L01:N05057(+) --> L03:N06732(+) | coupling=+40.5025 (dot=+1.2807, |act|=31.62)
+    Edge L01:N19224(+) --> L07:N16373(+) | coupling=-40.1904 (dot=-0.6870, |act|=58.50)
+    Edge L01:N07171(-) --> L05:N02447(-) | coupling=-38.7549 (dot=-1.6942, |act|=22.88)
+  Pole-Locked Motif Frame Verified : Axes = ('Gate L35:N9482', 'Write L35:N9482(+)@J++', 'Reader L36:N4272') | L36 (θ=72.5°, φ=-20.3°, ||h||=265.7)
+
+[4/5] Verification (c): Live `SteeringSpec` Causal Laser Intervention (`eight`/`8` -> `six`/`6`)
+--------------------------------------------------------------------------------------------
+  Unsteered Continuation : ' 8.\n\nThe number'
+  Steered Continuation   : ' six six six six six six'
+  L60 'six'/'6' Rank(Logit): Unsteered #6 (21.05)  -->  Steered #1 (30.00)
+
+[5/5] Verification (d) & LARQL Vault: VINDEX3 Query, `.patch` Surgery & VRAM Envelope
+--------------------------------------------------------------------------------------------
+  LARQL CLI Binaries     : {'vindex_cli': 'vindex 0.8.0', 'larql_cli': 'larql 0.2.0'}
+  LQL Nearest Edge #1 : L35 Slot 765 (-) cos=0.0020 -> J-VINDEX: ' vines'(29.477), ' trees'(29.459), '🕸'(29.403)
+  LQL Nearest Edge #2 : L35 Slot 4222 (-) cos=0.0015 -> J-VINDEX: ' animals'(29.968), ' animal'(29.954), ' insects'(29.931)
+  LQL Nearest Edge #3 : L35 Slot 10297 (+) cos=0.0014 -> J-VINDEX: ' computer'(29.985), ' software'(29.978), ' Computer'(29.961)
+  Applied LARQL .patch   : UPDATE LAYER 35 SLOT 100 SET object = 'six' STRENGTH 3.0 POLARITY + (new_norm=1.53501)
+  Rolled back .patch     : cleared=1
+--------------------------------------------------------------------------------------------
+  Peak Allocated VRAM    : 24.15 GB  (Budget: < 30.00 GB)
+  Peak Reserved VRAM     : 24.47 GB
+
+============================================================================================
+ ALL MATHEMATICAL, CAUSAL, LARQL & VRAM ASSERTIONS PASSED WITH ZERO ERRORS! 
+============================================================================================

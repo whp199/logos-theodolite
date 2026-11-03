@@ -1,0 +1,37 @@
+{
+ "gguf": "/home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-QAT-GGUF/gemma-4-31B-it-QAT-Q4_0.gguf",
+ "device": "cpu",
+ "linears": "packed",
+ "resident_gb": null,
+ "load_s": 15.3,
+ "model_id": "gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4@cpu/bfloat16",
+ "layers_as": {
+  "Q4_0 packed": 410
+ },
+ "resident_bytes": null,
+ "paris_forward_s": [
+  34.174
+ ],
+ "paris_top5": [
+  [
+   " Paris",
+   -0.2546
+  ],
+  [
+   " own",
+   -2.5046
+  ],
+  [
+   " **",
+   -2.8796
+  ],
+  [
+   "<|channel>",
+   -4.2546
+  ],
+  [
+   "\n",
+   -4.6296
+  ]
+ ]
+}

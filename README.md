@@ -486,11 +486,14 @@ The study used model snapshot `52f3f65bc7a02d555763bc923bd1d9094898219d` and len
 `e166deb5ad540932100ef803c8c9bcc2a5453694`.
 
 **On the CPU, or from a GGUF** (ARCHITECTURE §5; checked on the CPU stand-in; the 31B has run on the CPU for eight
-offline prefills of the checkpoint, and from a QAT Q4_0 and a Q4_K_M GGUF through `int4mm`)
+offline prefills of the checkpoint, and from a QAT Q4_0, a Q4_K_M and a UD-Q4_K_XL GGUF, packed and through `int4mm`;
+and on the home 5090 from the same three, packed, with the reference unpacker and with `compiled`)
 
 ```bash
 uv pip install "gguf>=0.19"                            # reads GGUF files (the optional "gguf" extra)
 THEODOLITE_GGUF=~/models/gemma-4-31b-it-q4_0.gguf .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765 --timeout-graceful-shutdown 3
+THEODOLITE_GGUF=<file> THEODOLITE_UNPACKER=compiled .venv/bin/uvicorn backend.server:app \
+    --host 127.0.0.1 --port 8765                       # its packed layers compiled: the reference's bits, faster
 THEODOLITE_DEVICE=cpu .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765 --timeout-graceful-shutdown 3   # the checkpoint, on the CPU
 THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=resident THEODOLITE_GGUF_LENS=none \
     .venv/bin/python scripts/census_run.py --layer 45 --neurons random:8 --random-controls 8 --max-new 32
@@ -499,6 +502,7 @@ THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm .ven
 THEODOLITE_GGUF=<...Q4_K_M.gguf> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEODOLITE_GGUF_RESIDENT_GB=8.5 \
     .venv/bin/uvicorn backend.server:app --host 127.0.0.1 --port 8765   # the Q6_K the kernel cannot take, resident
 .venv/bin/python -I scripts/compare_gguf_ct.py <file>  # does the GGUF hold the checkpoint's weights?
+.venv/bin/python -I scripts/check_gguf_fast.py --cuda --gguf <file>   # compiled against the reference, bit for bit
 .venv/bin/python -I scripts/compare_int4mm.py --time   # how fast the int4 kernel is here, against the reference
 THEODOLITE_GGUF=<file> THEODOLITE_DEVICE=cpu THEODOLITE_GGUF_LINEARS=int4mm THEODOLITE_GGUF_LENS=none \
     .venv/bin/python -I scripts/compare_int4mm.py --layer 45   # and how far its answers depart from it
@@ -514,13 +518,20 @@ not the reference's; the J++ lens adds 3.4 GB. A K-quant file's Q5_K, Q6_K and Q
 file's IQ4_XS), which the kernel cannot take, can be held resident up to `THEODOLITE_GGUF_RESIDENT_GB` (the same bits as packed): a Q4_K_M's 55 Q6_K layers
 need about 8 GB. On a 12-core desktop (2 November 2026, beside other work) the 31B through int4mm wrote a word-piece in
 0.45 s from the QAT Q4_0 and 0.56 s from a Q4_K_M with its Q6_K resident, and took a 59-piece prefill in 3.5 s; other
-machines are inferred: time a pilot first. A reading taken on the CPU (or in float32, or through int4mm) is recorded
-under its own model id (`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's
-`gguf:<file>#<fingerprint>@cpu/bfloat16`, with `+int4mm` after either), so no census run or index taken on the GPU is
-continued or read there; every index also records the weights it was built from, and none built from other weights is
-read (a census run records the model id only). A sweep, a census batch, the vault's voice, a causal check or a steer
-lens batch that the CPU's memory (MemAvailable) cannot hold, by an estimate from the model's config, is refused in plain
-words before it starts (`THEODOLITE_CPU_MEMORY=off` skips the estimate).
+machines are inferred: time a pilot first. On the home RTX 5090 (2 November 2026, beside a desktop;
+`experiments/results/gguf_31b_gpu/`) each of those two files and Unsloth's UD-Q4_K_XL loads packed in about 21 s into
+19 to 21 GiB of the card (the lens included in the 21) and writes a word-piece in 0.54 to 0.82 s on the reference
+unpacker (the K files dearer; between two runs a file's step moved by 6 to 19%), and in 0.121 to 0.126 s with
+`THEODOLITE_UNPACKER=compiled` (`--unpacker compiled`; `backend/gguf_fast.py`), its graphs compiled and tested against
+the reference in 3 to 10 s at load; on the 12-core desktop `compiled` took one forward of the QAT Q4_0 (six pieces)
+from 37.2 s to 11.9 s, after a 64 s install. A reading through `compiled` keeps the reference's model id, its bits being
+the same; one taken on the CPU (or in float32, or through int4mm) is recorded under its own model id
+(`google/gemma-4-31B-it-qat-w4a16-ct@cpu/bfloat16`, a GGUF's `gguf:<file>#<fingerprint>@cpu/bfloat16`, with `+int4mm`
+after either), so no census run or index taken on the GPU is continued or read there; every index also records the
+weights it was built from, and none built from other weights is read (a census run records the model id only). A sweep,
+a census batch, the vault's voice, a causal check or a steer lens batch that the CPU's memory (MemAvailable) cannot
+hold, by an estimate from the model's config, is refused in plain words before it starts (`THEODOLITE_CPU_MEMORY=off`
+skips the estimate).
 
 **Take a first sighting**
 
@@ -611,14 +622,18 @@ without the GPU or the weights, `.venv/bin/python scripts/atlas_stand_in.py --se
 a tiny random Gemma 4 (build its indexes with `atlas_build.py all --stand-in`, and its passages with `atlas_build.py
 passages --stand-in`); what it shows is random, and the page says so.
 
-Every forward unpacks the checkpoint’s 4-bit weights afresh (a GGUF’s layers are held as `THEODOLITE_GGUF_LINEARS`
-says, above: `--unpacker` is the W4A16 checkpoint’s). `--unpacker lut` or `--unpacker compiled` on `atlas_build.py` and
-`census_run.py` (`THEODOLITE_UNPACKER` for the server) unpacks them faster with the same bits, tested against the
-runtime’s own unpacker at load on a GPU and refused in plain words on any difference; `--unpacker resident` keeps them
-unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit weights (an 80 GB card holds it, with
-little left for a batch). The 0.71 s a decode step in `census_run.py`’s help was measured with the default, `reference`;
-on the same 5090 `lut` took 0.28 s and `compiled` 0.103 s at a batch of 32 (COMPUTE §ii)
-(ARCHITECTURE §2).
+Every forward unpacks the checkpoint’s 4-bit weights afresh, and a GGUF’s packed layers too (`THEODOLITE_GGUF_LINEARS`,
+above). `--unpacker lut` or `--unpacker compiled` on `atlas_build.py` and `census_run.py` (`THEODOLITE_UNPACKER` for the
+server, the lab daemon and the scientist’s MCP server run alone) unpacks the checkpoint’s weights faster with the same
+bits, tested against the runtime’s own unpacker at load on a GPU and refused in plain words on any difference;
+`--unpacker resident` keeps them unpacked, which needs a card or a machine with about 60 GB free beside the 4-bit
+weights (an 80 GB card holds it, with little left for a batch). On a GGUF only `compiled` serves
+(`backend/gguf_fast.py`: the reference’s bits, tested on every packed layer at load, on the card or the CPU); `lut` and
+`resident` are the checkpoint’s and refused there in plain words (a GGUF is held resident by
+`THEODOLITE_GGUF_LINEARS=resident` or `THEODOLITE_GGUF_RESIDENT_GB`). The 0.71 s a decode step in `census_run.py`’s
+help was measured on the checkpoint with the default, `reference`; on the same 5090 `lut` took 0.28 s and `compiled`
+0.103 s at a batch of 32 (COMPUTE §ii), and from a GGUF `compiled` took 0.12 to 0.14 s a step at one row and at 32
+(COMPUTE §ii; no census on a GGUF has been timed) (ARCHITECTURE §2, §5).
 
 `atlas_build.py passages --hf <dataset> --tokens 2000000` keeps, for every neuron and face, its sixteen strongest
 windows of the corpus (one event a window) with the gate and up values there, for the atlas’s passages tab, the folio
@@ -704,9 +719,9 @@ python3 experiments/lab/labclient.py experiments/scripts/pilot_self_gender.py --
 
 | Path | What is there |
 |---|---|
-| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py`, `causal_check.py` (a label's causal test, N1A's protocol); the atlas: `atlas.py` (its routes), `atlas_ops.py` (pushes, reads, wiring, heads, the steer lens), `atlas_index.py` and `atlas_build.py` (its indexes), `census.py`, `field_notes.py`, `scientist_chat.py`, `scientist_tools.py` and `scientist_mcp.py` (the scientist), `scientist_prompt.md` and `scientist_methodology.md` (its instructions); `local_only.py` (who may ask, on every route and the socket), `w4a16_fast.py` (faster unpackers of the 4-bit weights, the same bits); the CPU and GGUF: `runtime_factory.py` (which runtime a process runs), `gguf_weights.py`, `gguf_model.py` and `gguf_runtime.py` |
+| `backend/` | `theodolite_math.py` (the four modules, the frames, the direct-path score, CKA, the unembed), `engine_runtime.py` (the interp-engine runtime, lens loader, W4A16 dequantiser, chat template), `server.py` (FastAPI and the WebSocket), `mcp_scientist.py` (FastMCP tools), `larql_vault.py`, `causal_check.py` (a label's causal test, N1A's protocol); the atlas: `atlas.py` (its routes), `atlas_ops.py` (pushes, reads, wiring, heads, the steer lens), `atlas_index.py` and `atlas_build.py` (its indexes), `census.py`, `field_notes.py`, `scientist_chat.py`, `scientist_tools.py` and `scientist_mcp.py` (the scientist), `scientist_prompt.md` and `scientist_methodology.md` (its instructions); `local_only.py` (who may ask, on every route and the socket), `w4a16_fast.py` (faster unpackers of the 4-bit weights, the same bits); the CPU and GGUF: `runtime_factory.py` (which runtime a process runs), `gguf_weights.py`, `gguf_model.py` and `gguf_runtime.py`, `gguf_fast.py` (the faster unpacker of a GGUF’s packed layers, the same bits) |
 | `frontend/` | Vite and React: ten pages (welcome, instrument, layer leaf, neuron folio, atlas, landmarks, nudge, vault, lexicon, lineage), the rubrics and apparatus switches, and the study’s recorded sighting for when no server answers |
-| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first); the atlas: `atlas_build.py`, `census_run.py` and `census_tools.py`, `atlas_stand_in.py` (its CPU stand-in), and `check_atlas_ops.py`, `check_atlas_index.py`, `check_atlas_api.py`, `check_census.py` and `check_scientist.py` (its checks, on the CPU); `check_local_only.py` (the guard), `check_hypothesis_test.py` (the guess test against chance), `check_dequant.py` (the unpackers, bit for bit), `check_gguf.py` and `compare_gguf_ct.py` (the GGUF path, and whether a GGUF holds the checkpoint’s weights) |
+| `scripts/` | `verify_optics.py` (command-line checks), `verify_e2e_ui_and_mcp.py` (server, tools and headless-Chrome page checks), `verify_causal_check.py` (the causal test against the study's N1A and N1V figures, on the GPU), `check_causal_check.py` (the same test on a tiny CPU stand-in, which `verify_e2e_ui_and_mcp.py` runs first); the atlas: `atlas_build.py`, `census_run.py` and `census_tools.py`, `atlas_stand_in.py` (its CPU stand-in), and `check_atlas_ops.py`, `check_atlas_index.py`, `check_atlas_api.py`, `check_census.py` and `check_scientist.py` (its checks, on the CPU); `check_local_only.py` (the guard), `check_hypothesis_test.py` (the guess test against chance), `check_dequant.py` (the unpackers, bit for bit), `check_gguf.py`, `check_gguf_fast.py` and `compare_gguf_ct.py` (the GGUF path, its faster unpacker bit for bit, and whether a GGUF holds the checkpoint’s weights) |
 | `experiments/REPORT.md` | The main write-up |
 | `ROADMAP.md` | What is still open, gathered from this README’s fault table, the report’s errata, the pages and the records of R1 to R4 |
 | `experiments/lab/` | `labd.py` (the GPU daemon holding the model and lenses), `labclient.py` (submit jobs), `labkit.py` (lens readouts, gender scores, the corrected decomposition, interventions, exact same-position VJPs through the 4-bit model) |

@@ -40,7 +40,9 @@ the same one and the server reads an index only for it, so readings of two class
 on a GPU, as the instrument has always run, adds nothing. The int4mm linears add `+int4mm` after it
 (`gguf:<file>#<fingerprint>@cpu/bfloat16+int4mm`): their sums are the kernel's, so their readings are their own class.
 A resident budget adds nothing: a resident layer's forward is the packed one's bit for bit (scripts/check_gguf_cpu.py
-§4), and the weights card says how much was held so (`resident_gb`, `resident_bytes`, `layers_as`).
+§4), and the weights card says how much was held so (`resident_gb`, `resident_bytes`, `layers_as`). Nor does the
+unpacker: "compiled" (backend/gguf_fast.py) gives a GGUF's packed layers the reference's bits, and a reading records
+it under "unpacker".
 
 `weights_card(rt)` says what a runtime's readings are taken from, for any runtime: a GGUF's own card (its file's
 provenance and how its model was built), the checkpoint's repo id, the snapshot of it this machine's Hugging Face cache

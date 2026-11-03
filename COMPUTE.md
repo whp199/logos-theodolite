@@ -1,10 +1,11 @@
 # Where it runs
 
 *What each hard job costs, on the owner’s RTX 5090 and on rented cards, how to make a card count without changing a
-reading, and the long way to the CPU and GGUF. Written on 28 October 2026, and brought up to date on 29 October. Only
-the 5090’s figures and the CPU timings of §vii are measured (in the pilot of 27 October, `cbbb5fa` and `8898010`, and in
-the runs of 28 and 29 October, §i and §ii); every other figure is worked out from them and the cards’ published
-bandwidth and arithmetic, and is to be timed in a pilot before anyone relies on it. Prices were read on 28 October
+reading, and the long way to the CPU and GGUF. Written on 28 October 2026, and brought up to date on 29 October and
+2 November. Only the 5090’s figures and the CPU timings of §vii are measured (in the pilot of 27 October, `cbbb5fa` and
+`8898010`, in the runs of 28 and 29 October, §i and §ii, and in those of 2 November from a GGUF, §ii and §vii); every
+other figure is worked out from them and the cards’ published bandwidth and arithmetic, and is to be timed in a pilot
+before anyone relies on it. Prices were read on 28 October
 through web search (the providers’ own pages could not be opened from the machine this was written on) and move often:
 read the live page before asking for a budget. Layers count from 0 in the commands, as every script does
 (page = layer + 1).*
@@ -34,8 +35,8 @@ about a hundred rows, which is why the step costs the same from 1 to 64. The sam
 
 ## ii · making the card count, with every reading the same
 
-Built on 28 October 2026 and checked on the CPU stand-in; the unpackers timed on the home 5090 that evening, the rest
-not yet:
+Built on 28 October 2026 (a GGUF’s `compiled` on 2 November) and checked on the CPU stand-in; the unpackers timed on
+the home 5090 that evening (a GGUF’s on 2 November), the rest not yet:
 
 - **Faster unpacking, the same bits** (`backend/w4a16_fast.py`, `--unpacker`, `THEODOLITE_UNPACKER`; ARCHITECTURE §2).
   `lut` reads the packed bytes through a 256-entry table and multiplies by the scale as the runtime does; `compiled` is
@@ -58,6 +59,28 @@ not yet:
   `lut` is about 2.5 times shorter and `compiled` about seven (its graphs compile in about 4 s at load). With
   `compiled` the step grows with the batch, the products now counting beside the unpacking; 128 rows and more were
   not tried.
+- **A GGUF’s packed layers, the same way** (`backend/gguf_fast.py`, 2 November 2026; ARCHITECTURE §5). `compiled`
+  serves them too: the reference’s own arithmetic compiled, one graph per type and layer shape, contraction off on
+  CUDA, tested at load on every packed layer and on every pattern of each type’s fp16 fields, refused in plain words
+  on any difference; the model id does not change. `lut` and `resident` are refused there (a lookup table was no
+  faster compiled; a GGUF is held resident by `THEODOLITE_GGUF_LINEARS`). **Timed** on the home 5090 beside a desktop
+  (one written word-piece after a 23-piece chat prefill, and a step of 8 written at a batch of 32;
+  `experiments/results/gguf_31b_gpu/`), each passing its test first:
+
+  | file | `reference`, 1 row / 32 | `compiled`, 1 row / 32 | `compiled`’s install |
+  |---|---|---|---|
+  | QAT Q4_0 (lmstudio-community) | 0.542 / 0.553 s | 0.121 / 0.131 s | 2.8 s |
+  | Q4_K_M (lmstudio-community) | 0.819 / 0.736 s | 0.126 / 0.136 s | 8.7 s |
+  | UD-Q4_K_XL (Unsloth) | 0.758 / 0.737 s | 0.121 / 0.132 s | 10.4 s |
+
+  The reference moves between runs: in the day’s first runs (`first_run.py`, on the code before `compiled`, the Q4_0
+  without the lens; `experiments/results/gguf_31b_gpu/first_run_*.json`) it took 0.512, 0.689 and 0.695 s at one row, so a file’s step
+  moved by 6 to 19% between two runs, the cause not established. Beside the reference of the same run `compiled` is
+  about 4.5 to 6.5 times shorter at one row and 4.2 to 5.6 at 32, near the checkpoint’s 0.09–0.13 s above (taken on
+  census-shaped batches, so not the same reading). Unpacking still costs more than the products: a 21,504 × 5,376
+  layer of the 31B’s types unpacks in 0.24–0.46 ms compiled, its one-row bf16 product 0.147 ms (a probe on random
+  blocks, not kept); the rest would need a fused unpack-and-multiply, which would not give the reference’s product
+  bits. No census has been timed on a GGUF.
 - **The lens freed and the steps read whole.** The census frees the J++ lens after loading (about 3.2 GiB more for
   rows, worked out) and reads each step’s pieces back in one transfer, bit for bit as before.
 - **The batch fixes the bits, the unpacker does not.** On the GPU a row’s numbers depend on the size of its batch, so
@@ -213,10 +236,13 @@ server and the lab daemon choose their runtime the same way, the lab’s lens fi
 autograd function (its gradients the dense stand-in’s bit for bit), every index names the weights it was built from and
 the server refuses one built from others, and a reading the CPU’s memory cannot hold is refused in plain words. A
 reading off the GPU, or from a GGUF, carries that in its model id, so it never mixes with the card’s in one file.
+A third and a fourth layer followed on 2 November 2026: IQ4_NL and IQ4_XS unpacked here, the other types gguf-py reads
+unpacked by it at load, split files, int4mm for Q4_1 and Q4_K and a resident budget (`THEODOLITE_GGUF_RESIDENT_GB`);
+then `compiled` for a GGUF’s packed layers (`backend/gguf_fast.py`, the reference’s bits; §ii).
 
 What a CPU costs, measured on a 4-vCPU container: unpacking every weight on every forward (7.8 ns a weight for Q4_0,
 10.0 for the runtime’s W4A16 unpacker) makes a forward of 29.3 billion weights some minutes there; resident bf16 (about
-62 GB of RAM) writes a word-piece in seconds. The 31B itself has run on the CPU only for the wiring check’s offline
+62 GB of RAM) writes a word-piece in seconds. The checkpoint itself has run on the CPU for the wiring check’s offline
 reads (29 October 2026, on the home machine’s AMD Ryzen 9 7900X, 12 cores and 24 threads, the reads using 22, the packed
 checkpoint on the reference unpacker): a prefill of 17 to 20 word-pieces took 31 to 37 s, and one of 25 rows of 17
 word-pieces 43 to 51 s (`experiments/results/atlas_wiring_check/`). torch’s own int4 kernel for the CPU
@@ -226,10 +252,17 @@ arithmetic there; on the home machine (2 November 2026) the 31B through it wrote
 Q4_0 GGUF and 0.56 s from a Q4_K_M (int4mm takes Q4_0, Q4_1 and Q4_K; the K file’s Q6_K layers held resident within
 `THEODOLITE_GGUF_RESIDENT_GB`, ARCHITECTURE §5). Its sums are the kernel’s, not the reference’s: its readings carry
 `+int4mm` in their model id, and on the stand-in 30 of 64 canary answers matched the reference’s word for word, where
-two batches of the reference matched 64 of 64. So the CPU suits weight reads, single forwards, pilots and looking
-through int4mm now; a census or a corpus pass of record on it waits on a fast path with the reference’s bits
-(`scripts/compare_int4mm.py` holds the rule, fixed before any run on the 31B, by which int4mm’s readings could stand for
-the reference’s). What is left, phase by phase, is in ROADMAP §vii.
+two batches of the reference matched 64 of 64. `compiled` (`backend/gguf_fast.py`) gives a GGUF’s packed layers the
+reference’s bits on the CPU as on the card, but it still unpacks the whole weight at every forward: on the home
+machine (2 November 2026, one run each way) it took one forward of the QAT Q4_0 (six pieces) from 37.2 s to 11.9 s,
+after a 64 s install; a written word-piece through it was not timed there. So the CPU suits weight reads, single
+forwards, pilots and looking through int4mm now; a census or a corpus pass of record on it waits on a path with the
+reference’s bits nearer int4mm’s speed (`scripts/compare_int4mm.py` holds the rule, fixed before any run on the 31B, by
+which int4mm’s readings could stand for the reference’s). From a GGUF on the card (the home 5090, 2 November 2026, three
+Q4 files, packed; §ii) the 31B wrote a word-piece in 0.54 to 0.82 s on the reference unpacker and 0.12 to 0.13 s with
+`compiled`; through `compiled` the logits of two forwards were the reference’s bits and the pieces written alone and at
+a batch of 32 the reference’s pieces, on the QAT Q4_0 one sighting too, and the optics check passed on that file
+(ARCHITECTURE §5, “The 31B on the GPU”). What is left, phase by phase, is in ROADMAP §vii.
 
 <br>
 

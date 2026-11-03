@@ -1,0 +1,144 @@
+{
+ "mode": "cpu",
+ "gguf": "/home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-QAT-GGUF/gemma-4-31B-it-QAT-Q4_0.gguf",
+ "device": "cpu",
+ "lens": false,
+ "threads": 12,
+ "load_s": 15.8,
+ "model_id": "gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4@cpu/bfloat16",
+ "layers_as": {
+  "Q4_0 packed": 410
+ },
+ "reference": {
+  "paris_forward_s": [
+   37.168
+  ],
+  "paris_top5": [
+   [
+    " Paris",
+    -0.2546
+   ],
+   [
+    " own",
+    -2.5046
+   ],
+   [
+    " **",
+    -2.8796
+   ],
+   [
+    "<|channel>",
+    -4.2546
+   ],
+   [
+    "\n",
+    -4.6296
+   ]
+  ]
+ },
+ "install": {
+  "mode": "compiled",
+  "weights": "gguf",
+  "linears": 410,
+  "types": {
+   "Q4_0": 410
+  },
+  "shapes": 8,
+  "devices": [
+   "cpu"
+  ],
+  "int4mm": 0,
+  "skipped": {
+   "resident": 0,
+   "dense": 0
+  },
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": {
+    "Q4_0": {
+     "fields": [
+      0
+     ],
+     "patterns": 65536,
+     "graphs": 8,
+     "nan_payloads": 16466963,
+     "on": [
+      "cpu/bfloat16"
+     ]
+    }
+   },
+   "seconds": 64.32
+  },
+  "install_s": 64.32
+ },
+ "install_wall_s": 64.3,
+ "compiled": {
+  "paris_forward_s": [
+   11.927
+  ],
+  "paris_top5": [
+   [
+    " Paris",
+    -0.2546
+   ],
+   [
+    " own",
+    -2.5046
+   ],
+   [
+    " **",
+    -2.8796
+   ],
+   [
+    "<|channel>",
+    -4.2546
+   ],
+   [
+    "\n",
+    -4.6296
+   ]
+  ]
+ },
+ "compiled_fell_back": 0,
+ "describe": {
+  "mode": "compiled",
+  "weights": "gguf",
+  "linears": 410,
+  "types": {
+   "Q4_0": 410
+  },
+  "shapes": 8,
+  "devices": [
+   "cpu"
+  ],
+  "int4mm": 0,
+  "skipped": {
+   "resident": 0,
+   "dense": 0
+  },
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": {
+    "Q4_0": {
+     "fields": [
+      0
+     ],
+     "patterns": 65536,
+     "graphs": 8,
+     "nan_payloads": 16466963,
+     "on": [
+      "cpu/bfloat16"
+     ]
+    }
+   },
+   "seconds": 64.32
+  },
+  "install_s": 64.32
+ },
+ "model_id_after_install": "gguf:gemma-4-31B-it-QAT-Q4_0.gguf#2ac81237f76238b4@cpu/bfloat16",
+ "same_bits": {
+  "paris": true
+ }
+}

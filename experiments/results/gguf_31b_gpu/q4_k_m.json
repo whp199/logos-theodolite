@@ -1,0 +1,199 @@
+{
+ "mode": "gpu",
+ "gguf": "/home/eric/.lmstudio/models/lmstudio-community/gemma-4-31B-it-GGUF/gemma-4-31B-it-Q4_K_M.gguf",
+ "device": "cuda:0",
+ "lens": false,
+ "threads": 12,
+ "load_s": 21.5,
+ "model_id": "gguf:gemma-4-31B-it-Q4_K_M.gguf#9d70e76bba193a99",
+ "layers_as": {
+  "Q4_K packed": 355,
+  "Q6_K packed": 55
+ },
+ "vram_after_load_gib": 18.93,
+ "reference": {
+  "paris_forward_s": [
+   1.078,
+   0.779,
+   0.778
+  ],
+  "paris_top5": [
+   [
+    " Paris",
+    -0.0142
+   ],
+   [
+    " **",
+    -4.3892
+   ],
+   [
+    "...",
+    -6.5142
+   ],
+   [
+    "\u2019",
+    -10.1392
+   ],
+   [
+    "..",
+    -10.8892
+   ]
+  ],
+  "chat_prefill_pieces": 23,
+  "chat_prefill_s": 0.796,
+  "written": "Danube\nRhine\nVolga<turn|>",
+  "pieces_written": 9,
+  "generate_s": 7.351,
+  "s_per_step_after_prefill": 0.8194,
+  "batch32_prefill_s": 1.051,
+  "batch32_generate_s": 6.201,
+  "batch32_s_per_step_after_prefill": 0.7357,
+  "vram_peak_gib": 20.57
+ },
+ "install": {
+  "mode": "compiled",
+  "weights": "gguf",
+  "linears": 410,
+  "types": {
+   "Q4_K": 355,
+   "Q6_K": 55
+  },
+  "shapes": 10,
+  "devices": [
+   "cuda:0"
+  ],
+  "int4mm": 0,
+  "skipped": {
+   "resident": 0,
+   "dense": 0
+  },
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": {
+    "Q4_K": {
+     "fields": [
+      0,
+      2
+     ],
+     "patterns": 131072,
+     "graphs": 8,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q6_K": {
+     "fields": [
+      208
+     ],
+     "patterns": 65536,
+     "graphs": 2,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    }
+   },
+   "seconds": 8.74
+  },
+  "install_s": 8.75
+ },
+ "install_wall_s": 8.7,
+ "compiled": {
+  "paris_forward_s": [
+   0.142,
+   0.14,
+   0.143
+  ],
+  "paris_top5": [
+   [
+    " Paris",
+    -0.0142
+   ],
+   [
+    " **",
+    -4.3892
+   ],
+   [
+    "...",
+    -6.5142
+   ],
+   [
+    "\u2019",
+    -10.1392
+   ],
+   [
+    "..",
+    -10.8892
+   ]
+  ],
+  "chat_prefill_pieces": 23,
+  "chat_prefill_s": 0.142,
+  "written": "Danube\nRhine\nVolga<turn|>",
+  "pieces_written": 9,
+  "generate_s": 1.154,
+  "s_per_step_after_prefill": 0.1264,
+  "batch32_prefill_s": 0.423,
+  "batch32_generate_s": 1.372,
+  "batch32_s_per_step_after_prefill": 0.1355,
+  "vram_peak_gib": 20.33
+ },
+ "compiled_fell_back": 0,
+ "describe": {
+  "mode": "compiled",
+  "weights": "gguf",
+  "linears": 410,
+  "types": {
+   "Q4_K": 355,
+   "Q6_K": 55
+  },
+  "shapes": 10,
+  "devices": [
+   "cuda:0"
+  ],
+  "int4mm": 0,
+  "skipped": {
+   "resident": 0,
+   "dense": 0
+  },
+  "self_test": {
+   "linears": 410,
+   "same_bits": true,
+   "table": {
+    "Q4_K": {
+     "fields": [
+      0,
+      2
+     ],
+     "patterns": 131072,
+     "graphs": 8,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    },
+    "Q6_K": {
+     "fields": [
+      208
+     ],
+     "patterns": 65536,
+     "graphs": 2,
+     "nan_payloads": 0,
+     "on": [
+      "cuda:0/bfloat16"
+     ]
+    }
+   },
+   "seconds": 8.74
+  },
+  "install_s": 8.75
+ },
+ "model_id_after_install": "gguf:gemma-4-31B-it-Q4_K_M.gguf#9d70e76bba193a99",
+ "same_bits": {
+  "paris": true,
+  "chat": true,
+  "written": true,
+  "batch32": true
+ }
+}

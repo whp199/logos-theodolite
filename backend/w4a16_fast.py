@@ -40,6 +40,10 @@ off the forward's path, and is left as it is. A module that imported the name be
 (experiments/scripts/V6_quiet_dims_01_stats.py) keeps the reference, which gives the same bits. "resident" binds a new
 forward on each packed module, and `install(..., "reference")` puts every one back.
 
+A GGUF's packed layers (`gguf_weights.GGUFLinear`) are not W4A16: `install` hands a model holding some, and no W4A16
+linears, to backend/gguf_fast.py, whose "compiled" is tested and recorded in the same way (lut and resident are refused
+there, in plain words); a model with neither keeps the reference, the record saying what was asked.
+
 What a reading records: `describe()`, under "unpacker" in a census run's meta and an index's meta, and in GET
 /api/health.
 """
@@ -329,6 +333,9 @@ def _uninstall(model: Optional[nn.Module]) -> None:
     """Back to the reference: the runtime's own unpacker, and each resident module's forward as it was, its kept
     weight let go."""
     global _RESIDENT_MODEL
+    gguf_fast = sys.modules.get("backend.gguf_fast")  # a GGUF's unpacker, if one was ever installed in this process
+    if gguf_fast is not None:
+        gguf_fast.uninstall()
     if _er.dequantize_w4a16_full is not REFERENCE:
         _er.dequantize_w4a16_full = REFERENCE
     models = [model] if model is not None else []
@@ -429,8 +436,18 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
         _STATE.update(rec)
         return dict(rec)
     if not linears:
-        # a GGUF's layers, or a dense model's: nothing here is W4A16, so no unpacker but the reference would run (a GGUF's
-        # are held as THEODOLITE_GGUF_LINEARS says, backend/runtime_factory.py); the record says what was asked
+        # a GGUF's packed layers have an unpacker of their own (backend/gguf_fast.py: compiled; lut and resident refused),
+        # imported only here, so the checkpoint's install loads nothing more
+        from backend import gguf_fast
+
+        if gguf_fast.packed_layers(model):
+            rec = gguf_fast.install(model, mode, self_test=self_test, log=say)
+            _STATE.clear()
+            _STATE.update(rec)
+            return dict(rec)
+        # a dense model's, or a GGUF's held resident or dense: nothing here is W4A16 or packed, so no unpacker but the
+        # reference would run (a GGUF's are held as THEODOLITE_GGUF_LINEARS says, backend/runtime_factory.py); the
+        # record says what was asked
         say(f"No W4A16 linears in this model, so the {mode} unpacker has nothing to unpack: the reference is recorded "
             "(a GGUF's layers are held as THEODOLITE_GGUF_LINEARS says).")
         rec.update(mode="reference", asked=mode)
@@ -535,7 +552,10 @@ def install(rt_or_model: Any, mode: str = "reference", *, self_test: Optional[bo
 def describe(rt_or_model: Any = None) -> Dict[str, Any]:
     """Which unpacker this process runs, as a reading records it: the record `install` returned, or {"mode":
     "reference"}. It is read from what is bound, so a rebinding put back by hand, or a model whose linears are not
-    resident, reads as the reference."""
+    resident, reads as the reference. A GGUF's packed layers through their own (backend/gguf_fast.py): its record."""
+    gguf_fast = sys.modules.get("backend.gguf_fast")
+    if gguf_fast is not None and gguf_fast.installed():
+        return gguf_fast.describe()
     fn = _er.dequantize_w4a16_full
     bound = "reference" if fn is REFERENCE else getattr(fn, "mode", "unknown")
     mode = _STATE.get("mode", "reference")

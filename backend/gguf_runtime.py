@@ -26,9 +26,10 @@ another file's (as far as the fingerprint tells files apart: `gguf_model.provena
 for one of another numeric class. How the linear layers are held (packed, resident or dense, or partly resident within
 `resident_gb`, THEODOLITE_GGUF_RESIDENT_GB) is not in it: they hold the same weight, and give the same forward bit for
 bit (scripts/check_gguf.py, scripts/check_gguf_cpu.py §4); "int4mm", torch's int4 CPU kernel (backend/int4_cpu.py),
-does not, and its readings' model id ends `+int4mm`. `weights_card` is the file's
-provenance with how the model was built and where its tokenizer came from (the file's name, not its path, which only the
-log names); GET /api/health sends it ("weights").
+does not, and its readings' model id ends `+int4mm`. Nor is the unpacker of the packed ones in it ("compiled",
+backend/gguf_fast.py, gives the reference's bits, tested at install: scripts/check_gguf_fast.py). `weights_card` is
+the file's provenance with how the model was built and where its tokenizer came from (the file's name, not its path,
+which only the log names); GET /api/health sends it ("weights").
 
 scripts/check_gguf.py drives it on the stand-in of scripts/atlas_stand_in.py written to tiny GGUF files.
 """
