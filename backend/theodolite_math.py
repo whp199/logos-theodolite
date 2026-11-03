@@ -1,4 +1,4 @@
-"""Four mathematical modules for Theodolite (Gemma-4-31B).
+"""Four mathematical modules for Logos Theodolite (Gemma-4-31B).
 
 Implements in clean, vectorized PyTorch:
 1. Attention Router vs. FFN Vault Causal Vector Split in J++-Space
